@@ -1,18 +1,18 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .controller import Controller
+from .controller import Controller, ControleMode
 
 import json
 import os
@@ -21,10 +21,13 @@ import time
 
 
 class CollectiveController(Controller):
+
     @classmethod
     def enable(cls, ctx):
+        # collective is the default mode
         if ctx:
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False
@@ -52,9 +55,10 @@ class CollectiveController(Controller):
             'endpoints': ",".join(endpoints),
         })
 
-        peer_list, rank = self.master.sync_peers(
-            '/{}/info'.format(self.job.id), self.pod.name, data,
-            self.job.replicas, self.pod.rank)
+        peer_list, rank = self.master.sync_peers('/{}/info'.format(self.job.id),
+                                                 self.pod.name, data,
+                                                 self.job.replicas,
+                                                 self.pod.rank)
         self.pod.rank = rank
 
         if len(peer_list) < 1:
@@ -85,6 +89,7 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
+                "PADDLE_NNODES": "{}".format(self.job.replicas),
                 ## compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
@@ -102,10 +107,12 @@ class CollectiveController(Controller):
 
 
 class CollectiveElasticController(CollectiveController):
+
     @classmethod
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
             ctx.logger.debug("{} enabled".format(cls.__name__))
+            ctx.args.run_mode = ControleMode.COLLECTIVE
             return True
         else:
             return False
@@ -129,8 +136,9 @@ class CollectiveElasticController(CollectiveController):
 
             self.ctx.logger.info("Waiting peer ready...")
 
-            ok, replicas = self.master.wait_peer_ready(
-                self.job.replicas_min, self.job.replicas_max, timeout)
+            ok, replicas = self.master.wait_peer_ready(self.job.replicas_min,
+                                                       self.job.replicas_max,
+                                                       timeout)
             if ok:
                 self.job.replicas = replicas
             else:

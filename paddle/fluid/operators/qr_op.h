@@ -16,6 +16,7 @@
 
 #include <Eigen/Dense>
 #include <cstdarg>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/svd_helper.h"
@@ -89,11 +90,14 @@ class QrGradKernel : public framework::OpKernel<T> {
     }
 
     // m >= n case
-    auto m_gt_n_case = [](
-        const framework::ExecutionContext& ctx,
-        math::DeviceIndependenceTensorOperations<DeviceContext, T>& dito,
-        const Tensor& dQ, const Tensor& dR, const Tensor& A, const Tensor& Q,
-        const Tensor& R) -> framework::Tensor {
+    auto m_gt_n_case =
+        [](const framework::ExecutionContext& ctx,
+           math::DeviceIndependenceTensorOperations<DeviceContext, T>& dito,
+           const Tensor& dQ,
+           const Tensor& dR,
+           const Tensor& A,
+           const Tensor& Q,
+           const Tensor& R) -> framework::Tensor {
       // Hai-Jun Liao, Jin-Guo Liu, Lei Wang, Tao Xiang (2019). Differentiable
       // Programming Tensor Networks.
       // https://arxiv.org/abs/1903.09650 Section 3. QR factorization
@@ -174,12 +178,27 @@ class QrGradKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-void BatchedGeqrf(const DeviceContext& dev_ctx, int batch_size, int m, int n,
-                  T* a, int lda, T* tau, int a_stride, int tau_stride);
+void BatchedGeqrf(const DeviceContext& dev_ctx,
+                  int batch_size,
+                  int m,
+                  int n,
+                  T* a,
+                  int lda,
+                  T* tau,
+                  int a_stride,
+                  int tau_stride);
 
 template <typename DeviceContext, typename T>
-void BatchedOrgqr(const DeviceContext& dev_ctx, int batch_size, int m, int n,
-                  int k, T* a, int lda, T* tau, int a_stride, int tau_stride);
+void BatchedOrgqr(const DeviceContext& dev_ctx,
+                  int batch_size,
+                  int m,
+                  int n,
+                  int k,
+                  T* a,
+                  int lda,
+                  T* tau,
+                  int a_stride,
+                  int tau_stride);
 
 }  // namespace operators
 }  // namespace paddle

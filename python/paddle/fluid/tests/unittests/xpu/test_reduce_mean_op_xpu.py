@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -27,6 +28,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestMeanOp(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
@@ -43,6 +45,7 @@ class TestMeanOp(OpTest):
 
 
 class TestMeanOp5D(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {
@@ -61,6 +64,7 @@ class TestMeanOp5D(OpTest):
 
 
 class TestMeanOp6D(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {
@@ -79,6 +83,7 @@ class TestMeanOp6D(OpTest):
 
 
 class TestMeanOp8D(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {
@@ -97,6 +102,7 @@ class TestMeanOp8D(OpTest):
 
 
 class Test1DReduce(OpTest):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random(120).astype("float32")}
@@ -113,6 +119,7 @@ class Test1DReduce(OpTest):
 
 
 class Test2DReduce0(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [0], 'use_xpu': True}
@@ -121,6 +128,7 @@ class Test2DReduce0(Test1DReduce):
 
 
 class Test2DReduce1(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [1], 'use_xpu': True}
@@ -131,6 +139,7 @@ class Test2DReduce1(Test1DReduce):
 
 
 class Test3DReduce0(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [1], 'use_xpu': True}
@@ -141,6 +150,7 @@ class Test3DReduce0(Test1DReduce):
 
 
 class Test3DReduce1(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [2], 'use_xpu': True}
@@ -151,6 +161,7 @@ class Test3DReduce1(Test1DReduce):
 
 
 class Test3DReduce2(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [-2], 'use_xpu': True}
@@ -161,6 +172,7 @@ class Test3DReduce2(Test1DReduce):
 
 
 class Test3DReduce3(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.attrs = {'dim': [1, 2], 'use_xpu': True}
@@ -171,17 +183,20 @@ class Test3DReduce3(Test1DReduce):
 
 
 class TestKeepDimReduce(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.attrs = {'dim': [1], 'keep_dim': True, 'use_xpu': True}
         self.outputs = {
-            'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim'])
+            'Out':
+            self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
+                                  keepdims=self.attrs['keep_dim'])
         }
 
 
 class TestKeepDim8DReduce(Test1DReduce):
+
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {
@@ -189,8 +204,9 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
         self.attrs = {'dim': (3, 4, 5), 'keep_dim': True, 'use_xpu': True}
         self.outputs = {
-            'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim'])
+            'Out':
+            self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
+                                  keepdims=self.attrs['keep_dim'])
         }
 
 

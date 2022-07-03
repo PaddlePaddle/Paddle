@@ -24,11 +24,14 @@ import paddle
 
 
 class TestNumelOp(OpTest):
+
     def setUp(self):
         self.op_type = "size"
         self.init()
         x = np.random.random((self.shape)).astype("float64")
-        self.inputs = {'Input': x, }
+        self.inputs = {
+            'Input': x,
+        }
         self.outputs = {'Out': np.array([np.size(x)])}
 
     def test_check_output(self):
@@ -39,16 +42,19 @@ class TestNumelOp(OpTest):
 
 
 class TestNumelOp1(TestNumelOp):
+
     def init(self):
         self.shape = (11, 66)
 
 
 class TestNumelOp2(TestNumelOp):
+
     def init(self):
         self.shape = (0, )
 
 
 class TestNumelAPI(unittest.TestCase):
+
     def test_numel_static(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -67,10 +73,12 @@ class TestNumelAPI(unittest.TestCase):
                 "x_2": input_2,
             },
                                    fetch_list=[out_1, out_2])
-            assert (np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")))
-            assert (np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")))
+            assert (np.array_equal(res_1,
+                                   np.array([np.size(input_1)
+                                             ]).astype("int64")))
+            assert (np.array_equal(res_2,
+                                   np.array([np.size(input_2)
+                                             ]).astype("int64")))
 
     def test_numel_imperative(self):
         paddle.disable_static(paddle.CPUPlace())

@@ -20,6 +20,7 @@ import unittest
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
+
     def setUp(self):
         self.reshape_times = 1
         self.iteration = 10
@@ -70,15 +71,17 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
 
                 fetch_val = None
                 for _ in six.moves.range(self.iteration):
-                    fetch_val = exe.run(
-                        feed={x_1.name: x1_data,
-                              x_2.name: x2_data},
-                        fetch_list=[emb])[0]
+                    fetch_val = exe.run(feed={
+                        x_1.name: x1_data,
+                        x_2.name: x2_data
+                    },
+                                        fetch_list=[emb])[0]
 
                 return fetch_val
 
 
 class TestEmbeddingIdStopGradient2(TestEmbeddingIdStopGradientBase):
+
     def setUp(self):
         self.reshape_times = 100
         self.iteration = 10

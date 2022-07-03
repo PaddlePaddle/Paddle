@@ -95,7 +95,8 @@ def _update_dims_mapping_for_matmul(dist_op):
             broadcast_x_dims_mapping, broadcast_y_dims_mapping,
             broadcast_out_dims_mapping
         ])
-        assert compatible_dims_mapping is not None, "There is no compatible dim mapping."
+        if compatible_dims_mapping is None:
+            return False
 
         for i in range(x_dims_mapping_len - 2):
             new_idx = i + (out_dims_mapping_len - x_dims_mapping_len)
@@ -168,13 +169,13 @@ def _is_auto_compatible_for_matmul(dist_op):
     # NOTE: Partition is not supported if matmul op has trans.
     if op_desc.type() == "matmul_v2":
         if op_desc.attr('trans_x') or op_desc.attr('trans_y'):
-            if x_dims_mapping[-2:] != [-1, -1] or y_dims_mapping[
-                    -2:] != [-1, -1]:
+            if x_dims_mapping[-2:] != [-1, -1
+                                       ] or y_dims_mapping[-2:] != [-1, -1]:
                 return False
     elif op_desc.type() == "matmul":
         if op_desc.attr('transpose_X') or op_desc.attr('transpose_Y'):
-            if x_dims_mapping[-2:] != [-1, -1] or y_dims_mapping[
-                    -2:] != [-1, -1]:
+            if x_dims_mapping[-2:] != [-1, -1
+                                       ] or y_dims_mapping[-2:] != [-1, -1]:
                 return False
 
     # Deal with dim > 2 and take care of broadcasting
@@ -196,8 +197,8 @@ def _is_auto_compatible_for_matmul(dist_op):
         for i in range(out_dims_mapping_len - 2):
             broadcast_out_dims_mapping.append(out_dims_mapping[i])
 
-        is_same = ((broadcast_x_dims_mapping == broadcast_y_dims_mapping) and
-                   (broadcast_x_dims_mapping == broadcast_out_dims_mapping))
+        is_same = ((broadcast_x_dims_mapping == broadcast_y_dims_mapping)
+                   and (broadcast_x_dims_mapping == broadcast_out_dims_mapping))
         if not is_same:
             return False
 
@@ -306,8 +307,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                                  out_grad_dist_attr)
 
-            group_ranks = _get_comm_group(
-                process_mesh_group, process_mesh_shape, parallel_axis, rank_id)
+            group_ranks = _get_comm_group(process_mesh_group,
+                                          process_mesh_shape, parallel_axis,
+                                          rank_id)
             group = new_process_group(group_ranks)
             c_identity_op = main_block.append_op(
                 type='c_identity',
@@ -324,8 +326,9 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                      'linear')
             check_dtype(intermediate_var_0.dtype, 'dtype',
                         ['float16', 'float32', 'float64'], 'linear')
-            set_comm_op_dist_attr_for_program(
-                c_identity_op, dist_attr.process_mesh, out_grad_dist_attr, ctx)
+            set_comm_op_dist_attr_for_program(c_identity_op,
+                                              dist_attr.process_mesh,
+                                              out_grad_dist_attr, ctx)
 
             new_kwargs = copy.deepcopy(kwargs)
             new_kwargs['Out@GRAD'] = [intermediate_var_0.name]
@@ -403,21 +406,21 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     if need_gradient_allreduce and is_parameter_related(Y_var.name, main_block):
         Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
-        allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [Y_Grad_var]},
-            outputs={'Out': [Y_Grad_var]},
-            attrs={
-                'ring_id': dp_group.id,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Backward
-            })
-        scale_op = main_block.append_op(
-            type='scale',
-            inputs={'X': Y_Grad_var},
-            outputs={'Out': Y_Grad_var},
-            attrs={'scale': 1.0 / dp_degree,
-                   OP_ROLE_KEY: OpRole.Backward})
+        allreduce_op = main_block.append_op(type='c_allreduce_sum',
+                                            inputs={'X': [Y_Grad_var]},
+                                            outputs={'Out': [Y_Grad_var]},
+                                            attrs={
+                                                'ring_id': dp_group.id,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Backward
+                                            })
+        scale_op = main_block.append_op(type='scale',
+                                        inputs={'X': Y_Grad_var},
+                                        outputs={'Out': Y_Grad_var},
+                                        attrs={
+                                            'scale': 1.0 / dp_degree,
+                                            OP_ROLE_KEY: OpRole.Backward
+                                        })
         main_block._sync_with_cpp()
 
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
@@ -450,20 +453,20 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
                                           process_mesh.topology, axis, rank_id)
             sync_group = new_process_group(group_ranks)
 
-            startup_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={
-                    'ring_id': sync_group.id,
-                    'root': 0,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
+            startup_block.append_op(type='c_broadcast',
+                                    inputs={'X': param},
+                                    outputs={'Out': param},
+                                    attrs={
+                                        'ring_id': sync_group.id,
+                                        'root': 0,
+                                        'use_calc_stream': True,
+                                        OP_ROLE_KEY: OpRole.Forward
+                                    })
     startup_block._sync_with_cpp()
 
 
 class DistributedMatmul(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedMatmul, self).__init__(op_type)
 
@@ -473,6 +476,7 @@ register_distributed_operator_impl_container(DistributedMatmul("matmul"))
 
 # ColumnParallel
 class DistributedMatmulImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulImpl0, self).__init__(name)
         self._forward_implemented = True
@@ -487,8 +491,8 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
-                -1]):
+        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(
+                y_dims_mapping[-1]):
             return False
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
@@ -627,8 +631,10 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             'alpha': 1,
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        matmul_op = main_block.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
+        matmul_op = main_block.append_op(type='matmul',
+                                         inputs=inputs,
+                                         outputs={'Out': Out_var},
+                                         attrs=attrs)
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
 
@@ -694,6 +700,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
 # RowParallel
 class DistributedMatmulImpl1(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulImpl1, self).__init__(name)
         self._forward_implemented = True
@@ -708,8 +715,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_replicate(x_dims_mapping[-1]):
             return False
-        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
-                -1]):
+        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(
+                y_dims_mapping[-1]):
             return False
         # Other dimensions must be replicate except the batch dimension
         for mapping in x_dims_mapping[1:-1]:
@@ -832,11 +839,10 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
 
-        matmul_op = main_block.append_op(
-            type='matmul',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs)
+        matmul_op = main_block.append_op(type='matmul',
+                                         inputs=inputs,
+                                         outputs={'Out': intermediate_var_0},
+                                         attrs=attrs)
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -904,6 +910,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 
 # ReplicateParallel
 class DistributedMatmulImpl2(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulImpl2, self).__init__(name)
 
@@ -917,14 +924,14 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
 
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_valid_list_index(x_dims_mapping,
-                               -2) and is_dim_shard(x_dims_mapping[-2]):
+        if is_valid_list_index(x_dims_mapping, -2) and is_dim_shard(
+                x_dims_mapping[-2]):
             return False
 
         if is_dim_shard(y_dims_mapping[-1]):
             return False
-        if is_valid_list_index(y_dims_mapping,
-                               -2) and is_dim_shard(y_dims_mapping[-2]):
+        if is_valid_list_index(y_dims_mapping, -2) and is_dim_shard(
+                y_dims_mapping[-2]):
             return False
 
         return True
@@ -937,8 +944,8 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
 
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        if is_valid_list_index(out_dims_mapping,
-                               -2) and is_dim_shard(out_dims_mapping[-2]):
+        if is_valid_list_index(out_dims_mapping, -2) and is_dim_shard(
+                out_dims_mapping[-2]):
             return False
 
         return True
@@ -978,6 +985,7 @@ register_distributed_operator_impl("matmul",
 
 
 class DistributedMatmulV2(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedMatmulV2, self).__init__(op_type)
 
@@ -987,6 +995,7 @@ register_distributed_operator_impl_container(DistributedMatmulV2("matmul_v2"))
 
 # ColumnParallel
 class DistributedMatmulV2Impl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulV2Impl0, self).__init__(name)
         self._forward_implemented = True
@@ -1001,8 +1010,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
-                -1]):
+        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(
+                y_dims_mapping[-1]):
             return False
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
@@ -1138,11 +1147,10 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                     ['float16', 'float32', 'float64'], 'linear')
         attrs = {'trans_x': False, 'trans_y': False}
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        matmul_v2_op = main_block.append_op(
-            type='matmul_v2',
-            inputs=inputs,
-            outputs={'Out': Out_var},
-            attrs=attrs)
+        matmul_v2_op = main_block.append_op(type='matmul_v2',
+                                            inputs=inputs,
+                                            outputs={'Out': Out_var},
+                                            attrs=attrs)
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
 
@@ -1176,14 +1184,14 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                     input_varname)
                 assert input_dist_attr is not None, "dist_attr is {}".format(
                     op_dist_attr)
-                matmulv2_op_dist_attr.set_input_dist_attr(input_varname,
-                                                          input_dist_attr)
+                matmulv2_op_dist_attr.set_input_dist_attr(
+                    input_varname, input_dist_attr)
             else:
                 input_var = main_block.var(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     input_var)
-                matmulv2_op_dist_attr.set_input_dist_attr(input_varname,
-                                                          tensor_dist_attr)
+                matmulv2_op_dist_attr.set_input_dist_attr(
+                    input_varname, tensor_dist_attr)
         for output_varname in matmul_v2_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
             assert output_dist_attr is not None, "dist_attr is {}".format(
@@ -1204,6 +1212,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 
 # RowParallel
 class DistributedMatmulV2Impl1(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulV2Impl1, self).__init__(name)
         self._forward_implemented = True
@@ -1218,8 +1227,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_replicate(x_dims_mapping[-1]):
             return False
-        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
-                -1]):
+        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(
+                y_dims_mapping[-1]):
             return False
         # Other dimensions must be replicate except the batch dimension
         for mapping in x_dims_mapping[1:-1]:
@@ -1338,11 +1347,10 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
 
-        matmul_v2_op = main_block.append_op(
-            type='matmul_v2',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs)
+        matmul_v2_op = main_block.append_op(type='matmul_v2',
+                                            inputs=inputs,
+                                            outputs={'Out': intermediate_var_0},
+                                            attrs=attrs)
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -1410,6 +1418,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 
 # ReplicateParallel
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__(name)
 
@@ -1423,14 +1432,14 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
 
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_valid_list_index(x_dims_mapping,
-                               -2) and is_dim_shard(x_dims_mapping[-2]):
+        if is_valid_list_index(x_dims_mapping, -2) and is_dim_shard(
+                x_dims_mapping[-2]):
             return False
 
         if is_dim_shard(y_dims_mapping[-1]):
             return False
-        if is_valid_list_index(y_dims_mapping,
-                               -2) and is_dim_shard(y_dims_mapping[-2]):
+        if is_valid_list_index(y_dims_mapping, -2) and is_dim_shard(
+                y_dims_mapping[-2]):
             return False
         return True
 
@@ -1444,8 +1453,8 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
 
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        if is_valid_list_index(out_dims_mapping,
-                               -2) and is_dim_shard(out_dims_mapping[-2]):
+        if is_valid_list_index(out_dims_mapping, -2) and is_dim_shard(
+                out_dims_mapping[-2]):
             return False
 
         return True
@@ -1485,6 +1494,7 @@ register_distributed_operator_impl(
 
 
 class DistributedMul(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedMul, self).__init__(op_type)
 
@@ -1494,6 +1504,7 @@ register_distributed_operator_impl_container(DistributedMul("mul"))
 
 # ColumnParallel
 class DistributedMulImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMulImpl0, self).__init__(name)
         self._forward_implemented = True
@@ -1508,8 +1519,8 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
-                -1]):
+        if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(
+                y_dims_mapping[-1]):
             return False
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
@@ -1649,8 +1660,10 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        mul_op = main_block.append_op(
-            type='mul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
+        mul_op = main_block.append_op(type='mul',
+                                      inputs=inputs,
+                                      outputs={'Out': Out_var},
+                                      attrs=attrs)
         if Out_var.shape != ref_shape_out:
             Out_var.desc.set_shape(ref_shape_out)
 
@@ -1684,14 +1697,14 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                     input_varname)
                 assert input_dist_attr is not None, "dist_attr is {}".format(
                     op_dist_attr)
-                matmulv2_op_dist_attr.set_input_dist_attr(input_varname,
-                                                          input_dist_attr)
+                matmulv2_op_dist_attr.set_input_dist_attr(
+                    input_varname, input_dist_attr)
             else:
                 input_var = main_block.var(input_varname)
                 tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(
                     input_var)
-                matmulv2_op_dist_attr.set_input_dist_attr(input_varname,
-                                                          tensor_dist_attr)
+                matmulv2_op_dist_attr.set_input_dist_attr(
+                    input_varname, tensor_dist_attr)
         for output_varname in mul_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
             assert output_dist_attr is not None, "dist_attr is {}".format(
@@ -1712,6 +1725,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
 
 # RowParallel
 class DistributedMulImpl1(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMulImpl1, self).__init__(name)
         self._forward_implemented = True
@@ -1726,8 +1740,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
         if is_dim_replicate(x_dims_mapping[-1]):
             return False
-        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
-                -1]):
+        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(
+                y_dims_mapping[-1]):
             return False
         # Other dimensions must be replicate except the batch dimension
         for mapping in x_dims_mapping[1:-1]:
@@ -1850,11 +1864,10 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         ctx.set_tensor_dist_attr_for_program(intermediate_var_0,
                                              out_var_dist_attr)
 
-        mul_op = main_block.append_op(
-            type='mul',
-            inputs=inputs,
-            outputs={'Out': intermediate_var_0},
-            attrs=attrs)
+        mul_op = main_block.append_op(type='mul',
+                                      inputs=inputs,
+                                      outputs={'Out': intermediate_var_0},
+                                      attrs=attrs)
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -1922,6 +1935,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
 
 # ReplicateParallel
 class DistributedMulImpl2(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedMulImpl2, self).__init__(name)
 
@@ -1935,13 +1949,13 @@ class DistributedMulImpl2(DistributedOperatorImpl):
 
         if is_dim_shard(x_dims_mapping[-1]):
             return False
-        if is_valid_list_index(x_dims_mapping,
-                               -2) and is_dim_shard(x_dims_mapping[-2]):
+        if is_valid_list_index(x_dims_mapping, -2) and is_dim_shard(
+                x_dims_mapping[-2]):
             return False
         if is_dim_shard(y_dims_mapping[-1]):
             return False
-        if is_valid_list_index(y_dims_mapping,
-                               -2) and is_dim_shard(y_dims_mapping[-2]):
+        if is_valid_list_index(y_dims_mapping, -2) and is_dim_shard(
+                y_dims_mapping[-2]):
             return False
         return True
 
@@ -1955,8 +1969,8 @@ class DistributedMulImpl2(DistributedOperatorImpl):
 
         if is_dim_shard(out_dims_mapping[-1]):
             return False
-        if is_valid_list_index(out_dims_mapping,
-                               -2) and is_dim_shard(out_dims_mapping[-2]):
+        if is_valid_list_index(out_dims_mapping, -2) and is_dim_shard(
+                out_dims_mapping[-2]):
             return False
 
         return True

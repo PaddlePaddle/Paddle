@@ -22,6 +22,7 @@ from op_test import OpTest
 
 
 class TestFillZerosLike2Op(OpTest):
+
     def setUp(self):
         self.op_type = "fill_zeros_like2"
         self.dtype = np.float32
@@ -38,17 +39,21 @@ class TestFillZerosLike2Op(OpTest):
 
 
 class TestFillZerosLike2OpFp16(TestFillZerosLike2Op):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestFillZerosLike2OpFp64(TestFillZerosLike2Op):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestZerosError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_zeros_like_type_error():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 fluid.layers.zeros_like([10], dtype="float")

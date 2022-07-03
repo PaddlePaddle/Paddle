@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,10 +22,10 @@ import unittest
 
 
 class TrtConvertReshapeTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if self.dims == 1:
             if len(attrs[0]['shape']) != 1:
@@ -45,6 +45,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]]):
             if self.dims == 4:
                 return np.ones([1, 2, 4, 6]).astype(np.float32)
@@ -66,10 +67,11 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
         for dims in [4, 3, 2, 1]:
             for num_input in [0, 1, 2, 3]:
-                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12],
-                              [1, 0, 6], [1, -1, 12], [2, -1], [3, 16],
-                              [3, 4, 4], [48]]:
-                    dics = [{"shape": shape, }, {}]
+                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12], [1, 0, 6],
+                              [1, -1, 12], [2, -1], [3, 16], [3, 4, 4], [48]]:
+                    dics = [{
+                        "shape": shape,
+                    }, {}]
                     self.num_input = num_input
                     self.dims = dims
                     dics_intput = [{
@@ -89,18 +91,22 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                     dics_weight = [{
                         "shape_data":
                         TensorConfig(data_gen=partial(generate_weight1, dics)),
-                        "shapeT1_data": TensorConfig(data_gen=partial(
-                            generate_shapeT1_data, dics)),
-                        "shapeT2_data": TensorConfig(data_gen=partial(
-                            generate_shapeT2_data, dics))
+                        "shapeT1_data":
+                        TensorConfig(
+                            data_gen=partial(generate_shapeT1_data, dics)),
+                        "shapeT2_data":
+                        TensorConfig(
+                            data_gen=partial(generate_shapeT2_data, dics))
                     }, {
                         "shape_data":
                         TensorConfig(data_gen=partial(generate_weight1, dics))
                     }, {
-                        "shapeT1_data": TensorConfig(data_gen=partial(
-                            generate_shapeT1_data, dics)),
-                        "shapeT2_data": TensorConfig(data_gen=partial(
-                            generate_shapeT2_data, dics))
+                        "shapeT1_data":
+                        TensorConfig(
+                            data_gen=partial(generate_shapeT1_data, dics)),
+                        "shapeT2_data":
+                        TensorConfig(
+                            data_gen=partial(generate_shapeT2_data, dics))
                     }, {}]
 
                     ops_config = [{
@@ -116,8 +122,9 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                         ops=ops,
                         weights=dics_weight[num_input],
                         inputs={
-                            "reshape_input": TensorConfig(data_gen=partial(
-                                generate_input1, dics))
+                            "reshape_input":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics))
                         },
                         outputs=["reshape_out"])
 
@@ -125,6 +132,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -164,8 +172,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if attrs[0]['shape'][0] > 1 and len(attrs[0]['shape']) > 1:
             pass
@@ -182,13 +189,14 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.weights) >= 1:
                 return True

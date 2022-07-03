@@ -57,7 +57,6 @@ rem ------initialize common variable------
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
 if not defined WITH_TENSORRT set WITH_TENSORRT=ON
 if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
-if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
@@ -86,16 +85,25 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
+rem ------initialize set git config------
+git config --global core.longpaths true
+
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+%PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install wget --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel
+    pip install pyyaml
+    pip install wget
+    pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -116,8 +124,6 @@ if "%WITH_CACHE%"=="OFF" (
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -225,6 +231,7 @@ set MSVC_STATIC_CRT=OFF
 set ON_INFER=OFF
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -239,6 +246,7 @@ set WITH_GPU=OFF
 set WITH_AVX=OFF
 set MSVC_STATIC_CRT=ON
 set ON_INFER=OFF
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -255,6 +263,8 @@ set MSVC_STATIC_CRT=ON
 set ON_INFER=ON
 set WITH_TENSORRT=ON
 set WITH_INFERENCE_API_TEST=ON
+set WITH_ONNXRUNTIME=ON
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -269,7 +279,7 @@ rem ------Build windows avx whl package------
 :CASE_build_avx_whl
 set WITH_AVX=ON
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -280,7 +290,7 @@ rem ------Build windows no-avx whl package------
 :CASE_build_no_avx_whl
 set WITH_AVX=OFF
 set ON_INFER=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
@@ -291,16 +301,21 @@ rem ------Build windows inference library------
 :CASE_build_inference_lib
 set ON_INFER=ON
 set WITH_PYTHON=OFF
-set CUDA_ARCH_NAME=All
+if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
+
 python %work_dir%\tools\remove_grad_op_and_kernel.py
 if %errorlevel% NEQ 0 exit /b 1
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_inference || goto test_inference_error
-call :test_inference_ut || goto test_inference_ut_error
+call :test_inference
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+call :test_inference_ut
+if %errorlevel% NEQ 0 set error_code=%errorlevel%
+
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
+if %error_code% NEQ 0 goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -620,7 +635,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -647,7 +662,7 @@ echo    ========================================
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -668,7 +683,13 @@ pip install requests
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
+
+REM TODO: make ut find .dll in install\onnxruntime\lib
+xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu
@@ -752,12 +773,15 @@ for /F %%i in ("%libsize%") do (
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
+
 goto:eof
 
 :test_inference_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
-echo Testing fluid library for inference failed!
+echo    ==========================================
+echo    Testing inference library failed!
+echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------

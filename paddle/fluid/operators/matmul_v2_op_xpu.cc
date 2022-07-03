@@ -14,18 +14,21 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/xpu_api_wrapper.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, typename FCT>
-static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
-                              bool trans_x, bool trans_y,
+static void MatMulXPUFunction(const Tensor* x,
+                              const Tensor* y,
+                              Tensor* out,
+                              bool trans_x,
+                              bool trans_y,
                               const paddle::framework::ExecutionContext& ctx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x->dims();
@@ -58,17 +61,23 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
     }
   }
 
-  PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_,
+  PADDLE_ENFORCE_EQ(mat_dim_a.width_,
+                    mat_dim_b.height_,
                     platform::errors::InvalidArgument(
                         "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
-                        x_dims.to_str(), y_dims.to_str(), mat_dim_a.trans_,
+                        x_dims.to_str(),
+                        y_dims.to_str(),
+                        mat_dim_a.trans_,
                         mat_dim_b.trans_));
-  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+  PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_,
+                    mat_dim_b.batch_size_,
                     platform::errors::InvalidArgument(
                         "Shape mistake in matmul_v2_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
-                        x_dims.to_str(), y_dims.to_str(), mat_dim_a.trans_,
+                        x_dims.to_str(),
+                        y_dims.to_str(),
+                        mat_dim_a.trans_,
                         mat_dim_b.trans_));
 
   T* data_c = out->data<T>();
@@ -82,18 +91,39 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
   if (batch_size <= 1) {
     int r = 0;
     r = xpu_fc_wrapper<XPUType, FCT>(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x->data<T>()),
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x->data<T>()),
         reinterpret_cast<const XPUType*>(y->data<T>()),
-        reinterpret_cast<XPUType*>(data_c), m, n, k, mat_dim_a.trans_,
-        mat_dim_b.trans_, nullptr, nullptr, nullptr, ldx, ldy, ldout, 1.0, 0,
-        nullptr, xpu::Activation_t::LINEAR);
+        reinterpret_cast<XPUType*>(data_c),
+        m,
+        n,
+        k,
+        mat_dim_a.trans_,
+        mat_dim_b.trans_,
+        nullptr,
+        nullptr,
+        nullptr,
+        ldx,
+        ldy,
+        ldout,
+        1.0,
+        0,
+        nullptr,
+        xpu::Activation_t::LINEAR);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU fc kernel return wrong value[%d %s] , m = %d, n = "
             "%d, "
             "k = %d, a_tr = %d, b_tr = %d",
-            r, XPUAPIErrorMsg[r], m, n, k, mat_dim_a.trans_, mat_dim_b.trans_));
+            r,
+            XPUAPIErrorMsg[r],
+            m,
+            n,
+            k,
+            mat_dim_a.trans_,
+            mat_dim_b.trans_));
   } else {
     // batch matmul
     int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
@@ -115,9 +145,11 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
         nullptr,   // const float* x_maxptr,
         nullptr);  // const float* w_maxptr
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU fc_batched kernel return wrong value[%d %s]", r,
+                          "XPU fc_batched kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 }
@@ -163,12 +195,16 @@ static framework::Tensor XPUFoldHeadAndLastDims(
                                     static_cast<int>(in_dims[2])};
   std::vector<int> axis_host = {1, 0, 2};
 
-  int r = xpu::transpose(
-      context.x_context(), reinterpret_cast<const XPUType*>(input.data<T>()),
-      reinterpret_cast<XPUType*>(output.data<T>()), in_shape_host, axis_host);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+  int r = xpu::transpose(context.x_context(),
+                         reinterpret_cast<const XPUType*>(input.data<T>()),
+                         reinterpret_cast<XPUType*>(output.data<T>()),
+                         in_shape_host,
+                         axis_host);
+  PADDLE_ENFORCE_EQ(r,
+                    XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU transpose kernel return wrong value[%d %s]", r,
+                        "XPU transpose kernel return wrong value[%d %s]",
+                        r,
                         XPUAPIErrorMsg[r]));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
@@ -179,8 +215,10 @@ template <typename T>
 class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext& ctx,
-              const framework::Tensor& a, bool trans_a,
-              const framework::Tensor& b, bool trans_b,
+              const framework::Tensor& a,
+              bool trans_a,
+              const framework::Tensor& b,
+              bool trans_b,
               framework::Tensor* out) const {
     out->mutable_data<T>(ctx.GetPlace());
     if (std::is_same<paddle::platform::float16, T>::value) {
@@ -197,9 +235,12 @@ class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext& context,
-                     const framework::Tensor& a, bool trans_a,
-                     bool is_fold_init_dims_a, const framework::Tensor& b,
-                     bool trans_b, bool is_fold_init_dims_b,
+                     const framework::Tensor& a,
+                     bool trans_a,
+                     bool is_fold_init_dims_a,
+                     const framework::Tensor& b,
+                     bool trans_b,
+                     bool is_fold_init_dims_b,
                      framework::Tensor* out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
@@ -220,7 +261,8 @@ class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
               ? FoldInitDims(b)
               : XPUFoldHeadAndLastDims<paddle::platform::XPUDeviceContext, T>(
                     dev_ctx, b),
-          trans_b, out);
+          trans_b,
+          out);
     }
   }
 
@@ -285,9 +327,11 @@ class MatMulV2XPUGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(matmul_v2, ops::MatMulV2XPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(matmul_v2,
+                       ops::MatMulV2XPUKernel<float>,
                        ops::MatMulV2XPUKernel<plat::float16>);
-REGISTER_OP_XPU_KERNEL(matmul_v2_grad, ops::MatMulV2XPUGradKernel<float>,
+REGISTER_OP_XPU_KERNEL(matmul_v2_grad,
+                       ops::MatMulV2XPUGradKernel<float>,
                        ops::MatMulV2XPUGradKernel<plat::float16>);
 
 #endif

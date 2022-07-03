@@ -36,10 +36,8 @@ class AssertTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     def visit_Assert(self, node):
-        convert_assert_node = gast.parse(
-            'paddle.jit.dy2static.convert_assert({test}, {msg})'.format(
-                test=ast_to_source_code(node.test),
-                msg=ast_to_source_code(node.msg)
-                if node.msg else "")).body[0].value
+        convert_assert_node = gast.parse('_jst.Assert({test}, {msg})'.format(
+            test=ast_to_source_code(node.test),
+            msg=ast_to_source_code(node.msg) if node.msg else "")).body[0].value
 
         return gast.Expr(value=convert_assert_node)

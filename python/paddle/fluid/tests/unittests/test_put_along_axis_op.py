@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestPutAlongAxisOp(OpTest):
+
     def setUp(self):
         self.init_data()
         self.reduce_op = "assign"
@@ -68,6 +69,7 @@ class TestPutAlongAxisOp(OpTest):
 
 
 class TestPutAlongAxisAPI(unittest.TestCase):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [1, 3]
@@ -111,6 +113,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             run(place)
 
     def test_api_dygraph(self):
+
         def run(place):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
@@ -122,9 +125,8 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                 np.put_along_axis(self.x_np, self.index_np, self.value_np,
                                   self.axis))
             out_ref = self.x_np
-            self.assertEqual(
-                np.allclose(
-                    out.numpy(), out_ref, rtol=1e-03), True)
+            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03),
+                             True)
 
             # for ci coverage, numpy put_along_axis did not support argument of 'reduce'
             paddle.put_along_axis(x_tensor, index_tensor, value_tensor,
@@ -138,6 +140,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             run(place)
 
     def test_inplace_dygraph(self):
+
         def run(place):
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
@@ -151,9 +154,8 @@ class TestPutAlongAxisAPI(unittest.TestCase):
                                   self.axis))
             out_ref = self.x_np
 
-            self.assertEqual(
-                np.allclose(
-                    x_tensor.numpy(), out_ref, rtol=1e-03), True)
+            self.assertEqual(np.allclose(x_tensor.numpy(), out_ref, rtol=1e-03),
+                             True)
             paddle.enable_static()
 
         for place in self.place:
@@ -161,6 +163,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
 
 class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [2, 2]
@@ -177,12 +180,13 @@ class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
 
 
 class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
+
     def setUp(self):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
-        self.index_np = np.array(
-            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1,
+                                                           0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0

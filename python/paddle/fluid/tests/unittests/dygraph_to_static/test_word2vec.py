@@ -61,8 +61,9 @@ def build_dict(corpus, min_freq=3):
                 word_freq_dict[word] = 0
             word_freq_dict[word] += 1
 
-    word_freq_dict = sorted(
-        word_freq_dict.items(), key=lambda x: x[1], reverse=True)
+    word_freq_dict = sorted(word_freq_dict.items(),
+                            key=lambda x: x[1],
+                            reverse=True)
 
     word2id_dict = dict()
     word2id_freq = dict()
@@ -109,9 +110,10 @@ corpus = convert_corpus_to_id(corpus, word2id_dict)
 
 
 def subsampling(corpus, word2id_freq):
+
     def keep(word_id):
-        return random.uniform(0, 1) < math.sqrt(1e-4 / word2id_freq[word_id] *
-                                                len(corpus))
+        return random.uniform(0, 1) < math.sqrt(
+            1e-4 / word2id_freq[word_id] * len(corpus))
 
     new_corpus = []
     for line in corpus:
@@ -136,12 +138,13 @@ def build_data(corpus,
             window_size = random.randint(1, max_window_size)
             center_word = line[center_word_idx]
 
-            positive_word_range = (max(0, center_word_idx - window_size), min(
-                len(line) - 1, center_word_idx + window_size))
+            positive_word_range = (max(0, center_word_idx - window_size),
+                                   min(
+                                       len(line) - 1,
+                                       center_word_idx + window_size))
             positive_word_candidates = [
-                line[idx]
-                for idx in range(positive_word_range[0], positive_word_range[1]
-                                 + 1)
+                line[idx] for idx in range(positive_word_range[0],
+                                           positive_word_range[1] + 1)
                 if idx != center_word_idx and line[idx] != line[center_word_idx]
             ]
 
@@ -203,6 +206,7 @@ def build_batch(dataset, batch_size, epoch_num):
 
 
 class SkipGram(fluid.dygraph.Layer):
+
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
         super(SkipGram, self).__init__(name_scope)
         self.vocab_size = vocab_size
@@ -259,8 +263,8 @@ def train(to_static):
     random.seed(0)
     np.random.seed(0)
 
-    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-    ) else fluid.CPUPlace()
+    place = fluid.CUDAPlace(
+        0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 1000
         fluid.default_main_program().random_seed = 1000
@@ -293,13 +297,13 @@ def train(to_static):
 
 
 class TestWord2Vec(unittest.TestCase):
+
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
-        self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
-            msg="dygraph_loss: {} \nstatic_loss: {}".format(dygraph_loss,
-                                                            static_loss))
+        self.assertTrue(np.allclose(dygraph_loss, static_loss),
+                        msg="dygraph_loss: {} \nstatic_loss: {}".format(
+                            dygraph_loss, static_loss))
 
 
 if __name__ == '__main__':

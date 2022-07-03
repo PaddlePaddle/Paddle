@@ -140,8 +140,10 @@ std::vector<int> GetXPUSelectedDevices() {
 void MemcpySyncH2D(void* dst,
                    const void* src,
                    size_t count,
-                   const phi::XPUPlace& dst_place) {
+                   const phi::XPUPlace& dst_place,
+                   const phi::XPUContext& dev_ctx) {
   XPUDeviceGuard guard(dst_place.device);
+  dev_ctx.Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 }

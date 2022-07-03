@@ -68,7 +68,9 @@ def Pmat_to_perm(Pmat_org, cut):
             sP[idx, :] = tmp
 
         permmat.append(permlst)
-    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [rows, ]) + 1
+    Pivot = np.array(permmat).reshape(list(shape[:-2]) + [
+        rows,
+    ]) + 1
     return Pivot[..., :cut]
 
 
@@ -111,18 +113,18 @@ class TestLUOp(OpTest):
         lshape = np.array(sL.shape)
         ushape = np.array(sU.shape)
 
-        lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-        upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-            (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
+        lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
+            ((0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
+        upad = (len(sU.shape) - 2) * [(0, 0)] + list(
+            ((0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
 
         NsL = np.pad(sL, lpad)
         NsU = np.pad(sU, upad)
         NLU = NsL + NsU
         self.output = NLU
         self.Pivots = Pmat_to_perm(sP, min(ashape[-2], ashape[-1]))
-        self.Infos = np.zeros(self.x_shape[:-2]) if len(
-            X.shape) > 2 else np.array([0])
+        self.Infos = np.zeros(
+            self.x_shape[:-2]) if len(X.shape) > 2 else np.array([0])
 
     def setUp(self):
         self.op_type = "lu"
@@ -171,7 +173,9 @@ class TestLUOp3(TestLUOp):
 
 
 class TestLUAPI(unittest.TestCase):
+
     def test_dygraph(self):
+
         def run_lu_dygraph(shape, dtype):
             if dtype == "float32":
                 np_dtype = np.float32
@@ -246,17 +250,20 @@ class TestLUAPI(unittest.TestCase):
                     lshape = np.array(sL.shape)
                     ushape = np.array(sU.shape)
 
-                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - lshape)[-2]), (0, (ashape - lshape)[-1])))
-                    upad = (len(sU.shape) - 2) * [(0, 0)] + list((
-                        (0, (ashape - ushape)[-2]), (0, (ashape - ushape)[-1])))
+                    lpad = (len(sL.shape) - 2) * [(0, 0)] + list(
+                        ((0, (ashape - lshape)[-2]), (0,
+                                                      (ashape - lshape)[-1])))
+                    upad = (len(sU.shape) - 2) * [(0, 0)] + list(
+                        ((0, (ashape - ushape)[-2]), (0,
+                                                      (ashape - ushape)[-1])))
 
                     NsL = np.pad(sL, lpad)
                     NsU = np.pad(sU, upad)
                     NLU = NsL + NsU
 
-                    x = paddle.fluid.data(
-                        name="input", shape=shape, dtype=dtype)
+                    x = paddle.fluid.data(name="input",
+                                          shape=shape,
+                                          dtype=dtype)
                     lu, p = paddle.linalg.lu(x, pivot=pivot)
                     exe = fluid.Executor(place)
                     fetches = exe.run(fluid.default_main_program(),

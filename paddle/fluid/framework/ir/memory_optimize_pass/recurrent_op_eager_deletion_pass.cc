@@ -26,9 +26,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+using paddle::operators::OpAndGradOpPair;
 using paddle::operators::OpVariant;
 using paddle::operators::OpVariantSet;
-using paddle::operators::OpAndGradOpPair;
 
 void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
   // Find all recurrent_op and recurrent_grad_op in graph

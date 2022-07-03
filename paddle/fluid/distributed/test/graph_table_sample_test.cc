@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <unistd.h>
+
+#include <chrono>
 #include <condition_variable>  // NOLINT
 #include <fstream>
 #include <iomanip>
@@ -20,9 +22,8 @@
 #include <thread>  // NOLINT
 #include <unordered_set>
 #include <vector>
-#include "google/protobuf/text_format.h"
 
-#include <chrono>
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
@@ -32,13 +33,18 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-std::vector<std::string> edges = {
-    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
-    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
-    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
-    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
-    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
-    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+std::vector<std::string> edges = {std::string("37\t45\t0.34"),
+                                  std::string("37\t145\t0.31"),
+                                  std::string("37\t112\t0.21"),
+                                  std::string("96\t48\t1.4"),
+                                  std::string("96\t247\t0.31"),
+                                  std::string("96\t111\t1.21"),
+                                  std::string("59\t45\t0.34"),
+                                  std::string("59\t145\t0.31"),
+                                  std::string("59\t122\t0.21"),
+                                  std::string("97\t48\t0.34"),
+                                  std::string("97\t247\t0.31"),
+                                  std::string("97\t111\t0.21")};
 // odd id:96 48 122 112
 char edge_file_name[] = "edges.txt";
 

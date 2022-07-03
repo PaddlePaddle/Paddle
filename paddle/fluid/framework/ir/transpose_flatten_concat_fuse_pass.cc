@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -93,7 +94,7 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
 
     std::vector<Node *> nodes;
     std::vector<int> trans_axis0;
-    int flatten_axis0;
+    int flatten_axis0 = 0;
     for (int i = 0; i < times; i++) {
       PADDLE_ENFORCE_NOT_NULL(
           subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),
@@ -122,9 +123,10 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
                 ->Op()
                 ->GetAttr("axis"));
         flatten_axis0 = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
       } else {
         std::vector<int> trans_axis = BOOST_GET_CONST(
             std::vector<int>,
@@ -135,9 +137,10 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
         if (trans_axis0 != trans_axis) return;
 
         int flatten_axis = BOOST_GET_CONST(
-            int, subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
-                     ->Op()
-                     ->GetAttr("axis"));
+            int,
+            subgraph.at(pattern.GetPDNode("flatten" + std::to_string(0)))
+                ->Op()
+                ->GetAttr("axis"));
         // All axis of flatten should be the same
         if (flatten_axis0 != flatten_axis) return;
       }

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <stdint.h>
+
 #include <array>
 #include <list>
 #include <map>
@@ -116,7 +117,8 @@ class BestFitAllocator : public Allocator {
   using MapIt = typename details::FreeChunkBin::value_type::iterator;
   using ListIt = typename details::ChunkList::iterator;
 
-  ListIt SplitChunk(size_t request_size, size_t free_chunk_offset,
+  ListIt SplitChunk(size_t request_size,
+                    size_t free_chunk_offset,
                     MapIt bin_iterator);
   void EraseFreeNode(const ListIt& it);
   void InsertFreeNode(const ListIt& it);

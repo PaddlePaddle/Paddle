@@ -37,6 +37,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int groups,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
@@ -82,7 +87,7 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,
-                                 paddle::optional<const MetaTensor&> mask,
+                                 const MetaTensor& mask,
                                  const MetaTensor& out_grad,
                                  const std::vector<int>& strides,
                                  const std::vector<int>& paddings,
@@ -139,6 +144,29 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 int axis,
                                 MetaTensor* dx);
 
+void InstanceNormGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& saved_mean,
+                               const MetaTensor& saved_variance,
+                               const MetaTensor& y_grad,
+                               float epsilon,
+                               MetaTensor* x_grad,
+                               MetaTensor* scale_grad,
+                               MetaTensor* bias_grad);
+
+void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
+                                     const MetaTensor& scale,
+                                     const MetaTensor& saved_mean,
+                                     const MetaTensor& saved_variance,
+                                     const MetaTensor& dy,
+                                     const MetaTensor& ddx,
+                                     const MetaTensor& ddscale,
+                                     const MetaTensor& ddbias,
+                                     float epsilon,
+                                     MetaTensor* dx,
+                                     MetaTensor* dscale,
+                                     MetaTensor* ddy);
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
@@ -163,9 +191,16 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
                             const MetaTensor& out_grad,
                             std::vector<MetaTensor*> ins_grad);
 
+void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_index,
+                            const MetaTensor& out_grad,
+                            const IntArray& axes,
+                            bool keep_dim,
+                            MetaTensor* x_grad);
+
 void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& label,
-                          paddle::optional<const MetaTensor&> weight,
+                          const MetaTensor& weight,
                           const MetaTensor& total_weight,
                           const MetaTensor& out_grad,
                           int64_t ignore_index,
@@ -173,9 +208,14 @@ void NllLossGradInferMeta(const MetaTensor& input,
                           MetaTensor* intput_grad,
                           MetaConfig config = MetaConfig());
 
+void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,
+                                 int downscale_factor,
+                                 const std::string& data_format,
+                                 MetaTensor* x_grad);
+
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
-                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& rois_num,
                             const MetaTensor& dout,
                             int pooled_height,
                             int pooled_width,

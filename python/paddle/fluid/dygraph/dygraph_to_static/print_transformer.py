@@ -50,6 +50,5 @@ class PrintTransformer(gast.NodeTransformer):
         return gast.Expr(value=convert_print_node)
 
     def _create_print_node(self, print_args):
-        convert_print_func = gast.parse(
-            'paddle.jit.dy2static.convert_print').body[0].value
+        convert_print_func = gast.parse('_jst.Print').body[0].value
         return gast.Call(func=convert_print_func, args=print_args, keywords=[])

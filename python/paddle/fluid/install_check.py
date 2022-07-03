@@ -31,6 +31,7 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
+
     def __init__(self, input_size):
         super(SimpleLayer, self).__init__()
         self._linear1 = nn.Linear(
@@ -123,8 +124,9 @@ def run_check():
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
-                    inp0 = layers.data(
-                        name="inp", shape=[2, 2], append_batch_size=False)
+                    inp0 = layers.data(name="inp",
+                                       shape=[2, 2],
+                                       append_batch_size=False)
                     simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(

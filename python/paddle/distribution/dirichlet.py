@@ -125,8 +125,8 @@ class Dirichlet(exponential_family.ExponentialFamily):
         Args:
             value (Tensor): Value to be evaluated.
         """
-        return ((paddle.log(value) * (self.concentration - 1.0)
-                 ).sum(-1) + paddle.lgamma(self.concentration.sum(-1)) -
+        return ((paddle.log(value) * (self.concentration - 1.0)).sum(-1) +
+                paddle.lgamma(self.concentration.sum(-1)) -
                 paddle.lgamma(self.concentration).sum(-1))
 
     def entropy(self):
@@ -139,9 +139,9 @@ class Dirichlet(exponential_family.ExponentialFamily):
         k = self.concentration.shape[-1]
         return (paddle.lgamma(self.concentration).sum(-1) -
                 paddle.lgamma(concentration0) -
-                (k - concentration0) * paddle.digamma(concentration0) - (
-                    (self.concentration - 1.0
-                     ) * paddle.digamma(self.concentration)).sum(-1))
+                (k - concentration0) * paddle.digamma(concentration0) -
+                ((self.concentration - 1.0) *
+                 paddle.digamma(self.concentration)).sum(-1))
 
     @property
     def _natural_parameters(self):
@@ -164,9 +164,8 @@ def _dirichlet(concentration, name=None):
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
             dtype=concentration.dtype)
-        helper.append_op(
-            type=op_type,
-            inputs={"Alpha": concentration},
-            outputs={'Out': out},
-            attrs={})
+        helper.append_op(type=op_type,
+                         inputs={"Alpha": concentration},
+                         outputs={'Out': out},
+                         attrs={})
         return out

@@ -71,9 +71,9 @@ void TopkGradKernel(const Context& dev_ctx,
   int grid_size = std::min(max_blocks, pre);
 
   // lanuch the cuda kernel to assign the grad
-  ops::AssignGradWithAxis<
-      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
-      out_grad_data, indices_data, x_grad_data, pre, post, n, k);
+  ops::AssignGradWithAxis<T>
+      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+          out_grad_data, indices_data, x_grad_data, pre, post, n, k);
 }
 
 }  // namespace phi

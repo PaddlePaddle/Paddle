@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/device_context.h"
-
-#include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -58,7 +57,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -134,22 +133,14 @@ constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
-
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
+using CPUDeviceContext = phi::CPUContext;
 
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -188,6 +179,7 @@ class XPUDeviceContext : public phi::XPUContext {
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
 };
 
 template <>
@@ -645,7 +637,6 @@ class CUDADeviceContext : public phi::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
-  std::unique_ptr<phi::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -784,7 +775,7 @@ class MKLDNNDeviceContextThreadLocals {
   }
 };
 
-class MKLDNNDeviceContext : public CPUDeviceContext {
+class MKLDNNDeviceContext : public phi::CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
@@ -849,7 +840,8 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // to erase
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
-  bool block_next_cache_clearing_ = false;
+  // 0 - clearing is allowed. x > 0 do not clear.
+  unsigned int block_next_cache_clearing_ = 0;
 };
 #endif
 
@@ -882,11 +874,15 @@ struct DefaultDeviceContextType<platform::CustomPlace> {
 };
 #endif
 
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<platform::Place>& places,
+    bool disable_setting_default_stream_for_allocator);
+
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
-
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool,
                             platform::errors::PreconditionNotMet(
@@ -902,6 +898,8 @@ class DeviceContextPool {
     return *pool;
   }
 
+  static bool IsInitialized() { return pool != nullptr; }
+
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
@@ -914,17 +912,24 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t size() const { return device_contexts_.size(); }
+  size_t size() const;
 
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const {
-    return device_contexts_;
-  }
+  device_contexts() const;
+
+  static void SetDeviceContexts(
+      const std::map<Place,
+                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
 
  private:
+  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
+  static thread_local const std::
+      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

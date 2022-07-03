@@ -15,6 +15,7 @@
 import os
 import time
 import unittest
+
 os.environ["WITH_DISTRIBUTE"] = "ON"
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
@@ -24,6 +25,7 @@ paddle.enable_static()
 
 
 class TestDistStrategyTrainerDescConfig(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"

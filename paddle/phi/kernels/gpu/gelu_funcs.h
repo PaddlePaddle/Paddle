@@ -48,8 +48,9 @@ template <bool FastMode>
 static __device__ __forceinline__ float FP32GeluBwd(float x, float y_g) {
   auto tanh_out =
       FP32FastTanh<FastMode>(0.79788456f * x * (1.0f + 0.044715f * x * x));
-  auto tmp = 0.5f * x * ((1.0f - tanh_out * tanh_out) *
-                         (0.79788456f + 0.1070322243f * x * x)) +
+  auto tmp = 0.5f * x *
+                 ((1.0f - tanh_out * tanh_out) *
+                  (0.79788456f + 0.1070322243f * x * x)) +
              0.5f * (1.0f + tanh_out);
   return tmp * y_g;
 }
@@ -115,9 +116,8 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
-      FP16FastGeluFwdCUDAKernel<                                              \
-          __vec_size,                                                         \
-          __use_fast_math><<<block, thread, 0, dev_ctx.stream()>>>(x, y, n);  \
+      FP16FastGeluFwdCUDAKernel<__vec_size, __use_fast_math>                  \
+          <<<block, thread, 0, dev_ctx.stream()>>>(x, y, n);                  \
       return true;                                                            \
     }                                                                         \
   } while (0)
@@ -154,10 +154,8 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
-      FP16FastGeluBwdCUDAKernel<                                              \
-          __vec_size,                                                         \
-          __use_fast_math><<<block, thread, 0, dev_ctx.stream()>>>(           \
-          x, y_g, x_g, n);                                                    \
+      FP16FastGeluBwdCUDAKernel<__vec_size, __use_fast_math>                  \
+          <<<block, thread, 0, dev_ctx.stream()>>>(x, y_g, x_g, n);           \
       return true;                                                            \
     }                                                                         \
   } while (0)

@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
-// See Note [ Why still include the fluid headers? ]
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -140,6 +140,68 @@ const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
   return iter->second.cbegin()->second.args_def();
 }
 
+std::ostream& operator<<(std::ostream& os, AttributeType attr_type) {
+  switch (attr_type) {
+    case AttributeType::BOOL:
+      os << "bool";
+      break;
+    case AttributeType::INT32:
+      os << "int";
+      break;
+    case AttributeType::INT64:
+      os << "int64_t";
+      break;
+    case AttributeType::FLOAT32:
+      os << "float";
+      break;
+    case AttributeType::FLOAT64:
+      os << "double";
+      break;
+    case AttributeType::STRING:
+      os << "string";
+      break;
+    case AttributeType::BOOLS:
+      os << "vector<bool>";
+      break;
+    case AttributeType::INT32S:
+      os << "vector<int>";
+      break;
+    case AttributeType::INT64S:
+      os << "vector<int64_t>";
+      break;
+    case AttributeType::FLOAT32S:
+      os << "vector<float>";
+      break;
+    case AttributeType::FLOAT64S:
+      os << "vector<double>";
+      break;
+    case AttributeType::STRINGS:
+      os << "vector<string>";
+      break;
+    case AttributeType::SCALAR:
+      os << "Scalar";
+      break;
+    case AttributeType::SCALARS:
+      os << "vector<Scalar>";
+      break;
+    case AttributeType::INT_ARRAY:
+      os << "IntArray";
+      break;
+    case AttributeType::DATA_TYPE:
+      os << "DataType";
+      break;
+    case AttributeType::DATA_LAYOUT:
+      os << "DataLayout";
+      break;
+    case AttributeType::PLACE:
+      os << "Place";
+      break;
+    default:
+      os << "Undefined";
+  }
+  return os;
+}
+
 // print kernel info with json format:
 // {
 //   "(CPU, Undefined(AnyLayout), complex64)": {
@@ -175,7 +237,7 @@ std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
   need_comma = false;
   for (auto& arg_def : kernel.args_def().attribute_defs()) {
     if (need_comma) os << ",";
-    os << "\"" << arg_def.type_index.name() << "\"";
+    os << "\"" << arg_def.type_index << "\"";
     need_comma = true;
   }
   os << "]}";

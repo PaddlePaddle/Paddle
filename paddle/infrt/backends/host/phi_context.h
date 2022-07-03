@@ -35,12 +35,12 @@ class CpuPhiContext : public ::phi::CPUContext {
 class GpuPhiContext : public ::phi::GPUContext {
  public:
   using Base = ::phi::GPUContext;
-  using ::phi::GPUContext::SetStream;
-  using ::phi::GPUContext::SetEigenDevice;
   using ::phi::GPUContext::SetBlasHandle;
   using ::phi::GPUContext::SetDnnHandle;
+  using ::phi::GPUContext::SetEigenDevice;
   using ::phi::GPUContext::SetSolverHandle;
   using ::phi::GPUContext::SetSparseHandle;
+  using ::phi::GPUContext::SetStream;
 };
 
 }  // namespace backends

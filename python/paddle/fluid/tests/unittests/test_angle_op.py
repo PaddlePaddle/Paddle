@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 from paddle.fluid import dygraph
 from paddle import static
+
 paddle.enable_static()
 
 
@@ -39,6 +40,7 @@ def angle_grad(x, dout):
 
 
 class TestAngleOpFloat(OpTest):
+
     def setUp(self):
         self.op_type = "angle"
         self.dtype = "float64"
@@ -51,15 +53,16 @@ class TestAngleOpFloat(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[
-                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
-            ])
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[
+                            angle_grad(self.x,
+                                       np.ones_like(self.x) / self.x.size)
+                        ])
 
 
 class TestAngleOpComplex(OpTest):
+
     def setUp(self):
         self.op_type = "angle"
         self.dtype = "complex128"
@@ -74,15 +77,16 @@ class TestAngleOpComplex(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[
-                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
-            ])
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[
+                            angle_grad(self.x,
+                                       np.ones_like(self.x) / self.x.size)
+                        ])
 
 
 class TestAngleAPI(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
         self.out = np.angle(self.x)

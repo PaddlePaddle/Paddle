@@ -102,29 +102,29 @@ def accuracy(input, label, k=1, correct=None, total=None):
     else:
         attrs = {'k': k}
     attrs['sorted'] = False
-    helper.append_op(
-        type="top_k_v2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]})
+    helper.append_op(type="top_k_v2",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={
+                         "Out": [topk_out],
+                         "Indices": [topk_indices]
+                     })
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
         correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
         total = helper.create_variable_for_type_inference(dtype="int32")
-    helper.append_op(
-        type="accuracy",
-        inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        },
-        outputs={
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total],
-        })
+    helper.append_op(type="accuracy",
+                     inputs={
+                         "Out": [topk_out],
+                         "Indices": [topk_indices],
+                         "Label": [label]
+                     },
+                     outputs={
+                         "Accuracy": [acc_out],
+                         "Correct": [correct],
+                         "Total": [total],
+                     })
     return acc_out
 
 
@@ -206,8 +206,8 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
-    # we create slide_step+1 buckets, the first slide_steps buckets store 
-    # historical batch-level values, and the last bucket stores the sum values of 
+    # we create slide_step+1 buckets, the first slide_steps buckets store
+    # historical batch-level values, and the last bucket stores the sum values of
     # previous slide_step buckets.
     # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
     # and batch_id is store in the last posision of following variable
@@ -222,54 +222,53 @@ def auc(input,
 
     # for global auc
     # Needn't maintain the batch id
-    stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
-    stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+    stat_pos = helper.create_global_variable(persistable=True,
+                                             dtype='int64',
+                                             shape=[1, num_thresholds + 1])
+    stat_neg = helper.create_global_variable(persistable=True,
+                                             dtype='int64',
+                                             shape=[1, num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
-        helper.set_variable_initializer(
-            var, Constant(
-                value=0.0, force_cpu=False))
+        helper.set_variable_initializer(var, Constant(value=0.0,
+                                                      force_cpu=False))
 
     # Batch AUC
-    helper.append_op(
-        type="auc",
-        inputs={
-            "Predict": [input],
-            "Label": [label],
-            "StatPos": [batch_stat_pos],
-            "StatNeg": [batch_stat_neg]
-        },
-        attrs={
-            "curve": curve,
-            "num_thresholds": num_thresholds,
-            "slide_steps": slide_steps
-        },
-        outputs={
-            "AUC": [batch_auc_out],
-            "StatPosOut": [batch_stat_pos],
-            "StatNegOut": [batch_stat_neg]
-        })
+    helper.append_op(type="auc",
+                     inputs={
+                         "Predict": [input],
+                         "Label": [label],
+                         "StatPos": [batch_stat_pos],
+                         "StatNeg": [batch_stat_neg]
+                     },
+                     attrs={
+                         "curve": curve,
+                         "num_thresholds": num_thresholds,
+                         "slide_steps": slide_steps
+                     },
+                     outputs={
+                         "AUC": [batch_auc_out],
+                         "StatPosOut": [batch_stat_pos],
+                         "StatNegOut": [batch_stat_neg]
+                     })
     # Global AUC
-    helper.append_op(
-        type="auc",
-        inputs={
-            "Predict": [input],
-            "Label": [label],
-            "StatPos": [stat_pos],
-            "StatNeg": [stat_neg]
-        },
-        attrs={
-            "curve": curve,
-            "num_thresholds": num_thresholds,
-            "slide_steps": 0
-        },
-        outputs={
-            "AUC": [auc_out],
-            "StatPosOut": [stat_pos],
-            "StatNegOut": [stat_neg]
-        })
+    helper.append_op(type="auc",
+                     inputs={
+                         "Predict": [input],
+                         "Label": [label],
+                         "StatPos": [stat_pos],
+                         "StatNeg": [stat_neg]
+                     },
+                     attrs={
+                         "curve": curve,
+                         "num_thresholds": num_thresholds,
+                         "slide_steps": 0
+                     },
+                     outputs={
+                         "AUC": [auc_out],
+                         "StatPosOut": [stat_pos],
+                         "StatNegOut": [stat_neg]
+                     })
     return auc_out, batch_auc_out, [
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg
     ]

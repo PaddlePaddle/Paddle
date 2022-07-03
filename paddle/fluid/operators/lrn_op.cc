@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -29,15 +31,24 @@ using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
-struct LRNFunctor<platform::CPUDeviceContext, T> {
+struct LRNFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& input, framework::Tensor* out,
-                  framework::Tensor* mid, int N, int C, int H, int W, int n,
-                  T k, T alpha, T beta, const DataLayout data_layout) {
+                  const framework::Tensor& input,
+                  framework::Tensor* out,
+                  framework::Tensor* mid,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T k,
+                  T alpha,
+                  T beta,
+                  const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> transpose;
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     Tensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
@@ -80,14 +91,17 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
       for (int c = 1; c < C; ++c) {
         // copy previous scale
         int mid_offset = i * fea_size + c * img_size;
-        std::memcpy(mdata + mid_offset, mdata + mid_offset - img_size,
+        std::memcpy(mdata + mid_offset,
+                    mdata + mid_offset - img_size,
                     img_size * sizeof(T));
         // add last
-        blas.AXPY(img_size, alpha, sdata + (c + n - 1) * img_size,
+        blas.AXPY(img_size,
+                  alpha,
+                  sdata + (c + n - 1) * img_size,
                   mdata + mid_offset);
         // sub rest
-        blas.AXPY(img_size, -alpha, sdata + (c - 1) * img_size,
-                  mdata + mid_offset);
+        blas.AXPY(
+            img_size, -alpha, sdata + (c - 1) * img_size, mdata + mid_offset);
       }
     }
     // compute the final output
@@ -102,16 +116,25 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
-template struct LRNFunctor<platform::CPUDeviceContext, float>;
-template struct LRNFunctor<platform::CPUDeviceContext, double>;
+template struct LRNFunctor<phi::CPUContext, float>;
+template struct LRNFunctor<phi::CPUContext, double>;
 
 template <typename T>
-struct LRNGradFunctor<platform::CPUDeviceContext, T> {
+struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& x, const framework::Tensor& out,
-                  const framework::Tensor& mid, framework::Tensor* x_g,
-                  const framework::Tensor& out_g, int N, int C, int H, int W,
-                  int n, T alpha, T beta, const DataLayout data_layout) {
+                  const framework::Tensor& x,
+                  const framework::Tensor& out,
+                  const framework::Tensor& mid,
+                  framework::Tensor* x_g,
+                  const framework::Tensor& out_g,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T alpha,
+                  T beta,
+                  const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
     auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
@@ -160,8 +183,8 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
-template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
-template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
+template struct LRNGradFunctor<phi::CPUContext, float>;
+template struct LRNGradFunctor<phi::CPUContext, double>;
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -174,20 +197,26 @@ class LRNOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("MidOut"), "Output", "MidOut", "LRN");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4, platform::errors::InvalidArgument(
-                                           "Input(input) rank should be 4, "
-                                           "but received input rank (%d) != 4",
-                                           x_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(),
+        4,
+        platform::errors::InvalidArgument("Input(input) rank should be 4, "
+                                          "but received input rank (%d) != 4",
+                                          x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE_GT(n, 0UL, platform::errors::InvalidArgument(
-                                  "Argument(n) should be positive, "
-                                  "but received n(%d) not greater than 0",
-                                  n));
-    PADDLE_ENFORCE_EQ(n % 2, 1UL, platform::errors::InvalidArgument(
-                                      "Argument(n) should be odd value, "
-                                      "but received n(%d) is not an odd value",
-                                      n));
+    PADDLE_ENFORCE_GT(n,
+                      0UL,
+                      platform::errors::InvalidArgument(
+                          "Argument(n) should be positive, "
+                          "but received n(%d) not greater than 0",
+                          n));
+    PADDLE_ENFORCE_EQ(n % 2,
+                      1UL,
+                      platform::errors::InvalidArgument(
+                          "Argument(n) should be odd value, "
+                          "but received n(%d) is not an odd value",
+                          n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -207,12 +236,13 @@ class LRNOp : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -224,13 +254,13 @@ class LRNOp : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != framework::DataLayout::kAnyLayout) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(), dl);
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -329,8 +359,10 @@ class LRNOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LRNGrad");
     OP_INOUT_CHECK(ctx->HasInput("MidOut"), "Input", "MidOu", "LRNGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "LRNGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "LRNGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -349,12 +381,13 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_,
-                                   library_);
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -366,13 +399,13 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != framework::DataLayout::kAnyLayout) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(), dl);
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -395,12 +428,12 @@ class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lrn, ops::LRNOp, ops::LRNOpMaker<float>,
+REGISTER_OPERATOR(lrn,
+                  ops::LRNOp,
+                  ops::LRNOpMaker<float>,
                   ops::LRNGradOpMaker<paddle::framework::OpDesc>,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    lrn_grad, ops::LRNGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);

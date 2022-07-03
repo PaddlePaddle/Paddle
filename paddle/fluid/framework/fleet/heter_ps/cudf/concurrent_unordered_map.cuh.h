@@ -22,6 +22,7 @@
 #define CONCURRENT_UNORDERED_MAP_CUH
 
 #include <thrust/pair.h>
+
 #include <cassert>
 #include <iostream>
 #include <iterator>
@@ -40,7 +41,10 @@
       fprintf(stderr,                                                         \
               "ERROR: CUDA RT call \"%s\" in line %d of file %s failed with " \
               "%s (%d).\n",                                                   \
-              #call, __LINE__, __FILE__, cudaGetErrorString(cudaStatus),      \
+              #call,                                                          \
+              __LINE__,                                                       \
+              __FILE__,                                                       \
+              cudaGetErrorString(cudaStatus),                                 \
               cudaStatus);                                                    \
       exit(1);                                                                \
     }                                                                         \
@@ -48,7 +52,8 @@
 #endif
 
 // TODO: can we do this more efficiently?
-__inline__ __device__ int8_t atomicCAS(int8_t* address, int8_t compare,
+__inline__ __device__ int8_t atomicCAS(int8_t* address,
+                                       int8_t compare,
                                        int8_t val) {
   int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));
   int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);
@@ -57,7 +62,8 @@ __inline__ __device__ int8_t atomicCAS(int8_t* address, int8_t compare,
 }
 
 // TODO: can we do this more efficiently?
-__inline__ __device__ int16_t atomicCAS(int16_t* address, int16_t compare,
+__inline__ __device__ int16_t atomicCAS(int16_t* address,
+                                        int16_t compare,
                                         int16_t val) {
   int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));
   int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);
@@ -65,14 +71,16 @@ __inline__ __device__ int16_t atomicCAS(int16_t* address, int16_t compare,
   return (int16_t)atomicCAS(base_address, int_comp, int_val);
 }
 
-__inline__ __device__ int64_t atomicCAS(int64_t* address, int64_t compare,
+__inline__ __device__ int64_t atomicCAS(int64_t* address,
+                                        int64_t compare,
                                         int64_t val) {
   return (int64_t)atomicCAS((unsigned long long*)address,
                             (unsigned long long)compare,
                             (unsigned long long)val);
 }
 
-__inline__ __device__ uint64_t atomicCAS(uint64_t* address, uint64_t compare,
+__inline__ __device__ uint64_t atomicCAS(uint64_t* address,
+                                         uint64_t compare,
                                          uint64_t val) {
   return (uint64_t)atomicCAS((unsigned long long*)address,
                              (unsigned long long)compare,
@@ -87,14 +95,16 @@ __inline__ __device__ long long int atomicCAS(long long int* address,
                                   (unsigned long long)val);
 }
 
-__inline__ __device__ double atomicCAS(double* address, double compare,
+__inline__ __device__ double atomicCAS(double* address,
+                                       double compare,
                                        double val) {
   return __longlong_as_double(atomicCAS((unsigned long long int*)address,
                                         __double_as_longlong(compare),
                                         __double_as_longlong(val)));
 }
 
-__inline__ __device__ float atomicCAS(float* address, float compare,
+__inline__ __device__ float atomicCAS(float* address,
+                                      float compare,
                                       float val) {
   return __int_as_float(
       atomicCAS((int*)address, __float_as_int(compare), __float_as_int(val)));
@@ -190,12 +200,16 @@ __forceinline__ __device__ void store_pair_vectorized(
   }
 }
 
-template <typename value_type, typename size_type, typename key_type,
+template <typename value_type,
+          typename size_type,
+          typename key_type,
           typename elem_type>
 __global__ void init_hashtbl(  // Init every entry of the table with
                                // <unused_key, unused_value> pair
-    value_type* __restrict__ const hashtbl_values, const size_type n,
-    const key_type key_val, const elem_type elem_val) {
+    value_type* __restrict__ const hashtbl_values,
+    const size_type n,
+    const key_type key_val,
+    const elem_type elem_val) {
   const size_type idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
     store_pair_vectorized(
@@ -229,7 +243,8 @@ class cycle_iterator_adapter {
   cycle_iterator_adapter() = delete;
 
   __host__ __device__ explicit cycle_iterator_adapter(
-      const iterator_type& begin, const iterator_type& end,
+      const iterator_type& begin,
+      const iterator_type& end,
       const iterator_type& current)
       : m_begin(begin), m_end(end), m_current(current) {}
 
@@ -258,7 +273,7 @@ class cycle_iterator_adapter {
     return old;
   }
 
-  __host__ __device__ const cycle_iterator_adapter& operator++(int)const {
+  __host__ __device__ const cycle_iterator_adapter& operator++(int) const {
     cycle_iterator_adapter<iterator_type> old(m_begin, m_end, m_current);
     if (m_end == (m_current + 1))
       m_current = m_begin;
@@ -310,7 +325,9 @@ __host__ __device__ bool operator!=(const cycle_iterator_adapter<T>& lhs,
  *  - add constructor that takes pointer to hash_table to avoid allocations
  *  - extend interface to accept streams
  */
-template <typename Key, typename Element, Key unused_key,
+template <typename Key,
+          typename Element,
+          Key unused_key,
           typename Hasher = default_hash<Key>,
           typename Equality = equal_to<Key>,
           typename Allocator = managed_allocator<thrust::pair<Key, Element>>,
@@ -383,19 +400,21 @@ class concurrent_unordered_map : public managed {
   }
 
   __host__ __device__ iterator begin() {
-    return iterator(m_hashtbl_values, m_hashtbl_values + m_hashtbl_size,
-                    m_hashtbl_values);
+    return iterator(
+        m_hashtbl_values, m_hashtbl_values + m_hashtbl_size, m_hashtbl_values);
   }
   __host__ __device__ const_iterator begin() const {
-    return const_iterator(m_hashtbl_values, m_hashtbl_values + m_hashtbl_size,
-                          m_hashtbl_values);
+    return const_iterator(
+        m_hashtbl_values, m_hashtbl_values + m_hashtbl_size, m_hashtbl_values);
   }
   __host__ __device__ iterator end() {
-    return iterator(m_hashtbl_values, m_hashtbl_values + m_hashtbl_size,
+    return iterator(m_hashtbl_values,
+                    m_hashtbl_values + m_hashtbl_size,
                     m_hashtbl_values + m_hashtbl_size);
   }
   __host__ __device__ const_iterator end() const {
-    return const_iterator(m_hashtbl_values, m_hashtbl_values + m_hashtbl_size,
+    return const_iterator(m_hashtbl_values,
+                          m_hashtbl_values + m_hashtbl_size,
                           m_hashtbl_values + m_hashtbl_size);
   }
   __host__ __device__ size_type size() const { return m_hashtbl_size; }
@@ -409,7 +428,8 @@ class concurrent_unordered_map : public managed {
   // Generic update of a hash table value for any aggregator
   template <typename aggregation_type>
   __forceinline__ __device__ void update_existing_value(
-      mapped_type& existing_value, value_type const& insert_pair,
+      mapped_type& existing_value,
+      value_type const& insert_pair,
       aggregation_type) {
     // update without CAS
     existing_value = insert_pair.second;
@@ -494,12 +514,15 @@ class concurrent_unordered_map : public managed {
    * @Returns An iterator to the newly inserted key,value pair
    */
   /* ----------------------------------------------------------------------------*/
-  template <typename aggregation_type, class comparison_type = key_equal,
+  template <typename aggregation_type,
+            class comparison_type = key_equal,
             typename hash_value_type = typename Hasher::result_type>
-  __forceinline__ __device__ iterator insert(
-      const value_type& x, aggregation_type op,
-      comparison_type keys_equal = key_equal(), bool precomputed_hash = false,
-      hash_value_type precomputed_hash_value = 0) {
+  __forceinline__ __device__ iterator
+  insert(const value_type& x,
+         aggregation_type op,
+         comparison_type keys_equal = key_equal(),
+         bool precomputed_hash = false,
+         hash_value_type precomputed_hash_value = 0) {
     const size_type hashtbl_size = m_hashtbl_size;
     value_type* hashtbl_values = m_hashtbl_values;
 
@@ -558,8 +581,8 @@ class concurrent_unordered_map : public managed {
       current_hash_bucket = &(hashtbl_values[current_index]);
     }
 
-    return iterator(m_hashtbl_values, m_hashtbl_values + hashtbl_size,
-                    current_hash_bucket);
+    return iterator(
+        m_hashtbl_values, m_hashtbl_values + hashtbl_size, current_hash_bucket);
   }
 
   /* This function is not currently implemented
@@ -648,17 +671,21 @@ x.second );
       ++counter;
     }
 
-    return const_iterator(m_hashtbl_values, m_hashtbl_values + m_hashtbl_size,
-                          begin_ptr);
+    return const_iterator(
+        m_hashtbl_values, m_hashtbl_values + m_hashtbl_size, begin_ptr);
   }
 
-  template <typename aggregation_type, typename counter_type,
+  template <typename aggregation_type,
+            typename counter_type,
             class comparison_type = key_equal,
             typename hash_value_type = typename Hasher::result_type>
-  __forceinline__ __device__ iterator get_insert(
-      const key_type& k, aggregation_type op, counter_type* value_counter,
-      comparison_type keys_equal = key_equal(), bool precomputed_hash = false,
-      hash_value_type precomputed_hash_value = 0) {
+  __forceinline__ __device__ iterator
+  get_insert(const key_type& k,
+             aggregation_type op,
+             counter_type* value_counter,
+             comparison_type keys_equal = key_equal(),
+             bool precomputed_hash = false,
+             hash_value_type precomputed_hash_value = 0) {
     const size_type hashtbl_size = m_hashtbl_size;
     value_type* hashtbl_values = m_hashtbl_values;
 
@@ -737,8 +764,8 @@ x.second );
       current_hash_bucket = &(hashtbl_values[current_index]);
     }
 
-    return iterator(m_hashtbl_values, m_hashtbl_values + hashtbl_size,
-                    current_hash_bucket);
+    return iterator(
+        m_hashtbl_values, m_hashtbl_values + hashtbl_size, current_hash_bucket);
   }
 
   int assign_async(const concurrent_unordered_map& other,
@@ -753,17 +780,21 @@ x.second );
 
       m_hashtbl_values = m_allocator.allocate(m_hashtbl_capacity);
     }
-    CUDA_RT_CALL(cudaMemcpyAsync(m_hashtbl_values, other.m_hashtbl_values,
+    CUDA_RT_CALL(cudaMemcpyAsync(m_hashtbl_values,
+                                 other.m_hashtbl_values,
                                  m_hashtbl_size * sizeof(value_type),
-                                 cudaMemcpyDefault, stream));
+                                 cudaMemcpyDefault,
+                                 stream));
     return 0;
   }
 
   void clear_async(cudaStream_t stream = 0) {
     constexpr int block_size = 128;
-    init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1, block_size, 0,
-                   stream>>>(m_hashtbl_values, m_hashtbl_size, unused_key,
-                             m_unused_element);
+    init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1,
+                   block_size,
+                   0,
+                   stream>>>(
+        m_hashtbl_values, m_hashtbl_size, unused_key, m_unused_element);
     if (count_collisions) m_collisions = 0;
   }
 
@@ -790,7 +821,8 @@ x.second );
     {
       CUDA_RT_CALL(cudaMemPrefetchAsync(m_hashtbl_values,
                                         m_hashtbl_size * sizeof(value_type),
-                                        dev_id, stream));
+                                        dev_id,
+                                        stream));
     }
     CUDA_RT_CALL(cudaMemPrefetchAsync(this, sizeof(*this), dev_id, stream));
 
@@ -800,7 +832,8 @@ x.second );
   template <class comparison_type = key_equal,
             typename hash_value_type = typename Hasher::result_type>
   __forceinline__ __device__ const_iterator
-  accum(const value_type& x, comparison_type keys_equal = key_equal(),
+  accum(const value_type& x,
+        comparison_type keys_equal = key_equal(),
         bool precomputed_hash = false,
         hash_value_type precomputed_hash_value = 0) {
     const key_type& dst_key = x.first;

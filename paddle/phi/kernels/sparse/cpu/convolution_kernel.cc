@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
 namespace sparse {
@@ -25,7 +25,7 @@ namespace sparse {
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename IntT = int>
 void Conv3dCPUKernel(const CPUContext& dev_ctx,
                      const SparseCooTensor& x,

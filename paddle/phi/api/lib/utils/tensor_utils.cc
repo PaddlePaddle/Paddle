@@ -67,16 +67,9 @@ phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src) {
 }
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
-  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
-    if (!platform::is_same_place(tensor.place(), expected_place)) {
-      framework::LoDTensor tmp_tensor;
-      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      return MakePhiIntArray(tmp_tensor);
-    } else {
-      return MakePhiIntArray(tensor);
-    }
+    return MakePhiIntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to IntArray when call pt "

@@ -31,7 +31,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 class BlockDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 
@@ -72,9 +72,12 @@ class DistModel {
   bool CommInit();
   bool PrepareFeedAndFetch();
   bool PrepareFleetExe();
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string>& peer_endpoints,
-                    framework::BlockDesc* block, int ring_id);
+                    framework::BlockDesc* block,
+                    int ring_id);
   bool FeedData(const std::vector<DistModelTensor>& input_data,
                 framework::Scope* scope);
   bool FetchResults(std::vector<DistModelTensor>* output_data,

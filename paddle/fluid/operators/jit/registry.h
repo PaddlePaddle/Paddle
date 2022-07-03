@@ -18,6 +18,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>  // for std::move
+
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"
@@ -34,7 +35,10 @@ inline std::unique_ptr<T> make_unique(Args&&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-template <typename Pool, typename PlaceType, bool IsEnd, size_t I,
+template <typename Pool,
+          typename PlaceType,
+          bool IsEnd,
+          size_t I,
           typename... KernelImpls>
 struct JitKernelRegistrarFunctor;
 
@@ -53,7 +57,10 @@ struct JitKernelRegistrarFunctor<Pool, PlaceType, false, I, KernelImpls...> {
     Pool::Instance().Insert(kkey,
                             std::move(make_unique<const KERNEL_IMPL_TYPE>()));
     constexpr auto size = std::tuple_size<std::tuple<KernelImpls...>>::value;
-    JitKernelRegistrarFunctor<Pool, PlaceType, I + 1 == size, I + 1,
+    JitKernelRegistrarFunctor<Pool,
+                              PlaceType,
+                              I + 1 == size,
+                              I + 1,
                               KernelImpls...>
         func;
     func(kt);
@@ -77,18 +84,19 @@ class JitKernelRegistrar {
                 msg)
 
 // Refer always on CPUPlace
-#define REGISTER_JITKERNEL_REFER(kernel_type, ...)                             \
-  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                                    \
-      __reg_jitkernel_##kernel_type##_refer_CPUPlace,                          \
-      "REGISTER_KERNEL_REFER must be called in global namespace");             \
-  static ::paddle::operators::jit::JitKernelRegistrar<                         \
-      ::paddle::operators::jit::ReferKernelPool, ::paddle::platform::CPUPlace, \
-      __VA_ARGS__>                                                             \
-      __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_(                  \
-          ::paddle::operators::jit::KernelType::kernel_type);                  \
-  int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_() {                    \
-    __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_.Touch();            \
-    return 0;                                                                  \
+#define REGISTER_JITKERNEL_REFER(kernel_type, ...)                  \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                         \
+      __reg_jitkernel_##kernel_type##_refer_CPUPlace,               \
+      "REGISTER_KERNEL_REFER must be called in global namespace");  \
+  static ::paddle::operators::jit::JitKernelRegistrar<              \
+      ::paddle::operators::jit::ReferKernelPool,                    \
+      ::paddle::platform::CPUPlace,                                 \
+      __VA_ARGS__>                                                  \
+      __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_(       \
+          ::paddle::operators::jit::KernelType::kernel_type);       \
+  int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_() {         \
+    __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_.Touch(); \
+    return 0;                                                       \
   }
 
 // kernel_type: should be in paddle::operators::jit::KernelType
@@ -101,7 +109,8 @@ class JitKernelRegistrar {
   static int __assert_##kernel_type##_##impl_type##_##place_type##_has_refer_ \
       UNUSED = TouchJitKernelReg_##kernel_type##_refer_CPUPlace_();           \
   static ::paddle::operators::jit::JitKernelRegistrar<                        \
-      ::paddle::operators::jit::KernelPool, ::paddle::platform::place_type,   \
+      ::paddle::operators::jit::KernelPool,                                   \
+      ::paddle::platform::place_type,                                         \
       __VA_ARGS__>                                                            \
       __jit_kernel_registrar_##kernel_type##_##impl_type##_##place_type##_(   \
           ::paddle::operators::jit::KernelType::kernel_type);                 \
@@ -126,7 +135,8 @@ class JitKernelRegistrar {
       TouchJitKernelReg_##kernel_type##_refer_CPUPlace_();          \
   static ::paddle::operators::jit::JitKernelRegistrar<              \
       ::paddle::operators::jit::JitCodeCreatorPool,                 \
-      ::paddle::platform::CPUPlace, __VA_ARGS__>                    \
+      ::paddle::platform::CPUPlace,                                 \
+      __VA_ARGS__>                                                  \
       __jit_kernel_registrar_gen_##kernel_type##_CPUPlace_(         \
           ::paddle::operators::jit::KernelType::kernel_type);       \
   int TouchJitKernelReg_gen_##kernel_type##_CPUPlace_() {           \

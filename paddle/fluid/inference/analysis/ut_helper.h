@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <string>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/helper.h"

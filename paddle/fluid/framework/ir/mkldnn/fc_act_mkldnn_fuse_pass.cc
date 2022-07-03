@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,8 +26,8 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"gelu", "tanh", "sigmoid", "mish",
-                                        "hard_swish"};
+  std::vector<std::string> act_types = {
+      "gelu", "tanh", "sigmoid", "mish", "hard_swish"};
 
   for (std::string act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -83,8 +84,8 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
-    PrettyLogDetail("---    fused %d fc with %s activation", found_fc_act_count,
-                    act_type);
+    PrettyLogDetail(
+        "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
 
 }  // namespace ir

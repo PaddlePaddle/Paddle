@@ -20,6 +20,7 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/OperationSupport.h>
+
 #include <list>
 #include <unordered_set>
 #include <vector>
@@ -193,7 +194,7 @@ void PhiOpConvertPass::convertStage() {
       op->replaceAllUsesWith(kernel_op.getResults());
     } else {
       ::phi::KernelSignature kernel_sign =
-          ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
+          (*::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name))(
               infrt::ProtoArgumentMappingContext(op));
       VLOG(3) << "IncompatiblePhiKernel: op(" << op_name << "), kernel("
               << kernel_sign.name << ")";

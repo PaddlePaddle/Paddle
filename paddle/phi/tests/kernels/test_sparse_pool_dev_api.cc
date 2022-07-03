@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -60,7 +60,6 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
   const int out_channels = in_channels;
@@ -264,7 +263,22 @@ TEST(DEV_API, sparse_maxpool) {
   std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
   std::vector<float> features = {1, 2, 3};
   std::vector<int> out_indices = {
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
   };
   std::vector<float> out_features = {2, 2, 3, 3};
   std::vector<float> x_grad = {0, 4, 6};
@@ -330,7 +344,22 @@ TEST(DEV_API, sparse_maxpool_channel) {
   std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
   std::vector<float> features = {1, 1, 2, 2, 3, 3};
   std::vector<int> out_indices = {
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
   };
   std::vector<float> out_features = {2, 2, 2, 2, 3, 3, 3, 3};
   std::vector<float> x_grad = {0, 0, 4, 4, 6, 6};
@@ -364,7 +393,22 @@ TEST(DEV_API, sparse_maxpool3d) {
   std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
   std::vector<float> features = {1, 1, 2, 2, 3, 3};
   std::vector<int> out_indices = {
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
   };
   std::vector<float> out_features = {2, 2, 2, 2, 3, 3, 3, 3};
   std::vector<float> x_grad = {0, 0, 4, 4, 6, 6};

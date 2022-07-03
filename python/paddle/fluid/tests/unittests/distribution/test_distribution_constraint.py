@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ import parameterize as param
 @param.param_cls((param.TEST_CASE_NAME, 'value'),
                  [('NotImplement', np.random.rand(2, 3))])
 class TestConstraint(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Constraint()
 
@@ -36,6 +37,7 @@ class TestConstraint(unittest.TestCase):
 @param.param_cls((param.TEST_CASE_NAME, 'value', 'expect'),
                  [('real', 1., True)])
 class TestReal(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Real()
 
@@ -46,6 +48,7 @@ class TestReal(unittest.TestCase):
 @param.param_cls((param.TEST_CASE_NAME, 'lower', 'upper', 'value', 'expect'),
                  [('in_range', 0, 1, 0.5, True), ('out_range', 0, 1, 2, False)])
 class TestRange(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Range(self.lower, self.upper)
 
@@ -56,6 +59,7 @@ class TestRange(unittest.TestCase):
 @param.param_cls((param.TEST_CASE_NAME, 'value', 'expect'),
                  [('positive', 1, True), ('negative', -1, False)])
 class TestPositive(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Positive()
 
@@ -67,6 +71,7 @@ class TestPositive(unittest.TestCase):
                  [('simplex', paddle.to_tensor([0.5, 0.5]), True),
                   ('non_simplex', paddle.to_tensor([-0.5, 0.5]), False)])
 class TestSimplex(unittest.TestCase):
+
     def setUp(self):
         self._constraint = constraint.Simplex()
 

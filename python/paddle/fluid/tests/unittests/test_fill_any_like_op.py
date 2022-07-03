@@ -25,6 +25,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 
 class TestFillAnyLikeOp(OpTest):
+
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.int32
@@ -42,6 +43,7 @@ class TestFillAnyLikeOp(OpTest):
 
 
 class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
+
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
@@ -50,6 +52,7 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFillAnyLikeOpBfloat16(OpTest):
+
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.uint16
@@ -67,21 +70,25 @@ class TestFillAnyLikeOpBfloat16(OpTest):
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
+
     def init(self):
         self.value = 1.0
 
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
+
     def init(self):
         self.value = 1e-10
 
 
 class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
+
     def init(self):
         self.value = 1e-100
 
 
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
+
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.int32
@@ -99,6 +106,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
+
     def init(self):
         self.dtype = np.float16
 

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/eager/tensor_wrapper.h"
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/fluid/eager/utils.h"
 
@@ -40,9 +40,11 @@ TEST(TensorWrapper, Basic) {
   auto auto_grad0 = std::make_shared<egr::AutogradMeta>(edge0);
   et1.set_autograd_meta(auto_grad0);
   et1.set_name("et1");
-  auto tw0 = egr::TensorWrapper(et1, true);
+  auto tw0 = egr::TensorWrapper(et1);
   auto recover_et1 = tw0.recover();
-  CHECK_EQ(recover_et1.name(), std::string("et1"));
+  if (VLOG_IS_ON(7)) {
+    CHECK_EQ(recover_et1.name(), std::string("et1@saved"));
+  }
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).first,
            egr::EagerUtils::OutRankInfo(et1).first);
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
@@ -68,13 +70,15 @@ TEST(TensorWrapper, Basic) {
   et2.set_autograd_meta(auto_grad1);
   auto tw1 = egr::TensorWrapper(et2, false);
   auto recover_et2 = tw1.recover();
-  CHECK_EQ(recover_et2.name(), std::string("et2@Saved"));
+  if (VLOG_IS_ON(7)) {
+    CHECK_EQ(recover_et2.name(), std::string("et2@Saved"));
+  }
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).first,
            egr::EagerUtils::OutRankInfo(et2).first);
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
            egr::EagerUtils::OutRankInfo(et2).second);
   // Test Raw recover
   paddle::experimental::Tensor et3;
-  auto tw2 = egr::TensorWrapper(et3, true);
+  auto tw2 = egr::TensorWrapper(et3);
   CHECK(tw2.recover().initialized() == false);
 }

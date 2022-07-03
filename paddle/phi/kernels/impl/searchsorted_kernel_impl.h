@@ -158,7 +158,7 @@ static void VisitDataType(DataType type, Visitor visitor) {
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
-        "The recieved values data type %s can not meet input requirements. "
+        "The received values data type %s can not meet input requirements. "
         "Because the given values data type of searchsorted operators must be "
         "float32, float64, int32 or int64. Please input appropriate "
         "sorted_sequence again! ",

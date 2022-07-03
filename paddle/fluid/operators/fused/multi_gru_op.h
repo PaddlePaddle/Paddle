@@ -19,9 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::ExecutionContext;
 using framework::LoDTensor;
 using framework::Tensor;
-using framework::ExecutionContext;
 
 class MultiGRUOp : public framework::OperatorWithKernel {
  public:

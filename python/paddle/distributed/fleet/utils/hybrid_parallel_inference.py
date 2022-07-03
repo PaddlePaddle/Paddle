@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -275,10 +275,12 @@ class HybridParallelInferenceHelper(object):
             self.role_maker, wait_port=False)
 
         # Create global rings
-        collective_helper._init_communicator(
-            self._startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, True, self.global_ring_id,
-            True)
+        collective_helper._init_communicator(self._startup_program,
+                                             self.current_endpoint,
+                                             self.global_endpoints,
+                                             self.global_rank,
+                                             self.global_ring_id, True,
+                                             self.global_ring_id, True)
 
         # Create mp rings
         if self.num_mp > 1:
@@ -287,9 +289,11 @@ class HybridParallelInferenceHelper(object):
                 idx for idx, mp_idx in enumerate(self.mp_group)
                 if mp_idx == self.rank
             ][0]
-            collective_helper._init_communicator(
-                self._startup_program, self.current_endpoint, mp_endpoints,
-                mp_rank, self.mp_ring_id, True, self.global_ring_id, True)
+            collective_helper._init_communicator(self._startup_program,
+                                                 self.current_endpoint,
+                                                 mp_endpoints, mp_rank,
+                                                 self.mp_ring_id, True,
+                                                 self.global_ring_id, True)
 
         # Create pipeline rings
         if self.num_pp > 1:
@@ -309,10 +313,12 @@ class HybridParallelInferenceHelper(object):
                     self.endpoints[first_node], self.endpoints[second_node]
                 ]
                 pipeline_rank = 0 if self.rank == first_node else 1
-                collective_helper._init_communicator(
-                    self._startup_program, self.current_endpoint,
-                    pipeline_endpoints, pipeline_rank, ring_id, False,
-                    self.global_ring_id, True)
+                collective_helper._init_communicator(self._startup_program,
+                                                     self.current_endpoint,
+                                                     pipeline_endpoints,
+                                                     pipeline_rank, ring_id,
+                                                     False, self.global_ring_id,
+                                                     True)
 
     def _get_input_output_info(self, block):
         '''
@@ -367,8 +373,8 @@ class HybridParallelInferenceHelper(object):
                 op_idx += 1
                 if op.type == "while":
                     sub_block_id = int(op.attr('sub_block').id)
-                    sub_used_var_names = self._split_program(program, stage,
-                                                             sub_block_id)
+                    sub_used_var_names = self._split_program(
+                        program, stage, sub_block_id)
 
                     used_var_names.update(sub_used_var_names)
 
@@ -402,6 +408,7 @@ class HybridParallelInferenceHelper(object):
                 block._remove_var(var_name)
 
         return used_var_names
+
 
 #     def _find_post_op(self, index, var_name):
 #         """
@@ -474,23 +481,25 @@ class HybridParallelInferenceHelper(object):
 
         pre_stage_id = None
         for op in block.ops:
-            assert op.has_attr(self._op_role_key), (
-                "{} has no {} set .".format(op.type, self._op_role_key))
+            assert op.has_attr(self._op_role_key), ("{} has no {} set .".format(
+                op.type, self._op_role_key))
             op_role = op.attr(self._op_role_key)
             assert op_role == int(self._op_role.Forward), (
                 "Only forward is supported for inference.")
             if not op._has_kernel(op.type):
-                assert op.type in ["while", "conditional_block"], (
-                    "The only supported op without kernel is while.")
+                assert op.type in [
+                    "while", "conditional_block"
+                ], ("The only supported op without kernel is while.")
                 sub_block_id = op.attr('sub_block').id
                 sub_block = block.program.block(sub_block_id)
                 self._check_validation(sub_block)
-            assert op.has_attr(self._op_device_key), (
-                "{} has no {} set.".format(op.type, self._op_device_key))
+            assert op.has_attr(
+                self._op_device_key), ("{} has no {} set.".format(
+                    op.type, self._op_device_key))
 
             device = op.attr(self._op_device_key)
-            assert device, (
-                "{} has no {} set.".format(op.type, self._op_device_key))
+            assert device, ("{} has no {} set.".format(op.type,
+                                                       self._op_device_key))
             if device.split(':')[1] == "all": continue
 
             dev_type = device.split(':')[0]
@@ -507,7 +516,9 @@ class HybridParallelInferenceHelper(object):
         # avoiding multiple send and recv ops.
         input_var_to_device = dict()
 
-        extra_index_info = {'index': 0, }
+        extra_index_info = {
+            'index': 0,
+        }
 
         for index, op in enumerate(list(block.ops)):
             cur_device = op.attr(self._op_device_key)
@@ -542,8 +553,8 @@ class HybridParallelInferenceHelper(object):
                 if (cur_device, prev_device) in input_var_to_device[var_name]:
                     continue
 
-                assert self._device == cur_device.split(':')[
-                    0], "More than one device type found."
+                assert self._device == cur_device.split(
+                    ':')[0], "More than one device type found."
                 device_type = cur_device.split(':')[0] + ':'
 
                 def _insert_send_recv(cur_id, prev_id):
@@ -614,9 +625,8 @@ class HybridParallelInferenceHelper(object):
                         })
                     extra_index_info['index'] += 1
 
-                _insert_send_recv(
-                    int(cur_device.split(':')[1]),
-                    int(prev_device.split(':')[1]))
+                _insert_send_recv(int(cur_device.split(':')[1]),
+                                  int(prev_device.split(':')[1]))
         block._sync_with_cpp()
 
     def _insert_sendrecv_ops_in_while_block(

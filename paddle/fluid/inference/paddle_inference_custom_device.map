@@ -1,0 +1,10 @@
+{
+	global:
+		*paddle*;
+		*Pass*;
+		*profile*;
+		*phi*;
+		*FLAGS_*;
+	local:
+		*;
+};

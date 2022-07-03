@@ -19,7 +19,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
@@ -128,6 +128,16 @@ PD_REGISTER_KERNEL(minimum_grad,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(elementwise_heaviside_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ElementwiseHeavisideGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_KERNEL(elementwise_pow_grad,
                    GPU,
                    ALL_LAYOUT,

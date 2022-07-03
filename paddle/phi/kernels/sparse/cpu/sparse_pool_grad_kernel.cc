@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
@@ -50,7 +51,7 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
   T* x_grad_ptr = x_grad_values.data<T>();
-  memset(x_grad_ptr, 0, sizeof(T) * x_grad->numel());
+  memset(x_grad_ptr, 0, sizeof(T) * x_grad_values.numel());
   phi::Copy<CPUContext>(dev_ctx,
                         x.non_zero_indices(),
                         dev_ctx.GetPlace(),

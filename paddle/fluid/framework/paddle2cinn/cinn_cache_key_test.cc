@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+
 #include <map>
 #include <unordered_set>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -59,8 +60,8 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
 
   CinnCacheKeyByStructure cache_key5(
       empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByStructure cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                     "unk");
+  CinnCacheKeyByStructure cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -132,8 +133,8 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
 
   CinnCacheKeyByAddress cache_key5(
       empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByAddress cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                   "unk");
+  CinnCacheKeyByAddress cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);

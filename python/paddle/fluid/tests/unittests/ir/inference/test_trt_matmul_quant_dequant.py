@@ -23,19 +23,20 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            matmul_out = fluid.layers.matmul(
-                x=self.data,
-                y=self.data,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y,
-                alpha=self.alpha)
+            matmul_out = fluid.layers.matmul(x=self.data,
+                                             y=self.data,
+                                             transpose_x=self.transpose_x,
+                                             transpose_y=self.transpose_y,
+                                             alpha=self.alpha)
             fc_out = fluid.layers.fc(input=matmul_out,
                                      size=10,
                                      num_flatten_dims=1,
@@ -76,14 +77,17 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTMatMulQuantDequantDims3TransposeXTest(
         TensorRTMatMulQuantDequantDims3Test):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = False
@@ -92,6 +96,7 @@ class TensorRTMatMulQuantDequantDims3TransposeXTest(
 
 class TensorRTMatMulQuantDequantDims3TransposeYTest(
         TensorRTMatMulQuantDequantDims3Test):
+
     def set_params(self):
         self.transpose_x = False
         self.transpose_y = True
@@ -100,6 +105,7 @@ class TensorRTMatMulQuantDequantDims3TransposeYTest(
 
 class TensorRTMatMulQuantDequantDims3TransposeXYTest(
         TensorRTMatMulQuantDequantDims3Test):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = True
@@ -107,20 +113,21 @@ class TensorRTMatMulQuantDequantDims3TransposeXYTest(
 
 
 class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             reshape_out = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
-            matmul_out = fluid.layers.matmul(
-                x=reshape_out,
-                y=reshape_out,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y,
-                alpha=self.alpha)
+            matmul_out = fluid.layers.matmul(x=reshape_out,
+                                             y=reshape_out,
+                                             transpose_x=self.transpose_x,
+                                             transpose_y=self.transpose_y,
+                                             alpha=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(input=matmul_out,
                                      size=10,
@@ -162,14 +169,17 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTMatMulQuantDequantDims4TransposeXTest(
         TensorRTMatMulQuantDequantDims4Test):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = False
@@ -178,6 +188,7 @@ class TensorRTMatMulQuantDequantDims4TransposeXTest(
 
 class TensorRTMatMulQuantDequantDims4TransposeYTest(
         TensorRTMatMulQuantDequantDims4Test):
+
     def set_params(self):
         self.transpose_x = False
         self.transpose_y = True
@@ -186,6 +197,7 @@ class TensorRTMatMulQuantDequantDims4TransposeYTest(
 
 class TensorRTMatMulQuantDequantDims4TransposeXYTest(
         TensorRTMatMulQuantDequantDims4Test):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = True
@@ -193,19 +205,20 @@ class TensorRTMatMulQuantDequantDims4TransposeXYTest(
 
 
 class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
+
     def setUp(self):
         self.set_params()
 
         def network():
-            self.data = fluid.data(
-                name='data', shape=[-1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[-1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            matmul_out = fluid.layers.matmul(
-                x=self.data,
-                y=self.data,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y,
-                alpha=self.alpha)
+            matmul_out = fluid.layers.matmul(x=self.data,
+                                             y=self.data,
+                                             transpose_x=self.transpose_x,
+                                             transpose_y=self.transpose_y,
+                                             alpha=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(input=matmul_out,
                                      size=10,
@@ -236,9 +249,8 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         self.trt_parameters = TensorRTMatMulQuantDequantDims3DynamicTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
         self.dynamic_shape_params = TensorRTMatMulQuantDequantDims3DynamicTest.DynamicShapeParam(
-            {
-                'data': [1, 28, 28]
-            }, {'data': [4, 28, 28]}, {'data': [3, 28, 28]}, False)
+            {'data': [1, 28, 28]}, {'data': [4, 28, 28]}, {'data': [3, 28, 28]},
+            False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -251,14 +263,17 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 
 
 class TensorRTMatMulQuantDequantDims4TransposeXDynamicTest(
         TensorRTMatMulQuantDequantDims3DynamicTest):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = False
@@ -267,6 +282,7 @@ class TensorRTMatMulQuantDequantDims4TransposeXDynamicTest(
 
 class TensorRTMatMulQuantDequantDims4TransposeYDynamicTest(
         TensorRTMatMulQuantDequantDims3DynamicTest):
+
     def set_params(self):
         self.transpose_x = False
         self.transpose_y = True
@@ -275,6 +291,7 @@ class TensorRTMatMulQuantDequantDims4TransposeYDynamicTest(
 
 class TensorRTMatMulQuantDequantDims4TransposeXYDynamicTest(
         TensorRTMatMulQuantDequantDims3DynamicTest):
+
     def set_params(self):
         self.transpose_x = True
         self.transpose_y = True

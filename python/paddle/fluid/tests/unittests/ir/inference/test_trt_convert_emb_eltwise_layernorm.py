@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,13 +22,15 @@ import unittest
 
 
 class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch, input_size):
-            return np.random.randint(
-                0, 7, size=(batch, input_size, 1)).astype(np.int64)
+            return np.random.randint(0, 7, size=(batch, input_size,
+                                                 1)).astype(np.int64)
 
         def generate_weight1(size11, size2):
             return np.random.randn(size11, size2).astype(np.float32)
@@ -75,7 +77,8 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                 "epsilon": epsilon
                                             }]
                                             ops_config = [{
-                                                "op_type": type,
+                                                "op_type":
+                                                type,
                                                 "op_inputs": {
                                                     "Ids": ["input_data1"],
                                                     "W": ["embedding1_weight"]
@@ -84,11 +87,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                     "Out":
                                                     ["embedding1_output"]
                                                 },
-                                                "op_attrs": dics[0]
-                                                if type == "lookup_table" else
-                                                dics[1]
+                                                "op_attrs":
+                                                dics[0] if type
+                                                == "lookup_table" else dics[1]
                                             }, {
-                                                "op_type": type,
+                                                "op_type":
+                                                type,
                                                 "op_inputs": {
                                                     "Ids": ["input_data2"],
                                                     "W": ["embedding2_weight"]
@@ -97,11 +101,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                     "Out":
                                                     ["embedding2_output"]
                                                 },
-                                                "op_attrs": dics[0]
-                                                if type == "lookup_table" else
-                                                dics[1]
+                                                "op_attrs":
+                                                dics[0] if type
+                                                == "lookup_table" else dics[1]
                                             }, {
-                                                "op_type": type,
+                                                "op_type":
+                                                type,
                                                 "op_inputs": {
                                                     "Ids": ["input_data3"],
                                                     "W": ["embedding3_weight"]
@@ -110,9 +115,9 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                     "Out":
                                                     ["embedding3_output"]
                                                 },
-                                                "op_attrs": dics[0]
-                                                if type == "lookup_table" else
-                                                dics[1]
+                                                "op_attrs":
+                                                dics[0] if type
+                                                == "lookup_table" else dics[1]
                                             }, {
                                                 "op_type": "elementwise_add",
                                                 "op_inputs": {
@@ -120,39 +125,33 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                     "Y": ["embedding3_output"]
                                                 },
                                                 "op_outputs": {
-                                                    "Out": [
-                                                        "elementwise_add1_output"
-                                                    ]
+                                                    "Out":
+                                                    ["elementwise_add1_output"]
                                                 },
                                                 "op_attrs": dics[2]
                                             }, {
                                                 "op_type": "elementwise_add",
                                                 "op_inputs": {
-                                                    "X": [
-                                                        "elementwise_add1_output"
-                                                    ],
+                                                    "X":
+                                                    ["elementwise_add1_output"],
                                                     "Y": ["embedding1_output"]
                                                 },
                                                 "op_outputs": {
-                                                    "Out": [
-                                                        "elementwise_add2_output"
-                                                    ]
+                                                    "Out":
+                                                    ["elementwise_add2_output"]
                                                 },
                                                 "op_attrs": dics[3]
                                             }, {
                                                 "op_type": "layer_norm",
                                                 "op_inputs": {
-                                                    "X": [
-                                                        "elementwise_add2_output"
-                                                    ],
-                                                    "Bias":
-                                                    ["layer_norm_bias"],
+                                                    "X":
+                                                    ["elementwise_add2_output"],
+                                                    "Bias": ["layer_norm_bias"],
                                                     "Scale":
                                                     ["layer_norm_scale"]
                                                 },
                                                 "op_outputs": {
-                                                    "Y":
-                                                    ["layer_norm_output1"],
+                                                    "Y": ["layer_norm_output1"],
                                                     "Mean":
                                                     ["layer_norm_output2"],
                                                     "Variance":
@@ -193,15 +192,18 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                             size2))
                                                 },
                                                 inputs={
-                                                    "input_data1": TensorConfig(
+                                                    "input_data1":
+                                                    TensorConfig(
                                                         data_gen=partial(
                                                             generate_input,
                                                             batch, input_size)),
-                                                    "input_data2": TensorConfig(
+                                                    "input_data2":
+                                                    TensorConfig(
                                                         data_gen=partial(
                                                             generate_input,
                                                             batch, input_size)),
-                                                    "input_data3": TensorConfig(
+                                                    "input_data3":
+                                                    TensorConfig(
                                                         data_gen=partial(
                                                             generate_input,
                                                             batch, input_size))
@@ -212,6 +214,7 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 4, 1],
@@ -235,8 +238,7 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape

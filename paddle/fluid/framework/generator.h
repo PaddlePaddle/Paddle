@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <stdint.h>
+
 #include <atomic>
 #include <deque>
 #include <iostream>  // temp for debug
@@ -59,7 +60,6 @@ struct Generator : public phi::Generator {
     this->engine_ = engine;
     VLOG(4) << "initial seed: " << this->state_.current_seed
             << ", cpu engine: " << &this->state_.cpu_engine;
-    this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
   Generator(uint64_t seed, uint64_t device_id) {
     std::seed_seq seq({seed});
@@ -71,7 +71,6 @@ struct Generator : public phi::Generator {
     this->engine_ = engine;
     VLOG(4) << "initial seed: " << this->state_.current_seed
             << ", cpu engine: " << &this->state_.cpu_engine;
-    this->is_init_py_ = false;  // TODO(zhiqiu): remove it in future
   }
 
   Generator(const Generator& other) = delete;
@@ -95,31 +94,20 @@ struct Generator : public phi::Generator {
 
   std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
 
-  void SetIsInitPy(bool);
-  bool GetIsInitPy() const;
   uint64_t get_device_id() { return this->state_.device; }
 
  private:
   phi::Generator::GeneratorState state_;
   std::shared_ptr<std::mt19937_64> engine_;
   mutable std::mutex mu_;
-
-  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
-  // old seed, and it should be removed after all random-related operators
-  // and unittests upgrades to use generator.
-  bool is_init_py_ = false;
 };
 
 // The DefaultCPUGenerator is used in manual_seed()
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
-// If op seed is set or global is not set, the OpDefaultCPUEngine is used.
-std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
+const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
-
-const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
-    int64_t device_id = -1);
 
 const std::shared_ptr<Generator>& SetRandomSeedGenerator(
     const std::string& name, uint64_t seed);

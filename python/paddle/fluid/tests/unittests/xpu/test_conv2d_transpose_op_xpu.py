@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -48,11 +49,12 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     # update pad and dilation
     def _get_padding_with_SAME(input_shape, kernel_size, kernel_stride):
         padding = []
-        for input_size, filter_size, stride_size in zip(
-                input_shape, kernel_size, kernel_stride):
+        for input_size, filter_size, stride_size in zip(input_shape,
+                                                        kernel_size,
+                                                        kernel_stride):
             out_size = int((input_size + stride_size - 1) / stride_size)
-            pad_sum = np.max((
-                (out_size - 1) * stride_size + filter_size - input_size, 0))
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0))
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -86,8 +88,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     if 'output_padding' in attrs:
         out_pad_h = attrs['output_padding'][0]
         out_pad_w = attrs['output_padding'][1]
-    out = np.zeros(
-        (in_n, out_c, out_h + out_pad_h, out_w + out_pad_w), dtype=input_.dtype)
+    out = np.zeros((in_n, out_c, out_h + out_pad_h, out_w + out_pad_w),
+                   dtype=input_.dtype)
 
     for n in range(in_n):
         for i in range(in_h):
@@ -105,17 +107,18 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
                             axis=0)
                         i1, i2 = i * stride[0], i * stride[0] + d_bolck_h
                         j1, j2 = j * stride[1], j * stride[1] + d_bolck_w
-                        out[n, g * f_out_c + k, i1:i2:dilations[0], j1:j2:
-                            dilations[1]] += tmp_out
+                        out[n, g * f_out_c + k, i1:i2:dilations[0],
+                            j1:j2:dilations[1]] += tmp_out
 
-    out = out[:, :, pad_h_0:out_h - pad_h_1 + out_pad_h, pad_w_0:out_w - pad_w_1
-              + out_pad_w]
+    out = out[:, :, pad_h_0:out_h - pad_h_1 + out_pad_h,
+              pad_w_0:out_w - pad_w_1 + out_pad_w]
     if attrs['data_format'] == 'NHWC':
         out = np.transpose(out, [0, 2, 3, 1])
     return out
 
 
 class TestConv2DTransposeOp(XPUOpTest):
+
     def setUp(self):
         # init as conv transpose
         self.dtype = np.float32
@@ -169,24 +172,26 @@ class TestConv2DTransposeOp(XPUOpTest):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(
-                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
+                self.check_grad_with_place(place, ['Filter'],
+                                           'Output',
+                                           no_grad_set=set(['Input']))
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(
-                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
+                self.check_grad_with_place(place, ['Input'],
+                                           'Output',
+                                           no_grad_set=set(['Filter']))
 
     def test_check_grad(self):
         if self.need_check_grad:
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(place,
-                                           set(['Input', 'Filter']), 'Output')
+                self.check_grad_with_place(place, set(['Input', 'Filter']),
+                                           'Output')
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -202,6 +207,7 @@ class TestConv2DTransposeOp(XPUOpTest):
 
 
 class TestWithSymmetricPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -213,6 +219,7 @@ class TestWithSymmetricPad(TestConv2DTransposeOp):
 
 
 class TestWithAsymmetricPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 0, 1, 2]
         self.stride = [1, 1]
@@ -224,6 +231,7 @@ class TestWithAsymmetricPad(TestConv2DTransposeOp):
 
 
 class TestWithSAMEPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.stride = [2, 1]
         self.dilations = [1, 2]
@@ -235,6 +243,7 @@ class TestWithSAMEPad(TestConv2DTransposeOp):
 
 
 class TestWithVALIDPad(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.stride = [1, 1]
         self.dilations = [1, 1]
@@ -246,6 +255,7 @@ class TestWithVALIDPad(TestConv2DTransposeOp):
 
 
 class TestWithGroups(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -257,6 +267,7 @@ class TestWithGroups(TestConv2DTransposeOp):
 
 
 class TestWithStride(TestConv2DTransposeOp):
+
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]

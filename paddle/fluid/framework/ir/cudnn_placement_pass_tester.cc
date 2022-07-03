@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/cudnn_placement_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/cudnn_placement_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -30,12 +30,14 @@ class PlacementPassTest {
       auto& all_kernels = OperatorWithKernel::AllOpKernels();
 
       platform::CUDAPlace place = platform::CUDAPlace(0);
-      OpKernelType plain_kernel_type =
-          OpKernelType(proto::VarType::FP32, place, DataLayout::kAnyLayout,
-                       LibraryType::kPlain);
-      OpKernelType cudnn_kernel_type =
-          OpKernelType(proto::VarType::FP32, place, DataLayout::kAnyLayout,
-                       LibraryType::kCUDNN);
+      OpKernelType plain_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                    place,
+                                                    DataLayout::kAnyLayout,
+                                                    LibraryType::kPlain);
+      OpKernelType cudnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                    place,
+                                                    DataLayout::kAnyLayout,
+                                                    LibraryType::kCUDNN);
 
       auto fake_kernel_func = [](const ExecutionContext&) -> void {
         static int num_calls = 0;

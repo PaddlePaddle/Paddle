@@ -20,11 +20,13 @@ from paddle.fluid.tests.unittests.test_gaussian_random_op import TestGaussianRan
 
 
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
+
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.use_mkldnn = True

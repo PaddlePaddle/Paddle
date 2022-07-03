@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
@@ -45,7 +45,7 @@ using Dims4D = phi::funcs::sparse::Dims4D;
  * output: the outputs
  * index_size: the size of indices
  * slice_size: slice size corresponding to each index, here is the channel size
-**/
+ **/
 template <typename T, typename IndexT = int>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -115,7 +115,7 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
  * out_dims: indicates the output dims
  * out_indices: the indices of output, out_indices = IndexToPoint(unique_keys)
  * rulebook_out_indexs: the output index in rulebook
-**/
+ **/
 template <typename T>
 __global__ void UpdateIndexKernel(const T* unique_keys,
                                   const int* unique_values,
@@ -198,7 +198,7 @@ __global__ void UpdateOutIndexAndCounterAfterLowerBound(
  * rulebook: the rulebook to save the kernel index, input index and output index
  * counter: save the number of times each location in the kernel participates in
  *the caculation
-**/
+ **/
 template <typename T>
 __global__ void ProductRuleBookKernel(const T* x_indices,
                                       const Dims4D x_dims,
@@ -421,8 +421,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr,
                                 rulebook_ptr + 3 * rulebook_len,
                                 -1);
-    phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-        rulebook_ptr, last, bound_ptr);
+    phi::funcs::sparse::DistanceKernel<IntT>
+        <<<1, 1, 0, dev_ctx.stream()>>>(rulebook_ptr, last, bound_ptr);
     phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
                                        bound_ptr,
                                        sizeof(IntT),
@@ -525,18 +525,18 @@ int ProductRuleBook(const Context& dev_ctx,
 
     config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
-    UpdateIndexKernel<IntT><<<config.block_per_grid.x,
-                              config.thread_per_block.x,
-                              0,
-                              dev_ctx.stream()>>>(
-        unique_key_ptr,
-        unique_value_ptr,
-        out_index_ptr,
-        out_non_zero_num,
-        rulebook_len,
-        d_out_dims,
-        out_indices_ptr,
-        rulebook_ptr + 2 * rulebook_len);
+    UpdateIndexKernel<IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(unique_key_ptr,
+                               unique_value_ptr,
+                               out_index_ptr,
+                               out_non_zero_num,
+                               rulebook_len,
+                               d_out_dims,
+                               out_indices_ptr,
+                               rulebook_ptr + 2 * rulebook_len);
     out->SetMember(out_indices, out_values, out_dims, true);
   } else {
     DenseTensor out_indices =

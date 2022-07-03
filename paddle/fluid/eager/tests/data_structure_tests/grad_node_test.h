@@ -14,7 +14,6 @@
 #pragma once
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -31,9 +30,12 @@ class GradTestNode : public egr::GradNodeBase {
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
   std::string name() override { return "GradTestNode"; }
-  std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      std::vector<std::vector<paddle::experimental::Tensor>>& grads,  // NOLINT
-      bool create_graph = false) override {
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override {
     val_ = std::dynamic_pointer_cast<phi::DenseTensor>(grads[0][0].impl())
                ->data<float>()[0];
     phi::DenseTensorMeta meta =
@@ -46,7 +48,9 @@ class GradTestNode : public egr::GradNodeBase {
     auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     paddle::experimental::Tensor et1(dt);
-    std::vector<std::vector<paddle::experimental::Tensor>> res = {{et1}};
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        res = {{et1}};
     return res;
   }
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }

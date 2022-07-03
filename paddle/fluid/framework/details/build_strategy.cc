@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
@@ -205,7 +206,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     context->endpoints_ = strategy_.trainers_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
     PADDLE_ENFORCE_GE(
-        strategy_.trainer_id_, 0,
+        strategy_.trainer_id_,
+        0,
         platform::errors::InvalidArgument(
             "The trainer_id_ of strategy_ must be greater than or equal to 0, "
             "but received strategy_.trainer_id_ = %d.",
@@ -293,7 +295,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                  "FLAGS_use_mkldnn=false.";
     }
 #else
-    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn, true,
+    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn,
+                      true,
                       platform::errors::PreconditionNotMet(
                           "FLAGS_use_mkldnn has been set to True, but "
                           "PaddlePaddle is compiled without MKLDNN. "
@@ -338,7 +341,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   VLOG(1) << "apply all passes";
   if (FLAGS_convert_all_blocks) {
     PADDLE_ENFORCE_EQ(
-        graph->IsMainGraph(), true,
+        graph->IsMainGraph(),
+        true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
   }
   // Create a default one if not finalized by user.
@@ -391,7 +395,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                        false,
                         platform::errors::Unimplemented(
                             "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,
@@ -418,7 +423,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                        false,
                         platform::errors::Unimplemented(
                             "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,

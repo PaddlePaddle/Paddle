@@ -27,30 +27,30 @@ limitations under the License. */
 namespace phi {
 
 // tuple(input_names, attr_names, output_names)
-using KernelArgsTuple = std::tuple<paddle::SmallVector<const char*>,
-                                   paddle::SmallVector<const char*>,
-                                   paddle::SmallVector<const char*>>;
+using KernelArgsTuple = std::tuple<paddle::small_vector<const char*>,
+                                   paddle::small_vector<const char*>,
+                                   paddle::small_vector<const char*>>;
 
 struct KernelSignature {
   const char* name;
-  paddle::SmallVector<const char*> input_names;
-  paddle::SmallVector<const char*> attr_names;
-  paddle::SmallVector<const char*> output_names;
+  paddle::small_vector<const char*> input_names;
+  paddle::small_vector<const char*> attr_names;
+  paddle::small_vector<const char*> output_names;
 
   KernelSignature() = default;
 
   KernelSignature(const char* kernel_name,
-                  paddle::SmallVector<const char*>&& inputs,
-                  paddle::SmallVector<const char*>&& attrs,
-                  paddle::SmallVector<const char*>&& outputs)
+                  paddle::small_vector<const char*>&& inputs,
+                  paddle::small_vector<const char*>&& attrs,
+                  paddle::small_vector<const char*>&& outputs)
       : name(kernel_name),
         input_names(std::move(inputs)),
         attr_names(std::move(attrs)),
         output_names(std::move(outputs)) {}
   KernelSignature(const char* kernel_name,
-                  const paddle::SmallVector<const char*>& inputs,
-                  const paddle::SmallVector<const char*>& attrs,
-                  const paddle::SmallVector<const char*>& outputs)
+                  const paddle::small_vector<const char*>& inputs,
+                  const paddle::small_vector<const char*>& attrs,
+                  const paddle::small_vector<const char*>& outputs)
       : name(kernel_name),
         input_names(inputs),
         attr_names(attrs),
@@ -58,11 +58,31 @@ struct KernelSignature {
 
   // TODO(chenweihang): add assign constructor to solve windows compile
   // problem, remove it later
+  KernelSignature(const KernelSignature& other)
+      : name(other.name),
+        input_names(other.input_names),
+        attr_names(other.attr_names),
+        output_names(other.output_names) {}
+
+  KernelSignature(KernelSignature&& other) noexcept
+      : name(other.name),
+        input_names(std::move(other.input_names)),
+        attr_names(std::move(other.attr_names)),
+        output_names(std::move(other.output_names)) {}
+
   KernelSignature& operator=(const KernelSignature& other) {
     name = other.name;
     input_names = other.input_names;
     attr_names = other.attr_names;
     output_names = other.output_names;
+    return *this;
+  }
+
+  KernelSignature& operator=(KernelSignature&& other) noexcept {
+    name = other.name;
+    input_names = std::move(other.input_names);
+    attr_names = std::move(other.attr_names);
+    output_names = std::move(other.output_names);
     return *this;
   }
 };
@@ -79,13 +99,14 @@ class ArgumentMappingContext {
   virtual bool HasAttr(const std::string& name) const = 0;
 
   // now we can't use Attribute here, it will cause phi relay on
-  // boost::variant and BlockDesc
+  // paddle::variant and BlockDesc
   virtual paddle::any Attr(const std::string& name) const = 0;
 
   virtual size_t InputSize(const std::string& name) const = 0;
   virtual size_t OutputSize(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorInput(const std::string& name) const = 0;
+  virtual bool IsDenseTensorInputs(const std::string& name) const = 0;
   virtual bool IsSelectedRowsInput(const std::string& name) const = 0;
   // For compatibility with LoDTensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;

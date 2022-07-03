@@ -27,11 +27,10 @@
 #include <curand_kernel.h>
 #endif
 
-#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
 
 namespace phi {
 
@@ -175,21 +174,19 @@ void SampleNeighbors(const Context& dev_ctx,
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
-  SampleKernel<T,
-               WARP_SIZE,
-               BLOCK_WARPS,
-               TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      0,
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      eids,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_eids),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      return_eids);
+  SampleKernel<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          0,
+          sample_size,
+          bs,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          return_eids);
 }
 
 template <typename T, int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
@@ -327,27 +324,27 @@ void FisherYatesSampleNeighbors(const Context& dev_ctx,
   const dim3 block(WARP_SIZE, BLOCK_WARPS);
   const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
 
-  FisherYatesSampleKernel<T,
-                          WARP_SIZE,
-                          BLOCK_WARPS,
-                          TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      0, sample_size, bs, thrust::raw_pointer_cast(input), perm_data, col_ptr);
+  FisherYatesSampleKernel<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(0,
+                                             sample_size,
+                                             bs,
+                                             thrust::raw_pointer_cast(input),
+                                             perm_data,
+                                             col_ptr);
 
-  GatherEdge<T,
-             WARP_SIZE,
-             BLOCK_WARPS,
-             TILE_SIZE><<<grid, block, 0, dev_ctx.stream()>>>(
-      sample_size,
-      bs,
-      thrust::raw_pointer_cast(input),
-      row,
-      col_ptr,
-      eids,
-      thrust::raw_pointer_cast(output),
-      thrust::raw_pointer_cast(output_eids),
-      thrust::raw_pointer_cast(output_ptr.data()),
-      perm_data,
-      return_eids);
+  GatherEdge<T, WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+      <<<grid, block, 0, dev_ctx.stream()>>>(
+          sample_size,
+          bs,
+          thrust::raw_pointer_cast(input),
+          row,
+          col_ptr,
+          eids,
+          thrust::raw_pointer_cast(output),
+          thrust::raw_pointer_cast(output_eids),
+          thrust::raw_pointer_cast(output_ptr.data()),
+          perm_data,
+          return_eids);
 }
 
 template <typename T, typename Context>
@@ -356,8 +353,8 @@ void GraphSampleNeighborsKernel(
     const DenseTensor& row,
     const DenseTensor& col_ptr,
     const DenseTensor& x,
-    paddle::optional<const DenseTensor&> eids,
-    paddle::optional<const DenseTensor&> perm_buffer,
+    const paddle::optional<DenseTensor>& eids,
+    const paddle::optional<DenseTensor>& perm_buffer,
     int sample_size,
     bool return_eids,
     bool flag_perm_buffer,

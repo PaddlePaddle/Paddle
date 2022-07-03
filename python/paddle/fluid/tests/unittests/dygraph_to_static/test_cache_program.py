@@ -28,6 +28,7 @@ from test_fetch_feed import Pool2D, Linear
 
 
 class TestCacheProgram(unittest.TestCase):
+
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Pool2D
@@ -55,12 +56,14 @@ class TestCacheProgram(unittest.TestCase):
                         cur_out, (tuple, list)) else cur_out.numpy()
                     self.assertTrue(
                         np.allclose(prev_out_numpy, cur_out_numpy),
-                        msg='Output in previous batch is {}\n Output in current batch is \n{}'
+                        msg=
+                        'Output in previous batch is {}\n Output in current batch is \n{}'
                         .format(prev_out_numpy, cur_out_numpy))
                     self.assertEqual(prev_ops, cur_ops)
 
 
 class TestCacheProgram2(TestCacheProgram):
+
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Linear
@@ -68,6 +71,7 @@ class TestCacheProgram2(TestCacheProgram):
 
 
 class TestCacheProgramWithOptimizer(unittest.TestCase):
+
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')
@@ -102,10 +106,9 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
-        self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
-            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
-                                                            static_loss))
+        self.assertTrue(np.allclose(dygraph_loss, static_loss),
+                        msg='dygraph is {}\n static_res is \n{}'.format(
+                            dygraph_loss, static_loss))
 
 
 def simple_func(x):
@@ -115,6 +118,7 @@ def simple_func(x):
 
 
 class TestConvertWithCache(unittest.TestCase):
+
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -145,6 +149,7 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(unittest.TestCase):
+
     def test_output(self):
         with fluid.dygraph.guard():
             ret = sum_even_until_limit(80, 10)

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -108,17 +110,17 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out, rtm_pattern);
     ir::Node *transpose_xshape{nullptr};
     if (with_transpose_xshape) {
-      GET_IR_NODE_FROM_SUBGRAPH(transpose_xshape1, transpose_xshape,
-                                rtm_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(
+          transpose_xshape1, transpose_xshape, rtm_pattern);
       transpose_xshape = transpose_xshape1;
     }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, rtm_pattern);
 
     auto reshape_shape =
-        boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
+        paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
-        boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
+        paddle::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
 
     OpDesc *matmul_desc = matmul_op->Op();
     std::string input_var_name = transpose_out->Name();

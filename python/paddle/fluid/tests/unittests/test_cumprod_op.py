@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,6 +61,7 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
 
 # test function.
 class TestCumprod(OpTest):
+
     def init_params(self):
         self.shape = (2, 3, 4, 5)
         self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
@@ -122,34 +123,37 @@ class TestCumprod(OpTest):
                 if self.dtype == np.float64:
                     self.check_grad(['X'], 'Out', check_eager=True)
                 else:
-                    self.check_grad(
-                        ['X'],
-                        'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
-                        check_eager=True)
+                    self.check_grad(['X'],
+                                    'Out',
+                                    user_defined_grads=[self.grad_x],
+                                    user_defined_grad_outputs=[self.grad_out],
+                                    check_eager=True)
 
 
 # test float32 case.
 class TestCumprod_float32(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.float32
 
 
 # test complex64 case.
 class TestCumprod_complex64(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.complex64
 
 
 # test complex128 case.
 class TestCumprod_complex128(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.complex128
 
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
@@ -182,6 +186,7 @@ class TestCumprodAPI(unittest.TestCase):
 
     # test dynamic graph api.
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)

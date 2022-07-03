@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 
 import paddle
@@ -160,11 +161,13 @@ def nearest_neighbor_interp3d_np(X,
 
 
 class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'nearest_interp_v2'
         self.use_dynamic_create_class = False
 
     class TestNearestInterpOp(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
@@ -298,18 +301,21 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
     """
 
     class TestNearestNeighborInterpCase2(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
             self.out_w = 12
 
     class TestNearestNeighborInterpCase3(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [1, 1, 32, 64]
             self.out_h = 64
             self.out_w = 32
 
     class TestNearestNeighborInterpCase4(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [4, 1, 7, 8]
             self.out_h = 1
@@ -317,6 +323,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.out_size = np.array([2, 2]).astype("int32")
 
     class TestNearestNeighborInterpCase5(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
@@ -324,6 +331,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.out_size = np.array([11, 11]).astype("int32")
 
     class TestNearestNeighborInterpCase6(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [1, 1, 32, 64]
             self.out_h = 64
@@ -331,12 +339,14 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.out_size = np.array([65, 129]).astype("int32")
 
     class TestNearestNeighborInterpSame(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [2, 3, 32, 64]
             self.out_h = 32
             self.out_w = 64
 
     class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64
@@ -358,10 +368,12 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
     """
 
     class TestNearestInterpWithoutCorners(TestNearestInterpOp):
+
         def set_align_corners(self):
             self.align_corners = False
 
     class TestNearestNeighborInterpScale1(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 7, 5]
             self.out_h = 64
@@ -370,6 +382,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.out_size = np.array([66, 40]).astype("int32")
 
     class TestNearestNeighborInterpScale2(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 5, 7]
             self.out_h = 64
@@ -378,6 +391,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.out_size = np.array([66, 40]).astype("int32")
 
     class TestNearestNeighborInterpScale3(TestNearestInterpOp):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 7, 5]
             self.out_h = 64
@@ -400,6 +414,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
     """
 
     class TestNearestInterpOp_attr_tensor(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
@@ -458,9 +473,10 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 if isinstance(self.scale, list) and len(self.scale) == 1:
                     self.scale = [self.scale[0], self.scale[0]]
                 self.attrs['scale'] = self.scale
-            output_np = nearest_neighbor_interp_np(
-                input_np, out_h, out_w, 0, 0, self.out_size, self.actual_shape,
-                self.align_corners)
+            output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
+                                                   self.out_size,
+                                                   self.actual_shape,
+                                                   self.align_corners)
             self.outputs = {'Out': output_np}
 
         def init_dtype(self):
@@ -480,6 +496,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
 
     # out_size is a tensor list
     class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
+
         def init_test_case(self):
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
@@ -488,6 +505,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
 
     # out_size is a 1-D tensor
     class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64
@@ -497,6 +515,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
 
     # scale is a 1-D tensor
     class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
+
         def init_test_case(self):
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64

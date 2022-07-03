@@ -32,13 +32,14 @@ class StatRegistry {
     if (it == stat_map_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The STAT type \"%s\" for device %d has not been regeistered.",
-          stat_type.c_str(), dev_id));
+          stat_type.c_str(),
+          dev_id));
     }
     return it->second;
   }
 
   std::string GetStatKey(const std::string& stat_type, int dev_id) {
-    return "STAT_Device" + std::to_string(dev_id) + "_" + stat_type;
+    return stat_type + std::to_string(dev_id);
   }
 
   int64_t GetCurrentValue(const std::string& stat_type, int dev_id) {
@@ -47,6 +48,10 @@ class StatRegistry {
 
   int64_t GetPeakValue(const std::string& stat_type, int dev_id) {
     return GetStat(stat_type, dev_id)->GetPeakValue();
+  }
+
+  void Update(const std::string& stat_type, int dev_id, int64_t increment) {
+    GetStat(stat_type, dev_id)->Update(increment);
   }
 
   void Register(const std::string& stat_type, int dev_id, StatBase* stat) {
@@ -59,10 +64,6 @@ class StatRegistry {
     stat_map_.erase(GetStatKey(stat_type, dev_id));
   }
 
-  void Update(const std::string& stat_type, int dev_id, int64_t increment) {
-    stat_map_[GetStatKey(stat_type, dev_id)]->Update(increment);
-  }
-
  private:
   StatRegistry() = default;
 
@@ -72,43 +73,69 @@ class StatRegistry {
   SpinLock stat_map_lock_;
 };
 
-int64_t StatGetCurrentValue(const std::string& stat_type, int dev_id) {
-  return StatRegistry::GetInstance()->GetCurrentValue(stat_type, dev_id);
+int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetCurrentValue("Device" + stat_type,
+                                                      dev_id);
 }
 
-int64_t StatGetPeakValue(const std::string& stat_type, int dev_id) {
-  return StatRegistry::GetInstance()->GetPeakValue(stat_type, dev_id);
+int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetPeakValue("Device" + stat_type,
+                                                   dev_id);
 }
 
-void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment) {
-  StatRegistry::GetInstance()->Update(stat_type, dev_id, increment);
+void DeviceMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
+                            int64_t increment) {
+  StatRegistry::GetInstance()->Update("Device" + stat_type, dev_id, increment);
 }
 
-#define MEMORY_STAT_REGISTER_WITH_ID(item, id) \
-  StatRegistry::GetInstance()->Register(       \
-      #item, id, Stat<ThreadLocalStatDevice##id##item>::GetInstance());
+int64_t HostMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetCurrentValue("Host" + stat_type,
+                                                      dev_id);
+}
 
-#define MEMORY_STAT_REGISTER(item)        \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 0);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 1);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 2);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 3);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 4);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 5);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 6);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 7);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 8);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 9);  \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 10); \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 11); \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 12); \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 13); \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 14); \
-  MEMORY_STAT_REGISTER_WITH_ID(item, 15)
+int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id) {
+  return StatRegistry::GetInstance()->GetPeakValue("Host" + stat_type, dev_id);
+}
+
+void HostMemoryStatUpdate(const std::string& stat_type,
+                          int dev_id,
+                          int64_t increment) {
+  StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
+}
+
+#define DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, id) \
+  StatRegistry::GetInstance()->Register(              \
+      "Device" #item, id, Stat<DeviceMemoryStat##item##id>::GetInstance());
+
+#define DEVICE_MEMORY_STAT_REGISTER(item)        \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 0);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 1);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 2);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 3);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 4);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 5);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 6);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 7);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 8);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 9);  \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 10); \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 11); \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 12); \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 13); \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 14); \
+  DEVICE_MEMORY_STAT_REGISTER_WITH_ID(item, 15)
+
+#define HOST_MEMORY_STAT_REGISTER(item)  \
+  StatRegistry::GetInstance()->Register( \
+      "Host" #item, 0, Stat<HostMemoryStat##item##0>::GetInstance());
 
 int RegisterAllStats() {
-  MEMORY_STAT_REGISTER(Allocated);
-  MEMORY_STAT_REGISTER(Reserved);
+  DEVICE_MEMORY_STAT_REGISTER(Allocated);
+  DEVICE_MEMORY_STAT_REGISTER(Reserved);
+
+  HOST_MEMORY_STAT_REGISTER(Allocated);
+  HOST_MEMORY_STAT_REGISTER(Reserved);
   return 0;
 }
 

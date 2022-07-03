@@ -28,6 +28,7 @@ from paddle.fluid.backward import append_backward
 
 
 class PassTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         self.main_program = fluid.Program()
@@ -167,7 +168,7 @@ class PassTest(unittest.TestCase):
 
     def _check_fused_ops(self, program):
         '''
-        Check the number of specified fused op is equal to the the expected
+        Check the number of specified fused op is equal to the expected
         number.
         '''
         if self.fused_op_type is None or self.num_fused_ops < 0:
@@ -184,8 +185,9 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.num_fused_ops == acctual_num_fused_ops,
             "Checking of the number of fused operator < {} > failed. "
-            "Expected: {}, Received: {}".format(
-                self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops))
+            "Expected: {}, Received: {}".format(self.fused_op_type,
+                                                self.num_fused_ops,
+                                                acctual_num_fused_ops))
 
     def check_program(self, program=None):
         '''

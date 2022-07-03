@@ -22,7 +22,9 @@ import paddle.distributed.fleet as fleet
 
 
 class MyDataset(fleet.MultiSlotDataGenerator):
+
     def generate_sample(self, line):
+
         def data_iter():
             elements = line.strip().split()[0:]
             output = [("show", [int(elements[0])]),

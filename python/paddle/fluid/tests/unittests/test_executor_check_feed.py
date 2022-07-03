@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
+
     def net(self):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
@@ -50,8 +51,10 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
-                    exe.run(feed={'x': train_data,
-                                  'lr': a},
+                    exe.run(feed={
+                        'x': train_data,
+                        'lr': a
+                    },
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)
@@ -73,8 +76,10 @@ class TestExecutor(unittest.TestCase):
                 a = 0
                 with self.assertRaises(ValueError):
                     exe.run(compiled_prog,
-                            feed={'x': train_data,
-                                  'lr': a},
+                            feed={
+                                'x': train_data,
+                                'lr': a
+                            },
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)

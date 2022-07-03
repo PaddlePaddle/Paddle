@@ -35,10 +35,14 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T, typename IndexT>
-__global__ void MaskLabelByIndex(T* predicted_logits, const T* logit,
-                                 const IndexT* label, const int start_index,
-                                 const int end_index, const int64_t N,
-                                 const int64_t D, const int nranks) {
+__global__ void MaskLabelByIndex(T* predicted_logits,
+                                 const T* logit,
+                                 const IndexT* label,
+                                 const int start_index,
+                                 const int end_index,
+                                 const int64_t N,
+                                 const int64_t D,
+                                 const int nranks) {
   CUDA_KERNEL_LOOP(i, N) {
     auto real_label = label[i];
     PADDLE_ENFORCE((real_label < D * nranks) && (real_label >= 0),
@@ -46,7 +50,8 @@ __global__ void MaskLabelByIndex(T* predicted_logits, const T* logit,
                    "please check whether the value of label and "
                    "input meet the class number. It should "
                    "be less than [%d], but received [%d]",
-                   D * nranks, real_label);
+                   D * nranks,
+                   real_label);
 
     if (real_label >= start_index && real_label < end_index) {
       predicted_logits[i] = logit[i * D + real_label - start_index];
@@ -55,10 +60,13 @@ __global__ void MaskLabelByIndex(T* predicted_logits, const T* logit,
 }
 
 template <typename T, typename IndexT>
-__global__ void MaskLabelByIndexGrad(T* logits_grad, const T* loss_grad,
+__global__ void MaskLabelByIndexGrad(T* logits_grad,
+                                     const T* loss_grad,
                                      const IndexT* labels,
-                                     const int start_index, const int end_index,
-                                     const int64_t N, const int64_t D) {
+                                     const int start_index,
+                                     const int end_index,
+                                     const int64_t N,
+                                     const int64_t D) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
     auto col = i % D;
@@ -137,10 +145,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     eigen_logits_max.device(*dev_ctx.eigen_device()) =
         eigen_logits.maximum(along_axis);
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        logits_max_buff, logits_max_buff, logits_max.numel(),
+        logits_max_buff,
+        logits_max_buff,
+        logits_max.numel(),
         platform::ToNCCLDataType(
             framework::TransToProtoVarType(logits_max.dtype())),
-        ncclMax, comm->comm(), stream));
+        ncclMax,
+        comm->comm(),
+        stream));
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -168,21 +180,37 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     if (label_type == framework::proto::VarType::INT32) {
-      MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          predicted_logits.data<T>(), softmax_2d.data<T>(),
-          labels->data<int32_t>(), start_index, end_index, N, D, nranks);
+      MaskLabelByIndex<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(predicted_logits.data<T>(),
+                                                     softmax_2d.data<T>(),
+                                                     labels->data<int32_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D,
+                                                     nranks);
     } else if (label_type == framework::proto::VarType::INT64) {
-      MaskLabelByIndex<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          predicted_logits.data<T>(), softmax_2d.data<T>(),
-          labels->data<int64_t>(), start_index, end_index, N, D, nranks);
+      MaskLabelByIndex<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(predicted_logits.data<T>(),
+                                                     softmax_2d.data<T>(),
+                                                     labels->data<int64_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D,
+                                                     nranks);
     }
 
     void* predict_logits_buff = predicted_logits.mutable_data<T>(place);
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        predict_logits_buff, predict_logits_buff, predicted_logits.numel(),
+        predict_logits_buff,
+        predict_logits_buff,
+        predicted_logits.numel(),
         platform::ToNCCLDataType(
             framework::TransToProtoVarType(predicted_logits.dtype())),
-        ncclSum, comm->comm(), stream));
+        ncclSum,
+        comm->comm(),
+        stream));
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -198,10 +226,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
         eigen_softmax.sum(along_axis);
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sum_exp_logits_buff, sum_exp_logits_buff, sum_exp_logits.numel(),
+        sum_exp_logits_buff,
+        sum_exp_logits_buff,
+        sum_exp_logits.numel(),
         platform::ToNCCLDataType(
             framework::TransToProtoVarType(sum_exp_logits.dtype())),
-        ncclSum, comm->comm(), stream));
+        ncclSum,
+        comm->comm(),
+        stream));
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
@@ -296,13 +328,25 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     if (label_type == framework::proto::VarType::INT32) {
-      MaskLabelByIndex<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          predicted_logits.data<T>(), softmax_2d.data<T>(),
-          labels->data<int32_t>(), start_index, end_index, N, D, nranks);
+      MaskLabelByIndex<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(predicted_logits.data<T>(),
+                                                     softmax_2d.data<T>(),
+                                                     labels->data<int32_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D,
+                                                     nranks);
     } else if (label_type == framework::proto::VarType::INT64) {
-      MaskLabelByIndex<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          predicted_logits.data<T>(), softmax_2d.data<T>(),
-          labels->data<int64_t>(), start_index, end_index, N, D, nranks);
+      MaskLabelByIndex<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(predicted_logits.data<T>(),
+                                                     softmax_2d.data<T>(),
+                                                     labels->data<int64_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D,
+                                                     nranks);
     }
 
     in_out.clear();
@@ -355,8 +399,8 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.template device_context<platform::CUDADeviceContext>();
 
     if (logit_grad != softmax) {
-      framework::TensorCopy(*softmax, context.GetPlace(),
-                            context.device_context(), logit_grad);
+      framework::TensorCopy(
+          *softmax, context.GetPlace(), context.device_context(), logit_grad);
     }
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
@@ -373,15 +417,23 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const int end_index = start_index + D;
 
     if (label_type == framework::proto::VarType::INT32) {
-      MaskLabelByIndexGrad<T,
-                           int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(),
-          labels->data<int32_t>(), start_index, end_index, N, D);
+      MaskLabelByIndexGrad<T, int32_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
+                                                     loss_grad->data<T>(),
+                                                     labels->data<int32_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D);
     } else if (label_type == framework::proto::VarType::INT64) {
-      MaskLabelByIndexGrad<T,
-                           int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          logit_grad_2d.data<T>(), loss_grad->data<T>(),
-          labels->data<int64_t>(), start_index, end_index, N, D);
+      MaskLabelByIndexGrad<T, int64_t>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
+                                                     loss_grad->data<T>(),
+                                                     labels->data<int64_t>(),
+                                                     start_index,
+                                                     end_index,
+                                                     N,
+                                                     D);
     }
   }
 };

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -51,8 +52,12 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
     }
 
     phi::funcs::PaddingFunctor<DeviceContext, T>(
-        rank, context.template device_context<DeviceContext>(), pads, pad_value,
-        *in_y, out);
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        pad_value,
+        *in_y,
+        out);
   }
 };
 
@@ -84,7 +89,10 @@ class PadConstantLikeGradKernel : public framework::OpKernel<T> {
     }
 
     phi::funcs::PaddingGradFunctor<DeviceContext, T>(
-        rank, context.template device_context<DeviceContext>(), pads, *in_dout,
+        rank,
+        context.template device_context<DeviceContext>(),
+        pads,
+        *in_dout,
         d_y);
   }
 };

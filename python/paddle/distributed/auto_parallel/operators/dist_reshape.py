@@ -31,6 +31,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedReshape2, self).__init__(op_type)
 
@@ -39,6 +40,7 @@ register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
 
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedReshapeImpl0, self).__init__(name)
         self._forward_implemented = True
@@ -171,8 +173,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         for idx, axis in enumerate(dim_mapping):
             if axis >= 0:
                 if len(shape_list) > idx:
-                    shape_list[idx] = shape_list[idx] // process_mesh_shape[
-                        axis]
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
         new_op_desc = main_block.desc.append_op()
@@ -193,6 +195,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
 
 class DistributedReshapeImpl1(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedReshapeImpl1, self).__init__(name)
         self._forward_implemented = True
@@ -328,8 +331,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         for idx, axis in enumerate(dim_mapping):
             if axis >= 0:
                 if len(shape_list) > idx:
-                    shape_list[idx] = shape_list[idx] // process_mesh_shape[
-                        axis]
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
         new_op_desc = main_block.desc.append_op()
@@ -350,6 +353,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
 
 class DistributedReshapeImpl2(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedReshapeImpl2, self).__init__(name)
         self._forward_implemented = True
@@ -478,8 +482,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         for idx, axis in enumerate(out_dim_mapping):
             if axis >= 0:
                 if len(shape_list) > idx:
-                    shape_list[idx] = shape_list[idx] // process_mesh_shape[
-                        axis]
+                    shape_list[
+                        idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
         new_op_desc = main_block.desc.append_op()

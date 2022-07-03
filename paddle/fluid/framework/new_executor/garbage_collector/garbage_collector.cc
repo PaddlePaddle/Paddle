@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
+
 #include "paddle/fluid/framework/garbage_collector.h"
 
 namespace paddle {

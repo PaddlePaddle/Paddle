@@ -83,6 +83,7 @@ def build_dict(min_word_freq=50):
 
 
 def reader_creator(filename, word_idx, n, data_type):
+
     def reader():
         with tarfile.open(
                 paddle.dataset.common.download(

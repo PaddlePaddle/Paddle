@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 
 
 class TestVarConv2DOp(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -175,11 +176,14 @@ class TestVarConv2DOp(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False)
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.005,
+                        check_dygraph=False)
 
 
 class TestVarConv2DOpCase1(TestVarConv2DOp):
+
     def set_data(self):
         # set in_ch 1
         input_channel = 1
@@ -193,6 +197,7 @@ class TestVarConv2DOpCase1(TestVarConv2DOp):
 
 
 class TestVarConv2DOpCase2(TestVarConv2DOp):
+
     def set_data(self):
         # set out_ch 1
         input_channel = 2
@@ -206,6 +211,7 @@ class TestVarConv2DOpCase2(TestVarConv2DOp):
 
 
 class TestVarConv2DOpCase3(TestVarConv2DOp):
+
     def set_data(self):
         # set batch 1
         input_channel = 2
@@ -219,6 +225,7 @@ class TestVarConv2DOpCase3(TestVarConv2DOp):
 
 
 class TestVarConv2DOpCase4(TestVarConv2DOp):
+
     def set_data(self):
         # set filter size very large
         input_channel = 3
@@ -232,6 +239,7 @@ class TestVarConv2DOpCase4(TestVarConv2DOp):
 
 
 class TestVarConv2DOpCase5(TestVarConv2DOp):
+
     def set_data(self):
         # set input very small
         input_channel = 50
@@ -245,9 +253,11 @@ class TestVarConv2DOpCase5(TestVarConv2DOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
+    reason=
+    "[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
 )
 class TestVarConv2DOpCase6(TestVarConv2DOp):
+
     def set_data(self):
         input_channel = 1
         output_channel = 3
@@ -260,6 +270,7 @@ class TestVarConv2DOpCase6(TestVarConv2DOp):
 
 
 class TestVarConv2DOpCase7(TestVarConv2DOp):
+
     def set_data(self):
         input_channel = 2
         output_channel = 3
@@ -272,20 +283,20 @@ class TestVarConv2DOpCase7(TestVarConv2DOp):
 
 
 class TestVarConv2DApi(unittest.TestCase):
+
     def test_api(self):
         import paddle.fluid as fluid
 
         x = fluid.layers.data(name='x', shape=[1], lod_level=1)
         row = fluid.layers.data(name='row', shape=[6], lod_level=1)
         col = fluid.layers.data(name='col', shape=[6], lod_level=1)
-        out = fluid.contrib.var_conv_2d(
-            input=x,
-            row=row,
-            col=col,
-            input_channel=3,
-            output_channel=5,
-            filter_size=[3, 3],
-            stride=1)
+        out = fluid.contrib.var_conv_2d(input=x,
+                                        row=row,
+                                        col=col,
+                                        input_channel=3,
+                                        output_channel=5,
+                                        filter_size=[3, 3],
+                                        stride=1)
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
@@ -297,12 +308,13 @@ class TestVarConv2DApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={'x': x_tensor,
-                  'row': row_tensor,
-                  'col': col_tensor},
-            fetch_list=[out],
-            return_numpy=False)
+        ret = exe.run(feed={
+            'x': x_tensor,
+            'row': row_tensor,
+            'col': col_tensor
+        },
+                      fetch_list=[out],
+                      return_numpy=False)
 
 
 if __name__ == '__main__':

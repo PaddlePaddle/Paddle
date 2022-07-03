@@ -29,12 +29,11 @@ def make_program_dp2():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         x.stop_gradient = False
-        auto.shard_tensor(
-            x,
-            dist_attr={
-                "process_mesh": auto.ProcessMesh([0, 1]),
-                "dims_mapping": [0, -1, -1]
-            })
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0, 1]),
+                              "dims_mapping": [0, -1, -1]
+                          })
         tmp_0 = paddle.reshape(x, shape=[0, 0, 4, 2])
         tmp_1 = paddle.reshape(tmp_0, shape=[0, 0, 8])
         tmp_2 = tmp_1.reshape((tmp_1.shape[0], tmp_1.shape[1], -1))
@@ -61,12 +60,12 @@ def parallelizer(program_func, rank):
 
 
 class TestDistReshape(unittest.TestCase):
+
     def test_dist_reshape_mp2(self):
 
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops
-            print_program_with_dist_attr(dist_main_prog, dist_context)
             for idx, op in enumerate(ops):
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_type == "reshape2"

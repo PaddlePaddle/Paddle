@@ -27,6 +27,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -42,6 +43,7 @@ class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
 
 
 class TestParallelDygraphSparseEmdeddingOverHeightSpawn(TestDistSpawnRunner):
+
     def test_sparse_embedding_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
             self.check_dist_result_with_spawn(

@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_fuse_pass.h"
+
 #include <paddle/fluid/string/pretty_log.h>
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -141,8 +144,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
 
     GraphSafeRemoveNodes(graph,
-                         {matmul_out, transpose_op, transpose_out, reshape_op,
-                          transpose_out_xshape, reshape_out_xshape});
+                         {matmul_out,
+                          transpose_op,
+                          transpose_out,
+                          reshape_op,
+                          transpose_out_xshape,
+                          reshape_out_xshape});
 
     IR_OP_VAR_LINK(matmul_op, reshape_out);
 

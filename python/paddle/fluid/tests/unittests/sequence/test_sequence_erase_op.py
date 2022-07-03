@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -37,6 +38,7 @@ def sequence_erase(in_seq, lod0, tokens):
 
 
 class TestSequenceEraseOpInt32(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
@@ -52,6 +54,7 @@ class TestSequenceEraseOpInt32(OpTest):
 
 
 class TestSequenceEraseOpInt32LoD2(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
@@ -67,6 +70,7 @@ class TestSequenceEraseOpInt32LoD2(OpTest):
 
 
 class TestSequenceEraseOpInt64(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
@@ -82,6 +86,7 @@ class TestSequenceEraseOpInt64(OpTest):
 
 
 class TestSequenceEraseOpInt64SeqLen0(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int64")
@@ -97,6 +102,7 @@ class TestSequenceEraseOpInt64SeqLen0(OpTest):
 
 
 class TestSequenceEraseOpEmpty(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_erase"
         in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")

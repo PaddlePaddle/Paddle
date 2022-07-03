@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
-#include "paddle/phi/kernels/impl/conv_transpose_kernel_impl.h"
 
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -21,6 +20,7 @@
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
+#include "paddle/phi/kernels/impl/conv_transpose_kernel_impl.h"
 
 namespace phi {
 

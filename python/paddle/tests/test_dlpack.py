@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 
 class TestDLPack(unittest.TestCase):
+
     def func_test_dlpack_dygraph(self):
         paddle.disable_static()
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
@@ -33,9 +34,8 @@ class TestDLPack(unittest.TestCase):
         else:
             self.assertTrue(isinstance(out_from_dlpack, paddle.Tensor))
         self.assertTrue(
-            np.array_equal(
-                np.array(out_from_dlpack), np.array([1, 2, 3, 4]).astype(
-                    'int')))
+            np.array_equal(np.array(out_from_dlpack),
+                           np.array([1, 2, 3, 4]).astype('int')))
 
     def test_dlpack_dygraph(self):
         with _test_eager_guard():
@@ -65,9 +65,8 @@ class TestDLPack(unittest.TestCase):
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
         self.assertTrue(isinstance(out_from_dlpack, fluid.core.Tensor))
         self.assertTrue(
-            np.array_equal(
-                np.array(out_from_dlpack),
-                np.array([[1], [2], [3], [4]]).astype('int')))
+            np.array_equal(np.array(out_from_dlpack),
+                           np.array([[1], [2], [3], [4]]).astype('int')))
 
         # when build with cuda
         if core.is_compiled_with_cuda():
@@ -78,9 +77,8 @@ class TestDLPack(unittest.TestCase):
             gout_from_dlpack = paddle.utils.dlpack.from_dlpack(gdlpack)
             self.assertTrue(isinstance(gout_from_dlpack, fluid.core.Tensor))
             self.assertTrue(
-                np.array_equal(
-                    np.array(gout_from_dlpack),
-                    np.array([[1], [2], [3], [4]]).astype('int')))
+                np.array_equal(np.array(gout_from_dlpack),
+                               np.array([[1], [2], [3], [4]]).astype('int')))
 
     def func_test_dlpack_dtype_conversion(self):
         paddle.disable_static()
@@ -120,6 +118,7 @@ class TestDLPack(unittest.TestCase):
 
 
 class TestRaiseError(unittest.TestCase):
+
     def func_test_from_dlpack_raise_type_error(self):
         self.assertRaises(TypeError, paddle.utils.dlpack.from_dlpack,
                           np.zeros(5))

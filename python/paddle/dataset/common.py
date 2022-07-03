@@ -64,9 +64,9 @@ def download(url, module_name, md5sum, save_name=None):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    filename = os.path.join(dirname,
-                            url.split('/')[-1]
-                            if save_name is None else save_name)
+    filename = os.path.join(
+        dirname,
+        url.split('/')[-1] if save_name is None else save_name)
 
     if os.path.exists(filename) and md5file(filename) == md5sum:
         return filename
@@ -79,8 +79,9 @@ def download(url, module_name, md5sum, save_name=None):
         if retry < retry_limit:
             retry += 1
         else:
-            raise RuntimeError("Cannot download {0} within retry limit {1}".
-                               format(url, retry_limit))
+            raise RuntimeError(
+                "Cannot download {0} within retry limit {1}".format(
+                    url, retry_limit))
         sys.stderr.write("Cache file %s not found, downloading %s \n" %
                          (filename, url))
         sys.stderr.write("Begin to download\n")
@@ -98,8 +99,8 @@ def download(url, module_name, md5sum, save_name=None):
                     total_iter = total_length / chunk_size + 1
                     log_interval = total_iter // 20 if total_iter > 20 else 1
                     log_index = 0
-                    bar = paddle.hapi.progressbar.ProgressBar(
-                        total_iter, name='item')
+                    bar = paddle.hapi.progressbar.ProgressBar(total_iter,
+                                                              name='item')
                     for data in r.iter_content(chunk_size=chunk_size):
                         f.write(data)
                         log_index += 1
@@ -121,9 +122,8 @@ def fetch_all():
     ]:
         if "fetch" in dir(
                 importlib.import_module("paddle.dataset.%s" % module_name)):
-            getattr(
-                importlib.import_module("paddle.dataset.%s" % module_name),
-                "fetch")()
+            getattr(importlib.import_module("paddle.dataset.%s" % module_name),
+                    "fetch")()
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -206,5 +206,5 @@ def _check_exists_and_download(path, url, md5, module_name, download=True):
     if download:
         return paddle.dataset.common.download(url, module_name, md5)
     else:
-        raise ValueError('{} not exists and auto download disabled'.format(
-            path))
+        raise ValueError(
+            '{} not exists and auto download disabled'.format(path))

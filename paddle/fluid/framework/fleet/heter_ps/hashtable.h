@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
+
 #include <limits>
 #include <memory>
 #include <vector>
@@ -36,14 +37,13 @@ limitations under the License. */
 #include "thrust/pair.h"
 #elif defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -51,11 +51,13 @@ namespace framework {
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType>
 class TableContainer
-    : public concurrent_unordered_map<KeyType, ValType,
+    : public concurrent_unordered_map<KeyType,
+                                      ValType,
                                       std::numeric_limits<KeyType>::max()> {
  public:
   TableContainer(size_t capacity)
-      : concurrent_unordered_map<KeyType, ValType,
+      : concurrent_unordered_map<KeyType,
+                                 ValType,
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
@@ -116,15 +118,23 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+  void insert(const KeyType* d_keys,
+              const ValType* d_vals,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool, size_t start_index,
+  void insert(const KeyType* d_keys,
+              size_t len,
+              char* pool,
+              size_t feature_value_size,
+              size_t start_index,
               StreamType stream);
 
   template <typename StreamType>
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
            StreamType stream);
 
   template <typename StreamType>
@@ -132,10 +142,8 @@ class HashTable {
 
   void show();
 
-#if defined(PADDLE_WITH_XPU_KP)
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
-#endif
 
   template <typename StreamType>
   void dump_to_cpu(int devid, StreamType stream);
@@ -143,20 +151,30 @@ class HashTable {
 #if defined(PADDLE_WITH_CUDA)
 
   template <typename GradType, typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
-              Sgd sgd, StreamType stream);
+  void update(const KeyType* d_keys,
+              const GradType* d_grads,
+              size_t len,
+              Sgd sgd,
+              StreamType stream);
 
   template <typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
+              Sgd sgd,
               StreamType stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const GradType* d_grads,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
               StreamType stream);
 
 #endif
@@ -178,9 +196,10 @@ class HashTable {
   TableContainer<KeyType, ValType>* container_;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
-  OptimizerConfig* xpu_optimizer_config_;
-  OptimizerConfig cpu_optimizer_config_;
 #endif
+  OptimizerConfig* device_optimizer_config_;
+  OptimizerConfig host_optimizer_config_;
+
   int BLOCK_SIZE_{256};
   float LOAD_FACTOR{0.75f};
   size_t capacity_;

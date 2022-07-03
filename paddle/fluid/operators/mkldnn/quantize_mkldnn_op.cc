@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "dnnl.hpp"
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/quantize_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -26,96 +27,92 @@ using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
-using framework::DataLayout;
 using dnnl::stream;
+using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 
 template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto scale_data = ctx.Attr<float>("Scale");
-    auto scale_shift = ctx.Attr<float>("Shift");
-    bool with_shift = scale_shift != 0.0f;
-    auto* output = ctx.Output<Tensor>("Output");
+    auto* x = ctx.Input<Tensor>("Input");
+    auto* out = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE_NE(
-        scale_data, 0.0f,
-        platform::errors::InvalidArgument("Quantization scale cannot be 0.0"));
-    PADDLE_ENFORCE_GE(scale_shift, 0,
-                      platform::errors::Unimplemented(
-                          "Quantization shift must be nonnegative."));
-    PADDLE_ENFORCE_LE(
-        scale_shift, 255,
-        platform::errors::Unimplemented(
-            "Quantization shift must be less than or equal to 255."));
+    const auto quantization_scale = ctx.Attr<float>("Scale");
+    const auto quantization_shift = ctx.Attr<float>("Shift");
+    const bool with_scale = quantization_scale != 1.0f;
+    const bool with_shift = quantization_shift != 0.0f;
+
+    PADDLE_ENFORCE_NE(quantization_scale,
+                      0.0f,
+                      platform::errors::InvalidArgument(
+                          "Quantization scale must be different than 0.0f"));
+    PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
+                   platform::errors::InvalidArgument(
+                       "Quantization shift must be lower or equal to ",
+                       "255 and greater or equal to 0, but got %f",
+                       quantization_shift));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& engine = dev_ctx.GetEngine();
 
-    std::vector<primitive> pipeline;
-    auto src_tz = phi::vectorize<int64_t>(input->dims());
-    auto dst_tz = phi::vectorize<int64_t>(output->dims());
+    auto x_tz = phi::vectorize<int64_t>(x->dims());
 
-    const T* input_data = input->data<T>();
+    const bool is_negative_input = ctx.Attr<bool>("is_negative_input");
+    const bool bfloat16 = ctx.Attr<bool>("bfloat16");
 
-    bool is_negative_input = ctx.Attr<bool>("is_negative_input");
-    bool bfloat16 = ctx.Attr<bool>("bfloat16");
+    dnnl::primitive_attr attrs;
+    static constexpr int32_t mask = 0;
 
-    // TODO(jczaja): Refactor with Acquire API
-    std::shared_ptr<dnnl::memory> src_memory;
-    std::shared_ptr<dnnl::memory> dst_memory;
-    std::shared_ptr<reorder> reorder_p;
-
-    std::string out_layout = ctx.Attr<std::string>("output_format");
-    MKLDNNMemoryFormat out_format =
-        platform::data_format_to_memory_format(out_layout);
-    dnnl::primitive_attr attri;
-    int mask = 0;
-    attri.set_output_scales(mask, {scale_data});
+    if (with_scale) {
+      attrs.set_output_scales(mask, {quantization_scale});
+    }
 
     if (with_shift) {
-      dnnl::post_ops post_operations;
-      post_operations.append_sum();
-      attri.set_post_ops(post_operations);
-      uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
-      // memset casts scale_shift to unsigned char (uint8_t) internally
-      std::memset(output_data, scale_shift, output->numel());
+      attrs.set_zero_points(
+          DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
-    auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
-                                          input->format());
-    src_memory = std::make_shared<dnnl::memory>(src_md, engine,
-                                                to_void_cast<T>(input_data));
+    framework::proto::VarType::Type x_paddle_dtype =
+        framework::TransToProtoVarType(x->dtype());
+    framework::proto::VarType::Type out_paddle_dtype;
 
-    std::shared_ptr<dnnl::memory::desc> dst_md;
     if (bfloat16) {
-      platform::SetDstMemoryQuantized<paddle::platform::bfloat16>(
-          ctx, output, dst_tz, engine, dst_md, dst_memory, out_format);
+      out_paddle_dtype = framework::proto::VarType::BF16;
     } else if (is_negative_input && !with_shift) {
-      platform::SetDstMemoryQuantized<int8_t>(ctx, output, dst_tz, engine,
-                                              dst_md, dst_memory, out_format);
+      out_paddle_dtype = framework::proto::VarType::INT8;
     } else {
-      platform::SetDstMemoryQuantized<uint8_t>(ctx, output, dst_tz, engine,
-                                               dst_md, dst_memory, out_format);
+      out_paddle_dtype = framework::proto::VarType::UINT8;
     }
-    auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(*src_memory, *dst_memory, attri));
-    reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
+
+    platform::ReorderMKLDNNHandler reorder_handler(
+        x_tz,
+        x_paddle_dtype,
+        framework::ToMKLDNNDataType(x_paddle_dtype),
+        out_paddle_dtype,
+        framework::ToMKLDNNDataType(out_paddle_dtype),
+        dev_ctx.GetEngine());
+
+    auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+    auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+        out, x->mem_desc(), dev_ctx.GetPlace());
+
+    auto reorder_p = reorder_handler.AcquireReorder(
+        reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    reorder_p->execute(astream, *src_memory, *dst_memory);
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(quantize,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

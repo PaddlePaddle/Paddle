@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,11 +17,13 @@ from paddle.distributed.launch import plugins
 from .node import Node
 from .status import Status
 from .args_envs import parse_args, fetch_envs, env_args_mapping
+import six
 
 import logging
 
 
 class Context(object):
+
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
@@ -38,6 +40,12 @@ class Context(object):
 
         if enable_plugin:
             self._enable_plugin()
+
+    def print(self):
+        self.logger.info("-----------  Configuration  ----------------------")
+        for arg, value in sorted(six.iteritems(vars(self.args))):
+            self.logger.info("%s: %s" % (arg, value))
+        self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):
         if self.args.legacy:
@@ -67,6 +75,10 @@ class Context(object):
 
     def get_envs(self):
         return self.envs.copy()
+
+    def set_envs(self, env={}):
+        env = {k: v for k, v in env.items() if isinstance(v, str)}
+        self.envs.update(env)
 
     def _enable_plugin(self):
         for pl in plugins.enabled_plugins:

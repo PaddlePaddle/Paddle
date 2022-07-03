@@ -20,7 +20,7 @@
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 
 DECLARE_int32(inner_op_parallelism);
@@ -36,8 +36,8 @@ void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& moment2,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
-                     paddle::optional<const DenseTensor&> master_param,
-                     paddle::optional<const DenseTensor&> skip_update,
+                     const paddle::optional<DenseTensor>& master_param,
+                     const paddle::optional<DenseTensor>& skip_update,
                      const Scalar& beta1,
                      const Scalar& beta2,
                      const Scalar& epsilon,

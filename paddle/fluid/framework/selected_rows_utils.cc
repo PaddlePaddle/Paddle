@@ -17,7 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void SerializeToStream(std::ostream& os, const phi::SelectedRows& selected_rows,
+void SerializeToStream(std::ostream& os,
+                       const phi::SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
@@ -57,13 +58,15 @@ void DeserializeFromStream(std::istream& os, phi::SelectedRows* selected_rows) {
   DeserializeFromStream(os, selected_rows, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows,
+void DeserializeFromStream(std::istream& is,
+                           phi::SelectedRows* selected_rows,
                            const platform::DeviceContext& dev_ctx) {
   {
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version;
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
-    PADDLE_ENFORCE_EQ(version, 0U,
+    PADDLE_ENFORCE_EQ(version,
+                      0U,
                       platform::errors::InvalidArgument(
                           "Only version 0 SelectedRows is supported."));
   }

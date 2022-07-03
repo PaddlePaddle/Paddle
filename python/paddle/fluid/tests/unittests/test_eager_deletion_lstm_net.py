@@ -32,8 +32,9 @@ def lstm_net(data,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr))
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
-    lstm_h, c = fluid.layers.dynamic_lstm(
-        input=fc0, size=hid_dim * 4, is_reverse=False)
+    lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
+                                          size=hid_dim * 4,
+                                          is_reverse=False)
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = fluid.layers.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
@@ -44,6 +45,7 @@ def lstm_net(data,
 
 
 class LSTMTest(TestBase):
+
     def setUp(self):
         self.net = lstm_net
 

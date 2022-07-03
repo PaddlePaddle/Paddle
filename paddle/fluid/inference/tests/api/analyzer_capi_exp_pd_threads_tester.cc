@@ -15,11 +15,13 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -69,7 +71,8 @@ void* run(void* thread_param) {
 void threads_run(int thread_num) {
   auto model_dir = FLAGS_infer_model;
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigSetModel(config, (model_dir + "/__model__").c_str(),
+  PD_ConfigSetModel(config,
+                    (model_dir + "/__model__").c_str(),
                     (model_dir + "/__params__").c_str());
   PD_Predictor* predictor = PD_PredictorCreate(config);
 

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/range_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/range_op.h"
 
 namespace paddle {
 namespace operators {
@@ -50,8 +50,10 @@ class XPURangeKernel : public framework::OpKernel<T> {
       out_cpu_data_ptr[i] = value;
       value += step;
     }
-    memory::Copy(context.GetPlace(), static_cast<void*>(out_data),
-                 platform::CPUPlace(), static_cast<void*>(out_cpu_data_ptr),
+    memory::Copy(context.GetPlace(),
+                 static_cast<void*>(out_data),
+                 platform::CPUPlace(),
+                 static_cast<void*>(out_cpu_data_ptr),
                  out->numel() * sizeof(T));
   }
 };
@@ -60,7 +62,9 @@ class XPURangeKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(range, ops::XPURangeKernel<int>,
-                       ops::XPURangeKernel<int64_t>, ops::XPURangeKernel<float>,
+REGISTER_OP_XPU_KERNEL(range,
+                       ops::XPURangeKernel<int>,
+                       ops::XPURangeKernel<int64_t>,
+                       ops::XPURangeKernel<float>,
                        ops::XPURangeKernel<double>);
 #endif  // PADDLE_WITH_XPU

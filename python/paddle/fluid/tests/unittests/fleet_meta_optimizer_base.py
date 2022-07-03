@@ -22,6 +22,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -37,8 +38,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         main_prog_op_types = [op.type for op in main_prog_ops]
         startup_prog_op_types = [op.type for op in startup_prog_ops]
 
-        print("=== debug program and ops in func [{}] ==="
-              .format(inspect.stack()[1].function))
+        print("=== debug program and ops in func [{}] ===".format(
+            inspect.stack()[1].function))
         print(main_prog)
         print(main_prog_op_types)
         print(startup_prog)
@@ -49,10 +50,12 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             with fluid.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
-                input_x = paddle.fluid.layers.data(
-                    name="x", shape=[32], dtype='float32')
-                input_y = paddle.fluid.layers.data(
-                    name="y", shape=[1], dtype='int64')
+                input_x = paddle.fluid.layers.data(name="x",
+                                                   shape=[32],
+                                                   dtype='float32')
+                input_y = paddle.fluid.layers.data(name="y",
+                                                   shape=[1],
+                                                   dtype='int64')
 
                 fc_1 = paddle.fluid.layers.fc(input=input_x,
                                               size=64,
@@ -61,14 +64,15 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                     size=2,
                                                     act='softmax')
-                cost = paddle.fluid.layers.cross_entropy(
-                    input=prediction, label=input_y)
+                cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                         label=input_y)
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
 
     def pp_net(self, main_prog, startup_prog, pp_degree=2):
+
         def fc_block(input_x):
             fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
@@ -80,10 +84,12 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
                 with fluid.device_guard("gpu:0"):
-                    input_x = paddle.fluid.layers.data(
-                        name="x", shape=[32], dtype='float32')
-                    input_y = paddle.fluid.layers.data(
-                        name="y", shape=[1], dtype='int64')
+                    input_x = paddle.fluid.layers.data(name="x",
+                                                       shape=[32],
+                                                       dtype='float32')
+                    input_y = paddle.fluid.layers.data(name="y",
+                                                       shape=[1],
+                                                       dtype='int64')
 
                 for stage_idx in range(pp_degree):
                     with fluid.device_guard("gpu:" + str(stage_idx)):
@@ -93,8 +99,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                     prediction = paddle.fluid.layers.fc(input=[input_x],
                                                         size=2,
                                                         act='softmax')
-                    cost = paddle.fluid.layers.cross_entropy(
-                        input=prediction, label=input_y)
+                    cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                             label=input_y)
                     avg_cost = paddle.fluid.layers.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -136,12 +142,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                         regularization=regularization,
                         grad_clip=grad_clip)
                 elif name == 'adamw':
-                    optimizer = paddle.optimizer.AdamW(
-                        learning_rate=0.01,
-                        weight_decay=0.01,
-                        grad_clip=grad_clip)
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, strategy=strategy)
+                    optimizer = paddle.optimizer.AdamW(learning_rate=0.01,
+                                                       weight_decay=0.01,
+                                                       grad_clip=grad_clip)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
                 optimizer.minimize(loss)
 
     def set_strategy(self, strategy, name):

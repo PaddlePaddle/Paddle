@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -55,16 +56,18 @@ class OpBase {
   }
 
   const framework::OpInfo& Info() const {
-    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
-                                     "OpBase::Info() should be called after "
-                                     "OpBase::SetType() is called"));
+    PADDLE_ENFORCE_NOT_NULL(op_,
+                            platform::errors::PreconditionNotMet(
+                                "OpBase::Info() should be called after "
+                                "OpBase::SetType() is called"));
     return op_->Info();
   }
 
   const framework::OperatorBase& InnerOp() const {
-    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
-                                     "OpBase::InnerOp() should be called after "
-                                     "OpBase::SetType() is called"));
+    PADDLE_ENFORCE_NOT_NULL(op_,
+                            platform::errors::PreconditionNotMet(
+                                "OpBase::InnerOp() should be called after "
+                                "OpBase::SetType() is called"));
     return *op_;
   }
 
@@ -87,14 +90,16 @@ class OpBase {
     }
   }
 
-  void SetInput(const std::string& name, VariableWrapperList vars,
+  void SetInput(const std::string& name,
+                VariableWrapperList vars,
                 bool is_grad) {
     auto& in_vars = ins_[name];
     *(in_vars.MutableVarList()) = std::move(vars);
     in_vars.SetIsGrad(is_grad);
   }
 
-  void SetOutput(const std::string& name, VariableWrapperList vars,
+  void SetOutput(const std::string& name,
+                 VariableWrapperList vars,
                  bool is_grad) {
     auto& out_vars = outs_[name];
     *(out_vars.MutableVarList()) = std::move(vars);
@@ -133,7 +138,8 @@ class OpBase {
     } else {
       auto it_default = default_attrs_->find(name);
       PADDLE_ENFORCE_NE(
-          it_default, default_attrs_->end(),
+          it_default,
+          default_attrs_->end(),
           platform::errors::NotFound("can not find attribute [%s]", name));
       return it_default->second;
     }
@@ -154,7 +160,8 @@ class OpBase {
 
   void EnforceHasInOut() const {
     PADDLE_ENFORCE_NE(
-        ins_.empty() && outs_.empty(), true,
+        ins_.empty() && outs_.empty(),
+        true,
         platform::errors::NotFound(
             "Inputs and outputs of %s do not exist. This may be because:\n"
             "1. You use some output variables of the previous batch as the "
@@ -265,9 +272,9 @@ class GradOpNode {
   ConstIterator end() const { return ops_.end(); }
 
   void InsertGradPendingNode(const std::shared_ptr<GradOpNode>& node) {
-    if (node &&
-        std::find(grad_pending_nodes_.begin(), grad_pending_nodes_.end(),
-                  node) == grad_pending_nodes_.end()) {
+    if (node && std::find(grad_pending_nodes_.begin(),
+                          grad_pending_nodes_.end(),
+                          node) == grad_pending_nodes_.end()) {
       grad_pending_nodes_.emplace_back(node);
     }
   }

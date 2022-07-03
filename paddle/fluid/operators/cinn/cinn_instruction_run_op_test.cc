@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdlib.h>
+
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -48,12 +50,15 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
 
   // create necessary ops
   auto cinn_instruction_run_op = paddle::framework::OpRegistry::CreateOp(
-      "cinn_instruction_run", {{"X", {"x", "y"}}},
+      "cinn_instruction_run",
+      {{"X", {"x", "y"}}},
       {{"Out", {test_op_out_name}}},
       {{"cached_index", 0}, {"instruction_index", 0}});
 
   auto cinn_launch_op = paddle::framework::OpRegistry::CreateOp(
-      "cinn_launch", {{"X", {"x", "y"}}}, {{"Out", {test_op_out_name}}},
+      "cinn_launch",
+      {{"X", {"x", "y"}}},
+      {{"Out", {test_op_out_name}}},
       {{"compilation_key", compilation_key}});
 
   // check case: a compiled object not cached before cinn_launch_op run,
@@ -78,9 +83,11 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
     framework::Scope scope;
     scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
     scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
-    auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
-        "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
-        {{"Out", {add_op_out_name}}}, {{}});
+    auto elementwise_add_op =
+        paddle::framework::OpRegistry::CreateOp("elementwise_add",
+                                                {{"X", {"x"}}, {"Y", {"y"}}},
+                                                {{"Out", {add_op_out_name}}},
+                                                {{}});
 
     // 1. check on type float
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
@@ -100,9 +107,11 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
     cinn_instruction_run_op->SetAttr("cached_index", 1);
     cinn_instruction_run_op->Run(scope, place);
     // need reconstruct elementwise_add_op to choose a new kernel with type int
-    elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
-        "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
-        {{"Out", {add_op_out_name}}}, {{}});
+    elementwise_add_op =
+        paddle::framework::OpRegistry::CreateOp("elementwise_add",
+                                                {{"X", {"x"}}, {"Y", {"y"}}},
+                                                {{"Out", {add_op_out_name}}},
+                                                {{}});
     elementwise_add_op->Run(scope, place);
     CompareOpResult<int>(scope.GetVar(test_op_out_name),
                          scope.GetVar(add_op_out_name));

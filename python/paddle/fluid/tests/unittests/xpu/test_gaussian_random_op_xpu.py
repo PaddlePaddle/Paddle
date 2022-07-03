@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -30,6 +31,7 @@ paddle.enable_static()
 
 
 class TestXPUGaussianRandomOp(TestGaussianRandomOp):
+
     def test_check_output(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)

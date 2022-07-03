@@ -55,7 +55,8 @@ struct PullSparseValue {
                                                sizeof(uint64_t) * numel_);
   }
 
-  void Fission(const int shard_id, const int shard_num,
+  void Fission(const int shard_id,
+               const int shard_num,
                std::vector<int>* offset_shard) const {
     offset_shard->reserve(numel_ / shard_num + 1);
     for (int x = 0; x < numel_; ++x) {

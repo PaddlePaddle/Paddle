@@ -32,6 +32,16 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
       in_dims = in_var->Get<phi::SelectedRows>().value().dims();
     } else {
       in_dims = in_var->Get<LoDTensor>().dims();
+      // Output of shape op is often fed as input to fill_constant ops
+      // and we need to rotate a shape otherwise Tensors of wrong shape may be
+      // allocated
+      if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+              framework::DataLayout::kNHWC &&
+          in_dims.size() >= 3) {
+        auto rdims = phi::vectorize<int>(in_dims);
+        std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());
+        in_dims = phi::make_ddim(rdims);
+      }
     }
     auto* out_t = ctx.Output<Tensor>("Out");
     out_t->Resize({in_dims.size()});
@@ -53,7 +63,9 @@ class ShapeMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(shape, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(shape,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::ShapeMKLDNNKernel<float>,
                    ops::ShapeMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::ShapeMKLDNNKernel<int8_t>,

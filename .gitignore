@@ -66,3 +66,8 @@ paddle/infrt/tests/lit.cfg.py
 paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.cc
 paddle/fluid/pybind/eager_final_state_op_function_impl.h
 paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h
+
+# these files (directories) are generated before build system generation
+paddle/fluid/operators/generated_op.cc
+paddle/phi/ops/compat/generated_sig.cc
+paddle/phi/api/yaml/parsed_apis/

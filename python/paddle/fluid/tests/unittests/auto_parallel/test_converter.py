@@ -22,6 +22,7 @@ from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
+
     def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "converter.py")

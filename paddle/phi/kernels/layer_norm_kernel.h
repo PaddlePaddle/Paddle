@@ -22,8 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormKernel(const Context& ctx,
                      const DenseTensor& x,
-                     paddle::optional<const DenseTensor&> scale,
-                     paddle::optional<const DenseTensor&> bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      float epsilon,
                      int begin_norm_axis,
                      bool is_test,

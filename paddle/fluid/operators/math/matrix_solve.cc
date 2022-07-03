@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_solve.h"
+
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -22,17 +23,18 @@ namespace operators {
 namespace math {
 
 template <typename T>
-class MatrixSolveFunctor<platform::CPUDeviceContext, T> {
+class MatrixSolveFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor& a, const framework::Tensor& b,
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
                   framework::Tensor* out) {
-    compute_solve_eigen<platform::CPUDeviceContext, T>(dev_ctx, a, b, out);
+    compute_solve_eigen<phi::CPUContext, T>(dev_ctx, a, b, out);
   }
 };
 
-template class MatrixSolveFunctor<platform::CPUDeviceContext, float>;
-template class MatrixSolveFunctor<platform::CPUDeviceContext, double>;
+template class MatrixSolveFunctor<phi::CPUContext, float>;
+template class MatrixSolveFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

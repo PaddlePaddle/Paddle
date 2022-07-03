@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/eigvals_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -40,16 +41,19 @@ class EigvalsOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Eigvals");
 
     DDim x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(X) for Eigvals operator "
                           "should be at least 2, "
                           "but received X's dimension = %d, X's shape = [%s].",
-                          x_dims.size(), x_dims));
+                          x_dims.size(),
+                          x_dims));
 
     if (ctx->IsRuntime() || !phi::contain_unknown_dim(x_dims)) {
       int last_dim = x_dims.size() - 1;
-      PADDLE_ENFORCE_EQ(x_dims[last_dim], x_dims[last_dim - 1],
+      PADDLE_ENFORCE_EQ(x_dims[last_dim],
+                        x_dims[last_dim - 1],
                         platform::errors::InvalidArgument(
                             "The last two dimensions of Input(X) for Eigvals "
                             "operator should be equal, "
@@ -78,12 +82,13 @@ class EigvalsOpVarTypeInference : public framework::VarTypeInference {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(eigvals, ops::EigvalsOp, ops::EigvalsOpMaker,
+REGISTER_OPERATOR(eigvals,
+                  ops::EigvalsOp,
+                  ops::EigvalsOpMaker,
                   ops::EigvalsOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(eigvals,
-                       ops::EigvalsKernel<plat::CPUDeviceContext, float>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext, double>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext,
-                                          paddle::platform::complex<float>>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext,
-                                          paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
+    eigvals,
+    ops::EigvalsKernel<phi::CPUContext, float>,
+    ops::EigvalsKernel<phi::CPUContext, double>,
+    ops::EigvalsKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::EigvalsKernel<phi::CPUContext, paddle::platform::complex<double>>);

@@ -57,6 +57,7 @@
 | reyoung | Yang Yu |
 | [Sand3r-](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Michal Gallus |
 | [sfraczek](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg)| Sylwester Fraczek |
+| Silv3S | Slawomir Siwek |
 | sneaxiy | Jin-Le Zeng |
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |

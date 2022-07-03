@@ -24,6 +24,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTGatherTest1(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -40,12 +41,17 @@ class TRTGatherTest1(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest1.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam({
-            'data': [1, 1],
-            'index': [1, 1]
-        }, {'data': [32, 128],
-            'index': [3, 1]}, {'data': [32, 128],
-                               'index': [3, 1]}, False)
+        self.dynamic_shape_params = TRTGatherTest1.DynamicShapeParam(
+            {
+                'data': [1, 1],
+                'index': [1, 1]
+            }, {
+                'data': [32, 128],
+                'index': [3, 1]
+            }, {
+                'data': [32, 128],
+                'index': [3, 1]
+            }, False)
         self.fetch_list = [out]
 
     def set_params(self):
@@ -61,6 +67,7 @@ class TRTGatherTest1(InferencePassTest):
 
 
 class TRTGatherTest2(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -77,12 +84,17 @@ class TRTGatherTest2(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTGatherTest2.TensorRTParam(
             1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam({
-            'data': [2, 4],
-            'index': [1]
-        }, {'data': [256, 256],
-            'index': [4]}, {'data': [64, 32],
-                            'index': [2]}, False)
+        self.dynamic_shape_params = TRTGatherTest2.DynamicShapeParam(
+            {
+                'data': [2, 4],
+                'index': [1]
+            }, {
+                'data': [256, 256],
+                'index': [4]
+            }, {
+                'data': [64, 32],
+                'index': [2]
+            }, False)
         self.fetch_list = [out]
 
     def set_params(self):

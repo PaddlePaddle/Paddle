@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/tensor_formatter.h"
 
 #include <string>
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {

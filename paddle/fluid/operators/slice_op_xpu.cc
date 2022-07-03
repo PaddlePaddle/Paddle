@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/slice_op.h"
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/operators/slice_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "xpu/refactor/math.h"
 
 namespace paddle {
@@ -25,75 +28,172 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+inline void DealTensorArray(const framework::ExecutionContext& ctx,
+                            const std::vector<int>& starts,
+                            const std::vector<int>& ends,
+                            bool out_is_array) {
+  auto in_array = ctx.Input<LoDTensorArray>("Input");
+  // If the input is LoDTensorArray, the rank of input is 1.
+  int in_size = in_array->size();
+  int start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
+  int end = ends[0] < 0 ? (ends[0] + in_size) : ends[0];
+
+  start = std::max(start, static_cast<int>(0));
+  end = std::max(end, static_cast<int>(0));
+  end = std::min(end, in_size);
+
+  if (starts[0] == -1 && end == 0) {
+    end = start + 1;
+  }
+
+  PADDLE_ENFORCE_GT(end,
+                    start,
+                    platform::errors::InvalidArgument(
+                        "Attr(ends) should be greater than attr(starts) in "
+                        "slice op. But received end = %d, start = %d.",
+                        ends[0],
+                        starts[0]));
+  int out_size = end - start;
+
+  if (out_is_array) {
+    auto out_array = ctx.Output<LoDTensorArray>("Out");
+    out_array->resize(out_size);
+
+    for (int i = 0; i < out_size; ++i) {
+      auto* out_tensor = &out_array->at(i);
+      auto in_tensor = in_array->at(i + start);
+      out_tensor->set_lod(in_tensor.lod());
+      if (in_tensor.memory_size() > 0) {
+        paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out_tensor);
+      } else {
+        VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
+                    "nothing has been written to output array["
+                 << i << "].";
+      }
+    }
+  } else {
+    auto out = ctx.Output<Tensor>("Out");
+    auto in_tensor = in_array->at(start);
+    paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out);
+  }
+}
 template <typename DeviceContext, typename T>
 class SliceXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = ctx.Input<framework::Tensor>("Input");
-    auto out = ctx.Output<framework::Tensor>("Out");
-    auto axes = ctx.Attr<std::vector<int>>("axes");
-    auto starts = ctx.Attr<std::vector<int>>("starts");
-    auto ends = ctx.Attr<std::vector<int>>("ends");
-    auto in_dims = in->dims();
+    const Variable* input_var = ctx.InputVar("Input");
+    Variable* out_var = ctx.OutputVar("Out");
+    bool input_is_array = input_var->IsType<LoDTensorArray>();
+    bool out_is_array = out_var->IsType<LoDTensorArray>();
 
-    // prepare starts, ends on XPU
-    int dim_value = 0, start = 0, end = 0;
-    // If a negative value is passed for any of the start or end indices,
-    // it represents number of elements before the end of that dimension.
-    // If the value passed to start or end is larger than the n
-    // (the number of elements in this dimension), it represents n.
-    for (size_t i = 0; i < axes.size(); ++i) {
-      dim_value = in_dims[axes[i]];
-      start = starts[i];
-      end = ends[i];
-      start = start < 0 ? (start + dim_value) : start;
-      end = end < 0 ? (end + dim_value) : end;
-      start = std::max(start, 0);
-      end = std::max(end, 0);
-      end = std::min(end, dim_value);
-      PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                        "end should greater than start"));
-      starts[i] = start;
-      ends[i] = end;
-    }
-    size_t shape_size = in_dims.size();
-    // the slice XPU kernel require that the length of `start`, `end` must be
-    // equal
-    // to the dims size of input tensor, therefore, if shape_size > axes.size(),
-    // the `starts_extension` and `ends_extension` is necessary.
-    std::vector<int> starts_extension(shape_size, 0);
-    std::vector<int> ends_extension(shape_size, 0);
-    if (shape_size > axes.size()) {
-      for (size_t i = 0; i < shape_size; ++i) {
-        ends_extension[i] = in_dims[i];
-      }
-      for (size_t i = 0; i < axes.size(); ++i) {
-        starts_extension[axes[i]] = starts[i];
-        ends_extension[axes[i]] = ends[i];
-      }
-    } else {
-      starts_extension = std::move(starts);
-      ends_extension = std::move(ends);
+    auto axes_int = ctx.Attr<std::vector<int>>("axes");
+    auto starts_int = ctx.Attr<std::vector<int>>("starts");
+    auto ends_int = ctx.Attr<std::vector<int>>("ends");
+    std::vector<int> axes(axes_int.begin(), axes_int.end());
+    std::vector<int> starts(starts_int.begin(), starts_int.end());
+    std::vector<int> ends(ends_int.begin(), ends_int.end());
+
+    auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
+    auto infer_flags = ctx.Attr<std::vector<int>>("infer_flags");
+
+    // Step 1: Get the accurate attribute value of starts and ends
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
+      starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
-    // prepare shape on XPU
-    std::vector<int> shape(shape_size, 0);
-    for (size_t i = 0; i < shape_size; ++i) {
-      shape[i] = in_dims[i];
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
+      ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    const XPUType* in_data = reinterpret_cast<const XPUType*>(in->data<T>());
-    XPUType* out_data =
-        reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace()));
-    int r = xpu::slice<XPUType>(dev_ctx.x_context(), in_data, out_data, shape,
-                                starts_extension, ends_extension);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU slice kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+        starts.size(),
+        axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of starts must be equal to the size of axes."));
+    PADDLE_ENFORCE_EQ(
+        ends.size(),
+        axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of ends must be equal to the size of axes."));
+
+    // Step 2: Compute output
+    if (input_is_array) {
+      DealTensorArray(ctx, starts, ends, out_is_array);
+      return;
+    } else {
+      auto in = ctx.Input<framework::Tensor>("Input");
+      auto out = ctx.Output<framework::Tensor>("Out");
+
+      auto in_dims = in->dims();
+      auto out_dims = out->dims();
+      auto slice_dims = out_dims;
+
+      // 2.1 Infer output dims
+      for (size_t i = 0; i < axes.size(); ++i) {
+        // when start == -1 && end == start+1
+        if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
+          auto ret =
+              std::find(decrease_axis.begin(), decrease_axis.end(), axes[i]);
+          if (ret != decrease_axis.end()) {
+            ends[i] = in_dims[axes[i]];
+          }
+        }
+      }
+
+      phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
+      out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
+
+      out->Resize(out_dims);
+
+      // 2.2 Get output
+      size_t shape_size = in_dims.size();
+      // the slice XPU kernel require that the length of `start`, `end` must be
+      // equal
+      // to the dims size of input tensor, therefore, if shape_size >
+      // axes.size(), the `starts_extension` and `ends_extension` is necessary.
+      std::vector<int> starts_extension(shape_size, 0);
+      std::vector<int> ends_extension(shape_size, 0);
+      if (shape_size > axes.size()) {
+        for (size_t i = 0; i < shape_size; ++i) {
+          ends_extension[i] = in_dims[i];
+        }
+        for (size_t i = 0; i < axes.size(); ++i) {
+          starts_extension[axes[i]] = starts[i];
+          ends_extension[axes[i]] = ends[i];
+        }
+      } else {
+        starts_extension = std::move(starts);
+        ends_extension = std::move(ends);
+      }
+
+      // prepare shape on XPU
+      std::vector<int> shape(shape_size, 0);
+      for (size_t i = 0; i < shape_size; ++i) {
+        shape[i] = in_dims[i];
+      }
+
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      const XPUType* in_data = reinterpret_cast<const XPUType*>(in->data<T>());
+      XPUType* out_data =
+          reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace()));
+      int r = xpu::slice<XPUType>(dev_ctx.x_context(),
+                                  in_data,
+                                  out_data,
+                                  shape,
+                                  starts_extension,
+                                  ends_extension);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
+    }
   }
 };
 
@@ -164,12 +264,14 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType*>(dout->data<T>());
     XPUType* din_data =
         reinterpret_cast<XPUType*>(dinput->mutable_data<T>(ctx.GetPlace()));
-    int r = xpu::pad<XPUType>(dev_ctx.x_context(), dout_data, din_data,
-                              out_dims, pad_left, pad_right, XPUType(0));
-    PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU pad kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+    int r = xpu::pad<XPUType>(dev_ctx.x_context(),
+                              dout_data,
+                              din_data,
+                              out_dims,
+                              pad_left,
+                              pad_right,
+                              XPUType(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "pad");
   }
 };
 }  // namespace operators
@@ -178,7 +280,8 @@ class SliceGradXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    slice, ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    slice,
+    ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SliceXPUKernel<paddle::platform::XPUDeviceContext, int>,
     ops::SliceXPUKernel<paddle::platform::XPUDeviceContext,
                         paddle::platform::float16>);

@@ -34,7 +34,8 @@ namespace tensorrt {
 class HardSigmoidOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
 #if IS_TRT_VERSION_GE(5130)
     VLOG(3) << "convert a fluid HardSigmoid op to tensorrt IActivationLayer "
                "layer without bias";
@@ -43,8 +44,8 @@ class HardSigmoidOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     float slope = BOOST_GET_CONST(float, op_desc.GetAttr("slope"));
     float offset = BOOST_GET_CONST(float, op_desc.GetAttr("offset"));
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input,
-                                       nvinfer1::ActivationType::kHARD_SIGMOID);
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Activation, *input, nvinfer1::ActivationType::kHARD_SIGMOID);
     layer->setAlpha(slope);
     layer->setBeta(offset);
 

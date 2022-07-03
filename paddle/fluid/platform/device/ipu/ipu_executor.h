@@ -22,16 +22,20 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 #include <popdist/popdist_poplar.hpp>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
-#include "paddle/fluid/platform/device/ipu/ipu_names.h"
-#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
 namespace ipu {
+
+struct CompilerResources;
+class IpuStrategy;
 
 struct ExecutorResources {
   // map<tensor_id, paddle_var_ptr>
@@ -45,19 +49,22 @@ class Executor {
   Executor() = default;
   ~Executor();
 
-  // build popart session
+  // Build popart session
   void Prepare(const std::string &proto);
 
-  // run popart session
+  // Run popart session
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  // sync weights from popart to paddle
+  // Sync weights from popart to paddle
   void WeightsToHost();
 
-  // detach IPU
+  // Detach IPU
   void Detach();
+
+  // Reset session
+  void Reset();
 
   // Scope
   void SetScope(const Scope *scope) { scope_ = scope; }
@@ -83,16 +90,17 @@ class Executor {
   void WeightsToPaddle();
 
  private:
-  // not own
+  // Not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   CompilerResources *compiler_resources_ = nullptr;
+  bool compile_only_ = false;
 
-  // deviceinfo for popart session
+  // Deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
-  // popart session, where graph running
+  // Popart session, where graph running
   std::unique_ptr<popart::Session> session_;
-  // one OneSession means a graph
+  // A ExecutorResources corresponds to a graph
   std::unique_ptr<ExecutorResources> executor_resources_;
 };
 

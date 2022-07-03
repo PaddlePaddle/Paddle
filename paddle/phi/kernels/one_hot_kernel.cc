@@ -24,9 +24,8 @@ void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& num_classes_s,
                   DenseTensor* out) {
-  int num_classes = num_classes_s.to<int>();
   OneHotRawKernel<T>(
-      dev_ctx, x, num_classes, phi::DataType::FLOAT32, false, out);
+      dev_ctx, x, num_classes_s, phi::DataType::FLOAT32, false, out);
 }
 
 }  // namespace phi

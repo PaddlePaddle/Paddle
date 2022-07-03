@@ -181,8 +181,9 @@ class AstVarEnv(object):
         self.cur_scope = AstVarScope()
 
     def enter_scope(self, scope_name, scope_type):
-        self.cur_scope = AstVarScope(
-            scope_name, scope_type, parent_scope=self.cur_scope)
+        self.cur_scope = AstVarScope(scope_name,
+                                     scope_type,
+                                     parent_scope=self.cur_scope)
         return self.cur_scope
 
     def exit_scope(self):
@@ -351,8 +352,8 @@ class StaticAnalysisVisitor(object):
             if node.value:
                 node_value_type = self.node_to_wrapper_map[
                     node.value].node_var_type
-                if not (node_value_type &
-                        {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
+                if not (node_value_type
+                        & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
                     ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type

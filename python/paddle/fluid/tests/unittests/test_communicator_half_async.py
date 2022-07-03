@@ -31,6 +31,7 @@ paddle.enable_static()
 
 
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
+
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -41,6 +42,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         return avg_cost, x, y
 
     def fake_reader(self):
+
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -140,10 +142,9 @@ half_run_server.run_ut()
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, server_file)
-        ps_proc = subprocess.Popen(
-            ps_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
 
         os.environ["http_proxy"] = ""
         os.environ["https_proxy"] = ""

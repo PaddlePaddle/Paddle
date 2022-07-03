@@ -59,6 +59,12 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+  operator unspecified_bool_type() const override {
+    return initialized_ ? unspecified_bool_true : 0;
+  }
+
+  bool operator!() const override { return !initialized_; }
+
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = BOOST_GET_CONST(Variable*, var_);
@@ -71,11 +77,13 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
-    PADDLE_ENFORCE_EQ(is_runtime_, true,
+    PADDLE_ENFORCE_EQ(is_runtime_,
+                      true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
     auto* var = BOOST_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
+                      true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
     return var->Get<phi::SelectedRows>();
@@ -100,19 +108,18 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   void EmplaceBackOutput(CompatMetaTensor output);
 
   void EmplaceBackInputs(
-      paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs);
+      paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
+          inputs);
   void EmplaceBackOutputs(
-      paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+      paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
           outputs);
 
   const phi::MetaTensor& InputAt(size_t idx) const override;
-  paddle::optional<const phi::MetaTensor&> OptionalInputAt(
-      size_t idx) const override;
 
   std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
                                                     size_t end) const override;
-  paddle::optional<const std::vector<const phi::MetaTensor*>>
-  OptionalInputsBetween(size_t start, size_t end) const override;
+  paddle::optional<std::vector<const phi::MetaTensor*>> OptionalInputsBetween(
+      size_t start, size_t end) const override;
 
   phi::MetaTensor* MutableOutputAt(size_t idx) override;
   std::vector<phi::MetaTensor*> MutableOutputBetween(size_t start,
@@ -121,9 +128,9 @@ class CompatInferMetaContext : public phi::InferMetaContext {
   virtual ~CompatInferMetaContext() = default;
 
  private:
-  paddle::SmallVector<CompatMetaTensor, phi::kInputSmallVectorSize>
+  paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
       compat_inputs_;
-  paddle::SmallVector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+  paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
       compat_outputs_;
 };
 

@@ -14,6 +14,11 @@
 
 #pragma once
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -43,24 +48,33 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj);
 
 bool PyObject_CheckString(PyObject* obj);
 
-bool CastPyArg2Boolean(PyObject* obj, const std::string& op_type,
+bool CastPyArg2Boolean(PyObject* obj,
+                       const std::string& op_type,
                        ssize_t arg_pos);
 int CastPyArg2Int(PyObject* obj, const std::string& op_type, ssize_t arg_pos);
-int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
+int64_t CastPyArg2Long(PyObject* obj,
+                       const std::string& op_type,
                        ssize_t arg_pos);
-float CastPyArg2Float(PyObject* obj, const std::string& op_type,
+float CastPyArg2Float(PyObject* obj,
+                      const std::string& op_type,
                       ssize_t arg_pos);
-double CastPyArg2Double(PyObject* obj, const std::string& op_type,
+double CastPyArg2Double(PyObject* obj,
+                        const std::string& op_type,
                         ssize_t arg_pos);
-std::string CastPyArg2String(PyObject* obj, const std::string& op_type,
+std::string CastPyArg2String(PyObject* obj,
+                             const std::string& op_type,
                              ssize_t arg_pos);
-std::vector<bool> CastPyArg2Booleans(PyObject* obj, const std::string& op_type,
+std::vector<bool> CastPyArg2Booleans(PyObject* obj,
+                                     const std::string& op_type,
                                      ssize_t arg_pos);
-std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
+std::vector<int> CastPyArg2Ints(PyObject* obj,
+                                const std::string& op_type,
                                 ssize_t arg_pos);
-std::vector<int64_t> CastPyArg2Longs(PyObject* obj, const std::string& op_type,
+std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
+                                     const std::string& op_type,
                                      ssize_t arg_pos);
-std::vector<float> CastPyArg2Floats(PyObject* obj, const std::string& op_type,
+std::vector<float> CastPyArg2Floats(PyObject* obj,
+                                    const std::string& op_type,
                                     ssize_t arg_pos);
 std::vector<double> CastPyArg2Float64s(PyObject* obj,
                                        const std::string& op_type,
@@ -71,87 +85,111 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
 
 void CastPyArg2AttrBoolean(PyObject* obj,
                            paddle::framework::AttributeMap& attrs,  // NOLINT
-                           const std::string& key, const std::string& op_type,
+                           const std::string& key,
+                           const std::string& op_type,
                            ssize_t arg_pos);
 
 void CastPyArg2AttrInt(PyObject* obj,
                        paddle::framework::AttributeMap& attrs,  // NOLINT
-                       const std::string& key, const std::string& op_type,
+                       const std::string& key,
+                       const std::string& op_type,
                        ssize_t arg_pos);
 
 void CastPyArg2AttrLong(PyObject* obj,
                         paddle::framework::AttributeMap& attrs,  // NOLINT
-                        const std::string& key, const std::string& op_type,
+                        const std::string& key,
+                        const std::string& op_type,
                         ssize_t arg_pos);
 
 void CastPyArg2AttrFloat(PyObject* obj,
                          paddle::framework::AttributeMap& attrs,  // NOLINT
-                         const std::string& key, const std::string& op_type,
+                         const std::string& key,
+                         const std::string& op_type,
                          ssize_t arg_pos);
 
 void CastPyArg2AttrString(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
-                          const std::string& key, const std::string& op_type,
+                          const std::string& key,
+                          const std::string& op_type,
                           ssize_t arg_pos);
 
 void CastPyArg2AttrBooleans(PyObject* obj,
                             paddle::framework::AttributeMap& attrs,  // NOLINT
-                            const std::string& key, const std::string& op_type,
+                            const std::string& key,
+                            const std::string& op_type,
                             ssize_t arg_pos);
 
 void CastPyArg2AttrInts(PyObject* obj,
                         paddle::framework::AttributeMap& attrs,  // NOLINT
-                        const std::string& key, const std::string& op_type,
+                        const std::string& key,
+                        const std::string& op_type,
                         ssize_t arg_pos);
 
 void CastPyArg2AttrLongs(PyObject* obj,
                          paddle::framework::AttributeMap& attrs,  // NOLINT
-                         const std::string& key, const std::string& op_type,
+                         const std::string& key,
+                         const std::string& op_type,
                          ssize_t arg_pos);
 
 void CastPyArg2AttrFloats(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
-                          const std::string& key, const std::string& op_type,
+                          const std::string& key,
+                          const std::string& op_type,
                           ssize_t arg_pos);
 
 void CastPyArg2AttrFloat64s(PyObject* obj,
                             paddle::framework::AttributeMap& attrs,  // NOLINT
-                            const std::string& key, const std::string& op_type,
+                            const std::string& key,
+                            const std::string& op_type,
                             ssize_t arg_pos);
 
 void CastPyArg2AttrStrings(PyObject* obj,
                            paddle::framework::AttributeMap& attrs,  // NOLINT
-                           const std::string& key, const std::string& op_type,
+                           const std::string& key,
+                           const std::string& op_type,
                            ssize_t arg_pos);
 
 void CastPyArg2AttrBlock(PyObject* obj,
                          paddle::framework::AttributeMap& attrs,  // NOLINT
-                         const std::string& key, const std::string& op_type,
+                         const std::string& key,
+                         const std::string& op_type,
                          ssize_t arg_pos);
 
 void ConstructAttrMapFromPyArgs(
-    const std::string& op_type, PyObject* args, ssize_t attr_start,
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
 std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false);
 
 void InitOpsAttrTypeMap();
 
 ssize_t GetIdxFromCoreOpsInfoMap(
     const std::unordered_map<std::string, std::vector<std::string>>&
         core_ops_info_map,
-    const std::string& op_type, const std::string& name);
+    const std::string& op_type,
+    const std::string& name);
 
 }  // namespace pybind
 }  // namespace paddle

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,9 +21,11 @@ class DeviceType:
     XPU = 'xpu'
     NPU = 'npu'
     MLU = 'mlu'
+    IPU = 'ipu'
 
 
 class Device(object):
+
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory
@@ -68,6 +70,8 @@ class Device(object):
             return 'FLAGS_selected_xpus'
         if self._dtype == DeviceType.MLU:
             return 'FLAGS_selected_mlus'
+        if self._dtype == DeviceType.IPU:
+            return 'FLAGS_selected_ipus'
         return 'FLAGS_selected_devices'
 
     def get_selected_devices(self, devices=''):
@@ -129,6 +133,12 @@ class Device(object):
             dev._dtype = DeviceType.MLU
             num = fluid.core.get_mlu_device_count()
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
+        elif fluid.core.is_compiled_with_ipu():
+            dev._dtype = DeviceType.IPU
+            num = fluid.core.get_ipu_device_count()
+            # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
+            dev._labels = [str(x) for x in range(0, num + 1)]
+            return dev
 
         if num == 0:
             dev._dtype = DeviceType.CPU

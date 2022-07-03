@@ -34,7 +34,6 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
-
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
     need_merge_var_names_.push_back(
@@ -82,11 +81,13 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
 std::string MultiTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
-    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
-                                 user_define_dump_filename_.c_str(), tid);
+    return string::format_string("%s/part-%s-%05d",
+                                 dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(),
+                                 tid);
   }
-  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                               mpi_rank_, tid);
+  return string::format_string(
+      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 }
 
 void MultiTrainer::InitDumpEnv() {
@@ -149,6 +150,18 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     }
   }
 #endif
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      auto it = std::find(need_merge_var_names_.begin(),
+                          need_merge_var_names_.end(),
+                          var->Name());
+      if (it == need_merge_var_names_.end() &&
+          var->GetType() != proto::VarType::SELECTED_ROWS) {
+        VLOG(2) << "train param: " << var->Name();
+        trainable_param_.push_back(var->Name());
+      }
+    }
+  }
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -193,18 +206,30 @@ void MultiTrainer::Run() {
 
 #ifdef PADDLE_WITH_HETERPS
 void MultiTrainer::MergeDenseParam() {
-#ifdef PADDLE_WTIH_PSCORE
+#ifdef PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
-  auto& recv_ctx = communicator->GetRecvCtxMap();
-  Scope* thread_scope = workers_[0]->GetThreadScope();
-  for (auto& iter : recv_ctx) {
-    auto& varnames = iter.second;
-    for (auto& name : varnames) {
+  auto thread_scope = workers_[0]->GetThreadScope();
+  if (communicator == nullptr) {
+    for (auto& name : trainable_param_) {
+      VLOG(2) << "merge var " << name << " to root scope";
       Variable* root_var = root_scope_->FindVar(name);
       LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
       Variable* var = thread_scope->FindVar(name);
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      TensorCopy((*tensor), root_tensor->place(), root_tensor);
+      TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+    }
+  } else {
+    auto& recv_ctx = communicator->GetRecvCtxMap();
+    for (auto& iter : recv_ctx) {
+      auto& varnames = iter.second;
+      for (auto& name : varnames) {
+        VLOG(2) << "merge var " << name << " to root scope";
+        Variable* root_var = root_scope_->FindVar(name);
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        Variable* var = thread_scope->FindVar(name);
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+      }
     }
   }
 #endif
@@ -237,11 +262,7 @@ void MultiTrainer::Finalize() {
     }
     LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
 
-#ifdef PADDLE_WITH_HETERPS
-    for (size_t j = 0; j < places_.size(); j++) {
-#else
     for (int j = 1; j < thread_num_; j++) {
-#endif
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);

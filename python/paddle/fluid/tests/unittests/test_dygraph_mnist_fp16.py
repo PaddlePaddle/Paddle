@@ -19,9 +19,11 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
+
     def __init__(self,
                  num_channels,
                  num_filters,
@@ -42,27 +44,25 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  bias_attr=None):
         super(SimpleImgConvPool, self).__init__()
 
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=conv_stride,
-            padding=conv_padding,
-            dilation=conv_dilation,
-            groups=conv_groups,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            use_cudnn=use_cudnn,
-            dtype=dtype,
-            act=act)
+        self._conv2d = Conv2D(num_channels=num_channels,
+                              num_filters=num_filters,
+                              filter_size=filter_size,
+                              stride=conv_stride,
+                              padding=conv_padding,
+                              dilation=conv_dilation,
+                              groups=conv_groups,
+                              param_attr=param_attr,
+                              bias_attr=bias_attr,
+                              use_cudnn=use_cudnn,
+                              dtype=dtype,
+                              act=act)
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn)
+        self._pool2d = Pool2D(pool_size=pool_size,
+                              pool_type=pool_type,
+                              pool_stride=pool_stride,
+                              pool_padding=pool_padding,
+                              global_pooling=global_pooling,
+                              use_cudnn=use_cudnn)
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -71,28 +71,27 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(fluid.dygraph.Layer):
+
     def __init__(self, dtype="float32"):
         super(MNIST, self).__init__()
 
-        self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            num_channels=3,
-            num_filters=20,
-            filter_size=5,
-            pool_size=2,
-            pool_stride=2,
-            act="relu",
-            dtype=dtype,
-            use_cudnn=True)
+        self._simple_img_conv_pool_1 = SimpleImgConvPool(num_channels=3,
+                                                         num_filters=20,
+                                                         filter_size=5,
+                                                         pool_size=2,
+                                                         pool_stride=2,
+                                                         act="relu",
+                                                         dtype=dtype,
+                                                         use_cudnn=True)
 
-        self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            num_channels=20,
-            num_filters=50,
-            filter_size=5,
-            pool_size=2,
-            pool_stride=2,
-            act="relu",
-            dtype=dtype,
-            use_cudnn=True)
+        self._simple_img_conv_pool_2 = SimpleImgConvPool(num_channels=20,
+                                                         num_filters=50,
+                                                         filter_size=5,
+                                                         pool_size=2,
+                                                         pool_stride=2,
+                                                         act="relu",
+                                                         dtype=dtype,
+                                                         use_cudnn=True)
 
         self.pool_2_shape = 50 * 53 * 53
         SIZE = 10
@@ -101,8 +100,8 @@ class MNIST(fluid.dygraph.Layer):
             self.pool_2_shape,
             10,
             param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale)),
+                initializer=fluid.initializer.NormalInitializer(loc=0.0,
+                                                                scale=scale)),
             act="softmax",
             dtype=dtype)
 
@@ -117,7 +116,8 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestMnist(unittest.TestCase):
-    def test_mnist_fp16(self):
+
+    def func_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
         x = np.random.randn(1, 3, 224, 224).astype("float16")
@@ -128,6 +128,11 @@ class TestMnist(unittest.TestCase):
             y = fluid.dygraph.to_variable(y)
             loss = model(x, y)
             print(loss.numpy())
+
+    def test_mnist_fp16(self):
+        with _test_eager_guard():
+            self.func_mnist_fp16()
+        self.func_mnist_fp16()
 
 
 if __name__ == "__main__":

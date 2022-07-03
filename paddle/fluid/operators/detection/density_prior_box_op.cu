@@ -23,11 +23,22 @@ static __device__ inline T Clip(T in) {
 }
 
 template <typename T>
-static __global__ void GenDensityPriorBox(
-    const int height, const int width, const int im_height, const int im_width,
-    const T offset, const T step_width, const T step_height,
-    const int num_priors, const T* ratios_shift, bool is_clip, const T var_xmin,
-    const T var_ymin, const T var_xmax, const T var_ymax, T* out, T* var) {
+static __global__ void GenDensityPriorBox(const int height,
+                                          const int width,
+                                          const int im_height,
+                                          const int im_width,
+                                          const T offset,
+                                          const T step_width,
+                                          const T step_height,
+                                          const int num_priors,
+                                          const T* ratios_shift,
+                                          bool is_clip,
+                                          const T var_xmin,
+                                          const T var_ymin,
+                                          const T var_xmax,
+                                          const T var_ymax,
+                                          T* out,
+                                          T* var) {
   int gidx = blockIdx.x * blockDim.x + threadIdx.x;
   int gidy = blockIdx.y * blockDim.y + threadIdx.y;
   int step_x = blockDim.x * gridDim.x;
@@ -155,11 +166,22 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
-    GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(
-        feature_height, feature_width, img_height, img_width, offset,
-        step_width, step_height, num_priors, d_temp.data<T>(), is_clip,
-        variances[0], variances[1], variances[2], variances[3],
-        boxes->data<T>(), vars->data<T>());
+    GenDensityPriorBox<T><<<grids, threads, 0, stream>>>(feature_height,
+                                                         feature_width,
+                                                         img_height,
+                                                         img_width,
+                                                         offset,
+                                                         step_width,
+                                                         step_height,
+                                                         num_priors,
+                                                         d_temp.data<T>(),
+                                                         is_clip,
+                                                         variances[0],
+                                                         variances[1],
+                                                         variances[2],
+                                                         variances[3],
+                                                         boxes->data<T>(),
+                                                         vars->data<T>());
   }
 };  // namespace operators
 

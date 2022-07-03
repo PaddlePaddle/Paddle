@@ -29,6 +29,7 @@ process_mesh2 = [[0, 1, 2], [3, 4, 5]]
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self, vocab_size=128, hidden_size=4):
         super(SimpleNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
@@ -37,10 +38,11 @@ class SimpleNet(nn.Layer):
 
     def forward(self, x, y):
         # Test shard_tensor interface with dist_attr arg
-        x = dist.shard_tensor(
-            x,
-            dist_attr={"process_mesh": process_mesh1,
-                       "dims_mapping": [0, -1]})
+        x = dist.shard_tensor(x,
+                              dist_attr={
+                                  "process_mesh": process_mesh1,
+                                  "dims_mapping": [0, -1]
+                              })
         emb_out = self.word_embeddings(x)
         # Test shard_tensor interface with no dist_attr arg
         y = dist.shard_tensor(y)
@@ -51,15 +53,18 @@ class SimpleNet(nn.Layer):
 
 
 class TestAutoParallelAPI(unittest.TestCase):
+
     def test_api(self):
         dist_context = get_default_distributed_context()
 
         net = SimpleNet()
         data1 = fluid.layers.fill_constant(shape=[2, 4], value=1, dtype="int64")
-        data2 = fluid.layers.fill_constant(
-            shape=[2, 4], value=2, dtype="float32")
-        data3 = fluid.layers.fill_constant(
-            shape=[2, 4], value=4, dtype="float32")
+        data2 = fluid.layers.fill_constant(shape=[2, 4],
+                                           value=2,
+                                           dtype="float32")
+        data3 = fluid.layers.fill_constant(shape=[2, 4],
+                                           value=4,
+                                           dtype="float32")
 
         x, y = net.forward(data1, data2)
 
@@ -86,17 +91,16 @@ class TestAutoParallelAPI(unittest.TestCase):
         # Test shard_op interface with dist_attr
         dims_mapping1 = [0, 1]
         dims_mapping2 = [-1, 0]
-        dist_add = dist.shard_op(
-            paddle.add,
-            dist_attr={
-                data2: {
-                    "process_mesh": process_mesh2,
-                    "dims_mapping": dims_mapping1
-                },
-                data3: {
-                    "dims_mapping": dims_mapping2
-                }
-            })
+        dist_add = dist.shard_op(paddle.add,
+                                 dist_attr={
+                                     data2: {
+                                         "process_mesh": process_mesh2,
+                                         "dims_mapping": dims_mapping1
+                                     },
+                                     data3: {
+                                         "dims_mapping": dims_mapping2
+                                     }
+                                 })
         results = dist_add(data2, data3)
         ops = paddle.static.default_main_program().block(0).ops
         last_op = ops[-1]

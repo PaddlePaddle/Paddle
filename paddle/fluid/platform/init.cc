@@ -59,7 +59,8 @@ limitations under the License. */
 
 DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size, 1,
+    multiple_of_cupti_buffer_size,
+    1,
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
 
@@ -119,18 +120,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                            \
-  {                                                                          \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                      \
+  {                                                                    \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivityGetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                  \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";          \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivitySetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -351,7 +354,8 @@ bool StartsWith(const char *str, const char *prefix) {
 
 const char *ParseSignalErrorString(const std::string &str) {
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
       return SignalErrorStrings[i].error_string;
     }
@@ -411,7 +415,8 @@ void SignalHandle(const char *data, int size) {
 void DisableSignalHandler() {
 #ifndef _WIN32
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     int signal_number = SignalErrorStrings[i].signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
@@ -424,15 +429,22 @@ void DisableSignalHandler() {
 
 #ifdef WITH_WIN_DUMP_DBG
 typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(
-    IN HANDLE hProcess, IN DWORD ProcessId, IN HANDLE hFile,
+    IN HANDLE hProcess,
+    IN DWORD ProcessId,
+    IN HANDLE hFile,
     IN MINIDUMP_TYPE DumpType,
     IN CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
     OPTIONAL IN PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
     OPTIONAL IN PMINIDUMP_CALLBACK_INFORMATION CallbackParam OPTIONAL);
 void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                     EXCEPTION_POINTERS *pException) {
-  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL,
-                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
+                                GENERIC_WRITE,
+                                0,
+                                NULL,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -441,8 +453,13 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
   MiniDumpWriteDump_ =
       (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
-  MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile,
-                     MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
+  MiniDumpWriteDump_(GetCurrentProcess(),
+                     GetCurrentProcessId(),
+                     hDumpFile,
+                     MiniDumpWithPrivateReadWriteMemory,
+                     &dumpInfo,
+                     NULL,
+                     NULL);
   CloseHandle(hDumpFile);
 }
 
@@ -452,9 +469,14 @@ LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException) {
   localtime_s(&now_time, &time_seconds);
 
   char buf[1024];
-  sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
-            1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday,
-            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  sprintf_s(buf,
+            "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
+            1900 + now_time.tm_year,
+            1 + now_time.tm_mon,
+            now_time.tm_mday,
+            now_time.tm_hour,
+            now_time.tm_min,
+            now_time.tm_sec);
 
   CreateDumpFile(buf, pException);
   return EXCEPTION_EXECUTE_HANDLER;

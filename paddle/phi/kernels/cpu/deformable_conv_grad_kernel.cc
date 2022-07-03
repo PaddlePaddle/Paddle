@@ -58,10 +58,9 @@ inline void ModulatedDeformableCol2imCPUKernel(
     int w_in = w_out * stride_w - pad_w;
     int h_in = h_out * stride_h - pad_h;
 
-    const T* data_offset_ptr = data_offset +
-                               (b * deformable_group + deformable_group_index) *
-                                   2 * kernel_h * kernel_w * height_col *
-                                   width_col;
+    const T* data_offset_ptr =
+        data_offset + (b * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const int data_offset_h_ptr =
         ((2 * (i * kernel_w + j)) * height_col + h_out) * width_col + w_out;
     const int data_offset_w_ptr =
@@ -75,9 +74,9 @@ inline void ModulatedDeformableCol2imCPUKernel(
 
     T cur_top_grad = data_col[thread];
     if (data_mask) {
-      const T* data_mask_ptr = data_mask +
-                               (b * deformable_group + deformable_group_index) *
-                                   kernel_h * kernel_w * height_col * width_col;
+      const T* data_mask_ptr =
+          data_mask + (b * deformable_group + deformable_group_index) *
+                          kernel_h * kernel_w * height_col * width_col;
       const T mask = data_mask_ptr[data_mask_hw_ptr];
       cur_top_grad *= mask;
     }
@@ -180,23 +179,20 @@ void ModulatedDeformableCol2imCoordCPUKernel(
     const int deformable_group_index = c / (2 * kernel_h * kernel_w);
     const int col_step = kernel_h * kernel_w;
     int cnt = 0;
-    const T* data_col_ptr = data_col +
-                            deformable_group_index *
-                                channel_per_deformable_group * batch_size *
-                                width_col * height_col;
-    const T* data_im_ptr = data_im +
-                           (b * deformable_group + deformable_group_index) *
-                               channel_per_deformable_group / kernel_h /
-                               kernel_w * height * width;
-    const T* data_offset_ptr = data_offset +
-                               (b * deformable_group + deformable_group_index) *
-                                   2 * kernel_h * kernel_w * height_col *
-                                   width_col;
+    const T* data_col_ptr = data_col + deformable_group_index *
+                                           channel_per_deformable_group *
+                                           batch_size * width_col * height_col;
+    const T* data_im_ptr =
+        data_im + (b * deformable_group + deformable_group_index) *
+                      channel_per_deformable_group / kernel_h / kernel_w *
+                      height * width;
+    const T* data_offset_ptr =
+        data_offset + (b * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const T* data_mask_ptr =
         data_mask
-            ? data_mask +
-                  (b * deformable_group + deformable_group_index) * kernel_h *
-                      kernel_w * height_col * width_col
+            ? data_mask + (b * deformable_group + deformable_group_index) *
+                              kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
     const int offset_c = c - deformable_group_index * 2 * kernel_h * kernel_w;

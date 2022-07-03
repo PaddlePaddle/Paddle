@@ -16,14 +16,16 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    unpool, ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
+    unpool,
+    ops::UnpoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnpoolKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     unpool_grad,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnpoolGradKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
-    unpool3d, ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, float>,
+    unpool3d,
+    ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, float>,
     ops::Unpool3dKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     unpool3d_grad,

@@ -37,6 +37,7 @@ void SubtractKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(
     subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 #else

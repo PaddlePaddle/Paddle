@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <future>  // NOLINT
 #include <memory>
 #include <unordered_set>

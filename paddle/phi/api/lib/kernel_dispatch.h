@@ -96,8 +96,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
-  void operator()(const Tensor& x) {
-    const phi::TensorBase& tensor = *x.impl();
+  inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
     // TODO(chenweihang): select multi layout and dtype
@@ -110,6 +109,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     }
   }
 
+  void operator()(const Tensor& x) {
+    const auto* tensor = x.impl().get();
+    if (tensor) {
+      AssignKernelKeySet(*tensor);
+    }
+  }
+
   void operator()(const std::vector<Tensor>& x) {
     const phi::TensorBase& tensor = *x.at(0).impl();
     key_set.backend_set =
@@ -117,6 +123,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // TODO(chenweihang): select multi layout and dtype
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();
+  }
+
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
+      const phi::TensorBase& tensor = *(x.get_ptr()->impl());
+      AssignKernelKeySet(tensor);
+    }
   }
 
   // skip other type args, these args don't used in kernel selection

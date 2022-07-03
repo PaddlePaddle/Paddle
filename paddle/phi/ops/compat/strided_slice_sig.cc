@@ -48,14 +48,14 @@ KernelSignature StridedSliceOpArgumentMapping(
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<const char*> inputs = {"Input"};
-  paddle::SmallVector<const char*> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<const char*> outputs = {"Out"};
+  paddle::small_vector<const char*> inputs = {"Input"};
+  paddle::small_vector<const char*> attrs = {"axes",
+                                             starts_key,
+                                             ends_key,
+                                             strides_key,
+                                             "infer_flags",
+                                             "decrease_axis"};
+  paddle::small_vector<const char*> outputs = {"Out"};
 
   const char* kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {
@@ -97,14 +97,14 @@ KernelSignature StridedSliceGradOpArgumentMapping(
                  ? (use_attr_strides ? "strides" : "StridesTensorList")
                  : "strides");
 
-  paddle::SmallVector<const char*> inputs = {"Input", "Out@GRAD"};
-  paddle::SmallVector<const char*> attrs = {"axes",
-                                            starts_key,
-                                            ends_key,
-                                            strides_key,
-                                            "infer_flags",
-                                            "decrease_axis"};
-  paddle::SmallVector<const char*> outputs = {"Input@GRAD"};
+  paddle::small_vector<const char*> inputs = {"Input", "Out@GRAD"};
+  paddle::small_vector<const char*> attrs = {"axes",
+                                             starts_key,
+                                             ends_key,
+                                             strides_key,
+                                             "infer_flags",
+                                             "decrease_axis"};
+  paddle::small_vector<const char*> outputs = {"Input@GRAD"};
 
   const char* kernel_name;
   if (ctx.IsDenseTensorVectorInput("Input")) {

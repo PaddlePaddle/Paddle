@@ -33,16 +33,19 @@ namespace test {
 
 void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<size_t>& level_1,
-                     const std::vector<int>& data, LoDTensorArray* ids,
+                     const std::vector<int>& data,
+                     LoDTensorArray* ids,
                      LoDTensorArray* scores) {
-  PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1,
+  PADDLE_ENFORCE_EQ(level_0.back(),
+                    level_1.size() - 1,
                     platform::errors::InvalidArgument(
                         "source level is used to describe candidate set"
                         ", so it's element should less than levle_1 length. "
                         "And the value of source"
                         "level is %d. ",
                         level_1.size() - 1));
-  PADDLE_ENFORCE_EQ(level_1.back(), data.size(),
+  PADDLE_ENFORCE_EQ(level_1.back(),
+                    data.size(),
                     platform::errors::InvalidArgument(
                         "the lowest level is used to describe data"
                         ", so it's last element should be data length %d. ",
@@ -89,25 +92,33 @@ TEST(BeamSearchDecodeOp, Backtrace) {
   LoDTensorArray ids;
   LoDTensorArray scores;
 
-  paddle::test::GenerateExample(
-      std::vector<size_t>{0, 1, 2}, std::vector<size_t>{0, 1, 2},
-      std::vector<int>{0, 0}, &ids, &scores);  // start with start_id
+  paddle::test::GenerateExample(std::vector<size_t>{0, 1, 2},
+                                std::vector<size_t>{0, 1, 2},
+                                std::vector<int>{0, 0},
+                                &ids,
+                                &scores);  // start with start_id
   paddle::test::GenerateExample(std::vector<size_t>{0, 1, 2},
                                 std::vector<size_t>{0, 2, 4},
-                                std::vector<int>{2, 3, 4, 5}, &ids, &scores);
+                                std::vector<int>{2, 3, 4, 5},
+                                &ids,
+                                &scores);
   paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
                                 std::vector<size_t>{0, 2, 2, 4, 4},
-                                std::vector<int>{3, 1, 5, 4}, &ids, &scores);
+                                std::vector<int>{3, 1, 5, 4},
+                                &ids,
+                                &scores);
   paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
                                 std::vector<size_t>{0, 1, 2, 3, 4},
-                                std::vector<int>{1, 1, 3, 5}, &ids, &scores);
+                                std::vector<int>{1, 1, 3, 5},
+                                &ids,
+                                &scores);
   paddle::test::GenerateExample(
       std::vector<size_t>{0, 2, 4},
-      std::vector<size_t>{0, 0, 0, 2,
-                          2},  // the branchs of the first source sentence
-                               // are pruned since finished
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+                                           // sentence are pruned since finished
       std::vector<int>{5, 1},
-      &ids, &scores);
+      &ids,
+      &scores);
 
   ASSERT_EQ(ids.size(), 5UL);
   ASSERT_EQ(scores.size(), 5UL);
@@ -123,8 +134,8 @@ TEST(BeamSearchDecodeOp, Backtrace) {
   EXPECT_EQ(lod[0], expect_source_lod);
   std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
   EXPECT_EQ(lod[1], expect_sentence_lod);
-  std::vector<int> expect_data = {0, 2, 3, 1, 0, 2, 1, 0, 4,
-                                  5, 3, 5, 0, 4, 5, 3, 1};
+  std::vector<int> expect_data = {
+      0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1};
   ASSERT_EQ(id_tensor.dims()[0], static_cast<int64_t>(expect_data.size()));
   for (size_t i = 0; i < expect_data.size(); ++i) {
     ASSERT_EQ(id_tensor.data<int64_t>()[i],
