@@ -18,6 +18,7 @@ import sys
 import shutil
 import unittest
 import paddle
+import tempfile
 
 
 def get_test_file():
@@ -38,12 +39,13 @@ def run_test(clip_after_allreduce=True,
              max_global_norm=-1.0,
              gradient_merge_steps=1,
              use_master_acc_grad=True):
+    temp_dir = tempfile.TemporaryDirectory()
     if not paddle.is_compiled_with_cuda():
         return
     if os.name == 'nt':
         return
     args = locals()
-    log_dir = 'log_{}'.format(os.getpid())
+    log_dir = os.path.join(temp_dir.name, 'log_{}'.format(os.getpid()))
     cmd = [
         sys.executable,
         '-u',
@@ -62,15 +64,15 @@ def run_test(clip_after_allreduce=True,
     os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
-    touch_file_name = 'distributed_fused_lamb_touch_file_{}'.format(os.getpid())
+    touch_file_name = os.path.join(
+        temp_dir.name,
+        'distributed_fused_lamb_touch_file_{}'.format(os.getpid()))
     os.environ[touch_file_env] = touch_file_name
-    remove_file_if_exists(touch_file_name)
     try:
         assert os.system(cmd) == 0 and os.path.exists(
             touch_file_name), 'Test failed when {}'.format(args)
     finally:
-        remove_file_if_exists(touch_file_name)
-        remove_file_if_exists(log_dir)
+        temp_dir.cleanup()
 
 
 class TestDistributedFusedLambWithClip(unittest.TestCase):

@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/unbind_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/unbind_kernel_impl.h"
-#include "paddle/phi/kernels/unbind_kernel.h"
 
 PD_REGISTER_KERNEL(unbind,
                    GPU,

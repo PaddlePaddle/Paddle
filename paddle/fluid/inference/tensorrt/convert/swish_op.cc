@@ -35,13 +35,15 @@ namespace tensorrt {
 class SwishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid swish op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1,
+    PADDLE_ENFORCE_EQ(input_num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The input X's size must equal to 1 in TRT swish op."
                           " But received X's size %d.",
@@ -50,7 +52,8 @@ class SwishOpConverter : public OpConverter {
     // Get output
     size_t output_num = op_desc.Output("Out").size();
     PADDLE_ENFORCE_EQ(
-        output_num, 1UL,
+        output_num,
+        1UL,
         platform::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT swish op. "
             "But received Out's size %u.",

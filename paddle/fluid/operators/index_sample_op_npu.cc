@@ -21,7 +21,9 @@ using Tensor = framework::Tensor;
 
 template <typename IndexT>
 void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
-                       const Tensor* index, const Tensor* input, Tensor* out) {
+                       const Tensor* index,
+                       const Tensor* input,
+                       Tensor* out) {
   auto index_dims = index->dims();
   auto input_dims = input->dims();
   auto batch_size = input_dims[0];
@@ -70,7 +72,8 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
 
 template <typename IndexT>
 void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
-                            const Tensor* index, const Tensor* out_grad,
+                            const Tensor* index,
+                            const Tensor* out_grad,
                             Tensor* x_grad) {
   auto index_dims = index->dims();
   auto input_dims = x_grad->dims();
@@ -127,7 +130,8 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(index_sample, ops::IndexSampleNPUKernel<plat::float16>,
+REGISTER_OP_NPU_KERNEL(index_sample,
+                       ops::IndexSampleNPUKernel<plat::float16>,
                        ops::IndexSampleNPUKernel<float>,
                        ops::IndexSampleNPUKernel<int32_t>,
                        ops::IndexSampleNPUKernel<int64_t>);

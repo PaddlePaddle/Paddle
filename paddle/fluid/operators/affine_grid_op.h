@@ -24,7 +24,9 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
@@ -38,13 +40,20 @@ using Array4 = Eigen::DSizes<int64_t, 4>;
  */
 template <typename DeviceContext, typename T>
 struct Linspace {
-  void operator()(T start, T end, int count, bool align_corners,
+  void operator()(T start,
+                  T end,
+                  int count,
+                  bool align_corners,
                   framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx);
 };
 
 template <typename DeviceContext, typename T>
-inline void GetIdxMap(int n, int h, int w, bool align_corners, Tensor* grid,
+inline void GetIdxMap(int n,
+                      int h,
+                      int w,
+                      bool align_corners,
+                      Tensor* grid,
                       const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   grid->mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
@@ -117,7 +126,8 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
     phi::funcs::SetConstant<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), output,
+        ctx.template device_context<DeviceContext>(),
+        output,
         static_cast<T>(0));
     Tensor grid;
     GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
@@ -130,8 +140,8 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
       Tensor sliced_theta = theta->Slice(i, i + 1).Resize({2, 3});
       Tensor sliced_out = output->Slice(i, i + 1).Resize(
           {static_cast<int64_t>(h) * static_cast<int64_t>(w), 2});
-      blas.MatMul(sliced_grid, false, sliced_theta, true, T(1), &sliced_out,
-                  T(0));
+      blas.MatMul(
+          sliced_grid, false, sliced_theta, true, T(1), &sliced_out, T(0));
     }
   }
 };
@@ -160,7 +170,8 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     }
     theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
     phi::funcs::SetConstant<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), theta_grad,
+        ctx.template device_context<DeviceContext>(),
+        theta_grad,
         static_cast<T>(0));
     Tensor grid;
     GetIdxMap<DeviceContext, T>(n, h, w, align_corners, &grid, ctx);
@@ -173,8 +184,13 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
       Tensor sliced_out_grad = output_grad->Slice(i, i + 1).Resize(
           {static_cast<int64_t>(h) * static_cast<int64_t>(w), 2});
       Tensor sliced_theta_grad = theta_grad->Slice(i, i + 1).Resize({2, 3});
-      blas.MatMul(sliced_out_grad, true, sliced_grid, false, T(1),
-                  &sliced_theta_grad, T(0));
+      blas.MatMul(sliced_out_grad,
+                  true,
+                  sliced_grid,
+                  false,
+                  T(1),
+                  &sliced_theta_grad,
+                  T(0));
     }
   }
 };

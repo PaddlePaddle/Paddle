@@ -50,27 +50,30 @@ class LinearTestCase(unittest.TestCase):
 
     def test_interp_base(self):
         startup_program, main_program, c = self.build_program()
+        scope = core.Scope()
         standaloneexecutor = StandaloneExecutor(self.place,
                                                 startup_program.desc,
-                                                main_program.desc, core.Scope())
+                                                main_program.desc, scope)
         out = standaloneexecutor.run(
-            {"a": np.ones([2, 2], dtype="float32") * 2}, [c.name])
+            scope, {"a": np.ones([2, 2], dtype="float32") * 2}, [c.name])
         for i in range(10):
             out = standaloneexecutor.run(
-                {"a": np.ones([2, 2], dtype="float32") * i}, [c.name])
+                scope, {"a": np.ones([2, 2], dtype="float32") * i}, [c.name])
 
         for i in range(10):
             out = standaloneexecutor.run(
-                {"a": np.ones([2, 2], dtype="float32") * i}, ['a', c.name])
+                scope, {"a": np.ones([2, 2], dtype="float32") * i},
+                ['a', c.name])
 
     def test_dry_run(self):
+        scope = core.Scope()
         startup_program, main_program, c = self.build_program()
         standaloneexecutor = StandaloneExecutor(self.place,
                                                 startup_program.desc,
-                                                main_program.desc, core.Scope())
+                                                main_program.desc, scope)
         # test for cost_info
         cost_info = standaloneexecutor.dry_run(
-            {"a": np.ones([2, 2], dtype="float32")})
+            scope, {"a": np.ones([2, 2], dtype="float32")})
         self.check_cost_info(cost_info)
 
     def check_cost_info(self, cost_info):
@@ -132,14 +135,15 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
 
         p = core.Place()
         p.set_place(self.place)
+        scope = core.Scope()
         executor = StandaloneExecutor(p, startup_program.desc,
-                                      main_program.desc, core.Scope())
+                                      main_program.desc, scope)
 
         helper_profiler = profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
         helper_profiler.start()
         for i in range(self.iter_n):
-            executor.run({}, fetch_list)
+            executor.run(scope, {}, fetch_list)
             helper_profiler.step()
         helper_profiler.stop()
 
@@ -231,10 +235,6 @@ class MultiStreamModelTestCase(unittest.TestCase):
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
-        res_sequential = self.run_new_executor_sequential()
-        for gt, out in zip(ground_truths, res_sequential):
-            self.assertEqual(gt[0], out[0])
-
     def run_raw_executor(self):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
@@ -255,20 +255,16 @@ class MultiStreamModelTestCase(unittest.TestCase):
 
         p = core.Place()
         p.set_place(self.place)
+        scope = core.Scope()
         inter_core = StandaloneExecutor(p, startup_program.desc,
-                                        main_program.desc, core.Scope())
+                                        main_program.desc, scope)
 
         outs = []
         for i in range(self.iter_n):
             outs.append(
-                np.array(inter_core.run({}, fetch_list)._move_to_list()[0]))
+                np.array(
+                    inter_core.run(scope, {}, fetch_list)._move_to_list()[0]))
         return outs
-
-    def run_new_executor_sequential(self):
-        os.environ['FLAGS_new_executor_sequential_run'] = '1'
-        res = self.run_new_executor()
-        del os.environ['FLAGS_new_executor_sequential_run']
-        return res
 
 
 class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):
@@ -382,6 +378,17 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         feed = {"a": data}
 
         res = self.run_new_executor(feed, use_compiled=True)
+        gt = self.run_raw_executor(feed, use_compiled=True)
+        for x, y in zip(gt, res):
+            self.assertTrue(np.array_equal(x, y))
+
+    def test_compiled_program_convert_graph_to_program(self):
+        data = np.ones([2, 2], dtype="float32")
+        feed = {"a": data}
+
+        os.environ['FLAGS_CONVERT_GRAPH_TO_PROGRAM'] = '1'
+        res = self.run_new_executor(feed, use_compiled=True)
+        del os.environ['FLAGS_CONVERT_GRAPH_TO_PROGRAM']
         gt = self.run_raw_executor(feed, use_compiled=True)
         for x, y in zip(gt, res):
             self.assertTrue(np.array_equal(x, y))

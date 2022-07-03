@@ -189,7 +189,8 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(set_value, ops::SetValueNPUKernel<int>,
+REGISTER_OP_NPU_KERNEL(set_value,
+                       ops::SetValueNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::SetValueNPUKernel<int64_t>,
 #endif

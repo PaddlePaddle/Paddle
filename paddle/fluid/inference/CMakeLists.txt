@@ -119,6 +119,8 @@ cc_library(
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
+  set_property(TARGET paddle_inference_shared
+               PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared gflags)
 endif()
 

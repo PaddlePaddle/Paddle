@@ -48,7 +48,6 @@ TEST(API, to_sparse_coo) {
   std::copy(&dense_data[0][0], &dense_data[0][0] + 9, dense_x_data);
 
   phi::CPUContext dev_ctx_cpu;
-  dev_ctx_cpu.Init();
 
   // 1. test dense_to_sparse_coo
   paddle::experimental::Tensor x(dense_x);

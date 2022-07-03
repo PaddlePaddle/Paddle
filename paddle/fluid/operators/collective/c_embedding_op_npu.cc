@@ -24,7 +24,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-inline void FillNPU(Tensor *dst, T val,
+inline void FillNPU(Tensor *dst,
+                    T val,
                     const framework::ExecutionContext &context) {
   Tensor value(dst->type());
   value.mutable_data<T>({1}, context.GetPlace());
@@ -34,13 +35,15 @@ inline void FillNPU(Tensor *dst, T val,
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
-  const auto &runner = NpuOpRunner("FillD", {value}, {*dst},
-                                   {{"dims", phi::vectorize(dst->dims())}});
+  const auto &runner = NpuOpRunner(
+      "FillD", {value}, {*dst}, {{"dims", phi::vectorize(dst->dims())}});
   runner.Run(stream);
 }
 
 template <typename T>
-void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
+void shard_index(const Tensor &table_t,
+                 const Tensor &ids_t,
+                 int64_t start_idx,
                  const Tensor &id_t,
                  const framework::ExecutionContext &context) {
   const int height = table_t.dims()[0];
@@ -72,7 +75,8 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   Tensor factor_tensor(ids_t.type());
   factor_tensor.mutable_data<T>({1}, context.GetPlace());
   paddle::framework::TensorFromVector(std::vector<T>{static_cast<T>(start_idx)},
-                                      context.device_context(), &factor_tensor);
+                                      context.device_context(),
+                                      &factor_tensor);
   sub_runner.SetType("Sub")
       .AddInput(ids_t)
       .AddInput(factor_tensor)
@@ -127,7 +131,8 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       table_t->numel() * framework::DataTypeSize(table_t->dtype());
   size_t line_mem_size =
       table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
-  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
+  PADDLE_ENFORCE_EQ(line_mem_size % 64,
+                    0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
 
@@ -136,10 +141,14 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
 
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
-  platform::NPUMemcpyAsync(pad_data, table_t->data<T>(), mem_size,
-                           ACL_MEMCPY_DEVICE_TO_DEVICE, stream, mem_size);
-  platform::NPUMemsetAsync(pad_data + mem_size, 0, line_mem_size, stream,
-                           line_mem_size);
+  platform::NPUMemcpyAsync(pad_data,
+                           table_t->data<T>(),
+                           mem_size,
+                           ACL_MEMCPY_DEVICE_TO_DEVICE,
+                           stream,
+                           mem_size);
+  platform::NPUMemsetAsync(
+      pad_data + mem_size, 0, line_mem_size, stream, line_mem_size);
 
   output_t->mutable_data<T>(context.GetPlace());
   NpuOpRunner runner;
@@ -202,15 +211,17 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
       table_t_pad.numel() *
       framework::SizeOfType(
           framework::TransToProtoVarType(table_t_pad.dtype()));
-  platform::NPUMemsetAsync(pad_data, 0, table_t_pad_mem_size, stream,
-                           table_t_pad_mem_size);
+  platform::NPUMemsetAsync(
+      pad_data, 0, table_t_pad_mem_size, stream, table_t_pad_mem_size);
 
   // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
   // can be different tensor, but in cann 20.2+, it does inplace operation.
   // Thus, the first input and output should be same tensor.
   const auto &runner_scatter =
-      NpuOpRunner("ScatterAdd", {table_t_pad, ids_t_local, *d_output_t},
-                  {table_t_pad}, {{"use_locking", true}});
+      NpuOpRunner("ScatterAdd",
+                  {table_t_pad, ids_t_local, *d_output_t},
+                  {table_t_pad},
+                  {{"use_locking", true}});
   runner_scatter.Run(stream);
 
   // copy table_t_pad to table_t
@@ -221,12 +232,13 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // check align
   size_t line_mem_size =
       table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
-  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
+  PADDLE_ENFORCE_EQ(line_mem_size % 64,
+                    0,
                     platform::errors::InvalidArgument(
                         "NPU only accept the second dim must align by 64"));
 
-  platform::NPUMemcpyAsync(dst, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE,
-                           stream, mem_size);
+  platform::NPUMemcpyAsync(
+      dst, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream, mem_size);
 }
 
 template <typename T>
@@ -250,9 +262,11 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_NPU_KERNEL(c_embedding, ops::CEmbeddingNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(c_embedding,
+                       ops::CEmbeddingNPUKernel<float>,
                        ops::CEmbeddingNPUKernel<double>,
                        ops::CEmbeddingNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(c_embedding_grad, ops::CEmbeddingGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(c_embedding_grad,
+                       ops::CEmbeddingGradNPUKernel<float>,
                        ops::CEmbeddingGradNPUKernel<double>,
                        ops::CEmbeddingGradNPUKernel<plat::float16>);

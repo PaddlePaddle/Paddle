@@ -298,6 +298,15 @@ elseif(WITH_ROCM)
     data_type_transform_test
     SRCS data_type_transform_test.cc data_type_transform_test.cu
     DEPS data_type_transform)
+elseif(WITH_XPU)
+  cc_library(
+    data_type_transform
+    SRCS data_type_transform.cc
+    DEPS tensor xpulib)
+  cc_test(
+    data_type_transform_test
+    SRCS data_type_transform_test.cc
+    DEPS data_type_transform)
 else()
   cc_library(
     data_type_transform

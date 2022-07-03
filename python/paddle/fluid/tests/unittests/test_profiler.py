@@ -18,6 +18,7 @@ import unittest
 import os
 import tempfile
 import numpy as np
+import paddle
 import paddle.utils as utils
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
@@ -205,4 +206,5 @@ class TestProfilerAPIError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

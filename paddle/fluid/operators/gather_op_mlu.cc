@@ -30,13 +30,15 @@ class GatherOpMLUKernel : public framework::OpKernel<T> {
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
@@ -47,12 +49,18 @@ class GatherOpMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc x_desc(*x);
     int index_shape_1d[1] = {static_cast<int>(index_dims[0])};
-    MLUCnnlTensorDesc index_desc(1, index_shape_1d,
-                                 ToCnnlDataType(index->dtype()));
+    MLUCnnlTensorDesc index_desc(
+        1, index_shape_1d, ToCnnlDataType(index->dtype()));
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::GatherFunctor(ctx, axis, 0 /*batch_dims*/, x_desc.get(),
-                           GetBasePtr(x), index_desc.get(), GetBasePtr(index),
-                           out_desc.get(), GetBasePtr(out));
+    MLUCnnl::GatherFunctor(ctx,
+                           axis,
+                           0 /*batch_dims*/,
+                           x_desc.get(),
+                           GetBasePtr(x),
+                           index_desc.get(),
+                           GetBasePtr(index),
+                           out_desc.get(),
+                           GetBasePtr(out));
   }
 };
 
@@ -67,13 +75,15 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
     const auto index_dims = index->dims();
     if (index_dims.size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index_dims[1], 1,
+          index_dims[1],
+          1,
           platform::errors::InvalidArgument(
               "The last dim of index should be 1 when it is 2D, but we get %d",
               index_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          index_dims.size(), 1,
+          index_dims.size(),
+          1,
           platform::errors::InvalidArgument(
               "The index should be 1D, when it is not 2D, but we get %d",
               index_dims.size()));
@@ -83,17 +93,22 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc dx_desc(*dx);
     auto value = static_cast<T>(0);
-    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(),
-                  GetBasePtr(dx));
+    MLUCnnl::Fill(
+        ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(), GetBasePtr(dx));
 
     int index_shape_1d[1] = {static_cast<int>(index_dims[0])};
-    MLUCnnlTensorDesc index_desc(1, index_shape_1d,
-                                 ToCnnlDataType(index->dtype()));
+    MLUCnnlTensorDesc index_desc(
+        1, index_shape_1d, ToCnnlDataType(index->dtype()));
     MLUCnnlTensorDesc dout_desc(*dout);
     const cnnlScatterRefMode_t mode = CNNL_SCATTERREF_UPDATE;
-    MLUCnnl::ScatterFunctor(ctx, dx_desc.get(), GetBasePtr(dx), dout_desc.get(),
-                            GetBasePtr(dout), index_desc.get(),
-                            GetBasePtr(index), mode);
+    MLUCnnl::ScatterRefFunctor(ctx,
+                               dx_desc.get(),
+                               GetBasePtr(dx),
+                               dout_desc.get(),
+                               GetBasePtr(dout),
+                               index_desc.get(),
+                               GetBasePtr(index),
+                               mode);
   }
 };
 
@@ -101,10 +116,12 @@ class GatherGradOpMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(gather, ops::GatherOpMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather,
+                       ops::GatherOpMLUKernel<float>,
                        ops::GatherOpMLUKernel<paddle::platform::float16>,
                        ops::GatherOpMLUKernel<int>);
 
-REGISTER_OP_MLU_KERNEL(gather_grad, ops::GatherGradOpMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather_grad,
+                       ops::GatherGradOpMLUKernel<float>,
                        ops::GatherGradOpMLUKernel<paddle::platform::float16>,
                        ops::GatherGradOpMLUKernel<int>);

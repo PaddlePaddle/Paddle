@@ -40,7 +40,8 @@ void AppendSkipDeletionVars(const std::vector<std::string>& append_vars,
                             std::vector<std::string>* all_vars);
 
 void ParseSafeEagerDeletionSkipVars(
-    const ProgramDesc& program, int64_t forward_op_nums,
+    const ProgramDesc& program,
+    int64_t forward_op_nums,
     const std::vector<std::string>& output_var_names,
     std::vector<std::string>* skip_eager_delete_vars);
 
@@ -82,7 +83,8 @@ class ExecutorInfoCache {
   void SetBuildStrategy(int64_t program_id,
                         const BuildStrategy& build_strategy) {
     PADDLE_ENFORCE_EQ(
-        strategy_map_.count(program_id), 0,
+        strategy_map_.count(program_id),
+        0,
         platform::errors::PreconditionNotMet(
             "program_id: %s already exist in ExecutorInfoCache", program_id));
     strategy_map_[program_id] = build_strategy;
@@ -97,7 +99,8 @@ class ExecutorInfoCache {
     return info_map_[program_id].GetMutable(is_grad);
   }
 
-  void UpdateSkipEagerDeleteVars(int64_t program_id, bool is_grad,
+  void UpdateSkipEagerDeleteVars(int64_t program_id,
+                                 bool is_grad,
                                  const std::vector<std::string>& skip_vars) {
     auto& cached_value = GetMutable(program_id, is_grad);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
@@ -132,8 +135,10 @@ using PEAndGraphPair =
 
 CacheInfo GetExecutorInfoFromCache(const ProgramDesc& program_desc,
                                    const platform::Place& place,
-                                   int64_t start_op_index, int64_t end_op_index,
-                                   bool is_grad, int64_t program_id,
+                                   int64_t start_op_index,
+                                   int64_t end_op_index,
+                                   bool is_grad,
+                                   int64_t program_id,
                                    framework::Scope* scope);
 
 PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc& program_desc,

@@ -29,7 +29,8 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
-    PADDLE_ENFORCE_EQ(use_global_stats, false,
+    PADDLE_ENFORCE_EQ(use_global_stats,
+                      false,
                       platform::errors::InvalidArgument(
                           "sync_batch_norm doesn't support "
                           "to set use_global_stats True. Please use batch_norm "
@@ -49,10 +50,20 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
 
     bool test_mode = is_test && (!trainable_stats);
-    SyncBatchNormFunctor<platform::CUDADeviceContext, T>(
-        ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
-        saved_mean, saved_inv_variance, epsilon, momentum, test_mode,
-        use_global_stats);
+    SyncBatchNormFunctor<platform::CUDADeviceContext, T>(ctx,
+                                                         layout,
+                                                         x,
+                                                         y,
+                                                         est_mean,
+                                                         est_var,
+                                                         mean_out,
+                                                         variance_out,
+                                                         saved_mean,
+                                                         saved_inv_variance,
+                                                         epsilon,
+                                                         momentum,
+                                                         test_mode,
+                                                         use_global_stats);
   }
 };
 
@@ -62,7 +73,8 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
@@ -80,9 +92,17 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
 
-    SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(
-        ctx, layout, scale, bias, d_x, d_y, d_scale, d_bias, saved_mean,
-        saved_inv_var, epsilon);
+    SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(ctx,
+                                                             layout,
+                                                             scale,
+                                                             bias,
+                                                             d_x,
+                                                             d_y,
+                                                             d_scale,
+                                                             d_bias,
+                                                             saved_mean,
+                                                             saved_inv_var,
+                                                             epsilon);
   }
 };
 
@@ -94,7 +114,8 @@ namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 REGISTER_OP_CUDA_KERNEL(
-    sync_batch_norm, ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
+    sync_batch_norm,
+    ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     sync_batch_norm_grad,
@@ -102,7 +123,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
 #else
 REGISTER_OP_CUDA_KERNEL(
-    sync_batch_norm, ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
+    sync_batch_norm,
+    ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, double>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(

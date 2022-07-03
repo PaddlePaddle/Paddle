@@ -35,11 +35,13 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
 
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Dimension number of Input(X) should be at least 2. "
                           "But received X's dimensions = %d, X's shape = [%s].",
-                          x_dims.size(), x_dims));
+                          x_dims.size(),
+                          x_dims));
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
@@ -50,18 +52,21 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       auto& x_dim = x_var->Get<LoDTensor>().dims();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
-      PADDLE_ENFORCE_EQ(y_lod.size(), 1,
+      PADDLE_ENFORCE_EQ(y_lod.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Level number of Input(Y)'s lod should be 1. But "
                             "received Y's lod level = %d.",
                             y_lod.size()));
 
-      PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]), y_lod[0].size() - 1,
+      PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]),
+                        y_lod[0].size() - 1,
                         platform::errors::InvalidArgument(
                             "The first dimension of Input(X) should be one "
                             "less than the size of Input(Y)'s 0 level lod. But "
                             "received X's shape[0] = %d, Y's lod[0].size = %d.",
-                            x_dim[0], y_lod[0].size()));
+                            x_dim[0],
+                            y_lod[0].size()));
 
       int64_t out_first_dim = 0;
       if (y_lod[0].size() <= 1) {
@@ -146,8 +151,10 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "SequenceExpandAsGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "SequenceExpandAsGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "SequenceExpandAsGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -192,22 +199,23 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sequence_expand_as, ops::SequenceExpandAsOp, ops::SequenceExpandAsOpMaker,
+    sequence_expand_as,
+    ops::SequenceExpandAsOp,
+    ops::SequenceExpandAsOpMaker,
     ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
     ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
     ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad,
+REGISTER_OPERATOR(sequence_expand_as_grad,
+                  ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_as,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_expand_as,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, float>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, double>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>);
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, float>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, double>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int64_t>);

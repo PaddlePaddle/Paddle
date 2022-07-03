@@ -39,7 +39,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    exponential, ops::ExponentialKernel<plat::CUDADeviceContext, float>,
+    exponential,
+    ops::ExponentialKernel<plat::CUDADeviceContext, float>,
     ops::ExponentialKernel<plat::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     exponential_grad,

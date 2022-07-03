@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/diag_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    diag, ops::DiagKernel<paddle::platform::CUDADeviceContext, int>,
+    diag,
+    ops::DiagKernel<paddle::platform::CUDADeviceContext, int>,
     ops::DiagKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::DiagKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DiagKernel<paddle::platform::CUDADeviceContext, double>);

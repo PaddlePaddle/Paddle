@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/complex_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    complex, ops::ComplexKernel<paddle::platform::CUDADeviceContext, float>,
+    complex,
+    ops::ComplexKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ComplexKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(

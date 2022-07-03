@@ -21,6 +21,7 @@ class DeviceType:
     XPU = 'xpu'
     NPU = 'npu'
     MLU = 'mlu'
+    IPU = 'ipu'
 
 
 class Device(object):
@@ -69,6 +70,8 @@ class Device(object):
             return 'FLAGS_selected_xpus'
         if self._dtype == DeviceType.MLU:
             return 'FLAGS_selected_mlus'
+        if self._dtype == DeviceType.IPU:
+            return 'FLAGS_selected_ipus'
         return 'FLAGS_selected_devices'
 
     def get_selected_devices(self, devices=''):
@@ -130,6 +133,12 @@ class Device(object):
             dev._dtype = DeviceType.MLU
             num = fluid.core.get_mlu_device_count()
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
+        elif fluid.core.is_compiled_with_ipu():
+            dev._dtype = DeviceType.IPU
+            num = fluid.core.get_ipu_device_count()
+            # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
+            dev._labels = [str(x) for x in range(0, num + 1)]
+            return dev
 
         if num == 0:
             dev._dtype = DeviceType.CPU

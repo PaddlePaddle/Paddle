@@ -20,8 +20,9 @@ from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
-from .utils import get_input_var_list, get_output_var_list, to_tensors, flatten, flatten_and_remove_none
+from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
 from collections import OrderedDict
+from paddle.autograd.utils import as_tensors
 
 
 def topo_path(xs, ys, block=None):
@@ -457,7 +458,7 @@ def _lower(block, reverse):
 
             for orig_out, new_out in zip(
                     expand_nested_list(get_output_var_list(op)),
-                    expand_nested_list(to_tensors(lower_fn(op, *input_args)))):
+                    expand_nested_list(as_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
                 vars_to_remove.add(new_out.name)
@@ -591,7 +592,7 @@ def _gradients(ys, xs, ys_bar=None):
         xs_bar: a list gradients of input `xs`
     """
 
-    ys, xs = to_tensors(ys), to_tensors(xs)
+    ys, xs, ys_bar = as_tensors(ys), as_tensors(xs), as_tensors(ys_bar)
     block = default_main_program().current_block()
     for el in xs + ys:
         assert el is None or el.block == block, f'variable in xs and ys should be None or in current block of main program'

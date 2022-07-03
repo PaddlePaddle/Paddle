@@ -42,7 +42,6 @@ TEST(DEV_API, sparse_relu) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   DenseTensor dense_x =
       phi::Empty(dev_ctx_cpu,

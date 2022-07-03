@@ -17,7 +17,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    fold, ops::FoldOpKernel<paddle::platform::CUDADeviceContext, float>,
+    fold,
+    ops::FoldOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FoldOpKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(

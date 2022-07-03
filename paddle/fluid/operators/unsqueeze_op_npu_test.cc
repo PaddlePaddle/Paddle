@@ -61,8 +61,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   axis.push_back(1);
   f::AttributeMap attrs = {{"axes", axis}};
 
-  auto op = f::OpRegistry::CreateOp("unsqueeze", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "unsqueeze", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
 
   op->Run(*scope, place);
   ctx.Wait();

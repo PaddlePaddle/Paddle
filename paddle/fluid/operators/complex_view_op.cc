@@ -36,7 +36,8 @@ class AsComplexOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     const int input_rank = in_dims.size();
     PADDLE_ENFORCE_GE(
-        input_rank, 1,
+        input_rank,
+        1,
         platform::errors::InvalidArgument(
             "The rank of input(X) is less than 1. "
             "Expected the rank of input(X) to be equal to or greater than 1."
@@ -44,7 +45,8 @@ class AsComplexOp : public framework::OperatorWithKernel {
             input_rank));
     const int last_dim_size = in_dims[input_rank - 1];
     PADDLE_ENFORCE_EQ(
-        last_dim_size, 2,
+        last_dim_size,
+        2,
         platform::errors::InvalidArgument(
             "The size of the last dimension of input(X)"
             "does not equals 2."
@@ -147,18 +149,22 @@ class AsRealGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(as_complex, ops::AsComplexOp, ops::AsComplexOpMaker,
+REGISTER_OPERATOR(as_complex,
+                  ops::AsComplexOp,
+                  ops::AsComplexOpMaker,
                   ops::AsComplexGradMaker<paddle::framework::OpDesc>,
                   ops::AsComplexGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(as_real, ops::AsRealOp, ops::AsRealOpMaker,
+REGISTER_OPERATOR(as_real,
+                  ops::AsRealOp,
+                  ops::AsRealOpMaker,
                   ops::AsRealGradMaker<paddle::framework::OpDesc>,
                   ops::AsRealGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    as_complex, ops::AsComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(as_complex,
+                       ops::AsComplexKernel<phi::CPUContext, float>,
+                       ops::AsComplexKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    as_real, ops::AsRealKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsRealKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(as_real,
+                       ops::AsRealKernel<phi::CPUContext, float>,
+                       ops::AsRealKernel<phi::CPUContext, double>);

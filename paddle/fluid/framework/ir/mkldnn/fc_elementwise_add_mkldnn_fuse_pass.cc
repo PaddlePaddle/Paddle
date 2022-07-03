@@ -56,7 +56,8 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
 }
 
 GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
-    const std::string& name_scope, const GraphWithStats& graph_with_stats,
+    const std::string& name_scope,
+    const GraphWithStats& graph_with_stats,
     bool fc_as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
@@ -67,11 +68,13 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
           "fc", "Input"),
       fc_has_bias);
 
-  patterns::ResidualElementwise elementwise_pattern{pattern, name_scope,
-                                                    fc_as_x};
+  patterns::ResidualElementwise elementwise_pattern{
+      pattern, name_scope, fc_as_x};
   elementwise_pattern(
-      fc_output, pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add", fc_as_x);
+      fc_output,
+      pattern->NewNode(elementwise_pattern.residual_data_repr()),
+      "elementwise_add",
+      fc_as_x);
   fc_output->AsIntermediate();
 
   int found_fc_count = 0;
@@ -83,12 +86,12 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, output, fc_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data,
-                              elementwise_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_op, elementwise_op, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        residual_data, residual_data, elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, elementwise_out, elementwise_pattern);
 
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
     if (!IsReachable(g, residual_data, fc_output)) return;

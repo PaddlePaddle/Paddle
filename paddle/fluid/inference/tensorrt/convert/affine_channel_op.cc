@@ -35,7 +35,8 @@ namespace tensorrt {
 class AffineChannelOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid affine_channel op to tensorrt scale nd layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -65,13 +66,17 @@ class AffineChannelOpConverter : public OpConverter {
     TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
                                         static_cast<void*>(bias_ptr),
                                         (size_t)idim.d[channel_axis]};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
+    TensorRTEngine::Weight power_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *input_tensor,
+    auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                      ScaleNd,
+                                      *input_tensor,
                                       nvinfer1::ScaleMode::kCHANNEL,
-                                      bias_weights.get(), scale_weights.get(),
-                                      power_weights.get(), channel_axis);
+                                      bias_weights.get(),
+                                      scale_weights.get(),
+                                      power_weights.get(),
+                                      channel_axis);
 
     RreplenishLayerAndOutput(layer, "affine_channel", {output_name}, test_mode);
   }
