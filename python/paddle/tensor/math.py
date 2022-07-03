@@ -3640,7 +3640,7 @@ def conj(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
+        Tensor: The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
 
     Examples:
         .. code-block:: python
@@ -3720,7 +3720,7 @@ def neg(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
+        Tensor: The negative of input Tensor. The shape and data type are the same with input Tensor.
 
     Examples:
         .. code-block:: python
@@ -3757,7 +3757,7 @@ def atan2(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
+        Tensor: An N-D Tensor, the shape and data type is the same with input (The output data type is float64 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -3867,7 +3867,7 @@ def lerp(x, y, weight, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        Tensor: An N-D Tensor, the shape and data type is the same with input.
 
     Example:
         .. code-block:: python
@@ -3935,7 +3935,7 @@ def erfinv(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+        Tensor: An N-D Tensor, the shape and data type is the same with input.
 
     Example:
         .. code-block:: python
@@ -3983,7 +3983,7 @@ def rad2deg(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+        Tensor: An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -4046,7 +4046,7 @@ def deg2rad(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
+        Tensor: An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
 
     Examples:
         .. code-block:: python
@@ -4105,7 +4105,7 @@ def gcd(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the data type is the same with input.
+        Tensor: An N-D Tensor, the data type is the same with input.
 
     Examples:
         .. code-block:: python
@@ -4183,7 +4183,7 @@ def lcm(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): An N-D Tensor, the data type is the same with input.
+        Tensor: An N-D Tensor, the data type is the same with input.
 
     Examples:
         .. code-block:: python
