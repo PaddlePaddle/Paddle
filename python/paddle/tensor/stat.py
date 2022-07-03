@@ -217,6 +217,8 @@ def numel(x, name=None):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+		name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The number of elements for the input Tensor.
@@ -563,7 +565,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     return outputs
 
 
-def quantile(x, q, axis=None, keepdim=False):
+def quantile(x, q, axis=None, keepdim=False, name=None):
     """
     Compute the quantile of the input along the specified axis.
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
@@ -623,7 +625,7 @@ def quantile(x, q, axis=None, keepdim=False):
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
 
 
-def nanquantile(x, q, axis=None, keepdim=False):
+def nanquantile(x, q, axis=None, keepdim=False, name=None):
     """
     Compute the quantile of the input as if NaN values in input did not exist.
     If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
