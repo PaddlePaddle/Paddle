@@ -156,7 +156,7 @@ void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
     conv_op->Op()->SetAttr("Sum_scale", sum_scale);
     conv_op->Op()->SetAttr("Output_shift_scale", output_shift_scale);
-    conv_op->Op()->SetAttr("activation_scale", activation_scale);
+    conv_op->Op()->SetAttr("Activation_scale", activation_scale);
     found_int8_scales_count++;
   };
   gpd(graph, handler);

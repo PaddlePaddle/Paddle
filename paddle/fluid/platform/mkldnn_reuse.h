@@ -1011,22 +1011,12 @@ class ActivationMKLDNNHandler
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
                              dnnl::post_ops& post_ops,
-                             float quantized_activation_scale = 1.0f) {
+                             float activation_scale = 1.0f) {
   const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
   const auto fuse_alpha =
       ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
   const auto fuse_beta =
       ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
-
-  float activation_scale;
-
-  if (quantized_activation_scale != 1.0f) {
-    activation_scale = quantized_activation_scale;
-  } else {
-    activation_scale = ctx.HasAttr("activation_scale")
-                           ? ctx.Attr<float>("activation_scale")
-                           : 1.0f;
-  }
 
   if (fuse_activation == "hard_sigmoid") {
     post_ops.append_eltwise(activation_scale,
