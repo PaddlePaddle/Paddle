@@ -228,6 +228,102 @@ __device__ __forceinline__ void ReadData(Ty* dst,
 }
 
 /**
+ * @brief Read 2D data from global memory to register according to Tx type, and
+ * store it as Ty type into register.
+ *
+ * @template paraments
+ * Tx: The type of data stored in the global memory.
+ * Ty: The type of data that needs to be stored in registers.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * BlockSize: Identifies the current device thread index method. For GPU,
+ * VecSize: Useless variables, just for adaptation KP.
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x blockDim, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The data pointer of the current block.
+ * size_nx: The maximum offset of the current block is size_nx elements in the
+ * lowest dimension. The parameters are only calculated when isboundary = true.
+ * size_ny: The maximum offset of the current block is size_ny elements in the
+ * first dimension. The parameters are only calculated when isboundary = true.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
+ * read_lens: Useless variables, just for adaptation KP.
+ */
+template <typename Tx,
+          typename Ty,
+          int NX,
+          int NY,
+          int BlockSize,
+          int VecSize,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadData(Ty* dst,
+                                         const Tx* __restrict__ src,
+                                         int size_nx,
+                                         int size_ny,
+                                         int stride_nx,
+                                         int stride_ny,
+                                         int read_lens) {
+  int thread_offset = threadIdx.x;
+  int left_size_nx = size_nx - thread_offset;
+
+  // Each branch is added for better performance
+  if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
+    if (IsBoundary) {
+      if (left_size_nx > 0) {
+        dst[0] = static_cast<Ty>(src[thread_offset]);
+      }
+    } else {
+      dst[0] = static_cast<Ty>(src[thread_offset]);
+    }
+  } else if (NX == 1) {  // for NX == 1 and NY != 1
+#pragma unroll
+    for (int idy = 0; idy < NY; ++idy) {
+      if (IsBoundary) {
+        if (idy * stride_ny >= size_ny) {
+          break;
+        }
+      }
+      dst[idy] = static_cast<Ty>(src[thread_offset + idy * stride_ny]);
+    }
+  } else if (NY == 1) {  // for NY == 1 and NX != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx * stride_nx >= left_size_nx) {
+          break;
+        }
+      }
+      dst[idx] = static_cast<Ty>(src[thread_offset + idx * stride_nx]);
+    }
+  } else {  // for NX != 1 and NY != 1
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (IsBoundary) {
+        if (idx * stride_nx >= left_size_nx) {
+          break;
+        }
+      }
+#pragma unroll
+      for (int idy = 0; idy < NY; ++idy) {
+        if (IsBoundary) {
+          if (idy * stride_ny >= size_ny) {
+            break;
+          }
+        }
+        dst[idy * NX + idx] = static_cast<Ty>(
+            src[thread_offset + idx * stride_nx + idy * stride_ny]);
+      }
+    }
+  }
+}
+
+/**
  * @brief Initialize register with init_data.
  *
  * @template paraments
