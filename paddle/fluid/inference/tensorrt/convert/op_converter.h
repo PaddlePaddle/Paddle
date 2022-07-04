@@ -234,19 +234,20 @@ class OpConverter {
       SetEngine(engine);
       const auto& op = block.ops(i);
       framework::OpDesc op_desc(op, nullptr);
-      std::vector<std::string> a = {
-          "reshape2", "unsqueeze2", "transpose2", "transpose"};
-      std::vector<std::string> b = {"slice", "conv2d"};
       framework::Variable* X_v = nullptr;
       std::string X_name;
-      if (std::find(a.begin(), a.end(), op_desc.Type()) != a.end()) {
+      // inputs : string -> std::vector<string>
+      auto inputs = op_desc.Inputs();
+      if (inputs.count("X")) {
         X_name = op_desc.Input("X")[0];
-      }
-      if (std::find(b.begin(), b.end(), op_desc.Type()) != b.end()) {
+      } else if (inputs.count("Input")) {
         X_name = op_desc.Input("Input")[0];
+      } else if (inputs.count("Y")) {
+        X_name = op_desc.Input("Y")[0];
       }
       X_v = scope.FindVar(X_name);
-      //
+      // If this weight is shared between ops, it needn't to be convtered to
+      // itensor twice
       if (engine->GetITensorMap()->count(X_name)) {
         continue;
       }
