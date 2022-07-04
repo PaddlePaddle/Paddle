@@ -38,7 +38,7 @@ class TestBase(IPUOpTest):
 
     def set_op(self):
         # setup custom op
-        self.op = paddle.fluid.layers.identity_loss
+        self.op = paddle.incubate.identity_loss
 
     def set_feed(self):
         self.feed = {
