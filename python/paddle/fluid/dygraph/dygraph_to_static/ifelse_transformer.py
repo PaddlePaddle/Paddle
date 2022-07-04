@@ -304,8 +304,8 @@ def transform_if_else(node, root):
     """
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
-    new_vars_to_create = node.pd_scope.created_vars()
-    return_name_ids = list(node.pd_scope.modified_vars())
+    new_vars_to_create = sorted(list(node.pd_scope.created_vars()))
+    return_name_ids = sorted(list(node.pd_scope.modified_vars()))
     # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
     # E.g.
     #

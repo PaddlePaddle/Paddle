@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, _non_static_mode, static_only, _in_legacy_dygraph, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
 import numpy
 import warnings
 import six
@@ -2402,7 +2402,7 @@ def copy_var_to_parent_block(var, layer_helper):
     return parent_block_var
 
 
-def cond(pred, true_fn=None, false_fn=None, name=None):
+def cond(pred, true_fn=None, false_fn=None, return_name_ids=None, name=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
@@ -2448,6 +2448,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             true. The default value is ``None`` .
         false_fn(callable, optional): A callable to be performed if ``pred`` is
             false. The default value is ``None`` .
+        return_name_ids: A list of strings to represents the name of returned vars.
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
@@ -2561,21 +2562,60 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             "true_fn returns non-None while false_fn returns None")
 
     # Merge ture and false output if they are not None
-    try:
-        from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
-        true_output, false_output = padding_to_same_structure(
-            true_output, false_output, UndefinedVar("padding"))
-        assert_same_structure(true_output, false_output, check_types=False)
-    except ValueError as e:
+    true_output, false_output = expand_undefined_var(true_output, false_output)
+    true_output, false_output = change_none_to_undefinedvar(
+        true_output, false_output)
+    if len(to_sequence(true_output)) != len(to_sequence(false_output)):
         raise ValueError(
-            "Incompatible return values of true_fn and false_fn in cond: {}".
-            format(e))
+            "true fn returns {} vars, but false fn returns {} vars, which is not equals"
+            .format(len(to_sequence(true_output)),
+                    len(to_sequence(false_output))))
+    for true_out, false_out, return_name in zip(to_sequence(true_output),
+                                                to_sequence(false_output),
+                                                return_name_ids):
+        try:
+            assert_same_structure(true_out, false_out, check_types=False)
+        except ValueError as e:
+            raise ValueError(
+                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}"
+                .format(return_name, e))
 
     mask = cast(pred, dtype='int32')
     merge_func = lambda false_var, true_var: select_input_with_buildin_type(
         [false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
+
+
+def change_none_to_undefinedvar(nest1, nest2):
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+
+    def map_fn(x):
+        if x is None: return UndefinedVar("padding")
+        return x
+
+    nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
+    nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
+    return nest1_out, nest2_out
+
+
+def expand_undefined_var(nest1, nest2):
+    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+
+    def pack_undefined_var_as(seq):
+        return pack_sequence_as(seq,
+                                [UndefinedVar("padding") for i in flatten(seq)])
+
+    def map_fn(n1, n2):
+        if isinstance(n1, UndefinedVar) or n1 is None:
+            return pack_undefined_var_as(n2)
+        return n1
+
+    nest1_out = list(map(map_fn, to_sequence(nest1), to_sequence(nest2)))
+    nest2_out = list(map(map_fn, to_sequence(nest2), to_sequence(nest1)))
+    if not is_sequence(nest1): nest1_out = nest1_out[0]
+    if not is_sequence(nest2): nest2_out = nest2_out[0]
+    return nest1_out, nest2_out
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):

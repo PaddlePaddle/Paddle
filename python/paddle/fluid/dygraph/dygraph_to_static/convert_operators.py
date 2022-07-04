@@ -247,7 +247,8 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
         return get_args()
 
     try:
-        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn,
+                                      return_name_ids)
     except Exception as e:
         if re.search("Unsupported return type of true_fn and false_fn in cond",
                      str(e)):
@@ -337,7 +338,7 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     if num_args == 1:
         final_outs = outs
     else:
-        outs = (outs, ) if num_outs == 1 else outs
+        outs = (outs, ) if num_outs == 1 else tuple(outs)
         final_outs = outs + init_args[num_outs:]
 
     set_args(final_outs)

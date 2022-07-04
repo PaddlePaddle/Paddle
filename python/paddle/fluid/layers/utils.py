@@ -125,6 +125,13 @@ def _yield_flat_nest(nest):
             yield n
 
 
+def to_sequence(nest):
+    if is_sequence(nest):
+        return nest
+    else:
+        return [nest]
+
+
 def flatten(nest):
     """
 	:alias_main: paddle.flatten
