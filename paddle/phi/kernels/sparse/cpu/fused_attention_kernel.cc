@@ -30,7 +30,8 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
                              const DenseTensor& attn_mask,
                              DenseTensor* out,
                              SparseCsrTensor* softmax) {
-  PD_THROW("Only support 'fused_attention' CPU kernel of SparseTensor now");
+  PD_THROW(
+      "Not support CPU kernel of 'sparse.nn.functional.fused_attention' now");
 }
 
 }  // namespace sparse

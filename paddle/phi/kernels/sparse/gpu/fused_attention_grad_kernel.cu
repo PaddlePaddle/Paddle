@@ -31,25 +31,22 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
                                          T* dx_values,
                                          int M,
                                          int total_row_num,
-                                         float scale) {
+                                         float scale,
+                                         int batch_nnz) {
   // dx = (dout - sum(dout * out)) * out
   int row = blockIdx.x * blockDim.y + threadIdx.y;
-  int non_zero_idx = threadIdx.x;
   if (row >= total_row_num) return;
+
   int cur_batch = row / M;
   int crow_idx = cur_batch * (M + 1) + (row % M);
-  int cur_batch_offset = 0;
-  for (int i = 1; i < cur_batch + 1; ++i) {
-    cur_batch_offset += static_cast<int>(out_crows[i * (M + 1) - 1]);
-  }
-  int row_first = cur_batch_offset + static_cast<int>(out_crows[crow_idx]);
+  int row_first = cur_batch * batch_nnz + static_cast<int>(out_crows[crow_idx]);
   int row_nnz = static_cast<int>(out_crows[crow_idx + 1] - out_crows[crow_idx]);
   if (row_nnz == 0) return;
 
   int kIteration = (row_nnz + WARP_SIZE - 1) / WARP_SIZE;
   T mul_result = 0;
   for (int i = 0; i < kIteration; ++i) {
-    int idx = non_zero_idx + i * WARP_SIZE;
+    int idx = threadIdx.x + i * WARP_SIZE;
     if (idx >= row_nnz) break;
 
     mul_result += out_values[row_first + idx] * dout_values[row_first + idx];
@@ -57,7 +54,7 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
   T sum = phi::funcs::warpReduceSum<T>(mul_result, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
-    int idx = non_zero_idx + i * WARP_SIZE;
+    int idx = threadIdx.x + i * WARP_SIZE;
     if (idx >= row_nnz) break;
 
     dx_values[row_first + idx] = (dout_values[row_first + idx] - sum) *
@@ -88,11 +85,16 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   auto q_rank = q_dim.size();
 
   int total_row_num = 1;
+  int batch_num = 1;
   for (int i = 0; i < q_rank - 1; ++i) {
     total_row_num *= q_dim[i];
+    if (i < q_rank - 2) {
+      batch_num *= q_dim[i];
+    }
   }
   int M = q_dim[q_rank - 2];
   int N = q_dim[q_rank - 1];
+  int batch_nnz = softmax.nnz() / batch_num;
 
   dim3 grid((total_row_num + 3) / 4);
   dim3 block(WARP_SIZE, 4);
@@ -104,7 +106,8 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
       d_sdd_result.mutable_non_zero_elements()->data<T>(),
       M,
       total_row_num,
-      std::sqrt(N));
+      std::sqrt(N),
+      batch_nnz);
 
   /* Step3: Forward: query{Dense} * key'{Dense} -> sdd_result{SparseCsr} */
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);

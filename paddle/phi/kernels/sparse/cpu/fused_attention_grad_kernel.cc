@@ -31,7 +31,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
                                  DenseTensor* dkey,
                                  DenseTensor* dvalue) {
   PD_THROW(
-      "Only support 'fused_attention' CPU backward kernel of SparseTensor now");
+      "Not support CPU kernel of 'sparse.nn.functional.fused_attention' now");
 }
 
 }  // namespace sparse

@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
 )
 class TestSparseAttentionAPI1(unittest.TestCase):

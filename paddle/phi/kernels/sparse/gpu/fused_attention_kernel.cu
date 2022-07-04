@@ -59,19 +59,16 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
                                      int M,
                                      int total_row_num,
                                      float scale,
-                                     int num_heads) {
+                                     int num_heads,
+                                     int batch_nnz) {
   // out = exp(x-x_max) / sum(exp(x-x_max))
   int row = blockIdx.x * blockDim.y + threadIdx.y;
-  int non_zero_idx = threadIdx.x;
   if (row >= total_row_num) return;
+
   int cur_batch = row / M;
   int cur_row = row % M;
   int crow_idx = cur_batch * (M + 1) + cur_row;
-  int cur_batch_offset = 0;
-  for (int i = 1; i < cur_batch + 1; ++i) {
-    cur_batch_offset += static_cast<int>(x_crows[i * (M + 1) - 1]);
-  }
-  int row_first = cur_batch_offset + static_cast<int>(x_crows[crow_idx]);
+  int row_first = cur_batch * batch_nnz + static_cast<int>(x_crows[crow_idx]);
   int row_nnz = static_cast<int>(x_crows[crow_idx + 1] - x_crows[crow_idx]);
   if (row_nnz == 0) return;
 
@@ -81,7 +78,7 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   T max_val = -std::numeric_limits<T>::infinity();
   for (int i = 0; i < kIteration; ++i) {
     bool mask = false;
-    int idx = non_zero_idx + i * WARP_SIZE;
+    int idx = threadIdx.x + i * WARP_SIZE;
     if (idx >= row_nnz) break;
 
     int col_idx = static_cast<int>(x_cols[row_first + idx]);
@@ -106,7 +103,7 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   auto functor = phi::funcs::CudaExpFunctor<T>();
   T exp_sum = 0;
   for (int i = 0; i < kIteration; ++i) {
-    int idx = non_zero_idx + i * WARP_SIZE;
+    int idx = threadIdx.x + i * WARP_SIZE;
     if (idx >= row_nnz) break;
 
     if (buffer[i]) {
@@ -118,7 +115,7 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   T row_exp_sum = phi::funcs::warpReduceSum<T>(exp_sum, 0xFFFFFFFF);
 
   for (int i = 0; i < kIteration; ++i) {
-    int idx = non_zero_idx + i * WARP_SIZE;
+    int idx = threadIdx.x + i * WARP_SIZE;
     if (idx >= row_nnz) break;
 
     if (buffer[i]) {
@@ -145,8 +142,12 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
   auto q_rank = q_dim.size();
 
   int total_row_num = 1;
+  int batch_num = 1;
   for (int i = 0; i < q_rank - 1; ++i) {
     total_row_num *= q_dim[i];
+    if (i < q_rank - 2) {
+      batch_num *= q_dim[i];
+    }
   }
   int M = q_dim[q_rank - 2];
   int N = q_dim[q_rank - 1];
@@ -160,6 +161,27 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(value.dims().size(),
                     4,
                     phi::errors::InvalidArgument(" 'value' must be 4D Tensor"));
+
+  PADDLE_ENFORCE_EQ(
+      sparse_mask.dims().size(),
+      3,
+      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
+                                   "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(
+      sparse_mask.dims()[0],
+      q_dim[0] * q_dim[1],
+      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
+                                   "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(
+      sparse_mask.dims()[1],
+      M,
+      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
+                                   "[batch_size*num_heads, seq_len, seq_len]"));
+  PADDLE_ENFORCE_EQ(
+      sparse_mask.dims()[2],
+      M,
+      phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
+                                   "[batch_size*num_heads, seq_len, seq_len]"));
 
   PADDLE_ENFORCE_EQ(
       key_padding_mask.dims().size(),
@@ -215,6 +237,8 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
   dim3 grid((total_row_num + 3) / 4);
   dim3 block(WARP_SIZE, 4);
 
+  int batch_nnz = sdd_result.nnz() / batch_num;
+
   VISIT_ATTN_SFOTMAX(buffer_size, "AttnSoftmaxGpuKernel", [&] {
     AttnSoftmaxGpuKernel<T, KBufferSize><<<grid, block, 0, dev_ctx.stream()>>>(
         sdd_result.non_zero_crows().data<int64_t>(),
@@ -226,7 +250,8 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
         M,
         total_row_num,
         std::sqrt(N),
-        q_dim[1]);
+        q_dim[1],
+        batch_nnz);
   });
 
   /* Step3: DSD Matmul, reuse */
