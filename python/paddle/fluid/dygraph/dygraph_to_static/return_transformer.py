@@ -349,11 +349,10 @@ class ReturnTransformer(BaseTransformer):
                 self.return_value_name[cur_func_node] = unique_name.generate(
                     RETURN_VALUE_PREFIX)
 
-            # no_value_names = [
-            #     unique_name.generate(RETURN_NO_VALUE_VAR_NAME)
-            #     for j in range(max_return_length - return_length)
-            # ]
-            no_value_names = []
+            no_value_names = [
+                unique_name.generate(RETURN_NO_VALUE_VAR_NAME)
+                for j in range(max_return_length - return_length)
+            ]
             self.return_no_value_name[cur_func_node].extend(no_value_names)
 
             # Handle tuple/non-tuple case
