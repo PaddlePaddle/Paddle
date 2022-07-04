@@ -14,8 +14,6 @@ file(
   "test_dist_*.py")
 if(WITH_XPU_BKCL)
   list(APPEND DIST_TEST_OPS test_gen_bkcl_id_op)
-  list(APPEND DIST_TEST_OPS test_mean_op_xpu)
-  list(APPEND DIST_TEST_OPS test_concat_op_xpu)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
