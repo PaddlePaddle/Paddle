@@ -22,9 +22,11 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 import paddle
 import paddle.nn as nn
-from paddle.fluid import Program, program_guard
+
+paddle.enable_static()
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -117,166 +119,159 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     return out
 
 
-class TestConv2DTransposeOp(XPUOpTest):
+class XPUTestConv2DTransposeOp(XPUOpTestWrapper):
 
-    def setUp(self):
-        # init as conv transpose
-        self.dtype = np.float32
-        self.need_check_grad = True
-        self.is_test = False
-        self.use_cudnn = False
-        self.use_mkldnn = False
-        self.output_size = None
-        self.output_padding = []
-        self.data_format = "NCHW"
-        self.pad = [0, 0]
-        self.padding_algorithm = "EXPLICIT"
-        self.init_op_type()
-        self.init_test_case()
-        self.__class__.op_type = "conv2d_transpose"
+    def __init__(self):
+        self.op_name = 'conv2d_transpose'
+        self.use_dynamic_create_class = False
 
-        input_ = np.random.random(self.input_size).astype(self.dtype)
-        filter_ = np.random.random(self.filter_size).astype(self.dtype)
+    class TestConv2DTransposeOp(XPUOpTest):
 
-        self.inputs = {'Input': input_, 'Filter': filter_}
-        self.attrs = {
-            'strides': self.stride,
-            'paddings': self.pad,
-            'padding_algorithm': self.padding_algorithm,
-            'groups': self.groups,
-            'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn,
-            'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
-            'data_format': self.data_format
-        }
-        if self.output_size is not None:
-            self.attrs['output_size'] = self.output_size
+        def setUp(self):
+            # init as conv transpose
+            self.need_check_grad = True
+            self.is_test = False
+            self.use_cudnn = False
+            self.use_mkldnn = False
+            self.output_size = None
+            self.output_padding = []
+            self.data_format = "NCHW"
+            self.pad = [0, 0]
+            self.padding_algorithm = "EXPLICIT"
+            self.init_op_type()
+            self.init_test_case()
+            self.__class__.op_type = "conv2d_transpose"
 
-        if len(self.output_padding) > 0:
-            self.attrs['output_padding'] = self.output_padding
+            input_ = np.random.random(self.input_size).astype(self.dtype)
+            filter_ = np.random.random(self.filter_size).astype(self.dtype)
 
-        output = conv2dtranspose_forward_naive(input_, filter_,
-                                               self.attrs).astype(self.dtype)
+            self.inputs = {'Input': input_, 'Filter': filter_}
+            self.attrs = {
+                'strides': self.stride,
+                'paddings': self.pad,
+                'padding_algorithm': self.padding_algorithm,
+                'groups': self.groups,
+                'dilations': self.dilations,
+                'use_cudnn': self.use_cudnn,
+                'is_test': self.is_test,
+                'use_mkldnn': self.use_mkldnn,
+                'data_format': self.data_format
+            }
+            if self.output_size is not None:
+                self.attrs['output_size'] = self.output_size
 
-        self.outputs = {'Output': output}
+            if len(self.output_padding) > 0:
+                self.attrs['output_padding'] = self.output_padding
 
-    def test_check_output(self):
-        if core.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+            output = conv2dtranspose_forward_naive(
+                input_, filter_, self.attrs).astype(self.dtype)
 
-    def test_check_grad_no_input(self):
-        if self.need_check_grad:
-            if core.is_compiled_with_xpu():
-                paddle.enable_static()
-                place = paddle.XPUPlace(0)
-                self.check_grad_with_place(place, ['Filter'],
+            self.outputs = {'Output': output}
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def test_check_grad_no_input(self):
+            if self.need_check_grad:
+                self.check_grad_with_place(self.place, ['Filter'],
                                            'Output',
                                            no_grad_set=set(['Input']))
 
-    def test_check_grad_no_filter(self):
-        if self.need_check_grad:
-            if core.is_compiled_with_xpu():
-                paddle.enable_static()
-                place = paddle.XPUPlace(0)
-                self.check_grad_with_place(place, ['Input'],
+        def test_check_grad_no_filter(self):
+            if self.need_check_grad:
+                self.check_grad_with_place(self.place, ['Input'],
                                            'Output',
                                            no_grad_set=set(['Filter']))
 
-    def test_check_grad(self):
-        if self.need_check_grad:
-            if core.is_compiled_with_xpu():
-                paddle.enable_static()
-                place = paddle.XPUPlace(0)
-                self.check_grad_with_place(place, set(['Input', 'Filter']),
+        def test_check_grad(self):
+            if self.need_check_grad:
+                self.check_grad_with_place(self.place, set(['Input', 'Filter']),
                                            'Output')
 
-    def init_test_case(self):
-        self.pad = [0, 0]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+        def init_test_case(self):
+            self.pad = [0, 0]
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [2, 3, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 3, 3]
 
-    def init_op_type(self):
-        self.op_type = "conv2d_transpose"
+        def init_op_type(self):
+            self.dtype = self.in_type
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "conv2d_transpose"
+
+    class TestWithSymmetricPad(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.pad = [1, 1]
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [2, 3, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 3, 3]
+
+    class TestWithAsymmetricPad(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.pad = [1, 0, 1, 2]
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [2, 3, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 3, 3]
+
+    class TestWithSAMEPad(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.stride = [2, 1]
+            self.dilations = [1, 2]
+            self.groups = 1
+            self.input_size = [2, 3, 6, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 4, 3]
+            self.padding_algorithm = 'SAME'
+
+    class TestWithVALIDPad(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [2, 3, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 3, 3]
+            self.padding_algorithm = 'VALID'
+
+    class TestWithGroups(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.pad = [1, 1]
+            self.stride = [1, 1]
+            self.dilations = [1, 1]
+            self.groups = 2
+            self.input_size = [2, 4, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 3, 3, 3]
+
+    class TestWithStride(TestConv2DTransposeOp):
+
+        def init_test_case(self):
+            self.pad = [1, 1]
+            self.stride = [2, 2]
+            self.dilations = [1, 1]
+            self.groups = 1
+            self.input_size = [2, 3, 5, 5]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 3, 3]
 
 
-class TestWithSymmetricPad(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
-
-class TestWithAsymmetricPad(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.pad = [1, 0, 1, 2]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
-
-class TestWithSAMEPad(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.stride = [2, 1]
-        self.dilations = [1, 2]
-        self.groups = 1
-        self.input_size = [2, 3, 6, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 4, 3]
-        self.padding_algorithm = 'SAME'
-
-
-class TestWithVALIDPad(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-        self.padding_algorithm = 'VALID'
-
-
-class TestWithGroups(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.groups = 2
-        self.input_size = [2, 4, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 3, 3, 3]
-
-
-class TestWithStride(TestConv2DTransposeOp):
-
-    def init_test_case(self):
-        self.pad = [1, 1]
-        self.stride = [2, 2]
-        self.dilations = [1, 1]
-        self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
-        f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
-
+support_types = get_xpu_op_support_types('conv2d_transpose')
+for stype in support_types:
+    create_test_class(globals(), XPUTestConv2DTransposeOp, stype)
 
 if __name__ == '__main__':
     unittest.main()
