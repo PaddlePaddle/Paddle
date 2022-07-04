@@ -44,6 +44,22 @@ class ElementwiseTensorOpConverter : public OpConverter {
       for (int i = 0; i < trt_dims_y.nbDims; i++) {
         trt_dims_y.d[i] = dims_y[i];
       }
+      // this is the special case when dims_y includes batch dimension!
+      // we need remove batch dimension!
+      if (!engine_->with_dynamic_shape() &&
+          trt_dims_y.nbDims == (X->getDimensions().nbDims + 1)) {
+        trt_dims_y.nbDims--;
+        PADDLE_ENFORCE_EQ(trt_dims_y.d[0],
+                          1,
+                          platform::errors::InvalidArgument(
+                              "Elementwise type(%s) op's Y is a weight "
+                              "including batch dimension. Please "
+                              "check if the 0th dimension equals 1.",
+                              op_type_));
+        for (int i = 0; i < trt_dims_y.nbDims; i++) {
+          trt_dims_y.d[i] = trt_dims_y.d[i + 1];
+        }
+      }
       Y = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_y, y_weight.get())
               ->getOutput(0);
     } else {

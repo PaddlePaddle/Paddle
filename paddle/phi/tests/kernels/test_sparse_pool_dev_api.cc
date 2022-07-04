@@ -60,7 +60,6 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
   const int out_channels = in_channels;

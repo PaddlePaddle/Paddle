@@ -17,13 +17,13 @@ else()
     DEPS tensor_base dense_tensor phi_api_utils phi_enforce)
 endif()
 
-set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
+set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
 
 # forward api file
-set(api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_gen.py)
-set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
+set(api_gen_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_gen.py)
+set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml)
 set(legacy_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -31,11 +31,10 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 
 # backward api file
 set(bw_api_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward_api_gen.py)
-set(bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/backward_api_gen.py)
+set(bw_api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/backward.yaml)
 set(legacy_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/legacy_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_backward.yaml)
 set(bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api.h)
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
@@ -44,7 +43,7 @@ set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
 
 # dygraph(intermediate) api file
 set(im_api_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/intermediate_api_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/intermediate_api_gen.py)
 set(dygraph_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/dygraph_api.h)
 set(dygraph_api_source_file
@@ -54,9 +53,9 @@ set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 
 # sparse api file
 set(sparse_api_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_api_gen.py)
 set(sparse_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml)
 set(sparse_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
@@ -65,9 +64,9 @@ set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
 
 # sparse bw api file
 set(sparse_bw_api_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_bw_api_gen.py)
 set(sparse_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml)
 set(sparse_bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
 set(sparse_bw_api_source_file
@@ -77,9 +76,9 @@ set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 
 # strings api file
 set(strings_api_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/strings_api_gen.py)
 set(strings_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml)
 set(strings_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/strings_api.h)
 set(strings_api_source_file
@@ -89,7 +88,7 @@ set(strings_api_source_file_tmp ${strings_api_source_file}.tmp)
 
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file
-    ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/wrapped_infermeta_gen.py)
 set(wrapped_infermeta_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.h)
 set(wrapped_infermeta_source_file
@@ -109,7 +108,7 @@ else()
 endif()
 
 # parse apis
-set(parsed_api_dir ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/parsed_apis)
+set(parsed_api_dir ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/parsed_apis)
 set(generated_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
 set(generated_argument_mapping_path
@@ -121,18 +120,20 @@ message(
 - ${bw_api_yaml_file}
 - ${legacy_bw_api_yaml_file}")
 execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
-  COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./api.yaml
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./api.yaml
           --output_path ./parsed_apis/api.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./legacy_api.yaml
-          --output_path ./parsed_apis/legacy_api.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./backward.yaml
-          --output_path ./parsed_apis/backward_api.parsed.yaml --backward
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+          ./legacy_api.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
   COMMAND
-    ${PYTHON_EXECUTABLE} parse_api.py --api_yaml_path ./legacy_backward.yaml
-    --output_path ./parsed_apis/legacy_backward_api.parsed.yaml --backward
-    RESULTS_VARIABLE _results)
+    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./backward.yaml
+    --output_path ./parsed_apis/backward_api.parsed.yaml --backward
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+    ./legacy_backward.yaml --output_path
+    ./parsed_apis/legacy_backward_api.parsed.yaml --backward RESULTS_VARIABLE
+    _results)
 foreach(_result in ${_results})
   if(${_result})
     message(FATAL_ERROR "api yaml parsing failed, exiting.")
@@ -144,9 +145,9 @@ message("validate api yaml:
 - ${parsed_api_dir}/api.parsed.yaml
 - ${parsed_api_dir}/backward_api.parsed.yaml")
 execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
-    ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
+    ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
     ./parsed_apis/api.parsed.yaml ./parsed_apis/legacy_api.parsed.yaml
     --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml
     ./parsed_apis/legacy_backward_api.parsed.yaml
@@ -161,13 +162,13 @@ message(
 create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
 )
 execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
-    ${PYTHON_EXECUTABLE} generate_op.py --api_yaml_path
+    ${PYTHON_EXECUTABLE} generator/generate_op.py --api_yaml_path
     ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
     ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
-    api_version.yaml --api_args_compat_yaml_path args_compat.yaml
-    --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
+    api_version.yaml --api_compat_yaml_path api_compat.yaml --output_op_path
+    "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -224,7 +225,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
           ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_yaml_file} ${api_gen_file} ${api_gen_base}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate backward api
@@ -240,7 +242,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
+          ${api_gen_base}
   VERBATIM)
 
 # generate sparse api

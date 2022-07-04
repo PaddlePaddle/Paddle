@@ -16,12 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
 
-namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
 namespace phi {
 class CPUContext;
 }  // namespace phi
@@ -167,22 +161,10 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUDeviceContext,
-                             float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUDeviceContext,
-                             double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::CPUContext,
                              float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::CPUContext,
-                             double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUDeviceContext,
-                             float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                             platform::CPUDeviceContext,
                              double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              phi::CPUContext,
@@ -354,22 +336,10 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
 };
 
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUDeviceContext,
-                             float>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUDeviceContext,
-                             double>;
-template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::CPUContext,
-                             double>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUDeviceContext,
-                             float>;
-template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                             platform::CPUDeviceContext,
                              double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              phi::CPUContext,

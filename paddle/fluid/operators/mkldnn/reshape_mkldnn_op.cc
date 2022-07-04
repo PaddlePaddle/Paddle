@@ -196,8 +196,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
     out_dims = phi::make_ddim(
-        FlattenKernel<platform::CPUDeviceContext, float>::GetOutputShape(
-            axes, x_dims));
+        FlattenKernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
   }
 
   static framework::DDim ValidateShape(const std::vector<int>& shape,

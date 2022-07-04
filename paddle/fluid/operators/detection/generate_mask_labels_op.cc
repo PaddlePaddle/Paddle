@@ -122,7 +122,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  * to encode class specific mask targets.
  */
 template <typename T>
-static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
+static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
                                     const Tensor& masks,
                                     const Tensor& mask_class_labels,
                                     const int resolution,
@@ -150,7 +150,7 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(const platform::CPUDeviceContext& ctx,
+std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
                                           const Tensor& im_info,
                                           const Tensor& gt_classes,
                                           const Tensor& is_crowd,
@@ -391,7 +391,7 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_mask = 0;
-    auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
 
     auto gt_classes_lod = gt_classes->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();

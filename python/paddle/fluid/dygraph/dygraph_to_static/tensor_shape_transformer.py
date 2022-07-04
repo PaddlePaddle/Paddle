@@ -37,6 +37,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     def visit_Attribute(self, node):
+        self.generic_visit(node)
         if node.attr == 'shape':
             args = ast_to_source_code(node.value).strip()
             # NOTE(dev): we can deal with paddle.shape in this case, but it's
