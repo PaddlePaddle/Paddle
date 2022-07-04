@@ -30,7 +30,7 @@ __all__ = ['DataFeeder']
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
     core.VarDesc.VarType.FP16: 'float16',
-    core.VarDesc.VarType.BF16: 'uint16',
+    core.VarDesc.VarType.BF16: 'bfloat16',
     core.VarDesc.VarType.FP32: 'float32',
     core.VarDesc.VarType.FP64: 'float64',
     core.VarDesc.VarType.INT8: 'int8',
