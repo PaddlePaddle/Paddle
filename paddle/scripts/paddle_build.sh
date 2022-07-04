@@ -2064,7 +2064,7 @@ function parallel_test_base_xpu() {
     ========================================
 EOF
 
-set +x
+set -x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | grep "_xpu" )        # cases list which would be run exclusively
