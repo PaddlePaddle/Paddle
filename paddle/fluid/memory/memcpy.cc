@@ -1442,28 +1442,6 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     return Copy(place_dst, dst, place_src, src, num);
   }
 #endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::CUSTOM) {
-    platform::CustomPlace place_dst(dst_place.GetDeviceType(),
-                                    dst_place.GetDeviceId());
-    platform::CPUPlace place_src;
-    return Copy(place_dst, dst, place_src, src, num, nullptr);
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
-             dst_place.GetType() == phi::AllocationType::CPU) {
-    platform::CustomPlace place_src(src_place.GetDeviceType(),
-                                    src_place.GetDeviceId());
-    platform::CPUPlace place_dst;
-    return Copy(place_dst, dst, place_src, src, num, nullptr);
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
-             dst_place.GetType() == phi::AllocationType::CUSTOM) {
-    platform::CustomPlace place_src(src_place.GetDeviceType(),
-                                    src_place.GetDeviceId());
-    platform::CustomPlace place_dst(dst_place.GetDeviceType(),
-                                    dst_place.GetDeviceId());
-    return Copy(place_dst, dst, place_src, src, num, nullptr);
-  }
-#endif
 }
 
 // NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).
