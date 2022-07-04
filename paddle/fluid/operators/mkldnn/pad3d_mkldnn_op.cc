@@ -119,7 +119,7 @@ class PadMKLDNNKernel : public framework::OpKernel<T> {
         ctx.GetPlace());
 
     // to avoid allocating new temporary memory, Out's memory is used as a tmp
-    // buffer for storing a contignuous memory consisting of pad_value, which
+    // buffer for storing a contiguous memory consisting of pad_value, which
     // later is used as a SRC for reorders that are filling Out with padding
     T* out_ptr = out->data<T>();
     std::fill(out_ptr,
