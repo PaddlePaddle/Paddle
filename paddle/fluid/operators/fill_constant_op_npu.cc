@@ -100,7 +100,12 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
             .AddOutput(outputs[0])
             .Run(dev_ctx.stream());
       };
-      NpuOpRunner::TypeAdapter({}, {*out_var}, {}, dev_ctx, op_func, {},
+      NpuOpRunner::TypeAdapter({},
+                               {*out_var},
+                               {},
+                               dev_ctx,
+                               op_func,
+                               {},
                                {framework::proto::VarType::UINT8});
     }
   }
@@ -109,7 +114,8 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    fill_constant, paddle::operators::FillConstantNPUKernel<float>,
+    fill_constant,
+    paddle::operators::FillConstantNPUKernel<float>,
     paddle::operators::FillConstantNPUKernel<bool>,
     paddle::operators::FillConstantNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64

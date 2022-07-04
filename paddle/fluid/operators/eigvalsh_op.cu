@@ -20,17 +20,21 @@ REGISTER_OP_CUDA_KERNEL(
     eigvalsh,
     ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float, float>,
     ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double, double>,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext,
+                        float,
                         paddle::platform::complex<float>>,
-    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext,
+                        double,
                         paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     eigvalsh_grad,
     ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, float, float>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, double,
-                            double>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, float,
+    ops::
+        EigvalshGradKernel<paddle::platform::CUDADeviceContext, double, double>,
+    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext,
+                            float,
                             paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext, double,
+    ops::EigvalshGradKernel<paddle::platform::CUDADeviceContext,
+                            double,
                             paddle::platform::complex<double>>);

@@ -88,10 +88,15 @@ struct ConvArgsBase {
   // data foramt
   DataLayout data_layout;
 
-  ConvArgsBase(const framework::Tensor* x, const framework::Tensor* w,
-               const framework::Tensor* o, const std::vector<int> s,
-               const std::vector<int> p, const std::vector<int> d, DataT dtype,
-               int g, DataLayout layout)
+  ConvArgsBase(const framework::Tensor* x,
+               const framework::Tensor* w,
+               const framework::Tensor* o,
+               const std::vector<int> s,
+               const std::vector<int> p,
+               const std::vector<int> d,
+               DataT dtype,
+               int g,
+               DataLayout layout)
       : x(x),
         w(w),
         o(o),
@@ -109,8 +114,13 @@ struct ConvArgsBase {
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d;
     return phi::autotune::ConvKey(
-        x_shape, w_shape, p, s, d,
-        paddle::experimental::CppTypeToDataType<T>::Type(), group,
+        x_shape,
+        w_shape,
+        p,
+        s,
+        d,
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        group,
         static_cast<int64_t>(data_layout));  // (todo,hong) data layeout is a
                                              // deprecated enum, show use phi
                                              // datalayout
@@ -127,15 +137,24 @@ struct ConvArgsBase {
              << ", data layout=" << static_cast<int64_t>(data_layout);
 
     return phi::autotune::ConvCacheKey(
-        x_shape, w_shape, p, s, d,
-        paddle::experimental::CppTypeToDataType<T>::Type(), group,
+        x_shape,
+        w_shape,
+        p,
+        s,
+        d,
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        group,
         static_cast<int64_t>(data_layout));
   }
 };
 
 static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
+                            const DataLayout& layout,
+                            int* N,
+                            int* C,
+                            int* D,
+                            int* H,
+                            int* W) {
   *N = dims[0];
   *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
   int i = layout == DataLayout::kNCHW ? 0 : 1;

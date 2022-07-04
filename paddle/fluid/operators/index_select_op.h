@@ -28,8 +28,10 @@ using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                      LoDTensor* input, const LoDTensor& index,
-                      LoDTensor* output, int dim) {
+                      LoDTensor* input,
+                      const LoDTensor& index,
+                      LoDTensor* output,
+                      int dim) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
@@ -56,19 +58,23 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
-        index_data[i], 0,
+        index_data[i],
+        0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
     PADDLE_ENFORCE_LT(
-        index_data[i], input_dim[dim],
+        index_data[i],
+        input_dim[dim],
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
   }
 
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
@@ -94,8 +100,11 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
     for (int i = 0; i < slice_size; i++) {
       dist_pointer[i] = src_pointer[i] + p_pointer[i];
     }
@@ -103,10 +112,14 @@ struct IndexSelectAdd {
 };
 template <typename DeviceContext, typename T>
 struct IndexSelectAdd<
-    DeviceContext, T,
+    DeviceContext,
+    T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
@@ -114,8 +127,10 @@ struct IndexSelectAdd<
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
-                          const LoDTensor& out_grad, const LoDTensor& index,
-                          LoDTensor* x_grad, int dim) {
+                          const LoDTensor& out_grad,
+                          const LoDTensor& index,
+                          LoDTensor* x_grad,
+                          int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
   const T* p_output = x_grad->mutable_data<T>(context.GetPlace());

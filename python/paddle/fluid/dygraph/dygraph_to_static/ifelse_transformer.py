@@ -31,7 +31,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -361,8 +362,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = paddle.jit.dy2static.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = paddle.jit.dy2static.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dy2static.UndefindVar('q')
+        z = paddle.jit.dy2static.UndefindVar('z')
 
         def true_func(x, y, q):
             x = x+1
@@ -415,17 +416,22 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     # modified vars
     body_modified_vars = _modified_vars(if_vars_dict, parent_vars_dict)
+    body_modified_vars = set(
+        filter(lambda x: x != ARGS_NAME, body_modified_vars))
     orelse_modified_vars = _modified_vars(else_vars_dict, parent_vars_dict)
+    orelse_modified_vars = set(
+        filter(lambda x: x != ARGS_NAME, orelse_modified_vars))
     modified_vars = body_modified_vars | orelse_modified_vars
 
     # new vars
+    # TODO(remove __args when new FunctionScopeAnalysis has been used.)
     body_new_vars = set([
         var for var in _vars_with_store(if_vars_dict)
-        if var not in parent_vars_dict
+        if var not in parent_vars_dict and var != ARGS_NAME
     ])
     orelse_new_vars = set([
         var for var in _vars_with_store(else_vars_dict)
-        if var not in parent_vars_dict
+        if var not in parent_vars_dict and var != ARGS_NAME
     ])
     new_vars_in_body_or_orelse = body_new_vars | orelse_new_vars
     new_vars_in_one_of_body_or_orelse = body_new_vars ^ orelse_new_vars
@@ -511,11 +517,11 @@ def transform_if_else(node, root):
         if any([not isinstance(ctx, gast.Load) for ctx in ctxs]):
             parent_ids_set.add(k)
 
-    trun_args = parse_cond_args(parent_ids_set, body_name_ids,
+    true_args = parse_cond_args(parent_ids_set, body_name_ids,
                                 modified_name_ids_from_parent)
     false_args = parse_cond_args(parent_ids_set, orelse_name_ids,
                                  modified_name_ids_from_parent)
-    nonlocal_names = list(trun_args | false_args | new_vars_to_create)
+    nonlocal_names = list(true_args | false_args | new_vars_to_create)
     nonlocal_names.sort()
     # NOTE: All var in return_name_ids should be in nonlocal_names.
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
@@ -524,7 +530,8 @@ def transform_if_else(node, root):
     if ARGS_NAME in nonlocal_names:
         nonlocal_names.remove(ARGS_NAME)
 
-    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+    nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)
+                          ] if nonlocal_names else []
 
     empty_arg_node = gast.arguments(args=[],
                                     posonlyargs=[],
@@ -549,46 +556,6 @@ def transform_if_else(node, root):
     set_args_node = create_set_args_node(nonlocal_names)
 
     return create_new_vars_in_parent_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids
-
-
-def create_get_args_node(names):
-    """
-    Create get_args function as follows:
-
-        def get_args_0():
-            nonlocal x, y
-    """
-    assert isinstance(names, (list, tuple))
-    template = """
-    def {func_name}():
-        nonlocal {vars}
-        return {vars}
-    """
-    func_def = template.format(
-        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
-        vars=",".join(names))
-    return gast.parse(textwrap.dedent(func_def)).body[0]
-
-
-def create_set_args_node(names):
-    """
-    Create set_args function as follows:
-
-        def set_args_0(__args):
-            nonlocal x, y
-            x, y = __args
-    """
-    assert isinstance(names, (list, tuple))
-    template = """
-    def {func_name}({args}):
-        nonlocal {vars}
-        {vars} = {args}
-    """
-    func_def = template.format(
-        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
-        args=ARGS_NAME,
-        vars=",".join(names))
-    return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
 def create_convert_ifelse_node(return_name_ids,
@@ -622,7 +589,7 @@ def create_convert_ifelse_node(return_name_ids,
         false_func_source = false_func.name
 
     convert_ifelse_layer = gast.parse(
-        '_jst.convert_ifelse('
+        '_jst.IfElse('
         '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
         .format(
             pred=ast_to_source_code(pred),

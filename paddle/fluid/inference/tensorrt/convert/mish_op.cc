@@ -35,7 +35,8 @@ namespace tensorrt {
 class MishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid Mish op to tensorrt Mish plugin";
 
     framework::OpDesc op_desc(op, nullptr);

@@ -1,7 +1,7 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS enforce)
+  DEPS enforce ddim var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
@@ -10,7 +10,7 @@ add_subdirectory(mlu)
 cc_library(
   event_node
   SRCS event_node.cc
-  DEPS enforce)
+  DEPS enforce place)
 cc_library(
   profiler_utils
   SRCS utils.cc

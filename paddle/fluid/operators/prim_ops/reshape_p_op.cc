@@ -67,12 +67,14 @@ class ReshapePrimOpShapeInference : public framework::InferShapeBase {
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    PADDLE_ENFORCE_EQ(product(x_shape), product(shape),
+    PADDLE_ENFORCE_EQ(product(x_shape),
+                      product(shape),
                       platform::errors::InvalidArgument(
                           "The input tensor can't be reshaped to target shape, "
                           "the input tensor has %d elements but target shape "
                           "contains %d elements",
-                          product(x_shape), product(shape)));
+                          product(x_shape),
+                          product(shape)));
     BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
   }
 };
@@ -91,7 +93,8 @@ class ReshapePrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(reshape_p, paddle::operators::ReshapePrimOp,
+REGISTER_OPERATOR(reshape_p,
+                  paddle::operators::ReshapePrimOp,
                   paddle::operators::ReshapePrimOpMaker,
                   paddle::operators::ReshapePrimOpShapeInference,
                   paddle::operators::ReshapePrimOpVarTypeInference);

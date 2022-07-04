@@ -31,7 +31,8 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument("Input(input) rank should be 2, "
                                           "but received input rank(%d) != 2",
                                           x_dims.size()));
@@ -39,15 +40,18 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() ||
         (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
-          x_dims, y_dims,
+          x_dims,
+          y_dims,
           platform::errors::InvalidArgument(
               "The Input(input) and Input(label) should have the same "
               "shape, but received input shape [%s] != label shape [%s]",
-              x_dims, y_dims));
+              x_dims,
+              y_dims));
     }
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(x_dims[1], 1,
+      PADDLE_ENFORCE_EQ(x_dims[1],
+                        1,
                         platform::errors::InvalidArgument(
                             "The second dimension of Input(input) should be 1, "
                             "but received second dimension of input (%d) != 1",
@@ -102,10 +106,14 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ModifiedHuberLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput("IntermediateVal"), "Input", "IntermediateVal",
+    OP_INOUT_CHECK(ctx->HasInput("IntermediateVal"),
+                   "Input",
+                   "IntermediateVal",
                    "ModifiedHuberLossGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "ModifiedHuberLossGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "ModifiedHuberLossGrad");
 
     auto y_dims = ctx->GetInputDim("Y");
     auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
@@ -113,21 +121,25 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          intermediate_dims, y_dims,
+          intermediate_dims,
+          y_dims,
           platform::errors::InvalidArgument(
               "The shape of Intermediate variable which will be reused in "
               "backward processing should the same as "
               "the shape of Input(label), but received Intermediate variable "
               "shape [%s] != label shape [%s]",
-              intermediate_dims, y_dims));
+              intermediate_dims,
+              y_dims));
 
       PADDLE_ENFORCE_EQ(
-          out_grad_dims, y_dims,
+          out_grad_dims,
+          y_dims,
           platform::errors::InvalidArgument(
               "The shape of output gradient should be the same as "
               "the shape of Input(label), but received the output gradient "
               "shape [%s] != label shape [%s]",
-              out_grad_dims, y_dims));
+              out_grad_dims,
+              y_dims));
     }
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -157,14 +169,14 @@ class ModifiedHuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    modified_huber_loss, ops::ModifiedHuberLossOp,
+    modified_huber_loss,
+    ops::ModifiedHuberLossOp,
     ops::ModifiedHuberLossOpMaker,
     ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>,
     ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    modified_huber_loss,
-    ops::ModifiedHuberLossKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(modified_huber_loss,
+                       ops::ModifiedHuberLossKernel<phi::CPUContext, float>);
 REGISTER_OP_CPU_KERNEL(modified_huber_loss_grad,
                        ops::ModifiedHuberLossGradCPUKernel<float>);

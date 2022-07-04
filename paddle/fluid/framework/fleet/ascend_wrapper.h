@@ -92,7 +92,8 @@ class AscendInstance {
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
     ge::Status status = session_->AddGraph(graph_idx, graph);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling addGraph of graph engine failed, please "
                           "check Ascend Log."));
@@ -147,14 +148,16 @@ class AscendInstance {
 
     ge::Shape shape(vec_dim);
     ge::TensorDesc tensor_desc(
-        shape, ge::Format::FORMAT_ND,
+        shape,
+        ge::Format::FORMAT_ND,
         VarTypeToGeType(framework::TransToProtoVarType(tensor->dtype())));
     tensor_desc.SetRealDimCnt(vec_dim.size());
 
     const uint8_t *data = reinterpret_cast<const uint8_t *>(tensor->data());
     std::vector<uint8_t> dst(
         numel * GeTypeSize(framework::TransToProtoVarType(tensor->dtype())));
-    memcpy(dst.data(), data,
+    memcpy(dst.data(),
+           data,
            GeTypeSize(framework::TransToProtoVarType(tensor->dtype())) * numel);
     ge::Tensor ge_tensor(tensor_desc, dst);
     return ge_tensor;
@@ -173,7 +176,8 @@ class AscendInstance {
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
     ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
                           "check Ascend Log."));

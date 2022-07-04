@@ -211,6 +211,10 @@ class CudnnAlgorithmsCache {
   int64_t cache_misses_{0};
 };
 
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    phi::DataType dtype);
+
 template <typename AlgorithmT>
 class AlgorithmsCache {
  public:

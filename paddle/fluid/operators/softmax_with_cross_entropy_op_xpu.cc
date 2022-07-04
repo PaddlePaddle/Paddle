@@ -36,7 +36,8 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::PreconditionNotMet("This kernel only runs on XPU."));
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
@@ -45,7 +46,8 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     const int rank = logits->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(
-        axis, rank - 1,
+        axis,
+        rank - 1,
         platform::errors::InvalidArgument("axis should == rank - 1"));
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
@@ -66,9 +68,13 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
             phi::backends::xpu::XPUVersion::XPU2 &&
         soft_label) {
       auto labels_data = reinterpret_cast<const XPUType*>(labels->data<T>());
-      r = xpu::soft_softmax_with_cross_entropy<XPUType>(
-          dev_ctx.x_context(), logits_data, labels_data, softmax_data,
-          loss_data, n, d);
+      r = xpu::soft_softmax_with_cross_entropy<XPUType>(dev_ctx.x_context(),
+                                                        logits_data,
+                                                        labels_data,
+                                                        softmax_data,
+                                                        loss_data,
+                                                        n,
+                                                        d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy");
       return;
     }
@@ -86,34 +92,44 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
       min_val = -65504;
     }
 
-    r = xpu::clip_v2<XPUType>(
-        dev_ctx.x_context(), logits_data, clip_logits_data, len,
-        static_cast<XPUType>(min_val), static_cast<XPUType>(max_val));
+    r = xpu::clip_v2<XPUType>(dev_ctx.x_context(),
+                              logits_data,
+                              clip_logits_data,
+                              len,
+                              static_cast<XPUType>(min_val),
+                              static_cast<XPUType>(max_val));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
 
-    r = xpu::softmax<XPUType>(dev_ctx.x_context(), clip_logits_data,
-                              softmax_data, logits_dims, axis);
+    r = xpu::softmax<XPUType>(
+        dev_ctx.x_context(), clip_logits_data, softmax_data, logits_dims, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
 
     // cross_entropy
     if (soft_label) {
       auto labels_data = reinterpret_cast<const XPUType*>(labels->data<T>());
-      r = xpu::soft_cross_entropy<XPUType>(dev_ctx.x_context(), softmax_data,
-                                           labels_data, loss_data, n, d);
+      r = xpu::soft_cross_entropy<XPUType>(
+          dev_ctx.x_context(), softmax_data, labels_data, loss_data, n, d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
     } else {
       auto ignore_index = context.Attr<int>("ignore_index");
       Tensor labels_int32;
       labels_int32.mutable_data<int32_t>(context.GetPlace(),
                                          labels->numel() * sizeof(int32_t));
-      r = xpu::cast_v2<int64_t, int32_t>(
-          dev_ctx.x_context(), labels->data<int64_t>(),
-          labels_int32.data<int32_t>(), labels->numel());
+      r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                         labels->data<int64_t>(),
+                                         labels_int32.data<int32_t>(),
+                                         labels->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
 
       r = xpu::hard_cross_entropy<XPUType, int32_t>(
-          dev_ctx.x_context(), softmax_data, labels_int32.data<int32_t>(),
-          loss_data, nullptr, n, d, ignore_index);
+          dev_ctx.x_context(),
+          softmax_data,
+          labels_int32.data<int32_t>(),
+          loss_data,
+          nullptr,
+          n,
+          d,
+          ignore_index);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
     }
   }
@@ -142,7 +158,8 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
     const int rank = logit_grad->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     PADDLE_ENFORCE_EQ(
-        axis, rank - 1,
+        axis,
+        rank - 1,
         platform::errors::InvalidArgument("axis should == rank - 1"));
     const int n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
     const int d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
@@ -157,7 +174,10 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
           reinterpret_cast<const XPUType*>(out_grad->data<T>()),
           reinterpret_cast<const XPUType*>(labels->data<T>()),
           reinterpret_cast<const XPUType*>(softmax->data<T>()),
-          reinterpret_cast<XPUType*>(logit_grad->data<T>()), use_softmax, n, d);
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
+          use_softmax,
+          n,
+          d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
     } else {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
@@ -167,7 +187,8 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
 
       r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
                                          labels->data<int64_t>(),
-                                         labels_int_ptr_l3, labels->numel());
+                                         labels_int_ptr_l3,
+                                         labels->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
 
       r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
@@ -175,8 +196,11 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
           reinterpret_cast<const XPUType*>(out_grad->data<T>()),
           labels_int_ptr_l3,
           reinterpret_cast<const XPUType*>(softmax->data<T>()),
-          reinterpret_cast<XPUType*>(logit_grad->data<T>()), ignore_index,
-          use_softmax, n, d);
+          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
+          ignore_index,
+          use_softmax,
+          n,
+          d);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
     }
   }
@@ -187,7 +211,8 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyXPUKernel<float>,
+    softmax_with_cross_entropy,
+    ops::SoftmaxWithCrossEntropyXPUKernel<float>,
     ops::SoftmaxWithCrossEntropyXPUKernel<paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     softmax_with_cross_entropy_grad,

@@ -66,7 +66,8 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
+    old = atomicCAS(address_as_ull,
+                    assumed,
                     __double_as_longlong(val + __longlong_as_double(assumed)));
 
     // Note: uses integer comparison to avoid hang in case of NaN
@@ -152,10 +153,13 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
 // is good. So for fp16 type, we can use "atomicAdd(half2* )" to speed up.
-template <typename T, typename std::enable_if<std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastAtomicAdd(T *tensor, size_t index,
-                                              const size_t numel, T value) {
+template <typename T,
+          typename std::enable_if<
+              std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *tensor,
+                                              size_t index,
+                                              const size_t numel,
+                                              T value) {
 #if ((CUDA_VERSION < 10000) || \
      (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
   CudaAtomicAdd(reinterpret_cast<platform::float16 *>(tensor) + index,
@@ -185,10 +189,13 @@ __device__ __forceinline__ void fastAtomicAdd(T *tensor, size_t index,
 #endif
 }
 
-template <typename T, typename std::enable_if<!std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
-                                              const size_t numel, T value) {
+template <typename T,
+          typename std::enable_if<
+              !std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *arr,
+                                              size_t index,
+                                              const size_t numel,
+                                              T value) {
   CudaAtomicAdd(arr + index, value);
 }
 
@@ -198,8 +205,9 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
  * @in: [x1, x2, x3, ...]
  * @out:[y1+x1, y2+x2, y3+x3, ...]
  * */
-template <typename T, typename std::enable_if<!std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<
+              !std::is_same<platform::float16, T>::value>::type * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
   for (int i = tid; i < len; i += threads_per_block) {
@@ -208,8 +216,9 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
 }
 
 // Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
-template <typename T, typename std::enable_if<std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<
+              std::is_same<platform::float16, T>::value>::type * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
 #if ((CUDA_VERSION < 10000) || \
@@ -292,8 +301,8 @@ CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
     // the bfloat16 value stay at lower 16 bits of the address.
     do {
       assumed = old;
-      old = atomicCAS(address_as_ui, assumed,
-                      bf16_add_to_low_half(assumed, val_f));
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
     } while (old != assumed);
     bfloat16 ret;
     ret.x = old & 0xFFFFu;
@@ -302,8 +311,8 @@ CUDA_ATOMIC_WRAPPER(Add, bfloat16) {
     // the bfloat16 value stay at higher 16 bits of the address.
     do {
       assumed = old;
-      old = atomicCAS(address_as_ui, assumed,
-                      bf16_add_to_high_half(assumed, val_f));
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
     } while (old != assumed);
     bfloat16 ret;
     ret.x = old >> 16;

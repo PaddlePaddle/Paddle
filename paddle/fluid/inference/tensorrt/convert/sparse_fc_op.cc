@@ -35,7 +35,8 @@ namespace tensorrt {
 class SparseFcOpConverter : public OpConverter {
  public:
   nvinfer1::ILayer* reshape_before_fc(nvinfer1::ITensor* before_fc,
-                                      nvinfer1::Dims x_dim, int x_num_col_dims,
+                                      nvinfer1::Dims x_dim,
+                                      int x_num_col_dims,
                                       std::string output_name) {
     // add shuffle before fc
     nvinfer1::Dims reshape_before_fc_dim;
@@ -66,7 +67,8 @@ class SparseFcOpConverter : public OpConverter {
   }
 
   nvinfer1::ILayer* reshape_after_fc(nvinfer1::ITensor* after_fc,
-                                     nvinfer1::Dims x_dim, int x_num_col_dims) {
+                                     nvinfer1::Dims x_dim,
+                                     int x_num_col_dims) {
     // add shuffle after fc
     nvinfer1::Dims reshape_after_fc_dim;
     reshape_after_fc_dim.nbDims = x_num_col_dims + 1;
@@ -94,13 +96,17 @@ class SparseFcOpConverter : public OpConverter {
       PADDLE_THROW(paddle::platform::errors::Fatal("unknown activation_type %s",
                                                    activation_type.c_str()));
     }
-    return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic", type,
-                                         outdim, weight->get(), bias->get(),
+    return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic",
+                                         type,
+                                         outdim,
+                                         weight->get(),
+                                         bias->get(),
                                          act);
   }
 
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a sparse_fc op to tensorrt sparse_fc plugin";
     framework::OpDesc op_desc(op, nullptr);
     auto output_name = op_desc.Output("Out").front();
@@ -151,7 +157,8 @@ class SparseFcOpConverter : public OpConverter {
     weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
     PADDLE_ENFORCE_EQ(
-        Y_t->dims().size(), 2UL,
+        Y_t->dims().size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The sparse_fc's weight should be a matrix with 2 dims, but "
             "it's %d-dimensional.",
@@ -166,21 +173,27 @@ class SparseFcOpConverter : public OpConverter {
       }
     };
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
+    auto regist_fc = [&](nvinfer1::ITensor* inputs,
+                         int n_output,
                          TensorRTEngine::Weight& weight,
                          TensorRTEngine::Weight& bias) {
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
         nvinfer1::DimsHW nv_ksize(1, 1);
-        auto* fc_layer_int8 =
-            TRT_ENGINE_ADD_LAYER(engine_, Convolution, *X, n_output, nv_ksize,
-                                 weight.get(), bias.get());
+        auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
+                                                   Convolution,
+                                                   *X,
+                                                   n_output,
+                                                   nv_ksize,
+                                                   weight.get(),
+                                                   bias.get());
         if (activation_type == "relu") {
           fc_layer_int8->setName(
               ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
                   .c_str());
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"), true,
+              op_desc.HasAttr("out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
           float out_scale = 0;
@@ -192,15 +205,20 @@ class SparseFcOpConverter : public OpConverter {
           }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
                                          out_scale);
-          nvinfer1::IActivationLayer* relu_layer_int8 = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_layer_int8->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8, "relu_after_ernie_fc_int8",
-                                   {output_name}, test_mode);
+          nvinfer1::IActivationLayer* relu_layer_int8 =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_layer_int8->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
+          RreplenishLayerAndOutput(relu_layer_int8,
+                                   "relu_after_ernie_fc_int8",
+                                   {output_name},
+                                   test_mode);
         } else {
           RreplenishLayerAndOutput(fc_layer_int8,
                                    "ernie_fc_op_int8: Convolution",
-                                   {output_name}, test_mode);
+                                   {output_name},
+                                   test_mode);
         }
       } else {
         // add fc layer
@@ -209,19 +227,23 @@ class SparseFcOpConverter : public OpConverter {
         if (activation_type == "relu") {
           fc_layer_float->setName(
               ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
-          nvinfer1::IActivationLayer* relu_layer_float = TRT_ENGINE_ADD_LAYER(
-              engine_, Activation, *(fc_layer_float->getOutput(0)),
-              nvinfer1::ActivationType::kRELU);
+          nvinfer1::IActivationLayer* relu_layer_float =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Activation,
+                                   *(fc_layer_float->getOutput(0)),
+                                   nvinfer1::ActivationType::kRELU);
           RreplenishLayerAndOutput(relu_layer_float,
-                                   "relu_after_ernie_fc_float", {output_name},
+                                   "relu_after_ernie_fc_float",
+                                   {output_name},
                                    test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_layer_float, "ernie_fc_op_float",
-                                   {output_name}, test_mode);
+          RreplenishLayerAndOutput(
+              fc_layer_float, "ernie_fc_op_float", {output_name}, test_mode);
         }
       }
     };
-    auto regist_sparse_fc = [&](nvinfer1::ITensor* inputs, int n_output,
+    auto regist_sparse_fc = [&](nvinfer1::ITensor* inputs,
+                                int n_output,
                                 TensorRTEngine::Weight* weight,
                                 TensorRTEngine::Weight* bias) {
       if (enable_int8 || support_int8) {
@@ -229,7 +251,8 @@ class SparseFcOpConverter : public OpConverter {
         float out_scale = 0;
         if (enable_int8) {
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"), true,
+              op_desc.HasAttr("out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out threshold in sparse_fc layers in int8 mode"));
           out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -250,10 +273,13 @@ class SparseFcOpConverter : public OpConverter {
 
         RreplenishLayerAndOutput(fc_after_reshape_int8,
                                  "sparse_fc_op_int8_reshape_after_fc: Shuffle",
-                                 {output_name}, test_mode);
+                                 {output_name},
+                                 test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
-            weight, bias, activation_type,
+            weight,
+            bias,
+            activation_type,
             with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
             n);
         std::vector<nvinfer1::ITensor*> plugin_inputs;
@@ -267,7 +293,8 @@ class SparseFcOpConverter : public OpConverter {
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
 
         RreplenishLayerAndOutput(fc_after_reshape_float,
-                                 "shuffle_after_sparse_fc", {output_name},
+                                 "shuffle_after_sparse_fc",
+                                 {output_name},
                                  test_mode);
       }
     };
@@ -315,12 +342,14 @@ class SparseFcOpConverter : public OpConverter {
       regist_fc(X, n_output, weight, bias);
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
-          x_dim.nbDims, x_num_col_dims,
+          x_dim.nbDims,
+          x_num_col_dims,
           platform::errors::InvalidArgument(
               "Params and input dims mismatch. Paddle-TRT FC "
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",
-              x_dim.nbDims, x_num_col_dims));
+              x_dim.nbDims,
+              x_num_col_dims));
       half* half_data = nullptr;
       void* w_data = nullptr;
       if (with_fp16) {
@@ -334,7 +363,8 @@ class SparseFcOpConverter : public OpConverter {
       }
       TensorRTEngine::Weight weight{
           with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-          w_data, static_cast<size_t>(Y_t->numel())};
+          w_data,
+          static_cast<size_t>(Y_t->numel())};
       weight.dims.assign({weight_w, weight_h});
       void* b_data = nullptr;
       if (with_bias) {
@@ -351,7 +381,8 @@ class SparseFcOpConverter : public OpConverter {
       }
       TensorRTEngine::Weight bias{
           with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-          b_data, static_cast<size_t>(bias_num)};
+          b_data,
+          static_cast<size_t>(bias_num)};
 
       auto* reshape_before_fc_layer =
           reshape_before_fc(X, x_dim, x_num_col_dims, output_name);

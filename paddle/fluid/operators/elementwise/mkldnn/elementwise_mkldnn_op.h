@@ -84,9 +84,17 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(
-        BINARY_OP, axis, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
-        scale_y, scale_o, get_post_ops(ctx));
+    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP,
+                                             axis,
+                                             mkldnn_engine,
+                                             ctx.GetPlace(),
+                                             x,
+                                             y,
+                                             z,
+                                             scale_x,
+                                             scale_y,
+                                             scale_o,
+                                             get_post_ops(ctx));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -157,7 +165,9 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto proto_type_dout = framework::TransToProtoVarType(dout->dtype());
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        tz, proto_type_dout, framework::ToMKLDNNDataType(proto_type_dout),
+        tz,
+        proto_type_dout,
+        framework::ToMKLDNNDataType(proto_type_dout),
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
@@ -171,19 +181,28 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
           BINARY_OP == dnnl::algorithm::binary_sub) {
-        dst_memory = reorder_handler.AcquireDstMemory(dx, dout->mem_desc(),
-                                                      ctx.GetPlace());
+        dst_memory = reorder_handler.AcquireDstMemory(
+            dx, dout->mem_desc(), ctx.GetPlace());
         auto reorder_p =
             reorder_handler.AcquireReorder(dst_memory, reorder_src_memory_p);
         platform::RecordEvent record_reorder(
-            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            "int_reorder",
+            platform::TracerEventType::UserDefined,
+            2,
             platform::EventRole::kUniqueOp);
 
         reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory);
       } else {  // elementwise_mul & elementwise_div
-        platform::BinaryMKLDNNHandler<T> binary_handler(
-            BINARY_OP, axis, onednn_engine, ctx.GetPlace(), dout, y, dx, 1.0f,
-            1.0f, 1.0f);
+        platform::BinaryMKLDNNHandler<T> binary_handler(BINARY_OP,
+                                                        axis,
+                                                        onednn_engine,
+                                                        ctx.GetPlace(),
+                                                        dout,
+                                                        y,
+                                                        dx,
+                                                        1.0f,
+                                                        1.0f,
+                                                        1.0f);
 
         const auto src_dout_memory = binary_handler.AcquireSrcMemory(dout);
         const auto src_y_memory = binary_handler.AcquireSecondSrcMemory(y);
@@ -222,10 +241,12 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           auto reorder_p = std::make_shared<dnnl::reorder>(
               *(reorder_src_memory_p), *(reorder_dst_memory_p), reorder_attr);
           platform::RecordEvent record_reorder(
-              "int_reorder", platform::TracerEventType::UserDefined, 2,
+              "int_reorder",
+              platform::TracerEventType::UserDefined,
+              2,
               platform::EventRole::kUniqueOp);
-          reorder_p->execute(astream, *reorder_src_memory_p,
-                             *reorder_dst_memory_p);
+          reorder_p->execute(
+              astream, *reorder_src_memory_p, *reorder_dst_memory_p);
 
           dst_memory = reorder_dst_memory_p;
         } else {
@@ -239,15 +260,31 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         std::shared_ptr<dnnl::memory> src_1_memory;
 
         platform::BinaryMKLDNNHandler<T> binary_handler(
-            dnnl::algorithm::binary_mul, axis, onednn_engine, ctx.GetPlace(),
-            dout, x, nullptr, 1.0f, 1.0f, 1.0f);
+            dnnl::algorithm::binary_mul,
+            axis,
+            onednn_engine,
+            ctx.GetPlace(),
+            dout,
+            x,
+            nullptr,
+            1.0f,
+            1.0f,
+            1.0f);
 
         src_1_memory = binary_handler.AcquireSecondSrcMemory(x);
 
         if (BINARY_OP == dnnl::algorithm::binary_div) {
           platform::BinaryMKLDNNHandler<T> post_op_binary_handler(
-              dnnl::algorithm::binary_div, axis, onednn_engine, ctx.GetPlace(),
-              y, y, nullptr, 1.0f, 1.0f, 1.0f);
+              dnnl::algorithm::binary_div,
+              axis,
+              onednn_engine,
+              ctx.GetPlace(),
+              y,
+              y,
+              nullptr,
+              1.0f,
+              1.0f,
+              1.0f);
 
           post_op_memory = post_op_binary_handler.AcquireSrcMemory(y);
 
@@ -255,9 +292,18 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           po.append_binary(dnnl::algorithm::binary_div,
                            post_op_memory->get_desc());
 
-          binary_handler = platform::BinaryMKLDNNHandler<T>(
-              dnnl::algorithm::binary_mul, axis, onednn_engine, ctx.GetPlace(),
-              dout, out, nullptr, -1.0f, 1.0f, 1.0f, po);
+          binary_handler =
+              platform::BinaryMKLDNNHandler<T>(dnnl::algorithm::binary_mul,
+                                               axis,
+                                               onednn_engine,
+                                               ctx.GetPlace(),
+                                               dout,
+                                               out,
+                                               nullptr,
+                                               -1.0f,
+                                               1.0f,
+                                               1.0f,
+                                               po);
 
           src_1_memory = binary_handler.AcquireSecondSrcMemory(out);
         }
@@ -292,17 +338,24 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         }
 
         platform::ReductionMKLDNNHandler<T> reduction_handler(
-            dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
-            ctx.GetPlace(), dout, dy, CalculateBroadcastedDims(dout, dy),
+            dnnl::algorithm::reduction_sum,
+            0.0f,
+            0.0f,
+            onednn_engine,
+            ctx.GetPlace(),
+            dout,
+            dy,
+            CalculateBroadcastedDims(dout, dy),
             broadcast_reduction_attr);
         dst_memory = reduction_handler.AcquireDstMemory(dy);
 
         auto reduction_p = reduction_handler.AcquireForwardPrimitive();
 
-        reduction_p->execute(astream, {
-                                          {DNNL_ARG_SRC, *broadcast_src_memory},
-                                          {DNNL_ARG_DST, *dst_memory},
-                                      });
+        reduction_p->execute(astream,
+                             {
+                                 {DNNL_ARG_SRC, *broadcast_src_memory},
+                                 {DNNL_ARG_DST, *dst_memory},
+                             });
         astream.wait();
         dy->set_mem_desc(dst_memory->get_desc().reshape(
             phi::vectorize<int64_t>(dy->dims())));

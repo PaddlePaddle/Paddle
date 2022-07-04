@@ -18,10 +18,9 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/jit/layer.h"
@@ -51,29 +50,26 @@ PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace jit {
+using DenseTensor = phi::DenseTensor;
 
-std::vector<Variable> PrepareInputs() {
-  auto default_place = imperative::GetCurrentTracer()->ExpectedPlace();
+std::vector<Variable> PrepareInputs(const phi::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(default_place);
+  auto& dev_ctx = *pool.Get(place);
 
   Variable v;
   auto* dense_tensor = v.GetMutable<DenseTensor>();
   dense_tensor->Resize(phi::make_ddim({2, 4}));
-  dense_tensor->mutable_data<float>(default_place);
+  dense_tensor->mutable_data<float>(place);
   phi::funcs::set_constant(dev_ctx, dense_tensor, 2.);
 
   return {v};
 }
 
 TEST(CpuLayerTest, Construct) {
-  auto tracer = std::make_shared<paddle::imperative::Tracer>();
-  paddle::imperative::SetCurrentTracer(tracer);
-  imperative::GetCurrentTracer()->SetExpectedPlace(phi::CPUPlace());
-
-  std::string path = "./Testing/";
-  auto layer = jit::Load(path);
-  auto inputs = PrepareInputs();
+  auto place = phi::CPUPlace();
+  std::string path = "./multi_program_load/export";
+  auto layer = jit::Load(path, place);
+  auto inputs = PrepareInputs(place);
 
   auto outs = layer.forward(inputs);
   auto out_vars = outs[0];
@@ -81,7 +77,7 @@ TEST(CpuLayerTest, Construct) {
   auto out_data = out_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto func = layer.GetFunction("infer");
+  auto func = layer.Function("infer");
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();
@@ -91,18 +87,15 @@ TEST(CpuLayerTest, Construct) {
 
 #if defined(PADDLE_WITH_CUDA)
 TEST(GpuLayerTest, Construct) {
-  auto tracer = std::make_shared<paddle::imperative::Tracer>();
-  paddle::imperative::SetCurrentTracer(tracer);
-  imperative::GetCurrentTracer()->SetExpectedPlace(phi::GPUPlace(0));
-
+  auto place = phi::GPUPlace();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(imperative::GetCurrentTracer()->ExpectedPlace());
+  auto& dev_ctx = *pool.Get(place);
   const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
   DenseTensor cpu_dense_tensor;
 
-  std::string path = "./Testing/";
-  auto layer = jit::Load(path);
-  auto inputs = PrepareInputs();
+  std::string path = "./multi_program_load/export";
+  auto layer = jit::Load(path, place);
+  auto inputs = PrepareInputs(place);
 
   auto outs = layer.forward(inputs);
   auto out_vars = outs[0];
@@ -112,7 +105,7 @@ TEST(GpuLayerTest, Construct) {
   auto out_data = cpu_dense_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto func = layer.GetFunction("infer");
+  auto func = layer.Function("infer");
   outs = (*func)(inputs);
   out_vars = outs[0];
   out_dense_tensor = out_vars.Get<DenseTensor>();

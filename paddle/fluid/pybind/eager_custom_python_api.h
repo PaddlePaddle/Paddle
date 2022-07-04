@@ -17,7 +17,8 @@
 
 #include "paddle/phi/core/enforce.h"
 
-static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
+static PyObject *eager_api_run_program(PyObject *self,
+                                       PyObject *args,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
@@ -29,8 +30,8 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
-    ConstructAttrMapFromPyArgs("run_program", args, 6, PyTuple_GET_SIZE(args),
-                               attrs);
+    ConstructAttrMapFromPyArgs(
+        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
     run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
@@ -56,7 +57,8 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
   }
 }
 
-static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
+static PyObject *eager_api_final_state_linear(PyObject *self,
+                                              PyObject *args,
                                               PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
@@ -98,7 +100,8 @@ static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {
-    {"run_program", (PyCFunction)(void (*)(void))eager_api_run_program,
+    {"run_program",
+     (PyCFunction)(void (*)(void))eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {"final_state_linear",

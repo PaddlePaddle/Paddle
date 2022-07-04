@@ -101,7 +101,11 @@ def test_break_continue_in_for(x):
         x += 10086
 
     a = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
-    for i in range(1, 10, 1):
+    b = fluid.layers.fill_constant(shape=[1], dtype='int32', value=3)
+    # b = 10
+    # TODO: add Raise Error and suggestion for usage:
+    #   Py for contains break/continue depends on control-flow.
+    for i in range(b):
         if a <= 4:
             x += 1
             a += 1

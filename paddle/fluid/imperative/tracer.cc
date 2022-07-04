@@ -172,15 +172,23 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
 }
 
 template <typename VarType>
-void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
+void Tracer::TraceOp(const std::string& type,
+                     const NameVarMap<VarType>& ins,
                      const NameVarMap<VarType>& outs,
                      framework::AttributeMap attrs,
-                     const platform::Place& place, bool trace_backward,
+                     const platform::Place& place,
+                     bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
-  TraceOpImpl<VarType>(type, ins, outs, attrs, place, trace_backward,
-                       inplace_map, passed_default_attrs_,
+  TraceOpImpl<VarType>(type,
+                       ins,
+                       outs,
+                       attrs,
+                       place,
+                       trace_backward,
+                       inplace_map,
+                       passed_default_attrs_,
                        use_default_attr_map);
 }
 
@@ -189,7 +197,8 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const NameVarMap<VarType>& ins,
                          const NameVarMap<VarType>& outs,
                          framework::AttributeMap& attrs,
-                         const platform::Place& place, bool trace_backward,
+                         const platform::Place& place,
+                         bool trace_backward,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
@@ -249,8 +258,8 @@ void Tracer::TraceOpImpl(const std::string& type,
     const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
     const auto& tracer = imperative::GetCurrentTracer();
     ins_amp = std::make_unique<NameVarMap<VarType>>(
-        imperative::AutoTuneLayout<VarType>(type, new_tmp, outs, &attrs,
-                                            tracer));
+        imperative::AutoTuneLayout<VarType>(
+            type, new_tmp, outs, &attrs, tracer));
   }
 
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
@@ -311,10 +320,12 @@ void Tracer::TraceOpImpl(const std::string& type,
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
   } catch (std::exception& ex) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Operator %s raises an %s exception.\n"
-        "The exception content is\n:%s.",
-        type, platform::demangle(typeid(ex).name()), ex.what()));
+    PADDLE_THROW(
+        platform::errors::Fatal("Operator %s raises an %s exception.\n"
+                                "The exception content is\n:%s.",
+                                type,
+                                platform::demangle(typeid(ex).name()),
+                                ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
@@ -334,13 +345,14 @@ void Tracer::TraceOpImpl(const std::string& type,
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(
-          passed_default_attrs_, nullptr,
+          passed_default_attrs_,
+          nullptr,
           paddle::platform::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));
-      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                       inplace_map);
+      CreateGradOpNode(
+          *op, new_ins, outs, attrs, default_attrs, place, inplace_map);
     } else {
       VLOG(3) << "No Grad to track for Op: " << type;
     }
@@ -349,27 +361,43 @@ void Tracer::TraceOpImpl(const std::string& type,
 }
 
 template void Tracer::TraceOp<VarBase>(
-    const std::string& type, const NameVarMap<VarBase>& ins,
-    const NameVarMap<VarBase>& outs, framework::AttributeMap attrs,
-    const platform::Place& place, bool trace_backward,
+    const std::string& type,
+    const NameVarMap<VarBase>& ins,
+    const NameVarMap<VarBase>& outs,
+    framework::AttributeMap attrs,
+    const platform::Place& place,
+    bool trace_backward,
     const std::map<std::string, std::string>& inplace_map,
-    paddle::framework::AttributeMap* default_attrs, bool use_default_attr_map);
+    paddle::framework::AttributeMap* default_attrs,
+    bool use_default_attr_map);
 
 template void Tracer::TraceOp<egr::EagerVariable>(
-    const std::string& type, const NameVarMap<egr::EagerVariable>& ins,
-    const NameVarMap<egr::EagerVariable>& outs, framework::AttributeMap attrs,
-    const platform::Place& place, bool trace_backward,
+    const std::string& type,
+    const NameVarMap<egr::EagerVariable>& ins,
+    const NameVarMap<egr::EagerVariable>& outs,
+    framework::AttributeMap attrs,
+    const platform::Place& place,
+    bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
-    paddle::framework::AttributeMap* default_attrs, bool use_default_attr_map);
+    paddle::framework::AttributeMap* default_attrs,
+    bool use_default_attr_map);
 
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
+void Tracer::TraceOp(const std::string& type,
+                     const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs,
+                     framework::AttributeMap attrs,
                      const std::map<std::string, std::string>& inplace_map) {
-  TraceOp<VarBase>(type, ins, outs, std::move(attrs), expected_place_,
-                   has_grad_, inplace_map);
+  TraceOp<VarBase>(type,
+                   ins,
+                   outs,
+                   std::move(attrs),
+                   expected_place_,
+                   has_grad_,
+                   inplace_map);
 }
 
-void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+void Tracer::TraceOp(const std::string& type,
+                     const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap& attrs,
                      const paddle::platform::Place& place,
@@ -378,26 +406,41 @@ void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
-  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, place, false,
-                                  inplace_map, default_attrs,
+  TraceOpImpl<egr::EagerVariable>(type,
+                                  ins,
+                                  outs,
+                                  attrs,
+                                  place,
+                                  false,
+                                  inplace_map,
+                                  default_attrs,
                                   use_default_attr_map);
 }
 
-void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+void Tracer::TraceOp(const std::string& type,
+                     const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap attrs) {
   VLOG(6) << "Running On Eager TraceOp(4 agrs): ";
-  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, expected_place_,
-                                  false, {}, nullptr, true);
+  TraceOpImpl<egr::EagerVariable>(
+      type, ins, outs, attrs, expected_place_, false, {}, nullptr, true);
 }
 
-void Tracer::TraceOp(const std::string& type, const NameTensorMap& ins,
+void Tracer::TraceOp(const std::string& type,
+                     const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap& attrs,
                      const std::map<std::string, std::string>& inplace_map) {
   VLOG(6) << "Running On Eager TraceOp(less): ";
-  TraceOpImpl<egr::EagerVariable>(type, ins, outs, attrs, expected_place_,
-                                  false, inplace_map, nullptr, true);
+  TraceOpImpl<egr::EagerVariable>(type,
+                                  ins,
+                                  outs,
+                                  attrs,
+                                  expected_place_,
+                                  false,
+                                  inplace_map,
+                                  nullptr,
+                                  true);
 }
 
 void Tracer::SetExpectedPlace(platform::Place place) {
@@ -429,8 +472,10 @@ bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
 }
 
 phi::KernelSignature Tracer::GetExpectedKernelSignature(
-    const std::string& type, const NameTensorMap& ins,
-    const NameTensorMap& outs, framework::AttributeMap attrs) const {
+    const std::string& type,
+    const NameTensorMap& ins,
+    const NameTensorMap& outs,
+    framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -446,11 +491,18 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
                               : attr_checker->GetDefaultAttrMap();
   auto dygraph_exe_ctx =
       imperative::DygraphExecutionContext<egr::EagerVariable>(
-          *op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
+          *op,
+          framework::Scope(),
+          *dev_ctx,
+          ctx,
+          ins,
+          outs,
+          attrs,
           default_attrs);
   auto* opbase_with_kernel =
       dynamic_cast<framework::OperatorWithKernel*>(op.get());
-  PADDLE_ENFORCE_NE(opbase_with_kernel, nullptr,
+  PADDLE_ENFORCE_NE(opbase_with_kernel,
+                    nullptr,
                     platform::errors::InvalidArgument(
                         "This op type:`%s` is not a OperatorWithKernel, only "
                         "OperatorWithKernel can get KernelSignature",

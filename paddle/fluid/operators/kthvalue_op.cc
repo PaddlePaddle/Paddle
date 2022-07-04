@@ -65,16 +65,20 @@ class KthvalueOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::InvalidArgument("Input(X) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
+        ctx->HasInput("Indices"),
+        true,
         platform::errors::InvalidArgument("Input(Indices) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
@@ -109,11 +113,14 @@ class KthvalueGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(kthvalue, KthvalueInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(kthvalue,
+                            KthvalueInferShapeFunctor,
                             PD_INFER_META(phi::KthvalueInferMeta));
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(kthvalue, ops::KthvalueOp, ops::KthvalueOpMaker,
+REGISTER_OPERATOR(kthvalue,
+                  ops::KthvalueOp,
+                  ops::KthvalueOpMaker,
                   ops::KthvalueGradOpMaker<paddle::framework::OpDesc>,
                   ops::KthvalueGradOpMaker<paddle::imperative::OpBase>,
                   KthvalueInferShapeFunctor);

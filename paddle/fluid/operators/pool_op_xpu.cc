@@ -20,7 +20,8 @@ namespace operators {
 
 using framework::Tensor;
 
-xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
+xpu::Pooling_t XPUPoolingType(const std::string& pooltype,
+                              bool exclusive,
                               bool is_test) {
   if (pooltype == "max") {
     return xpu::Pooling_t::MAX_WITHOUT_INDEX;
@@ -51,10 +52,12 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
     PADDLE_ENFORCE_EQ(
-        ksize.size(), 2,
+        ksize.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Pool2d XPU OP only support 2 dimension pooling!"));
-    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1), true,
+    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Pool2d XPU OP does not support (adaptive == "
                           "true && output_size != 1)"));
@@ -77,20 +80,40 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
     if (pooling_type == "max") {
-      r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(), input, output,
-                                   index_data, n, c, in_h, in_w, ksize, strides,
-                                   paddings, true);
+      r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
+                                   input,
+                                   output,
+                                   index_data,
+                                   n,
+                                   c,
+                                   in_h,
+                                   in_w,
+                                   ksize,
+                                   strides,
+                                   paddings,
+                                   true);
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d<XPUType>(dev_ctx.x_context(), input, output, n, c,
-                                   in_h, in_w, ksize, strides, paddings,
-                                   !exclusive, true);
+      r = xpu::avg_pool2d<XPUType>(dev_ctx.x_context(),
+                                   input,
+                                   output,
+                                   n,
+                                   c,
+                                   in_h,
+                                   in_w,
+                                   ksize,
+                                   strides,
+                                   paddings,
+                                   !exclusive,
+                                   true);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "The pool2d XPU API return wrong value[%d %s]", r,
+                          "The pool2d XPU API return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -114,12 +137,14 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     bool adaptive = context.Attr<bool>("adaptive");
     const int* index_data = nullptr;
     PADDLE_ENFORCE_EQ(
-        ksize.size(), 2,
+        ksize.size(),
+        2,
         platform::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
                                           "dimension pooling!, but received "
                                           "%d-dimension pool kernel size",
                                           ksize.size()));
-    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1), true,
+    PADDLE_ENFORCE_EQ(!adaptive || (ksize[0] * ksize[1] == 1),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Pool2d XPU OP does not support (adaptive == "
                           "true && output_size != 1)"));
@@ -146,20 +171,44 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = xpu::Error_t::SUCCESS;
     if (pooling_type == "max") {
-      r = xpu::max_pool2d_grad<XPUType>(
-          dev_ctx.x_context(), input, output, index_data, output_grad,
-          input_grad, n, c, in_h, in_w, ksize, strides, paddings, true);
+      r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
+                                        input,
+                                        output,
+                                        index_data,
+                                        output_grad,
+                                        input_grad,
+                                        n,
+                                        c,
+                                        in_h,
+                                        in_w,
+                                        ksize,
+                                        strides,
+                                        paddings,
+                                        true);
     } else if (pooling_type == "avg") {
-      r = xpu::avg_pool2d_grad<XPUType>(
-          dev_ctx.x_context(), input, output, output_grad, input_grad, n, c,
-          in_h, in_w, ksize, strides, paddings, !exclusive, true);
+      r = xpu::avg_pool2d_grad<XPUType>(dev_ctx.x_context(),
+                                        input,
+                                        output,
+                                        output_grad,
+                                        input_grad,
+                                        n,
+                                        c,
+                                        in_h,
+                                        in_w,
+                                        ksize,
+                                        strides,
+                                        paddings,
+                                        !exclusive,
+                                        true);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "The Pool2dGrad XPU OP return wrong value[%d %s]", r,
+                          "The Pool2dGrad XPU OP return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -169,7 +218,8 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    pool2d, ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    pool2d,
+    ops::PoolXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::PoolXPUKernel<paddle::platform::XPUDeviceContext,
                        paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(

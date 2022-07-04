@@ -44,9 +44,12 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
         pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * grad_dense->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * grad_dense->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -57,7 +60,9 @@ bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }
@@ -78,9 +83,12 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
         pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * dense_t->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * dense_t->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -92,7 +100,9 @@ bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }

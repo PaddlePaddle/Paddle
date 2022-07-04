@@ -242,7 +242,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  model_path,
                                  quantizable_op_type,
                                  algo="KL",
-                                 weight_round_algo="round",
+                                 round_type="round",
                                  is_full_quantize=False,
                                  is_use_cache_file=False,
                                  is_optimize_model=False,
@@ -264,7 +264,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                        model_dir=model_path,
                                        algo=algo,
                                        quantizable_op_type=quantizable_op_type,
-                                       weight_round_algo=weight_round_algo,
+                                       round_type=round_type,
                                        is_full_quantize=is_full_quantize,
                                        optimize_model=is_optimize_model,
                                        onnx_format=onnx_format,
@@ -275,7 +275,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def run_test(self,
                  model,
                  algo,
-                 weight_round_algo,
+                 round_type,
                  data_urls,
                  data_md5s,
                  quantizable_op_type,
@@ -299,10 +299,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
         self.generate_quantized_model(model_cache_folder + "/model",
-                                      quantizable_op_type, algo,
-                                      weight_round_algo, is_full_quantize,
-                                      is_use_cache_file, is_optimize_model,
-                                      onnx_format)
+                                      quantizable_op_type, algo, round_type,
+                                      is_full_quantize, is_use_cache_file,
+                                      is_optimize_model, onnx_format)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
@@ -330,7 +329,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_kl_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "KL"
-        weight_round_algo = "round"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -345,7 +344,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
-        self.run_test(model, algo, weight_round_algo, data_urls, data_md5s,
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
 
@@ -355,7 +354,7 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_avg_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "avg"
-        weight_round_algo = "round"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -369,7 +368,7 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
-        self.run_test(model, algo, weight_round_algo, data_urls, data_md5s,
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
 
@@ -379,7 +378,7 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_hist_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "hist"
-        weight_round_algo = "round"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -393,7 +392,7 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.03
-        self.run_test(model, algo, weight_round_algo, data_urls, data_md5s,
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
 
@@ -403,7 +402,7 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
     def test_post_training_abs_max_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "abs_max"
-        weight_round_algo = "round"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -417,7 +416,7 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         is_optimize_model = False
         # The accuracy diff of post-training quantization (abs_max) maybe bigger
         diff_threshold = 0.05
-        self.run_test(model, algo, weight_round_algo, data_urls, data_md5s,
+        self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
 
@@ -426,8 +425,8 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
 
     def test_post_training_onnx_format_mobilenetv1(self):
         model = "MobileNet-V1"
-        algo = "avg"
-        weight_round_algo = "round"
+        algo = "emd"
+        round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
@@ -444,7 +443,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
         diff_threshold = 0.05
         self.run_test(model,
                       algo,
-                      weight_round_algo,
+                      round_type,
                       data_urls,
                       data_md5s,
                       quantizable_op_type,

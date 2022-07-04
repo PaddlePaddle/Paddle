@@ -48,13 +48,21 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
     auto* mean_data = mean->mutable_data<float>(ctx.GetPlace());
     auto* variance_data = variance->mutable_data<float>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::layer_norm(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<XPUType*>(y_data), left, right, epsilon, scale_data,
-        bias_data, mean_data, variance_data);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::layer_norm(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(x_data),
+                            reinterpret_cast<XPUType*>(y_data),
+                            left,
+                            right,
+                            epsilon,
+                            scale_data,
+                            bias_data,
+                            mean_data,
+                            variance_data);
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU layer_norm kernel return wrong value[%d %s]", r,
+                          "XPU layer_norm kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -95,15 +103,24 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
         (dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::layer_norm_grad(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<const XPUType*>(dy_data),
-        reinterpret_cast<XPUType*>(dx_data), left, right, epsilon, scale_data,
-        mean_data, variance_data, dscale_data, dbias_data);
+    int r = xpu::layer_norm_grad(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dy_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 left,
+                                 right,
+                                 epsilon,
+                                 scale_data,
+                                 mean_data,
+                                 variance_data,
+                                 dscale_data,
+                                 dbias_data);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
-            "XPU layer_norm_grad kernel return wrong value[%d %s]", r,
+            "XPU layer_norm_grad kernel return wrong value[%d %s]",
+            r,
             XPUAPIErrorMsg[r]));
   }
 };

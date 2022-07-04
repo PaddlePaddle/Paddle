@@ -140,8 +140,10 @@ class Pad3dOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad3d@Grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Pad3d@Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "Pad3d@Grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -200,14 +202,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad3dOpGradNoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(pad3d, Pad3dInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pad3d,
+                            Pad3dInferShapeFunctor,
                             PD_INFER_META(phi::Pad3dInferMeta));
 
-REGISTER_OPERATOR(pad3d, ops::Pad3dOp, ops::Pad3dOpMaker,
+REGISTER_OPERATOR(pad3d,
+                  ops::Pad3dOp,
+                  ops::Pad3dOpMaker,
                   ops::Pad3dOpGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpGradMaker<paddle::imperative::OpBase>,
                   Pad3dInferShapeFunctor);
-REGISTER_OPERATOR(pad3d_grad, ops::Pad3dOpGrad,
+REGISTER_OPERATOR(pad3d_grad,
+                  ops::Pad3dOpGrad,
                   ops::Pad3dOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Pad3dOpDoubleGradMaker<paddle::imperative::OpBase>,
                   ops::Pad3dOpGradNoNeedBufferVarsInferer);
