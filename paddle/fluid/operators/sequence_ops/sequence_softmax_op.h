@@ -41,8 +41,8 @@ struct SequenceSoftmaxGradFunctor {
 };
 
 template <typename T>
-struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
@@ -63,8 +63,8 @@ struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &ctx,
+struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &ctx,
                   const LoDTensor &dout,
                   const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/

@@ -1201,8 +1201,8 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
 
-  auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  phi::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::CPUContext>();
+  phi::funcs::SetConstant<phi::CPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1279,8 +1279,8 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
 
-  auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  phi::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::CPUContext>();
+  phi::funcs::SetConstant<phi::CPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1393,8 +1393,8 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
     dim_grad = {n, in_d, in_h, in_w, c};
   }
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
-  auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-  phi::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
+  auto& device_ctx = ctx.template device_context<phi::CPUContext>();
+  phi::funcs::SetConstant<phi::CPUContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

@@ -420,16 +420,13 @@ REGISTER_OP_WITHOUT_GRADIENT(
 
 REGISTER_OP_CPU_KERNEL(
     indicate_lod_tensor_data_type_test,
-    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
-                                       int>);
+    paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
 REGISTER_OP_CPU_KERNEL(
     indicate_selected_rows_data_type_test,
-    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
-                                       int>);
+    paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
 REGISTER_OP_CPU_KERNEL(
     indicate_other_data_type_test,
-    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
-                                       int>);
+    paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
 
 TEST(IndicateVarDataTypeTest, lodtensor) {
   paddle::framework::InitDevices();
@@ -599,16 +596,14 @@ REGISTER_OP_WITHOUT_GRADIENT(get_lod_level_test,
                              paddle::framework::GetSetLoDLevelTestMaker);
 REGISTER_OP_CPU_KERNEL(
     get_lod_level_test,
-    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
-                                       float>);
+    paddle::framework::EmptyTestKernel<phi::CPUContext, float>);
 
 REGISTER_OP_WITHOUT_GRADIENT(set_lod_level_test,
                              paddle::framework::SetLoDLevelTest,
                              paddle::framework::GetSetLoDLevelTestMaker);
 REGISTER_OP_CPU_KERNEL(
     set_lod_level_test,
-    paddle::framework::EmptyTestKernel<paddle::platform::CPUDeviceContext,
-                                       float>);
+    paddle::framework::EmptyTestKernel<phi::CPUContext, float>);
 
 void SetGetLoDLevelTestMain(std::string op_type) {
   paddle::framework::InitDevices({});

@@ -131,24 +131,5 @@ TEST(AutoTune, sum) {
     timer.Stop(0);
     VLOG(3) << "kernel[" << i << "]: time cost is " << timer.ElapsedTime();
   }
-
-  // 2. Test call_back tune.
-  VLOG(3) << ">>> [AutoTune]: Test case.";
-  auto tuner = tune::MakeAutoTuner<float>(Algo<4>);
-  tuner.AddCallBack(tune::MakeCallback<float>(Algo<2>));
-  tuner.AddCallBack(tune::MakeCallback<float>(Algo<1>));
-
-  /* The 1st ctx works for ctx.Wait(),
-     the 2nd is just the param of call_back. */
-  auto best_index = tuner.PickBestKernel(
-      *dev_ctx, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-
-  dev_ctx->Wait();
-  phi::GpuTimer timer;
-  timer.Start(0);
-  tuner.RunBestKernel(
-      best_index, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-  timer.Stop(0);
-  VLOG(3) << "Best CallBackKernel time cost is " << timer.ElapsedTime();
 #endif
 }

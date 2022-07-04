@@ -2089,7 +2089,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-    auto* context = new paddle::platform::CPUDeviceContext();
+    auto* context = new phi::CPUContext();
     context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
         .GetAllocator(place)
@@ -2217,12 +2217,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
@@ -2231,12 +2231,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return device_types;
   });
@@ -2245,12 +2245,12 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     devices = phi::DeviceManager::GetAllDeviceList();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
   });
@@ -2259,14 +2259,14 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
-          LOG(WARNING) << string::Sprintf(
+          VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
               "installed"
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
-              "PaddlePaddle by: pip install paddlepaddle-core\n");
+              "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
   });
@@ -2340,7 +2340,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "version PaddlePaddle.\n"
                  "If you want to use CustomDevice, please try to install"
                  "CustomDevice version "
-                 "PaddlePaddle by: pip install paddlepaddle-core\n"
+                 "PaddlePaddle by: pip install paddlepaddle\n"
                  "If you only have CPU, please change "
                  "CustomPlace(%s, %d) to be CPUPlace().\n",
                  device_type, dev_id);
@@ -3063,6 +3063,7 @@ All parameter, weight, gradient are variables in Paddle.
                     Scope *>())
       .def("run",
            [](StandaloneExecutor &self,
+              Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict,
               std::vector<std::string> fetch_names) {
              std::vector<framework::LoDTensor> feed_tensors;
@@ -3079,12 +3080,13 @@ All parameter, weight, gradient are variables in Paddle.
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, feed_tensors, fetch_names);
+               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
              }
              return py::cast(std::move(ret));
            })
       .def("run",
            [](StandaloneExecutor &self,
+              Scope *scope,
               const std::unordered_map<std::string, framework::LoDTensor>
                   &input_dict,
               std::vector<std::string> fetch_names) {
@@ -3099,23 +3101,25 @@ All parameter, weight, gradient are variables in Paddle.
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, feed_tensors, fetch_names);
+               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
              }
              return py::cast(std::move(ret));
            })
       .def("run",
            [](StandaloneExecutor &self,
+              Scope *scope,
               std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, fetch_names);
+               ret = self.Run(scope, feed_names, fetch_names);
              }
              return py::cast(std::move(ret));
            })
       .def("dry_run",
            [](StandaloneExecutor &self,
+              Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
              std::vector<framework::LoDTensor> feed_tensors;
              std::vector<std::string> feed_names;
@@ -3131,7 +3135,7 @@ All parameter, weight, gradient are variables in Paddle.
              framework::interpreter::CostInfo cost_info;
              {
                pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(feed_names, feed_tensors);
+               cost_info = self.DryRun(scope, feed_names, feed_tensors);
              }
              return cost_info;
            });
@@ -3225,13 +3229,17 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable",
-        static_cast<void (*)(
-            Scope *, const LoDTensor &, const std::string &, size_t)>(
-            &framework::SetFeedVariable));
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const LoDTensor &,
+            const std::string &,
+            size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
-        static_cast<void (*)(
-            Scope *, const Strings &, const std::string &, size_t)>(
-            &framework::SetFeedVariable));
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const Strings &,
+            const std::string &,
+            size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope,
            const std::string &var_name,
@@ -4601,20 +4609,20 @@ All parameter, weight, gradient are variables in Paddle.
            [](ParallelExecutor &self,
               const std::vector<std::string> &fetch_tensors,
               bool return_merged) -> py::object {
-             paddle::framework::FetchResultType ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(fetch_tensors, return_merged);
-             }
-
-             // TODO(Ruibiao): Refactor the run interface of PE to avoid use
-             // boost::get here
              if (return_merged) {
-               return py::cast(
-                   std::move(boost::get<paddle::framework::FetchList>(ret)));
+               paddle::framework::FetchList ret;
+               /*gil_scoped_release*/ {
+                 pybind11::gil_scoped_release release;
+                 ret = self.RunAndMerge(fetch_tensors);
+               }
+               return py::cast(std::move(ret));
              } else {
-               return py::cast(std::move(
-                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
+               paddle::framework::FetchUnmergedList ret;
+               /*gil_scoped_release*/ {
+                 pybind11::gil_scoped_release release;
+                 ret = self.Run(fetch_tensors);
+               }
+               return py::cast(std::move(ret));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
