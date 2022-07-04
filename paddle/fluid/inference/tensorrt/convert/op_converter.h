@@ -258,6 +258,16 @@ class OpConverter {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
     }
+    for (int i = 0; i < engine->network()->getNbLayers(); i++) {
+      auto layer = engine->network()->getLayer(i);
+      if (layer->getType() == nvinfer1::LayerType::kSHUFFLE) {
+        auto* input_tensor = layer->getInput(0);
+        auto* output_tensor = layer->getOutput(0);
+        if (engine->DynamicRangeIsSet(input_tensor) && !engine->DynamicRangeIsSet(output_tensor)) {
+          engine->SetTensorDynamicRange(output_tensor, engine->GetTensorDynamicRange(input_tensor));
+        }
+      }
+    }
   }
 
   // The scope  here should be inited with the parameter vars.
