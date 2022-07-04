@@ -318,7 +318,7 @@ __global__ void GetOutIndexTable(const IntT* indices,
     IntT in_y = indices[i + 2 * non_zero_num];
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    out_index_table[index] = i;
+    out_index_table[index] = i == 0 ? -1 : i;
   }
 }
 
@@ -429,7 +429,8 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
             int real_out_index = out_index_table[out_index];
-            if (real_out_index != -1) {
+            if (real_out_index != 0) {
+              real_out_index = real_out_index == -1 ? 0 : real_out_index;
               in_i = i;
               int buf_i = atomicAdd(&counter_buf[kernel_index], 1);
               kernel_i = kernel_index;
@@ -581,10 +582,12 @@ int ProductRuleBook(const Context& dev_ctx,
     }
     DenseTensor out_index_table = phi::Empty<IntT>(dev_ctx, {table_size});
     IntT* out_index_table_ptr = out_index_table.data<IntT>();
-    thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
-                 out_index_table_ptr,
-                 out_index_table_ptr + out_index_table.numel(),
-                 -1);
+    // thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
+    //              out_index_table_ptr,
+    //              out_index_table_ptr + out_index_table.numel(),
+    //              -1);
+    cudaMemsetAsync(
+        out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
 
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);

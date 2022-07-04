@@ -94,14 +94,15 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num * cols, 1);
-  MaskKernel<T, IntT><<<config.block_per_grid, config.thread_per_block>>>(
-      x_ptr,
-      indices_ptr,
-      sparse_offsets.data<int64_t>(),
-      non_zero_num,
-      cols,
-      sparse_dim,
-      out_values_ptr);
+  MaskKernel<T, IntT>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          x_ptr,
+          indices_ptr,
+          sparse_offsets.data<int64_t>(),
+          non_zero_num,
+          cols,
+          sparse_dim,
+          out_values_ptr);
 
   out->SetMember(out_indices, out_values, dims, true);
 }

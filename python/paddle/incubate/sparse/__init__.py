@@ -28,6 +28,8 @@ from .math import divide
 from .math import multiply
 from .math import subtract
 
+from .coalesced import coalesced
+
 from . import nn
 
 __all__ = [
@@ -43,4 +45,5 @@ __all__ = [
     'subtract',
     'multiply',
     'divide',
+    'coalesced',
 ]
