@@ -185,11 +185,9 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_softmax_grad,
                   ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_softmax,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_softmax_grad,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, double>);

@@ -257,6 +257,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
@@ -269,6 +270,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ =

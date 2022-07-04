@@ -53,12 +53,11 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     }
     framework::VisitDataTypeForHIP(
         dtype_,
-        DivNRanksForAllReduce<platform::CPUDeviceContext>(
-            tensor, nranks, context));
+        DivNRanksForAllReduce<phi::CPUContext>(tensor, nranks, context));
 #else
-    framework::VisitDataType(dtype_,
-                             DivNRanksForAllReduce<platform::CPUDeviceContext>(
-                                 tensor, nranks, context));
+    framework::VisitDataType(
+        dtype_,
+        DivNRanksForAllReduce<phi::CPUContext>(tensor, nranks, context));
 #endif
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
@@ -328,11 +327,10 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
         "Please recompile or reinstall Paddle with CNCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    ConcatTensorsWithType(
-        static_cast<const platform::CPUDeviceContext &>(context),
-        dense_tensors_,
-        &dense_contents_,
-        dtype_);
+    ConcatTensorsWithType(static_cast<const phi::CPUContext &>(context),
+                          dense_tensors_,
+                          &dense_contents_,
+                          dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Concat grad tensor not supported on place (%s)", place));
@@ -390,11 +388,10 @@ void Group::SplitTensors(const platform::DeviceContext &context) {
         "Please recompile or reinstall Paddle with CNCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    SplitTensorsWithType(
-        static_cast<const platform::CPUDeviceContext &>(context),
-        &dense_contents_,
-        &dense_tensors_,
-        dtype_);
+    SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
+                         &dense_contents_,
+                         &dense_tensors_,
+                         dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));

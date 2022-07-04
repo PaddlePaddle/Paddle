@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext &dev_ctx,
+struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext &dev_ctx,
                   const framework::Tensor *in,
                   const framework::Tensor *scale,
                   T max_range,
@@ -72,8 +72,8 @@ struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, float>;
-template struct ChannelDequantizeFunctorV2<platform::CPUDeviceContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:
@@ -176,7 +176,7 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     quantize_linear,

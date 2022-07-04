@@ -133,22 +133,14 @@ constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
-
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
+using CPUDeviceContext = phi::CPUContext;
 
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -783,7 +775,7 @@ class MKLDNNDeviceContextThreadLocals {
   }
 };
 
-class MKLDNNDeviceContext : public CPUDeviceContext {
+class MKLDNNDeviceContext : public phi::CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;

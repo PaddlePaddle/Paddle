@@ -34,7 +34,7 @@ namespace operators {
 namespace math {
 
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const platform::CPUDeviceContext& ctx,
+void SquaredL2Norm(const phi::CPUContext& ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,

@@ -79,15 +79,16 @@ static void MoveOrCopyVar(framework::Variable* dst,
 }
 
 template <typename T>
-class TensorAddFunctor : public boost::static_visitor<> {
+class TensorAddFunctor
+    : public std::unary_function<const platform::Place&, void> {
  public:
   TensorAddFunctor(int64_t numel, const T* x, T* y)
       : numel_(numel), x_(x), y_(y) {}
 
   void operator()(const platform::CPUPlace& place) const {
-    platform::CPUDeviceContext* ctx = dynamic_cast<platform::CPUDeviceContext*>(
+    phi::CPUContext* ctx = dynamic_cast<phi::CPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(*ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(*ctx);
     blas.AXPY(numel_, 1., x_, y_);
   }
 
@@ -438,7 +439,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
           place));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      return TensorAddImpl<platform::CPUDeviceContext, platform::float16>(
+      return TensorAddImpl<phi::CPUContext, platform::float16>(
           src_tensor, dst_tensor, place);
     }
   }
@@ -455,7 +456,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
           place));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      return TensorAddImpl<platform::CPUDeviceContext, platform::bfloat16>(
+      return TensorAddImpl<phi::CPUContext, platform::bfloat16>(
           src_tensor, dst_tensor, place);
     }
   }
@@ -498,8 +499,8 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
     PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CUDADeviceContext, double);
   } else {
 #endif
-    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(platform::CPUDeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::CPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(phi::CPUContext, double);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
@@ -550,8 +551,8 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
     PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, double);
   } else {
 #endif
-    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::CPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(phi::CPUContext, double);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
@@ -613,8 +614,8 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
     PADDLE_SELECTED_ROWS_ADD(platform::CUDADeviceContext, double);
   } else {
 #endif
-    PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, float);
-    PADDLE_SELECTED_ROWS_ADD(platform::CPUDeviceContext, double);
+    PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, float);
+    PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, double);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
