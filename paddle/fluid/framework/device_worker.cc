@@ -262,11 +262,35 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
   size_t batch_size = device_reader_->GetCurBatchSize();
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
-  if (ins_id_vec.size() > 0) {
+  if (dump_mode_ == 3) {
+    batch_size = std::string::npos;
+    bool has_valid_batch = false;
+    for (auto& field : *dump_fields_) {
+      Variable* var = scope.FindVar(field);
+      if (var == nullptr) {
+        VLOG(0) << "Note: field[" << field
+                << "] cannot be find in scope, so it was skipped.";
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (!tensor->IsInitialized()) {
+        VLOG(0) << "Note: field[" << field
+                << "] is not initialized, so it was skipped.";
+        continue;
+      }
+      auto& dims = tensor->dims();
+      if (dims.size() == 2 && dims[0] > 0) {
+        batch_size = std::min(batch_size, static_cast<size_t>(dims[0]));
+        // VLOG(0)<<"in dump field ---> "<<field<<" dim_size = "<<dims[0]<<"
+        // "<<dims[1]<<" batch_size = "<<batch_size;
+        has_valid_batch = true;
+      }
+    }
+    if (!has_valid_batch) return;
+  } else if (ins_id_vec.size() > 0) {
     batch_size = ins_id_vec.size();
   }
   std::vector<std::string> ars(batch_size);
-  std::vector<bool> hit(batch_size, false);
   if (dump_mode_ == 3) {
     if (dump_fields_ == NULL || (*dump_fields_).size() == 0) {
       return;
@@ -308,7 +332,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         tensor = &cpu_tensor;
       }
       auto& dims = tensor->dims();
-      if (dims.size() != 2 || dims[0] != static_cast<int>(batch_size)) {
+      if (dims.size() != 2 || dims[0] <= 0) {
         VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
                                               "skipped. Maybe the dimension is "
                                               "wrong ";
@@ -348,6 +372,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
     }
     return;
   }
+  std::vector<bool> hit(batch_size, false);
   std::default_random_engine engine(0);
   std::uniform_int_distribution<size_t> dist(0U, INT_MAX);
   for (size_t i = 0; i < batch_size; i++) {

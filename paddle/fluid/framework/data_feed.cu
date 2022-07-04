@@ -554,7 +554,7 @@ int GraphDataGenerator::GenerateBatch() {
   }
 
   cudaStreamSynchronize(stream_);
-  if (!gpu_graph_training_) return total_instance / 2;
+  if (!gpu_graph_training_) return 1;
   ins_buf_pair_len_ -= total_instance / 2;
   if (debug_mode_) {
     uint64_t h_slot_tensor[slot_num_][total_instance];
@@ -966,12 +966,12 @@ void GraphDataGenerator::SetConfig(
   window_ = graph_config.window();
   once_sample_startid_len_ = graph_config.once_sample_startid_len();
   debug_mode_ = graph_config.debug_mode();
-  if (debug_mode_) {
+  gpu_graph_training_ = graph_config.gpu_graph_training();
+  if (debug_mode_ || !gpu_graph_training_) {
     batch_size_ = graph_config.batch_size();
   } else {
     batch_size_ = once_sample_startid_len_;
   }
-  gpu_graph_training_ = graph_config.gpu_graph_training();
   repeat_time_ = graph_config.sample_times_one_chunk();
   buf_size_ =
       once_sample_startid_len_ * walk_len_ * walk_degree_ * repeat_time_;
