@@ -1218,7 +1218,7 @@
 
 - backward_api : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, int64_t[] dims={},  bool keep_dim=false, bool reduce_all = false) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int64_t[] dims={},  bool keep_dim=false, bool reduce_all=false)
+  args : (Tensor grad_x_grad, int64_t[] dims={},  bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : mean(grad_x_grad, dims, keep_dim)
 
@@ -1678,26 +1678,12 @@
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_api : scale_double_grad
-  forward : scale_grad (Tensor grad_out, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_out_grad)
-  invoke : scale(grad_x_grad, scale, 0.0, bias_after_scale)
-  backward : scale_triple_grad
-
 - backward_api : scale_grad
   forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
-  args : (Tensor out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor out_grad, Scalar scale=1.0, bool bias_after_scale=true)
   output : Tensor(x_grad)
-  invoke : scale(out_grad, scale, 0.0, bias_after_scale)
-  backward : scale_double_grad
+  invoke : scale_(out_grad, scale, 0.0, bias_after_scale)
   inplace : (out_grad -> x_grad)
-
-- backward_api : scale_triple_grad
-  forward : scale_double_grad (Tensor grad_grad_x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_out_grad, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
-  output : Tensor(grad_grad_x_grad)
-  invoke : scale(grad_grad_out_grad, scale, 0.0, bias_after_scale)
 
 - backward_api : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
@@ -1861,7 +1847,6 @@
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
-# TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
 - backward_api : sqrt_double_grad
   forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
@@ -1981,7 +1966,6 @@
   args : (Tensor grad_x_grad, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(grad_out_grad)
   invoke : sum(grad_x_grad, dims, grad_x_grad.dtype(), keep_dim)
-  backward : sum_triple_grad
 
 - backward_api : sum_grad
   forward : sum (Tensor x, int64_t[] dims={}, DataType out_dtype=DataType::UNDEFINED, bool keep_dim=false) -> Tensor(out)
@@ -1994,12 +1978,6 @@
     func : sum_grad
   no_need_buffer : x
   backward : sum_double_grad
-
-- backward_api : sum_triple_grad
-  forward : sum_double_grad (Tensor grad_grad_x, int64_t[] dims={}, bool keep_dim=false) -> Tensor(grad_grad_out)
-  args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
-  output : Tensor(grad_grad_x_grad)
-  invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
 
 - backward_api : swish_grad
   forward : swish (Tensor x, float beta=1.0) -> Tensor(out)

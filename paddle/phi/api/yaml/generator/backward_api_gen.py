@@ -97,6 +97,18 @@ class BackwardAPI(BaseAPI):
     def gene_return_code(self):
         return ""
 
+    def gene_api_declaration(self):
+        if not self.is_base_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                    not invoke_func_name.endswith('_impl')):
+                return ""
+        api_func_name = self.get_api_func_name()
+        api_declaration = f"""
+PADDLE_API void {api_func_name}({self.get_declare_args()});
+"""
+        return api_declaration
+
     def gene_kernel_backend_select(self):
         all_no_need_buffer = True
         for in_name in self.inputs['names']:
@@ -179,17 +191,14 @@ class BackwardAPI(BaseAPI):
     def gene_invoke_code(self, invoke_code, params_code):
         invoke_func_name = invoke_code.split('(')[0].strip()
         if invoke_func_name.endswith('_grad') or invoke_func_name.endswith(
-                '_grad_impl'):
+                '_impl'):
             return f"""
 PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   {invoke_code};
 }}"""
 
         else:
-            return f"""
-PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
-  *{self.outputs['names'][0].split('@')[0]} = {invoke_code};
-}}"""
+            return ""
 
 
 def header_include():
