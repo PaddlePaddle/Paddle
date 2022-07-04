@@ -18,14 +18,12 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/variant.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 // Cast paddle::variant for PyBind.
 // Copy from
-
 // https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
 namespace pybind11 {
 namespace detail {
@@ -78,10 +76,7 @@ struct paddle_variant_caster<V<Ts...>> {
   using Type = V<Ts...>;
 
   template <typename T>
-  typename std::enable_if<
-      !std::is_same<T, boost::detail::variant::void_>::value,
-      bool>::type
-  try_load(handle src, bool convert) {
+  bool try_load(handle src, bool convert) {
     auto caster = make_caster<T>();
     if (!load_success_ && caster.load(src, convert)) {
       load_success_ = true;
@@ -112,13 +107,6 @@ struct paddle_variant_caster<V<Ts...>> {
     return false;
   }
 
-  template <typename T>
-  typename std::enable_if<std::is_same<T, boost::detail::variant::void_>::value,
-                          bool>::type
-  try_load(handle src, bool convert) {
-    return false;
-  }
-
   bool load(handle src, bool convert) {
     auto unused = {false, try_load<Ts>(src, convert)...};
     (void)(unused);
@@ -128,11 +116,6 @@ struct paddle_variant_caster<V<Ts...>> {
   static handle cast(Type const& src,
                      return_value_policy policy,
                      handle parent) {
-    /*
-    auto paddle_variant_caster_visitor = [&](Type const& src)->handle {
-      return make_caster<Type>::cast(src, policy, parent);
-    }
-    */
     paddle_variant_caster_visitor visitor(policy, parent);
     return paddle::visit(visitor, src);
   }
