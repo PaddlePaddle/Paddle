@@ -544,10 +544,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 #if CUDNN_VERSION >= 7100
-REGISTER_OP_CUDA_KERNEL(conv2d_fusion,
-                        ops::CUDNNConvFusionOpKernel<float>,
-                        ops::CUDNNConvFusionOpKernel<double>,
-                        ops::CUDNNConvFusionOpKernel<paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    conv2d_fusion,
+    ops::CUDNNConvFusionOpKernel<float>,
+    ops::CUDNNConvFusionOpKernel<double>,
+    ops::CUDNNConvFusionOpKernel<paddle::platform::float16>);
 #endif
 #ifdef PADDLE_WITH_HIP
 REGISTER_OP_CUDA_KERNEL(conv2d_fusion, ops::CUDNNConvFusionOpKernel<float>);
