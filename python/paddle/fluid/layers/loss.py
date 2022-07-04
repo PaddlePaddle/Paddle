@@ -41,7 +41,6 @@ __all__ = [
     'hsigmoid',
     'sampled_softmax_with_cross_entropy',
     'softmax_with_cross_entropy',
-    'identity_loss',
     'rank_loss',
     'margin_rank_loss',
     'sigmoid_cross_entropy_with_logits',
@@ -1266,7 +1265,7 @@ def identity_loss(x, reduction="none"):
             import paddle
             paddle.enable_static()
             loss = fluid.data(name="loss", shape=[-1, 1], dtype="float32")
-            out = fluid.layers.identity_loss(loss, reduction=1)
+            out = paddle.incubate.identity_loss(loss, reduction=1)
     """
     if isinstance(reduction, str):
         reduction = {"sum": 0, "mean": 1, "none": 2}.get(reduction.lower())

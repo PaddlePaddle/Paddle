@@ -27,7 +27,7 @@ class TestIdentityLossOp(OpTest):
 
     def setUp(self):
         self.max_relative_error = 0.006
-        self.python_api = paddle.fluid.layers.identity_loss
+        self.python_api = paddle.incubate.identity_loss
 
         self.inputs = {}
         self.initTestCase()
@@ -98,18 +98,19 @@ class TestIdentityLossOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_int():
-                fluid.layers.identity_loss(x=input_data, reduction=3)
+                paddle.incubate.identity_loss(x=input_data, reduction=3)
 
             self.assertRaises(Exception, test_int)
 
             def test_string():
-                fluid.layers.identity_loss(x=input_data, reduction="wrongkey")
+                paddle.incubate.identity_loss(x=input_data,
+                                              reduction="wrongkey")
 
             self.assertRaises(Exception, test_string)
 
             def test_dtype():
                 x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                fluid.layers.identity_loss(x=x2, reduction=1)
+                paddle.incubate.identity_loss(x=x2, reduction=1)
 
             self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
@@ -134,10 +135,10 @@ class TestIdentityLossAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.x_shape)
-            out1 = paddle.fluid.layers.identity_loss(x)
-            out2 = paddle.fluid.layers.identity_loss(x, reduction=0)
-            out3 = paddle.fluid.layers.identity_loss(x, reduction=1)
-            out4 = paddle.fluid.layers.identity_loss(x, reduction=2)
+            out1 = paddle.incubate.identity_loss(x)
+            out2 = paddle.incubate.identity_loss(x, reduction=0)
+            out3 = paddle.incubate.identity_loss(x, reduction=1)
+            out4 = paddle.incubate.identity_loss(x, reduction=2)
 
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x},
@@ -156,7 +157,7 @@ class TestIdentityLossAPI(unittest.TestCase):
 
         def test_case(x, reduction):
             x_tensor = paddle.to_tensor(x)
-            out = paddle.fluid.layers.identity_loss(x_tensor, reduction)
+            out = paddle.incubate.identity_loss(x_tensor, reduction)
             out_ref = self.identity_loss_ref(x, reduction)
             self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
                              True)
@@ -173,14 +174,14 @@ class TestIdentityLossAPI(unittest.TestCase):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         x = paddle.to_tensor(x)
-        self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x, -1)
-        self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x, 3)
-        self.assertRaises(Exception, paddle.fluid.layers.identity_loss, x,
+        self.assertRaises(Exception, paddle.incubate.identity_loss, x, -1)
+        self.assertRaises(Exception, paddle.incubate.identity_loss, x, 3)
+        self.assertRaises(Exception, paddle.incubate.identity_loss, x,
                           "wrongkey")
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12], 'int32')
-            self.assertRaises(TypeError, paddle.fluid.layers.identity_loss, x)
+            self.assertRaises(TypeError, paddle.incubate.identity_loss, x)
 
 
 if __name__ == '__main__':
