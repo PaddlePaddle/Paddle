@@ -86,10 +86,9 @@ REGISTER_OPERATOR(load_combine,
 
 REGISTER_OP_CPU_KERNEL(
     load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::LoadCombineOpKernel<phi::CPUContext, float>,
+    ops::LoadCombineOpKernel<phi::CPUContext, double>,
+    ops::LoadCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int64_t>);

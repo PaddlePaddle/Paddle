@@ -118,9 +118,9 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, rtm_pattern);
 
     auto reshape_shape =
-        boost::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
+        paddle::get<std::vector<int>>(reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
-        boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
+        paddle::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
 
     OpDesc *matmul_desc = matmul_op->Op();
     std::string input_var_name = transpose_out->Name();

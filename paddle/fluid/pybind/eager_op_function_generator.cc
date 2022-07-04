@@ -316,29 +316,24 @@ std::string GenerateOpFunctionsBody(
   }
   if (!inplace_map.empty()) {
     // For inplace op, Use the input PyObject directly.
+    return_str = "std::map<ssize_t, ssize_t> inplace_var_idx_map;\n";
     for (auto& inplace_pair : inplace_map) {
       // Find index of inplace tensor, and directly use input PyObject.
       std::string inplace_arg_name = inplace_pair.second;
       std::string inplace_return_name = inplace_pair.first;
       const char* RETURN_INPLACE_TENSOR_TEMPLATE =
-          "ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
           "\"%s\", \"%s\");\n"
           "    ssize_t return_id = "
           "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
-          "    return ToPyObject(out, return_id, args, arg_id);";
-      return_str = paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
-                                           op_type,
-                                           inplace_arg_name,
-                                           op_type,
-                                           inplace_return_name);
-      // only support one inplace_var in temporary.
-      PADDLE_ENFORCE_EQ(
-          inplace_map.size(),
-          1,
-          paddle::platform::errors::InvalidArgument(
-              "size of inplace_map must be 1, but got %d", inplace_map.size()));
-      break;
+          "    inplace_var_idx_map[return_id] = arg_id;";
+      return_str += paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
+                                            op_type,
+                                            inplace_arg_name,
+                                            op_type,
+                                            inplace_return_name);
     }
+    return_str += "    return ToPyObject(out, args, inplace_var_idx_map);";
   } else {
     return_str = "return ToPyObject(out);";
   }

@@ -153,7 +153,6 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        size_t grad_value_size,
                                        DynamicGradMerger& merger_) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
@@ -164,8 +163,9 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     merger_.update_one(out, in);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      in = *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
-      merger_.merge_one(out, in);
+      FeaturePushValue& rhs =
+          *(FeaturePushValue*)(input + size_t(ori_index) * grad_value_size);
+      merger_.merge_one(out, rhs);
     }
   }
 }

@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
@@ -563,7 +564,7 @@ proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
       it,
       attrs_.end(),
       platform::errors::NotFound("Attribute %s is not found.", name));
-  return static_cast<proto::AttrType>(it->second.which() - 1);
+  return static_cast<proto::AttrType>(it->second.index() - 1);
 }
 
 std::vector<std::string> OpDesc::AttrNames() const {
@@ -584,7 +585,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
-  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
       BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
@@ -763,7 +764,7 @@ void OpDesc::RenameInput(const std::string &old_name,
   need_update_ = true;
 }
 
-struct SetAttrDescVisitor : public boost::static_visitor<void> {
+struct SetAttrDescVisitor {
   explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr) : attr_(attr) {}
   mutable proto::OpDesc::Attr *attr_;
   void operator()(int v) const { attr_->set_i(v); }
@@ -809,7 +810,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_float64s());
   }
 
-  void operator()(boost::blank) const {
+  void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method of SetAttrDescVisitor object for "
         "`boosst::blank` type."));
@@ -837,9 +838,9 @@ void OpDesc::Flush() {
       auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
       attr_desc->set_type(
-          static_cast<proto::AttrType>(attr.second.which() - 1));
+          static_cast<proto::AttrType>(attr.second.index() - 1));
       SetAttrDescVisitor visitor(attr_desc);
-      boost::apply_visitor(visitor, attr.second);
+      paddle::visit(visitor, attr.second);
     }
 
     need_update_ = false;

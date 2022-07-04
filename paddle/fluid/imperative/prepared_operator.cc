@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -524,6 +525,9 @@ static void PreparedOpRunImpl(
                                                       arg_map_fn,
                                                       default_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
+    platform::RecordOpInfoSupplement(
+        op.Type(), op.Attrs(), infer_shape_ctx, ctx);
   }
 
   {
@@ -593,6 +597,9 @@ static void PreparedOpRunPtImpl(
                                                       arg_map_fn,
                                                       default_kernel_signature);
     op.Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
+    platform::RecordOpInfoSupplement(
+        op.Type(), op.Attrs(), infer_shape_ctx, kernel_signature);
   }
 
   {

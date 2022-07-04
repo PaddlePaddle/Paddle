@@ -70,7 +70,7 @@ void TransposeTwoAxis(const Tensor& input,
   permute[axis2] = axis1;
 
   transposed_input->mutable_data<T>(input.dims(), context.GetPlace());
-  auto& dev_ctx = context.template device_context<platform::CPUDeviceContext>();
+  auto& dev_ctx = context.template device_context<phi::CPUContext>();
 
   TransCompute<DeviceContext, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);

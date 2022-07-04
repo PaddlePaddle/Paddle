@@ -56,7 +56,7 @@ namespace framework {
 
 class OperatorBase;
 
-using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
+using InferShapeVarPtr = paddle::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {
  public:

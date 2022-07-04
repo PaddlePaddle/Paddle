@@ -91,6 +91,7 @@ IpuStrategy::IpuStrategy() {
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
   ADD_UINT64_OPTION(random_seed);
+  ADD_UINT64_OPTION(tiles_per_ipu);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);

@@ -135,7 +135,6 @@ REGISTER_OP_WITHOUT_GRADIENT(merged_adamw,
                              ops::MergedAdamOp,
                              ops::MergedAdamOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    merged_adam,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MergedAdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(merged_adam,
+                       ops::MergedAdamOpKernel<phi::CPUContext, float>,
+                       ops::MergedAdamOpKernel<phi::CPUContext, double>);

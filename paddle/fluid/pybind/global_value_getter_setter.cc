@@ -217,7 +217,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
                        GlobalVarGetterSetterRegistry::CreateSetter(&var)); \
   } while (0)
 
-struct RegisterGetterSetterVisitor : public boost::static_visitor<void> {
+struct RegisterGetterSetterVisitor {
   RegisterGetterSetterVisitor(const std::string &name,
                               bool is_writable,
                               void *value_ptr)
@@ -259,7 +259,7 @@ static void RegisterGlobalVarGetterSetter() {
     const auto &default_value = pair.second.default_value;
     RegisterGetterSetterVisitor visitor(
         "FLAGS_" + name, is_writable, value_ptr);
-    boost::apply_visitor(visitor, default_value);
+    paddle::visit(visitor, default_value);
   }
 }
 

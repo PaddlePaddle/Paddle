@@ -90,7 +90,6 @@ __global__ void dy_mf_search_kernel(Table* table,
                                     size_t len,
                                     size_t pull_feature_value_size) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  // return;
   if (i < len) {
     auto it = table->find(keys[i]);
 
@@ -112,20 +111,7 @@ __global__ void dy_mf_search_kernel(Table* table,
       }
     } else {
       if (keys[i] != 0) {
-        printf("warning::pull miss key: %d", keys[i]);
-      }
-      FeatureValue* cur = (FeatureValue*)(vals + i * pull_feature_value_size);
-      cur->delta_score = 0;
-      cur->show = 0;
-      cur->clk = 0;
-      cur->slot = -1;
-      cur->lr = 0;
-      cur->lr_g2sum = 0;
-      cur->mf_size = 0;
-      cur->mf_dim = 8;
-      cur->cpu_ptr;
-      for (int j = 0; j < cur->mf_dim + 1; j++) {
-        cur->mf[j] = 0;
+        printf("warning::pull miss key: %llu", keys[i]);
       }
     }
   }
@@ -163,7 +149,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, *cur);
     } else {
       if (keys[i] != 0) {
-        printf("warning::push miss key: %d", keys[i]);
+        printf("warning::push miss key: %llu", keys[i]);
       }
     }
   }

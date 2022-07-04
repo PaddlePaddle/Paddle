@@ -244,36 +244,50 @@ class HostEventRecorder {
   // It will cause deep-copy to harm performance.
   template <typename... Args>
   void RecordEvent(Args &&...args) {
-    GetThreadLocalRecorder()->RecordEvent(std::forward<Args>(args)...);
+    // Get thread local ThreadEventRecorder
+    // If not exists, we create a new one.
+    // Both HostEventRecorder and thread-local varibale in
+    // ThreadEventRecorderRegistry keep the shared pointer. We add this to
+    // prevent ThreadEventRecorder being destroyed by thread-local variable in
+    // ThreadEventRecorderRegistry and lose data.
+    if (GetThreadLocalRecorder()->get() == nullptr) {
+      std::shared_ptr<ThreadEventRecorder<EventType>>
+          thread_event_recorder_ptr =
+              std::make_shared<ThreadEventRecorder<EventType>>();
+      *(GetThreadLocalRecorder()) = thread_event_recorder_ptr;
+      thr_recorders_.push_back(thread_event_recorder_ptr);
+    }
+    (*GetThreadLocalRecorder())->RecordEvent(std::forward<Args>(args)...);
   }
 
   // thread-unsafe, make sure make sure there is no running tracing.
   // Poor performance, call it at the ending
   HostEventSection<EventType> GatherEvents() {
-    auto thr_recorders =
-        ThreadEventRecorderRegistry::GetInstance().GetAllThreadDataByRef();
     HostEventSection<EventType> host_sec;
     host_sec.process_id = GetProcessId();
-    host_sec.thr_sections.reserve(thr_recorders.size());
-    for (auto &kv : thr_recorders) {
-      auto &thr_recorder = kv.second.get();
-      host_sec.thr_sections.emplace_back(
-          std::move(thr_recorder.GatherEvents()));
+    host_sec.thr_sections.reserve(thr_recorders_.size());
+    for (auto &v : thr_recorders_) {
+      host_sec.thr_sections.emplace_back(std::move(v->GatherEvents()));
     }
     return host_sec;
   }
 
  private:
-  using ThreadEventRecorderRegistry =
-      framework::ThreadDataRegistry<ThreadEventRecorder<EventType>>;
+  using ThreadEventRecorderRegistry = framework::ThreadDataRegistry<
+      std::shared_ptr<ThreadEventRecorder<EventType>>>;
 
   HostEventRecorder() = default;
   DISABLE_COPY_AND_ASSIGN(HostEventRecorder);
 
-  ThreadEventRecorder<EventType> *GetThreadLocalRecorder() {
+  std::shared_ptr<ThreadEventRecorder<EventType>> *GetThreadLocalRecorder() {
     return ThreadEventRecorderRegistry::GetInstance()
         .GetMutableCurrentThreadData();
   }
+  // Hold all thread-local ThreadEventRecorders
+  // ThreadEventRecorderRegistry and HostEventRecorder both take care of this
+  // shared pointer. We add this to prevent ThreadEventRecorder being destroyed
+  // by thread-local variable in ThreadEventRecorderRegistry and lose data.
+  std::vector<std::shared_ptr<ThreadEventRecorder<EventType>>> thr_recorders_;
 };
 
 }  // namespace platform

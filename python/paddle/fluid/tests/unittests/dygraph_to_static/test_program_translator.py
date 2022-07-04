@@ -74,11 +74,11 @@ class StaticCode1():
 
         def get_args_0():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_0(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_0():
             nonlocal x_v
@@ -90,17 +90,17 @@ class StaticCode1():
             x_v = x_v + 1
             return x_v
 
-        _jst.convert_ifelse(
+        _jst.IfElse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
             set_args_0, ('x_v', ))
 
         def get_args_1():
             nonlocal __return_value_0, label, x_v
-            return __return_value_0, label, x_v
+            return __return_value_0, label, x_v,
 
         def set_args_1(__args):
             nonlocal __return_value_0, label, x_v
-            __return_value_0, label, x_v = __args
+            __return_value_0, label, x_v, = __args
 
         def true_fn_1():
             nonlocal __return_value_0, label, x_v
@@ -115,8 +115,8 @@ class StaticCode1():
             __return_value_0 = x_v
             return __return_value_0
 
-        _jst.convert_ifelse(label is not None, true_fn_1, false_fn_1,
-                            get_args_1, set_args_1, ('__return_value_0', ))
+        _jst.IfElse(label is not None, true_fn_1, false_fn_1, get_args_1,
+                    set_args_1, ('__return_value_0', ))
         return __return_value_0
 
 
@@ -131,11 +131,11 @@ class StaticCode2():
 
         def get_args_2():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_2(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_2():
             nonlocal x_v
@@ -147,17 +147,17 @@ class StaticCode2():
             x_v = x_v + 1
             return x_v
 
-        _jst.convert_ifelse(
+        _jst.IfElse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
             set_args_2, ('x_v', ))
 
         def get_args_3():
             nonlocal __return_value_1, label, x_v
-            return __return_value_1, label, x_v
+            return __return_value_1, label, x_v,
 
         def set_args_3(__args):
             nonlocal __return_value_1, label, x_v
-            __return_value_1, label, x_v = __args
+            __return_value_1, label, x_v, = __args
 
         def true_fn_3():
             nonlocal __return_value_1, label, x_v
@@ -172,8 +172,8 @@ class StaticCode2():
             __return_value_1 = x_v
             return __return_value_1
 
-        _jst.convert_ifelse(label is not None, true_fn_3, false_fn_3,
-                            get_args_3, set_args_3, ('__return_value_1', ))
+        _jst.IfElse(label is not None, true_fn_3, false_fn_3, get_args_3,
+                    set_args_3, ('__return_value_1', ))
         return __return_value_1
 
 

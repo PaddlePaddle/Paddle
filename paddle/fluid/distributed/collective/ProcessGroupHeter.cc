@@ -73,15 +73,15 @@ ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
       src_rank_(src_rank),
       dst_rank_(dst_rank) {
   return;
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   inner_pg_ = std::make_shared<ProcessGroupNCCL>(
       store, local_rank, local_size, place_, IGNORE_ID);
 #elif defined(PADDLE_WITH_ASCEND_CL)
   inner_pg_ = std::make_shared<ProcessGroupHCCL>(
       store, local_rank, local_size, place_, IGNORE_ID);
 #else
-  PADDLE_THROW(platform::errors::Fatal(
-      "ProcessGroupHeter only supports NCCL and HCCL now.");
+  PADDLE_THROW(platform::errors::Unavailable(
+      "ProcessGroupHeter only supports NCCL, RCCL and HCCL now."));
 #endif
   if (local_rank_ == 0 && !with_switch_) {
     auto opts = ProcessGroupGloo::GlooOptions::create();
@@ -104,7 +104,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
@@ -213,7 +213,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHeter::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,

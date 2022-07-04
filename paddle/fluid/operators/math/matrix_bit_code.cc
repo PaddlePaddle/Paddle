@@ -19,7 +19,7 @@ namespace operators {
 namespace math {
 
 template <typename T>
-struct MatrixBitCodeFunctorAdd : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorAdd {
   const framework::Tensor &vec_;
   framework::Tensor *tmat_;
 
@@ -47,11 +47,11 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::Add(const framework::Tensor &vec,
                                   framework::Tensor *tmat) {
   MatrixBitCodeFunctorAdd<T> func(vec, tmat);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorAddGrad : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorAddGrad {
   const framework::Tensor &tmat_;
   framework::Tensor *vec_;
   MatrixBitCodeFunctorAddGrad(const framework::Tensor &tmat,
@@ -79,11 +79,11 @@ template <typename T>
 void MatrixBitCodeFunctor<T>::AddGrad(const framework::Tensor &tmat,
                                       framework::Tensor *vec) {
   MatrixBitCodeFunctorAddGrad<T> func(tmat, vec);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorSum : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorSum {
   const framework::Tensor &tmat_;
   framework::Tensor *sum_;
   T scale_sum_;
@@ -121,11 +121,11 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor &tmat,
                                   framework::Tensor *sum,
                                   T scale_sum) {
   MatrixBitCodeFunctorSum<T> func(tmat, sum, scale_sum);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMul {
   framework::Tensor *tmat_;
   const framework::Tensor &weight_;
   const framework::Tensor &input_;
@@ -137,8 +137,7 @@ struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_->dims()[0];
     size_t tmat_width = tmat_->dims()[1];
     size_t input_width = input_.dims()[1];
@@ -165,7 +164,7 @@ void MatrixBitCodeFunctor<T>::Mul(framework::Tensor *tmat,
                                   const framework::Tensor &weight,
                                   const framework::Tensor &input) {
   MatrixBitCodeFunctorMul<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T, size_t N>
@@ -175,7 +174,7 @@ class ReservedVector : public std::vector<T> {
 };
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradWeight {
   const framework::Tensor &tmat_;
   framework::Tensor *weight_;
   const framework::Tensor &input_;
@@ -185,8 +184,7 @@ struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];
@@ -222,12 +220,11 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
                                             framework::Tensor *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeight<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradWeightSR
-    : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradWeightSR {
   const framework::Tensor &tmat_;
   phi::SelectedRows *weight_;
   const framework::Tensor &input_;
@@ -239,8 +236,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];
@@ -279,11 +275,11 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
                                             phi::SelectedRows *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeightSR<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorMulGradError : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorMulGradError {
   const framework::Tensor &tmat_;
   const framework::Tensor &weight_;
   framework::Tensor *input_;
@@ -323,11 +319,11 @@ void MatrixBitCodeFunctor<T>::MulGradError(const framework::Tensor &tmat,
                                            const framework::Tensor &weight,
                                            framework::Tensor *input) {
   MatrixBitCodeFunctorMulGradError<T> func(tmat, weight, input);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template <typename T>
-struct MatrixBitCodeFunctorSub : public boost::static_visitor<void> {
+struct MatrixBitCodeFunctorSub {
   framework::Tensor *tmat_;
 
   explicit MatrixBitCodeFunctorSub(framework::Tensor *tmat) : tmat_(tmat) {}
@@ -352,7 +348,7 @@ struct MatrixBitCodeFunctorSub : public boost::static_visitor<void> {
 template <typename T>
 void MatrixBitCodeFunctor<T>::Sub(framework::Tensor *tmat) {
   MatrixBitCodeFunctorSub<T> func(tmat);
-  code_table_.apply_visitor(func);
+  paddle::visit(func, code_table_);
 }
 
 template class MatrixBitCodeFunctor<float>;

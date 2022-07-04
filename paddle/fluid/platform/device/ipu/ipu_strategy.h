@@ -41,7 +41,7 @@ class IpuStrategy {
   // Average sharding, debugging used
   bool need_avg_shard = false;
 
-  // Flag for fp16, true for pure fp16
+  // Flag for fp16, true for inference with pure fp16
   bool enable_fp16 = false;
 
   // The mode of Adam/Lamb optimizer
@@ -63,6 +63,9 @@ class IpuStrategy {
 
   // Micro batch-size
   int micro_batch_size = 1;
+
+  // The number of virtual tiles for IPUMODEL
+  int tiles_per_ipu = 4;
 
   // Random seed
   std::uint64_t random_seed = std::numeric_limits<std::uint64_t>::max();

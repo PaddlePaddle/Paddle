@@ -129,16 +129,19 @@ PyObject* pylayer_method_apply(PyObject* cls,
   bool require_any_grad = false;
 
   size_t inputs_size = 0;
+  size_t args_size = 0;
+  size_t kwargs_size = 0;
   PyObject* forward_args = nullptr;
   PyObject* kwargs_value_list = nullptr;
   if (kwargs) {
-    inputs_size = PyDict_Size(kwargs);
+    kwargs_size = PyDict_Size(kwargs);
     kwargs_value_list = PyDict_Values(kwargs);
-    forward_args = PyTuple_New(1);
-  } else {
-    inputs_size = PyTuple_GET_SIZE(args);
-    forward_args = PyTuple_New(inputs_size + 1);
   }
+  if (args) {
+    args_size = PyTuple_GET_SIZE(args);
+  }
+  inputs_size = kwargs_size + args_size;
+  forward_args = PyTuple_New(args_size + 1);
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
 
@@ -150,8 +153,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
-    if (kwargs) {
-      obj = PyList_GetItem(kwargs_value_list, i);
+    if (i >= args_size) {
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
@@ -212,7 +215,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    if (!kwargs) {
+    if (i < args_size) {
       Py_INCREF(obj);
       PyTuple_SET_ITEM(forward_args, i + 1, obj);
     }

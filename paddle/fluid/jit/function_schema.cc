@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/jit/function_schema.h"
 
+#include "paddle/phi/core/enforce.h"
+
+#include "paddle/fluid/jit/function_utils.h"
 namespace paddle {
 namespace jit {
 
@@ -22,7 +25,7 @@ Argument::Argument(const std::string& name, bool is_out)
 
 const std::string& Argument::Name() const { return name_; }
 
-const std::vector<std::string> FunctionSchema::GetInputArgNames() const {
+const std::vector<std::string> FunctionSchema::InputArgNames() const {
   std::vector<std::string> input_arg_names;
   for (auto& arg : input_args) {
     input_arg_names.emplace_back(arg.Name());
@@ -30,7 +33,7 @@ const std::vector<std::string> FunctionSchema::GetInputArgNames() const {
   return input_arg_names;
 }
 
-const std::vector<std::string> FunctionSchema::GetOutputArgNames() const {
+const std::vector<std::string> FunctionSchema::OutputArgNames() const {
   std::vector<std::string> output_arg_names;
   for (auto& arg : output_args) {
     output_arg_names.emplace_back(arg.Name());
@@ -60,25 +63,25 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
     schema_.AddOutputArg(out_name);
   }
   // remove feed fetch op
-  RemoveFeedFetch(&program_desc_);
+  utils::RemoveFeedFetch(&program_desc_);
 }
 
-const std::string& FunctionInfo::GetFunctionName() const { return func_name_; }
+const std::string& FunctionInfo::FunctionName() const { return func_name_; }
 
-const framework::ProgramDesc& FunctionInfo::GetProgramDesc() const {
+const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
   return program_desc_;
 }
 
-const std::vector<std::string>& FunctionInfo::GetParamNames() const {
+const std::vector<std::string>& FunctionInfo::ParamNames() const {
   return param_names_;
 }
 
-const std::vector<std::string> FunctionInfo::GetInputArgNames() const {
-  return schema_.GetInputArgNames();
+const std::vector<std::string> FunctionInfo::InputArgNames() const {
+  return schema_.InputArgNames();
 }
 
-const std::vector<std::string> FunctionInfo::GetOutputArgNames() const {
-  return schema_.GetOutputArgNames();
+const std::vector<std::string> FunctionInfo::OutputArgNames() const {
+  return schema_.OutputArgNames();
 }
 
 }  // namespace jit

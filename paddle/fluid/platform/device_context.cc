@@ -263,7 +263,7 @@ void EmplaceDeviceContexts(
           p,
           disable_setting_default_stream_for_allocator);
 #else
-      EmplaceDeviceContext<CPUDeviceContext>(
+      EmplaceDeviceContext<phi::CPUContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);
@@ -367,14 +367,6 @@ DeviceContextPool::DeviceContextPool(
   EmplaceDeviceContexts(&device_contexts_,
                         places,
                         /*disable_setting_default_stream_for_allocator=*/false);
-}
-
-CPUDeviceContext::CPUDeviceContext() : phi::CPUContext() {
-  phi::CPUContext::Init();
-}
-
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : phi::CPUContext(place) {
-  phi::CPUContext::Init();
 }
 
 #ifdef PADDLE_WITH_IPU
@@ -761,7 +753,7 @@ const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), p_blobmap_() {
+    : phi::CPUContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());
