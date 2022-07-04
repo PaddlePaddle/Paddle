@@ -23,7 +23,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"

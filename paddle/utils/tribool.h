@@ -18,6 +18,7 @@
 // 2. remove the depending boost header files
 // 3. remove the dummy_ in indeterminate_t, which is specially implemented for
 // Borland C++ Builder
+// 4. remove unnecessary macro BOOST_TRIBOOL_THIRD_STATE
 
 // Three-state boolean logic library
 
@@ -437,27 +438,3 @@ namespace paddle {
 using logic::indeterminate;
 using logic::tribool;
 }  // namespace paddle
-
-/**
- * \brief Declare a new name for the third state of a tribool
- *
- * Use this macro to declare a new name for the third state of a
- * tribool. This state can have any number of new names (in addition
- * to \c indeterminate), all of which will be equivalent. The new name will be
- * placed in the namespace in which the macro is expanded.
- *
- * Example:
- *   PADDLE_TRIBOOL_THIRD_STATE(true_or_false)
- *
- *   tribool x(true_or_false);
- *   // potentially set x
- *   if (true_or_false(x)) {
- *     // don't know what x is
- *   }
- */
-#define PADDLE_TRIBOOL_THIRD_STATE(Name)                          \
-  inline bool Name(boost::logic::tribool x,                       \
-                   boost::logic::detail::indeterminate_t dummy =  \
-                       boost::logic::detail::indeterminate_t()) { \
-    return x.value == boost::logic::tribool::indeterminate_value; \
-  }
