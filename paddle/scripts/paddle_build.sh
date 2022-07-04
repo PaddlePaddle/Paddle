@@ -2084,6 +2084,7 @@ set +x
         echo "==============CasesRun==============="
         echo "${single_card_tests}"
         echo "====================================="
+
         card_test "$single_card_tests" 1
         collect_failed_tests
 set -x
