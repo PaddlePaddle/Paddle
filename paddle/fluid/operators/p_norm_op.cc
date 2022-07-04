@@ -112,7 +112,7 @@ class PnormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 DECLARE_INFER_SHAPE_FUNCTOR(p_norm,
                             PNormInferShapeFunctor,

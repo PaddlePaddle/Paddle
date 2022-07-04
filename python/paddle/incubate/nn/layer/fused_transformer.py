@@ -1048,6 +1048,9 @@ class FusedMultiTransformer(Layer):
             is a list or tuple, the number of layers is obtained from `qkv_weight_attrs`. num_layers
             only takes effect when `qkv_weight_attrs` is not a list or tuple. Default: -1.
         nranks (int, optional): Distributed tensor model parallel nranks. Default is 1, means not using mp.
+        trans_qkvw (bool, optional): Whether to transpose for weights of qkv.
+            If true, the shape eights of qkv should be [3, num_head, dim_head, dim_embed].
+            Otherwise the shape of weights of qkv should be [dim_embed, 3, num_head, dim_head]. Default: True.
         ring_id (int, optional): For distributed tensor model parallel. Default is -1, means not using mp.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1090,6 +1093,7 @@ class FusedMultiTransformer(Layer):
                  epsilon=1e-5,
                  num_layers=-1,
                  nranks=1,
+                 trans_qkvw=True,
                  ring_id=-1,
                  name=None):
         super(FusedMultiTransformer, self).__init__()
@@ -1105,6 +1109,7 @@ class FusedMultiTransformer(Layer):
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
         self._epsilon = epsilon
+        self._trans_qkvw = trans_qkvw
         self._ring_id = ring_id
 
         self.embed_dim = embed_dim
@@ -1161,7 +1166,8 @@ class FusedMultiTransformer(Layer):
                                             shape=[embed_dim],
                                             is_bias=True)
             qkv_weight = self.create_parameter(
-                shape=[3, num_heads, self.head_dim, embed_dim],
+                shape=[3, num_heads, self.head_dim, embed_dim]
+                if trans_qkvw else [embed_dim, 3, num_heads, self.head_dim],
                 attr=qkv_weight_attr,
                 dtype=self._dtype,
                 is_bias=False)
@@ -1292,6 +1298,7 @@ class FusedMultiTransformer(Layer):
             activation=self.activation,
             training=self.training,
             mode='upscale_in_train',
+            trans_qkvw=self._trans_qkvw,
             ring_id=self._ring_id,
             name=self.name)
         return out

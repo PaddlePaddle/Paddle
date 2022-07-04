@@ -111,8 +111,8 @@ class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
     auto all_length = grad_batch_len * batch_size;
 
     // initialize
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto& place =
+        *ctx.template device_context<phi::CPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);

@@ -363,13 +363,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
         dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
 
     if (merge_qkv) {
-      PADDLE_ENFORCE_EQ(!key || query == key,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "key is expected to be nullptr or the same as "
-                            "query, but recieved key=%p, query=%p.",
-                            key,
-                            query));
+      PADDLE_ENFORCE_EQ(
+          !key || query == key || query->data<T>() == key->data<T>(),
+          true,
+          platform::errors::InvalidArgument(
+              "key is expected to be nullptr or the same as "
+              "query, but recieved key=%p, query=%p.",
+              key,
+              query));
 
       // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
       Tensor *qkv_out = config.GetQKVOut();

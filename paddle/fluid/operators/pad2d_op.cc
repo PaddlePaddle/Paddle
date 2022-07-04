@@ -536,8 +536,8 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
-    set_zero(context.template device_context<platform::CPUDeviceContext>(),
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    set_zero(context.template device_context<phi::CPUContext>(),
              d_in,
              static_cast<T>(0));
     const int pad_top = pads[0];

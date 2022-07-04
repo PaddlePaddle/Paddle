@@ -43,9 +43,9 @@ struct SequenceExpandAsGradFunctor {
 };
 
 template <typename T>
-struct SequenceExpandAsFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext &context,
+      const phi::CPUContext &context,
       const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *out) {
@@ -121,9 +121,9 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
  *
  * */
 template <typename T>
-struct SequenceExpandAsGradFunctor<platform::CPUDeviceContext, T> {
+struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   void operator()(
-      const platform::CPUDeviceContext &context,
+      const phi::CPUContext &context,
       const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *dx) {

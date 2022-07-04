@@ -493,8 +493,7 @@ void TestConcatMain<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, concat) {
-  TestConcatMain<paddle::platform::CPUDeviceContext,
-                 paddle::platform::CPUPlace>();
+  TestConcatMain<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   TestConcatMain<paddle::platform::CUDADeviceContext,
                  paddle::platform::CUDAPlace>();

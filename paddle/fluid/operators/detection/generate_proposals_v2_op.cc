@@ -99,8 +99,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     float eta = context.Attr<float>("eta");
     bool pixel_offset = context.Attr<bool>("pixel_offset");
 
-    auto &dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto &dev_ctx = context.template device_context<phi::CPUContext>();
 
     auto &scores_dim = scores->dims();
     int64_t num = scores_dim[0];
@@ -123,7 +122,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans;
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -183,7 +182,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-      const platform::CPUDeviceContext &ctx,
+      const phi::CPUContext &ctx,
       const Tensor &im_shape_slice,
       const Tensor &anchors,
       const Tensor &variances,
@@ -240,7 +239,7 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
         ctx, &proposals, min_size, im_shape_slice, false, &keep, pixel_offset);
     // Handle the case when there is no keep index left
     if (keep.numel() == 0) {
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
       set_zero(ctx, &bbox_sel, static_cast<T>(0));
       Tensor scores_filter;

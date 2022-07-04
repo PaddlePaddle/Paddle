@@ -186,22 +186,20 @@ REGISTER_OPERATOR(overlap_add_grad, ops::OverlapAddOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     overlap_add,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<double>>);
+    ops::OverlapAddKernel<phi::CPUContext, int>,
+    ops::OverlapAddKernel<phi::CPUContext, int64_t>,
+    ops::OverlapAddKernel<phi::CPUContext, float>,
+    ops::OverlapAddKernel<phi::CPUContext, double>,
+    ops::OverlapAddKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::OverlapAddKernel<phi::CPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     overlap_add_grad,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext,
+    ops::OverlapAddGradKernel<phi::CPUContext, int>,
+    ops::OverlapAddGradKernel<phi::CPUContext, int64_t>,
+    ops::OverlapAddGradKernel<phi::CPUContext, float>,
+    ops::OverlapAddGradKernel<phi::CPUContext, double>,
+    ops::OverlapAddGradKernel<phi::CPUContext,
                               paddle::platform::complex<float>>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext,
+    ops::OverlapAddGradKernel<phi::CPUContext,
                               paddle::platform::complex<double>>);

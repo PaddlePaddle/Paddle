@@ -40,7 +40,6 @@ limitations under the License. */
 
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/less_equal.hpp>
-#include <boost/variant.hpp>
 
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"

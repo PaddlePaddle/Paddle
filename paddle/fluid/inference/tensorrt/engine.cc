@@ -431,6 +431,11 @@ nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
   return itensor_map_[name];
 }
 
+std::unordered_map<std::string, nvinfer1::ITensor *>
+    *TensorRTEngine::GetITensorMap() {
+  return &itensor_map_;
+}
+
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }

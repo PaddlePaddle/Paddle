@@ -281,6 +281,7 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
@@ -442,7 +443,14 @@ class TensorRTEngine {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
-    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
+    std::string name_with_suffix = w_name + splitter + suffix;
+    PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
+                      0,
+                      platform::errors::AlreadyExists(
+                          "The weight named %s is set into the weight map "
+                          "twice in TRT OP converter.",
+                          name_with_suffix));
+    weight_map[name_with_suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 

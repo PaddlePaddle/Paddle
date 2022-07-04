@@ -420,7 +420,7 @@ class ReshapeKernel {
       pt_scalar_shape = phi::IntArray(shape_attr);
     }
     if (platform::is_cpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeKernel(static_cast<const phi::CPUContext &>(dev_ctx),
                          *in,
                          pt_scalar_shape,
@@ -455,7 +455,7 @@ class ReshapeGradKernel {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, d_x);
     }
@@ -485,7 +485,7 @@ class ReshapeDoubleGradKernel {
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
-      auto &dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+      auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
