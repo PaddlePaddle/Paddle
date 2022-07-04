@@ -111,7 +111,13 @@ struct ConstantOpAttrVisitor {
     framework::TensorFromVector<int64_t>(vec, tensor_);
   }
   void operator()(const std::vector<double>& vec) const {
-    framework::TensorFromVector<double>(vec, tensor_);
+    // popart do not support float64 constant
+    std::vector<float> vec_fp32;
+    std::transform(vec.begin(),
+                   vec.end(),
+                   std::back_inserter(vec_fp32),
+                   [](double f) -> float { return static_cast<float>(f); });
+    framework::TensorFromVector<float>(vec_fp32, tensor_);
   }
 #define RAISE_ERROR \
   PADDLE_THROW(     \
@@ -416,7 +422,7 @@ void Compiler::LowerWeights(const Scope* scope) {
     auto* node = graph_helper_->nodes_id_map[id];
     // Weights are var node and Persistable
     if (node->IsVar() && !node->IsCtrlVar() && node->Var() &&
-        node->Var()->Persistable()) {
+        node->Var()->Persistable() && node->inputs.empty()) {
       // Weights are Parameter in training mode
       if (ipu_strategy_->is_training && !node->Var()->IsParameter()) {
         continue;
