@@ -17,7 +17,13 @@ ENV HOME /root
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
-RUN apt-get update && \
+RUN chmod 777 /tmp
+
+RUN apt-key del 7fa2af80
+RUN rm /etc/apt/sources.list.d/cuda.list && rm /etc/apt/sources.list.d/nvidia-ml.list
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+
+RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
