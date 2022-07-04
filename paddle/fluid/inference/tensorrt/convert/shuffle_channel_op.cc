@@ -34,7 +34,8 @@ namespace tensorrt {
 class ShuffleChannelOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -71,8 +72,8 @@ class ShuffleChannelOpConverter : public OpConverter {
       auto* output_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *output);
       output_layer->setInput(1, *input_shape_tensor);
 
-      RreplenishLayerAndOutput(output_layer, "shuffle_channel", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          output_layer, "shuffle_channel", {output_name}, test_mode);
     }
 #endif
     if (!engine_->with_dynamic_shape()) {
@@ -90,8 +91,8 @@ class ShuffleChannelOpConverter : public OpConverter {
       nvinfer1::Dims3 reshape_dim2(c, h, w);
       reshape_layer->setReshapeDimensions(reshape_dim2);
 
-      RreplenishLayerAndOutput(reshape_layer, "shuffle_channel", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          reshape_layer, "shuffle_channel", {output_name}, test_mode);
     }
   }
 };

@@ -24,10 +24,12 @@ class RunProgramOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of RunProgramOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
   }
@@ -52,7 +54,8 @@ class RunProgramOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -136,11 +139,13 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of RunProgramGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInputs(framework::GradVarName("Out")), true,
+        ctx->HasInputs(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of RunProgramGradOp should not be null."));
     // NOTE: The X@GRAD and Params@GRAD may not exist,
@@ -156,7 +161,8 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -218,15 +224,15 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(run_program, ops::RunProgramOp, ops::RunProgramOpMaker,
+REGISTER_OPERATOR(run_program,
+                  ops::RunProgramOp,
+                  ops::RunProgramOpMaker,
                   ops::RunProgramGradOpMaker<paddle::framework::OpDesc>,
                   ops::RunProgramGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(
-    run_program,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>)
-REGISTER_OP_CPU_KERNEL(
-    run_program_grad,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>)
+REGISTER_OP_CPU_KERNEL(run_program,
+                       ops::RunProgramOpKernel<phi::CPUContext, float>)
+REGISTER_OP_CPU_KERNEL(run_program_grad,
+                       ops::RunProgramGradOpKernel<phi::CPUContext, float>)

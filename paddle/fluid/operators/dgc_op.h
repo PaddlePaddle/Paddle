@@ -25,8 +25,10 @@ namespace paddle {
 namespace operators {
 
 inline float get_period_sparcity(const std::vector<float>& sparsity,
-                                 float cur_step, float rampup_steps) {
-  PADDLE_ENFORCE_GE(static_cast<int>(cur_step), 0,
+                                 float cur_step,
+                                 float rampup_steps) {
+  PADDLE_ENFORCE_GE(static_cast<int>(cur_step),
+                    0,
                     platform::errors::InvalidArgument(
                         "DGC current step=%d, but it must >= 0, "
                         "please submit issue in github",
@@ -38,9 +40,11 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
   }
 
   PADDLE_ENFORCE_LT(
-      idx, sparsity.size(),
+      idx,
+      sparsity.size(),
       platform::errors::OutOfRange(
-          "sparsity index out of bounds. idx=%d >= sparsity.size=%d", idx,
+          "sparsity index out of bounds. idx=%d >= sparsity.size=%d",
+          idx,
           sparsity.size()));
   return sparsity[idx];
 }
@@ -65,7 +69,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     // nranks
     auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
     const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
-    PADDLE_ENFORCE_GT(nranks, 1,
+    PADDLE_ENFORCE_GT(nranks,
+                      1,
                       platform::errors::PreconditionNotMet(
                           "DGC is not useful when num_trainers <= 1. Please "
                           "use multi card or multi machine GPU"));
@@ -88,7 +93,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     // need to /nranks, can prevent precision loss. For coeff often equal
     // with 1e-4, if nranks=32, coeff/nranks will be 3.125e-6, the numerical
     // accuracy of coeff/nranks will be too low.
-    PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2, true,
+    PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2,
+                      true,
                       platform::errors::InvalidArgument(
                           "DGC only support one of None|L1Decay|L2Decay "
                           "Regularization for now."));
@@ -114,15 +120,17 @@ class DGCOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio =
-        1 - get_period_sparcity(
-                sparsity, static_cast<float>(*current_step - rampup_begin_step),
-                rampup_step);
+    float ratio = 1 - get_period_sparcity(
+                          sparsity,
+                          static_cast<float>(*current_step - rampup_begin_step),
+                          rampup_step);
     PADDLE_ENFORCE_GE(
-        ratio, 0.0,
+        ratio,
+        0.0,
         platform::errors::InvalidArgument("DGC sparsity ratio must >= 0"));
     PADDLE_ENFORCE_LT(
-        ratio, 1.0,
+        ratio,
+        1.0,
         platform::errors::InvalidArgument("DGC sparsity ratio must < 1"));
     int k = static_cast<int>(g->numel() * ratio);
 
@@ -183,8 +191,12 @@ class DGCOpKernel : public framework::OpKernel<T> {
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     if (!paddle::communication::dgc::k_select(
-            static_cast<void*>(encode_grad_out_data), k, v_out_data,
-            static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
+            static_cast<void*>(encode_grad_out_data),
+            k,
+            v_out_data,
+            static_cast<int>(v_out->numel()),
+            buf,
+            dev_ctx.stream(),
             u_out_data)) {
       // TODO(weihang): owner should polish this error message
       PADDLE_THROW(platform::errors::InvalidArgument(

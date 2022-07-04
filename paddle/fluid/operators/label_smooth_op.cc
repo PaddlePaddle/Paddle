@@ -24,9 +24,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -41,10 +38,12 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "The input 'X' of LabelSmoothOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output 'Out' of LabelSmoothOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
@@ -52,13 +51,15 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = phi::product(noise_dims);
       PADDLE_ENFORCE_EQ(
-          in_dims[in_dims.size() - 1], noise_numel,
+          in_dims[in_dims.size() - 1],
+          noise_numel,
           platform::errors::InvalidArgument(
               "The number of elements in input 'PriorDist' must be equal to "
               "the "
               "dimension of each label. But received each label's "
               "dimension=[%d], number of elements in input 'PriorDist' is [%d]",
-              in_dims[in_dims.size() - 1], noise_numel));
+              in_dims[in_dims.size() - 1],
+              noise_numel));
     }
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", in_dims);
@@ -148,7 +149,9 @@ class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
+REGISTER_OPERATOR(label_smooth,
+                  ops::LabelSmoothOp,
+                  ops::LabelSmoothOpMaker,
                   ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
                   ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);

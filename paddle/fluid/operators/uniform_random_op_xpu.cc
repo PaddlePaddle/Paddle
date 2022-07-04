@@ -80,20 +80,27 @@ class XPUUniformRandomKernel : public framework::OpKernel<T> {
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
       PADDLE_ENFORCE_GT(
-          size, (diag_num - 1) * (diag_step + 1),
+          size,
+          (diag_num - 1) * (diag_step + 1),
           platform::errors::InvalidArgument(
               "ShapeInvalid: the diagonal's elements is equal (num-1) "
               "* (step-1) with num %d, step %d,"
               "It should be smaller than %d, but received %d",
-              diag_num, diag_step, (diag_num - 1) * (diag_step + 1), size));
+              diag_num,
+              diag_step,
+              (diag_num - 1) * (diag_step + 1),
+              size));
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data_cpu[pos] = diag_val;
       }
     }
 
-    memory::Copy(ctx.GetPlace(), data, platform::CPUPlace(),
-                 reinterpret_cast<void *>(data_cpu.get()), size * sizeof(T));
+    memory::Copy(ctx.GetPlace(),
+                 data,
+                 platform::CPUPlace(),
+                 reinterpret_cast<void *>(data_cpu.get()),
+                 size * sizeof(T));
   }
 };
 

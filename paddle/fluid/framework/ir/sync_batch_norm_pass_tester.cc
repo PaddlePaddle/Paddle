@@ -24,7 +24,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -39,9 +41,16 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 //     ->(c, mean, var, save_mean, save_inv_var)
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
-  for (auto& v : std::vector<std::string>({"a", "conv_w", "b", "bn_scale",
-                                           "bn_bias", "mean", "var", "c",
-                                           "save_mean", "save_inv_var"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "conv_w",
+                                           "b",
+                                           "bn_scale",
+                                           "bn_bias",
+                                           "mean",
+                                           "var",
+                                           "c",
+                                           "save_mean",
+                                           "save_inv_var"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     if (v == "conv_w" || v == "bn_scale" || v == "bn_bias" || v == "mean" ||
         v == "var") {
@@ -49,9 +58,14 @@ ProgramDesc BuildProgramDesc() {
     }
   }
 
-  SetOp(&prog, "conv2d", "conv", std::vector<std::string>({"a", "conv_w"}),
+  SetOp(&prog,
+        "conv2d",
+        "conv",
+        std::vector<std::string>({"a", "conv_w"}),
         std::vector<std::string>({"b"}));
-  SetOp(&prog, "batch_norm", "bn",
+  SetOp(&prog,
+        "batch_norm",
+        "bn",
         std::vector<std::string>({"b", "bn_scale", "bn_bias", "mean", "var"}),
         std::vector<std::string>(
             {"c", "mean", "var", "save_mean", "save_inv_var"}));

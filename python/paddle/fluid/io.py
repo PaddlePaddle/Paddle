@@ -376,7 +376,7 @@ def save_vars(executor,
                          vars=list(filter(predicate, main_program.list_vars())),
                          filename=filename)
     else:
-        params_var_name = unique_name.generate("saved_params")
+        params_var_name = "saved_params"
         # give warning when there is no var in model
         if len(list(vars)) == 0:
             warnings.warn(

@@ -67,16 +67,18 @@ void xpu_activation_forward(
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
   int r = func(xpu_context, x_data, y_data, x->numel());
   PADDLE_ENFORCE_EQ(
-      r, xpu::Error_t::SUCCESS,
+      r,
+      xpu::Error_t::SUCCESS,
       platform::errors::External("XPU activation op return wrong value[%d %s].",
-                                 r, XPUAPIErrorMsg[r]));
+                                 r,
+                                 XPUAPIErrorMsg[r]));
 }
 
 template <typename DeviceContext, typename T, typename XPUT>
 void xpu_activation_backward(
     const framework::ExecutionContext &ctx,
-    std::function<int(xpu::Context *, const XPUT *, const XPUT *, const XPUT *,
-                      XPUT *, int)>
+    std::function<int(
+        xpu::Context *, const XPUT *, const XPUT *, const XPUT *, XPUT *, int)>
         func) {
   /* TODO: relu tanh sigmoid are inplace */
   const auto *x = ctx.Input<Tensor>("X");
@@ -93,9 +95,11 @@ void xpu_activation_backward(
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
 
   int r = func(xpu_context, x_data, y_data, y_grad, x_grad, dX->numel());
-  PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+  PADDLE_ENFORCE_EQ(r,
+                    xpu::Error_t::SUCCESS,
                     platform::errors::External(
-                        "XPU activation grad op return wrong value[%d %s].", r,
+                        "XPU activation grad op return wrong value[%d %s].",
+                        r,
                         XPUAPIErrorMsg[r]));
 }
 
@@ -250,14 +254,17 @@ struct XPUHardSwishFunctor : public BaseActivationFunctor<T> {
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
     float offset = ctx.Attr<float>("offset");
-    PADDLE_ENFORCE_EQ(threshold, 6.0f,
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
     PADDLE_ENFORCE_EQ(
-        scale, 6.0f,
+        scale,
+        6.0f,
         platform::errors::External("Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
-        offset, 3.0f,
+        offset,
+        3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
     xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::hard_swish<XPUType>);
@@ -271,14 +278,17 @@ struct XPUHardSwishGradFunctor : public BaseActivationFunctor<T> {
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
     float offset = ctx.Attr<float>("offset");
-    PADDLE_ENFORCE_EQ(threshold, 6.0f,
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
                       platform::errors::External(
                           "Not support threshold [%f] in XPU", threshold));
     PADDLE_ENFORCE_EQ(
-        scale, 6.0f,
+        scale,
+        6.0f,
         platform::errors::External("Not support scale [%f] in XPU", scale));
     PADDLE_ENFORCE_EQ(
-        offset, 3.0f,
+        offset,
+        3.0f,
         platform::errors::External("Not support offset [%f] in XPU", offset));
     xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
         ctx, xpu::hard_swish_grad<XPUType>);
@@ -298,9 +308,10 @@ struct XPULeakyReluFunctor : public BaseActivationFunctor<T> {
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
     int r = xpu::leaky_relu(xpu_context, x_data, y_data, x->numel(), alpha);
     PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External("XPU leaky_relu return wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU leaky_relu return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -322,14 +333,18 @@ struct XPULeakyReluGradFunctor : public BaseActivationFunctor<T> {
     // The signs of x and y are the same,
     // y == nullptr here,
     // so we give 2 x to the api
-    int r = xpu::leaky_relu_grad(
-        xpu_context, reinterpret_cast<const float *>(x_data),
-        reinterpret_cast<const float *>(x_data),
-        reinterpret_cast<const float *>(y_grad),
-        reinterpret_cast<float *>(x_grad), dX->numel(), alpha);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    int r = xpu::leaky_relu_grad(xpu_context,
+                                 reinterpret_cast<const float *>(x_data),
+                                 reinterpret_cast<const float *>(x_data),
+                                 reinterpret_cast<const float *>(y_grad),
+                                 reinterpret_cast<float *>(x_grad),
+                                 dX->numel(),
+                                 alpha);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "XPU leaky_relu_grad return wrong value[%d %s].", r,
+                          "XPU leaky_relu_grad return wrong value[%d %s].",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -351,15 +366,17 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
     PADDLE_ENFORCE_NOT_NULL(
         factor_data,
         platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
-    memory::Copy(ctx.GetPlace(), static_cast<void *>(factor_data),
-                 platform::CPUPlace(), static_cast<void *>(&pow_factor),
+    memory::Copy(ctx.GetPlace(),
+                 static_cast<void *>(factor_data),
+                 platform::CPUPlace(),
+                 static_cast<void *>(&pow_factor),
                  sizeof(T));
 
     // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
     // std::vector<int>& xshape, const std::vector<int>& yshape);
     auto x_dims = phi::vectorize<int>(x->dims());
-    int r = xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims,
-                               {1});
+    int r = xpu::broadcast_pow(
+        xpu_context, x_data, factor_data, y_data, x_dims, {1});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
   }
 };
@@ -380,10 +397,12 @@ struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
     auto dy_dims = phi::vectorize<int>(dOut->dims());
     auto dx_dims = phi::vectorize<int>(dX->dims());
     PADDLE_ENFORCE_EQ(
-        x_dims, dy_dims,
+        x_dims,
+        dy_dims,
         platform::errors::PreconditionNotMet("x_dims should match dy_dims."));
     PADDLE_ENFORCE_EQ(
-        x_dims, dx_dims,
+        x_dims,
+        dx_dims,
         platform::errors::PreconditionNotMet("x_dims should match dx_dims."));
     float pow_factor = ctx.Attr<float>("factor");
 
@@ -391,8 +410,8 @@ struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
     // int pow_grad(Context* ctx, const T* x, const T* dy, T* dx, int len, float
     // factor);
-    int r = xpu::pow_grad(xpu_context, x_data, y_grad, x_grad, x->numel(),
-                          pow_factor);
+    int r = xpu::pow_grad(
+        xpu_context, x_data, y_grad, x_grad, x->numel(), pow_factor);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_grad");
   }
 };
@@ -431,12 +450,15 @@ struct XPUSoftPlusGradFunctor : public BaseActivationFunctor<T> {
 
     auto xpu_context =
         ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
-    int r = xpu::softplus_grad(
-        xpu_context, reinterpret_cast<const float *>(x_data),
-        reinterpret_cast<const float *>(
-            x_data),  // softplus_grad do not need y_data
-        reinterpret_cast<const float *>(y_grad),
-        reinterpret_cast<float *>(x_grad), dX->numel(), beta, threshold);
+    int r = xpu::softplus_grad(xpu_context,
+                               reinterpret_cast<const float *>(x_data),
+                               reinterpret_cast<const float *>(
+                                   x_data),  // softplus_grad do not need y_data
+                               reinterpret_cast<const float *>(y_grad),
+                               reinterpret_cast<float *>(x_grad),
+                               dX->numel(),
+                               beta,
+                               threshold);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softplus_grad");
   }
 };
@@ -488,33 +510,42 @@ namespace ops = paddle::operators;
       ops::XPUActivationGradKernel<ops::grad_functor<float>>);
 
 REGISTER_ACTIVATION_XPU_KERNEL(abs, XPUAbsFunctor, XPUAbsGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, XPUHardSwishFunctor,
+REGISTER_ACTIVATION_XPU_KERNEL(hard_swish,
+                               XPUHardSwishFunctor,
                                XPUHardSwishGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, XPULeakyReluFunctor,
+REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu,
+                               XPULeakyReluFunctor,
                                XPULeakyReluGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(reciprocal, XPUReciprocalFunctor,
+REGISTER_ACTIVATION_XPU_KERNEL(reciprocal,
+                               XPUReciprocalFunctor,
                                XPUReciprocalGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
+REGISTER_ACTIVATION_XPU_KERNEL(sigmoid,
+                               XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
-REGISTER_ACTIVATION_XPU_KERNEL(softplus, XPUSoftPlusFunctor,
+REGISTER_ACTIVATION_XPU_KERNEL(softplus,
+                               XPUSoftPlusFunctor,
                                XPUSoftPlusGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(swish, XPUSwishFunctor, XPUSwishGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(pow, XPUPowFunctor, XPUPowGradFunctor)
 
 REGISTER_OP_XPU_KERNEL(
-    relu, ops::XPUActivationKernel<ops::XPUReluFunctor<float>>,
+    relu,
+    ops::XPUActivationKernel<ops::XPUReluFunctor<float>>,
     ops::XPUActivationKernel<ops::XPUReluFunctor<paddle::platform::float16>>);
 REGISTER_OP_XPU_KERNEL(
-    relu_grad, ops::XPUActivationGradKernel<ops::XPUReluGradFunctor<float>>,
+    relu_grad,
+    ops::XPUActivationGradKernel<ops::XPUReluGradFunctor<float>>,
     ops::XPUActivationGradKernel<
         ops::XPUReluGradFunctor<paddle::platform::float16>>);
 REGISTER_OP_XPU_KERNEL(
-    tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
+    tanh,
+    ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
     ops::XPUActivationKernel<ops::XPUTanhFunctor<paddle::platform::float16>>);
 REGISTER_OP_XPU_KERNEL(
-    tanh_grad, ops::XPUActivationGradKernel<ops::XPUTanhGradFunctor<float>>,
+    tanh_grad,
+    ops::XPUActivationGradKernel<ops::XPUTanhGradFunctor<float>>,
     ops::XPUActivationGradKernel<
         ops::XPUTanhGradFunctor<paddle::platform::float16>>);
 

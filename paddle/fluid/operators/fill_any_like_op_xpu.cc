@@ -26,7 +26,8 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, platform::float16>::value,
-                                float, T>::type>::type;
+                                float,
+                                T>::type>::type;
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -50,10 +51,12 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
             "and %f, but now value is %f.",
             typeid(T).name(),
             static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-            static_cast<CommonType>(std::numeric_limits<T>::max()), value));
+            static_cast<CommonType>(std::numeric_limits<T>::max()),
+            value));
 
     PADDLE_ENFORCE_EQ(
-        std::isnan(value), false,
+        std::isnan(value),
+        false,
         platform::errors::InvalidArgument("The filled value is NaN."));
 
     auto& dev_ctx =
@@ -63,7 +66,10 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
     phi::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             paddle::platform::XPUDeviceContext>::TYPE&>(dev_ctx),
-        *x, value, phi::DataType::UNDEFINED, out);
+        *x,
+        value,
+        phi::DataType::UNDEFINED,
+        out);
   }
 };
 
@@ -72,7 +78,8 @@ class FillAnyLikeXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(fill_any_like, ops::FillAnyLikeXPUKernel<int>,
+REGISTER_OP_XPU_KERNEL(fill_any_like,
+                       ops::FillAnyLikeXPUKernel<int>,
                        ops::FillAnyLikeXPUKernel<int64_t>,
                        ops::FillAnyLikeXPUKernel<float>,
                        ops::FillAnyLikeXPUKernel<paddle::platform::float16>);

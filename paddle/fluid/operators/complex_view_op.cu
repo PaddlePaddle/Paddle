@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/complex_view_op.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace ops = paddle::operators;
@@ -24,5 +24,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::AsComplexKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    as_real, ops::AsRealKernel<paddle::platform::CUDADeviceContext, float>,
+    as_real,
+    ops::AsRealKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AsRealKernel<paddle::platform::CUDADeviceContext, double>);

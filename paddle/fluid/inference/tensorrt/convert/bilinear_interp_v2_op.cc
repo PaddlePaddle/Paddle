@@ -31,7 +31,8 @@ namespace tensorrt {
 class BilinearInterpolateV2OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid bilinear_interp_v2 op";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -60,8 +61,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     auto in_dim = input->getDimensions();
-    float scale_h = 1.f;
-    float scale_w = 1.f;
+    float scale_h = -1.f;
+    float scale_w = -1.f;
 
     // Scales Priority: Scale(tensor) > scale(attr) > out_d/out_h/out_w(attr)
     bool has_scale_input_attr =
@@ -121,8 +122,8 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     layer->setScales(scales.data(), scales.size());
-    RreplenishLayerAndOutput(layer, "bilinear_interp_v2", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "bilinear_interp_v2", {output_name}, test_mode);
   }
 };
 

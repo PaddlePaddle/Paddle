@@ -41,10 +41,14 @@ void CpuUtilization::RecordBeginTimeInfo() {
 #if defined(_MSC_VER)
   HANDLE process_handle = GetCurrentProcess();
   GetSystemTimeAsFileTime(&start_);
-  GetSystemTimes(&system_idle_time_start_, &system_kernel_time_start_,
+  GetSystemTimes(&system_idle_time_start_,
+                 &system_kernel_time_start_,
                  &system_user_time_start_);
-  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
-                  &process_kernel_time_start_, &process_user_time_start_);
+  GetProcessTimes(process_handle,
+                  &process_creation_time_,
+                  &process_exit_time_,
+                  &process_kernel_time_start_,
+                  &process_user_time_start_);
 
 #elif defined(__linux__)
   start_ = times(&process_tms_start_);
@@ -58,9 +62,17 @@ void CpuUtilization::RecordBeginTimeInfo() {
         fscanf(stat_file,
                "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-               temp_str, &system_tms_start_.tms_utime, &nice_time_start_,
-               &system_tms_start_.tms_stime, &idle_start_, &iowait_start_,
-               &irq_start_, &softirq_start_, &steal_start_, &temp_lu, &temp_lu);
+               temp_str,
+               &system_tms_start_.tms_utime,
+               &nice_time_start_,
+               &system_tms_start_.tms_stime,
+               &idle_start_,
+               &iowait_start_,
+               &irq_start_,
+               &softirq_start_,
+               &steal_start_,
+               &temp_lu,
+               &temp_lu);
     if (retval != 11) {
       LOG(WARNING)
           << "Failed to read cpu utilization information at record beginning."
@@ -76,10 +88,13 @@ void CpuUtilization::RecordEndTimeInfo() {
 #if defined(_MSC_VER)
   HANDLE process_handle = GetCurrentProcess();
   GetSystemTimeAsFileTime(&end_);
-  GetSystemTimes(&system_idle_time_end_, &system_kernel_time_end_,
-                 &system_user_time_end_);
-  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
-                  &process_kernel_time_end_, &process_user_time_end_);
+  GetSystemTimes(
+      &system_idle_time_end_, &system_kernel_time_end_, &system_user_time_end_);
+  GetProcessTimes(process_handle,
+                  &process_creation_time_,
+                  &process_exit_time_,
+                  &process_kernel_time_end_,
+                  &process_user_time_end_);
 #elif defined(__linux__)
   end_ = times(&process_tms_end_);
 #define proc_path_size 1024
@@ -92,9 +107,17 @@ void CpuUtilization::RecordEndTimeInfo() {
         fscanf(stat_file,
                "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-               temp_str, &system_tms_end_.tms_utime, &nice_time_end_,
-               &system_tms_end_.tms_stime, &idle_end_, &iowait_end_, &irq_end_,
-               &softirq_end_, &steal_end_, &temp_lu, &temp_lu);
+               temp_str,
+               &system_tms_end_.tms_utime,
+               &nice_time_end_,
+               &system_tms_end_.tms_stime,
+               &idle_end_,
+               &iowait_end_,
+               &irq_end_,
+               &softirq_end_,
+               &steal_end_,
+               &temp_lu,
+               &temp_lu);
 
     if (retval != 11) {
       LOG(WARNING)

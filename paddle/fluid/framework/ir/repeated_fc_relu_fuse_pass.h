@@ -39,7 +39,8 @@ class RepeatedFCReluFusePass : public FusePassBase {
   const std::string name_scope_{"repeated_fc_relu_fuse"};
 
  private:
-  int BuildFusion(Graph* graph, const std::string& name_scope,
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
                   int num_fc) const;
 };
 

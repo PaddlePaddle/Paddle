@@ -26,8 +26,12 @@ namespace operators {
 
 template <typename T>
 struct DiagEmbedFunctor {
-  DiagEmbedFunctor(const T* input, int64_t numel, const int64_t* dim,
-                   int64_t offset, int64_t dims_size, T* output,
+  DiagEmbedFunctor(const T* input,
+                   int64_t numel,
+                   const int64_t* dim,
+                   int64_t offset,
+                   int64_t dims_size,
+                   T* output,
                    const int64_t* strides)
       : input_(input),
         numel_(numel),
@@ -112,8 +116,12 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
 #endif
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, input->numel());
-    DiagEmbedFunctor<T> functor(input_data, input->numel(), dims_arr,
-                                storage_offset, dims.size(), out_data,
+    DiagEmbedFunctor<T> functor(input_data,
+                                input->numel(),
+                                dims_arr,
+                                storage_offset,
+                                dims.size(),
+                                out_data,
                                 strides_arr);
     for_range(functor);
   }

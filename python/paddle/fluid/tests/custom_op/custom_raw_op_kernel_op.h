@@ -66,7 +66,7 @@ struct ReluFunctor {
       return;
     }
 #endif
-    LAUNCH_RELU_KERNEL(paddle::platform::CPUDeviceContext);
+    LAUNCH_RELU_KERNEL(phi::CPUContext);
 
 #undef LAUNCH_RELU_KERNEL
   }

@@ -59,7 +59,8 @@ void DeleteUnusedTensors(const Scope &scope,
 
 // Collect unused tensors after op runs
 void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
+    const Scope &scope,
+    const OperatorBase *op,
     const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc);

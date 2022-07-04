@@ -51,9 +51,13 @@ struct DropoutParam {
     seed_val = 0;
   }
 
-  DropoutParam(bool fix_seed_, uint64_t seed_, bool is_test_,
-               bool is_upscale_in_train_, float dropout_prob_,
-               const framework::Tensor* tensor_seed_, int seed_val_) {
+  DropoutParam(bool fix_seed_,
+               uint64_t seed_,
+               bool is_test_,
+               bool is_upscale_in_train_,
+               float dropout_prob_,
+               const framework::Tensor* tensor_seed_,
+               int seed_val_) {
     fix_seed = fix_seed_;
     seed = seed_;
     is_test = is_test_;
@@ -99,8 +103,8 @@ struct DropoutParam {
   int UpdateSeedAndIncrement(const platform::CUDADeviceContext& ctx,
                              const int offset) {
     uint64_t tmp_increment;
-    GetSeedDataAndIncrement(ctx, tensor_seed, fix_seed, seed_val, offset, &seed,
-                            &tmp_increment);
+    GetSeedDataAndIncrement(
+        ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;
   }
@@ -112,9 +116,10 @@ class FusedDropoutHelper {
   int GetIncrement(const platform::CUDADeviceContext& ctx) {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     const int real_vec_size = cols_ % VecSize == 0 ? VecSize : 1;
-    auto config =
-        Get1DBlocksAnd2DGrids(ctx, static_cast<uint64_t>(rows_),
-                              static_cast<uint64_t>(cols_), real_vec_size);
+    auto config = Get1DBlocksAnd2DGrids(ctx,
+                                        static_cast<uint64_t>(rows_),
+                                        static_cast<uint64_t>(cols_),
+                                        real_vec_size);
     int increment = ((cols_ - 1) / (config.thread_per_block.x *
                                     config.block_per_grid.x * real_vec_size) +
                      1) *
@@ -125,73 +130,148 @@ class FusedDropoutHelper {
 
  public:
   FusedDropoutHelper() {}
-  FusedDropoutHelper(const platform::CUDADeviceContext& ctx, const int rows,
-                     const int cols, const DropoutParam& dropout_param) {
+  FusedDropoutHelper(const platform::CUDADeviceContext& ctx,
+                     const int rows,
+                     const int cols,
+                     const DropoutParam& dropout_param) {
     rows_ = rows;
     cols_ = cols;
     dropout_param_ = dropout_param;
   }
 
   // out = residual + dropout( src + bias )
-  void ResidualDropoutBias(const platform::CUDADeviceContext& ctx, const T* src,
-                           const T* residual, const T* bias, T* out,
+  void ResidualDropoutBias(const platform::CUDADeviceContext& ctx,
+                           const T* src,
+                           const T* residual,
+                           const T* bias,
+                           T* out,
                            MaskType* mask) {
     auto increment = GetIncrement(ctx);
-    LaunchResidualDropoutBias<T, MaskType>(
-        rows_, cols_, increment, dropout_param_.seed,
-        dropout_param_.dropout_prob, dropout_param_.is_test,
-        dropout_param_.is_upscale_in_train, src, residual, bias, mask, out,
-        ctx);
+    LaunchResidualDropoutBias<T, MaskType>(rows_,
+                                           cols_,
+                                           increment,
+                                           dropout_param_.seed,
+                                           dropout_param_.dropout_prob,
+                                           dropout_param_.is_test,
+                                           dropout_param_.is_upscale_in_train,
+                                           src,
+                                           residual,
+                                           bias,
+                                           mask,
+                                           out,
+                                           ctx);
   }
 
   void ResidualDropoutBiasGrad(const platform::CUDADeviceContext& ctx,
-                               const T* d_out, const MaskType* mask, T* d_src,
-                               T* d_residual, T* d_bias) {
+                               const T* d_out,
+                               const MaskType* mask,
+                               T* d_src,
+                               T* d_residual,
+                               T* d_bias) {
     LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        d_out, mask, dropout_param_.dropout_prob,
-        dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
+        d_out,
+        mask,
+        dropout_param_.dropout_prob,
+        dropout_param_.is_upscale_in_train,
+        rows_,
+        cols_,
+        d_src,
+        d_bias,
+        ctx);
     if (d_residual) {
-      memory::Copy(ctx.GetPlace(), d_residual, ctx.GetPlace(), d_out,
-                   rows_ * cols_ * sizeof(T), ctx.stream());
+      memory::Copy(ctx.GetPlace(),
+                   d_residual,
+                   ctx.GetPlace(),
+                   d_out,
+                   rows_ * cols_ * sizeof(T),
+                   ctx.stream());
     }
   }
 
   // out = dropout(activation(src + bias))
-  void DropoutActBias(const platform::CUDADeviceContext& ctx, const T* src,
-                      const T* bias, const std::string& act_method, T* out,
+  void DropoutActBias(const platform::CUDADeviceContext& ctx,
+                      const T* src,
+                      const T* bias,
+                      const std::string& act_method,
+                      T* out,
                       MaskType* mask) {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
       GeluFunctor<T> gelu;
       LaunchDropoutActBias<T, MaskType, GeluFunctor<T>>(
-          gelu, dropout_param_.seed, rows_, cols_, dropout_param_.increment,
-          dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
-          dropout_param_.is_test, src, bias, out, mask, ctx);
+          gelu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          dropout_param_.increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;
       LaunchDropoutActBias<T, MaskType, phi::funcs::ReluFunctor<T>>(
-          relu, dropout_param_.seed, rows_, cols_, increment,
-          dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
-          dropout_param_.is_test, src, bias, out, mask, ctx);
+          relu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }
 
-  void DropoutActBiasGrad(const platform::CUDADeviceContext& ctx, const T* dout,
-                          const T* src, const T* bias, const MaskType* mask,
-                          T* d_src, T* d_bias, const std::string& act_method) {
+  void DropoutActBiasGrad(const platform::CUDADeviceContext& ctx,
+                          const T* dout,
+                          const T* src,
+                          const T* bias,
+                          const MaskType* mask,
+                          T* d_src,
+                          T* d_bias,
+                          const std::string& act_method) {
     if (act_method == "gelu") {
       GeluGradFunctor<T> gelu_grad;
       LaunchDropoutActBiasGrad<T, MaskType, GeluGradFunctor<T>>(
-          gelu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
-          dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
+          gelu_grad,
+          dout,
+          mask,
+          src,
+          bias,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          rows_,
+          cols_,
+          d_src,
+          d_bias,
+          ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluGradFunctor<T> relu_grad;
       LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::ReluGradFunctor<T>>(
-          relu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
-          dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
+          relu_grad,
+          dout,
+          mask,
+          src,
+          bias,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          rows_,
+          cols_,
+          d_src,
+          d_bias,
+          ctx);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
@@ -208,7 +288,8 @@ template <typename T, typename MaskType>
 class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
  public:
   FusedDropoutLayerNormHelper() {}
-  FusedDropoutLayerNormHelper(const int rows, const int cols,
+  FusedDropoutLayerNormHelper(const int rows,
+                              const int cols,
                               const float epsilon) {
     using U = LayerNormParamType<T>;
     this->rows_ = rows;
@@ -217,7 +298,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
   }
 
   FusedDropoutLayerNormHelper(const platform::CUDADeviceContext& ctx,
-                              const int rows, const int cols,
+                              const int rows,
+                              const int cols,
                               const DropoutParam& dropout_param,
                               const float epsilon)
       : FusedDropoutHelper<T, MaskType>(ctx, rows, cols, dropout_param) {
@@ -226,10 +308,13 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
   }
 
   // call layer_norm
-  void LayerNorm(const platform::CUDADeviceContext& ctx, const T* src,
+  void LayerNorm(const platform::CUDADeviceContext& ctx,
+                 const T* src,
                  const LayerNormParamType<T>* gamma,
-                 const LayerNormParamType<T>* beta, T* out,
-                 LayerNormParamType<T>* mean, LayerNormParamType<T>* variance) {
+                 const LayerNormParamType<T>* beta,
+                 T* out,
+                 LayerNormParamType<T>* mean,
+                 LayerNormParamType<T>* variance) {
     using U = LayerNormParamType<T>;
     switch (GetDesiredBlockDim(this->cols_)) {
       FIXED_BLOCK_DIM_CASE(
@@ -239,24 +324,41 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     }
   }
 
-  void LayerNormGrad(const platform::CUDADeviceContext& ctx, const T* dout,
-                     const T* src, const LayerNormParamType<T>* gamma,
+  void LayerNormGrad(const platform::CUDADeviceContext& ctx,
+                     const T* dout,
+                     const T* src,
+                     const LayerNormParamType<T>* gamma,
                      const LayerNormParamType<T>* mean,
-                     const LayerNormParamType<T>* variance, T* d_src,
+                     const LayerNormParamType<T>* variance,
+                     T* d_src,
                      LayerNormParamType<T>* d_scale,
                      LayerNormParamType<T>* d_bias) {
     using U = LayerNormParamType<T>;
-    LayerNormBackward<T, U>(src, dout, gamma, mean, variance, d_src, d_scale,
-                            d_bias, epsilon_, this->rows_, this->cols_, ctx);
+    LayerNormBackward<T, U>(src,
+                            dout,
+                            gamma,
+                            mean,
+                            variance,
+                            d_src,
+                            d_scale,
+                            d_bias,
+                            epsilon_,
+                            this->rows_,
+                            this->cols_,
+                            ctx);
   }
 
   // out = layernorm(residual + dropout(src + bias))
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
   void LayernormResidualDropoutBias(const platform::CUDADeviceContext& ctx,
-                                    const T* src, const T* residual,
-                                    const T* bias, const P* gamma,
-                                    const P* beta, T* dropout_out,
-                                    MaskType* mask, T* out,
+                                    const T* src,
+                                    const T* residual,
+                                    const T* bias,
+                                    const P* gamma,
+                                    const P* beta,
+                                    T* dropout_out,
+                                    MaskType* mask,
+                                    T* out,
                                     LayerNormParamType<T>* mean,
                                     LayerNormParamType<T>* variance) {
     using U = LayerNormParamType<T>;
@@ -268,22 +370,41 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
     increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
     LaunchLayernormResidualDropoutBias<T, MaskType, U, is_same_type>(
-        this->rows_, this->cols_, increment, this->dropout_param_.seed,
-        this->dropout_param_.dropout_prob, epsilon_,
-        this->dropout_param_.is_upscale_in_train, this->dropout_param_.is_test,
-        src, residual, bias, gamma, beta, mask, dropout_out, out, mean,
-        variance, ctx);
+        this->rows_,
+        this->cols_,
+        increment,
+        this->dropout_param_.seed,
+        this->dropout_param_.dropout_prob,
+        epsilon_,
+        this->dropout_param_.is_upscale_in_train,
+        this->dropout_param_.is_test,
+        src,
+        residual,
+        bias,
+        gamma,
+        beta,
+        mask,
+        dropout_out,
+        out,
+        mean,
+        variance,
+        ctx);
   }
 
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
   void LayernormResidualDropoutBiasGrad(const platform::CUDADeviceContext& ctx,
-                                        const T* d_out, const T* layernorm_src,
-                                        const MaskType* mask, const P* gamma,
+                                        const T* d_out,
+                                        const T* layernorm_src,
+                                        const MaskType* mask,
+                                        const P* gamma,
                                         const LayerNormParamType<T>* mean,
                                         const LayerNormParamType<T>* variance,
-                                        T* d_layernorm_src, P* d_scale,
-                                        P* d_layernorm_bias, T* d_dropout_src,
-                                        T* d_bias, T* d_residual) {
+                                        T* d_layernorm_src,
+                                        P* d_scale,
+                                        P* d_layernorm_bias,
+                                        T* d_dropout_src,
+                                        T* d_bias,
+                                        T* d_residual) {
     using U = LayerNormParamType<T>;
     bool can_call_1024_kernel = false;
     // Fast impl for cases when cols is 1024 and linear_bias is nullptr.
@@ -297,17 +418,37 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
 
     if (can_call_1024_kernel) {
       LaunchLayernormResidualDropoutGrad<T, U, MaskType, is_same_type>(
-          ctx, this->rows_, this->cols_, epsilon_,
+          ctx,
+          this->rows_,
+          this->cols_,
+          epsilon_,
           this->dropout_param_.dropout_prob,
-          this->dropout_param_.is_upscale_in_train, d_out, layernorm_src, gamma,
-          mean, variance, mask, d_scale, d_layernorm_bias, d_residual,
+          this->dropout_param_.is_upscale_in_train,
+          d_out,
+          layernorm_src,
+          gamma,
+          mean,
+          variance,
+          mask,
+          d_scale,
+          d_layernorm_bias,
+          d_residual,
           d_dropout_src);
     } else {
-      LayerNormBackward<T, U, is_same_type>(
-          layernorm_src, d_out, gamma, mean, variance, d_layernorm_src, d_scale,
-          d_layernorm_bias, epsilon_, this->rows_, this->cols_, ctx);
-      this->ResidualDropoutBiasGrad(ctx, d_layernorm_src, mask, d_dropout_src,
-                                    d_residual, d_bias);
+      LayerNormBackward<T, U, is_same_type>(layernorm_src,
+                                            d_out,
+                                            gamma,
+                                            mean,
+                                            variance,
+                                            d_layernorm_src,
+                                            d_scale,
+                                            d_layernorm_bias,
+                                            epsilon_,
+                                            this->rows_,
+                                            this->cols_,
+                                            ctx);
+      this->ResidualDropoutBiasGrad(
+          ctx, d_layernorm_src, mask, d_dropout_src, d_residual, d_bias);
     }
   }
 

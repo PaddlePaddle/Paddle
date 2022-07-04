@@ -73,7 +73,8 @@ class TensorTable : public Table {
   int32_t Initialize() override { return 0; }
 
   int32_t SetProgramEnv(
-      framework::Scope *scope, platform::Place place,
+      framework::Scope *scope,
+      platform::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) override {
     scope_ = scope;
     place_ = place;
@@ -119,7 +120,8 @@ class DenseTensorTable : public TensorTable {
   int32_t Initialize() override { return 0; }
 
  protected:
-  virtual int32_t _RunProgram(const float *values, size_t num,
+  virtual int32_t _RunProgram(const float *values,
+                              size_t num,
                               const uint32_t trainer_id) {
     return 0;
   }

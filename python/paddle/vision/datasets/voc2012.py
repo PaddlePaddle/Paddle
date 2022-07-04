@@ -39,51 +39,69 @@ MODE_FLAG_MAP = {'train': 'trainval', 'test': 'train', 'valid': "val"}
 
 class VOC2012(Dataset):
     """
-    Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
-
-    To speed up the download, we put the data on https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar. 
-    Original data can get from http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar.
+    Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset.
 
     Args:
-        data_file(str): path to data file, can be set None if
-            :attr:`download` is True. Default None,  default data path: ~/.cache/paddle/dataset/voc2012
-        mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
-        download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
-            If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
+        data_file (str, optional): Path to data file, can be set None if
+            :attr:`download` is True. Default: None, default data path: ~/.cache/paddle/dataset/voc2012.
+        mode (str, optional): Either train or test mode. Default 'train'.
+        transform (Callable, optional): Transform to perform on image, None for no transform. Default: None.
+        download (bool, optional): Download dataset automatically if :attr:`data_file` is None. Default: True.
+        backend (str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
+            If this option is not set, will get backend from :ref:`paddle.vision.get_image_backend <api_vision_image_get_image_backend>`,
             default backend is 'pil'. Default: None.
+
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of VOC2012 dataset.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
+            import itertools
+            import paddle.vision.transforms as T
             from paddle.vision.datasets import VOC2012
-            from paddle.vision.transforms import Normalize
-
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super(SimpleNet, self).__init__()
-
-                def forward(self, image, label):
-                    return paddle.sum(image), label
 
 
-            normalize = Normalize(mean=[0.5, 0.5, 0.5],
-                                  std=[0.5, 0.5, 0.5],
-                                  data_format='HWC')
-            voc2012 = VOC2012(mode='train', transform=normalize, backend='cv2')
+            voc2012 = VOC2012()
+            print(len(voc2012))
+            # 2913
 
-            for i in range(10):
-                image, label= voc2012[i]
-                image = paddle.cast(paddle.to_tensor(image), 'float32')
-                label = paddle.to_tensor(label)
+            for i in range(5):  # only show first 5 images
+                img, label = voc2012[i]
+                # do something with img and label
+                print(type(img), img.size)
+                # <class 'PIL.JpegImagePlugin.JpegImageFile'> (500, 281)
+                print(type(label), label.size)
+                # <class 'PIL.PngImagePlugin.PngImageFile'> (500, 281)
 
-                model = SimpleNet()
-                image, label= model(image, label)
-                print(image.numpy().shape, label.numpy().shape)
 
+            transform = T.Compose(
+                [
+                    T.ToTensor(),
+                    T.Normalize(
+                        mean=[0.5, 0.5, 0.5],
+                        std=[0.5, 0.5, 0.5],
+                        to_rgb=True,
+                    ),
+                ]
+            )
+
+            voc2012_test = VOC2012(
+                mode="test",
+                transform=transform,  # apply transform to every image
+                backend="cv2",  # use OpenCV as image transform backend
+            )
+            print(len(voc2012_test))
+            # 1464
+
+            for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
+                # do something with img and label
+                print(type(img), img.shape)
+                # <class 'paddle.Tensor'> [3, 281, 500]
+                print(type(label), label.shape)
+                # <class 'numpy.ndarray'> (281, 500)
     """
 
     def __init__(self,

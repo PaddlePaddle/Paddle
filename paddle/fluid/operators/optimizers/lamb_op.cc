@@ -26,47 +26,60 @@ class LambOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Param) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Grad) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Moment1) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Moment2) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"),
+                      true,
                       platform::errors::NotFound(
                           "Input(LearningRate) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Beta1Pow) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"),
+                      true,
                       platform::errors::NotFound(
                           "Input(Beta2Pow) of LambOp should not be null."));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
+                      true,
                       platform::errors::NotFound(
                           "Output(ParamOut) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Moment1Out) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Moment2Out) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta1PowOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta1PowOut"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Beta1PowOut) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta2PowOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta2PowOut"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Beta2PowOut) of LambOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(
-        phi::product(lr_dims), 0,
+        phi::product(lr_dims),
+        0,
         platform::errors::InvalidArgument(
             "The number of LearningRate shall not be 0, but received %d. Maybe "
             "the Input variable LearningRate has not "
@@ -75,18 +88,21 @@ class LambOp : public framework::OperatorWithKernel {
             "after optimizer.minimize function.",
             phi::product(lr_dims)));
     PADDLE_ENFORCE_EQ(
-        phi::product(lr_dims), 1,
+        phi::product(lr_dims),
+        1,
         platform::errors::InvalidArgument(
             "Learning rate should have 1 dimension, but received %d.",
             phi::product(lr_dims)));
     auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-    PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
+                      1,
                       platform::errors::InvalidArgument(
                           "The size of Beta1 power accumulator should be "
                           "greater than 0, but received %d.",
                           phi::product(beta1_pow_dims)));
     auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-    PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims), 1,
+    PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
+                      1,
                       platform::errors::InvalidArgument(
                           "The size of Beta2 power accumulator should be "
                           "greater than 0, but received %d.",
@@ -96,24 +112,30 @@ class LambOp : public framework::OperatorWithKernel {
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(
-          param_dims, ctx->GetInputDim("Grad"),
+          param_dims,
+          ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
               "Param and Grad input of LambOp should have same dimension. But "
               "received Param dims: [%s], Grad dims: [%s].",
-              param_dims, ctx->GetInputDim("Grad")));
+              param_dims,
+              ctx->GetInputDim("Grad")));
     }
     PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Moment1"),
+        param_dims,
+        ctx->GetInputDim("Moment1"),
         platform::errors::InvalidArgument(
             "Param and Moment1 input of LambOp should have same dimension. But "
             "received Param dims: [%s], Moment1 dims: [%s].",
-            param_dims, ctx->GetInputDim("Moment1")));
+            param_dims,
+            ctx->GetInputDim("Moment1")));
     PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Moment2"),
+        param_dims,
+        ctx->GetInputDim("Moment2"),
         platform::errors::InvalidArgument(
             "Param and Moment2 input of LambOp should have same dimension. But "
             "received Param dims: [%s], Moment2 dims: [%s].",
-            param_dims, ctx->GetInputDim("Moment2")));
+            param_dims,
+            ctx->GetInputDim("Moment2")));
 
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("Moment1Out", param_dims);
@@ -129,13 +151,14 @@ class LambOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
       return expected_kernel_type;
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };
@@ -224,9 +247,9 @@ learning rate, $\lambda$ the weight decay rate.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    lamb, ops::LambOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LambOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lamb,
+                       ops::LambOpKernel<phi::CPUContext, float>,
+                       ops::LambOpKernel<phi::CPUContext, double>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lamb).AddCheckpoint(

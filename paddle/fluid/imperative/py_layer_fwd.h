@@ -52,8 +52,10 @@ bool RequiredGrad(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const std::string& type, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const std::string& type,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
     const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map,
     const std::shared_ptr<operators::PyLayerContext>& py_context) {
@@ -74,8 +76,10 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
-                        const py::args args, const py::kwargs kwargs) {
+py::object PyLayerApply(const platform::Place& place,
+                        const py::handle& cls,
+                        const py::args args,
+                        const py::kwargs kwargs) {
   py::gil_scoped_acquire guard;
   auto bk_function = cls.attr("_backward_function");
   auto context = bk_function();
@@ -229,7 +233,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
     if (if_inplace) {
       // when pylayer forward is inplace strategy, check whether tensor is leaf
       for (auto& t : input_vars) {
-        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(), false,
+        PADDLE_ENFORCE_EQ(t->IsLeaf() && !t->OverridedStopGradient(),
+                          false,
                           platform::errors::InvalidArgument(
                               "Leaf Var (%s) that doesn't stop gradient can't "
                               "use inplace strategy.",
@@ -239,8 +244,8 @@ py::object PyLayerApply(const platform::Place& place, const py::handle& cls,
       inplace_map["X"] = "Out";
     }
 
-    CreateGradOpNode("py_layer", ins, outs, {{}}, place, inplace_map,
-                     py_layer_ctx);
+    CreateGradOpNode(
+        "py_layer", ins, outs, {{}}, place, inplace_map, py_layer_ctx);
   } else {
     VLOG(3) << "No Grad to track for Op: py_layer_op";
   }
