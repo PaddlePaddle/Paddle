@@ -18,6 +18,13 @@
 
 namespace phi {
 
+/**
+ * @brief This kernrel is used to perform elementwise digamma for x.
+ *        $$out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }$$
+ * @param  ctx     device context
+ * @param  x       the input tensor of digamma
+ * @param  out     the output tensor of digamma
+ */
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 

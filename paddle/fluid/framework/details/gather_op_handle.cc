@@ -36,18 +36,21 @@ void GatherOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), places_.size(),
+      in_var_handles.size(),
+      places_.size(),
       platform::errors::InvalidArgument(
           "The number of input variables should be equal "
           "to the number of places, but got the number of input variables is "
           "%d and the number of places is %d.",
-          in_var_handles.size(), places_.size()));
+          in_var_handles.size(),
+          places_.size()));
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(
-        out_var_handles.size(), 1,
+        out_var_handles.size(),
+        1,
         platform::errors::InvalidArgument(
             "The number of output variables should be 1, but got %d.",
             out_var_handles.size()));
@@ -64,7 +67,8 @@ void GatherOpHandle::RunImpl() {
       platform::errors::NotFound("The variable '%s' is not found in the scope.",
                                  in_0_handle->name()));
 
-  PADDLE_ENFORCE_EQ(pre_in_var->IsType<phi::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(pre_in_var->IsType<phi::SelectedRows>(),
+                    true,
                     platform::errors::Unimplemented(
                         "Currently, gather_op only supports SelectedRows."));
 
@@ -95,7 +99,8 @@ void GatherOpHandle::RunImpl() {
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   platform::Place t_out_p = out_var_handle->place();
   if (platform::is_gpu_place(pre_in_value.place())) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Places of input and output must be all on GPU."));
   } else {
@@ -120,16 +125,17 @@ void GatherOpHandle::RunImpl() {
 
   // copy
   auto dev_ctx = dev_ctxes_.at(out_var_handle->place());
-  RunAndRecordEvent(out_var_handle->place(), [in_tensors, out_tensor, &dev_ctx,
-                                              t_out_p] {
-    int s = 0, e = 0;
-    for (size_t j = 0; j < in_tensors.size(); ++j) {
-      e += in_tensors[j].dims()[0];
-      auto sub_out = out_tensor->Slice(s, e);
-      paddle::framework::TensorCopy(in_tensors[j], t_out_p, *dev_ctx, &sub_out);
-      s = e;
-    }
-  });
+  RunAndRecordEvent(out_var_handle->place(),
+                    [in_tensors, out_tensor, &dev_ctx, t_out_p] {
+                      int s = 0, e = 0;
+                      for (size_t j = 0; j < in_tensors.size(); ++j) {
+                        e += in_tensors[j].dims()[0];
+                        auto sub_out = out_tensor->Slice(s, e);
+                        paddle::framework::TensorCopy(
+                            in_tensors[j], t_out_p, *dev_ctx, &sub_out);
+                        s = e;
+                      }
+                    });
 }
 
 std::string GatherOpHandle::Name() const { return "gather"; }

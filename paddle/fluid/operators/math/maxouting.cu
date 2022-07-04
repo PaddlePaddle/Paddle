@@ -21,10 +21,14 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__global__ void KernelMaxOut(const int nthreads, const T* input_data,
-                             const int channels, const int input_height,
-                             const int input_width, const int groups,
-                             const int axis, T* output_data) {
+__global__ void KernelMaxOut(const int nthreads,
+                             const T* input_data,
+                             const int channels,
+                             const int input_height,
+                             const int input_width,
+                             const int groups,
+                             const int axis,
+                             T* output_data) {
   const int size = input_height * input_width * channels / groups;
   const int feat_len = input_height * input_width;
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -54,11 +58,16 @@ __global__ void KernelMaxOut(const int nthreads, const T* input_data,
   }
 }
 template <typename T>
-__global__ void KernelMaxoutGrad(const int nthreads, const T* input_data,
-                                 const T* output_data, const T* output_grad,
-                                 T* input_grad, const int channels,
-                                 const int input_height, const int input_width,
-                                 const int groups, const int axis) {
+__global__ void KernelMaxoutGrad(const int nthreads,
+                                 const T* input_data,
+                                 const T* output_data,
+                                 const T* output_grad,
+                                 T* input_grad,
+                                 const int channels,
+                                 const int input_height,
+                                 const int input_width,
+                                 const int groups,
+                                 const int axis) {
   const int size = input_height * input_width * channels / groups;
   const int feat_len = input_height * input_width;
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -115,9 +124,14 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(
-      nthreads, input_data, input_channels, input_height, input_width, groups,
-      axis, output_data);
+  KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                          input_data,
+                                                          input_channels,
+                                                          input_height,
+                                                          input_width,
+                                                          groups,
+                                                          axis,
+                                                          output_data);
 }
 
 /*
@@ -125,9 +139,13 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
  */
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const framework::Tensor& input,
-    framework::Tensor* input_grad, const framework::Tensor& output,
-    const framework::Tensor& output_grad, const int groups, const int axis) {
+    const DeviceContext& context,
+    const framework::Tensor& input,
+    framework::Tensor* input_grad,
+    const framework::Tensor& output,
+    const framework::Tensor& output_grad,
+    const int groups,
+    const int axis) {
   const int batch_size = input.dims()[0];
   const int input_channels = input.dims()[axis];
   const int input_height = (axis == 1 ? input.dims()[2] : input.dims()[1]);
@@ -143,9 +161,16 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(
-      nthreads, input_data, output_data, output_grad_data, input_grad_data,
-      input_channels, input_height, input_width, groups, axis);
+  KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                              input_data,
+                                                              output_data,
+                                                              output_grad_data,
+                                                              input_grad_data,
+                                                              input_channels,
+                                                              input_height,
+                                                              input_width,
+                                                              groups,
+                                                              axis);
 }
 
 template class MaxOutGradFunctor<platform::CUDADeviceContext, float>;

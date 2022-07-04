@@ -25,14 +25,17 @@ class CompareReduceOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf("the left hand operand of %s operator",
-                                  comment.type));
-    AddInput("Y", string::Sprintf("the right hand operand of %s operator",
-                                  comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "tensor with a bool element. If all "
-                         "element %s, the Out tensor is [True], else [False]",
-                         comment.equation));
+    AddInput(
+        "X",
+        string::Sprintf("the left hand operand of %s operator", comment.type));
+    AddInput(
+        "Y",
+        string::Sprintf("the right hand operand of %s operator", comment.type));
+    AddOutput(
+        "Out",
+        string::Sprintf("tensor with a bool element. If all "
+                        "element %s, the Out tensor is [True], else [False]",
+                        comment.equation));
     AddComment(string::Sprintf(R"DOC(
 It operates element-wise on X and Y, and returns the Out. X, Y is a
 N-dim tensor, which could be any type. If all element $%s$, the Out tensor 
@@ -58,10 +61,12 @@ class CompareReduceOp : public framework::OperatorWithKernel {
   };                                                                       \
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
-  DECLARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,        \
+  DECLARE_INFER_SHAPE_FUNCTOR(op_type,                                     \
+                              op_type##_InferShapeFunctor,                 \
                               PD_INFER_META(phi::CompareAllInferMeta));    \
   REGISTER_OPERATOR(                                                       \
-      op_type, ::paddle::operators::CompareReduceOp<_##op_type##Comment>,  \
+      op_type,                                                             \
+      ::paddle::operators::CompareReduceOp<_##op_type##Comment>,           \
       ::paddle::operators::CompareReduceOpProtoMaker<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,   \

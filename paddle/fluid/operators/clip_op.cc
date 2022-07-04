@@ -33,7 +33,8 @@ class ClipOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -93,8 +94,10 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "clip_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "clip_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -108,7 +111,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -170,13 +174,19 @@ class ClipDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(clip, ClipInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(clip,
+                            ClipInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
+REGISTER_OPERATOR(clip,
+                  ops::ClipOp,
+                  ops::ClipOpMaker<float>,
                   ops::ClipGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ClipInplaceInferer, ClipInferShapeFunctor);
-REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
+                  ops::ClipInplaceInferer,
+                  ClipInferShapeFunctor);
+REGISTER_OPERATOR(clip_grad,
+                  ops::ClipOpGrad,
+                  ops::ClipGradInplaceInferer,
                   ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
 

@@ -80,4 +80,3 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
-        # exclude files which need to be fixed

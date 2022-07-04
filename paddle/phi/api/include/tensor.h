@@ -286,6 +286,14 @@ class PADDLE_API Tensor final {
    */
   bool is_gpu_pinned() const;
 
+  /**
+   * @brief Determine whether the tensor device is CustomDevice
+   *
+   * @return true
+   * @return false
+   */
+  bool is_custom_device() const;
+
   /* Part 4: Data Access methods */
 
   /**

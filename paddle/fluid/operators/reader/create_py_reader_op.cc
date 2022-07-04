@@ -120,5 +120,6 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
 
 namespace reader = ::paddle::operators::reader;
 
-REGISTER_FILE_READER_OPERATOR(create_py_reader, reader::CreatePyReaderOp,
+REGISTER_FILE_READER_OPERATOR(create_py_reader,
+                              reader::CreatePyReaderOp,
                               reader::CreatePyReaderOpMaker);

@@ -60,7 +60,8 @@ class SvdOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("X");
     int x_rank = in_dims.size();
-    PADDLE_ENFORCE_GE(in_dims.size(), 2,
+    PADDLE_ENFORCE_GE(in_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "the rank of input must greater than 2"));
     int m = in_dims[x_rank - 2];
@@ -103,17 +104,25 @@ class SvdGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("U")), "Input",
-                   "U@Grad", "SvdGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("VH")), "Input",
-                   "VH@Grad", "SvdGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("S")), "Input",
-                   "S@Grad", "SvdGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("U")),
+                   "Input",
+                   "U@Grad",
+                   "SvdGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("VH")),
+                   "Input",
+                   "VH@Grad",
+                   "SvdGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("S")),
+                   "Input",
+                   "S@Grad",
+                   "SvdGrad");
     OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "SvdGrad");
     OP_INOUT_CHECK(ctx->HasInput("S"), "Input", "S", "SvdGrad");
     OP_INOUT_CHECK(ctx->HasInput("VH"), "Input", "VH", "SvdGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "SvdGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "SvdGrad");
 
     auto d_x = ctx->GetInputDim(("X"));
     ctx->SetOutputDim(framework::GradVarName("X"), d_x);
@@ -151,15 +160,18 @@ class SvdGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(svd, ops::SvdOp, ops::SvdOpMaker,
+REGISTER_OPERATOR(svd,
+                  ops::SvdOp,
+                  ops::SvdOpMaker,
                   ops::SvdGradMaker<paddle::framework::OpDesc>,
                   ops::SvdGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(svd_grad, ops::SvdGradOp);
 
-REGISTER_OP_CPU_KERNEL(svd, ops::SvdCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(svd,
+                       ops::SvdCPUKernel<float>,
                        ops::SvdCPUKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(
-    svd_grad, ops::SvdGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SvdGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(svd_grad,
+                       ops::SvdGradKernel<phi::CPUContext, float>,
+                       ops::SvdGradKernel<phi::CPUContext, double>);

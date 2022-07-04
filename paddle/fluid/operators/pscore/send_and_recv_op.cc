@@ -45,12 +45,12 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
-        distributed::HeterClient::GetInstance(next_epmap, previous_epmap,
-                                              trainer_id)
+        distributed::HeterClient::GetInstance(
+            next_epmap, previous_epmap, trainer_id)
             .get();
     VLOG(3) << "SendAndRecvOp message_name: " << message_name;
-    rpc_client->SendAndRecvAsync(context, scope, message_name, send_var_name,
-                                 recv_var_name, mode);
+    rpc_client->SendAndRecvAsync(
+        context, scope, message_name, send_var_name, recv_var_name, mode);
   }
 };
 
@@ -104,19 +104,20 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_and_recv,
+                       ops::SendAndRecvKernel<phi::CPUContext, float>,
+                       ops::SendAndRecvKernel<phi::CPUContext, double>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(
         R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
         paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("next_endpoints", "Server endpoint",
+            .NewAttr("next_endpoints",
+                     "Server endpoint",
                      std::vector<std::string>({"127.0.0.1:6164"}))
-            .NewAttr("previous_endpoints", "Server endpoint",
+            .NewAttr("previous_endpoints",
+                     "Server endpoint",
                      std::vector<std::string>({"127.0.0.1:6164"}))
             .NewAttr("mode", "forward or backward", "forward"));

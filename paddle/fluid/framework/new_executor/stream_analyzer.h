@@ -34,7 +34,8 @@ class StreamAnalyzer {
   ~StreamAnalyzer() {}
 
   void Schedule(const std::vector<size_t>& downstream_ops,
-                std::vector<Instruction>* instructions, size_t op_index);
+                std::vector<Instruction>* instructions,
+                size_t op_index);
 
   DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 

@@ -87,12 +87,14 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 
   void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+      const std::vector<std::string> &fetch_tensors,
+      FetchResultType *fetches,
       std::unordered_map<std::string, std::vector<VarHandleBase *>>
           *fetched_vars,
       std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
+      std::vector<OpHandleBase *> *ready_fetch_ops,
+      bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

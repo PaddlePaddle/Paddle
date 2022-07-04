@@ -57,10 +57,16 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
     std::map<std::string, std::vector<int>> optim_input_shape = {
         {"input", {16, 32, 1, 1}}};
 
-    engine_ =
-        new TensorRTEngine(16, 1 << 10, AnalysisConfig::Precision::kHalf,
-                           nullptr, 0, min_input_shape, max_input_shape,
-                           optim_input_shape, false, NaiveLogger::Global());
+    engine_ = new TensorRTEngine(16,
+                                 1 << 10,
+                                 AnalysisConfig::Precision::kHalf,
+                                 nullptr,
+                                 0,
+                                 min_input_shape,
+                                 max_input_shape,
+                                 optim_input_shape,
+                                 false,
+                                 NaiveLogger::Global());
     engine_->InitNetwork();
   }
 
@@ -105,32 +111,49 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
       raw_weight[4 * i + 3] = float16(0.0);
     }
   }
-  float16 raw_bias[16] = {float16(0), float16(1), float16(0), float16(2),
-                          float16(0), float16(3), float16(0), float16(4),
-                          float16(0), float16(5), float16(0), float16(6),
-                          float16(0), float16(7), float16(0), float16(8)};
+  float16 raw_bias[16] = {float16(0),
+                          float16(1),
+                          float16(0),
+                          float16(2),
+                          float16(0),
+                          float16(3),
+                          float16(0),
+                          float16(4),
+                          float16(0),
+                          float16(5),
+                          float16(0),
+                          float16(6),
+                          float16(0),
+                          float16(7),
+                          float16(0),
+                          float16(8)};
   std::vector<void *> buffers(2);  // TRT binded inputs
   TensorRTEngine::Weight weight(nvinfer1::DataType::kHALF, raw_weight, 512);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kHALF, raw_bias, 16);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape()
             << std::endl;
-  auto *x = engine_->DeclareInput("input", nvinfer1::DataType::kHALF,
-                                  nvinfer1::Dims4{-1, 32, 1, 1});
+  auto *x = engine_->DeclareInput(
+      "input", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 32, 1, 1});
 
   plugin::SpmmPluginDynamic::Activation act =
       plugin::SpmmPluginDynamic::Activation::kNone;
 
-  plugin::SpmmPluginDynamic *plugin = new plugin::SpmmPluginDynamic(
-      "CustomSpmmPluginDynamic", nvinfer1::DataType::kHALF, 16, weight.get(),
-      bias.get(), act);
+  plugin::SpmmPluginDynamic *plugin =
+      new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic",
+                                    nvinfer1::DataType::kHALF,
+                                    16,
+                                    weight.get(),
+                                    bias.get(),
+                                    act);
   std::vector<nvinfer1::ITensor *> plugin_inputs;
   plugin_inputs.emplace_back(x);
   auto fc_layer = engine_->network()->addPluginV2(
       plugin_inputs.data(), plugin_inputs.size(), *plugin);
 
   LOG(INFO) << "create weights";
-  PADDLE_ENFORCE_NOT_NULL(fc_layer, platform::errors::InvalidArgument(
-                                        "TRT SPMM layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      fc_layer,
+      platform::errors::InvalidArgument("TRT SPMM layer building failed."));
 
   engine_->DeclareOutput(fc_layer, 0, "y");
   engine_->FreezeNetwork();

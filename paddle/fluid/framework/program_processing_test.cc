@@ -194,8 +194,8 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   std::set<std::string> inner_inputs;
   std::set<std::string> inner_outputs;
 
-  program_processor.GetInputsOutputsInBlock(*sub_blocks[0], &inner_inputs,
-                                            &inner_outputs);
+  program_processor.GetInputsOutputsInBlock(
+      *sub_blocks[0], &inner_inputs, &inner_outputs);
 
   VLOG(3) << "inner_inputs().size():" << inner_inputs.size();
   VLOG(3) << "inner_outputs().size():" << inner_outputs.size();
@@ -205,8 +205,11 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
 
   // varible "Less_than_2_Out" is the input of cond_op, it also is the output of
   // less_than_op.
-  std::set<std::string> inner_inputs_{"Less_than_2_Out", "Less_than_2_X",
-                                      "Less_than_2_Y", "Mul_2_X", "Mul_2_Y"};
+  std::set<std::string> inner_inputs_{"Less_than_2_Out",
+                                      "Less_than_2_X",
+                                      "Less_than_2_Y",
+                                      "Mul_2_X",
+                                      "Mul_2_Y"};
   std::set<std::string> inner_outputs_{"Less_than_2_Out", "Mul_2_Out"};
 
   ASSERT_EQ(inner_inputs, inner_inputs_);
@@ -228,12 +231,17 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   ASSERT_EQ(8UL, while_op->Input("kX").size());
   ASSERT_EQ(4UL, while_op->Output("kOutputs").size());
 
-  std::vector<std::string> var_input_vec = {
-      "While_X", "Less_than_2_Out", "Less_than_2_X", "Less_than_2_Y",
-      "Mul_2_X", "Mul_2_Y",         "Mul_3_X",       "Mul_3_Y"};
+  std::vector<std::string> var_input_vec = {"While_X",
+                                            "Less_than_2_Out",
+                                            "Less_than_2_X",
+                                            "Less_than_2_Y",
+                                            "Mul_2_X",
+                                            "Mul_2_Y",
+                                            "Mul_3_X",
+                                            "Mul_3_Y"};
 
-  std::vector<std::string> var_output_vec = {"While_Out", "Less_than_2_Out",
-                                             "Mul_2_Out", "Mul_3_Out"};
+  std::vector<std::string> var_output_vec = {
+      "While_Out", "Less_than_2_Out", "Mul_2_Out", "Mul_3_Out"};
 
   ASSERT_EQ(var_input_vec, while_op->Input("kX"));
   ASSERT_EQ(var_output_vec, while_op->Output("kOutputs"));

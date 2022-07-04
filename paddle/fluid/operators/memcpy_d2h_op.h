@@ -60,7 +60,8 @@ class MemcpyD2HFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for Memcpy  op with type %s", typeid(T).name()));
   }

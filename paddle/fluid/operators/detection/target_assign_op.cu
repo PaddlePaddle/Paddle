@@ -18,9 +18,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename WT>
-__global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
-                                      const int N, const int M, const int K,
-                                      const int mismatch_value, T* out,
+__global__ void NegTargetAssignKernel(const int* neg_indices,
+                                      const size_t* lod,
+                                      const int N,
+                                      const int M,
+                                      const int K,
+                                      const int mismatch_value,
+                                      T* out,
                                       WT* out_wt) {
   int bidx = blockIdx.x;
   int st = lod[bidx];
@@ -39,8 +43,13 @@ __global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
 template <typename T, typename WT>
 struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
   void operator()(const platform::CUDADeviceContext& ctx,
-                  const int* neg_indices, const size_t* lod, const int N,
-                  const int M, const int K, const int mismatch_value, T* out,
+                  const int* neg_indices,
+                  const size_t* lod,
+                  const int N,
+                  const int M,
+                  const int K,
+                  const int mismatch_value,
+                  T* out,
                   WT* out_wt) {
     const int block_size = 256;
     const int grid_size = N;
@@ -50,7 +59,8 @@ struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
 };
 
 template struct NegTargetAssignFunctor<platform::CUDADeviceContext, int, float>;
-template struct NegTargetAssignFunctor<platform::CUDADeviceContext, float,
+template struct NegTargetAssignFunctor<platform::CUDADeviceContext,
+                                       float,
                                        float>;
 
 }  // namespace operators

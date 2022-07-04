@@ -42,7 +42,9 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
-    c_allreduce_prod, ops::CAllReduceOp, ops::CAllReduceProdOpMaker,
+    c_allreduce_prod,
+    ops::CAllReduceOp,
+    ops::CAllReduceProdOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::AllreduceProdInplaceInferer)

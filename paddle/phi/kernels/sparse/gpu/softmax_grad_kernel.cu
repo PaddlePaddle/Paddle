@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/softmax_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/softmax_grad_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -27,13 +28,20 @@ __global__ void SoftmaxGradGpuKernel(const IntT* out_crows,
                                      const T* out_values,
                                      const T* dout_values,
                                      T* dx_values,
-                                     int row_number) {
+                                     int row_number,
+                                     int total_row_number) {
   // dx = (dout - sum(dout * out)) * out
   int row = blockIdx.x * blockDim.y + threadIdx.y;
   int non_zero_idx = threadIdx.x;
-  if (row >= row_number) return;
-  int row_first = static_cast<int>(out_crows[row]);
-  int row_nnz = static_cast<int>(out_crows[row + 1] - out_crows[row]);
+  if (row >= total_row_number) return;
+  int cur_batch = row / row_number;
+  int crow_idx = cur_batch * (row_number + 1) + (row % row_number);
+  int cur_batch_offset = 0;
+  for (int i = 1; i < cur_batch + 1; ++i) {
+    cur_batch_offset += out_crows[i * (row_number + 1) - 1];
+  }
+  int row_first = cur_batch_offset + static_cast<int>(out_crows[crow_idx]);
+  int row_nnz = static_cast<int>(out_crows[crow_idx + 1] - out_crows[crow_idx]);
   if (row_nnz == 0) return;
 
   int kIteration = (row_nnz + warpSize - 1) / warpSize;
@@ -70,12 +78,18 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   EmptyLikeCsrKernel<T, Context>(dev_ctx, dout, dx);
 
   auto out_dim = out.dims();
+  auto out_rank = out_dim.size();
+
+  int total_row_number = 1;
   int row_number = 1;
-  for (int i = 0; i < out_dim.size() - 1; ++i) {
-    row_number *= out_dim[i];
+  for (int i = 0; i < out_rank - 1; ++i) {
+    total_row_number *= out_dim[i];
+    if (i == out_rank - 2) {
+      row_number = out_dim[i];
+    }
   }
 
-  dim3 grid((row_number + 3) / 4);
+  dim3 grid((total_row_number + 3) / 4);
   dim3 block(32, 4);
 
   PD_VISIT_INTEGRAL_TYPES(
@@ -85,7 +99,8 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
             out.non_zero_elements().data<T>(),
             dout.non_zero_elements().data<T>(),
             dx->mutable_non_zero_elements()->data<T>(),
-            row_number);
+            row_number,
+            total_row_number);
       }));
 }
 

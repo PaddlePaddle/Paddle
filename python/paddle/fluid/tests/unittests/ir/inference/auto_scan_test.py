@@ -21,17 +21,13 @@ import time
 import logging
 import shutil
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.fluid.core import PassVersionChecker
-import paddle.fluid.core as core
-from paddle import compat as cpt
 import paddle.inference as paddle_infer
-from typing import Optional, List, Callable, Dict, Any, Set
-from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
+from typing import Optional, List, Callable, Dict, Any
+from program_config import OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
 import hypothesis
-from hypothesis import given, settings, seed, reproduce_failure
+from hypothesis import given, settings
 import hypothesis.strategies as st
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")

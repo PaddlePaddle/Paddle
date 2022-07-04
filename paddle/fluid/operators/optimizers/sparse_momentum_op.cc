@@ -113,11 +113,12 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sparse_momentum, ops::SparseMomentumOp, ops::SparseMomentumOpMaker,
+    sparse_momentum,
+    ops::SparseMomentumOp,
+    ops::SparseMomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::SparseMomentumOpInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    sparse_momentum,
-    ops::SparseMomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SparseMomentumOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sparse_momentum,
+                       ops::SparseMomentumOpKernel<phi::CPUContext, float>,
+                       ops::SparseMomentumOpKernel<phi::CPUContext, double>);

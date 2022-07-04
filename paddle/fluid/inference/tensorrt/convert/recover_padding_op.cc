@@ -35,7 +35,8 @@ namespace tensorrt {
 class RecoverPadding : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
           "recover_padding_op: If you want to use transformer, must "
@@ -75,8 +76,8 @@ class RecoverPadding : public OpConverter {
     plugin::RecoverPaddingPlugin* plugin = new plugin::RecoverPaddingPlugin();
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(plugin_inputs.data(), input_num, plugin);
-    RreplenishLayerAndOutput(layer, "recover_padding", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "recover_padding", {output_name}, test_mode);
   }
 };
 

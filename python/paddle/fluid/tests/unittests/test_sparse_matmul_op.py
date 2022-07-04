@@ -114,7 +114,77 @@ class TestCsrMaskedMatmul2D(unittest.TestCase):
             self.assertTrue(np.allclose(np_y_grad, y.grad.numpy()))
 
 
-#TODO(zhouwei25): support unit test of batch 'paddle.sparse.mm/masked_mm'
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
+    "paddle is not compiled with CUDA and cuda version need to >= 11.7")
+class TestCsrDenseMatmul3D(unittest.TestCase):
+    # x: csr, y: dense, out: dense
+    def test_matmul(self):
+        with _test_eager_guard():
+            paddle.set_default_dtype('float32')
+            origin_x = paddle.rand([16, 16, 12])
+            mask = paddle.randint(0, 2, [16, 12])
+            origin_x = origin_x * mask
+            origin_y = paddle.rand([16, 12, 10])
+
+            dense_x = origin_x.detach()
+            dense_x.stop_gradient = False
+            dense_y = origin_y.detach()
+            dense_y.stop_gradient = False
+            dense_out = paddle.matmul(dense_x, dense_y)
+            dense_out.backward()
+
+            sp_x = origin_x.detach().to_sparse_csr()
+            sp_x.stop_gradient = False
+            sp_y = origin_y.detach()
+            sp_y.stop_gradient = False
+            sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
+            sp_out.backward()
+
+            self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
+            self.assertTrue(
+                np.allclose(sp_x.grad.to_dense().numpy(),
+                            (dense_x.grad * mask).numpy()))
+            self.assertTrue(np.allclose(sp_y.grad.numpy(),
+                                        dense_y.grad.numpy()))
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
+    "paddle is not compiled with CUDA and cuda version need to >= 11.7")
+class TestCsrMaskedMatmul3D(unittest.TestCase):
+    # x: dense, y: dense, out: csr
+    def test_matmul(self):
+        with _test_eager_guard():
+            paddle.set_default_dtype('float64')
+            origin_x = paddle.rand([16, 16, 12])
+            origin_y = paddle.rand([16, 12, 10])
+
+            mask = paddle.randint(0, 2, [16, 10])
+
+            dense_x = origin_x.detach()
+            dense_x.stop_gradient = False
+            dense_y = origin_y.detach()
+            dense_y.stop_gradient = False
+            dense_out = paddle.matmul(dense_x, dense_y)
+            dense_out = dense_out * mask
+            dense_out.backward()
+
+            sp_x = origin_x.detach()
+            sp_x.stop_gradient = False
+            sp_y = origin_y.detach()
+            sp_y.stop_gradient = False
+            sp_out = paddle.incubate.sparse.masked_matmul(
+                sp_x, sp_y, dense_out.to_sparse_csr())
+            sp_out.backward()
+
+            self.assertTrue(
+                np.allclose(sp_out.to_dense().numpy(), dense_out.numpy()))
+            self.assertTrue(np.allclose(sp_x.grad.numpy(),
+                                        dense_x.grad.numpy()))
+            self.assertTrue(np.allclose(sp_y.grad.numpy(),
+                                        dense_y.grad.numpy()))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -662,4 +662,5 @@ class Quant2Int8MkldnnPass(object):
              self._get_data_layout(graph)])
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
         graph = self._apply_pass(graph, 'int8_scale_calculation_mkldnn_pass')
+        graph = self._apply_pass(graph, 'params_quantization_mkldnn_pass')
         return graph

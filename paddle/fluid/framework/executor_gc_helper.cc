@@ -61,7 +61,8 @@ bool OpInOutInfo::IsInArgBufferNeeded(const std::string &in_arg_name) const {
   return no_need_buffer_ins_.empty() || other_args_set_.count(in_arg_name) != 0;
 }
 
-static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
+static bool VarCanBeDeleted(const std::string &name,
+                            const BlockDesc &block,
                             const std::unordered_set<std::string> &skip_vars) {
   if (skip_vars.count(name) != 0) {
     return false;
@@ -163,7 +164,8 @@ void DeleteUnusedTensors(const Scope &scope,
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Type %s of variable %s is not supported eager deletion.",
-          framework::ToTypeName(var->Type()), var_name));
+          framework::ToTypeName(var->Type()),
+          var_name));
     }
   }
 
@@ -173,7 +175,8 @@ void DeleteUnusedTensors(const Scope &scope,
 }
 
 void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
+    const Scope &scope,
+    const OperatorBase *op,
     const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc) {
@@ -203,7 +206,8 @@ std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
     const std::vector<std::string> &skip_vars) {
   ProgramDesc program{origin_program};
   size_t block_num = program.Size();
-  PADDLE_ENFORCE_GE(block_num, 1,
+  PADDLE_ENFORCE_GE(block_num,
+                    1,
                     platform::errors::PermissionDenied(
                         "Program should have at least one block"));
 
@@ -211,8 +215,8 @@ std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
   auto global_block_ops = CreateOpsFromBlock(program.Block(0));
   operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
       program, 0, global_block_ops);
-  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(program, 0,
-                                                             global_block_ops);
+  operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+      program, 0, global_block_ops);
   operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       program, 0, global_block_ops);
 
@@ -234,14 +238,17 @@ std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
         continue;
       }
       auto sub_block_id = op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID();
-      PADDLE_ENFORCE_GE(sub_block_id, 0,
+      PADDLE_ENFORCE_GE(sub_block_id,
+                        0,
                         platform::errors::PermissionDenied(
                             "sub_block id must be non-negative number"));
-      PADDLE_ENFORCE_LT(sub_block_id, block_num,
+      PADDLE_ENFORCE_LT(sub_block_id,
+                        block_num,
                         platform::errors::PermissionDenied(
                             "sub_block id exceeds max block num"));
       PADDLE_ENFORCE_EQ(
-          found_skip_vars[sub_block_id], false,
+          found_skip_vars[sub_block_id],
+          false,
           platform::errors::PermissionDenied(
               "there are 2 ops which refer to the same sub_block %d",
               sub_block_id));
