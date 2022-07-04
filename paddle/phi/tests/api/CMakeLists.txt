@@ -109,7 +109,3 @@ cc_test(
   test_strings_lower_upper_api
   SRCS test_strings_lower_upper_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
-#cc_test(
-#  test_log_softmax_mkldnn_api
-#  SRCS test_log_softmax_mkldnn_api.cc
-#  DEPS ${COMMON_API_TEST_DEPS})
