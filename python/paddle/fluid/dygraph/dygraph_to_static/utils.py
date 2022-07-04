@@ -1740,7 +1740,12 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             self._current_name_scope().args |= set(
                 self._get_argument_names(node))
 
-        self._visit_scope_node(node, pre_func, None)
+        def post_func():
+            if self._father_name_scope():
+                self._father_name_scope().w_vars |= self._current_name_scope(
+                ).w_vars
+
+        self._visit_scope_node(node, pre_func, post_func)
 
     def _visit_scope_node(self, node, pre_func, post_func):
         """ scope node main visit logic.

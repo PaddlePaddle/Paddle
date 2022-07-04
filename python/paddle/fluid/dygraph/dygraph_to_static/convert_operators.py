@@ -251,9 +251,7 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
             raise Dygraph2StaticException(
                 "Your if/else have different return type. TODO: add link to modifty."
             )
-        if re.search(
-                "Incompatible return values of true_fn and false_fn in cond",
-                str(e)):
+        if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
                 "Your if/else have different number of return value. TODO: add link to modifty."
             )
@@ -332,7 +330,8 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = (outs, )
+        final_outs = (outs, ) if not isinstance(outs,
+                                                (list, tuple)) else tuple(outs)
     else:
         outs = (outs, ) if num_outs == 1 else tuple(outs)
         final_outs = outs + init_args[num_outs:]

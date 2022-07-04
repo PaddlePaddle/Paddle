@@ -45,6 +45,8 @@ class TestDy2staticException(unittest.TestCase):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 ProgramTranslator().enable(True)
                 self.assertTrue(declarative(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base._in_declarative_mode_ = False
+        ProgramTranslator().enable(False)
 
 
 class TestDygraphIfElse(unittest.TestCase):
