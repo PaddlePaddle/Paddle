@@ -186,7 +186,23 @@ class HeterCommKernel {
                         long long len, size_t val_size,
                         const StreamType& stream);
 
+  template <typename StreamType>
+  void split_segments(const uint32_t* d_fea_num_info,
+          size_t len, uint32_t* d_segments, uint32_t* d_segments_num,
+          size_t segment_size, const StreamType& stream);
+
+  template <typename StreamType>
+  void expand_segments(const uint32_t* d_fea_num_info,
+          const uint32_t* d_segments_offset, size_t segments_num,
+          uint32_t* d_segments_fea_num_info, uint32_t segment_size,
+          const StreamType& stream);
+
+  template <typename KeyType, typename StreamType>
+  void shrink_keys(const KeyType* d_keys, const uint32_t* d_segments_offset,
+          KeyType* d_segments_keys, size_t segments_num, const StreamType& stream);
+
   CommonFeatureValueAccessor feature_value_accessor_;
+
  private:
   int block_size_{256};
 };

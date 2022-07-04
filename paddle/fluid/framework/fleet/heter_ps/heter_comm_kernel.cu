@@ -208,6 +208,57 @@ __global__ void merge_gradients_embedx_kernel(const KeyType* d_keys,
   }
 }
 
+__global__ void split_segments_kernel(
+        const uint32_t* d_fea_num_info, size_t n,
+        uint32_t* d_segments, uint32_t* d_segments_num,
+        uint32_t segment_size) {
+  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tx >= n) {
+    return;
+  }
+
+  auto fea_num = d_fea_num_info[tx];
+  auto seg_num = (uint32_t)((fea_num - 1) / segment_size + 1);
+  d_segments[tx] = seg_num;
+}
+
+__global__ void expand_segments_kernel(
+        const uint32_t* d_fea_num_info,
+        const uint32_t* d_segments_offset, size_t n,
+        uint32_t* d_segments_fea_num_info, uint32_t segment_size) {
+  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tx >= n) {
+    return;
+  }
+
+  auto fea_num = d_fea_num_info[tx];
+  auto seg_num = (uint32_t)((fea_num - 1) / segment_size + 1);
+  auto start_pos = d_segments_offset[tx];
+  auto remains = fea_num;
+  int cur_seg_size = 0;
+  for (size_t i = 0; i < seg_num; ++i) {
+    if (remains >= segment_size) {
+      cur_seg_size = segment_size;
+    } else {
+      cur_seg_size = remains;
+    }
+    d_segments_fea_num_info[start_pos + i] = cur_seg_size;
+    remains -= cur_seg_size;
+  }
+}
+
+template <typename KeyType>
+__global__ void shrink_keys_kernel(
+        const KeyType* d_keys, const uint32_t* d_segments_offset,
+        KeyType* d_segments_keys, size_t n) {
+  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tx >= n) {
+    return;
+  }
+
+  d_segments_keys[tx] = d_keys[d_segments_offset[tx]];
+}
+
 template <typename T>
 __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals, float* d_vals,
                                         T* idx, size_t len, size_t val_size,
@@ -376,6 +427,34 @@ void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals, float* d_vals,
       d_shard_vals, d_vals, idx, c_len, val_size, feature_value_accessor_);
 }
 
+template <typename StreamType>
+void HeterCommKernel::split_segments(const uint32_t* d_fea_num_info, size_t n,
+        uint32_t* d_segments, uint32_t* d_segments_num, size_t segment_size, const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  split_segments_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_fea_num_info, n, d_segments, d_segments_num, segment_size);
+}
+
+template <typename StreamType>
+void HeterCommKernel::expand_segments(const uint32_t* d_fea_num_info,
+          const uint32_t* d_segments_offset, size_t n,
+          uint32_t* d_segments_fea_num_info, uint32_t segment_size,
+          const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  expand_segments_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_fea_num_info,
+          d_segments_offset, n,
+          d_segments_fea_num_info, segment_size);
+}
+
+template <typename KeyType, typename StreamType>
+void HeterCommKernel::shrink_keys(const KeyType* d_keys, const uint32_t* d_segments_offset,
+          KeyType* d_segments_keys, size_t n, const StreamType& stream) {
+    int grid_size = (n - 1) / block_size_ + 1;
+  shrink_keys_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_keys, d_segments_offset, d_segments_keys, n);
+}
+
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
     int* idx, long long len, const cudaStream_t& stream);
 template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
@@ -463,6 +542,25 @@ template void HeterCommKernel::dy_mf_fill_dvals<int, cudaStream_t>(
     float* d_shard_vals,
     float* d_vals, int* idx, long long len,
     size_t val_size, const cudaStream_t& stream);
+
+template void HeterCommKernel::split_segments<cudaStream_t>(
+    const uint32_t* d_fea_num_info, size_t n,
+    uint32_t* d_segment, uint32_t* d_segments_num, size_t segment_size,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::expand_segments<cudaStream_t>(
+    const uint32_t* d_fea_num_info,
+    const uint32_t* d_segments_offset, size_t n,
+    uint32_t* d_segments_fea_num_info, uint32_t segment_size,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::shrink_keys<uint32_t, cudaStream_t>(
+        const uint32_t* d_keys, const uint32_t* d_segments_offset,
+        uint32_t* d_segments_keys, size_t segment_num, const cudaStream_t& stream);
+
+template void HeterCommKernel::shrink_keys<uint64_t, cudaStream_t>(
+        const uint64_t* d_keys, const uint32_t* d_segments,
+        uint64_t* d_segments_keys, size_t total_segment_num, const cudaStream_t& stream);
 #endif
 
 }  // namespace framework

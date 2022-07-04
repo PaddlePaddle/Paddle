@@ -860,6 +860,12 @@ PADDLE_DEFINE_EXPORTED_double(
 PADDLE_DEFINE_EXPORTED_bool(
     gpugraph_enable_gpu_direct_access, false,
     "enable direct access bwtween multi gpu cards, default false");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_segment_merge_grads, false,
+    "enable segment merge gradients while push sparse, default false");
+PADDLE_DEFINE_EXPORTED_uint64(
+    gpugraph_merge_grads_segment_size, 128,
+    "segment size with segment gradient merge, default 128");
 
 /**
  * ProcessGroupNCCL related FLAG
