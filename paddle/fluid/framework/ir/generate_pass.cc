@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class element_visitor : public boost::static_visitor<Attribute> {
+class element_visitor {
  public:
   explicit element_visitor(int index) : index_(index) {}
 
@@ -47,7 +47,7 @@ class element_visitor : public boost::static_visitor<Attribute> {
   int index_;
 };
 
-class operation_visitor : public boost::static_visitor<Attribute> {
+class operation_visitor {
  public:
   explicit operation_visitor(const proto::PassDesc::OperationType& type)
       : type_(type) {}
