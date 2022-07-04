@@ -284,13 +284,17 @@ class ErrorData(object):
                 tmp_filepath, lineno_str, function_name = re_result.groups()
                 code = error_value_lines_strip[
                     i + 1] if i + 1 < len(error_value_lines_strip) else ''
-                if i == 0:
-                    user_filepath = tmp_filepath
-                if tmp_filepath == user_filepath:
-                    user_code_traceback_index.append(len(error_traceback))
 
-                error_traceback.append(
-                    (tmp_filepath, int(lineno_str), function_name, code))
+                orig_info = self.origin_info_map.get(
+                    (tmp_filepath, int(lineno_str)))
+                if orig_info is not None:
+                    user_code_traceback_index.append(len(error_traceback))
+                    error_traceback.append(
+                        (orig_info.location.filepath, orig_info.location.lineno,
+                         orig_info.function_name, orig_info.source_code))
+                else:
+                    error_traceback.append(
+                        (tmp_filepath, int(lineno_str), function_name, code))
 
         error_frame = []
         # Add user code traceback

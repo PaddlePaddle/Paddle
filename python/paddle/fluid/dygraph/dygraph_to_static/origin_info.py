@@ -262,7 +262,7 @@ def update_op_callstack_with_origin_info(program):
     """
     Replaces op callstack information about transformed static code with original dygraph code.
     """
-
+    return program
     assert isinstance(program, Program)
 
     def get_new_op_callstack(callstack):
