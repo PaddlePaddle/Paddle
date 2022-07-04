@@ -104,9 +104,8 @@ REGISTER_OPERATOR(save_combine,
 
 REGISTER_OP_CPU_KERNEL(
     save_combine,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SaveCombineOpKernel<phi::CPUContext, float>,
+    ops::SaveCombineOpKernel<phi::CPUContext, double>,
+    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);

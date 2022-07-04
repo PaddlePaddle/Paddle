@@ -134,22 +134,14 @@ constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
-
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
+using CPUDeviceContext = phi::CPUContext;
 
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -727,15 +719,7 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNDeviceContextThreadLocals = phi::MKLDNNContextThreadLocals;
-// NOTE(YuanRisheng): If use MKLDNNDeviceContext = phi::MKLDNNContext directly.
-// The MKLDNNContext's parent must call Init() Method in constructor and this
-// will use Eigen forcedly. Now we don't want to use Eigen forcedly in
-// CPUContext in PHI.
-class MKLDNNDeviceContext : public phi::MKLDNNContext {
- public:
-  explicit MKLDNNDeviceContext(CPUPlace place);
-};
-
+using MKLDNNDeviceContext = phi::MKLDNNContext;
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

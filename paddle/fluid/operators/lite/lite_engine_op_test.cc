@@ -79,7 +79,7 @@ TEST(LiteEngineOp, engine_op) {
   ctx.PartialInitWithAllocator();
 #else
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 #endif
   // Prepare variables.
   CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}), true);

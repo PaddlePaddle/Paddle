@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -29,13 +30,6 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 
@@ -44,9 +38,9 @@ namespace math {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::CPUDeviceContext, T> {
+class ConcatFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const std::vector<framework::Tensor>& input,
                   int axis,
                   framework::Tensor* output) {
@@ -60,9 +54,9 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class SplitFunctor<platform::CPUDeviceContext, T> {
+class SplitFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis,
@@ -341,9 +335,9 @@ class SplitFunctor<platform::MLUDeviceContext, T> {
 };
 #endif
 
-#define DEFINE_FUNCTOR(type)                                      \
-  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
-  template class SplitFunctor<platform::CPUDeviceContext, type>;
+#define DEFINE_FUNCTOR(type)                           \
+  template class ConcatFunctor<phi::CPUContext, type>; \
+  template class SplitFunctor<phi::CPUContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

@@ -137,8 +137,7 @@ struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_->dims()[0];
     size_t tmat_width = tmat_->dims()[1];
     size_t input_width = input_.dims()[1];
@@ -185,8 +184,7 @@ struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];
@@ -239,8 +237,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
-        platform::CPUDeviceContext());
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];

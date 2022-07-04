@@ -54,18 +54,20 @@ struct CPUContext::Impl {
 };
 
 CPUContext::CPUContext()
-    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {}
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {
+  impl_->Init();
+}
 
 CPUContext::CPUContext(const Place& place)
-    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {
+  impl_->Init();
+}
 
 CPUContext::~CPUContext() = default;
 
 CPUContext::CPUContext(CPUContext&&) = default;
 
 CPUContext& CPUContext::operator=(CPUContext&&) = default;
-
-void CPUContext::Init() { impl_->Init(); }
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
   return impl_->GetEigenDevice();

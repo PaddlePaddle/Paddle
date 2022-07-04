@@ -391,7 +391,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -496,7 +496,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     if (ids->lod()[0].size() == 2) {
       SeqCompute(ctx);
