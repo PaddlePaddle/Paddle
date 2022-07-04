@@ -31,10 +31,7 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place,
-                     const ProgramDesc& startup_prog,
-                     const ProgramDesc& main_prog,
-                     Scope* scope);
+  StandaloneExecutor(const platform::Place& place, const ProgramDesc& prog);
 
   ~StandaloneExecutor() {}
 
@@ -65,9 +62,7 @@ class StandaloneExecutor {
       bool add_fetch_op);
 
   platform::Place place_;
-  const ProgramDesc& startup_prog_;
-  const ProgramDesc& main_prog_;
-  Scope* scope_;  // not owned
+  const ProgramDesc& prog_;
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;

@@ -569,10 +569,7 @@ class _StandaloneExecutor(object):
             return tensors
 
     def _create_new_executor(self):
-        # NOTE: It's a trick to set empty start_up program.
-        startup_program = Program()
-        new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, self._scope)
+        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
 
         return new_exe
 

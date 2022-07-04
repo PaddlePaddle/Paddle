@@ -19,20 +19,8 @@
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
-                                       const ProgramDesc& startup_prog,
-                                       const ProgramDesc& main_prog,
-                                       Scope* scope)
-    : place_(place),
-      startup_prog_(startup_prog),
-      main_prog_(main_prog),
-      scope_(scope) {
-  // NOTE(zhiqiu): for startup_program, run once ?
-  if (startup_prog.Block(0).AllOps().size() > 0) {
-    auto core = GetInterpreterCore(scope, startup_prog, {}, {}, false);
-    VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-    core->Run({});
-  }
-}
+                                       const ProgramDesc& prog)
+    : place_(place), prog_(prog) {}
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     Scope* scope,
@@ -42,8 +30,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
-  auto core =
-      GetInterpreterCore(scope, main_prog_, feed_names, fetch_names, true);
+  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, true);
 
   return core->Run(feed_names, feed_tensors);
 }
@@ -55,8 +42,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
-  auto core =
-      GetInterpreterCore(scope, main_prog_, feed_names, fetch_names, false);
+  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
 }
@@ -65,7 +51,7 @@ framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(scope, main_prog_, feed_names, {}, true);
+  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);
 }

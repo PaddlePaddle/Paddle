@@ -51,9 +51,10 @@ class LinearTestCase(unittest.TestCase):
     def test_interp_base(self):
         startup_program, main_program, c = self.build_program()
         scope = core.Scope()
-        standaloneexecutor = StandaloneExecutor(self.place,
-                                                startup_program.desc,
-                                                main_program.desc, scope)
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program, scope=scope)
+
+        standaloneexecutor = StandaloneExecutor(self.place, main_program.desc)
         out = standaloneexecutor.run(
             scope, {"a": np.ones([2, 2], dtype="float32") * 2}, [c.name])
         for i in range(10):
@@ -68,9 +69,10 @@ class LinearTestCase(unittest.TestCase):
     def test_dry_run(self):
         scope = core.Scope()
         startup_program, main_program, c = self.build_program()
-        standaloneexecutor = StandaloneExecutor(self.place,
-                                                startup_program.desc,
-                                                main_program.desc, scope)
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program, scope=scope)
+
+        standaloneexecutor = StandaloneExecutor(self.place, main_program.desc)
         # test for cost_info
         cost_info = standaloneexecutor.dry_run(
             scope, {"a": np.ones([2, 2], dtype="float32")})
@@ -136,8 +138,11 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         p = core.Place()
         p.set_place(self.place)
         scope = core.Scope()
-        executor = StandaloneExecutor(p, startup_program.desc,
-                                      main_program.desc, scope)
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program, scope=scope)
+
+        executor = StandaloneExecutor(p, main_program.desc)
 
         helper_profiler = profiler.Profiler(
             targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
@@ -256,8 +261,10 @@ class MultiStreamModelTestCase(unittest.TestCase):
         p = core.Place()
         p.set_place(self.place)
         scope = core.Scope()
-        inter_core = StandaloneExecutor(p, startup_program.desc,
-                                        main_program.desc, scope)
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program, scope=scope)
+
+        inter_core = StandaloneExecutor(p, main_program.desc)
 
         outs = []
         for i in range(self.iter_n):
