@@ -261,13 +261,23 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
 
 
 def padding_to_same_structure(nest1, nest2, obj=None):
-    len_nest1 = len(nest1) if is_sequence(nest1) else 1
-    len_nest2 = len(nest2) if is_sequence(nest2) else 1
-    diff = abs(len_nest2 - len_nest1)
-    if len_nest1 >= len_nest2:
-        return nest1, tuple(nest2) + (obj, ) * diff
-    if len_nest2 >= len_nest1:
-        return nest1 + (obj, ) * diff, tuple(nest2)
+
+    def _padding_to_same_structure_single(value, obj):
+
+        def change_none_to_obj(x):
+            if x is None: return obj
+            return x
+
+        if is_sequence(value):
+            value = pack_sequence_as(
+                value, [change_none_to_obj(item) for item in flatten(value)])
+        else:
+            value = change_none_to_obj(value)
+        return value
+
+    nest1 = _padding_to_same_structure_single(nest1, obj)
+    nest2 = _padding_to_same_structure_single(nest2, obj)
+    return nest1, nest2
 
 
 def assert_same_structure(nest1, nest2, check_types=True):

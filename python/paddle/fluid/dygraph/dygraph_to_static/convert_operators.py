@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
@@ -21,7 +23,7 @@ from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
 
 
 def convert_while_loop(cond, body, getter, setter):
@@ -63,7 +65,12 @@ def _run_paddle_while(cond, body, getter, setter):
 
 
 def _run_py_while(cond, body, getter, setter):
-    while cond():
+    while True:
+        pred = cond()
+        if isinstance(pred, Variable):
+            raise Dygraph2StaticException(
+                "python while pred change from bool to variable.")
+        if not pred: break
         body()
 
 
@@ -239,7 +246,21 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
         false_fn()
         return get_args()
 
-    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    try:
+        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    except Exception as e:
+        if re.search("Unsupported return type of true_fn and false_fn in cond",
+                     str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different return type. TODO: add link to modifty."
+            )
+        if re.search(
+                "Incompatible return values of true_fn and false_fn in cond",
+                str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different number of return value. TODO: add link to modifty."
+            )
+        raise e
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
 
 
@@ -249,6 +270,7 @@ def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
     Evaluate python original branch function if-else.
     """
     py_outs = true_fn() if pred else false_fn()
+    return py_outs
 
 
 def _remove_no_value_return_var(out):

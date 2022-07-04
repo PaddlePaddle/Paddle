@@ -1181,7 +1181,10 @@ def assign_skip_lod_tensor_array(input, output):
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
     if not isinstance(input, Variable) and not isinstance(input, core.VarBase):
-        output = input
+        if isinstance(output, Variable):
+            assign(input, output)
+        else:
+            output = input
         return
 
     if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -2559,8 +2562,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
     # Merge ture and false output if they are not None
     try:
-        #from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
-        #true_output, false_outpute = padding_to_same_structure(true_output, false_output, UndefinedVar("no value"))
+        from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+        true_output, false_output = padding_to_same_structure(
+            true_output, false_output, UndefinedVar("padding"))
         assert_same_structure(true_output, false_output, check_types=False)
     except ValueError as e:
         raise ValueError(

@@ -32,6 +32,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import assign
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -137,8 +138,19 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 def create_undefined_var_like(variable):
     """ create a undefined var with the same shape and dtype like varaible.
     """
-    return data_layer_not_check(unique_name.generate("undefined_var"),
-                                variable.shape, variable.dtype)
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+    var = data_layer_not_check(unique_name.generate("undefined_var"),
+                               variable.shape, variable.dtype)
+    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    return var
+
+
+def create_undefined_variable():
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+    var = data_layer_not_check(unique_name.generate("undefined_var"), [1],
+                               "float64")
+    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    return var
 
 
 class UndefinedVar:
@@ -149,6 +161,12 @@ class UndefinedVar:
     def check(self):
         raise UnboundLocalError(
             "local variable '{}' should be created before using it.")
+
+
+class Dygraph2StaticException(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
 
 
 def saw(x):

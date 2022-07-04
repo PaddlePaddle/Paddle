@@ -20,6 +20,7 @@ import unittest
 import paddle
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 import paddle.fluid.core as core
 
 from ifelse_simple_func import *
@@ -30,6 +31,20 @@ if fluid.is_compiled_with_cuda():
     place = fluid.CUDAPlace(0)
 else:
     place = fluid.CPUPlace()
+
+
+class TestDy2staticException(unittest.TestCase):
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = None
+        self.error = "Your if/else have different number of return value."
+
+    def test_error(self):
+        if self.dyfunc:
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                ProgramTranslator().enable(True)
+                self.assertTrue(declarative(self.dyfunc)(self.x))
 
 
 class TestDygraphIfElse(unittest.TestCase):
@@ -417,16 +432,12 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         self.assertIsInstance(self.out[1], int)
 
 
-class TestDy2StIfElseRetInt2(TestDy2StIfElseRetInt1):
+class TestDy2StIfElseRetInt2(TestDy2staticException):
 
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
+        self.error = "Your if/else have different number of return value."
         self.dyfunc = dyfunc_ifelse_ret_int2
-        self.out = self.get_dy2stat_out()
-
-    def test_ast_to_func(self):
-        self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
-        self.assertIsInstance(self.out[1], (paddle.Tensor, core.eager.Tensor))
 
 
 class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
@@ -448,7 +459,7 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
     def test_ast_to_func(self):
         ProgramTranslator().enable(True)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(Dygraph2StaticException):
             static_func = paddle.jit.to_static(self.dyfunc)
             out = static_func(self.x)
         # Why need set `_in_declarative_mode_` here?
