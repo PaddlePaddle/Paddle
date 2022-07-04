@@ -565,14 +565,14 @@ class OpConverter {
       trt_ptr = static_cast<void*>(new_data_ptr);
       trt_dtype = nvinfer1::DataType::kINT32;
     }
-    // now we have create weights, then we need create a itensor
+    // Now we have create weights, then we need create a itensor
     auto var_dims = var_t->dims();
     nvinfer1::Dims trt_in_shape;
     trt_in_shape.nbDims = var_t->dims().size();
     for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
       trt_in_shape.d[i] = var_dims[i];
     }
-    // in fatc , this is not always right, because we can't determine if the 0th
+    // In fact , this is not always right, because we can't determine if the 0th
     // dimension is batch. Just for run chenqu's model
     if (!engine_->with_dynamic_shape()) {
       trt_in_shape.nbDims--;
