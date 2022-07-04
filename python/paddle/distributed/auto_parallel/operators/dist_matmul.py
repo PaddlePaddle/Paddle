@@ -64,8 +64,14 @@ def _update_dims_mapping_for_matmul(dist_op):
     x_name = op_desc.input('X')[0]
     y_name = op_desc.input('Y')[0]
     out_name = op_desc.output('Out')[0]
-    trans_x = op_desc.attr('trans_x')
-    trans_y = op_desc.attr('trans_y')
+    trans_x = None
+    trans_y = None
+    if op_desc.type() == "matmul_v2":
+        trans_x = op_desc.attr('trans_x')
+        trans_y = op_desc.attr('trans_y')
+    elif op_desc.type() == "matmul":
+        trans_x = op_desc.attr('transpose_X')
+        trans_y = op_desc.attr('transpose_Y')
     x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
     y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
     out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)

@@ -16,6 +16,7 @@ import copy
 import logging
 from collections import defaultdict
 import time
+import socket
 
 import paddle
 import paddle.utils as utils
@@ -37,7 +38,8 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -235,11 +237,75 @@ class Engine:
             all_process_groups = get_all_process_groups()
             print("engine.py process group")
             for process_group in all_process_groups:
-                print(process_group.ranks)
+                print(process_group.ranks, process_group.id)
+            has_recv_by_socket = []
+            magic_num = 5000  # this is a magic number and the rank number for training is usually less than 5000.
+            genv = _get_global_env()
+            cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
+            print("The cur_rank_ip is {}, cur_rank_port is {}".format(
+                cur_rank_ip, cur_rank_port))
+            cur_rank_recv_port = int(cur_rank_port) + magic_num
+            server_socket = None
+            buff_size = 1024  # it is large enough for recv rank
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind((cur_rank_ip, cur_rank_recv_port))
+            server_socket.listen(10)  # the 10 is an empirical value
+            client_sockets = {}
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
+                if len(process_group.ranks) == 2:
+                    index = process_group.ranks.index(self._cur_rank)
+                    is_send = True if index == 0 else False
+                    if is_send:
+                        recv_rank = process_group.ranks[1]
+                        # 此时新建一个socket，发送给recv方当前的rank，然后另一个socket进行接收，直到接收到当前rank的数据，再进行初始化
+                        recv_rank_ip, recv_rank_port = genv.trainer_endpoints[
+                            recv_rank].split(":")
+                        connect_port = int(recv_rank_port) + magic_num
+                        client_socket = socket.socket(socket.AF_INET,
+                                                      socket.SOCK_STREAM)
+                        client_socket.connect((recv_rank_ip, connect_port))
+                        client_socket.send(str(self._cur_rank).encode('utf-8'))
+                        print("has send {} to {}:{}.".format(
+                            self._cur_rank, recv_rank_ip, connect_port))
+                        rank = client_socket.recv(buff_size).decode('utf-8')
+                        print("engine.py rank: ", rank)
+                        rank = int(rank)
+                        if rank != recv_rank:
+                            raise ValueError(
+                                "Please check comm pair, the recv rank should be {} but got {}."
+                                .format(recv_rank, rank))
+                        else:
+                            print(
+                                "engine.py It is able instantiate {} as sender now."
+                                .format(process_group.ranks))
+                        client_socket.close()
+                    else:
+                        # [0, 7]
+                        send_rank = process_group.ranks[0]
+                        while True:
+                            if send_rank not in has_recv_by_socket:
+                                client_socket, recv_addr = server_socket.accept(
+                                )
+                                rank = int(
+                                    client_socket.recv(buff_size).decode())
+                                client_sockets[rank] = client_socket
+                                has_recv_by_socket.append(rank)
+                                print("has recv {} from {}.".format(
+                                    rank, recv_addr))
+                            else:
+                                client_sockets[send_rank].send(
+                                    str(self._cur_rank).encode("utf-8"))
+                                client_sockets[send_rank].close()
+                                print(
+                                    "engine.py It is able instantiate {} as recver now."
+                                    .format(process_group.ranks))
+                                break
+                print("instantiating process group: ", process_group.ranks,
+                      process_group.id)
                 process_group.instantiate()
+            server_socket.close()
 
         # initialize
         self._place = _get_device()
@@ -257,8 +323,6 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
                 print("engine.py startup_program")
-                print_program_with_dist_attr(prune_startup_prog,
-                                             self.dist_context)
                 self._executor.run(prune_startup_prog)
 
     def fit(self,

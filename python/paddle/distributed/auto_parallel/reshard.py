@@ -273,6 +273,7 @@ class Inserter:
         op_type = 'send_v2'
         # print("reshard.py insert send_op", tensor.name, tensor.lod_level)
         process_group = new_process_group([src, dst])
+        # print("reshard.py [{}, {}] id is {}".format(src, dst, process_group.id))
         block._insert_op(idx,
                          type=op_type,
                          inputs={'X': [tensor]},
@@ -291,6 +292,7 @@ class Inserter:
         # print("reshard.py insert recv_op", tensor.name, tensor.lod_level)
         # print("reshard.py recv tensor", tensor)
         process_group = new_process_group([src, dst])
+        # print("reshard.py [{}, {}] id is {}".format(src, dst, process_group.id))
         block._insert_op(idx,
                          type=op_type,
                          inputs={'X': [tensor]},
@@ -2054,6 +2056,8 @@ class Resharder:
                                                         recv_rank = tensor_process
                                                         item = output_attr[
                                                             0].processes[index]
+                                                        if recv_rank == item:
+                                                            continue
                                                         if self.rank_id == item:
                                                             # if send bool data, cast then send
                                                             if var.dtype == paddle.bool:
@@ -2170,9 +2174,15 @@ class Resharder:
                                                         if index >= len(
                                                                 output_attr[0].
                                                                 processes):
-                                                            actual_index = index - len(
+                                                            actual_index = (
+                                                                index -
+                                                                len(output_attr[
+                                                                    0].processes)
+                                                            ) % len(
                                                                 output_attr[0].
                                                                 processes)
+                                                        if recv_rank == item:
+                                                            continue
                                                         item = output_attr[
                                                             0].processes[
                                                                 actual_index]
@@ -2273,6 +2283,8 @@ class Resharder:
                                                     recv_rank = tensor_process
                                                     item = output_attr[
                                                         0].processes[index]
+                                                    if recv_rank == item:
+                                                        continue
                                                     if self.rank_id == item:
                                                         # if send bool data, cast then send
                                                         if var.dtype == paddle.bool:
@@ -2383,6 +2395,8 @@ class Resharder:
                                                 recv_rank = tensor_process
                                                 item = output_attr[0].processes[
                                                     index]
+                                                if recv_rank == item:
+                                                    continue
                                                 if self.rank_id == item:
                                                     # if send bool data, cast then send
                                                     if var.dtype == paddle.bool:
@@ -2461,11 +2475,14 @@ class Resharder:
                                                 actual_index = index
                                                 if index >= len(output_attr[0].
                                                                 processes):
-                                                    actual_index = index - len(
+                                                    actual_index = (index - len(
                                                         output_attr[0].processes
-                                                    )
+                                                    )) % len(output_attr[0].
+                                                             processes)
                                                 item = output_attr[0].processes[
                                                     actual_index]
+                                                if recv_rank == item:
+                                                    continue
                                                 if self.rank_id == item:
                                                     if var.dtype == paddle.bool:
                                                         cast_out = Inserter.insert_cast_op(
@@ -2531,6 +2548,8 @@ class Resharder:
                                             recv_rank = tensor_process
                                             item = output_attr[0].processes[
                                                 index]
+                                            if recv_rank == item:
+                                                continue
                                             if self.rank_id == item:
                                                 if var.dtype == paddle.bool:
                                                     cast_out = Inserter.insert_cast_op(
