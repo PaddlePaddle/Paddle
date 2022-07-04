@@ -53,24 +53,26 @@ requirements:
   run:
     - requests>=2.20.0
     - numpy>=1.13
-    - protobuf>=3.1.0
+    - protobuf>=3.1.0, <=3.20.0
     - gast==0.3.3
     - Pillow
     - six
     - decorator
     - astor
+    - opt_einsum==3.3.0
 """
 
         self.requirement_run_windows = r"""
   run:
     - requests>=2.20.0
     - numpy>=1.13
-    - protobuf>=3.1.0
+    - protobuf>=3.1.0, <=3.20.0
     - gast==0.3.3
     - Pillow
     - six
     - decorator
     - astor
+    - opt_einsum==3.3.0
 """
         self.test = r"""
 test:
@@ -91,7 +93,6 @@ about:
 
         self.blt_const = r""" 
 pip install paddle_bfloat==0.1.2
-pip install opt_einsum==3.3.
 """
 
         self.python36 = r"    - python>=3.6, <3.7"
