@@ -236,7 +236,8 @@ class FCPrimitiveFactory {
     auto input_dims = phi::vectorize(input->dims());
     std::vector<int64_t> new_input_dims = {
         input_dims[0] * input_dims[1], input_dims[2], 1};
-    auto src_desc = CreateMemDescriptor<T_in>(new_input_dims, MKLDNNMemoryFormat::any);
+    auto src_desc =
+        CreateMemDescriptor<T_in>(new_input_dims, MKLDNNMemoryFormat::any);
 
     auto weight_dims = Get3DWeightDimsForDNNL(weights);
     auto weights_desc =
