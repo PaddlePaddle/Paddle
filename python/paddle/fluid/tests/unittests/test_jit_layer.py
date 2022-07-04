@@ -71,7 +71,6 @@ class TestMultiLoad(unittest.TestCase):
         jit_layer = JitLayer(model_path, place)
         forward_out2 = jit_layer.forward(x)
         infer_out2 = jit_layer.infer(x)
-        # import pdb; pdb.set_trace()
         self.assertEqual(np.allclose(forward_out1, forward_out2[0]), True)
         self.assertEqual(np.allclose(infer_out1, infer_out2[0]), True)
 

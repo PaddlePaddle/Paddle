@@ -1757,13 +1757,18 @@ PYBIND11_MODULE(core_noavx, m) {
                var_inputs.emplace_back(tensor->Var());
              }
              auto var_outputs = self(var_inputs);
+
              std::vector<std::shared_ptr<imperative::VarBase>> tensor_outputs;
-             for (auto &var : var_outputs) {
-               imperative::VariableWrapper var_wrapper("x", var);
-               auto tmp =
+             auto output_names = self.Info()->OutputArgNames();
+             for (size_t i = 0; i < var_outputs.size(); ++i) {
+               auto var = var_outputs[i];
+               std::string name = output_names[i];
+               imperative::VariableWrapper var_wrapper(name, var);
+               auto shared_wrapper =
                    std::make_shared<imperative::VariableWrapper>(var_wrapper);
-               auto tmp2 = std::make_shared<imperative::VarBase>(tmp);
-               tensor_outputs.emplace_back(tmp2);
+               auto shared_varbase =
+                   std::make_shared<imperative::VarBase>(shared_wrapper);
+               tensor_outputs.emplace_back(shared_varbase);
              }
              return tensor_outputs;
            });
