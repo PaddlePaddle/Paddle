@@ -77,3 +77,12 @@ def create_bool_as_type(x, value=True):
         return paddle.full(shape=[1], fill_value=value, dtype="bool")
     else:
         return value
+
+
+def create_bool_node(name, value):
+    '''
+    Create a assign stmt for name = value .
+    '''
+    assert isinstance(value, bool)
+    node = "{} = {}".format(name, value)
+    return gast.parse(node).body[0]

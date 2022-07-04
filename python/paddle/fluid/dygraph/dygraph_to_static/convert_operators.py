@@ -50,18 +50,14 @@ def convert_while_loop(cond, body, getter, setter):
 
 def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
-    def to_list(x):
-        if isinstance(x, (tuple, list)): return x
-        return [x]
 
     # UndefinedVar will become data layer not check.
-    loop_vars = [to_static_variable(var) for var in to_list(getter())]
-    setter(loop_vars if len(loop_vars) > 1 else
-           loop_vars[0])  # change the non-local var to variable
+    loop_vars = [to_static_variable(var) for var in getter()]
+    setter(loop_vars)  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
-    setter(loop_vars if len(loop_vars) > 1 else
-           loop_vars[0])  # change the non-local var to variable
+    setter(loop_vars)  # change the non-local var to variable
+    return loop_vars
 
 
 def _run_py_while(cond, body, getter, setter):
@@ -332,11 +328,11 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     init_args = get_args()
     # recover args state
     num_outs = len(return_name_ids)
-    num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
+    num_args = len(init_args)
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = outs
+        final_outs = (outs, )
     else:
         outs = (outs, ) if num_outs == 1 else tuple(outs)
         final_outs = outs + init_args[num_outs:]

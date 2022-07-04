@@ -202,9 +202,8 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
     auto pos_data = pos_input->data<int>();
     auto dout_data = d_out->data<T>();
 
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
+    phi::funcs::SetConstant<phi::CPUContext, T> zero;
     zero(dev_ctx, d_in, static_cast<T>(0.0));
 
     auto din_data = d_in->data<T>();

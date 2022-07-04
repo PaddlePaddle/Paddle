@@ -137,13 +137,11 @@ REGISTER_OPERATOR(shuffle_channel,
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(shuffle_channel,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, float>,
+                       ops::ShuffleChannelOpKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     shuffle_channel_grad,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, float>,
+    ops::ShuffleChannelGradOpKernel<phi::CPUContext, double>);

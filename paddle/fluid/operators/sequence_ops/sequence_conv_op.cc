@@ -268,11 +268,9 @@ REGISTER_OPERATOR(sequence_conv_grad,
                   ops::SequenceConvGradOp,
                   ops::SequenceConvGradNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_conv,
+                       ops::SequenceConvKernel<phi::CPUContext, float>,
+                       ops::SequenceConvKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_conv_grad,
+                       ops::SequenceConvGradKernel<phi::CPUContext, float>,
+                       ops::SequenceConvGradKernel<phi::CPUContext, double>);

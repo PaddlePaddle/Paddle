@@ -131,7 +131,11 @@ class Container(object):
             return self._proc.terminate(force)
 
     def wait(self, timeout=None):
-        self._proc.wait(timeout)
+        try:
+            self._proc.wait(timeout)
+            return True
+        except Exception:
+            return False
 
     @property
     def exit_code(self):

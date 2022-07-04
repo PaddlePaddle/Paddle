@@ -128,6 +128,5 @@ REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity,
 
 REGISTER_OP_CPU_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCPUKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PruneGateByCapacityCPUKernel<paddle::platform::CPUDeviceContext,
-                                      int64_t>);
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int>,
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int64_t>);

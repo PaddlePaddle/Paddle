@@ -221,11 +221,9 @@ REGISTER_OPERATOR(solve,
 
 REGISTER_OPERATOR(solve_grad, ops::SolveGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    solve,
-    ops::SolveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SolveKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    solve_grad,
-    ops::SolveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SolveGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(solve,
+                       ops::SolveKernel<phi::CPUContext, float>,
+                       ops::SolveKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(solve_grad,
+                       ops::SolveGradKernel<phi::CPUContext, float>,
+                       ops::SolveGradKernel<phi::CPUContext, double>);

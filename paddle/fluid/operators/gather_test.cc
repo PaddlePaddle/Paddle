@@ -39,7 +39,7 @@ TEST(Gather, GatherData) {
                                             paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
-  paddle::platform::CPUDeviceContext ctx(*cpu_place);
+  phi::CPUContext ctx(*cpu_place);
   phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
   cpu_place = NULL;

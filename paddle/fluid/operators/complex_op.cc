@@ -143,12 +143,10 @@ REGISTER_OPERATOR(complex,
 
 REGISTER_OPERATOR(complex_grad, ops::ComplexGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    complex,
-    ops::ComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ComplexKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(complex,
+                       ops::ComplexKernel<phi::CPUContext, float>,
+                       ops::ComplexKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    complex_grad,
-    ops::ComplexGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ComplexGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(complex_grad,
+                       ops::ComplexGradKernel<phi::CPUContext, float>,
+                       ops::ComplexGradKernel<phi::CPUContext, double>);

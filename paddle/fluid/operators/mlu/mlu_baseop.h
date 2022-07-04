@@ -1391,6 +1391,15 @@ class MLUCnnl {
                    const cnnlTensorDescriptor_t output_desc,
                    void* output);
 
+  static void IndexSelect(const ExecutionContext& ctx,
+                          const int dim,
+                          cnnlTensorDescriptor_t input_desc,
+                          const void* input,
+                          const cnnlTensorDescriptor_t index_desc,
+                          const void* index,
+                          const cnnlTensorDescriptor_t output_desc,
+                          void* output);
+
   static void IsFinite(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t input_desc,
                        const void* input,
@@ -1914,6 +1923,30 @@ class MLUCnnl {
                          const void* cx,
                          void* cy,
                          void* reservespace_ptr);
+
+  static void RNNBackward(const ExecutionContext& ctx,
+                          const cnnlRNNDescriptor_t rnn_desc,
+                          cnnlWgradMode_t add_grad,
+                          const int dev_seq_lengths[],
+                          const void* weight_param_ptr,
+                          void* dweight_param_ptr,
+                          size_t weightspace_size,
+                          const cnnlSeqDataDescriptor_t x_desc,
+                          const void* x,
+                          void* dx,
+                          const cnnlSeqDataDescriptor_t y_desc,
+                          const void* y,
+                          const void* dy,
+                          const cnnlTensorDescriptor_t hx_desc,
+                          const void* hx,
+                          const void* dhy,
+                          void* dhx,
+                          const cnnlTensorDescriptor_t cx_desc,
+                          const void* cx,
+                          const void* dcy,
+                          void* dcx,
+                          void* reservespace_ptr,
+                          size_t reservespace_size);
 
   static void Mask(const ExecutionContext& ctx,
                    cnnlMaskedOp_t masked_mode,

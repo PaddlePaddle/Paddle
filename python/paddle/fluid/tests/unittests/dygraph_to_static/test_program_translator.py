@@ -70,11 +70,11 @@ class StaticCode1():
 
         def get_args_0():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_0(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_0():
             nonlocal x_v
@@ -127,11 +127,11 @@ class StaticCode2():
 
         def get_args_2():
             nonlocal x_v
-            return x_v
+            return x_v,
 
         def set_args_2(__args):
             nonlocal x_v
-            x_v = __args
+            x_v, = __args
 
         def true_fn_2():
             nonlocal x_v
@@ -195,6 +195,7 @@ class TestDygraphToStaticCode(unittest.TestCase):
     def test_decorator(self):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
+        #print(code)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
         self.assertEqual(answer, code)
 

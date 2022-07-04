@@ -247,19 +247,17 @@ REGISTER_OPERATOR(pad_constant_like,
                   ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_constant_like_grad, ops::PadConstantLikeOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    pad_constant_like,
-    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(pad_constant_like,
+                       ops::PadConstantLikeKernel<phi::CPUContext, float>,
+                       ops::PadConstantLikeKernel<phi::CPUContext, double>,
+                       ops::PadConstantLikeKernel<phi::CPUContext, int>,
+                       ops::PadConstantLikeKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     pad_constant_like_grad,
-    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
+    ops::PadConstantLikeGradKernel<phi::CPUContext, float>,
+    ops::PadConstantLikeGradKernel<phi::CPUContext, double>,
+    ops::PadConstantLikeGradKernel<phi::CPUContext, int>,
+    ops::PadConstantLikeGradKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(
     pad_constant_like,

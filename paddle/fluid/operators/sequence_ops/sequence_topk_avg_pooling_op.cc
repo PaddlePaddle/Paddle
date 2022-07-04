@@ -139,9 +139,7 @@ REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_topk_avg_pooling,
-    ops::SequenceTopkAvgPoolingKernel<paddle::platform::CPUDeviceContext,
-                                      float>);
+    ops::SequenceTopkAvgPoolingKernel<phi::CPUContext, float>);
 REGISTER_OP_CPU_KERNEL(
     sequence_topk_avg_pooling_grad,
-    ops::SequenceTopkAvgPoolingGradKernel<paddle::platform::CPUDeviceContext,
-                                          float>);
+    ops::SequenceTopkAvgPoolingGradKernel<phi::CPUContext, float>);
