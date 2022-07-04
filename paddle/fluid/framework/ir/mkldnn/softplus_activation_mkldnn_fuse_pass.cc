@@ -17,41 +17,22 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+using paddle::platform::GetAttributeMap;
+using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"relu",
-                                        "tanh",
-                                        "leaky_relu",
-                                        "swish",
-                                        "hardswish",
-                                        "sqrt",
-                                        "abs",
-                                        "clip",
-                                        "gelu",
-                                        "relu6",
-                                        "sigmoid"};
+  auto act_types = GetSupportedActivations();
 
   for (const auto &act_type : act_types) {
-    std::unordered_map<std::string, std::string> attr_map;
-
-    if (act_type == "swish")
-      attr_map.emplace("beta", "fuse_alpha");
-    else if (act_type == "relu6")
-      attr_map.emplace("threshold", "fuse_alpha");
-    else if (act_type == "clip") {
-      attr_map.emplace("min", "fuse_alpha");
-      attr_map.emplace("max", "fuse_beta");
-    } else {
-      attr_map.emplace("alpha", "fuse_alpha");
-      attr_map.emplace("beta", "fuse_beta");
-    }
+    auto attr_map = GetAttributeMap(act_type);
     FuseSoftplusActivation(graph, act_type, attr_map);
   }
 }
@@ -132,13 +113,16 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("softplus", 1)
-            .EQ("relu", 0)
-            .EQ("tanh", 0)
-            .LE("leaky_relu", 1)
-            .EQ("swish", 0)
-            .EQ("hard_swish", 0)
-            .EQ("sqrt", 0)
             .EQ("abs", 0)
-            .LE("relu6", 1)
             .LE("clip", 1)
-            .EQ("gelu", 0));
+            .EQ("gelu", 0)
+            .EQ("hard_sigmoid", 0)
+            .LE("hard_swish", 0)
+            .LE("leaky_relu", 1)
+            .LE("mish", 1)
+            .EQ("relu", 0)
+            .EQ("relu6", 0)
+            .EQ("sigmoid", 0)
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));

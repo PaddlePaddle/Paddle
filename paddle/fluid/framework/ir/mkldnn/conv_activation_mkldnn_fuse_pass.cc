@@ -15,50 +15,25 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
+using paddle::platform::GetAttributeMap;
+using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  std::vector<std::string> act_types = {"relu",
-                                        "mish",
-                                        "swish",
-                                        "sqrt",
-                                        "hard_swish",
-                                        "sigmoid",
-                                        "abs",
-                                        "gelu",
-                                        "relu6",
-                                        "clip",
-                                        "tanh",
-                                        "hard_sigmoid",
-                                        "leaky_relu"};
-
+  auto act_types = GetSupportedActivations();
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
-      std::unordered_map<std::string, std::string> attrs_map;
-
-      if (act_type == "swish")
-        attrs_map.emplace("beta", "fuse_alpha");
-      else if (act_type == "relu6")
-        attrs_map.emplace("threshold", "fuse_alpha");
-      else if (act_type == "hard_sigmoid") {
-        attrs_map.emplace("slope", "fuse_alpha");
-        attrs_map.emplace("offset", "fuse_beta");
-      } else if (act_type == "clip") {
-        attrs_map.emplace("min", "fuse_alpha");
-        attrs_map.emplace("max", "fuse_beta");
-      } else {
-        attrs_map.emplace("alpha", "fuse_alpha");
-        attrs_map.emplace("beta", "fuse_beta");
-      }
-      FuseConvAct(graph, conv_type, act_type, attrs_map);
+      auto attr_map = GetAttributeMap(act_type);
+      FuseConvAct(graph, conv_type, act_type, attr_map);
     }
 }
 
@@ -66,7 +41,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
     Graph* graph,
     const std::string& conv_type,
     std::string& act_type,
-    const std::unordered_map<std::string, std::string>& attrs_map) const {
+    const std::unordered_map<std::string, std::string>& attr_map) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
@@ -94,7 +69,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
-    for (const auto& attrs : attrs_map) {
+    for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
       }

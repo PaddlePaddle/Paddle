@@ -50,9 +50,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
  private:
   dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
     dnnl::post_ops post_operations;
-    if (ctx.HasAttr("fuse_activation")) {
-      platform::AppendActivation(ctx, post_operations);
-    }
+    platform::AppendActivation(ctx, post_operations);
     return post_operations;
   }
 

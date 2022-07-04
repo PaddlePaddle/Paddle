@@ -1012,6 +1012,7 @@ class ActivationMKLDNNHandler
 static void AppendActivation(const framework::ExecutionContext& ctx,
                              dnnl::post_ops& post_ops,
                              float activation_scale = 1.0f) {
+  if (!ctx.HasAttr("fuse_activation")) return;
   const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
   const auto fuse_alpha =
       ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
@@ -1054,6 +1055,42 @@ static void AppendActivation(const framework::ExecutionContext& ctx,
     post_ops.append_eltwise(
         activation_scale, activation_type->second, fuse_alpha, fuse_beta);
   }
+}
+
+static std::unordered_map<std::string, std::string> GetAttributeMap(
+    std::string act_type) {
+  std::unordered_map<std::string, std::string> attr_map;
+  if (act_type == "swish")
+    attr_map.emplace("beta", "fuse_alpha");
+  else if (act_type == "relu6")
+    attr_map.emplace("threshold", "fuse_alpha");
+  else if (act_type == "hard_sigmoid") {
+    attr_map.emplace("slope", "fuse_alpha");
+    attr_map.emplace("offset", "fuse_beta");
+  } else if (act_type == "clip") {
+    attr_map.emplace("min", "fuse_alpha");
+    attr_map.emplace("max", "fuse_beta");
+  } else {
+    attr_map.emplace("alpha", "fuse_alpha");
+    attr_map.emplace("beta", "fuse_beta");
+  }
+  return attr_map;
+}
+
+static std::vector<std::string> GetSupportedActivations() {
+  return std::vector<std::string>{"abs",
+                                  "clip",
+                                  "gelu",
+                                  "hard_sigmoid",
+                                  "hard_swish",
+                                  "leaky_relu",
+                                  "mish",
+                                  "relu",
+                                  "relu6",
+                                  "sigmoid",
+                                  "sqrt",
+                                  "swish",
+                                  "tanh"};
 }
 
 class ReorderMKLDNNHandler {

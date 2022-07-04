@@ -454,9 +454,7 @@ class MatMulMKLDNNHandler
       matmul_attrs.set_output_scales(0, {scale_out});
     }
 
-    if (ctx.HasAttr("fuse_activation")) {
-      paddle::platform::AppendActivation(ctx, post_operations);
-    }
+    paddle::platform::AppendActivation(ctx, post_operations);
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;

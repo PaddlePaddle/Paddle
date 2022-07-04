@@ -46,9 +46,7 @@ class SoftplusMKLDNNHandler
           1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
 
-    if (ctx.HasAttr("fuse_activation")) {
-      platform::AppendActivation(ctx, post_ops);
-    }
+    platform::AppendActivation(ctx, post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);

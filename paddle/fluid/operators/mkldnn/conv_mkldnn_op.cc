@@ -583,7 +583,8 @@ class ConvMKLDNNHandlerT
       post_operations.append_sum(sum_scale);
     }
 
-    if (!ctx.Attr<std::string>("fuse_activation").empty()) {
+    bool has_activation = !ctx.Attr<std::string>("fuse_activation").empty();
+    if (has_activation) {
       paddle::platform::AppendActivation(
           ctx, post_operations, activation_scale);
     }
