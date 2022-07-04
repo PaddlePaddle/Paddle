@@ -2067,7 +2067,8 @@ EOF
 set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' | grep "_xpu" )        # cases list which would be run exclusively
+
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -2080,6 +2081,9 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
+        echo "==============CasesRun==============="
+        echo "${single_card_tests}"
+        echo "====================================="
         card_test "$single_card_tests" 1
         collect_failed_tests
 set -x
