@@ -20,7 +20,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/pool_op.h"
