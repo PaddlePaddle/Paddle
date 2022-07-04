@@ -299,6 +299,8 @@ class OpConverter {
             FluidDataType2TRT(
                 var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(var_shape, input));
+        VLOG(1) << "Set trt input [ " << input << "] type is "
+                << var->Proto()->type().lod_tensor().tensor().data_type();
       }
     }
     PADDLE_ENFORCE_EQ(all_dynamic_shape_set,

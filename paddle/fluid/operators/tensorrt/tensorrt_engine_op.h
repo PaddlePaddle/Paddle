@@ -14,7 +14,12 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #ifdef PADDLE_WITH_CUDA
 
 #include <memory>
@@ -192,6 +197,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> opt_input_shape_{};
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -217,6 +223,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
+    model_precision_ = static_cast<phi::DataType>(Attr<int>("model_precision"));
 
     if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
         HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
@@ -562,6 +569,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       runtime_batch = t_shape[0];
+      VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
       auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
@@ -626,6 +634,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             num_bindings));
       auto trt_type = engine->engine()->getBindingDataType(bind_index);
       // get adr and set type
+      VLOG(1) << "trt output [" << y << "] dtype is "
+              << TRT2FluidDataType(trt_type);
       buffers[bind_index] = static_cast<void *>(
           fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
       output_index += 1;

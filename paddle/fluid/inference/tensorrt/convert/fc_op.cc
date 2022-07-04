@@ -173,7 +173,10 @@ class FcOpConverter : public OpConverter {
       }
       engine_->SetTensorDynamicRange(X, in_scale);
     }
-    weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
+    weight_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(op_desc.Input(w_name).front(), *Y_t)
+            .get()
+            .values));
 
     PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                       2UL,
@@ -305,7 +308,11 @@ class FcOpConverter : public OpConverter {
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
-      bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
+      bias_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *b_t)
+              .get()
+              .values));
+
       bias_num = b_t->numel();
     }
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
