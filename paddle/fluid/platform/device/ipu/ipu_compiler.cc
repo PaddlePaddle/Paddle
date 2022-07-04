@@ -19,7 +19,7 @@
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
 
-#include "boost/blank.hpp"
+#include "paddle/utils/blank.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -75,9 +75,9 @@ struct CustomOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<double>& v) const {
     attrs_->emplace(attr_name_, v);
   }
-  void operator()(boost::blank) const {
+  void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method for `boost::blank` type when extracting "
+        "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
   }
 };
@@ -124,7 +124,7 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(BlockDesc* desc) const { RAISE_ERROR; }
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
-  void operator()(boost::blank) const { RAISE_ERROR; }
+  void operator()(paddle::blank) const { RAISE_ERROR; }
 #undef RAISE_ERROR
 };
 
