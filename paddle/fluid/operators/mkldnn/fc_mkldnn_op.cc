@@ -170,11 +170,11 @@ class FCPrimitiveFactory {
     // In case of 2 dims, we set the only possible format, nc
     if (dim_num == 2) {
       out->set_format(MKLDNNMemoryFormat::nc);
-      // In case of 3 dims, we generate a format that is based on number
-      // of output dims and the layout of input format (nchw or nhwc).
       out->set_mem_desc({phi::vectorize(out->dims()),
                          platform::MKLDNNGetDataType<T_out>(),
                          out->format()});
+      // In case of 3 dims, we generate a format that is based on number
+      // of output dims and the layout of input format (nchw or nhwc).
     } else if (dim_num == 3) {
       if (in_format == MKLDNNMemoryFormat::nwc ||
           in_format == MKLDNNMemoryFormat::nhwc) {
