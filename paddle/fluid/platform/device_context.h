@@ -134,21 +134,12 @@ constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
-
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -783,7 +774,7 @@ class MKLDNNDeviceContextThreadLocals {
   }
 };
 
-class MKLDNNDeviceContext : public CPUDeviceContext {
+class MKLDNNDeviceContext : public phi::CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
@@ -906,6 +897,8 @@ class DeviceContextPool {
     return *pool;
   }
 
+  static bool IsInitialized() { return pool != nullptr; }
+
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
@@ -933,9 +926,9 @@ class DeviceContextPool {
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
-  static thread_local const std::map<
-      Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-      external_device_contexts_;  // not owned
+  static thread_local const std::
+      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

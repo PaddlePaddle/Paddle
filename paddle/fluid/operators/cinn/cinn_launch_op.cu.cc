@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CUDA_KERNEL(cinn_launch,
-                        paddle::operators::CinnLaunchOpKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    cinn_launch,
+    paddle::operators::CinnLaunchOpKernel<paddle::platform::CUDADeviceContext,
+                                          float>);

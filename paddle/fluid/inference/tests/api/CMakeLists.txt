@@ -1,13 +1,9 @@
-if(NOT APPLE AND NOT WIN32)
-  set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
-else()
-  set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io
-                           ir_pass_manager analysis_predictor benchmark)
+# If CI_SKIP_CPP_TEST=ON, there is no need to build and run these test.
+if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  return()
 endif()
 
-if(WITH_GPU AND TENSORRT_FOUND)
-  set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
-endif()
+set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
 
 function(download_data install_dir data_file check_sum)
   string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
@@ -799,7 +795,7 @@ if(WITH_MKLDNN)
   if(NOT LINUX)
     download_quant_data_without_verify(${QUANT2_MobileNetV1_MODEL_DIR}
                                        "MobileNet_qat_perf.tar.gz")
-  endif(NOT LINUX)
+  endif()
   download_quant_data_without_verify(${QUANT2_INT8_MobileNetV1_MODEL_DIR}
                                      "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_quant_test_run(
@@ -829,7 +825,7 @@ if(WITH_MKLDNN)
     download_quant_data_without_verify(
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
-  endif(NOT LINUX)
+  endif()
   set(QUANT2_RESNET50_MODEL
       ${QUANT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise)
   inference_analysis_api_quant_test_run(
@@ -869,10 +865,8 @@ endif()
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data_without_verify(
   ${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-if(WITH_GPU)
-  inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
-                              analyzer_bert_tester.cc)
-endif()
+inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR}
+                            analyzer_bert_tester.cc)
 
 # multiple models prediction
 set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
@@ -950,18 +944,26 @@ if(WITH_GPU AND TENSORRT_FOUND)
     analyzer_capi_exp_gpu_tester.cc
     EXTRA_DEPS
     ${INFERENCE_EXTRA_DEPS}
-    paddle_inference_c
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  if(WIN32)
+    target_link_libraries(test_analyzer_capi_exp_gpu paddle_inference_c_shared)
+  else()
+    target_link_libraries(test_analyzer_capi_exp_gpu paddle_inference_c)
+  endif()
   inference_analysis_test(
     test_analyzer_capi_exp_xpu
     SRCS
     analyzer_capi_exp_xpu_tester.cc
     EXTRA_DEPS
     ${INFERENCE_EXTRA_DEPS}
-    paddle_inference_c
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+  if(WIN32)
+    target_link_libraries(test_analyzer_capi_exp_xpu paddle_inference_c_shared)
+  else()
+    target_link_libraries(test_analyzer_capi_exp_xpu paddle_inference_c)
+  endif()
 
   set(TRT_MODEL_QUANT_RESNET_DIR
       "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
@@ -1109,9 +1111,13 @@ inference_analysis_test(
   analyzer_capi_exp_tester.cc
   EXTRA_DEPS
   ${INFERENCE_EXTRA_DEPS}
-  paddle_inference_c
   ARGS
   --infer_model=${RESNET50_MODEL_DIR}/model)
+if(WIN32)
+  target_link_libraries(test_analyzer_capi_exp paddle_inference_c_shared)
+else()
+  target_link_libraries(test_analyzer_capi_exp paddle_inference_c)
+endif()
 
 inference_analysis_test(
   test_analyzer_capi_exp_pd_config
@@ -1119,9 +1125,14 @@ inference_analysis_test(
   analyzer_capi_exp_pd_config_tester.cc
   EXTRA_DEPS
   ${INFERENCE_EXTRA_DEPS}
-  paddle_inference_c
   ARGS
   --infer_model=${MOBILENET_INSTALL_DIR}/model)
+if(WIN32)
+  target_link_libraries(test_analyzer_capi_exp_pd_config
+                        paddle_inference_c_shared)
+else()
+  target_link_libraries(test_analyzer_capi_exp_pd_config paddle_inference_c)
+endif()
 
 inference_analysis_test(
   test_analyzer_capi_exp_pd_tensor
@@ -1129,9 +1140,14 @@ inference_analysis_test(
   analyzer_capi_exp_pd_tensor_tester.cc
   EXTRA_DEPS
   ${INFERENCE_EXTRA_DEPS}
-  paddle_inference_c
   ARGS
   --infer_model=${MOBILENET_INSTALL_DIR}/model)
+if(WIN32)
+  target_link_libraries(test_analyzer_capi_exp_pd_tensor
+                        paddle_inference_c_shared)
+else()
+  target_link_libraries(test_analyzer_capi_exp_pd_tensor paddle_inference_c)
+endif()
 
 if(NOT APPLE AND NOT WIN32)
   inference_analysis_test(
@@ -1140,10 +1156,16 @@ if(NOT APPLE AND NOT WIN32)
     analyzer_capi_exp_pd_threads_tester.cc
     EXTRA_DEPS
     ${INFERENCE_EXTRA_DEPS}
-    paddle_inference_c
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
+  if(WIN32)
+    target_link_libraries(test_analyzer_capi_exp_pd_threads
+                          paddle_inference_c_shared)
+  else()
+    target_link_libraries(test_analyzer_capi_exp_pd_threads paddle_inference_c)
+  endif()
 endif()
+
 inference_analysis_test(
   test_analyzer_zerocopytensor_tensor
   SRCS
@@ -1184,9 +1206,13 @@ if(WITH_MKLDNN)
     analyzer_capi_exp_int_tester.cc
     EXTRA_DEPS
     ${INFERENCE_EXTRA_DEPS}
-    paddle_inference_c
     ARGS
     --infer_model=${INT8_DATA_DIR}/resnet50/model)
+  if(WIN32)
+    target_link_libraries(test_analyzer_capi_exp_int paddle_inference_c_shared)
+  else()
+    target_link_libraries(test_analyzer_capi_exp_int paddle_inference_c)
+  endif()
 endif()
 
 inference_analysis_test(
@@ -1195,9 +1221,13 @@ inference_analysis_test(
   analyzer_capi_exp_ner_tester.cc
   EXTRA_DEPS
   ${INFERENCE_EXTRA_DEPS}
-  paddle_inference_c
   ARGS
   --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+if(WIN32)
+  target_link_libraries(test_analyzer_capi_exp_ner paddle_inference_c_shared)
+else()
+  target_link_libraries(test_analyzer_capi_exp_ner paddle_inference_c)
+endif()
 
 if(WITH_GPU)
   inference_analysis_test(
@@ -1225,10 +1255,6 @@ cc_test(
   paddle_infer_api_errors_test
   SRCS paddle_infer_api_errors_tester.cc
   DEPS paddle_inference_api)
-
-if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
-  return()
-endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)

@@ -27,10 +27,12 @@ class BroadcastOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of BroadcastOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Output) of ConvOp should not be null."));
   }
@@ -70,10 +72,12 @@ class BroadcastOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(broadcast, ops::BroadcastOp,
+REGISTER_OP_WITHOUT_GRADIENT(broadcast,
+                             ops::BroadcastOp,
                              ops::BroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(broadcast, ops::BroadcastOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(broadcast,
+                       ops::BroadcastOpKernel<float>,
                        ops::BroadcastOpKernel<double>,
                        ops::BroadcastOpKernel<int>,
                        ops::BroadcastOpKernel<int64_t>,

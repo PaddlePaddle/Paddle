@@ -338,7 +338,7 @@ class TestImperativePTQKL(TestImperativePTQ):
 
         self.batch_num = 10
         self.batch_size = 10
-        self.eval_acc_top1 = 1.0
+        self.eval_acc_top1 = 0.98
 
         conv2d_1_wt_thresholds = [
             0.18116560578346252, 0.17079241573810577, 0.1702047884464264,

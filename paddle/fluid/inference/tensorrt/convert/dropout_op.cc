@@ -34,7 +34,8 @@ namespace tensorrt {
 class DropoutOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -65,17 +66,21 @@ class DropoutOpConverter : public OpConverter {
     weight_data[0] = 1 - dropout_prob;
 
     TensorRTEngine::Weight scale_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(weight_data),
+        nvinfer1::DataType::kFLOAT,
+        static_cast<void*>(weight_data),
         weight_tensor->memory_size() / sizeof(float)};
-    TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
+    TensorRTEngine::Weight shift_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
+    TensorRTEngine::Weight power_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *const_cast<nvinfer1::ITensor*>(input1),
-        nvinfer1::ScaleMode::kUNIFORM, shift_weights.get(), scale_weights.get(),
-        power_weights.get());
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       Scale,
+                                       *const_cast<nvinfer1::ITensor*>(input1),
+                                       nvinfer1::ScaleMode::kUNIFORM,
+                                       shift_weights.get(),
+                                       scale_weights.get(),
+                                       power_weights.get());
 
     engine_->SetWeights(op_desc.Output("Out").front() + "_dropout",
                         std::move(weight_tensor));

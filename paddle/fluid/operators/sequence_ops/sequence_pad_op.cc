@@ -26,23 +26,28 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of SequencePadOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("PadValue"), true,
+        ctx->HasInput("PadValue"),
+        true,
         platform::errors::NotFound(
             "Input(PadValue) of SequencePadOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of SequencePadOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Length"), true,
+        ctx->HasOutput("Length"),
+        true,
         platform::errors::NotFound(
             "Output(Length) of SequencePadOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of SequencePadOp Input(X) can't be less "
                           "than 2. But the rank we received is %d",
@@ -65,23 +70,27 @@ class SequencePadOp : public framework::OperatorWithKernel {
       framework::Variable* x_var =
           BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       const auto& x_lod = x_var->Get<LoDTensor>().lod();
-      PADDLE_ENFORCE_EQ(x_lod.empty(), false,
+      PADDLE_ENFORCE_EQ(x_lod.empty(),
+                        false,
                         platform::errors::NotFound(
                             "The SequencePadOp Input(X) must hold lod info."));
       const auto& x_lod_0 = x_lod[0];
       PADDLE_ENFORCE_GE(
-          x_lod_0.size(), 2,
+          x_lod_0.size(),
+          2,
           platform::errors::InvalidArgument(
               "The size of SequencePadOp Input(X)'s lod info can't be less "
               "than 2. But the size we received is %d",
               x_lod_0.size()));
-      PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_lod_0.back()),
+      PADDLE_ENFORCE_EQ(x_dims[0],
+                        static_cast<int64_t>(x_lod_0.back()),
                         platform::errors::InvalidArgument(
                             "The SequencePadOp Input(X)'s lod info mismatches "
                             "the actual tensor shape. The 1st dimension of "
                             "Input(X)'s lod info is %d, the 1st dimension of "
                             "actual tensor shape is %d",
-                            x_dims[0], static_cast<int64_t>(x_lod_0.back())));
+                            x_dims[0],
+                            static_cast<int64_t>(x_lod_0.back())));
 
       int seq_num = x_lod_0.size() - 1;
       int max_seq_len = math::MaximumSequenceLength(x_lod_0);
@@ -89,14 +98,16 @@ class SequencePadOp : public framework::OperatorWithKernel {
         padded_length = max_seq_len;
       }
       PADDLE_ENFORCE_GE(
-          padded_length, max_seq_len,
+          padded_length,
+          max_seq_len,
           platform::errors::InvalidArgument(
               "The SequencePadOp Attr(padded_length) should be greater than or "
               "equal to the "
               "length of the longest original sequence. But the padded_length "
               "we received is %d, the length of the longest original sequence "
               "is %d",
-              padded_length, max_seq_len));
+              padded_length,
+              max_seq_len));
       out_dim_0 = seq_num;
     } else {
       // compile time
@@ -104,7 +115,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
         padded_length = 1;
       }
       PADDLE_ENFORCE_GT(
-          ctx->GetLoDLevel("X"), 0,
+          ctx->GetLoDLevel("X"),
+          0,
           platform::errors::InvalidArgument(
               "The LoD level of SequencePadOp Input(X) should be "
               "larger than 0. But the LoD level we received is %d",
@@ -114,7 +126,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
     std::vector<int> len_dims_vec{out_dim_0};
     auto time_step_dims_vec = phi::vectorize<int>(time_step_dims);
-    out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
+    out_dims_vec.insert(out_dims_vec.end(),
+                        time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
     ctx->SetOutputDim("Length", phi::make_ddim(len_dims_vec));
@@ -214,11 +227,13 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of SequencePadGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of SequencePadGradOp should not be null."));
 
@@ -259,20 +274,21 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePadGradOpNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_pad, ops::SequencePadOp, ops::SequencePadOpMaker,
+REGISTER_OPERATOR(sequence_pad,
+                  ops::SequencePadOp,
+                  ops::SequencePadOpMaker,
                   ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
+REGISTER_OPERATOR(sequence_pad_grad,
+                  ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pad,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pad_grad,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_pad,
+                       ops::SequencePadOpKernel<phi::CPUContext, float>,
+                       ops::SequencePadOpKernel<phi::CPUContext, double>,
+                       ops::SequencePadOpKernel<phi::CPUContext, int>,
+                       ops::SequencePadOpKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_pad_grad,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, float>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, double>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, int>,
+                       ops::SequencePadGradOpKernel<phi::CPUContext, int64_t>);

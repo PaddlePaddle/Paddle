@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
 #include <llvm/Support/CommandLine.h>
 #include <mlir/Pass/PassManager.h>
 
@@ -27,18 +26,15 @@
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_type_convert_pass.h"
-
 #include "paddle/infrt/host_context/core_runtime.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/mlir_to_runtime_translate.h"
-
 #include "paddle/infrt/kernel/basic_kernels.h"
 #include "paddle/infrt/kernel/control_flow_kernels.h"
 #include "paddle/infrt/kernel/tensor_kernels.h"
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
-#include "paddle/infrt/kernel/test_kernels.h"
-
 #include "paddle/infrt/kernel/tensorrt/registry.h"
+#include "paddle/infrt/kernel/test_kernels.h"
 
 #ifdef INFRT_WITH_PHI
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
@@ -48,7 +44,6 @@
 #endif
 
 #include <mlir/Transforms/Passes.h>
-// clang-format on
 
 int main(int argc, char** argv) {
   static llvm::cl::opt<std::string> input_file(

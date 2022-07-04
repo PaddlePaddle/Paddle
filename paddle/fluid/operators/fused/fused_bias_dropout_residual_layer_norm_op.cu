@@ -65,13 +65,24 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[input_x_dims.size() - 1];
     DropoutParam dropout_param(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param,
+        ctx.cuda_device_context(),
+        bsz_seq,
+        dim_embed,
+        dropout_param,
         ln_epsilon);
     // output = layernorm(residual + dropout(input + bias))
     fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-        ctx.cuda_device_context(), x_data, residual_data, bias_data,
-        ln_scale_data, ln_bias_data, bias_dropout_residual_out_data,
-        dropout_mask_out_data, y_data, ln_mean_data, ln_var_data);
+        ctx.cuda_device_context(),
+        x_data,
+        residual_data,
+        bias_data,
+        ln_scale_data,
+        ln_bias_data,
+        bias_dropout_residual_out_data,
+        dropout_mask_out_data,
+        y_data,
+        ln_mean_data,
+        ln_var_data);
   }
 };
 
@@ -124,13 +135,25 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     int dim_embed = input_x_dims[input_x_dims.size() - 1];
     DropoutParam dropout_param(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-        ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param,
+        ctx.cuda_device_context(),
+        bsz_seq,
+        dim_embed,
+        dropout_param,
         ln_epsilon);
     fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
-        ctx.cuda_device_context(), d_y_data, bias_dropout_residual_out_data,
-        dropout_mask_out_data, ln_scale_data, ln_mean_data, ln_var_data,
-        d_bias_dropout_residual_out_data, d_ln_scale_data, d_ln_bias_data,
-        d_x_data, d_bias_data, d_residual_data);
+        ctx.cuda_device_context(),
+        d_y_data,
+        bias_dropout_residual_out_data,
+        dropout_mask_out_data,
+        ln_scale_data,
+        ln_mean_data,
+        ln_var_data,
+        d_bias_dropout_residual_out_data,
+        d_ln_scale_data,
+        d_ln_bias_data,
+        d_x_data,
+        d_bias_data,
+        d_residual_data);
   }
 };
 

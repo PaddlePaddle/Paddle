@@ -30,6 +30,7 @@ import six
 import pickle
 import os
 import errno
+import tempfile
 
 paddle.enable_static()
 
@@ -240,6 +241,7 @@ class TestSaveLoadBase(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -309,7 +311,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, "./test_1")
+            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
 
             # set var to zero
             for var in main_program.list_vars():
@@ -322,7 +324,8 @@ class TestSaveLoadBase(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_1.pdparams", exe)
+            fluid.load(main_program,
+                       os.path.join(temp_dir.name, "test_1.pdparams"), exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -330,6 +333,7 @@ class TestSaveLoadBase(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+            temp_dir.cleanup()
 
 
 class TestSaveLoadPartial(unittest.TestCase):
@@ -347,6 +351,7 @@ class TestSaveLoadPartial(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -424,7 +429,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, "./test_1")
+            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
 
             # set var to zero
             for var in main_program.list_vars():
@@ -437,7 +442,8 @@ class TestSaveLoadPartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(test_program, "./test_1.pdopt", None)
+            fluid.load(test_program, os.path.join(temp_dir.name,
+                                                  "test_1.pdopt"), None)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -445,7 +451,9 @@ class TestSaveLoadPartial(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
-            fluid.load(test_program, "./test_1.pdmodel", None)
+            fluid.load(test_program,
+                       os.path.join(temp_dir.name, "test_1.pdmodel"), None)
+            temp_dir.cleanup()
 
 
 class TestSaveLoadSetStateDict(unittest.TestCase):
@@ -463,6 +471,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -532,7 +541,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, "./test_1")
+            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
 
             # set var to zero
             for var in main_program.list_vars():
@@ -545,7 +554,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_1", exe)
+            fluid.load(main_program, os.path.join(temp_dir.name, "test_1"), exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -553,6 +562,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+            temp_dir.cleanup()
 
 
 class TestProgramStatePartial(unittest.TestCase):
@@ -570,6 +580,7 @@ class TestProgramStatePartial(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -647,7 +658,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join('some_dir', 'test_1'))
+            fluid.save(main_program, os.path.join(temp_dir.name, 'test_1'))
 
             # set var to zero
             for var in main_program.list_vars():
@@ -662,16 +673,16 @@ class TestProgramStatePartial(unittest.TestCase):
 
             #fluid.load(test_program, "./test_1", None )
             program_state = fluid.load_program_state(
-                os.path.join('some_dir', 'test_1'))
+                os.path.join(temp_dir.name, 'test_1'))
 
             program_state_1 = fluid.load_program_state(
-                os.path.join('some_dir', 'test_1.pdparams'))
+                os.path.join(temp_dir.name, 'test_1.pdparams'))
 
             program_state_2 = fluid.load_program_state(
-                os.path.join('some_dir', 'test_1.pdopt'))
+                os.path.join(temp_dir.name, 'test_1.pdopt'))
 
             program_state_3 = fluid.load_program_state(
-                os.path.join('some_dir', 'test_1.pdmodel'))
+                os.path.join(temp_dir.name, 'test_1.pdmodel'))
 
             fluid.set_program_state(test_program, program_state)
 
@@ -741,6 +752,7 @@ class TestProgramStatePartial(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+            temp_dir.cleanup()
 
 
 class TestVariableInit(unittest.TestCase):
@@ -759,7 +771,9 @@ class TestVariableInit(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        fluid.save(fluid.default_main_program(), "./test_path")
+        temp_dir = tempfile.TemporaryDirectory()
+        fluid.save(fluid.default_main_program(),
+                   os.path.join(temp_dir.name, "test_path"))
 
         def set_var(var, ndarray):
             t = var.get_tensor()
@@ -785,7 +799,7 @@ class TestVariableInit(unittest.TestCase):
 
         fluid.core._create_loaded_parameter(parameter_list, new_scope,
                                             exe._default_executor)
-        parameter_file_name = "./test_path.pdparams"
+        parameter_file_name = os.path.join(temp_dir.name, "test_path.pdparams")
         with open(parameter_file_name, 'rb') as f:
             load_dict = pickle.load(f)
 
@@ -801,7 +815,7 @@ class TestVariableInit(unittest.TestCase):
 
         fluid.core._create_loaded_parameter(opt_list, new_scope,
                                             exe._default_executor)
-        opt_file_name = "./test_path.pdopt"
+        opt_file_name = os.path.join(temp_dir.name, "test_path.pdopt")
         with open(opt_file_name, 'rb') as f:
             load_dict = pickle.load(f)
 
@@ -827,6 +841,7 @@ class TestVariableInit(unittest.TestCase):
                 base_t = base_map[var.name]
 
                 self.assertTrue(np.array_equal(new_t, base_t))
+        temp_dir.cleanup()
 
 
 class TestLoadFromOldInterface(unittest.TestCase):
@@ -838,9 +853,14 @@ class TestLoadFromOldInterface(unittest.TestCase):
         if os.path.exists("test_static_load_var_list.pdparams"):
             os.remove("test_static_load_var_list.pdparams")
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
     def set_place(self):
         return fluid.CPUPlace(
         ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_load_from_old_interface(self):
         seed = 90
@@ -923,7 +943,9 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     base_map[var.name] = t
 
             #fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(exe, "test_path", main_program)
+            fluid.io.save_persistables(
+                exe, os.path.join(self.temp_dir.name, "test_path"),
+                main_program)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -936,7 +958,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "test_path", exe)
+            fluid.load(main_program,
+                       os.path.join(self.temp_dir.name, "test_path"), exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -953,11 +976,13 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     var.desc.set_shape(new_shape)
             with self.assertRaises(RuntimeError):
-                fluid.load(main_program, "test_path", exe)
+                fluid.load(main_program,
+                           os.path.join(self.temp_dir.name, "test_path"), exe)
 
             # check unused parameter
 
-            fluid.load(test_clone_program, "test_path", exe)
+            fluid.load(test_clone_program,
+                       os.path.join(self.temp_dir.name, "test_path"), exe)
 
     def test_load_from_old_interface_var_list(self):
         seed = 90
@@ -1040,8 +1065,10 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     base_map[var.name] = t
 
             #fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(exe, "test_static_load_var_list",
-                                       main_program)
+            fluid.io.save_persistables(
+                exe,
+                os.path.join(self.temp_dir.name, "test_static_load_var_list"),
+                main_program)
 
             # set var to zero
             var_list = []
@@ -1057,7 +1084,10 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "test_static_load_var_list", exe, var_list)
+            fluid.load(
+                main_program,
+                os.path.join(self.temp_dir.name, "test_static_load_var_list"),
+                exe, var_list)
             var_list_names = [var.name for var in var_list]
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -1087,6 +1117,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -1155,10 +1186,10 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
-
+            save_dir = os.path.join(temp_dir.name, "test_path")
             #fluid.save(main_program, "./test_1")
             fluid.io.save_persistables(exe,
-                                       "test_path",
+                                       save_dir,
                                        main_program,
                                        filename="model_single")
 
@@ -1173,7 +1204,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            file_model_path = os.path.join("test_path", "model_single")
+            file_model_path = os.path.join(save_dir, "model_single")
             fluid.load(main_program, file_model_path, exe,
                        fluid.io.get_program_persistable_vars(main_program))
 
@@ -1223,12 +1254,17 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 all_var_list = list(main_program.list_vars())
                 fluid.load(main_program, file_model_path, exe,
                            all_var_list + [temp_var])
+        temp_dir.cleanup()
 
 
 class TestProgramStateOldSave(unittest.TestCase):
 
     def setUp(self):
         self.test_dygraph = True
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def set_place(self):
         return fluid.CPUPlace(
@@ -1319,8 +1355,8 @@ class TestProgramStateOldSave(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
-
-            fluid.io.save_persistables(exe, "test_program_1", main_program)
+            save_dir = os.path.join(self.temp_dir.name, "test_program_1")
+            fluid.io.save_persistables(exe, save_dir, main_program)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -1334,7 +1370,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # case 1: load basic
-            program_state = fluid.load_program_state("test_program_1")
+            program_state = fluid.load_program_state(save_dir)
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
@@ -1349,24 +1385,20 @@ class TestProgramStateOldSave(unittest.TestCase):
                     else:
                         raise e
 
-            orig_filepath = './test_program_1/fc_0.w_0'
-            symlink_filepath = './test_program_1/link_fc_0.w_0'
-            # create a needless link file for coverage
-            symlink_force(orig_filepath, symlink_filepath)
-            program_state = fluid.load_program_state("test_program_1")
+            program_state = fluid.load_program_state(save_dir)
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
             # case 3: load with var_list
             program_state = fluid.load_program_state(
-                "test_program_1", main_program.all_parameters())
+                save_dir, main_program.all_parameters())
             fluid.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
         if self.test_dygraph:
             # make sure `load_program_state` can be used in dynamic graph mode
             with fluid.dygraph.guard(place):
-                load_state = fluid.load_program_state("test_program_1")
+                load_state = fluid.load_program_state(save_dir)
                 for k, v in load_state.items():
                     self.assertTrue(np.array_equal(base_map[k], v))
 
@@ -1402,6 +1434,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        temp_dir = tempfile.TemporaryDirectory()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -1479,8 +1512,9 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
+            save_dir = os.path.join(temp_dir.name, "test_program_2")
             fluid.io.save_persistables(exe,
-                                       "test_program_2",
+                                       save_dir,
                                        main_program,
                                        filename="model_1")
 
@@ -1497,7 +1531,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
             #fluid.load(test_program, "./test_1", None )
             program_state = fluid.load_program_state(
-                os.path.join("test_program_2", "model_1"),
+                os.path.join(save_dir, "model_1"),
                 var_list=fluid.io.get_program_persistable_vars(main_program))
             fluid.set_program_state(main_program, program_state)
 
@@ -1509,21 +1543,20 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
             with self.assertRaises(ValueError):
-                fluid.load_program_state(
-                    os.path.join("test_program_2", "model_1"))
+                fluid.load_program_state(os.path.join(save_dir, "model_1"))
 
             with self.assertRaises(TypeError):
-                fluid.load_program_state(os.path.join("test_program_2",
-                                                      "model_1"),
+                fluid.load_program_state(os.path.join(save_dir, "model_1"),
                                          var_list=["str"])
 
             with self.assertRaises(RuntimeError):
                 fluid.load_program_state(
-                    os.path.join("test_program_2", "model_1"),
+                    os.path.join(save_dir, "model_1"),
                     var_list=[
                         main_program.global_block().create_var(
                             name="fake_var_name", persistable=True)
                     ])
+        temp_dir.cleanup()
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
@@ -1552,7 +1585,8 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            path = os.path.join("test_static_save_load_pickle",
+            temp_dir = tempfile.TemporaryDirectory()
+            path = os.path.join(temp_dir.name, "test_static_save_load_pickle",
                                 "pickle_protocol")
 
             with self.assertRaises(ValueError):

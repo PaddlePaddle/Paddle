@@ -804,6 +804,7 @@ def monkey_patch_varbase():
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
+            self._unset_fake_empty()
         else:
             raise TypeError(
                 "_set_grad_ivar is only supported for Parameter Tensor")

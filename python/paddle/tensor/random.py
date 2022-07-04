@@ -631,13 +631,13 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
-        low (int): The lower bound on the range of random values to generate.
+        low (int, optional): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
         high (int, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or

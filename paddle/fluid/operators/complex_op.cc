@@ -78,9 +78,13 @@ class ComplexOp : public framework::OperatorWithKernel {
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
-      GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                             y_dims_array.data(), out_dims_array.data(),
-                             max_dim, axis);
+      GetBroadcastDimsArrays(x_dims,
+                             y_dims,
+                             x_dims_array.data(),
+                             y_dims_array.data(),
+                             out_dims_array.data(),
+                             max_dim,
+                             axis);
       ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
     }
   }
@@ -100,8 +104,10 @@ class ComplexGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "complex_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_complex_gradgrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "complex_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "complex_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -129,17 +135,18 @@ class ComplexGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(complex, ops::ComplexOp, ops::ComplexOpMaker,
+REGISTER_OPERATOR(complex,
+                  ops::ComplexOp,
+                  ops::ComplexOpMaker,
                   ops::ComplexGradOpMaker<paddle::framework::OpDesc>,
                   ops::ComplexGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(complex_grad, ops::ComplexGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    complex, ops::ComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ComplexKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(complex,
+                       ops::ComplexKernel<phi::CPUContext, float>,
+                       ops::ComplexKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    complex_grad,
-    ops::ComplexGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ComplexGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(complex_grad,
+                       ops::ComplexGradKernel<phi::CPUContext, float>,
+                       ops::ComplexGradKernel<phi::CPUContext, double>);

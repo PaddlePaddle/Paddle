@@ -52,7 +52,8 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE_EQ(
-      fout->good(), true,
+      fout->good(),
+      true,
       platform::errors::Unavailable(
           "Can not open file %s for printing the graph.", graph_viz_path));
   std::ostream& sout = *fout;
@@ -115,10 +116,12 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   });
 
   const std::vector<Dot::Attr> marked_op_attrs(
-      {Dot::Attr("style", "rounded,filled,bold"), Dot::Attr("shape", "box"),
+      {Dot::Attr("style", "rounded,filled,bold"),
+       Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
   const std::vector<Dot::Attr> marked_var_attrs(
-      {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
+      {Dot::Attr("style", "filled,rounded"),
+       Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
 
   auto marked_nodes = ConsumeMarkedNodes(graph);

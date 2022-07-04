@@ -69,7 +69,8 @@ std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
 }
 
 template <typename Type, typename Engine, typename Primitive, typename... Args>
-tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
+tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
+                                   const Primitive& p,
                                    Args&&... args) {
   auto desc = tf_desc<Type>(args...);
   return tf_pd<Type>(desc, e, p);
@@ -84,8 +85,8 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
     if (!dims.empty()) {
       oss << "[";
       // Convert all but the last element to avoid a trailing ","
-      std::copy(dims.begin(), dims.end() - 1,
-                std::ostream_iterator<int>(oss, ","));
+      std::copy(
+          dims.begin(), dims.end() - 1, std::ostream_iterator<int>(oss, ","));
 
       // Now add the last element with no delimiter
       oss << dims.back() << "]";
@@ -188,13 +189,15 @@ inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 
-inline void Reorder(dnnl::memory src, dnnl::memory dst,
+inline void Reorder(dnnl::memory src,
+                    dnnl::memory dst,
                     const dnnl::engine& engine) {
   auto reorder_prim = dnnl::reorder(src, dst);
   auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::TracerEventType::UserDefined,
-                                       2, platform::EventRole::kUniqueOp);
+                                       2,
+                                       platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
 }

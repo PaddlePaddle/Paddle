@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from test_imperative_base import new_program_scope
+import tempfile
 
 
 def convolutional_neural_network(img):
@@ -58,12 +59,16 @@ def static_train_net(img, label):
 class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
         self.seed = 90
         self.epoch_num = 1
         self.batch_size = 128
         self.batch_num = 10
         # enable static mode
         paddle.enable_static()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def train_and_save_model(self, only_params=False):
         with new_program_scope():
@@ -121,7 +126,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             self.assertTrue(np.array_equal(value, load_dict[var_name]))
 
     def test_load_default(self):
-        self.save_dirname = "static_mnist.load_state_dict.default"
+        self.save_dirname = os.path.join(
+            self.temp_dir.name, "static_mnist.load_state_dict.default")
         self.model_filename = None
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
@@ -133,7 +139,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_filename(self):
-        self.save_dirname = "static_mnist.load_state_dict.model_filename"
+        self.save_dirname = os.path.join(
+            self.temp_dir.name, "static_mnist.load_state_dict.model_filename")
         self.model_filename = "static_mnist.model"
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
@@ -147,7 +154,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_param_filename(self):
-        self.save_dirname = "static_mnist.load_state_dict.param_filename"
+        self.save_dirname = os.path.join(
+            self.temp_dir.name, "static_mnist.load_state_dict.param_filename")
         self.model_filename = None
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
@@ -161,7 +169,9 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
-        self.save_dirname = "static_mnist.load_state_dict.model_and_param_filename"
+        self.save_dirname = os.path.join(
+            self.temp_dir.name,
+            "static_mnist.load_state_dict.model_and_param_filename")
         self.model_filename = "static_mnist.model"
         self.params_filename = "static_mnist.params"
         orig_param_dict = self.train_and_save_model()
@@ -178,7 +188,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
     def test_load_state_dict_from_save_params(self):
-        self.save_dirname = "static_mnist.load_state_dict.save_params"
+        self.save_dirname = os.path.join(
+            self.temp_dir.name, "static_mnist.load_state_dict.save_params")
         self.params_filename = None
         orig_param_dict = self.train_and_save_model(True)
 

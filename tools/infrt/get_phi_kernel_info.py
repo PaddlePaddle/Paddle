@@ -20,14 +20,22 @@ import yaml
 from typing import List, Dict, Any
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
-api_yaml_file = "/python/paddle/utils/code_gen/api.yaml"
+api_yaml_file = "/paddle/phi/api/yaml/api.yaml"
+legacy_api_yaml_file = "/paddle/phi/api/yaml/legacy_api.yaml"
 
 
 def get_skipped_kernel_list():
     skiped_kernel_list = []
     with open(skipped_phi_api_list_file, 'r') as f:
         skiped_api_list = json.load(f)
-    infer_meta_data = get_api_yaml_info(api_yaml_file)
+    infer_meta_data = []
+    api_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_meta_data = get_api_yaml_info(legacy_api_yaml_file)
+    if api_meta_data:
+        infer_meta_data.extend(api_meta_data)
+    if legacy_api_meta_data:
+        infer_meta_data.extend(legacy_api_meta_data)
+
     for api in infer_meta_data:
         if "kernel" not in api or "infer_meta" not in api:
             continue
@@ -365,7 +373,14 @@ if __name__ == "__main__":
     args = parse_args()
     skipped_phi_api_list_file = args.paddle_root_path + skipped_phi_api_list_file
     api_yaml_file = args.paddle_root_path + api_yaml_file
-    infer_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_yaml_file = args.paddle_root_path + legacy_api_yaml_file
+    infer_meta_data = []
+    api_meta_data = get_api_yaml_info(api_yaml_file)
+    legacy_api_meta_data = get_api_yaml_info(legacy_api_yaml_file)
+    if api_meta_data:
+        infer_meta_data.extend(api_meta_data)
+    if legacy_api_meta_data:
+        infer_meta_data.extend(legacy_api_meta_data)
     kernel_data = get_kernel_info(args.kernel_info_file)
     info_meta_wrap_data = get_infermeta_info(args.infermeta_wrap_file)
     attr_data = get_attr_info(args.attr_info_file)

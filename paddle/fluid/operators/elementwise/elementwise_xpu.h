@@ -27,17 +27,21 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename XPUType>
-void XPUElementwise(
-    const framework::ExecutionContext& ctx,
-    std::function<int(xpu::Context*, const XPUType*, const XPUType*, XPUType*,
-                      const std::vector<int>&, const std::vector<int>&)>
-        func) {
+void XPUElementwise(const framework::ExecutionContext& ctx,
+                    std::function<int(xpu::Context*,
+                                      const XPUType*,
+                                      const XPUType*,
+                                      XPUType*,
+                                      const std::vector<int>&,
+                                      const std::vector<int>&)> func) {
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NE(
-      x_var, nullptr,
+      x_var,
+      nullptr,
       platform::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
-      x_var->IsType<framework::LoDTensor>(), true,
+      x_var->IsType<framework::LoDTensor>(),
+      true,
       platform::errors::InvalidArgument(
           "XPU only support LoDTensor, Input(X) is not LoDTensor"));
 
@@ -52,14 +56,17 @@ void XPUElementwise(
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
 
   PADDLE_ENFORCE_GE(
-      axis, 0,
+      axis,
+      0,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
+                        max_dim,
+                        axis));
   std::vector<int> x_dims_vec(max_dim, 1);
   std::vector<int> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
@@ -89,24 +96,33 @@ void XPUElementwise(
 
   int ret = xpu::SUCCESS;
 
-  ret = func(dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
+  ret = func(dev_ctx.x_context(),
+             reinterpret_cast<const XPUType*>(x_data),
              reinterpret_cast<const XPUType*>(y_data),
-             reinterpret_cast<XPUType*>(z_data), x_dims_vec, y_dims_vec);
+             reinterpret_cast<XPUType*>(z_data),
+             x_dims_vec,
+             y_dims_vec);
   PADDLE_ENFORCE_EQ(
-      ret, xpu::SUCCESS,
+      ret,
+      xpu::SUCCESS,
       platform::errors::External(
           "XPU kernel Elementwise occur error in XPUElementwise error code ",
-          ret, XPUAPIErrorMsg[ret]));
+          ret,
+          XPUAPIErrorMsg[ret]));
 }
 
 template <typename T, typename XPUType>
-void XPUElementwiseGrad(
-    const framework::ExecutionContext& ctx,
-    std::function<int(xpu::Context*, const XPUType*, const XPUType*,
-                      const XPUType*, const XPUType*, XPUType*, XPUType*,
-                      const std::vector<int>&, const std::vector<int>&)>
-        func,
-    bool use_x_y_data) {
+void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
+                        std::function<int(xpu::Context*,
+                                          const XPUType*,
+                                          const XPUType*,
+                                          const XPUType*,
+                                          const XPUType*,
+                                          XPUType*,
+                                          XPUType*,
+                                          const std::vector<int>&,
+                                          const std::vector<int>&)> func,
+                        bool use_x_y_data) {
   auto* x = ctx.Input<framework::Tensor>("X");
   auto* y = ctx.Input<framework::Tensor>("Y");
   auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -119,14 +135,17 @@ void XPUElementwiseGrad(
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
   PADDLE_ENFORCE_GE(
-      axis, 0,
+      axis,
+      0,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
-                        max_dim, axis));
+                        max_dim,
+                        axis));
   std::vector<int> x_dims_vec(max_dim, 1);
   std::vector<int> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
@@ -165,17 +184,22 @@ void XPUElementwiseGrad(
     dy_data = dy->mutable_data<T>(ctx.GetPlace());
   }
 
-  int ret = func(dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
+  int ret = func(dev_ctx.x_context(),
+                 reinterpret_cast<const XPUType*>(x_data),
                  reinterpret_cast<const XPUType*>(y_data),
                  reinterpret_cast<const XPUType*>(z_data),
                  reinterpret_cast<const XPUType*>(dz_data),
                  reinterpret_cast<XPUType*>(dy_data),
-                 reinterpret_cast<XPUType*>(dx_data), x_dims_vec, y_dims_vec);
+                 reinterpret_cast<XPUType*>(dx_data),
+                 x_dims_vec,
+                 y_dims_vec);
   PADDLE_ENFORCE_EQ(
-      ret, xpu::SUCCESS,
+      ret,
+      xpu::SUCCESS,
       platform::errors::External(
           "XPU kernel Elementwise occur error in XPUElementwise error code ",
-          ret, XPUAPIErrorMsg[ret]));
+          ret,
+          XPUAPIErrorMsg[ret]));
 }
 
 }  // namespace operators

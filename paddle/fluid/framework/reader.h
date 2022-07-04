@@ -35,12 +35,14 @@ class ReaderBase {
         var_types_(var_types),
         need_check_feed_(need_check_feed) {
     PADDLE_ENFORCE_EQ(
-        shapes_.size(), need_check_feed_.size(),
+        shapes_.size(),
+        need_check_feed_.size(),
         platform::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of shapes "
             "and need_check_feed"));
     PADDLE_ENFORCE_EQ(
-        var_types_.size(), need_check_feed_.size(),
+        var_types_.size(),
+        need_check_feed_.size(),
         platform::errors::InvalidArgument(
             "Construct ReaderBase with mismatched sizes of var_types "
             "and need_check_feed"));
@@ -108,8 +110,8 @@ class DecoratedReader : public ReaderBase,
                         public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(reader->Shapes(), reader->VarTypes(),
-                   reader->NeedCheckFeed()),
+      : ReaderBase(
+            reader->Shapes(), reader->VarTypes(), reader->NeedCheckFeed()),
         reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,

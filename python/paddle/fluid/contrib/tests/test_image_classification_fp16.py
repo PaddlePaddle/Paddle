@@ -24,6 +24,7 @@ import unittest
 import os
 import copy
 import numpy as np
+import tempfile
 from paddle.static.amp import decorate
 
 paddle.enable_static()
@@ -272,18 +273,25 @@ def infer(use_cuda, save_dirname=None):
                                       clip_extra=True)
 
 
-def main(net_type, use_cuda, is_local=True):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
-
-    # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + ".inference.model"
-
-    train(net_type, use_cuda, save_dirname, is_local)
-    #infer(use_cuda, save_dirname)
-
-
 class TestImageClassification(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def main(self, net_type, use_cuda, is_local=True):
+        if use_cuda and not fluid.core.is_compiled_with_cuda():
+            return
+
+        # Directory for saving the trained model
+        save_dirname = os.path.join(
+            self.temp_dir.name,
+            "image_classification_" + net_type + ".inference.model")
+
+        train(net_type, use_cuda, save_dirname, is_local)
+        #infer(use_cuda, save_dirname)
 
     def test_amp_lists(self):
         white_list = copy.copy(
@@ -413,11 +421,11 @@ class TestImageClassification(unittest.TestCase):
 
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
-            main('vgg', use_cuda=True)
+            self.main('vgg', use_cuda=True)
 
     def test_resnet_cuda(self):
         with self.scope_prog_guard():
-            main('resnet', use_cuda=True)
+            self.main('resnet', use_cuda=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):

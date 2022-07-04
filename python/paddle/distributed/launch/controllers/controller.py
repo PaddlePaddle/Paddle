@@ -29,6 +29,7 @@ import time
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
+    IPU = "ipu"
 
 
 class ControllerBase(object):
@@ -47,6 +48,8 @@ class ControllerBase(object):
                        mode=self.ctx.args.run_mode,
                        jid=self.ctx.args.job_id)
         self.pod = Pod()
+
+        self.ctx.set_envs({"POD_NAME": self.pod.name})
 
         self.join_server = None
 
@@ -103,17 +106,18 @@ class ControllerBase(object):
                 self.ctx.logger.info("Pod {}".format(status))
                 self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
                 fc[0].tail()
-                self.pod.stop()
 
                 if self.ctx.args.elastic_level <= 0:
+                    self.pod.stop(timeout=3)
                     return True
                 else:
+                    self.pod.stop(timeout=30)
                     return False
 
             # peer failure
             if self.ctx.status.is_restarting(
             ) and self.master.get_status() != self.ctx.status.COMPLETED:
-                self.pod.stop()
+                self.pod.stop(timeout=30)
                 return False
 
     def stop(self, sigint=None):
@@ -122,7 +126,7 @@ class ControllerBase(object):
         self.watcher.stop()
 
         self.master.stop()
-        self.pod.stop(sigint)
+        self.pod.stop(timeout=30)
 
     def finalize(self):
         self.pod.join()
@@ -132,17 +136,16 @@ class ControllerBase(object):
         sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
-        self.ctx.logger.info("Terminating with signal {}".format(sigint))
-
         if hasattr(self, 'sigint'):
             self.ctx.logger.info("Force quit in 10 seconds...")
-            time.sleep(11)
+            self.pod.stop(timeout=10)
             sys.exit(sigint)
+
+        self.ctx.logger.info("Terminating with signal {}".format(sigint))
 
         self.sigint = sigint
         self.ctx.status.done()
-        self.stop(sigint)
-        time.sleep(1)
+        self.stop(sigint=sigint)
         self.ctx.logger.info("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 

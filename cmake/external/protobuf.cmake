@@ -16,7 +16,7 @@ include(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
 if(NOT WIN32)
   find_package(Protobuf QUIET)
-endif(NOT WIN32)
+endif()
 
 unset_var(PROTOBUF_INCLUDE_DIR)
 unset_var(PROTOBUF_FOUND)
@@ -147,7 +147,7 @@ set(PROTOBUF_ROOT
     CACHE PATH "Folder contains protobuf")
 if(WIN32)
   set(PROTOBUF_ROOT ${THIRD_PARTY_PATH}/install/protobuf)
-endif(WIN32)
+endif()
 
 if(NOT "${PROTOBUF_ROOT}" STREQUAL "")
   find_path(
@@ -349,4 +349,4 @@ if(NOT PROTOBUF_FOUND)
   # `protoc.exe` existed before calling it.
   set(EXTERN_PROTOBUF_DEPEND extern_protobuf)
   prompt_protobuf_lib(extern_protobuf)
-endif(NOT PROTOBUF_FOUND)
+endif()

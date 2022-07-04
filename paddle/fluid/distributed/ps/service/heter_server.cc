@@ -117,7 +117,8 @@ void HeterServer::WaitServerReady() {
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithShard(
-    const MultiVarMsg* request, PsResponseMessage* response,
+    const MultiVarMsg* request,
+    PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithShard";
   int32_t group_id = request->group_id();
@@ -174,7 +175,8 @@ int SendAndRecvVariableHandler::QueryInSwitchWithShard(
 }
 
 int SendAndRecvVariableHandler::SaveInSwitchWithScope(
-    const MultiVarMsg* request, PsResponseMessage* response,
+    const MultiVarMsg* request,
+    PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithScope";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -201,8 +203,8 @@ int SendAndRecvVariableHandler::SaveInSwitchWithScope(
     WaitForVarsConsumed(0, var_name);
   }
   auto& request_io_buffer = cntl->request_attachment();
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(*request, &request_io_buffer,
-                                                  cpu_dev_ctx, local_scope);
+  distributed::DeserializeFromMultiVarMsgAndIOBuf(
+      *request, &request_io_buffer, cpu_dev_ctx, local_scope);
   lk.unlock();
   for (auto var_name : send_var_names) {
     std::unique_lock<std::mutex> lk(scope_mutex_);

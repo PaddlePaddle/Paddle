@@ -56,7 +56,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("ValueTensor")) {
       auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
       PADDLE_ENFORCE_EQ(
-          value_tensor->numel(), 1,
+          value_tensor->numel(),
+          1,
           platform::errors::InvalidArgument(
               "When use Tensor as value to set Tensor value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
@@ -71,8 +72,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
     auto shape = GetShape(ctx);
     out_var->mutable_data<T>(shape, ctx.GetPlace());
     MLUCnnlTensorDesc output_desc(*out_var);
-    MLUCnnl::Fill(ctx, pointer_mode, value_data, output_desc.get(),
-                  GetBasePtr(out_var));
+    MLUCnnl::Fill(
+        ctx, pointer_mode, value_data, output_desc.get(), GetBasePtr(out_var));
   }
 };
 }  // namespace operators
@@ -81,7 +82,8 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    fill_constant, paddle::operators::FillConstantMLUKernel<float>,
+    fill_constant,
+    paddle::operators::FillConstantMLUKernel<float>,
     paddle::operators::FillConstantMLUKernel<bool>,
     paddle::operators::FillConstantMLUKernel<int>,
     paddle::operators::FillConstantMLUKernel<uint8_t>,

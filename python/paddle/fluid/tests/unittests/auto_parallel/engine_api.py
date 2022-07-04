@@ -90,16 +90,17 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         out = auto.shard_op(self.norm, dist_attr={"process_mesh":
                                                   PP_MESH_0})(input)[0]
-        out = self.linear0(input)
+        out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
                                                      PP_MESH_1})(out)[0]
         out = self.dropout(out)
         out = self.linear2(out)
+        self.out = out
         return out
 
 
-def train():
+def train(fetch):
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -118,7 +119,6 @@ def train():
     dist_strategy.amp = False
     dist_strategy.pipeline = False
     dist_strategy.recompute = False
-    # init parallel optimizer
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -129,20 +129,26 @@ def train():
                     strategy=dist_strategy)
     engine.prepare(optimizer, loss, metrics=paddle.metric.Accuracy())
 
+    # fetch
+    if fetch:
+        fetches = {'out': mlp.out}
+    else:
+        fetches = None
+
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     engine.fit(train_dataset,
                batch_size=batch_size,
                steps_per_epoch=batch_num * batch_size,
-               fetch_list=['label'])
+               fetches=fetches)
 
     # eval
     eval_dataset = MyDataset(batch_size)
-    engine.evaluate(eval_dataset, batch_size, fetch_list=['label'])
+    engine.evaluate(eval_dataset, batch_size, fetches=fetches)
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size, fetch_list=['label'])
+    engine.predict(test_dataset, batch_size, fetches=fetches)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -152,4 +158,5 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train(fetch=True)
+    train(fetch=False)

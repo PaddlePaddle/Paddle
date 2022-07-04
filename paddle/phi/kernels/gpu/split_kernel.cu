@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/split_kernel.h"
+
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/phi/kernels/split_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>

@@ -33,10 +33,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  float max_range, framework::Tensor* out) {
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  float max_range,
+                  framework::Tensor* out) {
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -47,8 +49,8 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, int8_t>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, int16_t>;
+template struct DequantizeFunctor<phi::CPUContext, int8_t>;
+template struct DequantizeFunctor<phi::CPUContext, int16_t>;
 
 class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -100,10 +102,12 @@ $$Out = \frac{scale*X}{ max\_range }$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    dequantize_abs_max, ops::DequantizeMaxAbsOp, ops::DequantizeMaxAbsOpMaker,
+    dequantize_abs_max,
+    ops::DequantizeMaxAbsOp,
+    ops::DequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(dequantize_abs_max,

@@ -31,7 +31,8 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -166,4 +167,4 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CPUDeviceContext, float>);
+    ops::DistributedFusedLambOpKernel<phi::CPUContext, float>);

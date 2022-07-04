@@ -20,19 +20,19 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
-static const char* version = "1.0.0";
+static const char* version = "1.0.1";
 static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
-  return string_format(std::string(kDefaultFilename), pid,
-                       GetStringFormatLocalTime().c_str());
+  return string_format(
+      std::string(kDefaultFilename), pid, GetStringFormatLocalTime().c_str());
 }
 
 void SerializationLogger::OpenFile() {
-  output_file_stream_.open(filename_, std::ofstream::out |
-                                          std::ofstream::trunc |
-                                          std::ofstream::binary);
+  output_file_stream_.open(
+      filename_,
+      std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
   if (!output_file_stream_) {
     LOG(WARNING) << "Unable to open file for writing profiling data."
                  << std::endl;
@@ -50,7 +50,8 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
       thread2host_event_nodes = node_trees.Traverse(true);
 
   for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end(); ++it) {
+       it != thread2host_event_nodes.end();
+       ++it) {
     // 1. order every node an index, every node a parent
     std::map<HostTraceEventNode*, int64_t> node_index_map;
     std::map<HostTraceEventNode*, int64_t> node_parent_map;
@@ -64,7 +65,8 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
     for (auto hostnode = it->second.begin(); hostnode != it->second.end();
          ++hostnode) {
       for (auto childnode = (*hostnode)->GetChildren().begin();
-           childnode != (*hostnode)->GetChildren().end(); ++childnode) {
+           childnode != (*hostnode)->GetChildren().end();
+           ++childnode) {
         node_parent_map[(*childnode)] =
             node_index_map[(*hostnode)];  // mark each node's parent
       }
@@ -106,8 +108,34 @@ void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
           (*devicenode)->LogMe(this);  // fill detail information
         }
       }
+      for (auto memnode = (*hostnode)->GetMemTraceEventNodes().begin();
+           memnode != (*hostnode)->GetMemTraceEventNodes().end();
+           ++memnode) {
+        MemTraceEventNodeProto* mem_node_proto =
+            current_host_trace_event_node_proto_->add_mem_nodes();
+        current_mem_trace_event_node_proto_ = mem_node_proto;
+        (*memnode)->LogMe(this);
+      }
     }
   }
+}
+
+void SerializationLogger::LogMemTraceEventNode(
+    const MemTraceEventNode& mem_node) {
+  MemTraceEventProto* mem_trace_event = new MemTraceEventProto();
+  mem_trace_event->set_timestamp_ns(mem_node.TimeStampNs());
+  mem_trace_event->set_type(
+      static_cast<TracerMemEventTypeProto>(mem_node.Type()));
+  mem_trace_event->set_addr(mem_node.Addr());
+  mem_trace_event->set_process_id(mem_node.ProcessId());
+  mem_trace_event->set_thread_id(mem_node.ThreadId());
+  mem_trace_event->set_increase_bytes(mem_node.IncreaseBytes());
+  mem_trace_event->set_place(mem_node.Place());
+  mem_trace_event->set_current_allocated(mem_node.CurrentAllocated());
+  mem_trace_event->set_current_reserved(mem_node.CurrentReserved());
+  mem_trace_event->set_peak_allocated(mem_node.PeakAllocated());
+  mem_trace_event->set_peak_reserved(mem_node.PeakReserved());
+  current_mem_trace_event_node_proto_->set_allocated_mem_event(mem_trace_event);
 }
 
 void SerializationLogger::LogHostTraceEventNode(
@@ -122,6 +150,63 @@ void SerializationLogger::LogHostTraceEventNode(
   host_trace_event->set_thread_id(host_node.ThreadId());
   current_host_trace_event_node_proto_->set_allocated_host_trace_event(
       host_trace_event);
+  OperatorSupplementEventNode* op_supplement_event_node =
+      host_node.GetOperatorSupplementEventNode();
+  if (op_supplement_event_node != nullptr) {
+    current_op_supplement_event_node_proto_ =
+        current_host_trace_event_node_proto_->add_op_supplement_nodes();
+    OperatorSupplementEventProto* op_supplement_event_proto =
+        new OperatorSupplementEventProto();
+    op_supplement_event_proto->set_op_type(op_supplement_event_node->Name());
+    op_supplement_event_proto->set_timestamp_ns(
+        op_supplement_event_node->TimeStampNs());
+    op_supplement_event_proto->set_process_id(
+        op_supplement_event_node->ProcessId());
+    op_supplement_event_proto->set_thread_id(
+        op_supplement_event_node->ThreadId());
+    op_supplement_event_proto->set_callstack(
+        op_supplement_event_node->CallStack());
+
+    OperatorSupplementEventProto::input_shape_proto* input_shape_proto =
+        op_supplement_event_proto->mutable_input_shapes();
+    for (auto it = op_supplement_event_node->InputShapes().begin();
+         it != op_supplement_event_node->InputShapes().end();
+         it++) {
+      input_shape_proto->add_key(it->first);
+      OperatorSupplementEventProto::input_shape_proto::shape_vector*
+          shape_vectors_proto = input_shape_proto->add_shape_vecs();
+      auto shape_vectors = it->second;
+      for (auto shape_vecs_it = shape_vectors.begin();
+           shape_vecs_it != shape_vectors.end();
+           shape_vecs_it++) {
+        auto shape_vector = *shape_vecs_it;
+        OperatorSupplementEventProto::input_shape_proto::shape_vector::shape*
+            shape_proto = shape_vectors_proto->add_shapes();
+        for (auto shape_it = shape_vector.begin();
+             shape_it != shape_vector.end();
+             shape_it++) {
+          shape_proto->add_size(*shape_it);
+        }
+      }
+    }
+
+    OperatorSupplementEventProto::dtype_proto* dtype_proto =
+        op_supplement_event_proto->mutable_dtypes();
+    for (auto it = op_supplement_event_node->Dtypes().begin();
+         it != op_supplement_event_node->Dtypes().end();
+         it++) {
+      dtype_proto->add_key(it->first);
+      OperatorSupplementEventProto::dtype_proto::dtype_vector*
+          dtype_vector_proto = dtype_proto->add_dtype_vecs();
+      auto dtype_vector = it->second;
+      for (auto dtype_it = dtype_vector.begin(); dtype_it != dtype_vector.end();
+           dtype_it++) {
+        dtype_vector_proto->add_dtype(*dtype_it);
+      }
+    }
+    current_op_supplement_event_node_proto_->set_allocated_op_supplement_event(
+        op_supplement_event_proto);
+  }
 }
 
 void SerializationLogger::LogRuntimeTraceEventNode(

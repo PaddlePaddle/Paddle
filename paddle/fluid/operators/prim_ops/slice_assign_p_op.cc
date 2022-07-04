@@ -77,40 +77,51 @@ class SliceAssignPrimOpShapeInference : public framework::InferShapeBase {
     auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int64_t>>("strides");
     PADDLE_ENFORCE_EQ(
-        starts.size(), axis.size(),
+        starts.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of starts attribute and axis attribute should be same, "
             "but get %d and %d",
-            starts.size(), axis.size()));
+            starts.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axis.size(),
+        ends.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of ends attribute and axis attribute should be same, "
             "but get %d and %d",
-            ends.size(), axis.size()));
+            ends.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        strides.size(), axis.size(),
+        strides.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of strides attribute and axis attribute should be same, "
             "but get %d and %d",
-            strides.size(), axis.size()));
-    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+            strides.size(),
+            axis.size()));
+    PADDLE_ENFORCE_EQ(x_rank,
+                      y_rank,
                       platform::errors::InvalidArgument(
                           "The dimensions of two input tensor should be same, "
                           "but get %d and %d",
-                          x_rank, y_rank));
+                          x_rank,
+                          y_rank));
     std::vector<int64_t> y_target_shape(x_shape);
     for (size_t i = 0; i < axis.size(); ++i) {
       y_target_shape[axis[i]] =
           (ends[i] - starts[i] + strides[i] - 1) / strides[i];
     }
     for (size_t i = 0; i < x_rank; ++i) {
-      PADDLE_ENFORCE_EQ(y_target_shape[i], y_shape[i],
+      PADDLE_ENFORCE_EQ(y_target_shape[i],
+                        y_shape[i],
                         platform::errors::InvalidArgument(
                             "The shape of source tensor of slice_assign_p op "
                             "at dimension %d should be %d, "
                             "but get %d",
-                            i, y_target_shape[i], y_shape[i]));
+                            i,
+                            y_target_shape[i],
+                            y_shape[i]));
     }
     BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
   }
@@ -127,16 +138,20 @@ class SliceAssignPrimOpVarTypeInference
     auto y_type = GetType(ctx, y_name);
     auto x_dtype = GetDataType(ctx, x_name);
     auto y_dtype = GetDataType(ctx, y_name);
-    PADDLE_ENFORCE_EQ(x_type, y_type,
+    PADDLE_ENFORCE_EQ(x_type,
+                      y_type,
                       platform::errors::InvalidArgument(
                           "The type of two input tensor should be same, "
                           "but get %d and %d",
-                          x_type, y_type));
-    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                          x_type,
+                          y_type));
+    PADDLE_ENFORCE_EQ(x_dtype,
+                      y_dtype,
                       platform::errors::InvalidArgument(
                           "The datatype of two input tensor should be same, "
                           "but get %d and %d",
-                          x_dtype, y_dtype));
+                          x_dtype,
+                          y_dtype));
 
     SetType(ctx, z_name, GetType(ctx, x_name));
     SetDataType(ctx, z_name, GetDataType(ctx, x_name));
@@ -146,7 +161,8 @@ class SliceAssignPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(slice_assign_p, paddle::operators::SliceAssignPrimOp,
+REGISTER_OPERATOR(slice_assign_p,
+                  paddle::operators::SliceAssignPrimOp,
                   paddle::operators::SliceAssignPrimOpMaker,
                   paddle::operators::SliceAssignPrimOpShapeInference,
                   paddle::operators::SliceAssignPrimOpVarTypeInference);

@@ -23,11 +23,11 @@
 if(UNIX AND NOT APPLE)
   # except apple from nix*Os family
   set(LINUX TRUE)
-endif(UNIX AND NOT APPLE)
+endif()
 
 if(WIN32)
   set(HOST_SYSTEM "win32")
-else(WIN32)
+else()
   if(APPLE)
     set(HOST_SYSTEM "macosx")
     exec_program(
@@ -45,7 +45,7 @@ else(WIN32)
       )
     endif()
     set(CMAKE_EXE_LINKER_FLAGS "-framework CoreFoundation -framework Security")
-  else(APPLE)
+  else()
 
     if(EXISTS "/etc/issue")
       file(READ "/etc/issue" LINUX_ISSUE)
@@ -63,21 +63,21 @@ else(WIN32)
 
       string(REGEX MATCH "(([0-9]+)\\.)+([0-9]+)" HOST_SYSTEM_VERSION
                    "${LINUX_ISSUE}")
-    endif(EXISTS "/etc/issue")
+    endif()
 
     if(EXISTS "/etc/redhat-release")
       file(READ "/etc/redhat-release" LINUX_ISSUE)
       if(LINUX_ISSUE MATCHES "CentOS")
         set(HOST_SYSTEM "centos")
       endif()
-    endif(EXISTS "/etc/redhat-release")
+    endif()
 
     if(NOT HOST_SYSTEM)
       set(HOST_SYSTEM ${CMAKE_SYSTEM_NAME})
     endif()
 
-  endif(APPLE)
-endif(WIN32)
+  endif()
+endif()
 
 # query number of logical cores
 cmake_host_system_information(RESULT CPU_CORES QUERY NUMBER_OF_LOGICAL_CORES)

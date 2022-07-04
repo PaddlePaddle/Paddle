@@ -84,7 +84,7 @@ cc_library(
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
   set(GRAPH_PATTERN_DETECTOR_DEPS ${GRAPH_PATTERN_DETECTOR_DEPS} gtest)
-endif(WITH_TESTING)
+endif()
 cc_library(
   graph_pattern_detector
   SRCS graph_pattern_detector.cc
@@ -143,6 +143,8 @@ pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
+pass_library(delete_c_identity_op_pass inference)
+pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -155,7 +157,6 @@ pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
 pass_library(matmul_scale_fuse_pass inference)
 pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
-pass_library(mixed_precision_configure_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
@@ -200,6 +201,7 @@ if(WITH_MKLDNN)
   pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
+  pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
   pass_library(fc_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(scale_matmul_fuse_pass inference DIR mkldnn)
   pass_library(cpu_bfloat16_placement_pass inference DIR mkldnn)
@@ -238,6 +240,7 @@ if(WITH_IPU)
   pass_library(infer_shape_pass base DIR ipu)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
+  pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
 cc_library(
@@ -415,6 +418,10 @@ if(WITH_MKLDNN)
     test_int8_scale_calculation_mkldnn_pass
     SRCS mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc
     DEPS int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test(
+    test_params_quantization_mkldnn_pass
+    SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
+    DEPS params_quantization_mkldnn_pass)
   cc_test(
     test_fc_elementwise_add_mkldnn_fuse_pass
     SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc

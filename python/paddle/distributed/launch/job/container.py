@@ -37,6 +37,7 @@ class Container(object):
         self._grace_period = 10
 
         self._log_handler = None
+        self._shell = False
 
     @property
     def entrypoint(self):
@@ -69,6 +70,14 @@ class Container(object):
     @errfile.setter
     def errfile(self, err):
         self._err = err
+
+    @property
+    def shell(self):
+        return self._shell
+
+    @shell.setter
+    def shell(self, shell):
+        self._shell = shell
 
     def update_env(self, env={}, **kwargs):
         env = {k: v for k, v in env.items() if isinstance(v, str)}
@@ -109,7 +118,8 @@ class Container(object):
         self._proc = ProcessContext(self._entrypoint,
                                     env=self._env,
                                     out=self._stdout,
-                                    err=self._stderr)
+                                    err=self._stderr,
+                                    shell=self._shell)
         self._proc.start()
 
     def terminate(self, force=False):
@@ -121,7 +131,11 @@ class Container(object):
             return self._proc.terminate(force)
 
     def wait(self, timeout=None):
-        self._proc.wait(timeout)
+        try:
+            self._proc.wait(timeout)
+            return True
+        except Exception:
+            return False
 
     @property
     def exit_code(self):

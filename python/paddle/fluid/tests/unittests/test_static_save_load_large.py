@@ -23,6 +23,7 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import pickle
 import os
+import tempfile
 
 LARGE_PARAM = 2**26
 
@@ -51,9 +52,10 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
-
-            path = os.path.join("test_static_save_load_large_param",
-                                "static_save")
+            temp_dir = tempfile.TemporaryDirectory()
+            path = os.path.join(temp_dir.name,
+                                "test_static_save_load_large_param")
+            path = os.path.join(path, "static_save")
             protocol = 4
             paddle.fluid.save(prog, path, pickle_protocol=protocol)
             # set var to zero
@@ -93,6 +95,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+            temp_dir.cleanup()
 
 
 if __name__ == '__main__':
