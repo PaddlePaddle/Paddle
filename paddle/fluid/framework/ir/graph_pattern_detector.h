@@ -1079,7 +1079,7 @@ struct Elementwise : public PatternBase {
 
   PDNode* operator()(PDNode* x_var,
                      PDNode* y_var,
-                     const std::string elementwise_type);
+                     const std::string& elementwise_type);
 
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_x);
@@ -1094,7 +1094,7 @@ struct ElementwiseOp : public PatternBase {
   ElementwiseOp(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise") {}
 
-  PDNode* operator()(const std::string elementwise_type);
+  PDNode* operator()(const std::string& elementwise_type);
 
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
@@ -1110,7 +1110,7 @@ struct ResidualElementwise : public PatternBase {
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var,
                      PDNode* residual_var,
-                     const std::string elementwise_type,
+                     const std::string& elementwise_type,
                      bool as_x);
 
   PATTERN_DECL_NODE(operator_output);
@@ -1127,8 +1127,8 @@ struct Immutable : public PatternBase {
   Immutable(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "immutable") {}
 
-  PDNode* operator()(const std::string immutable_type,
-                     const std::string input_name);
+  PDNode* operator()(const std::string& immutable_type,
+                     const std::string& input_name);
   PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(immutable_in);
   PATTERN_DECL_NODE(immutable_op);

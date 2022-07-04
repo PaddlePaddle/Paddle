@@ -670,8 +670,8 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
 }
 
 void CPUQuantizePass::QuantizeImmutable(Graph* graph,
-                                        const std::string immutable_type,
-                                        const std::string input_name) const {
+                                        const std::string& immutable_type,
+                                        const std::string& input_name) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::Immutable immutable_pattern{pattern, name_scope_};
@@ -818,7 +818,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
 }
 
 void CPUQuantizePass::QuantizeElementwise(
-    Graph* graph, const std::string elementwise_type) const {
+    Graph* graph, const std::string& elementwise_type) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::ElementwiseOp elementwise_pattern{pattern, name_scope_};

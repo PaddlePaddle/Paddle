@@ -1796,8 +1796,8 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::Immutable::operator()(const std::string immutable_type,
-                                        const std::string input_name) {
+PDNode *patterns::Immutable::operator()(const std::string& immutable_type,
+                                        const std::string& input_name) {
   auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
 
   auto immutable_op =
@@ -2055,7 +2055,7 @@ PDNode *patterns::Pool::operator()() {
 
 PDNode *patterns::Elementwise::operator()(PDNode *x_var,
                                           PDNode *y_var,
-                                          const std::string elementwise_type) {
+                                          const std::string& elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2072,7 +2072,7 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var,
 }
 
 PDNode *patterns::ElementwiseOp::operator()(
-    const std::string elementwise_type) {
+    const std::string& elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2088,7 +2088,7 @@ PDNode *patterns::ElementwiseOp::operator()(
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,
-    const std::string elementwise_type,
+    const std::string& elementwise_type,
     bool as_x) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
