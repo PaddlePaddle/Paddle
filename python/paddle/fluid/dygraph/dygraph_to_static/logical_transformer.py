@@ -16,6 +16,7 @@ from __future__ import print_function
 
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 cmpop_type_to_str = {
     gast.Eq: "==",
@@ -35,7 +36,7 @@ def cmpop_node_to_str(node):
     return cmpop_type_to_str[type(node)]
 
 
-class LogicalTransformer(gast.NodeTransformer):
+class LogicalTransformer(BaseTransformer):
     """
     Transform python boolean op into Paddle logical op.
 
