@@ -263,8 +263,10 @@ class OpConverter {
       if (layer->getType() == nvinfer1::LayerType::kSHUFFLE) {
         auto* input_tensor = layer->getInput(0);
         auto* output_tensor = layer->getOutput(0);
-        if (engine->DynamicRangeIsSet(input_tensor) && !engine->DynamicRangeIsSet(output_tensor)) {
-          engine->SetTensorDynamicRange(output_tensor, engine->GetTensorDynamicRange(input_tensor));
+        if (engine->DynamicRangeIsSet(input_tensor) &&
+            !engine->DynamicRangeIsSet(output_tensor)) {
+          engine->SetTensorDynamicRange(
+              output_tensor, engine->GetTensorDynamicRange(input_tensor));
         }
       }
     }
@@ -563,7 +565,7 @@ class OpConverter {
       trt_dtype = nvinfer1::DataType::kINT32;
     } else if (var_t->dtype() == phi::DataType::INT64) {
       int64_t* data_ptr = engine_->GetWeightCPUData<int64_t>(name, var_t);
-      // we must create a new framework::Tensor()
+      // We must create a new framework::Tensor()
       std::unique_ptr<framework::Tensor> new_var_t(new framework::Tensor());
       new_var_t->Resize({var_t->numel()});
       int32_t* new_data_ptr =
@@ -574,6 +576,9 @@ class OpConverter {
       engine_->SetWeights(name, std::move(new_var_t));
       trt_ptr = static_cast<void*>(new_data_ptr);
       trt_dtype = nvinfer1::DataType::kINT32;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported datatype in TensorRT"));
     }
     // Now we have create weights, then we need create a itensor
     auto var_dims = var_t->dims();
