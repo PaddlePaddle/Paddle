@@ -21,6 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
@@ -57,7 +58,7 @@ def get_return_size(return_node):
     return return_length
 
 
-class ReplaceReturnNoneTransformer(gast.NodeTransformer):
+class ReplaceReturnNoneTransformer(BaseTransformer):
     """
     Replace 'return None' to  'return' because 'None' cannot be a valid input
     in control flow. In ReturnTransformer single 'Return' will be appended no
@@ -133,7 +134,7 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
         return self.max_return_length[func_node]
 
 
-class ReturnTransformer(gast.NodeTransformer):
+class ReturnTransformer(BaseTransformer):
     """
     Transforms return statements into equivalent python statements containing
     only one return statement at last. The basics idea is using a return value

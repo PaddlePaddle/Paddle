@@ -197,14 +197,17 @@ class TestDygraphToStaticCode(unittest.TestCase):
         code = program_translator.get_code(dyfunc_with_if_else)
         #print(code)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
-        self.assertEqual(answer, code)
+        self.assertEqual(
+            answer.replace('\n', '').replace(' ', ''),
+            code.replace('\n', '').replace(' ', ''))
 
     def test_program_translator(self):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
-        #print(code)
-        self.assertEqual(answer, code)
+        self.assertEqual(
+            answer.replace('\n', '').replace(' ', ''),
+            code.replace('\n', '').replace(' ', ''))
 
 
 class TestEnableDeclarative(unittest.TestCase):

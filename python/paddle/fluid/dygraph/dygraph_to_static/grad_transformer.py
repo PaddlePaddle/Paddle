@@ -19,9 +19,10 @@ import warnings
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class GradTransformer(gast.NodeTransformer):
+class GradTransformer(BaseTransformer):
     """
     A class transforms dygraph paddle.grad to static graph paddle.gradients. The
     transformation is applied to support double grad mode.
