@@ -2089,7 +2089,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-    auto* context = new paddle::platform::CPUDeviceContext();
+    auto* context = new phi::CPUContext();
     context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
         .GetAllocator(place)

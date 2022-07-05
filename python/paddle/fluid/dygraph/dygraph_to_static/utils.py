@@ -38,6 +38,9 @@ from paddle.fluid import core
 PADDLE_MODULE_PREFIX = 'paddle.'
 DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -641,7 +644,12 @@ def ast_to_source_code(ast_node):
             type(ast_node))
     if isinstance(ast_node, gast.AST):
         ast_node = gast.gast_to_ast(ast_node)
-    source_code = astor.to_source(ast_node)
+
+    # Do not wrap lines even if they are too long
+    def pretty_source(source):
+        return ''.join(source)
+
+    source_code = astor.to_source(ast_node, pretty_source=pretty_source)
     return source_code
 
 
@@ -1619,18 +1627,13 @@ def create_get_args_node(names):
     template = """
     def {func_name}():
         nonlocal {nonlocal_vars}
-        return {vars}
+        return {vars},
     """
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
         nonlocal_vars=','.join(nonlocal_names),
         vars=",".join(names))
     return gast.parse(textwrap.dedent(func_def)).body[0]
-
-
-GET_ARGS_FUNC_PREFIX = 'get_args'
-SET_ARGS_FUNC_PREFIX = 'set_args'
-ARGS_NAME = '__args'
 
 
 def create_set_args_node(names):
@@ -1661,7 +1664,7 @@ def create_set_args_node(names):
     template = """
     def {func_name}({args}):
         nonlocal {nonlocal_vars}
-        {vars} = {args}
+        {vars}, = {args}
     """
     func_def = template.format(
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),

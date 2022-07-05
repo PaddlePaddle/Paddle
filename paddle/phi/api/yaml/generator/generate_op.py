@@ -54,7 +54,7 @@ def restruct_io(api):
     return api
 
 
-def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
+def main(api_yaml_path, backward_yaml_path, api_compat_yaml_path,
          api_version_yaml_path, output_op_path, output_arg_map_path):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
@@ -72,7 +72,7 @@ def main(api_yaml_path, backward_yaml_path, api_args_compat_yaml_path,
     for api_version in api_versions:
         forward_api_dict[api_version['api']]['version'] = api_version['version']
 
-    with open(api_args_compat_yaml_path, "rt") as f:
+    with open(api_compat_yaml_path, "rt") as f:
         api_args_map = yaml.safe_load(f)
     # replace args name for OpMaker
     for api_args in api_args_map:
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('--backward_api_yaml_path',
                         type=str,
                         help="parsed backward api yaml file.")
-    parser.add_argument('--api_args_compat_yaml_path',
+    parser.add_argument('--api_compat_yaml_path',
                         type=str,
                         help="api args compat yaml file.")
     parser.add_argument('--api_version_yaml_path',
@@ -235,5 +235,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args.api_yaml_path, args.backward_api_yaml_path,
-         args.api_args_compat_yaml_path, args.api_version_yaml_path,
+         args.api_compat_yaml_path, args.api_version_yaml_path,
          args.output_op_path, args.output_arg_map_path)

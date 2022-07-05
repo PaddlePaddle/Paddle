@@ -49,7 +49,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # Train program
         predict = cnn_model(images)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')

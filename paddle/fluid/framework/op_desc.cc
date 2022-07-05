@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "boost/blank.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_call_stack.h"
@@ -24,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
@@ -779,7 +779,7 @@ void OpDesc::RenameInput(const std::string &old_name,
   need_update_ = true;
 }
 
-struct SetAttrDescVisitor : public boost::static_visitor<void> {
+struct SetAttrDescVisitor {
   explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr) : attr_(attr) {}
   mutable proto::OpDesc::Attr *attr_;
   void operator()(int v) const { attr_->set_i(v); }
@@ -825,7 +825,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_float64s());
   }
 
-  void operator()(boost::blank) const {
+  void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method of SetAttrDescVisitor object for "
         "`boosst::blank` type."));

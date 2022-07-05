@@ -195,12 +195,10 @@ REGISTER_OPERATOR(im2sequence,
                   ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
                   ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    im2sequence,
-    ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    im2sequence_grad,
-    ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(im2sequence,
+                       ops::Im2SequenceKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(im2sequence_grad,
+                       ops::Im2SequenceGradKernel<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
     im2sequence,

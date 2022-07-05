@@ -138,9 +138,8 @@ REGISTER_OPERATOR(
     ops::DiagEmbedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    diag_embed,
-    ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::DiagEmbedKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(diag_embed,
+                       ops::DiagEmbedKernel<phi::CPUContext, int>,
+                       ops::DiagEmbedKernel<phi::CPUContext, float>,
+                       ops::DiagEmbedKernel<phi::CPUContext, double>,
+                       ops::DiagEmbedKernel<phi::CPUContext, int64_t>);

@@ -141,7 +141,7 @@ class CastOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 // cast use phi kernel, so no need to REGISTER_OP_CPU_KERNEL here.
 REGISTER_OPERATOR(cast,
