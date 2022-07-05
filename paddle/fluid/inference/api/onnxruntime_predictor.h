@@ -199,6 +199,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   Ort::Session session_{nullptr};
   std::shared_ptr<Ort::IoBinding> binding_;
 
+  std::mutex clone_mutex_;
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;

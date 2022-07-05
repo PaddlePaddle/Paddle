@@ -333,8 +333,10 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
 }
 
 std::unique_ptr<PaddlePredictor> ONNXRuntimePredictor::Clone(void *stream) {
-  LOG(ERROR) << "Not support Clone(), Please create new Predictor";
-  return nullptr;
+  std::lock_guard<std::mutex> lk(clone_mutex_);
+  auto *x = new ONNXRuntimePredictor(config_);
+  x->Init();
+  return std::unique_ptr<PaddlePredictor>(x);
 }
 
 uint64_t ONNXRuntimePredictor::TryShrinkMemory() {
