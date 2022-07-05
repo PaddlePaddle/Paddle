@@ -584,15 +584,6 @@ class LoopTransformer(BaseTransformer):
         self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
-    # def visit(self, node):
-    #     self.generic_visit(node)
-    #     # All parent nodes that may contain gast.While/gast.For
-    #     if hasattr(node, 'body'):
-    #         self.replace_stmt_list(node.body)
-    #     if hasattr(node, 'orelse'):
-    #         self.replace_stmt_list(node.orelse)
-    #     return node
-
     def visit_While(self, node):
         self.generic_visit(node)
         new_stmts = self.get_while_stmt_nodes(node)
