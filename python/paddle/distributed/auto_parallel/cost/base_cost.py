@@ -66,6 +66,8 @@ def build_comp_desc_from_op(op):
     attr_desc = op.all_attrs
     desc["attrs"] = attr_desc
 
+    return desc
+
 
 def build_comp_desc_from_dist_op(dist_op, dist_context):
     """Build descriptions of computation op distributed on the processes."""
