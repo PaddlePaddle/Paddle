@@ -456,21 +456,16 @@ void LaunchBroadcastKernel(
                     read_lens * gpu_config.GetBlockSize();
   int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
 #endif
-  VectorizedBroadcastKernel<InT,
-                            OutT,
-                            Functor,
-                            Arity,
-                            NumOuts,
-                            VecSize><<<blocks, threads, 0, stream>>>(
-      ins_data,
-      outs_data,
-      use_broadcast,
-      numel,
-      configs,
-      main_offset,
-      tail_tid,
-      read_lens,
-      func);
+  VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
+      <<<blocks, threads, 0, stream>>>(ins_data,
+                                       outs_data,
+                                       use_broadcast,
+                                       numel,
+                                       configs,
+                                       main_offset,
+                                       tail_tid,
+                                       read_lens,
+                                       func);
 }
 
 template <ElementwiseType ET,
@@ -585,26 +580,15 @@ void BroadcastKernel(const KPDevice &ctx,
                      Functor func) {
   std::vector<int> dims_size;
   dims_size.reserve(ins.size());
-  bool no_broadcast_flag = true;
   for (auto *in : ins) {
-    no_broadcast_flag &= ins[0]->dims() == in->dims();
     dims_size.emplace_back(in->dims().size());
   }
 
-  if (ins.size() > 0 && outs->size() > 0) {
-    no_broadcast_flag &= outs->at(0)->dims() == ins[0]->dims();
-  }
-
-  if (no_broadcast_flag) {
-    phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(ctx, ins, outs, func);
-  } else {
-    axis = axis == -1
-               ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                     *std::min_element(dims_size.begin(), dims_size.end())
-               : axis;
-    BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
-        ctx, ins, outs, axis, func);
-  }
+  axis = axis == -1 ? *std::max_element(dims_size.begin(), dims_size.end()) -
+                          *std::min_element(dims_size.begin(), dims_size.end())
+                    : axis;
+  BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
+      ctx, ins, outs, axis, func);
 }
 
 template <typename Functor, typename T, typename OutType = T>
@@ -621,7 +605,22 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
       dev_ctx, ins, &outs, axis, func);
 }
 
-#endif
+template <typename DeviceContext,
+          typename T,
+          typename Functor,
+          typename InverseFunctor>
+void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
+                                const DenseTensor &x,
+                                const DenseTensor &y,
+                                DenseTensor *z,
+                                int axis = -1) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  dev_ctx.template Alloc<T>(z);
+  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+}
+
+#else
 
 template <typename DeviceContext,
           typename T,
@@ -642,6 +641,8 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
         dev_ctx, x, y, axis, InverseFunctor(), z);
   }
 }
+
+#endif
 
 }  // namespace funcs
 }  // namespace phi

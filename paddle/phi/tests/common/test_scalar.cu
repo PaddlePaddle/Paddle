@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <map>  // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -23,8 +24,6 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 
 namespace phi {
 namespace tests {
@@ -48,7 +47,6 @@ TEST(Scalar, ConstructFromDenseTensor1) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<float16>(&dense_x);
   dense_x_data[0] = 1;
@@ -68,7 +66,6 @@ TEST(Scalar, ConstructFromDenseTensor2) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<int16_t>(&dense_x);
   dense_x_data[0] = 1;
@@ -88,7 +85,6 @@ TEST(Scalar, ConstructFromDenseTensor3) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<int8_t>(&dense_x);
   dense_x_data[0] = 1;
@@ -108,7 +104,6 @@ TEST(Scalar, ConstructFromDenseTensor4) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<bool>(&dense_x);
   dense_x_data[0] = true;
@@ -128,7 +123,6 @@ TEST(Scalar, ConstructFromDenseTensor5) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<complex64>(&dense_x);
   dense_x_data[0] = 1;
@@ -149,7 +143,6 @@ TEST(Scalar, ConstructFromDenseTensor6) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(phi::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   auto* dense_x_data = dev_ctx.Alloc<complex128>(&dense_x);
   dense_x_data[0] = 1;

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <array>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 // TODO(phi): remove fluid headers.

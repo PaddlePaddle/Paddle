@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {

@@ -41,40 +41,50 @@ struct DynamicGradMerger {
     return out;
   }
 
-  __device__ __forceinline__ void update_one(float* output, const float* input,
-                                            CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.SlotIndex()] = 
+  __device__ __forceinline__ void update_one(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.SlotIndex()] =
         input[feature_value_accessor.common_push_value.SlotIndex()];
-    output[feature_value_accessor.common_push_value.ShowIndex()] = 
+    output[feature_value_accessor.common_push_value.ShowIndex()] =
         input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] = 
+    output[feature_value_accessor.common_push_value.ClickIndex()] =
         input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.MfDimIndex()] = 
+    output[feature_value_accessor.common_push_value.MfDimIndex()] =
         input[feature_value_accessor.common_push_value.MfDimIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] = 
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] =
         input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = 
+    for (int j = 0;
+         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
+         j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] =
           input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
 
-  __device__ __forceinline__ void merge_one(float* output, const float* input,
-                                          CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.ShowIndex()] += 
+  __device__ __forceinline__ void merge_one(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.ShowIndex()] +=
         input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] += 
+    output[feature_value_accessor.common_push_value.ClickIndex()] +=
         input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] += 
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] +=
         input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] += 
+    for (int j = 0;
+         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
+         j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] +=
           input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
 
-  __device__ __forceinline__ void update_basic(float* output, const float* input,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void update_basic(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& fv_accessor) {
     output[fv_accessor.common_push_value.SlotIndex()] =
         input[fv_accessor.common_push_value.SlotIndex()];
     output[fv_accessor.common_push_value.ShowIndex()] =
@@ -87,8 +97,10 @@ struct DynamicGradMerger {
         input[fv_accessor.common_push_value.EmbedGIndex()];
   }
 
-  __device__ __forceinline__ void merge_basic(float* output, const float* input,
-                                          CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void merge_basic(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& fv_accessor) {
     output[fv_accessor.common_push_value.ShowIndex()] +=
         input[fv_accessor.common_push_value.ShowIndex()];
     output[fv_accessor.common_push_value.ClickIndex()] +=
@@ -97,16 +109,22 @@ struct DynamicGradMerger {
         input[fv_accessor.common_push_value.EmbedGIndex()];
   }
 
-  __device__ __forceinline__ void update_embedx(float* output, const float* input, size_t embedx_idx,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void update_embedx(
+      float* output,
+      const float* input,
+      size_t embedx_idx,
+      CommonFeatureValueAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
   }
 
-  __device__ __forceinline__ void merge_embedx(float* output, const float* input, size_t embedx_idx,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void merge_embedx(
+      float* output,
+      const float* input,
+      size_t embedx_idx,
+      CommonFeatureValueAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
@@ -119,74 +137,121 @@ class HeterCommKernel {
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
-  explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor& feature_value_accessor) : block_size_(block_size), feature_value_accessor_(feature_value_accessor) {}
+  explicit HeterCommKernel(const int block_size,
+                           CommonFeatureValueAccessor& feature_value_accessor)
+      : block_size_(block_size),
+        feature_value_accessor_(feature_value_accessor) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
 
   template <typename T, typename StreamType>
-  void calc_shard_offset(T* idx, T* left, T* right, long long len,
-                         int total_devs, const StreamType& stream);
+  void calc_shard_offset(T* idx,
+                         T* left,
+                         T* right,
+                         long long len,
+                         int total_devs,
+                         const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
-  void calc_shard_index(KeyType* d_keys, long long len, T* shard_index,
+  void calc_shard_index(KeyType* d_keys,
+                        long long len,
+                        T* shard_index,
 
-                        int total_devs, const StreamType& stream);
+                        int total_devs,
+                        const StreamType& stream);
 
   template <typename KeyType, typename T, typename StreamType>
-  void fill_shard_key(KeyType* d_shard_keys, KeyType* d_keys, T* idx,
-                      long long len, const StreamType& stream);
+  void fill_shard_key(KeyType* d_shard_keys,
+                      KeyType* d_keys,
+                      T* idx,
+                      long long len,
+                      const StreamType& stream);
 
-  template <typename KeyType, typename GradType, typename T,
+  template <typename KeyType,
+            typename GradType,
+            typename T,
             typename StreamType>
-  void fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                        GradType* d_shard_grads, GradType* d_grads, T* idx,
-                        long long len, const StreamType& stream);
+  void fill_shard_grads(KeyType* d_shard_keys,
+                        KeyType* d_keys,
+                        GradType* d_shard_grads,
+                        GradType* d_grads,
+                        T* idx,
+                        long long len,
+                        const StreamType& stream);
 
   template <typename ValType, typename T, typename StreamType>
-  void fill_dvals(ValType* d_shard_vals, ValType* d_vals, T* idx, long long len,
+  void fill_dvals(ValType* d_shard_vals,
+                  ValType* d_vals,
+                  T* idx,
+                  long long len,
                   const StreamType& stream);
 
   template <typename KeyT, typename ValueT, typename StreamType>
-  void sort_pairs(void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
-                  const KeyT* d_keys_in, KeyT* d_keys_out,
-                  const ValueT* d_values_in, ValueT* d_values_out,
-                  int num_items, int begin_bit = 0,
+  void sort_pairs(void* d_temp_storage,
+                  size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in,
+                  KeyT* d_keys_out,
+                  const ValueT* d_values_in,
+                  ValueT* d_values_out,
+                  int num_items,
+                  int begin_bit = 0,
 
-                  int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
+                  int end_bit = sizeof(KeyT) * 8,
+                  StreamType stream = NULL,
                   bool debug_synchronous = false);
 
-  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
-            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
-            typename NumRunsOutputIteratorT, typename StreamType>
+  template <typename KeysInputIteratorT,
+            typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT,
+            typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT,
+            typename StreamType>
   void reduce_by_key(void* d_temp_storage,
                      size_t& temp_storage_bytes,  // NOLINT
                      KeysInputIteratorT d_keys_in,
                      UniqueOutputIteratorT d_unique_out,
                      ValuesInputIteratorT d_values_in,
                      AggregatesOutputIteratorT d_aggregates_out,
-                     NumRunsOutputIteratorT d_num_runs_out, int num_items,
+                     NumRunsOutputIteratorT d_num_runs_out,
+                     int num_items,
 
-                     StreamType stream = NULL, bool debug_synchronous = false);
+                     StreamType stream = NULL,
+                     bool debug_synchronous = false);
 
   template <typename KeyType, typename T, typename StreamType>
-  void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                              float* d_shard_grads, float* d_grads,
-                              T* idx, long long len, size_t grad_value_size,
+  void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
+                              KeyType* d_keys,
+                              float* d_shard_grads,
+                              float* d_grads,
+                              T* idx,
+                              long long len,
+                              size_t grad_value_size,
                               const StreamType& stream);
 
   template <typename KeyType, typename StreamType>
-  void merge_gradient(const KeyType* d_shard_keys, const uint32_t* offset, const uint32_t* fea_num,
-                      const uint32_t* index, const char* input, char* output,
-                      int n, size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger,
+  void merge_gradient(const KeyType* d_shard_keys,
+                      const uint32_t* offset,
+                      const uint32_t* fea_num,
+                      const uint32_t* index,
+                      const char* input,
+                      char* output,
+                      int n,
+                      size_t grad_dim,
+                      size_t grad_value_size,
+                      DynamicGradMerger& merger,
                       const StreamType& stream);
 
   template <typename T, typename StreamType>
-  void dy_mf_fill_dvals(float* d_shard_vals, float* d_vals, T* idx,
-                        long long len, size_t val_size,
+  void dy_mf_fill_dvals(float* d_shard_vals,
+                        float* d_vals,
+                        T* idx,
+                        long long len,
+                        size_t val_size,
                         const StreamType& stream);
 
   CommonFeatureValueAccessor feature_value_accessor_;
+
  private:
   int block_size_{256};
 };

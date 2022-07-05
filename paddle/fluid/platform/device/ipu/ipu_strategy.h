@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
+
 #include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -40,7 +41,7 @@ class IpuStrategy {
   // Average sharding, debugging used
   bool need_avg_shard = false;
 
-  // Flag for fp16, true for pure fp16
+  // Flag for fp16, true for inference with pure fp16
   bool enable_fp16 = false;
 
   // The mode of Adam/Lamb optimizer
@@ -62,6 +63,9 @@ class IpuStrategy {
 
   // Micro batch-size
   int micro_batch_size = 1;
+
+  // The number of virtual tiles for IPUMODEL
+  int tiles_per_ipu = 4;
 
   // Random seed
   std::uint64_t random_seed = std::numeric_limits<std::uint64_t>::max();
@@ -114,15 +118,19 @@ class IpuStrategy {
   void AddDoubleOption(const std::string &option, double value);
   void AddStringOption(const std::string &option, const std::string &value);
   void InsertStringOption(const std::string &option, const std::string &value);
-  void InsertStringPairOption(const std::string &option, const std::string &key,
+  void InsertStringPairOption(const std::string &option,
+                              const std::string &key,
                               const std::string &value);
-  void SetTensorLocation(const std::string &tensor, const std::string &option,
+  void SetTensorLocation(const std::string &tensor,
+                         const std::string &option,
                          std::uint64_t value);
   void SetReplicatedCollectivesSettings(const std::string &opt, bool value);
   void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
                                           const std::vector<int> &values);
-  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
-                   const std::string &domain, int version);
+  void AddCustomOp(const std::string &paddle_op,
+                   const std::string &popart_op,
+                   const std::string &domain,
+                   int version);
   void SetCompilationProgressLogger(
       const std::function<void(int, int)> &logger);
 
@@ -139,14 +147,18 @@ class IpuStrategy {
  private:
   template <typename ValueType>
   void set(
-      const std::string &key, ValueType value,
+      const std::string &key,
+      ValueType value,
       std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
       const std::string &type_str) {
     auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(), platform::errors::InvalidArgument(
-                                             "Cannot find option: %s, type: %s "
-                                             "when setting IpuStrategy options",
-                                             key, type_str));
+    PADDLE_ENFORCE_NE(
+        it,
+        options.end(),
+        platform::errors::InvalidArgument("Cannot find option: %s, type: %s "
+                                          "when setting IpuStrategy options",
+                                          key,
+                                          type_str));
     it->second(value);
   }
 
@@ -156,7 +168,8 @@ class IpuStrategy {
       std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it, options.end(),
+        it,
+        options.end(),
         platform::errors::InvalidArgument(
             "Cannot find option name: %s when trying to get IpuStrategy option",
             key));

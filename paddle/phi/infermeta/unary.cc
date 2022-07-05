@@ -235,12 +235,12 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void CumsumInferMeta(const MetaTensor& x,
-                     int axis,
-                     bool flatten,
-                     bool exclusive,
-                     bool reverse,
-                     MetaTensor* out) {
+void CumInferMeta(const MetaTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  MetaTensor* out) {
   auto x_dims = x.dims();
   if (flatten) {
     out->set_dims(phi::make_ddim({phi::product(x_dims)}));
@@ -401,7 +401,9 @@ void EighInferMeta(const MetaTensor& x,
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     std::vector<MetaTensor*> inner_cache,
+                     std::vector<MetaTensor*> xshape) {
   // collect the following informations to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
@@ -438,6 +440,12 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
   VLOG(3) << "Label Shape is : " << label_to_string(all_labels, labelshape);
   out->set_dims(make_ddim(output_dims));
   out->set_dtype(inputs[0]->dtype());
+  for (size_t i = 0; i < xshape.size(); ++i) {
+    if (xshape[i] != nullptr) {
+      xshape[i]->set_dims(inputs[i]->dims());
+      xshape[i]->set_dtype(inputs[i]->dtype());
+    }
+  }
 }
 
 void ExpandInferMeta(const MetaTensor& x,
@@ -1245,6 +1253,65 @@ void MultinomialInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::INT64);
 }
 
+void NanmedianInferMeta(const MetaTensor& x,
+                        const IntArray& axes,
+                        bool keep_dim,
+                        MetaTensor* out,
+                        MetaTensor* median_index) {
+  std::vector<int64_t> axis_list = axes.GetData();
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+  out->set_dtype(x.dtype());
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim({x.numel() * 2}));
+
+  std::vector<int32_t> out_dim;
+  if (axis_list.empty()) {
+    if (keep_dim) {
+      for (int64_t i = 0; i < x_rank; i++) {
+        out_dim.push_back(1);
+      }
+    } else {
+      out_dim.push_back(1);
+    }
+  } else {
+    std::vector<int64_t> cleaned_axis;
+    for (auto& axis : axis_list) {
+      if (axis < 0) axis += x_rank;
+
+      PADDLE_ENFORCE_LT(
+          axis,
+          x_rank,
+          errors::InvalidArgument(
+              "Attr(axis) value should be in range [-R, R-1], R is "
+              "the rank of Input(X). But received axis: %d, R: %d. "
+              "Current Input(X)'s shape is=[%s].",
+              axis,
+              x_rank,
+              x_dim));
+
+      PADDLE_ENFORCE_EQ(
+          std::find(cleaned_axis.begin(), cleaned_axis.end(), axis),
+          cleaned_axis.end(),
+          errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
+                                  static_cast<int>(axis)));
+
+      cleaned_axis.push_back(axis);
+    }
+
+    for (int64_t i = 0; i < x_rank; i++) {
+      if (std::find(cleaned_axis.begin(), cleaned_axis.end(), i) ==
+          cleaned_axis.end()) {
+        out_dim.push_back(x_dim[i]);
+      } else if (keep_dim) {
+        out_dim.push_back(1);
+      }
+    }
+  }
+
+  out->set_dims(make_ddim(out_dim));
+}
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,
@@ -1915,6 +1982,55 @@ void RollInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void RReluInferMeta(const MetaTensor& x,
+                    float lower,
+                    float upper,
+                    bool is_test,
+                    MetaTensor* out,
+                    MetaTensor* noise) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(lower,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The lower value should be greater than or equal to 0. "
+                        "But received lower value = %f.",
+                        lower));
+  PADDLE_ENFORCE_LE(upper,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The upper value should be less than or equal to 1. "
+                        "But received upper value = %f.",
+                        upper));
+  PADDLE_ENFORCE_GE(
+      upper,
+      lower,
+      phi::errors::InvalidArgument(
+          "The upper value should be greater than or equal to lower value "
+          "But received upper value = %f, lower value = %f.",
+          upper,
+          lower));
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+
+  if (noise != nullptr) {
+    noise->set_dims(x_dims);
+    noise->set_dtype(x.dtype());
+    noise->set_layout(x.layout());
+  }
+}
+
+void RReluGradInferMeta(const MetaTensor& out_grad,
+                        const MetaTensor& noise,
+                        MetaTensor* x_grad) {
+  auto do_dims = out_grad.dims();
+  x_grad->set_dims(do_dims);
+  x_grad->set_dtype(out_grad.dtype());
+  x_grad->share_lod(out_grad);
 }
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {

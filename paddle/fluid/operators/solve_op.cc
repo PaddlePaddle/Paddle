@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/solve_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -43,26 +45,32 @@ class SolveOp : public framework::OperatorWithKernel {
     auto x_dims_n = x_dims_vec.size();
     auto y_dims_n = y_dims_vec.size();
 
-    PADDLE_ENFORCE_GT(x_dims_n, 1,
+    PADDLE_ENFORCE_GT(x_dims_n,
+                      1,
                       platform::errors::InvalidArgument(
                           "The input tensor X's dimensions of SolveOp "
                           "should be larger than 1. But received X's "
                           "dimensions = %d, X's shape = [%s]",
-                          x_dims_n, x_dims));
+                          x_dims_n,
+                          x_dims));
 
-    PADDLE_ENFORCE_GE(y_dims_n, 1,
+    PADDLE_ENFORCE_GE(y_dims_n,
+                      1,
                       platform::errors::InvalidArgument(
                           "The input tensor Y's dimensions of SolveOp "
                           "should be larger than or equal 1. But received Y's "
                           "dimensions = %d, Y's shape = [%s]",
-                          y_dims_n, y_dims));
+                          y_dims_n,
+                          y_dims));
 
-    PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2], x_dims[x_dims_n - 1],
+    PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2],
+                      x_dims[x_dims_n - 1],
                       platform::errors::InvalidArgument(
                           "The inner-most 2 dimensions of Input(X) all should "
                           "be square matrices "
                           "But received X's shape[-2] = %d and shape[-1] = %d.",
-                          x_dims[x_dims_n - 2], x_dims[x_dims_n - 1]));
+                          x_dims[x_dims_n - 2],
+                          x_dims[x_dims_n - 1]));
 
     bool x_broadcasted = false, y_broadcasted = false;
     bool trans_x = false, trans_y = false;
@@ -118,8 +126,11 @@ class SolveOp : public framework::OperatorWithKernel {
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library, customized_type_value);
+    return framework::OpKernelType(input_data_type,
+                                   ctx.GetPlace(),
+                                   layout,
+                                   library,
+                                   customized_type_value);
   }
 };
 
@@ -156,8 +167,10 @@ class SolveGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "solve");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "solve");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "solve");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "solve");
     // reuse the linalg.solve forward output
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "solve");
 
@@ -199,16 +212,18 @@ class SolveOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(solve, ops::SolveOp, ops::SolveOpMaker,
+REGISTER_OPERATOR(solve,
+                  ops::SolveOp,
+                  ops::SolveOpMaker,
                   ops::SolveOpInferVarType,
                   ops::SolveOpGradMaker<paddle::framework::OpDesc>,
                   ops::SolveOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(solve_grad, ops::SolveGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    solve, ops::SolveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SolveKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    solve_grad, ops::SolveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SolveGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(solve,
+                       ops::SolveKernel<phi::CPUContext, float>,
+                       ops::SolveKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(solve_grad,
+                       ops::SolveGradKernel<phi::CPUContext, float>,
+                       ops::SolveGradKernel<phi::CPUContext, double>);

@@ -61,8 +61,8 @@ class HBMMemoryPool : public managed {
     VLOG(3) << "hbm memory pool with capacity" << capacity_
             << " bs: " << block_size_;
     cudaMalloc(&mem_, block_size_ * capacity_);
-    cudaMemcpy(mem_, mem_pool->mem(), mem_pool->byte_size(),
-               cudaMemcpyHostToDevice);
+    cudaMemcpy(
+        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice);
   }
 
   ~HBMMemoryPool() {

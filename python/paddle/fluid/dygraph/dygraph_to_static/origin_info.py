@@ -38,7 +38,8 @@ class Location(object):
     __slots__ = (
         "filepath",
         "lineno",
-        "col_offset", )
+        "col_offset",
+    )
 
     def __init__(self, filepath, lineno, col_offset=None):
         self.filepath = filepath
@@ -61,7 +62,8 @@ class OriginInfo(object):
     __slots__ = (
         "location",
         "function_name",
-        "source_code", )
+        "source_code",
+    )
 
     def __init__(self, location, function_name, source_code):
         self.location = location

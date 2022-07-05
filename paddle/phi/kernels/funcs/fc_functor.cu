@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -126,15 +127,11 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
     const int threads = 256;
     const int blocks = M;
     if (relu) {
-      InplaceAddReluKernel<T,
-                           true,
-                           threads><<<blocks, threads, 0, context.stream()>>>(
-          N, B, Y);
+      InplaceAddReluKernel<T, true, threads>
+          <<<blocks, threads, 0, context.stream()>>>(N, B, Y);
     } else {
-      InplaceAddReluKernel<T,
-                           false,
-                           threads><<<blocks, threads, 0, context.stream()>>>(
-          N, B, Y);
+      InplaceAddReluKernel<T, false, threads>
+          <<<blocks, threads, 0, context.stream()>>>(N, B, Y);
     }
   }
 }

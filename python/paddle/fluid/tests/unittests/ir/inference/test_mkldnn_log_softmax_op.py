@@ -22,25 +22,26 @@ import hypothesis.strategies as st
 
 
 class TestMKLDNNLogSoftmaxOp(MkldnnAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self, *args, **kwargs):
+
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
 
-        logsoftmax_op = OpConfig(
-            type="log_softmax",
-            inputs={"X": ["input_data"]},
-            outputs={"Out": ["output_data"]},
-            attrs={"axis": kwargs['axis']})
+        logsoftmax_op = OpConfig(type="log_softmax",
+                                 inputs={"X": ["input_data"]},
+                                 outputs={"Out": ["output_data"]},
+                                 attrs={"axis": kwargs['axis']})
 
         program_config = ProgramConfig(
             ops=[logsoftmax_op],
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input,
-                                                            *args, **kwargs)),
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
             },
             outputs=["output_data"])
 
@@ -50,11 +51,10 @@ class TestMKLDNNLogSoftmaxOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
-    @given(
-        axis=st.sampled_from([-2, -1, 0, 1]),
-        in_shape=st.lists(
-            st.integers(
-                min_value=2, max_value=5), min_size=3, max_size=5))
+    @given(axis=st.sampled_from([-2, -1, 0, 1]),
+           in_shape=st.lists(st.integers(min_value=2, max_value=5),
+                             min_size=3,
+                             max_size=5))
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

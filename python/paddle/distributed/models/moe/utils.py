@@ -51,11 +51,10 @@ def _number_count(numbers, upper_range):
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=numbers.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={'numbers': numbers},
-            outputs={'Out': out},
-            attrs={'upper_range': upper_range})
+        helper.append_op(type=op_type,
+                         inputs={'numbers': numbers},
+                         outputs={'Out': out},
+                         attrs={'upper_range': upper_range})
         return out
 
 
@@ -99,14 +98,13 @@ def _assign_pos(x, cum_count):
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={
-                'X': [x],
-                'cum_count': [cum_count],
-                "eff_num_len": [cum_count[-1]]
-            },
-            outputs={'Out': [out]})
+        helper.append_op(type=op_type,
+                         inputs={
+                             'X': [x],
+                             'cum_count': [cum_count],
+                             "eff_num_len": [cum_count[-1]]
+                         },
+                         outputs={'Out': [out]})
         return out
 
 
@@ -169,12 +167,13 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
         out = helper.create_variable_for_type_inference(
             dtype=expert_count.dtype)
 
-        helper.append_op(
-            type=op_type,
-            inputs={'expert_count': expert_count,
-                    'capacity': capacity},
-            outputs={'Out': out},
-            attrs={'n_worker': n_worker})
+        helper.append_op(type=op_type,
+                         inputs={
+                             'expert_count': expert_count,
+                             'capacity': capacity
+                         },
+                         outputs={'Out': out},
+                         attrs={'n_worker': n_worker})
         return out
 
 
@@ -206,8 +205,9 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
                                              n_expert, "n_worker", n_worker)
     elif _in_legacy_dygraph():
-        return core.ops.prune_gate_by_capacity(
-            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
+        return core.ops.prune_gate_by_capacity(gate_idx, expert_count,
+                                               "n_expert", n_expert, "n_worker",
+                                               n_worker)
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
     check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
@@ -216,12 +216,15 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     helper = LayerHelper('prune_gate_by_capacity', **locals())
     new_gate_idx = helper.create_variable_for_type_inference(
         dtype=gate_idx.dtype)
-    helper.append_op(
-        type='prune_gate_by_capacity',
-        inputs={'GateIdx': gate_idx,
-                "ExpertCount": expert_count},
-        outputs={'NewGateIdx': new_gate_idx},
-        attrs={"n_expert": n_expert,
-               "n_worker": n_worker})
+    helper.append_op(type='prune_gate_by_capacity',
+                     inputs={
+                         'GateIdx': gate_idx,
+                         "ExpertCount": expert_count
+                     },
+                     outputs={'NewGateIdx': new_gate_idx},
+                     attrs={
+                         "n_expert": n_expert,
+                         "n_worker": n_worker
+                     })
 
     return new_gate_idx

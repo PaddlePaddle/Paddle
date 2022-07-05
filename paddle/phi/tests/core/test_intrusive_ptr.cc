@@ -16,7 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "paddle/phi/core/utils/intrusive_ptr.h"
 #include "paddle/phi/core/utils/intrusive_ref_counter.h"
 

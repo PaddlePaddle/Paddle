@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
+
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
-
-#include "paddle/phi/api/ext/dispatch.h"
 
 namespace phi {
 namespace sparse {
@@ -73,7 +73,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
  * @brief Filter the DenseTensor x by the
  * mask.non_zero_indices() and output a SparseCooTensor
  * x and mask must have the same shape.
-**/
+ **/
 template <typename T, typename Context>
 void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,

@@ -14,9 +14,11 @@
 
 #pragma once
 #include <thrust/functional.h>
+
 #include <algorithm>
 #include <functional>
 #include <string>
+
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"

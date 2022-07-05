@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/ipu/infer_shape_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -38,8 +39,9 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
     if (!node->IsVar()) {
       continue;
     }
-    bool is_feed = std::find(feed_list.begin(), feed_list.end(),
-                             node->Name()) != feed_list.end();
+    bool is_feed =
+        std::find(feed_list.begin(), feed_list.end(), node->Name()) !=
+        feed_list.end();
     if (is_feed) {
       auto input_shape = node->Var()->GetShape();
       if (input_shape[0] <= -1) {
@@ -79,8 +81,8 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         continue;
       }
       auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-      paddle::framework::RuntimeContext ctx(op->Inputs(), op->Outputs(),
-                                            *scope);
+      paddle::framework::RuntimeContext ctx(
+          op->Inputs(), op->Outputs(), *scope);
       op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), ctx);
 
       for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {

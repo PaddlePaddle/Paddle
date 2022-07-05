@@ -25,10 +25,13 @@ from paddle.fluid.core import PassVersionChecker
 
 
 class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
+
     def setUp(self):
+
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             fc_out = fluid.layers.fc(input=self.data,
                                      size=10,
@@ -62,10 +65,13 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
             {
                 'data': [1, 28, 28],
                 'reshape2_1.tmp_0': [1, 1, 10]
-            }, {'data': [2, 28, 28],
-                'reshape2_1.tmp_0': [2, 1, 10]},
-            {'data': [1, 28, 28],
-             'reshape2_1.tmp_0': [1, 1, 10]}, False)
+            }, {
+                'data': [2, 28, 28],
+                'reshape2_1.tmp_0': [2, 1, 10]
+            }, {
+                'data': [1, 28, 28],
+                'reshape2_1.tmp_0': [1, 1, 10]
+            }, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -73,18 +79,23 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-2, flatten=False, rtol=1e-2)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e-2,
+                                          flatten=False,
+                                          rtol=1e-2)
             self.assertTrue(
                 PassVersionChecker.IsCompatible(
                     'quant_conv2d_dequant_fuse_pass'))
 
 
 class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
+
     def setUp(self):
+
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             fc_out = fluid.layers.fc(input=self.data,
                                      size=28,
@@ -119,10 +130,13 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             {
                 'data': [1, 28, 28],
                 'reshape2_0.tmp_0': [1, 784]
-            }, {'data': [4, 28, 28],
-                'reshape2_0.tmp_0':
-                [4, 784]}, {'data': [1, 28, 28],
-                            'reshape2_0.tmp_0': [1, 784]}, False)
+            }, {
+                'data': [4, 28, 28],
+                'reshape2_0.tmp_0': [4, 784]
+            }, {
+                'data': [1, 28, 28],
+                'reshape2_0.tmp_0': [1, 784]
+            }, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
@@ -130,18 +144,23 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e-1, flatten=False, rtol=1e-1)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e-1,
+                                          flatten=False,
+                                          rtol=1e-1)
             self.assertTrue(
                 PassVersionChecker.IsCompatible(
                     'quant_conv2d_dequant_fuse_pass'))
 
 
 class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
+
     def setUp(self):
+
         def network():
-            self.data = fluid.data(
-                name='data', shape=[1, 28, 28], dtype='float32')
+            self.data = fluid.data(name='data',
+                                   shape=[1, 28, 28],
+                                   dtype='float32')
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
             reshape_out = fluid.layers.reshape(self.data, shape=[1, 14, 14, 4])
@@ -195,8 +214,10 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
         #self.quant_dequant()
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(
-                use_gpu, atol=1e0, flatten=False, rtol=1e0)
+            self.check_output_with_option(use_gpu,
+                                          atol=1e0,
+                                          flatten=False,
+                                          rtol=1e0)
             self.assertTrue(
                 PassVersionChecker.IsCompatible(
                     'quant_conv2d_dequant_fuse_pass'))

@@ -13,8 +13,13 @@
 // limitations under the License.
 #pragma once
 
+#include <atomic>
 #include <functional>
+#include <map>
 #include <memory>
+#include <mutex>
+
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 
@@ -30,24 +35,24 @@ namespace internal {
 class EigenGpuStreamDevice;
 }  // namespace internal
 
-class ResourceManager {
+class CPUContextResource {
  public:
-  explicit ResourceManager(const phi::Place& place, void* stream);
-  ~ResourceManager();
-
- public:
-  Eigen::DefaultDevice* GetCpuEigenDevice();
+  CPUContextResource();
+  Eigen::DefaultDevice* GetCPUEigenDevice() const;
 
  private:
   void InitCPUResource();
 
  private:
-  phi::Place place_;
   std::unique_ptr<Eigen::DefaultDevice> cpu_eigen_device_;
+};
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
+class GPUContextResource {
  public:
+  explicit GPUContextResource(const phi::Place& place, void* stream);
+  ~GPUContextResource();
+
   gpuStream_t GetStream() const;
   dnnHandle_t GetDnnHandle() const;
   blasHandle_t GetBlasHandle() const;
@@ -82,6 +87,8 @@ class ResourceManager {
   void DestroySparseHandle();
 
  private:
+  phi::Place place_;
+
   int compute_capability_;
   int runtime_version_;
   int driver_version_;
@@ -102,8 +109,50 @@ class ResourceManager {
   dnnHandle_t dnn_handle_{nullptr};
   phi::solverHandle_t solver_handle_{nullptr};
   phi::sparseHandle_t sparse_handle_{nullptr};
-// DnnWorkspaceHandle
+  // DnnWorkspaceHandle
+};
 #endif
+
+class ResourceManager {
+ public:
+  ResourceManager() = default;
+  static ResourceManager& Instance() {
+    static ResourceManager* resource_manager = new ResourceManager;
+    return *resource_manager;
+  }
+
+  // CPU Resource
+ public:
+  void InitCPUResource();
+  CPUContextResource* GetCPUResource() const;
+
+ private:
+  std::mutex cpu_mutex_;
+  std::unique_ptr<CPUContextResource> cpu_resource_{nullptr};
+
+// GPU Resource
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+ public:
+  void* InitGPUResource(const phi::Place& place, void* stream);
+  void DestroyGPUResource(void* stream);
+  GPUContextResource* GetGPUResource(void* stream) const;
+  int RefCount(void* stream) const;
+
+ private:
+  void Decrease(void* stream);
+  void Increase(void* stream);
+
+ private:
+  std::mutex gpu_mutex_;
+  // a stream corresponding to a series of resource.
+  std::map<void* /*stream*/, std::atomic<int>> ref_count_;
+  std::map<void* /*stream*/, std::unique_ptr<GPUContextResource>>
+      gpu_resources_;
+#endif
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(ResourceManager);
 };
 
 }  // namespace paddle

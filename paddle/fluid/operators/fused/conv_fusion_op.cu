@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <array>
+
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
@@ -82,8 +83,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims =
         phi::slice_ddim(filter_dims, 2, filter_dims.size());
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
+    UpdatePaddingAndDilation(
+        &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
     bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
@@ -119,19 +120,26 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       switch (rank) {
         case 4: {
           phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              dev_ctx, input_pad, transformed_input_channel, pad_value,
+              dev_ctx,
+              input_pad,
+              transformed_input_channel,
+              pad_value,
               &transformed_input);
         } break;
         case 5: {
           phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              dev_ctx, input_pad, transformed_input_channel, pad_value,
+              dev_ctx,
+              input_pad,
+              transformed_input_channel,
+              pad_value,
               &transformed_input);
         } break;
         default:
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Operator Conv2DFusion expects Input to be a 4-D or 5-D Tensor. "
               "But received the actual dimension = %d, shape = [%s].",
-              rank, transformed_input_channel.dims()));
+              rank,
+              transformed_input_channel.dims()));
       }
 
     } else {
@@ -190,17 +198,31 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
-            handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
-            cudnn_output_desc, &workspace_size));
+            handle,
+            cudnn_filter_desc,
+            cudnn_input_desc,
+            cudnn_conv_desc,
+            cudnn_output_desc,
+            &workspace_size));
     int find_count;
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::miopenFindConvolutionForwardAlgorithm(
-              handle, cudnn_input_desc, input_data, cudnn_filter_desc,
-              filter_data, cudnn_conv_desc, cudnn_output_desc, output_data,
-              kNUM_CUDNN_FWD_ALGS, &find_count, &find_result,
-              cudnn_workspace_ptr, workspace_size, false));
+              handle,
+              cudnn_input_desc,
+              input_data,
+              cudnn_filter_desc,
+              filter_data,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              output_data,
+              kNUM_CUDNN_FWD_ALGS,
+              &find_count,
+              &find_result,
+              cudnn_workspace_ptr,
+              workspace_size,
+              false));
     };
     workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
     algo = find_result.fwd_algo;
@@ -209,26 +231,54 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     {
       ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
       auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenConvolutionForward(
-            handle, &alpha, cudnn_input_desc, input_data, cudnn_filter_desc,
-            filter_data, cudnn_conv_desc, algo, &beta, cudnn_output_desc,
-            output_data, cudnn_workspace, workspace_size));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::miopenConvolutionForward(handle,
+                                                        &alpha,
+                                                        cudnn_input_desc,
+                                                        input_data,
+                                                        cudnn_filter_desc,
+                                                        filter_data,
+                                                        cudnn_conv_desc,
+                                                        algo,
+                                                        &beta,
+                                                        cudnn_output_desc,
+                                                        output_data,
+                                                        cudnn_workspace,
+                                                        workspace_size));
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size);
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenConvolutionForwardBias(
-              handle, &alpha, cudnn_bias_desc, bias_data, &beta,
-              cudnn_output_desc, output_data));
+          platform::dynload::miopenConvolutionForwardBias(handle,
+                                                          &alpha,
+                                                          cudnn_bias_desc,
+                                                          bias_data,
+                                                          &beta,
+                                                          cudnn_output_desc,
+                                                          output_data));
       if (activation != "identity") {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenActivationForward(
-            handle, cudnn_act_desc, &alpha, cudnn_output_desc, output_data,
-            &beta, cudnn_output_desc, output_data));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::miopenActivationForward(handle,
+                                                       cudnn_act_desc,
+                                                       &alpha,
+                                                       cudnn_output_desc,
+                                                       output_data,
+                                                       &beta,
+                                                       cudnn_output_desc,
+                                                       output_data));
       }
       if (residual) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenOpTensor(
-            handle, miopenTensorOpAdd, &alpha, cudnn_output_desc, output_data,
-            &alpha, cudnn_output_desc, residual_data, &beta, cudnn_output_desc,
-            output_data));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::miopenOpTensor(handle,
+                                              miopenTensorOpAdd,
+                                              &alpha,
+                                              cudnn_output_desc,
+                                              output_data,
+                                              &alpha,
+                                              cudnn_output_desc,
+                                              residual_data,
+                                              &beta,
+                                              cudnn_output_desc,
+                                              output_data));
       }
     }
 #else  // PADDLE_WITH_HIP
@@ -286,22 +336,37 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
-              handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-              cudnn_output_desc, kNUM_CUDNN_FWD_ALGS, &perf_count,
+              handle,
+              cudnn_input_desc,
+              cudnn_filter_desc,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              kNUM_CUDNN_FWD_ALGS,
+              &perf_count,
               perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-              handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-              cudnn_output_desc, algo, &workspace_size_in_bytes));
+              handle,
+              cudnn_input_desc,
+              cudnn_filter_desc,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              algo,
+              &workspace_size_in_bytes));
       if (workspace_size_in_bytes > workspace_size_limit)
         workspace_size_limit = workspace_size_in_bytes;
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-              handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-              cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo));
+              handle,
+              cudnn_input_desc,
+              cudnn_filter_desc,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+              workspace_size_limit,
+              &algo));
       VLOG(3) << "cuDNN forward algo " << algo;
 #endif
     } else {
@@ -313,10 +378,19 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         auto cudnn_find_func = [&](void* cudnn_workspace) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                  handle, cudnn_input_desc, input_data, cudnn_filter_desc,
-                  filter_data, cudnn_conv_desc, cudnn_output_desc, output_data,
-                  kNUM_CUDNN_FWD_ALGS, &returned_algo_count,
-                  fwd_perf_stat.data(), cudnn_workspace, workspace_size_limit));
+                  handle,
+                  cudnn_input_desc,
+                  input_data,
+                  cudnn_filter_desc,
+                  filter_data,
+                  cudnn_conv_desc,
+                  cudnn_output_desc,
+                  output_data,
+                  kNUM_CUDNN_FWD_ALGS,
+                  &returned_algo_count,
+                  fwd_perf_stat.data(),
+                  cudnn_workspace,
+                  workspace_size_limit));
         };
         workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
         VLOG(3) << "Perf result: (algo: stat, time, memory)";
@@ -337,27 +411,40 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         // The searched algo will be cached by `search_times` times for
         // different input dimension. For other dimensions, select the algo
         // of closest area.
-        algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
-                                       search_func);
+        algo = algo_cache.GetAlgorithm(
+            x_dims[2] * x_dims[3], search_times, 0, search_func);
       } else {
         auto dtype = platform::CudnnDataType<T>::type;
-        algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                       dilations, 0, dtype, search_func);
+        algo = algo_cache.GetAlgorithm(x_dims,
+                                       f_dims,
+                                       strides,
+                                       paddings,
+                                       dilations,
+                                       0,
+                                       dtype,
+                                       search_func);
       }
       VLOG(3) << "choose algo " << algo;
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-            handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-            cudnn_output_desc, algo, &workspace_size_in_bytes));
+            handle,
+            cudnn_input_desc,
+            cudnn_filter_desc,
+            cudnn_conv_desc,
+            cudnn_output_desc,
+            algo,
+            &workspace_size_in_bytes));
     PADDLE_ENFORCE_LE(
-        workspace_size_in_bytes, workspace_size_limit,
+        workspace_size_in_bytes,
+        workspace_size_limit,
         platform::errors::InvalidArgument(
             "The actual workspace size to be allocated for cuDNN is expected "
             "to be less than the limit. But received: the actual workspace "
             "size = %d, limit = %d.",
-            workspace_size_in_bytes, workspace_size_limit));
+            workspace_size_in_bytes,
+            workspace_size_limit));
 
     if ((activation == "identity") && (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
@@ -367,15 +454,30 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       // ------------- cudnn conv forward and bias add ---------------------
       ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
       auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnConvolutionForward(
-            handle, &alpha, cudnn_input_desc, input_data, cudnn_filter_desc,
-            filter_data, cudnn_conv_desc, algo, cudnn_workspace,
-            workspace_size_in_bytes, &beta, cudnn_output_desc, output_data));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            platform::dynload::cudnnConvolutionForward(handle,
+                                                       &alpha,
+                                                       cudnn_input_desc,
+                                                       input_data,
+                                                       cudnn_filter_desc,
+                                                       filter_data,
+                                                       cudnn_conv_desc,
+                                                       algo,
+                                                       cudnn_workspace,
+                                                       workspace_size_in_bytes,
+                                                       &beta,
+                                                       cudnn_output_desc,
+                                                       output_data));
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnAddTensor(
-          handle, &alpha, cudnn_bias_desc, bias_data, &alpha, cudnn_output_desc,
-          output_data));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnAddTensor(handle,
+                                            &alpha,
+                                            cudnn_bias_desc,
+                                            bias_data,
+                                            &alpha,
+                                            cudnn_output_desc,
+                                            output_data));
     } else {
       if (activation == "identity") {
         algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
@@ -386,11 +488,24 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       auto cudnn_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnConvolutionBiasActivationForward(
-                handle, &alpha1, cudnn_input_desc, input_data,
-                cudnn_filter_desc, filter_data, cudnn_conv_desc, algo,
-                cudnn_workspace, workspace_size_in_bytes, &alpha2,
-                cudnn_output_desc, residual_data, cudnn_bias_desc, bias_data,
-                cudnn_act_desc, cudnn_output_desc, output_data));
+                handle,
+                &alpha1,
+                cudnn_input_desc,
+                input_data,
+                cudnn_filter_desc,
+                filter_data,
+                cudnn_conv_desc,
+                algo,
+                cudnn_workspace,
+                workspace_size_in_bytes,
+                &alpha2,
+                cudnn_output_desc,
+                residual_data,
+                cudnn_bias_desc,
+                bias_data,
+                cudnn_act_desc,
+                cudnn_output_desc,
+                output_data));
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
     }
@@ -416,7 +531,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Input with batch size greater than 1 is unsupported. The received "
             "batch size is %d, Input's shape is [%s].",
-            x_dims[0], phi::make_ddim(x_dims)));
+            x_dims[0],
+            phi::make_ddim(x_dims)));
       }
     }
   }
@@ -428,7 +544,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 #if CUDNN_VERSION >= 7100
-REGISTER_OP_CUDA_KERNEL(conv2d_fusion, ops::CUDNNConvFusionOpKernel<float>,
+REGISTER_OP_CUDA_KERNEL(conv2d_fusion,
+                        ops::CUDNNConvFusionOpKernel<float>,
                         ops::CUDNNConvFusionOpKernel<double>);
 #endif
 #ifdef PADDLE_WITH_HIP

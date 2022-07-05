@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ np.random.seed(10)
 
 
 class TestCropOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -74,6 +76,7 @@ class TestCropOp(OpTest):
 
 
 class TestCase1(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -81,6 +84,7 @@ class TestCase1(TestCropOp):
 
 
 class TestCase2(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (15, 8)
         self.crop_shape = [15, 8]
@@ -88,6 +92,7 @@ class TestCase2(TestCropOp):
 
 
 class TestCase3(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (4, 10)
         self.crop_shape = [2, 3]
@@ -96,6 +101,7 @@ class TestCase3(TestCropOp):
 
 
 class TestCase4(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -103,6 +109,7 @@ class TestCase4(TestCropOp):
 
 
 class TestCase5(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -111,6 +118,7 @@ class TestCase5(TestCropOp):
 
 
 class TestCase6(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -121,6 +129,7 @@ class TestCase6(TestCropOp):
 
 
 class TestCase7(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -130,6 +139,7 @@ class TestCase7(TestCropOp):
 
 
 class TestCase8(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -138,6 +148,7 @@ class TestCase8(TestCropOp):
 
 
 class TestCase9(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -146,6 +157,7 @@ class TestCase9(TestCropOp):
 
 
 class TestCase10(TestCropOp):
+
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]

@@ -29,7 +29,9 @@ int CommonGraphSampler::load_from_ssd(std::string path) {
       neighbor_data.push_back(std::stoll(x));
     }
     auto src_id = std::stoll(values[0]);
-    _db->put(0, (char *)&src_id, sizeof(uuint64_t),
+    _db->put(0,
+             (char *)&src_id,
+             sizeof(uuint64_t),
              (char *)neighbor_data.data(),
              sizeof(uint64_t) * neighbor_data.size());
     int gpu_shard = src_id % gpu_num;
@@ -78,16 +80,14 @@ void CommonGraphSampler::init(GpuPsGraphTable *g,
 int AllInGpuGraphSampler::run_graph_sampling() { return 0; }
 int AllInGpuGraphSampler::load_from_ssd(std::string path) {
   graph_table->load_edges(path, false);
-  sample_node_ids.clear()
-  sample_node_infos.clear()
-  sample_neighbors.clear();
+  sample_node_ids.clear() sample_node_infos.clear() sample_neighbors.clear();
   sample_res.clear();
   sample_node_ids.resize(gpu_num);
   sample_node_infos.resize(gpu_num);
   sample_neighbors.resize(gpu_num);
   sample_res.resize(gpu_num);
-  std::vector<std::vector<std::vector<uint64_t>>>
-      sample_node_ids_ex(graph_table->task_pool_size_);
+  std::vector<std::vector<std::vector<uint64_t>>> sample_node_ids_ex(
+      graph_table->task_pool_size_);
   std::vector<std::vector<std::vector<paddle::framework::GpuPsNodeInfo>>>
       sample_node_infos_ex(graph_table->task_pool_size_);
   std::vector<std::vector<std::vector<uint64_t>>> sample_neighbors_ex(
@@ -109,7 +109,8 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
               size_t ind = i % this->graph_table->task_pool_size_;
               for (size_t j = 0; j < v.size(); j++) {
                 info.neighbor_size = v[j]->get_neighbor_size();
-                info.neighbor_offset = sample_neighbors_ex[ind][location].size();
+                info.neighbor_offset =
+                    sample_neighbors_ex[ind][location].size();
                 sample_node_infos_ex[ind][location].emplace_back(info);
                 sample_node_ids_ex[ind][location].emplace_back(v[j]->get_id());
                 for (int k = 0; k < node.neighbor_size; k++)
@@ -131,7 +132,8 @@ int AllInGpuGraphSampler::load_from_ssd(std::string path) {
               for (int j = 0; j < this->graph_table->task_pool_size_; j++) {
                 for (size_t k = 0; k < sample_node_ids_ex[j][ind].size(); k++) {
                   sample_node_ids[ind].push_back(sample_node_ids_ex[j][ind][k]);
-                  sample_node_infos[ind].push_back(sample_node_infos_ex[j][ind][k]);
+                  sample_node_infos[ind].push_back(
+                      sample_node_infos_ex[j][ind][k]);
                   sample_node_infos[ind].back().neighbor_offset += total_offset;
                 }
                 size_t neighbor_size = sample_neighbors_ex[j][ind].size();
@@ -162,6 +164,6 @@ void AllInGpuGraphSampler::init(GpuPsGraphTable *g,
   this->gpu_num = g->gpu_num;
   graph_table = g->cpu_graph_table.get();
 }
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #endif

@@ -35,20 +35,32 @@ Node *conv2d_handler(Graph *graph, Node *node) {
   auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   if (!op->Input("Bias").empty()) {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-            GetInputVarNode("Bias", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph,
+                      node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                          GetInputVarNode("Bias", node),
+                      },
+                      node->outputs,
+                      dilations,
+                      group_,
+                      {},
+                      pads,
+                      stride);
   } else {
-    return CreateConv(
-        graph, node,
-        {
-            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
-        },
-        node->outputs, dilations, group_, {}, pads, stride);
+    return CreateConv(graph,
+                      node,
+                      {
+                          GetInputVarNode("Input", node),
+                          GetInputVarNode("Filter", node),
+                      },
+                      node->outputs,
+                      dilations,
+                      group_,
+                      {},
+                      pads,
+                      stride);
   }
 }
 
@@ -83,7 +95,11 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
   auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
   auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
-  return CreateBaseOp(graph, node, "popart_batchnormalization", inputs, outputs,
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_batchnormalization",
+                      inputs,
+                      outputs,
                       {
                           {"momentum", momentum},
                           {"epsilon", epsilon},
@@ -105,18 +121,18 @@ Node *pool2d_handler(Graph *graph, Node *node) {
       }
       // adaptive maxpool op is max_pool2d_with_index. Only process avgpool
       // here.
-      return CreateBaseOp(graph, node, "popart_globalaveragepool", node->inputs,
-                          node->outputs);
+      return CreateBaseOp(
+          graph, node, "popart_globalaveragepool", node->inputs, node->outputs);
     }
   }
 
   if (global_pooling) {
     if (pooling_type == "max") {
-      return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
-                          node->outputs);
+      return CreateBaseOp(
+          graph, node, "popart_globalmaxpool", node->inputs, node->outputs);
     } else if (pooling_type == "avg") {
-      return CreateBaseOp(graph, node, "popart_globalaveragepool", node->inputs,
-                          node->outputs);
+      return CreateBaseOp(
+          graph, node, "popart_globalaveragepool", node->inputs, node->outputs);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "op pool2d with unkonwn pooling_type: %s", pooling_type));
@@ -147,19 +163,26 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     int64_t num_outputs = 1;
     auto dilations = std::vector<int64_t>{};
     int64_t storage_order = 0;
-    return CreateBaseOp(graph, node, "popart_maxpool", node->inputs,
-                        node->outputs, {
-                                           {"num_outputs", num_outputs},
-                                           {"kernel_shape", kernel_shape},
-                                           {"ceil_mode", ceil_mode},
-                                           {"dilations", dilations},
-                                           {"pads", pads},
-                                           {"storage_order", storage_order},
-                                           {"strides", strides},
-                                       });
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_maxpool",
+                        node->inputs,
+                        node->outputs,
+                        {
+                            {"num_outputs", num_outputs},
+                            {"kernel_shape", kernel_shape},
+                            {"ceil_mode", ceil_mode},
+                            {"dilations", dilations},
+                            {"pads", pads},
+                            {"storage_order", storage_order},
+                            {"strides", strides},
+                        });
   } else if (pooling_type == "avg") {
     int64_t count_include_pad = 0;
-    return CreateBaseOp(graph, node, "popart_averagepool", node->inputs,
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_averagepool",
+                        node->inputs,
                         node->outputs,
                         {
                             {"kernel_shape", kernel_shape},
@@ -181,7 +204,10 @@ Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Only support pool_size=1 with adaptive mode."));
   }
-  return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_globalmaxpool",
+                      node->inputs,
                       {GetOutputVarNode("Out", node)});
 }
 
@@ -198,8 +224,8 @@ Node *group_norm_handler(Graph *graph, Node *node) {
   std::vector<Node *> outputs_ = {GetOutputVarNode("Y", node),
                                   GetOutputVarNode("Mean", node),
                                   GetOutputVarNode("Variance", node)};
-  return CreateBaseOp(graph, node, "popart_groupnormalization_v2", inputs_,
-                      outputs_, attrs_);
+  return CreateBaseOp(
+      graph, node, "popart_groupnormalization_v2", inputs_, outputs_, attrs_);
 }
 
 Node *instance_norm_handler(Graph *graph, Node *node) {
@@ -211,8 +237,8 @@ Node *instance_norm_handler(Graph *graph, Node *node) {
                                  GetInputVarNode("Scale", node),
                                  GetInputVarNode("Bias", node)};
   std::vector<Node *> outputs_ = {GetOutputVarNode("Y", node)};
-  return CreateBaseOp(graph, node, "popart_instancenormalization", inputs_,
-                      outputs_, attrs_);
+  return CreateBaseOp(
+      graph, node, "popart_instancenormalization", inputs_, outputs_, attrs_);
 }
 
 Node *layer_norm_handler(Graph *graph, Node *node) {
@@ -226,13 +252,16 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
 
   if (input_shape_.size() == 2) {
-    return CreateBaseOp(
-        graph, node, "popart_groupnormalization_v2",
-        {GetInputVarNode("X", node), GetInputVarNode("Scale", node),
-         GetInputVarNode("Bias", node)},
-        {GetOutputVarNode("Y", node), GetOutputVarNode("Mean", node),
-         GetOutputVarNode("Variance", node)},
-        groupnorm_attrs_);
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_groupnormalization_v2",
+                        {GetInputVarNode("X", node),
+                         GetInputVarNode("Scale", node),
+                         GetInputVarNode("Bias", node)},
+                        {GetOutputVarNode("Y", node),
+                         GetOutputVarNode("Mean", node),
+                         GetOutputVarNode("Variance", node)},
+                        groupnorm_attrs_);
   }
 
   std::vector<int64_t> norm_shape_{1, 1};
@@ -250,15 +279,23 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       {"dtype", ONNXDataType::INT64}};
   auto reshape1_const =
       CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs1);
-  auto new_node_reshape1 = CreateBaseOp(
-      graph, node, "popart_reshape",
-      {GetInputVarNode("X", node), reshape1_const->outputs[0]}, {}, {});
+  auto new_node_reshape1 =
+      CreateBaseOp(graph,
+                   node,
+                   "popart_reshape",
+                   {GetInputVarNode("X", node), reshape1_const->outputs[0]},
+                   {},
+                   {});
 
   auto out_Y_ = MakeVarNode(graph, node);
-  CreateBaseOp(graph, node, "popart_groupnormalization_v2",
-               {new_node_reshape1->outputs[0], GetInputVarNode("Scale", node),
+  CreateBaseOp(graph,
+               node,
+               "popart_groupnormalization_v2",
+               {new_node_reshape1->outputs[0],
+                GetInputVarNode("Scale", node),
                 GetInputVarNode("Bias", node)},
-               {out_Y_, GetOutputVarNode("Mean", node),
+               {out_Y_,
+                GetOutputVarNode("Mean", node),
                 GetOutputVarNode("Variance", node)},
                groupnorm_attrs_);
 
@@ -268,9 +305,12 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       {"dtype", ONNXDataType::INT64}};
   auto reshape2_const =
       CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs2);
-  auto new_node_reshape2 = CreateBaseOp(graph, node, "popart_reshape",
+  auto new_node_reshape2 = CreateBaseOp(graph,
+                                        node,
+                                        "popart_reshape",
                                         {out_Y_, reshape2_const->outputs[0]},
-                                        {GetOutputVarNode("Y", node)}, {});
+                                        {GetOutputVarNode("Y", node)},
+                                        {});
   return new_node_reshape2;
 }
 
@@ -291,18 +331,27 @@ Node *dropout_handler(Graph *graph, Node *node) {
 
   if (is_test_) {
     if (dropout_implementation_ == "upscale_in_train") {
-      return CreateBaseOp(graph, node, "popart_identity",
+      return CreateBaseOp(graph,
+                          node,
+                          "popart_identity",
                           {GetInputVarNode("X", node)},
-                          {GetOutputVarNode("Out", node)}, {});
+                          {GetOutputVarNode("Out", node)},
+                          {});
     } else if (dropout_implementation_ == "downgrade_in_infer") {
       auto scale =
-          CreateConst(graph, node, {}, {},
+          CreateConst(graph,
+                      node,
+                      {},
+                      {},
                       {{"value", std::vector<float>{1 - dropout_prob_}},
                        {"dims", std::vector<int64_t>{1}},
                        {"dtype", GetOutputVarDType(node)}});
-      return CreateBaseOp(graph, node, "popart_mul",
+      return CreateBaseOp(graph,
+                          node,
+                          "popart_mul",
                           {GetInputVarNode("X", node), scale->outputs[0]},
-                          {GetOutputVarNode("Out", node)}, {});
+                          {GetOutputVarNode("Out", node)},
+                          {});
     } else {
       PADDLE_THROW(
           platform::errors::InvalidArgument("Invalid dropout_implementation"));
@@ -311,9 +360,12 @@ Node *dropout_handler(Graph *graph, Node *node) {
     if (dropout_implementation_ == "upscale_in_train") {
       auto attrs_ =
           AttributeMap{{"num_outputs", (int64_t)1}, {"ratio", dropout_prob_}};
-      return CreateBaseOp(graph, node, "popart_dropout",
+      return CreateBaseOp(graph,
+                          node,
+                          "popart_dropout",
                           {GetInputVarNode("X", node)},
-                          {GetOutputVarNode("Out", node)}, attrs_);
+                          {GetOutputVarNode("Out", node)},
+                          attrs_);
     } else if (dropout_implementation_ == "downgrade_in_infer") {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Do not support downgrade_in_infer with training"));

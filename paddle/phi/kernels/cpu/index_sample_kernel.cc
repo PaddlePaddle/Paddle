@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
+
 #include <cmath>
 #include <fstream>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"

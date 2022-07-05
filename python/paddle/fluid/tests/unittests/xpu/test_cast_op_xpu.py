@@ -37,6 +37,7 @@ typeid_dict = {
 
 
 class XPUTestCastOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'cast'
         self.use_dynamic_create_class = True
@@ -51,6 +52,7 @@ class XPUTestCastOp(XPUOpTestWrapper):
         return base_class, classes
 
     class TestCastOp(XPUOpTest):
+
         def setUp(self):
             ipt = np.random.random(size=[10, 10])
             in_typename = self.in_type_str
@@ -76,11 +78,12 @@ for stype in support_types:
 
 
 class TestCastOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.XPUPlace(0))
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.XPUPlace(0))
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
 
 

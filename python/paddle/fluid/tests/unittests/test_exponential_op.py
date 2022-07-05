@@ -23,6 +23,7 @@ paddle.seed(100)
 
 
 class TestExponentialOp1(OpTest):
+
     def setUp(self):
         self.op_type = "exponential"
         self.config()
@@ -48,29 +49,28 @@ class TestExponentialOp1(OpTest):
         hist2 = hist2.astype("float32")
         hist2 = hist2 / float(data_np.size)
 
-        self.assertTrue(
-            np.allclose(
-                hist1, hist2, rtol=0.02),
-            "actual: {}, expected: {}".format(hist1, hist2))
+        self.assertTrue(np.allclose(hist1, hist2, rtol=0.02),
+                        "actual: {}, expected: {}".format(hist1, hist2))
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[np.zeros(
-                [1024, 1024], dtype=self.dtype)],
+            user_defined_grads=[np.zeros([1024, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(1024, 1024).astype(self.dtype)
             ])
 
 
 class TestExponentialOp2(TestExponentialOp1):
+
     def config(self):
         self.lam = 0.25
         self.dtype = "float32"
 
 
 class TestExponentialAPI(unittest.TestCase):
+
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):

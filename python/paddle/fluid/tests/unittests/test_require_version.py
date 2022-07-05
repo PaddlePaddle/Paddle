@@ -22,6 +22,7 @@ import paddle
 
 
 class VersionTest(unittest.TestCase):
+
     def test_check_output(self):
         warnings.warn(
             "paddle.__version__: %s, fluid_version.full_version: %s, fluid_version.major: %s, fluid_version.minor: %s, fluid_version.patch: %s, fluid_version.rc: %s."
@@ -67,6 +68,7 @@ class VersionTest(unittest.TestCase):
 
 # Test Errors
 class TestErrors(unittest.TestCase):
+
     def test_errors(self):
         # The type of params must be str.
         def test_input_type():

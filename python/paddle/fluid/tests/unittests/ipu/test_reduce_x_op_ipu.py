@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestMean(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -38,8 +39,9 @@ class TestMean(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
         out = self.op(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -123,21 +125,25 @@ class TestMean(IPUOpTest):
 
 
 class TestMax(TestMean):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_max
 
 
 class TestMin(TestMean):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_min
 
 
 class TestProd(TestMean):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_prod
 
 
 class TestSum(TestMean):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_sum
 

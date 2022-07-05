@@ -23,6 +23,7 @@ main_program = default_main_program()
 
 
 class TestProgram(unittest.TestCase):
+
     def test_program(self):
         b = main_program.current_block()
         self.assertEqual(-1, b.parent_idx)
@@ -54,15 +55,20 @@ class TestProgram(unittest.TestCase):
     def test_program_clone(self):
         prog = Program()
 
-        x = prog.global_block().create_var(
-            name='X', shape=[1000, 784], dtype='float32')
+        x = prog.global_block().create_var(name='X',
+                                           shape=[1000, 784],
+                                           dtype='float32')
 
-        y = prog.global_block().create_var(
-            name='Y', shape=[784, 100], dtype='float32')
+        y = prog.global_block().create_var(name='Y',
+                                           shape=[784, 100],
+                                           dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
-        prog.global_block().append_op(
-            type="mul", inputs={'X': [x],
-                                'Y': [y]}, outputs={'Out': [out]})
+        prog.global_block().append_op(type="mul",
+                                      inputs={
+                                          'X': [x],
+                                          'Y': [y]
+                                      },
+                                      outputs={'Out': [out]})
 
         # FIXME(yuyang18): We manual compare the output string, since the order
         # of variable could be changed.
@@ -72,15 +78,20 @@ class TestProgram(unittest.TestCase):
     def test_parse_program_from_string(self):
         prog = Program()
 
-        x = prog.global_block().create_var(
-            name='X', shape=[1000, 784], dtype='float32')
+        x = prog.global_block().create_var(name='X',
+                                           shape=[1000, 784],
+                                           dtype='float32')
 
-        y = prog.global_block().create_var(
-            name='Y', shape=[784, 100], dtype='float32')
+        y = prog.global_block().create_var(name='Y',
+                                           shape=[784, 100],
+                                           dtype='float32')
         out = prog.global_block().create_var(name='Out', dtype='float32')
-        prog.global_block().append_op(
-            type="mul", inputs={'X': [x],
-                                'Y': [y]}, outputs={'Out': [out]})
+        prog.global_block().append_op(type="mul",
+                                      inputs={
+                                          'X': [x],
+                                          'Y': [y]
+                                      },
+                                      outputs={'Out': [out]})
 
         binary_str = prog.desc.serialize_to_string()
         prog_restored = Program.parse_from_string(binary_str)
@@ -100,18 +111,17 @@ class TestProgram(unittest.TestCase):
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
 
     def test_program_inference_optimize(self):
+
         def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True)
+            reader = fluid.layers.py_reader(capacity=10,
+                                            shapes=[[-1, 10], [-1, 1]],
+                                            lod_levels=[0, 0],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = fluid.layers.mean(
-                fluid.layers.cross_entropy(
-                    input=predict_label, label=label))
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -163,18 +173,17 @@ class TestProgram(unittest.TestCase):
                           "program")
 
     def test_remove_training_info(self):
+
         def net():
-            reader = fluid.layers.py_reader(
-                capacity=10,
-                shapes=[[-1, 10], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'],
-                use_double_buffer=True)
+            reader = fluid.layers.py_reader(capacity=10,
+                                            shapes=[[-1, 10], [-1, 1]],
+                                            lod_levels=[0, 0],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=True)
             in_data, label = fluid.layers.read_file(reader)
             predict_label = fluid.layers.fc(in_data, size=2, act='softmax')
             loss = fluid.layers.mean(
-                fluid.layers.cross_entropy(
-                    input=predict_label, label=label))
+                fluid.layers.cross_entropy(input=predict_label, label=label))
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)

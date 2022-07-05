@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/kernels/frobenius_norm_grad_kernel.h"
-
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
 

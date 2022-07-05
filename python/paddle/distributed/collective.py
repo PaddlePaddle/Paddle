@@ -158,8 +158,9 @@ def _get_group_map():
     global _group_map
     if not _group_map:
         genv = _get_global_env()
-        _group_map[0] = Group(
-            genv.rank, genv.world_size, ranks=list(range(genv.world_size)))
+        _group_map[0] = Group(genv.rank,
+                              genv.world_size,
+                              ranks=list(range(genv.world_size)))
     return _group_map
 
 
@@ -264,20 +265,19 @@ def _new_process_group_impl(backend,
             cluster_id - 1]
         global_rank = cluster_offset + rank
         global_world_size = cluster_size_cumsum[-1]
-        pg = core.ProcessGroupHeter(
-            store,
-            rank=global_rank,
-            world_size=global_world_size,
-            place=place,
-            gid=group_id,
-            local_rank=rank,
-            local_size=world_size,
-            gloo_rank=cluster_id,
-            gloo_size=len(cluster_size),
-            with_switch=True,
-            switch_endpoint=switch_ep,
-            src_rank=src_rank,
-            dst_rank=dst_rank)
+        pg = core.ProcessGroupHeter(store,
+                                    rank=global_rank,
+                                    world_size=global_world_size,
+                                    place=place,
+                                    gid=group_id,
+                                    local_rank=rank,
+                                    local_size=world_size,
+                                    gloo_rank=cluster_id,
+                                    gloo_size=len(cluster_size),
+                                    with_switch=True,
+                                    switch_endpoint=switch_ep,
+                                    src_rank=src_rank,
+                                    dst_rank=dst_rank)
 
     return pg
 
@@ -323,11 +323,10 @@ def barrier(group=None):
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [temp]},
-        attrs={'ring_id': ring_id})
+    helper.append_op(type=op_type,
+                     inputs={'X': [temp]},
+                     outputs={'Out': [temp]},
+                     attrs={'ring_id': ring_id})
 
 
 # _custom_gid provides a way for users to
@@ -386,16 +385,15 @@ def new_group(ranks=None, backend=None):
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
-            pg = _new_process_group_impl(
-                backend,
-                _default_store,
-                rank,
-                size,
-                group_name,
-                pg_options=None,
-                group_id=gid,
-                src_rank=src_rank,
-                dst_rank=dst_rank)
+            pg = _new_process_group_impl(backend,
+                                         _default_store,
+                                         rank,
+                                         size,
+                                         group_name,
+                                         pg_options=None,
+                                         group_id=gid,
+                                         src_rank=src_rank,
+                                         dst_rank=dst_rank)
         else:
             rank = -1
             pg = None
@@ -403,6 +401,9 @@ def new_group(ranks=None, backend=None):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of
+        # hang caused by tcp
+        paddle.distributed.barrier(group=group)
         return group
 
     if not backend:
@@ -451,7 +452,7 @@ def new_group(ranks=None, backend=None):
         else:
             return gp
 
-    # TODO(shenliang03): This is a temporary solution to solve the problem of 
+    # TODO(shenliang03): This is a temporary solution to solve the problem of
     # hang caused by cross-creation of new_group
     tmp = paddle.to_tensor(
         [1], dtype="int32") if _non_static_mode() else fill_constant(
@@ -509,7 +510,8 @@ def _sync_calc_stream(tensor):
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
-        outputs={'Out': [tensor]}, )
+        outputs={'Out': [tensor]},
+    )
 
 
 def _sync_comm_stream(tensor, ring_id=0):
@@ -524,7 +526,8 @@ def _sync_comm_stream(tensor, ring_id=0):
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id}, )
+        attrs={'ring_id': ring_id},
+    )
 
 
 def broadcast(tensor, src, group=None, use_calc_stream=True):
@@ -602,15 +605,14 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
         'broadcast')
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={
-            'root': gsrc,
-            'use_calc_stream': use_calc_stream,
-            'ring_id': ring_id,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': [tensor]},
+                     outputs={'Out': [tensor]},
+                     attrs={
+                         'root': gsrc,
+                         'use_calc_stream': use_calc_stream,
+                         'ring_id': ring_id,
+                     })
 
 
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
@@ -710,12 +712,13 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id,
-               'use_calc_stream': use_calc_stream})
+    helper.append_op(type=op_type,
+                     inputs={'X': [tensor]},
+                     outputs={'Out': [tensor]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream
+                     })
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
@@ -824,15 +827,14 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
         op_type = 'c_reduce_prod'
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': use_calc_stream,
-            'root_id': gdst,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': [tensor]},
+                     outputs={'Out': [tensor]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream,
+                         'root_id': gdst,
+                     })
 
 
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
@@ -922,15 +924,14 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         check_variable_and_dtype(
             tensor, 'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
-        helper.append_op(
-            type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [out]},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': use_calc_stream,
-                'nranks': nranks
-            })
+        helper.append_op(type=op_type,
+                         inputs={'X': [tensor]},
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': ring_id,
+                             'use_calc_stream': use_calc_stream,
+                             'nranks': nranks
+                         })
 
     tensor_list.extend(paddle.split(out, nranks, 0))
 
@@ -1023,16 +1024,15 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'scatter')
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'root': gsrc,
-            'use_calc_stream': use_calc_stream,
-            'nranks': nranks,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': [temp]},
+                     outputs={'Out': [tensor]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'root': gsrc,
+                         'use_calc_stream': use_calc_stream,
+                         'nranks': nranks,
+                     })
 
 
 def _c_identity(tensor, group=None):
@@ -1062,15 +1062,14 @@ def _c_identity(tensor, group=None):
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         '_c_identity')
 
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'use_model_parallel': True,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': tensor},
+                     outputs={'Out': out},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': True,
+                         'use_model_parallel': True,
+                     })
     return out
 
 
@@ -1108,17 +1107,16 @@ def _c_concat(tensor, group=None):
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         '_c_concat')
 
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'use_model_parallel': True,
-            'nranks': nranks,
-            'rank': rank
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': tensor},
+                     outputs={'Out': out},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': True,
+                         'use_model_parallel': True,
+                         'nranks': nranks,
+                         'rank': rank
+                     })
     return out
 
 
@@ -1156,17 +1154,16 @@ def _c_split(tensor, group=None):
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         '_c_split')
 
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'rank': rank,
-            'nranks': nranks,
-            'use_model_parallel': True,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': tensor},
+                     outputs={'Out': out},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': True,
+                         'rank': rank,
+                         'nranks': nranks,
+                         'use_model_parallel': True,
+                     })
     return out
 
 
@@ -1184,16 +1181,18 @@ def _mp_allreduce(tensor,
     if in_dygraph_mode():
         assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
 
-        from paddle.autograd import EagerPyLayer
+        from paddle.autograd import PyLayer
 
-        class mp_allreduce_eager(EagerPyLayer):
+        class mp_allreduce_eager(PyLayer):
+
             @staticmethod
             def forward(ctx, tensor, use_calc_stream, ring_id,
                         use_model_parallel):
                 ctx.ring_id = ring_id
-                return _C_ops.c_allreduce_sum_(
-                    tensor, 'use_calc_stream', use_calc_stream, 'ring_id',
-                    ring_id, "use_model_parallel", use_model_parallel)
+                return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                               use_calc_stream, 'ring_id',
+                                               ring_id, "use_model_parallel",
+                                               use_model_parallel)
 
             @staticmethod
             def backward(ctx, dy):
@@ -1206,9 +1205,10 @@ def _mp_allreduce(tensor,
 
     elif _in_legacy_dygraph():
         if op == ReduceOp.SUM:
-            return _C_ops.c_allreduce_sum_(
-                tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id,
-                "use_model_parallel", use_model_parallel)
+            return _C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
+                                           use_calc_stream, 'ring_id', ring_id,
+                                           "use_model_parallel",
+                                           use_model_parallel)
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
@@ -1220,15 +1220,14 @@ def _mp_allreduce(tensor,
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         op_type)
 
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': use_calc_stream,
-            'use_model_parallel': use_model_parallel,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': tensor},
+                     outputs={'Out': out},
+                     attrs={
+                         'ring_id': ring_id,
+                         'use_calc_stream': use_calc_stream,
+                         'use_model_parallel': use_model_parallel,
+                     })
     return out
 
 
@@ -1254,12 +1253,13 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     dtype = helper.input_dtype(input_param_name='table')
     check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
     tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='c_embedding',
-        inputs={'Ids': index,
-                'W': table},
-        outputs={'Out': tmp},
-        attrs={"start_index": start_index})
+    helper.append_op(type='c_embedding',
+                     inputs={
+                         'Ids': index,
+                         'W': table
+                     },
+                     outputs={'Out': tmp},
+                     attrs={"start_index": start_index})
     return tmp
 
 
@@ -1278,21 +1278,21 @@ class _Linear(layers.Layer):
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.weight = self.create_parameter(
-            shape=[in_features, out_features],
-            attr=self._weight_attr,
-            dtype=self._dtype,
-            is_bias=False)
-        self.bias = self.create_parameter(
-            shape=[out_features],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+        self.weight = self.create_parameter(shape=[in_features, out_features],
+                                            attr=self._weight_attr,
+                                            dtype=self._dtype,
+                                            is_bias=False)
+        self.bias = self.create_parameter(shape=[out_features],
+                                          attr=self._bias_attr,
+                                          dtype=self._dtype,
+                                          is_bias=True)
         self.name = name
 
     def forward(self, input):
-        out = _linear(
-            x=input, weight=self.weight, bias=self.bias, name=self.name)
+        out = _linear(x=input,
+                      weight=self.weight,
+                      bias=self.bias,
+                      name=self.name)
         return out
 
     def extra_repr(self):
@@ -1337,13 +1337,16 @@ def _c_softmax_with_cross_entropy(logits,
     helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    helper.append_op(
-        type='c_softmax_with_cross_entropy',
-        inputs={'Logits': logits,
-                'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': loss},
-        attrs=attrs)
+    helper.append_op(type='c_softmax_with_cross_entropy',
+                     inputs={
+                         'Logits': logits,
+                         'Label': label
+                     },
+                     outputs={
+                         'Softmax': softmax,
+                         'Loss': loss
+                     },
+                     attrs=attrs)
 
     if return_softmax:
         return loss, softmax
@@ -1359,8 +1362,9 @@ def _linear(x, weight, bias=None, name=None):
         pre_bias = _varbase_creator(dtype=x.dtype)
         _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
                       False, "alpha", 1)
-        return dygraph_utils._append_bias_in_dygraph(
-            pre_bias, bias, axis=len(x.shape) - 1)
+        return dygraph_utils._append_bias_in_dygraph(pre_bias,
+                                                     bias,
+                                                     axis=len(x.shape) - 1)
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -1378,16 +1382,19 @@ def _linear(x, weight, bias=None, name=None):
             'alpha': 1,
         }
         tmp = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+        helper.append_op(type='matmul_v2',
+                         inputs=inputs,
+                         outputs={'Out': tmp},
+                         attrs=attrs)
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [tmp],
-                        'Y': [bias]},
-                outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1})
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [tmp],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [res]},
+                             attrs={'axis': len(x.shape) - 1})
         else:
             res = tmp
         return res
@@ -1436,12 +1443,11 @@ def _parallel_linear(x,
     else:
         x = _c_identity(x, group=group)
 
-    linear = paddle.nn.Linear(
-        num_rows,
-        num_cols,
-        weight_attr=param_attr,
-        bias_attr=bias_attr,
-        name=name)
+    linear = paddle.nn.Linear(num_rows,
+                              num_cols,
+                              weight_attr=param_attr,
+                              bias_attr=bias_attr,
+                              name=name)
 
     # NOTE: npu linear function use matmul_v2 but linear use matmul
     linear_function = _linear if core.is_compiled_with_npu()\
@@ -1474,29 +1480,27 @@ def _parallel_linear(x,
         is_data=False,
         need_check_feed=linear_out.desc.need_check_feed())
     if axis == 0:
-        main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': linear_out},
-            outputs={'Out': out},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': True,
-                'use_model_parallel': True
-            })
+        main_block.append_op(type='c_allreduce_sum',
+                             inputs={'X': linear_out},
+                             outputs={'Out': out},
+                             attrs={
+                                 'ring_id': ring_id,
+                                 'use_calc_stream': True,
+                                 'use_model_parallel': True
+                             })
         if linear.bias is not None:
             out = out + linear.bias
     else:
-        main_block.append_op(
-            type='c_concat',
-            inputs={'X': linear_out},
-            outputs={'Out': out},
-            attrs={
-                'rank': inner_rank,
-                'ring_id': ring_id,
-                'nranks': nranks,
-                'use_calc_stream': True,
-                'use_model_parallel': True
-            })
+        main_block.append_op(type='c_concat',
+                             inputs={'X': linear_out},
+                             outputs={'Out': out},
+                             attrs={
+                                 'rank': inner_rank,
+                                 'ring_id': ring_id,
+                                 'nranks': nranks,
+                                 'use_calc_stream': True,
+                                 'use_model_parallel': True
+                             })
     return out
 
 
@@ -1524,12 +1528,17 @@ def _parallel_embedding(x,
     dtype = helper.get_default_dtype()
     size = [per_part_size, origin_size[1]]
 
-    weight = helper.create_parameter(
-        attr=param_attr, shape=size, dtype=dtype, is_bias=False)
+    weight = helper.create_parameter(attr=param_attr,
+                                     shape=size,
+                                     dtype=dtype,
+                                     is_bias=False)
 
     if num_partitions == 1:
-        return paddle.nn.functional.embedding(
-            x, weight=weight, padding_idx=None, sparse=False, name=name)
+        return paddle.nn.functional.embedding(x,
+                                              weight=weight,
+                                              padding_idx=None,
+                                              sparse=False,
+                                              name=name)
 
     startup_block = paddle.static.default_startup_program().global_block()
     main_block = paddle.static.default_main_program().global_block()
@@ -1538,11 +1547,10 @@ def _parallel_embedding(x,
 
     output_parallel = paddle.distributed.collective._c_lookup_table(
         weight, x, start_index=vocab_start_index, name=name)
-    out = paddle.distributed.collective._mp_allreduce(
-        output_parallel,
-        group=group,
-        use_calc_stream=True,
-        use_model_parallel=True)
+    out = paddle.distributed.collective._mp_allreduce(output_parallel,
+                                                      group=group,
+                                                      use_calc_stream=True,
+                                                      use_model_parallel=True)
     return out
 
 
@@ -1673,9 +1681,10 @@ def split(x,
                 num_partitions=2)
 
     """
-    assert isinstance(size, (list, tuple)), (
-        "The type of size for "
-        "paddle.distributed.split must be list or tuple.")
+    assert isinstance(
+        size,
+        (list, tuple)), ("The type of size for "
+                         "paddle.distributed.split must be list or tuple.")
     assert len(size) == 2, ("Number of elements in size of "
                             "paddle.distributed.split must be two.")
     assert isinstance(operation, str), ("The type of operation for "
@@ -1711,23 +1720,22 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        emb_out = _parallel_embedding(
-            x,
-            per_part_size,
-            size,
-            weight_attr,
-            inner_rank,
-            num_partitions,
-            name,
-            group=None)
+        emb_out = _parallel_embedding(x,
+                                      per_part_size,
+                                      size,
+                                      weight_attr,
+                                      inner_rank,
+                                      num_partitions,
+                                      name,
+                                      group=None)
         return emb_out
     else:
         should_split = False
         if axis == 0:
             assert size[0] % num_partitions == 0, (
                 "Number of rows of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(size[0],
-                                                           num_partitions))
+                " divisible by num_partitions ({})".format(
+                    size[0], num_partitions))
             per_part_size = size[0] // num_partitions
             linear_size = (per_part_size, size[1])
             if x.shape[-1] == size[0]: should_split = True
@@ -1735,27 +1743,26 @@ def split(x,
         elif axis == 1:
             assert size[1] % num_partitions == 0, (
                 "Number of column of the weight for linear ({}) must be"
-                " divisible by num_partitions ({})".format(size[1],
-                                                           num_partitions))
+                " divisible by num_partitions ({})".format(
+                    size[1], num_partitions))
             per_part_size = size[1] // num_partitions
             linear_size = (size[0], per_part_size)
         else:
             raise ValueError("The value of axis must be 0 or 1, but the value "
                              "given is {}.".format(axis))
 
-        linear_out = _parallel_linear(
-            x,
-            linear_size[0],
-            linear_size[1],
-            axis,
-            weight_attr,
-            bias_attr,
-            gather_out,
-            inner_rank,
-            num_partitions,
-            should_split,
-            name=name,
-            group=None)
+        linear_out = _parallel_linear(x,
+                                      linear_size[0],
+                                      linear_size[1],
+                                      axis,
+                                      weight_attr,
+                                      bias_attr,
+                                      gather_out,
+                                      inner_rank,
+                                      num_partitions,
+                                      should_split,
+                                      name=name,
+                                      group=None)
         return linear_out
 
 
@@ -1850,14 +1857,13 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
         if len(out_tensor_list) != 0:
             raise ValueError("The 'out_tensor_list' for all_to_all "
                              "must be an empty list.")
-        helper.append_op(
-            type=op_type,
-            inputs={'X': [temp]},
-            outputs={'Out': [out]},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': use_calc_stream,
-            })
+        helper.append_op(type=op_type,
+                         inputs={'X': [temp]},
+                         outputs={'Out': [out]},
+                         attrs={
+                             'ring_id': ring_id,
+                             'use_calc_stream': use_calc_stream,
+                         })
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
@@ -1914,14 +1920,13 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
         'send')
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'peer': dst,
-            'use_calc_stream': use_calc_stream,
-        })
+    helper.append_op(type=op_type,
+                     inputs={'X': [tensor]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'peer': dst,
+                         'use_calc_stream': use_calc_stream,
+                     })
 
 
 def recv(tensor, src=0, group=None, use_calc_stream=True):
@@ -1977,13 +1982,12 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'recv')
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': ring_id,
-            'peer': src,
-            'out_shape': tensor.shape,
-            'dtype': tensor.dtype,
-            'use_calc_stream': use_calc_stream,
-        })
+    helper.append_op(type=op_type,
+                     outputs={'Out': [tensor]},
+                     attrs={
+                         'ring_id': ring_id,
+                         'peer': src,
+                         'out_shape': tensor.shape,
+                         'dtype': tensor.dtype,
+                         'use_calc_stream': use_calc_stream,
+                     })

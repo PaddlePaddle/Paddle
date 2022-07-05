@@ -196,8 +196,8 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
             items[i:i + items_per_line]
             for i in range(0, len(items), items_per_line)
         ]
-        s = (',\n' + ' ' *
-             (indent + 1)).join([', '.join(line) for line in lines])
+        s = (',\n' + ' ' * (indent + 1)).join(
+            [', '.join(line) for line in lines])
         return '[' + s + ']'
     else:
         # recursively handle all dimensions
@@ -249,17 +249,19 @@ def to_string(var, prefix='Tensor'):
 
     max_width, signed = _get_max_width(_to_summary(np_var))
 
-    data = _format_tensor(
-        np_var, summary, indent=indent, max_width=max_width, signed=signed)
+    data = _format_tensor(np_var,
+                          summary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
 
-    return _template.format(
-        prefix=prefix,
-        shape=var.shape,
-        dtype=dtype,
-        place=var._place_str,
-        stop_gradient=var.stop_gradient,
-        indent=' ' * indent,
-        data=data)
+    return _template.format(prefix=prefix,
+                            shape=var.shape,
+                            dtype=dtype,
+                            place=var._place_str,
+                            stop_gradient=var.stop_gradient,
+                            indent=' ' * indent,
+                            data=data)
 
 
 def _format_dense_tensor(tensor, indent):
@@ -281,8 +283,11 @@ def _format_dense_tensor(tensor, indent):
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
-    data = _format_tensor(
-        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
+    data = _format_tensor(np_tensor,
+                          sumary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
     return data
 
 
@@ -292,41 +297,39 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
         indices_tensor = tensor.indices()
         values_tensor = tensor.values()
-        indices_data = 'indices=' + _format_dense_tensor(indices_tensor, indent
-                                                         + len('indices='))
-        values_data = 'values=' + _format_dense_tensor(values_tensor, indent +
-                                                       len('values='))
-        return _template.format(
-            prefix=prefix,
-            shape=tensor.shape,
-            dtype=tensor.dtype,
-            place=tensor._place_str,
-            stop_gradient=tensor.stop_gradient,
-            indent=' ' * indent,
-            indices=indices_data,
-            values=values_data)
+        indices_data = 'indices=' + _format_dense_tensor(
+            indices_tensor, indent + len('indices='))
+        values_data = 'values=' + _format_dense_tensor(values_tensor,
+                                                       indent + len('values='))
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                indices=indices_data,
+                                values=values_data)
     else:
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
         crows_tensor = tensor.crows()
         cols_tensor = tensor.cols()
         elements_tensor = tensor.values()
-        crows_data = 'crows=' + _format_dense_tensor(crows_tensor, indent +
-                                                     len('crows='))
-        cols_data = 'cols=' + _format_dense_tensor(cols_tensor, indent +
-                                                   len('cols='))
-        values_data = 'values=' + _format_dense_tensor(elements_tensor, indent +
-                                                       len('values='))
+        crows_data = 'crows=' + _format_dense_tensor(crows_tensor,
+                                                     indent + len('crows='))
+        cols_data = 'cols=' + _format_dense_tensor(cols_tensor,
+                                                   indent + len('cols='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor,
+                                                       indent + len('values='))
 
-        return _template.format(
-            prefix=prefix,
-            shape=tensor.shape,
-            dtype=tensor.dtype,
-            place=tensor._place_str,
-            stop_gradient=tensor.stop_gradient,
-            indent=' ' * indent,
-            crows=crows_data,
-            cols=cols_data,
-            values=values_data)
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                crows=crows_data,
+                                cols=cols_data,
+                                values=values_data)
 
 
 def tensor_to_string(tensor, prefix='Tensor'):
@@ -345,11 +348,10 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return "Tensor(Not initialized)"
     else:
         data = _format_dense_tensor(tensor, indent)
-        return _template.format(
-            prefix=prefix,
-            shape=tensor.shape,
-            dtype=dtype,
-            place=tensor._place_str,
-            stop_gradient=tensor.stop_gradient,
-            indent=' ' * indent,
-            data=data)
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                data=data)

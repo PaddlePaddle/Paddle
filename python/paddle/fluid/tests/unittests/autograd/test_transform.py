@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestAutoGradTransformForAdd(unittest.TestCase):
+
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -36,11 +37,13 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         self.xs_shape_map = {0: (20, 40), 1: (20, 40)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (20, 40)}
-        X0 = paddle.static.data(
-            name='X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data(name='X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            name='X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data(name='X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
 
         A = paddle.tanh(X0)
@@ -48,7 +51,9 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         Y = paddle.add(A, B)
 
         self.orig_xs = [X0, X1]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
 
         self.orig_ops = ['tanh', 'tanh', 'elementwise_add']
         self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p']
@@ -134,16 +139,19 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
 
 
 class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
+
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (100, 2), 1: (5, 2)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (100, 5)}
-        X0 = paddle.static.data(
-            'X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data('X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            'X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data('X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
 
         A = paddle.reshape(X1, [2, 5])
@@ -151,7 +159,9 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
         Y = paddle.matmul(X0, B)
 
         self.orig_xs = [X0, X1]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
 
         self.orig_ops = ['reshape2', 'scale', 'matmul_v2']
         self.orig2prim_ops = [
@@ -210,20 +220,24 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
 
 
 class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
+
     def init_data(self):
         # { input_index: input_shape }
         self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3, )}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (3, 16, 9)}
 
-        X0 = paddle.static.data(
-            'X0', shape=self.xs_shape_map[0], dtype='float32')
+        X0 = paddle.static.data('X0',
+                                shape=self.xs_shape_map[0],
+                                dtype='float32')
         X0.stop_gradient = False
-        X1 = paddle.static.data(
-            'X1', shape=self.xs_shape_map[1], dtype='float32')
+        X1 = paddle.static.data('X1',
+                                shape=self.xs_shape_map[1],
+                                dtype='float32')
         X1.stop_gradient = False
-        X2 = paddle.static.data(
-            'X2', shape=self.xs_shape_map[2], dtype='float32')
+        X2 = paddle.static.data('X2',
+                                shape=self.xs_shape_map[2],
+                                dtype='float32')
         X2.stop_gradient = False
         X3 = paddle.static.data('X3', shape=self.xs_shape_map[3], dtype='int32')
         X3.stop_gradient = False
@@ -235,7 +249,9 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         Y = paddle.index_select(D, X3, axis=0)  # (3, 16, 9)
 
         self.orig_xs = [X0, X1, X2, X3]
-        self.orig_ys = [Y, ]
+        self.orig_ys = [
+            Y,
+        ]
         self.orig_ops = [
             'elementwise_add', 'p_norm', 'elementwise_sub', 'concat',
             'index_select'

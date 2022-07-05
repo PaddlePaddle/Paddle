@@ -15,13 +15,19 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-void CalMatDims(framework::DDim out_dims, int dim1, int dim2, int64_t *offset,
-                int64_t *new_dims, int64_t *strides, int64_t *matoffset);
+void CalMatDims(framework::DDim out_dims,
+                int dim1,
+                int dim2,
+                int64_t *offset,
+                int64_t *new_dims,
+                int64_t *strides,
+                int64_t *matoffset);
 
 }  // namespace operators
 }  // namespace paddle

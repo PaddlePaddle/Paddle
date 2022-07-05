@@ -21,11 +21,13 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 import paddle
+
 paddle.enable_static()
 
 
 @unittest.skip("do not need currently")
 class TestLookupTableFuseOp(unittest.TestCase):
+
     def test_fuse(self):
         places = [core.CPUPlace()]
         # currently only support CPU
@@ -73,25 +75,25 @@ class TestLookupTableFuseOp(unittest.TestCase):
             outputs=None,
             attrs={"large_scale_metas": metas})
 
-        init_program.global_block().append_op(
-            type="lookup_sparse_table_read",
-            inputs={"Ids": ids},
-            outputs={"Out": output},
-            attrs={
-                "tablename": "embedding_1.block0",
-                "init": True,
-                "value_names": ["Param"],
-            })
+        init_program.global_block().append_op(type="lookup_sparse_table_read",
+                                              inputs={"Ids": ids},
+                                              outputs={"Out": output},
+                                              attrs={
+                                                  "tablename":
+                                                  "embedding_1.block0",
+                                                  "init": True,
+                                                  "value_names": ["Param"],
+                                              })
 
-        init_program.global_block().append_op(
-            type="lookup_sparse_table_read",
-            inputs={"Ids": ids},
-            outputs={"Out": output},
-            attrs={
-                "tablename": "embedding_2.block0",
-                "init": True,
-                "value_names": ["Param"],
-            })
+        init_program.global_block().append_op(type="lookup_sparse_table_read",
+                                              inputs={"Ids": ids},
+                                              outputs={"Out": output},
+                                              attrs={
+                                                  "tablename":
+                                                  "embedding_2.block0",
+                                                  "init": True,
+                                                  "value_names": ["Param"],
+                                              })
 
         executor = fluid.Executor(place)
         executor.run(init_program)
@@ -150,8 +152,10 @@ class TestLookupTableFuseOp(unittest.TestCase):
                 "Beta1Pow": beta1,
                 "Beta2Pow": beta2,
             },
-            outputs={"Beta1PowOut": beta1,
-                     "Beta2PowOut": beta2},
+            outputs={
+                "Beta1PowOut": beta1,
+                "Beta2PowOut": beta2
+            },
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_1.block0",
@@ -160,8 +164,10 @@ class TestLookupTableFuseOp(unittest.TestCase):
 
         training_program.global_block().append_op(
             type="lookup_sparse_table_fuse_sgd",
-            inputs={"Grad": grads,
-                    "LearningRate": lr},
+            inputs={
+                "Grad": grads,
+                "LearningRate": lr
+            },
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_2.block0",

@@ -97,7 +97,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
-void HogwildWorker::SetZero(LoDTensor *tensor, LoDTensor *root_tensor,
+void HogwildWorker::SetZero(LoDTensor *tensor,
+                            LoDTensor *root_tensor,
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
@@ -188,8 +189,11 @@ void HogwildWorker::TrainFilesWithProfiler() {
     if (thread_id_ == 0) {
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          fprintf(stderr,
+                  "op_name:[%zu][%s], op_mean_time:[%fs]\n",
+                  i,
+                  op_name[i].c_str(),
+                  op_total_time[i] / batch_cnt);
         }
         fprintf(stderr, "mean read time: %fs\n", read_time / batch_cnt);
         fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
@@ -292,16 +296,18 @@ void HogwildWorker::PrintFetchVars() {
     time_t curtime;
     time(&curtime);
     char mbstr[80];
-    std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S",
-                  std::localtime(&curtime));
+    std::strftime(
+        mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
 
     std::stringstream ss;
     ss << "time: [" << mbstr << "], ";
     ss << "batch: [" << batch_num_ << "], ";
 
     for (int i = 0; i < fetch_var_num; ++i) {
-      platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
-                         fetch_config_.fetch_var_str_format(i), &ss);
+      platform::PrintVar(thread_scope_,
+                         fetch_config_.fetch_var_names(i),
+                         fetch_config_.fetch_var_str_format(i),
+                         &ss);
       if (i < fetch_var_num - 1) {
         ss << ", ";
       }

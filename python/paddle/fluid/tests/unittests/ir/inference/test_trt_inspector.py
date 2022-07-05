@@ -28,19 +28,21 @@ import subprocess
 
 
 class TensorRTInspectorTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 16, 16], dtype="float32")
-            matmul_out = fluid.layers.matmul(
-                x=data,
-                y=data,
-                transpose_x=self.transpose_x,
-                transpose_y=self.transpose_y,
-                alpha=self.alpha)
+            matmul_out = fluid.layers.matmul(x=data,
+                                             y=data,
+                                             transpose_x=self.transpose_x,
+                                             transpose_y=self.transpose_y,
+                                             alpha=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
 
-        self.feeds = {"data": np.ones([1, 16, 16]).astype("float32"), }
+        self.feeds = {
+            "data": np.ones([1, 16, 16]).astype("float32"),
+        }
         self.enable_trt = True
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, 1, 0, AnalysisConfig.Precision.Float32, False, False, True)

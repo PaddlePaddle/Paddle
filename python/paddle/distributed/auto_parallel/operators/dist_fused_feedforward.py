@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +27,7 @@ from ..process_group import new_process_group
 
 
 class DistributedFusedFeedForward(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedFusedFeedForward, self).__init__(op_type)
 
@@ -36,6 +37,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedFusedFeedForwardImpl, self).__init__(name)
         self._forward_implemented = True
@@ -82,7 +84,7 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
 
-        # none of output should be sharded 
+        # none of output should be sharded
         for out_name in op_desc.output_names():
             out = op_desc.output(out_name)[0]
             out_dims_mapping = op_dist_attr.get_output_dims_mapping(out)

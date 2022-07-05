@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,16 +22,16 @@ import unittest
 
 
 class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
-                1] * attrs[0]['groups']:
+        if inputs['input_data'].shape[
+                1] != weights['conv2d_weight'].shape[1] * attrs[0]['groups']:
             return False
 
         return True
@@ -99,6 +99,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
         def generate_dynamic_shape(attrs):
             if attrs[0]['groups'] == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -149,8 +150,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
             return 1, 2
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for static_shape
@@ -168,8 +168,8 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
@@ -178,6 +178,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
             attrs, True), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs[
                     'padding_algorithm'] == "SAME" or program_config.ops[

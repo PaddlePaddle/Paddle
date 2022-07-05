@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/device_base.h"
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
@@ -214,8 +215,9 @@ size_t DeviceInterface::AllocSize(size_t dev_id, bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(available_to_alloc,
                     alloc_bytes,
                     phi::errors::ResourceExhausted(

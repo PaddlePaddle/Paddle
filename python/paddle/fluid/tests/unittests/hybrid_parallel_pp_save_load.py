@@ -33,6 +33,7 @@ vocab_size = 128
 
 
 class TestDistPPSaveLoadTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -59,8 +60,9 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(topology)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
         optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
                                          parameters=model.parameters())
 
@@ -81,8 +83,9 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
 
         # construct data
         test_steps = 5
-        np_data = np.random.randint(
-            0, vocab_size, size=[test_steps, batch_size, length])
+        np_data = np.random.randint(0,
+                                    vocab_size,
+                                    size=[test_steps, batch_size, length])
 
         origin_loss = []
         for step_id in range(5):

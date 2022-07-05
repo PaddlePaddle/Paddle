@@ -81,15 +81,19 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
         framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, framework::TransToProtoVarType(x->dtype()), x_type,
+        x_vec_dims,
+        framework::TransToProtoVarType(x->dtype()),
+        x_type,
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
-    auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
-                                                        reorder_src_memory_p);
+    auto slice_mem_p = reorder_handler.AcquireSubmemory(
+        slice_dims, offsets, reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, platform::GetPlainMKLDNNFormat(x_vec_dims.size()),
+        out,
+        slice_dims,
+        platform::GetPlainMKLDNNFormat(x_vec_dims.size()),
         ctx.GetPlace());
 
     auto reorder_p =
@@ -175,23 +179,25 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
 
     dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(dout->dtype()));
-    dnnl::memory::desc md(dout_vec_dims, platform::MKLDNNGetDataType<T>(),
-                          dout->format());
-    dnnl::memory::format_tag reorder_format_tag =
-        platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        slice_dims, framework::TransToProtoVarType(dout->dtype()), dout_type,
+        slice_dims,
+        framework::TransToProtoVarType(dout->dtype()),
+        dout_type,
         onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        reorder_format_tag, platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc().reshape(slice_dims),
+        platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, dx_vec_dims, reorder_format_tag, ctx.GetPlace());
+        dx,
+        dx_vec_dims,
+        platform::GetPlainMKLDNNFormat(dx_vec_dims.size()),
+        ctx.GetPlace());
     memset(dx->data<T>(), 0, reorder_dst_memory_p->get_desc().get_size());
 
-    auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
-                                                        reorder_dst_memory_p);
+    auto slice_mem_p = reorder_handler.AcquireSubmemory(
+        slice_dims, offsets, reorder_dst_memory_p);
 
     auto reorder_p =
         reorder_handler.AcquireReorder(slice_mem_p, reorder_src_memory_p);
@@ -199,21 +205,24 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *slice_mem_p);
     astream.wait();
 
-    dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(reorder_format_tag);
+    dx->set_mem_desc(reorder_dst_memory_p->get_desc());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(slice, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(slice,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::SliceMKLDNNKernel<float>,
                    ops::SliceMKLDNNKernel<int8_t>,
                    ops::SliceMKLDNNKernel<uint8_t>,
                    ops::SliceMKLDNNKernel<paddle::platform::bfloat16>);
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(slice_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(slice_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::SliceGradMKLDNNKernel<float>,
                    ops::SliceGradMKLDNNKernel<paddle::platform::bfloat16>);

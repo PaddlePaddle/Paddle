@@ -14,9 +14,11 @@
 
 #pragma once
 #include <stdio.h>
+
 #include <cassert>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
 namespace paddle {
@@ -72,9 +74,14 @@ class PoolPlugin : public PluginTensorRT {
     avg,
   };
   PoolPlugin() {}
-  PoolPlugin(bool ceil_mode, PoolType pool_type, bool adaptive, bool exclusive,
-             std::vector<int> ksize, std::vector<int> strides,
-             std::vector<int> paddings, std::vector<int> input_shape,
+  PoolPlugin(bool ceil_mode,
+             PoolType pool_type,
+             bool adaptive,
+             bool exclusive,
+             std::vector<int> ksize,
+             std::vector<int> strides,
+             std::vector<int> paddings,
+             std::vector<int> input_shape,
              std::vector<int> real_paddings)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
@@ -87,8 +94,12 @@ class PoolPlugin : public PluginTensorRT {
         input_shape_(input_shape) {
     output_shape_ = input_shape_;
     std::vector<int> output_shape =
-        CalcOutputSize({input_shape_[1], input_shape_[2]}, ceil_mode_,
-                       adaptive_, ksize_, strides_, real_paddings_);
+        CalcOutputSize({input_shape_[1], input_shape_[2]},
+                       ceil_mode_,
+                       adaptive_,
+                       ksize_,
+                       strides_,
+                       real_paddings_);
     output_shape_[1] = output_shape[0];
     output_shape_[2] = output_shape[1];
   }
@@ -115,15 +126,21 @@ class PoolPlugin : public PluginTensorRT {
     return "pool_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+  nvinfer1::Dims getOutputDimensions(int index,
+                                     const nvinfer1::Dims* inputs,
                                      int nbInputDims) TRT_NOEXCEPT override;
   int initialize() TRT_NOEXCEPT override { return 0; }
 #if IS_TRT_VERSION_LT(8000)
-  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void** outputs,
 #else
-  int enqueue(int batchSize, const void* const* inputs, void* const* outputs,
+  int enqueue(int batchSize,
+              const void* const* inputs,
+              void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
  private:
   bool ceil_mode_;
@@ -146,9 +163,10 @@ class PoolPluginCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new PoolPlugin(serial_data, serial_length);
   }
 };
@@ -158,11 +176,14 @@ REGISTER_TRT_PLUGIN_V2(PoolPluginCreator);
 class PoolPluginDynamic : public DynamicPluginTensorRT {
  public:
   PoolPluginDynamic() {}
-  PoolPluginDynamic(const bool& ceil_mode, const std::string& pool_type,
-                    const bool& adaptive, bool exclusive,
+  PoolPluginDynamic(const bool& ceil_mode,
+                    const std::string& pool_type,
+                    const bool& adaptive,
+                    bool exclusive,
                     const std::vector<int>& ksize,
                     const std::vector<int>& strides,
-                    const std::vector<int>& paddings, const bool& is_global)
+                    const std::vector<int>& paddings,
+                    const bool& is_global)
       : ceil_mode_(ceil_mode),
         pool_type_(pool_type),
         adaptive_(adaptive),
@@ -185,9 +206,11 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -208,11 +231,14 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -235,9 +261,10 @@ class PoolPluginDynamicCreator : public TensorRTPluginCreator {
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     return new PoolPluginDynamic(serial_data, serial_length);
   }
 };

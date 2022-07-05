@@ -29,10 +29,12 @@ namespace operators {
     NCCL_VERSION_CODE >= 2703
 framework::DDim recv_shape_info(const platform::Place &place,
                                 const gpuStream_t &stream,
-                                platform::NCCLComm *comm, const int &peer,
+                                platform::NCCLComm *comm,
+                                const int &peer,
                                 distributed::ProcessGroup *group) {
   if (!group) {
-    PADDLE_ENFORCE_EQ((stream != nullptr && comm != nullptr), true,
+    PADDLE_ENFORCE_EQ((stream != nullptr && comm != nullptr),
+                      true,
                       platform::errors::InvalidArgument(
                           "NCCLComm and Stream should be provided if use NCCL "
                           "to send the shape info."));
@@ -62,8 +64,8 @@ framework::DDim recv_shape_info(const platform::Place &place,
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
     auto shape_size_task = group->Recv(shape_size_tensor, peer);
   } else {
-    framework::TensorCopySync(gpu_shape_size_tensor, platform::CPUPlace(),
-                              cpu_shape_size_tensor);
+    framework::TensorCopySync(
+        gpu_shape_size_tensor, platform::CPUPlace(), cpu_shape_size_tensor);
   }
   auto *cpu_data = cpu_shape_size_tensor->data<int>();
   int shape_size = cpu_data[0];
@@ -88,8 +90,8 @@ framework::DDim recv_shape_info(const platform::Place &place,
     shape_tensor.emplace_back(*cpu_shape_tensor);
     auto shape_task = group->Recv(shape_tensor, peer);
   } else {
-    framework::TensorCopySync(gpu_shape_tensor, platform::CPUPlace(),
-                              cpu_shape_tensor);
+    framework::TensorCopySync(
+        gpu_shape_tensor, platform::CPUPlace(), cpu_shape_tensor);
   }
   auto *cpu_shape_data = cpu_shape_tensor->data<int>();
   std::vector<int> all_shape;
@@ -113,13 +115,15 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
-        rid, 0,
+        rid,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for recv_v2 op must be non-negative.", rid));
 
     int peer = ctx.Attr<int>("peer");
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for recv_v2 op must be non-negative.", peer));
 
@@ -136,10 +140,11 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
       if (dynamic_shape) {
         VLOG(3) << "recv_v2 will use dynamic shape with send_v2 for switch";
-        framework::DDim new_dim =
-            recv_shape_info(ctx.GetPlace(),
-                            /* gpuStream_t */ nullptr,
-                            /* NCCLComm* */ nullptr, peer, pg);
+        framework::DDim new_dim = recv_shape_info(ctx.GetPlace(),
+                                                  /* gpuStream_t */ nullptr,
+                                                  /* NCCLComm* */ nullptr,
+                                                  peer,
+                                                  pg);
         out->Resize(new_dim);
         out->mutable_data<T>(new_dim, place);
       } else {
@@ -158,10 +163,12 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
     PADDLE_ENFORCE_LT(
-        peer, comm->nranks(),
+        peer,
+        comm->nranks(),
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
-                                          peer, comm->nranks()));
+                                          peer,
+                                          comm->nranks()));
 
     int data_type = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
@@ -171,7 +178,8 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     auto *out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensorArray>()) {
       PADDLE_ENFORCE_EQ(
-          dynamic_shape, false,
+          dynamic_shape,
+          false,
           platform::errors::InvalidArgument("Dynamic shape for send/recv not "
                                             "support LoDTensorArray for now."));
       auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
@@ -196,7 +204,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     if (dynamic_shape) {
       VLOG(3) << "recv_v2 will use dynamic shape with send_v2";
-      framework::DDim new_dim = recv_shape_info(place, stream, comm, peer,
+      framework::DDim new_dim = recv_shape_info(place,
+                                                stream,
+                                                comm,
+                                                peer,
                                                 /* ProcessGroup* */ nullptr);
       out->Resize(new_dim);
       numel = out->numel();
@@ -222,8 +233,12 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(recv_v2, ops::RecvOpV2CUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(recv_v2,
+                        ops::RecvOpV2CUDAKernel<float>,
                         ops::RecvOpV2CUDAKernel<double>,
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+                        ops::RecvOpV2CUDAKernel<plat::bfloat16>,
+#endif
                         ops::RecvOpV2CUDAKernel<int>,
                         ops::RecvOpV2CUDAKernel<int64_t>,
                         ops::RecvOpV2CUDAKernel<int8_t>,

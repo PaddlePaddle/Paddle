@@ -28,13 +28,20 @@ paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
+
     def simple_net(self):
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
         # fill_constant npu op doesn't support int64
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
@@ -102,9 +109,11 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            outs = exe.run(feed={'d0': d[0],
-                                 'd1': d[1],
-                                 'd2': d[2]},
+            outs = exe.run(feed={
+                'd0': d[0],
+                'd1': d[1],
+                'd2': d[2]
+            },
                            fetch_list=[sum_result])
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 

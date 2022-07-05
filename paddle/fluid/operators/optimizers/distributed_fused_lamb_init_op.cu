@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
-#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
@@ -72,8 +72,10 @@ static size_t GetAlignSize(size_t n, size_t alignment) {
 // end_size = sum(infos[0:j].numel_with_padding) + end_numel_offset, where
 // end_numel_offset <= infos[j].numel_with_padding
 static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
-                                  size_t start_size, size_t end_size,
-                                  size_t *start_idx, size_t *end_idx,
+                                  size_t start_size,
+                                  size_t end_size,
+                                  size_t *start_idx,
+                                  size_t *end_idx,
                                   size_t *start_numel_offset,
                                   size_t *end_numel_offset) {
   VLOG(10) << "NumelOffset: "
@@ -83,10 +85,14 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
   VLOG(10) << "start_size = " << start_size << " , end_size = " << end_size;
 
   if (infos.empty()) {
-    PADDLE_ENFORCE_EQ(start_size, 0, platform::errors::InvalidArgument(
-                                         "start_size should be 0."));
-    PADDLE_ENFORCE_EQ(end_size, 0, platform::errors::InvalidArgument(
-                                       "end_size should be 0."));
+    PADDLE_ENFORCE_EQ(
+        start_size,
+        0,
+        platform::errors::InvalidArgument("start_size should be 0."));
+    PADDLE_ENFORCE_EQ(
+        end_size,
+        0,
+        platform::errors::InvalidArgument("end_size should be 0."));
     *start_idx = 0;
     *end_idx = 0;
     *start_numel_offset = 0;
@@ -94,7 +100,8 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
     return;
   }
 
-  PADDLE_ENFORCE_LT(start_size, end_size,
+  PADDLE_ENFORCE_LT(start_size,
+                    end_size,
                     platform::errors::InvalidArgument(
                         "start_size should be less than end_size."));
   size_t n = infos.size();
@@ -104,15 +111,21 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
       infos.begin());
   if (i == n || infos[i].numel_offset != start_size) {
     PADDLE_ENFORCE_GT(
-        i, 0, platform::errors::InvalidArgument(
-                  "Cannot find suitable sharding which is between [%d, %d)",
-                  start_size, end_size));
+        i,
+        0,
+        platform::errors::InvalidArgument(
+            "Cannot find suitable sharding which is between [%d, %d)",
+            start_size,
+            end_size));
     --i;
   }
   PADDLE_ENFORCE_LT(
-      i, n, platform::errors::InvalidArgument(
-                "Cannot find suitable sharding which is between [%d, %d)",
-                start_size, end_size));
+      i,
+      n,
+      platform::errors::InvalidArgument(
+          "Cannot find suitable sharding which is between [%d, %d)",
+          start_size,
+          end_size));
   *start_idx = i;
   *start_numel_offset = start_size - infos[i].numel_offset;
   auto j = static_cast<size_t>(
@@ -120,7 +133,8 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
       infos.begin());
   *end_idx = j - 1;
   *end_numel_offset = end_size - infos[j - 1].numel_offset;
-  PADDLE_ENFORCE_GT(*end_numel_offset, 0,
+  PADDLE_ENFORCE_GT(*end_numel_offset,
+                    0,
                     platform::errors::InvalidArgument(
                         "Internal error when sharding, this may be a bug "
                         "caused by empty parameter."));
@@ -130,11 +144,13 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
 }
 
 static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
-                                       size_t alignment, size_t nranks,
+                                       size_t alignment,
+                                       size_t nranks,
                                        phi::DataType dtype) {
   auto sizeof_dtype = paddle::experimental::SizeOf(dtype);
   PADDLE_ENFORCE_EQ(
-      alignment % sizeof_dtype, 0,
+      alignment % sizeof_dtype,
+      0,
       platform::errors::InvalidArgument(
           "The attr(alignment) should be exactly divided by sizeof(T) %d.",
           sizeof_dtype));
@@ -164,7 +180,8 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 template <typename T>
 static T *TensorFillConstant(const platform::CUDADeviceContext &dev_ctx,
                              framework::Tensor *tensor,
-                             const framework::DDim &dims, T value) {
+                             const framework::DDim &dims,
+                             T value) {
   tensor->Resize(dims);
   auto *ptr = tensor->mutable_data<T>(dev_ctx.GetPlace());
   phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
@@ -173,16 +190,21 @@ static T *TensorFillConstant(const platform::CUDADeviceContext &dev_ctx,
 }
 
 static framework::Tensor CastDataForInitedTensor(
-    const platform::CUDADeviceContext &dev_ctx, framework::Tensor *origin,
-    framework::Tensor *fused_out, size_t numel_offset) {
-  PADDLE_ENFORCE_EQ(origin->IsInitialized(), true,
+    const platform::CUDADeviceContext &dev_ctx,
+    framework::Tensor *origin,
+    framework::Tensor *fused_out,
+    size_t numel_offset) {
+  PADDLE_ENFORCE_EQ(origin->IsInitialized(),
+                    true,
                     platform::errors::InvalidArgument(
                         "The tensor to be cast should be initialized."));
 
-  PADDLE_ENFORCE_EQ(fused_out->dtype(), phi::DataType::FLOAT32,
+  PADDLE_ENFORCE_EQ(fused_out->dtype(),
+                    phi::DataType::FLOAT32,
                     platform::errors::InvalidArgument(
                         "The dst tensor to be cast should be FP32 tensor."));
-  PADDLE_ENFORCE_EQ(origin->dtype(), phi::DataType::FLOAT16,
+  PADDLE_ENFORCE_EQ(origin->dtype(),
+                    phi::DataType::FLOAT16,
                     platform::errors::InvalidArgument(
                         "The src tensor to be cast should be FP16 tensor."));
   auto *dst = fused_out->data<float>() + numel_offset;
@@ -201,24 +223,30 @@ static framework::Tensor CastDataForInitedTensor(
 }
 
 static framework::Tensor CopyAndShareBufferForInitedTensor(
-    framework::Tensor *origin, framework::Tensor *fused_out,
-    size_t numel_offset, gpuStream_t stream) {
+    framework::Tensor *origin,
+    framework::Tensor *fused_out,
+    size_t numel_offset,
+    gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
-      origin->IsInitialized(), true,
+      origin->IsInitialized(),
+      true,
       platform::errors::InvalidArgument(
           "The tensor to be copied and shared data should be initialized."));
   auto dtype = fused_out->type();
-  PADDLE_ENFORCE_EQ(origin->type(), dtype,
+  PADDLE_ENFORCE_EQ(origin->type(),
+                    dtype,
                     platform::errors::InvalidArgument(
                         "The tensor to be copied and shared data should be "
                         "have the same data type."));
   auto place = fused_out->place();
   PADDLE_ENFORCE_EQ(
-      origin->place(), place,
+      origin->place(),
+      place,
       platform::errors::InvalidArgument("The tensor to be copied and shared "
                                         "data should be have the same place."));
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place), true,
+      platform::is_gpu_place(place),
+      true,
       platform::errors::InvalidArgument(
           "The tensor to be copied and shared data should be on GPU place."));
 
@@ -227,8 +255,12 @@ static framework::Tensor CopyAndShareBufferForInitedTensor(
   auto fused_out_numel = fused_out->numel();
   auto sliced_tensor = fused_out->Resize({fused_out_numel})
                            .Slice(numel_offset, numel + numel_offset);
-  memory::Copy(place, sliced_tensor.data(), place, origin->data(),
-               numel * paddle::experimental::SizeOf(dtype), stream);
+  memory::Copy(place,
+               sliced_tensor.data(),
+               place,
+               origin->data(),
+               numel * paddle::experimental::SizeOf(dtype),
+               stream);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Copy and share buffer, range: [" << numel_offset << ", "
@@ -242,7 +274,8 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
                                           size_t numel_offset,
                                           const framework::DDim &dims) {
   PADDLE_ENFORCE_EQ(
-      origin->IsInitialized(), false,
+      origin->IsInitialized(),
+      false,
       platform::errors::InvalidArgument(
           "The tensor to be shared data should not be initialized."));
 
@@ -321,7 +354,8 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     auto master_params = ctx.MultiOutput<framework::Tensor>("MasterParamOut");
     std::vector<ParamGradInfo> fp32_infos, fp16_infos;
     {
-      PADDLE_ENFORCE_EQ(params.size(), grads.size(),
+      PADDLE_ENFORCE_EQ(params.size(),
+                        grads.size(),
                         platform::errors::InvalidArgument(
                             "The parameter number and parameter gradient "
                             "number should be the same."));
@@ -329,11 +363,13 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
       auto grads_out = ctx.MultiOutput<framework::Tensor>("GradOut");
       PADDLE_ENFORCE_EQ(
-          params.size(), params_out.size(),
+          params.size(),
+          params_out.size(),
           platform::errors::InvalidArgument("Input(Param) and Output(ParamOut) "
                                             "should have the same number."));
       PADDLE_ENFORCE_EQ(
-          grads.size(), grads_out.size(),
+          grads.size(),
+          grads_out.size(),
           platform::errors::InvalidArgument(
               "Input(Grad) and Output(GradOut) should have the same number."));
       size_t n = params.size();
@@ -345,17 +381,21 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         auto *g_out = grads_out[i];
 
         PADDLE_ENFORCE_NOT_NULL(
-            p, platform::errors::InvalidArgument(
-                   "The %d-th parameter should not be nullptr.", i));
-        PADDLE_ENFORCE_EQ(p->IsInitialized(), true,
+            p,
+            platform::errors::InvalidArgument(
+                "The %d-th parameter should not be nullptr.", i));
+        PADDLE_ENFORCE_EQ(p->IsInitialized(),
+                          true,
                           platform::errors::InvalidArgument(
                               "The %d-th parameter should be initialized.", i));
         PADDLE_ENFORCE_EQ(
-            p->place(), place,
+            p->place(),
+            place,
             platform::errors::InvalidArgument(
                 "The %d-th parameter is not initialized on the right place.",
                 i));
-        PADDLE_ENFORCE_EQ(p, p_out,
+        PADDLE_ENFORCE_EQ(p,
+                          p_out,
                           platform::errors::InvalidArgument(
                               "The %d-th Input(Param) and Output(ParamOut) "
                               "should be the same tensor.",
@@ -363,25 +403,31 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
 
         auto dtype = p->dtype();
         PADDLE_ENFORCE_NOT_NULL(
-            g, platform::errors::InvalidArgument(
-                   "The %d-th gradient should not be nullptr.", i));
-        PADDLE_ENFORCE_EQ(g, g_out,
+            g,
+            platform::errors::InvalidArgument(
+                "The %d-th gradient should not be nullptr.", i));
+        PADDLE_ENFORCE_EQ(g,
+                          g_out,
                           platform::errors::InvalidArgument(
                               "The %d-th Input(Grad) and Output(Grad) should "
                               "be the same tensor."));
         auto numel = p->numel();
-        PADDLE_ENFORCE_GT(numel, 0,
+        PADDLE_ENFORCE_GT(numel,
+                          0,
                           platform::errors::InvalidArgument(
                               "The %d-th Input(Param) have no elements."));
 
         void *g_data = nullptr;
         if (g->IsInitialized()) {
-          PADDLE_ENFORCE_EQ(g->dtype(), dtype,
+          PADDLE_ENFORCE_EQ(g->dtype(),
+                            dtype,
                             platform::errors::InvalidArgument(
                                 "The %d-th Input(Param) and Input(Grad) should "
                                 "have the same data type %s.",
-                                i, dtype));
-          PADDLE_ENFORCE_EQ(g->dims(), p->dims(),
+                                i,
+                                dtype));
+          PADDLE_ENFORCE_EQ(g->dims(),
+                            p->dims(),
                             platform::errors::InvalidArgument(
                                 "The %d-th Input(Param) and Input(Grad) should "
                                 "have the same shape.",
@@ -443,30 +489,36 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     if (alignment <= 0) {
       alignment = platform::GpuMinChunkSize();
     }
-    PADDLE_ENFORCE_GE(alignment, 1,
+    PADDLE_ENFORCE_GE(alignment,
+                      1,
                       platform::errors::InvalidArgument(
                           "The attr(alignment) should be larger than 0."));
-    PADDLE_ENFORCE_EQ(alignment & (alignment - 1), 0,
+    PADDLE_ENFORCE_EQ(alignment & (alignment - 1),
+                      0,
                       platform::errors::InvalidArgument(
                           "The attr(alignment) should be the power of 2."));
     PADDLE_ENFORCE_GE(
-        rank, 0, platform::errors::InvalidArgument(
-                     "The attr(rank) should be equal to or larger than 0."));
+        rank,
+        0,
+        platform::errors::InvalidArgument(
+            "The attr(rank) should be equal to or larger than 0."));
     PADDLE_ENFORCE_LT(
-        rank, nranks,
+        rank,
+        nranks,
         platform::errors::InvalidArgument(
             "The attr(rank) should be less than the attr(nranks)."));
     // NOTE: We guarantee that both fp32_numel and fp16_numel can be exactly
     // divided by alignment and nranks.
-    auto fp32_numel = FillAlignmentPaddingInfo(&fp32_infos, alignment, nranks,
-                                               phi::DataType::FLOAT32);
+    auto fp32_numel = FillAlignmentPaddingInfo(
+        &fp32_infos, alignment, nranks, phi::DataType::FLOAT32);
     VLOG(10) << "FP32 ParamGradInfo: " << string::join_strings(fp32_infos, " ");
-    auto fp16_numel = FillAlignmentPaddingInfo(&fp16_infos, alignment, nranks,
-                                               phi::DataType::FLOAT16);
+    auto fp16_numel = FillAlignmentPaddingInfo(
+        &fp16_infos, alignment, nranks, phi::DataType::FLOAT16);
     VLOG(10) << "FP16 ParamGradInfo: " << string::join_strings(fp16_infos, " ");
     auto total_numel = fp32_numel + fp16_numel;
     PADDLE_ENFORCE_LT(
-        total_numel, std::numeric_limits<int>::max(),
+        total_numel,
+        std::numeric_limits<int>::max(),
         platform::errors::InvalidArgument("Too many parameter number."));
 
     auto fp32_numel_each_device = fp32_numel / nranks;
@@ -499,12 +551,16 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     if (fp16_numel > 0) {
       fp16_p_t = ctx.Output<framework::Tensor>("FP16FusedParam");
       fused_fp16_param = TensorFillConstant<platform::float16>(
-          dev_ctx, fp16_p_t, {static_cast<int64_t>(fp16_numel)},
+          dev_ctx,
+          fp16_p_t,
+          {static_cast<int64_t>(fp16_numel)},
           static_cast<platform::float16>(0));
 
       fp16_g_t = ctx.Output<framework::Tensor>("FP16FusedGrad");
       fused_fp16_grad = TensorFillConstant<platform::float16>(
-          dev_ctx, fp16_g_t, {static_cast<int64_t>(fp16_numel)},
+          dev_ctx,
+          fp16_g_t,
+          {static_cast<int64_t>(fp16_numel)},
           static_cast<platform::float16>(0));
     }
     VLOG(10) << "Allocate FP32FusedParam/Grad, FP16FusedParam/Grad ends";
@@ -523,11 +579,11 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                         platform::errors::InvalidArgument(
                             "Invalid master weight tensor pointer."));
       if (info.grad_t->IsInitialized()) {
-        CopyAndShareBufferForInitedTensor(info.grad_t, fp32_g_t,
-                                          info.numel_offset, stream);
+        CopyAndShareBufferForInitedTensor(
+            info.grad_t, fp32_g_t, info.numel_offset, stream);
       } else {
-        ShareBufferForNonInitedTensor(info.grad_t, fp32_g_t, info.numel_offset,
-                                      info.param_t->dims());
+        ShareBufferForNonInitedTensor(
+            info.grad_t, fp32_g_t, info.numel_offset, info.param_t->dims());
       }
     }
 
@@ -545,48 +601,60 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       master_params[info.idx]->Resize(info.param_t->dims());
       master_params[info.idx]->ShareBufferWith(sliced_tensor);
 
-      CopyAndShareBufferForInitedTensor(info.param_t, fp16_p_t,
-                                        info.numel_offset, stream);
+      CopyAndShareBufferForInitedTensor(
+          info.param_t, fp16_p_t, info.numel_offset, stream);
       PADDLE_ENFORCE_EQ(master_params[info.idx]->mutable_data<float>(place),
                         sliced_tensor.data<float>(),
                         platform::errors::InvalidArgument(
                             "Invalid master weight tensor pointer."));
 
       if (info.grad_t->IsInitialized()) {
-        CopyAndShareBufferForInitedTensor(info.grad_t, fp16_g_t,
-                                          info.numel_offset, stream);
+        CopyAndShareBufferForInitedTensor(
+            info.grad_t, fp16_g_t, info.numel_offset, stream);
       } else {
-        ShareBufferForNonInitedTensor(info.grad_t, fp16_g_t, info.numel_offset,
-                                      info.param_t->dims());
+        ShareBufferForNonInitedTensor(
+            info.grad_t, fp16_g_t, info.numel_offset, info.param_t->dims());
       }
     }
     VLOG(10) << "Copy/share data for Param/Grad ends";
 
     // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
-    TensorFillConstant<float>(dev_ctx, ctx.Output<framework::Tensor>("Moment1"),
-                              {static_cast<int64_t>(numel_each_device)}, 0.0f);
-    TensorFillConstant<float>(dev_ctx, ctx.Output<framework::Tensor>("Moment2"),
-                              {static_cast<int64_t>(numel_each_device)}, 0.0f);
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Beta1Pow"), {1},
+                              ctx.Output<framework::Tensor>("Moment1"),
+                              {static_cast<int64_t>(numel_each_device)},
+                              0.0f);
+    TensorFillConstant<float>(dev_ctx,
+                              ctx.Output<framework::Tensor>("Moment2"),
+                              {static_cast<int64_t>(numel_each_device)},
+                              0.0f);
+    TensorFillConstant<float>(dev_ctx,
+                              ctx.Output<framework::Tensor>("Beta1Pow"),
+                              {1},
                               ctx.Attr<float>("beta1"));
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Beta2Pow"), {1},
+                              ctx.Output<framework::Tensor>("Beta2Pow"),
+                              {1},
                               ctx.Attr<float>("beta2"));
     VLOG(10) << "Init Moment and BetaPow ends";
 
     // Step 5: Do sharding
     size_t fp32_start_idx, fp32_end_idx, fp32_start_numel_offset,
         fp32_end_numel_offset;
-    GetParamGradShardInfo(fp32_infos, rank * fp32_numel_each_device,
-                          (rank + 1) * fp32_numel_each_device, &fp32_start_idx,
-                          &fp32_end_idx, &fp32_start_numel_offset,
+    GetParamGradShardInfo(fp32_infos,
+                          rank * fp32_numel_each_device,
+                          (rank + 1) * fp32_numel_each_device,
+                          &fp32_start_idx,
+                          &fp32_end_idx,
+                          &fp32_start_numel_offset,
                           &fp32_end_numel_offset);
     size_t fp16_start_idx, fp16_end_idx, fp16_start_numel_offset,
         fp16_end_numel_offset;
-    GetParamGradShardInfo(fp16_infos, rank * fp16_numel_each_device,
-                          (rank + 1) * fp16_numel_each_device, &fp16_start_idx,
-                          &fp16_end_idx, &fp16_start_numel_offset,
+    GetParamGradShardInfo(fp16_infos,
+                          rank * fp16_numel_each_device,
+                          (rank + 1) * fp16_numel_each_device,
+                          &fp16_start_idx,
+                          &fp16_end_idx,
+                          &fp16_start_numel_offset,
                           &fp16_end_numel_offset);
     size_t fp32_local_param_num =
         fp32_numel_each_device > 0 ? fp32_end_idx - fp32_start_idx + 1 : 0;
@@ -601,13 +669,15 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     param_info[0] = static_cast<int>(fp32_start_idx);
     param_info[1] = static_cast<int>(fp32_local_param_num);
     param_info[2] = static_cast<int>(fp32_infos.size());
-    param_info[3] = ClipByBound<int>(fp32_wd_end_idx, fp32_start_idx,
+    param_info[3] = ClipByBound<int>(fp32_wd_end_idx,
+                                     fp32_start_idx,
                                      fp32_start_idx + fp32_local_param_num) -
                     static_cast<int>(fp32_start_idx);
     param_info[4] = static_cast<int>(fp16_start_idx + fp32_infos.size());
     param_info[5] = static_cast<int>(fp16_local_param_num);
     param_info[6] = static_cast<int>(fp16_infos.size());
-    param_info[7] = ClipByBound<int>(fp16_wd_end_idx, fp16_start_idx,
+    param_info[7] = ClipByBound<int>(fp16_wd_end_idx,
+                                     fp16_start_idx,
                                      fp16_start_idx + fp16_local_param_num) -
                     static_cast<int>(fp16_start_idx);
 
@@ -628,7 +698,8 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       numel_offsets.push_back(info.numel_offset + fp16_numel_offset);
     }
     numel_offsets.push_back(fp32_numel + fp16_numel);
-    PADDLE_ENFORCE_EQ(numel_offsets.size(), params.size() + 1,
+    PADDLE_ENFORCE_EQ(numel_offsets.size(),
+                      params.size() + 1,
                       platform::errors::InvalidArgument(
                           "The numel_offsets number must be one larger than "
                           "the parameter number."));
@@ -650,7 +721,8 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         end_n = std::min(end_n, fp32_end_numel_offset);
       }
 
-      PADDLE_ENFORCE_NE(valid_start_n, end_n,
+      PADDLE_ENFORCE_NE(valid_start_n,
+                        end_n,
                         platform::errors::InvalidArgument(
                             "Indices sharding error. This may be a bug."));
       VLOG(10) << "FP32 Partial numel = ["
@@ -676,7 +748,8 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         end_n = std::min(end_n, fp16_end_numel_offset);
       }
 
-      PADDLE_ENFORCE_NE(valid_start_n, end_n,
+      PADDLE_ENFORCE_NE(valid_start_n,
+                        end_n,
                         platform::errors::InvalidArgument(
                             "Indices sharding error. This may be a bug."));
       auto len = end_n - valid_start_n;
@@ -699,8 +772,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     }
     VLOG(10) << "Init global scale ends";
 
-    TensorFillConstant<int64_t>(dev_ctx, ctx.Output<framework::Tensor>("Step"),
-                                {1}, static_cast<int64_t>(0));
+    TensorFillConstant<int64_t>(dev_ctx,
+                                ctx.Output<framework::Tensor>("Step"),
+                                {1},
+                                static_cast<int64_t>(0));
 
     dev_ctx.Wait();
     VLOG(10) << "Wait for H2D copy";

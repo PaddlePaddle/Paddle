@@ -14,6 +14,7 @@
 import os
 from ..layers import collective
 from ..framework import Parameter
+
 __parallel_ctx__clz__ = None
 
 

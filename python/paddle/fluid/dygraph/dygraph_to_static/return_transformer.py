@@ -21,6 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
@@ -57,7 +58,7 @@ def get_return_size(return_node):
     return return_length
 
 
-class ReplaceReturnNoneTransformer(gast.NodeTransformer):
+class ReplaceReturnNoneTransformer(BaseTransformer):
     """
     Replace 'return None' to  'return' because 'None' cannot be a valid input
     in control flow. In ReturnTransformer single 'Return' will be appended no
@@ -133,7 +134,7 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
         return self.max_return_length[func_node]
 
 
-class ReturnTransformer(gast.NodeTransformer):
+class ReturnTransformer(BaseTransformer):
     """
     Transforms return statements into equivalent python statements containing
     only one return statement at last. The basics idea is using a return value
@@ -211,11 +212,10 @@ class ReturnTransformer(gast.NodeTransformer):
         value_name = self.return_value_name[node]
         if value_name is not None:
             node.body.append(
-                gast.Return(value=gast.Name(
-                    id=value_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None)))
+                gast.Return(value=gast.Name(id=value_name,
+                                            ctx=gast.Load(),
+                                            annotation=None,
+                                            type_comment=None)))
             init_names = [
                 unique_name.generate(RETURN_VALUE_INIT_NAME)
                 for i in range(max_return_length)
@@ -224,32 +224,27 @@ class ReturnTransformer(gast.NodeTransformer):
                 create_fill_constant_node(iname, 0.0) for iname in init_names
             ]
             if len(init_names) == 1:
-                return_value_nodes = gast.Name(
-                    id=init_names[0],
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None)
+                return_value_nodes = gast.Name(id=init_names[0],
+                                               ctx=gast.Load(),
+                                               annotation=None,
+                                               type_comment=None)
             else:
                 # We need to initialize return value as a tuple because control
                 # flow requires some inputs or outputs have same structure
-                return_value_nodes = gast.Tuple(
-                    elts=[
-                        gast.Name(
-                            id=iname,
-                            ctx=gast.Load(),
-                            annotation=None,
-                            type_comment=None) for iname in init_names
-                    ],
-                    ctx=gast.Load())
-            assign_return_value_node = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=value_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
+                return_value_nodes = gast.Tuple(elts=[
+                    gast.Name(id=iname,
+                              ctx=gast.Load(),
+                              annotation=None,
+                              type_comment=None) for iname in init_names
                 ],
-                value=return_value_nodes)
+                                                ctx=gast.Load())
+            assign_return_value_node = gast.Assign(targets=[
+                gast.Name(id=value_name,
+                          ctx=gast.Store(),
+                          annotation=None,
+                          type_comment=None)
+            ],
+                                                   value=return_value_nodes)
             node.body.insert(0, assign_return_value_node)
             node.body[:0] = assign_zero_nodes
 
@@ -276,43 +271,43 @@ class ReturnTransformer(gast.NodeTransformer):
             if hasattr(ancestor,
                        "body") and index_in_list(ancestor.body, cur_node) != -1:
                 if cur_node == node:
-                    self._replace_return_in_stmt_list(
-                        ancestor.body, cur_node, return_name, max_return_length,
-                        parent_node_of_return)
+                    self._replace_return_in_stmt_list(ancestor.body, cur_node,
+                                                      return_name,
+                                                      max_return_length,
+                                                      parent_node_of_return)
                 self._replace_after_node_to_if_in_stmt_list(
                     ancestor.body, cur_node, return_name, parent_node_of_return)
-            elif hasattr(ancestor, "orelse") and index_in_list(ancestor.orelse,
-                                                               cur_node) != -1:
+            elif hasattr(ancestor, "orelse") and index_in_list(
+                    ancestor.orelse, cur_node) != -1:
                 if cur_node == node:
-                    self._replace_return_in_stmt_list(
-                        ancestor.orelse, cur_node, return_name,
-                        max_return_length, parent_node_of_return)
+                    self._replace_return_in_stmt_list(ancestor.orelse, cur_node,
+                                                      return_name,
+                                                      max_return_length,
+                                                      parent_node_of_return)
                 self._replace_after_node_to_if_in_stmt_list(
                     ancestor.orelse, cur_node, return_name,
                     parent_node_of_return)
 
             # If return node in while loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.While):
-                cond_var_node = gast.UnaryOp(
-                    op=gast.Not(),
-                    operand=gast.Name(
-                        id=return_name,
-                        ctx=gast.Load(),
-                        annotation=None,
-                        type_comment=None))
+                cond_var_node = gast.UnaryOp(op=gast.Not(),
+                                             operand=gast.Name(
+                                                 id=return_name,
+                                                 ctx=gast.Load(),
+                                                 annotation=None,
+                                                 type_comment=None))
                 ancestor.test = gast.BoolOp(
                     op=gast.And(), values=[ancestor.test, cond_var_node])
                 continue
 
             # If return node in for loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.For):
-                cond_var_node = gast.UnaryOp(
-                    op=gast.Not(),
-                    operand=gast.Name(
-                        id=return_name,
-                        ctx=gast.Load(),
-                        annotation=None,
-                        type_comment=None))
+                cond_var_node = gast.UnaryOp(op=gast.Not(),
+                                             operand=gast.Name(
+                                                 id=return_name,
+                                                 ctx=gast.Load(),
+                                                 annotation=None,
+                                                 type_comment=None))
                 parent_node = self.ancestor_nodes[ancestor_index - 1]
                 for_to_while = ForToWhileTransformer(parent_node, ancestor,
                                                      cond_var_node)
@@ -336,7 +331,7 @@ class ReturnTransformer(gast.NodeTransformer):
         # Here assume that the parent node of return is gast.If
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = True'
-            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, True)".format(
+            node_str = "{} = _jst.create_bool_as_type({}, True)".format(
                 return_name,
                 ast_to_source_code(parent_node_of_return.test).strip())
 
@@ -363,27 +358,23 @@ class ReturnTransformer(gast.NodeTransformer):
             # Handle tuple/non-tuple case
             if max_return_length == 1:
                 assign_nodes.append(
-                    gast.Assign(
-                        targets=[
-                            gast.Name(
-                                id=self.return_value_name[cur_func_node],
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-                        ],
-                        value=gast.Name(
-                            id=no_value_names[0],
-                            ctx=gast.Load(),
-                            annotation=None,
-                            type_comment=None)))
+                    gast.Assign(targets=[
+                        gast.Name(id=self.return_value_name[cur_func_node],
+                                  ctx=gast.Store(),
+                                  annotation=None,
+                                  type_comment=None)
+                    ],
+                                value=gast.Name(id=no_value_names[0],
+                                                ctx=gast.Load(),
+                                                annotation=None,
+                                                type_comment=None)))
             else:
                 # max_return_length > 1 which means we should assign tuple
                 fill_tuple = [
-                    gast.Name(
-                        id=n,
-                        ctx=gast.Load(),
-                        annotation=None,
-                        type_comment=None) for n in no_value_names
+                    gast.Name(id=n,
+                              ctx=gast.Load(),
+                              annotation=None,
+                              type_comment=None) for n in no_value_names
                 ]
                 if return_node.value is not None:
                     if isinstance(return_node.value, gast.Tuple):
@@ -392,16 +383,14 @@ class ReturnTransformer(gast.NodeTransformer):
                         fill_tuple.insert(0, return_node.value)
 
                 assign_nodes.append(
-                    gast.Assign(
-                        targets=[
-                            gast.Name(
-                                id=self.return_value_name[cur_func_node],
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-                        ],
-                        value=gast.Tuple(
-                            elts=fill_tuple, ctx=gast.Load())))
+                    gast.Assign(targets=[
+                        gast.Name(id=self.return_value_name[cur_func_node],
+                                  ctx=gast.Store(),
+                                  annotation=None,
+                                  type_comment=None)
+                    ],
+                                value=gast.Tuple(elts=fill_tuple,
+                                                 ctx=gast.Load())))
         else:
             # In this case we should NOT append RETURN_NO_VALUE placeholder
             if return_node.value is not None:
@@ -412,21 +401,20 @@ class ReturnTransformer(gast.NodeTransformer):
                             RETURN_VALUE_PREFIX)
 
                 assign_nodes.append(
-                    gast.Assign(
-                        targets=[
-                            gast.Name(
-                                id=self.return_value_name[cur_func_node],
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-                        ],
-                        value=return_node.value))
+                    gast.Assign(targets=[
+                        gast.Name(id=self.return_value_name[cur_func_node],
+                                  ctx=gast.Store(),
+                                  annotation=None,
+                                  type_comment=None)
+                    ],
+                                value=return_node.value))
 
         stmt_list[i:] = assign_nodes
         return True
 
-    def _replace_after_node_to_if_in_stmt_list(
-            self, stmt_list, node, return_name, parent_node_of_return):
+    def _replace_after_node_to_if_in_stmt_list(self, stmt_list, node,
+                                               return_name,
+                                               parent_node_of_return):
         i = index_in_list(stmt_list, node)
         if i < 0 or i >= len(stmt_list):
             return False
@@ -434,13 +422,12 @@ class ReturnTransformer(gast.NodeTransformer):
             # No need to add, we consider this as added successfully
             return True
 
-        if_stmt = gast.If(test=gast.UnaryOp(
-            op=gast.Not(),
-            operand=gast.Name(
-                id=return_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None)),
+        if_stmt = gast.If(test=gast.UnaryOp(op=gast.Not(),
+                                            operand=gast.Name(
+                                                id=return_name,
+                                                ctx=gast.Store(),
+                                                annotation=None,
+                                                type_comment=None)),
                           body=stmt_list[i + 1:],
                           orelse=[])
 
@@ -449,7 +436,7 @@ class ReturnTransformer(gast.NodeTransformer):
         # Here assume that the parent node of return is gast.If
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = False'
-            node_str = "{} = paddle.jit.dy2static.create_bool_as_type({}, False)".format(
+            node_str = "{} = _jst.create_bool_as_type({}, False)".format(
                 return_name,
                 ast_to_source_code(parent_node_of_return.test).strip())
             assign_false_node = gast.parse(node_str).body[0]

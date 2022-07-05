@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,8 +29,6 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -74,7 +73,8 @@ void SetForwardDataTypeOfGradVar<egr::EagerVariable>(
 
 template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
-    const framework::OperatorWithKernel& op, const NameVarMap<VarType>& ins,
+    const framework::OperatorWithKernel& op,
+    const NameVarMap<VarType>& ins,
     const framework::OpKernelType& expected_kernel_key) {
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
@@ -105,13 +105,13 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             auto tmp_var =
                 std::make_shared<VarType>(GetNameFromVar(template_var));
             SetType(tmp_var, GetType(template_var));
-            SetTensorToVariable(cache_var->Var(), *tensor,
-                                tmp_var->MutableVar());
+            SetTensorToVariable(
+                cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
             framework::Tensor out;
-            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
-                          &out);
+            TransformData(
+                expected_kernel_key, kernel_type_for_var, *tensor, &out);
             if (NeedTransformDataType(kernel_type_for_var,
                                       expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general
@@ -123,8 +123,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               auto tmp_var =
                   std::make_shared<VarType>(GetNameFromVar(template_var));
               SetType(tmp_var, GetType(template_var));
-              SetTensorToVariable(template_var->Var(), out,
-                                  tmp_var->MutableVar());
+              SetTensorToVariable(
+                  template_var->Var(), out, tmp_var->MutableVar());
               (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
               SetCachedValue(template_var, expected_kernel_key, tmp_var);
               VLOG(3) << "Set cache to variable_wrapper: key="
@@ -133,8 +133,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
               // if dtype is same, transform inplace will not change the
               // original
               // value, transform inplace to avoid multiple copy
-              SetTensorToVariable(template_var->Var(), out,
-                                  template_var->MutableVar());
+              SetTensorToVariable(
+                  template_var->Var(), out, template_var->MutableVar());
             }
           }
         }
@@ -160,7 +160,8 @@ class PreparedOp {
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
-             const phi::Kernel& phi_kernel, platform::DeviceContext* dev_ctx);
+             const phi::Kernel& phi_kernel,
+             platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -183,7 +184,8 @@ class PreparedOp {
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
-  void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
+  void Run(const NameVarMap<VarBase>& in,
+           const NameVarMap<VarBase>& out,
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
@@ -222,7 +224,8 @@ class PreparedOp {
 
 const inline framework::Attribute* GetAttr(
     const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const std::string& name) {
+    const framework::AttributeMap& default_attrs,
+    const std::string& name) {
   auto it = attrs.find(name);
   bool found = it != attrs.end();
   if (!found) {
@@ -254,23 +257,35 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   auto& output_defs = phi_kernel.args_def().output_defs();
   auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      input_names.size(),
+      input_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of inputs_args names (%d) must be equal to "
+          "the size of kernel input_defs (%d).",
+          kernel_signature.name,
+          input_names.size(),
+          input_defs.size()));
 
-  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of outputs_args names (%d) must be equal to "
-                        "the size of kernel output_defs (%d).",
-                        output_names.size(), output_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      output_names.size(),
+      output_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of outputs_args names (%d) must be equal to "
+          "the size of kernel output_defs (%d).",
+          kernel_signature.name,
+          output_names.size(),
+          output_defs.size()));
 
-  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of attribute_args names (%d) must be equal "
-                        "to the size of kernel attribute_defs (%d).",
-                        attr_names.size(), attr_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      attr_names.size(),
+      attr_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of attribute_args names (%d) must be equal "
+          "to the size of kernel attribute_defs (%d).",
+          kernel_signature.name,
+          attr_names.size(),
+          attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);
@@ -279,16 +294,14 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     if (it == ins.end()) {
       if (LIKELY(input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+                 std::type_index(typeid(paddle::optional<phi::DenseTensor>)))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
       } else if (input_defs[i].type_index ==
-                 std::type_index(
-                     typeid(paddle::optional<
-                            const std::vector<const phi::DenseTensor*>>))) {
+                 std::type_index(typeid(
+                     paddle::optional<std::vector<const phi::DenseTensor*>>))) {
         kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
         auto end_idx = start_idx + 1;
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
@@ -298,7 +311,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
-            input_names[i], kernel_signature.name));
+            input_names[i],
+            kernel_signature.name));
       }
     }
 
@@ -601,11 +615,13 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
   const auto& input_names = kernel_signature.input_names;
   auto& input_defs = phi_kernel.args_def().input_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+  PADDLE_ENFORCE_EQ(input_names.size(),
+                    input_defs.size(),
                     platform::errors::InvalidArgument(
                         "the size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+                        input_names.size(),
+                        input_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto& in_def = input_defs.at(i);

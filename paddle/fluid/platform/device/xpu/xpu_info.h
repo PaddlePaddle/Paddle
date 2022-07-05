@@ -12,6 +12,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include <vector>
+
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "xpu/runtime.h"
@@ -48,12 +49,18 @@ std::vector<int> GetXPUSelectedDevices();
 /***** Memory Management *****/
 
 //! Copy memory from address src to dst synchronously.
-void MemcpySyncH2D(void *dst, const void *src, size_t count,
+void MemcpySyncH2D(void *dst,
+                   const void *src,
+                   size_t count,
                    const platform::XPUPlace &dst_place);
-void MemcpySyncD2H(void *dst, const void *src, size_t count,
+void MemcpySyncD2H(void *dst,
+                   const void *src,
+                   size_t count,
                    const platform::XPUPlace &src_place);
-void MemcpySyncD2D(void *dst, const platform::XPUPlace &dst_place,
-                   const void *src, const platform::XPUPlace &src_place,
+void MemcpySyncD2D(void *dst,
+                   const platform::XPUPlace &dst_place,
+                   const void *src,
+                   const platform::XPUPlace &src_place,
                    size_t count);
 
 //! Blocks until stream has completed all operations.

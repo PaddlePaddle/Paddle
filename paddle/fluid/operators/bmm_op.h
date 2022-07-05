@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -41,7 +42,8 @@ static void ReshapeTensorIntoMatrixSequence(
 
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
-                                           framework::Tensor *out, bool trans_x,
+                                           framework::Tensor *out,
+                                           bool trans_x,
                                            bool trans_y) {
   auto x_dim = x->dims();
   auto y_dim = y->dims();
@@ -49,7 +51,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
   auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, false);
 
   out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-               mat_dim_x.height_, mat_dim_y.width_});
+               mat_dim_x.height_,
+               mat_dim_y.width_});
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
@@ -82,8 +85,10 @@ template <typename DeviceContext, typename T>
 class BmmGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a, bool trans_a,
-              const framework::Tensor &b, bool trans_b,
+              const framework::Tensor &a,
+              bool trans_a,
+              const framework::Tensor &b,
+              bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
@@ -93,8 +98,10 @@ class BmmGradKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a, bool trans_a,
-                     const framework::Tensor &b, bool trans_b,
+                     const framework::Tensor &a,
+                     bool trans_a,
+                     const framework::Tensor &b,
+                     bool trans_b,
                      framework::Tensor *out) const {
     if (out == nullptr) return;
     MatMul(context, a, trans_a, b, trans_b, out);

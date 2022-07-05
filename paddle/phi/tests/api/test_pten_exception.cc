@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <iostream>
 #include <string>
+
 #include "gtest/gtest.h"
 #include "paddle/phi/api/ext/exception.h"
 

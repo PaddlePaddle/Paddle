@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <gtest/gtest.h>
+
 #include <unordered_map>
 
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -102,8 +102,11 @@ float test_pinned_memory() {
     for (int i = 0; i < iteration; ++i) {
       // cpu -> GPU on computation stream.
       // note: this operation is async for pinned memory.
-      paddle::memory::Copy(cuda_place, gpu_mem[i], cpu_place,
-                           input_pinned_mem[i], data_size * sizeof(float),
+      paddle::memory::Copy(cuda_place,
+                           gpu_mem[i],
+                           cpu_place,
+                           input_pinned_mem[i],
+                           data_size * sizeof(float),
                            computation_stream);
 
       // call kernel on computation stream.
@@ -126,8 +129,11 @@ float test_pinned_memory() {
 #endif
       // copy data GPU->CPU, on copy stream.
       // note: this operation is async for pinned memory.
-      paddle::memory::Copy(cpu_place, output_pinned_mem[i], cuda_place,
-                           gpu_mem[i], data_size * sizeof(float),
+      paddle::memory::Copy(cpu_place,
+                           output_pinned_mem[i],
+                           cuda_place,
+                           gpu_mem[i],
+                           data_size * sizeof(float),
                            copying_stream);
     }
   }

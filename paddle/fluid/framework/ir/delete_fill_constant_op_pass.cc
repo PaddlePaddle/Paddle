@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/delete_fill_constant_op_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
@@ -30,13 +31,19 @@ void FillConstData(LoDTensor* out_t, T value) {
 void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("delete_fill_constant_op_pass", graph);
   GraphPatternDetector detector;
-  auto fill_constant_op = detector.mutable_pattern()
-                              ->NewNode("fill_constant")
-                              ->assert_is_op("fill_constant")
-                              ->assert_is_not_op_input("ValueTensor")
-                              ->assert_is_not_op_input("str_value")
-                              ->assert_is_not_op_input("ShapeTensor")
-                              ->assert_is_not_op_input("ShapeTensorList");
+  auto fill_constant_op =
+      detector.mutable_pattern()
+          ->NewNode("fill_constant")
+          ->assert_is_op("fill_constant")
+          ->assert_is_not_op_input("ValueTensor")
+          ->assert_is_not_op_input("str_value")
+          ->assert_is_not_op_input("ShapeTensor")
+          ->assert_is_not_op_input("ShapeTensorList")
+          ->assert_more([&](Node* node) {
+            return node->Op()
+                       ->GetAttrIfExists<std::vector<int64_t>>("shape")
+                       .size() == 1;
+          });
   auto fill_constant_out =
       detector.mutable_pattern()
           ->NewNode("fill_constant_out")

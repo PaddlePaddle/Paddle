@@ -26,6 +26,7 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_l
 
 
 class RawProgramOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super(RawProgramOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -38,13 +39,16 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
+        self.meta_optimizers_black_list = [
+            "GraphExecutionOptimizer",
+        ]
         self.global_ring_id = 0
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(RawProgramOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        super(RawProgramOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
         self.without_graph_optimization = user_defined_strategy.without_graph_optimization
         self.fuse_all_reduce_ops = user_defined_strategy.fuse_all_reduce_ops
         if self.fuse_all_reduce_ops:
@@ -72,23 +76,23 @@ class RawProgramOptimizer(MetaOptimizerBase):
             if param.is_distributed:
                 continue
 
-            block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': 0,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
+            block.append_op(type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                'root': 0,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
 
         if not param: return  # no parameter on this device
-        block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': param},
-            outputs={'Out': param},
-            attrs={'ring_id': ring_id,
-                   OP_ROLE_KEY: OpRole.Forward})
+        block.append_op(type='c_sync_comm_stream',
+                        inputs={'X': param},
+                        outputs={'Out': param},
+                        attrs={
+                            'ring_id': ring_id,
+                            OP_ROLE_KEY: OpRole.Forward
+                        })
 
     def _get_process_group_info(self):
         # global ring info
@@ -100,10 +104,12 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self._get_process_group_info()
         collective_helper = CollectiveHelper(self.role_maker, wait_port=False)
         # Create global ring for all gpus (ring_id = 0)
-        collective_helper._init_communicator(
-            self.startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, True, self.global_ring_id,
-            True)
+        collective_helper._init_communicator(self.startup_program,
+                                             self.current_endpoint,
+                                             self.global_endpoints,
+                                             self.global_rank,
+                                             self.global_ring_id, True,
+                                             self.global_ring_id, True)
         self._broadcast_params(self.global_ring_id)
 
     def minimize_impl(self,
@@ -190,38 +196,35 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if not grad_vars:
             return
 
-        gm_block._insert_op(
-            first_optimize_op_idx,
-            type="c_sync_calc_stream",
-            inputs={'X': grad_vars[0]},
-            outputs={'Out': grad_vars[0]},
-            attrs={OP_ROLE_KEY: OpRole.Backward})
+        gm_block._insert_op(first_optimize_op_idx,
+                            type="c_sync_calc_stream",
+                            inputs={'X': grad_vars[0]},
+                            outputs={'Out': grad_vars[0]},
+                            attrs={OP_ROLE_KEY: OpRole.Backward})
 
         insert_op_num = 1
         ring_id = self.global_ring_id
 
         # NOTE: can perform fuse allreduce inside the loop in the future
         for i, (p, g) in enumerate(zip(param_vars, grad_vars)):
-            gm_block._insert_op(
-                first_optimize_op_idx + insert_op_num,
-                type="c_allreduce_sum",
-                inputs={'X': g},
-                outputs={'Out': g},
-                attrs={
-                    'ring_id': ring_id,
-                    OP_ROLE_KEY: OpRole.Backward,
-                })
+            gm_block._insert_op(first_optimize_op_idx + insert_op_num,
+                                type="c_allreduce_sum",
+                                inputs={'X': g},
+                                outputs={'Out': g},
+                                attrs={
+                                    'ring_id': ring_id,
+                                    OP_ROLE_KEY: OpRole.Backward,
+                                })
             insert_op_num += 1
 
-        gm_block._insert_op(
-            first_optimize_op_idx + insert_op_num,
-            type="c_sync_comm_stream",
-            inputs={'X': grad_vars},
-            outputs={'Out': grad_vars},
-            attrs={
-                'ring_id': ring_id,
-                OP_ROLE_KEY: OpRole.Backward,
-            })
+        gm_block._insert_op(first_optimize_op_idx + insert_op_num,
+                            type="c_sync_comm_stream",
+                            inputs={'X': grad_vars},
+                            outputs={'Out': grad_vars},
+                            attrs={
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Backward,
+                            })
 
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
@@ -245,15 +248,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    idx + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self.nranks,
-                        OP_ROLE_KEY: OpRole.Backward
-                    })
+                block._insert_op(idx + 1,
+                                 type='scale',
+                                 inputs={'X': loss_grad_var},
+                                 outputs={'Out': loss_grad_var},
+                                 attrs={
+                                     'scale': 1.0 / self.nranks,
+                                     OP_ROLE_KEY: OpRole.Backward
+                                 })
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
@@ -277,35 +279,36 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         continue
 
                     grad_vars.append(grad)
-                    block._insert_op(
-                        idx + offset,
-                        type='c_sync_calc_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={OP_ROLE_KEY: OpRole.Backward, })
+                    block._insert_op(idx + offset,
+                                     type='c_sync_calc_stream',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         OP_ROLE_KEY: OpRole.Backward,
+                                     })
                     offset += 1
-                    block._insert_op(
-                        idx + offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={
-                            'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                    block._insert_op(idx + offset,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         OP_ROLE_KEY: OpRole.Backward
+                                     })
 
         if grad is None:
             return
 
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
-                block._insert_op(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': grad_vars},
-                    outputs={'Out': grad_vars},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                block._insert_op(idx,
+                                 type='c_sync_comm_stream',
+                                 inputs={'X': grad_vars},
+                                 outputs={'Out': grad_vars},
+                                 attrs={
+                                     'ring_id': ring_id,
+                                     OP_ROLE_KEY: OpRole.Backward
+                                 })
                 break
 
     # This function helps reduce the number of allreduce by integrating op, which can save communication time.
@@ -342,8 +345,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         continue
                     param_grads.append((param, grad))
 
-        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
-                                                            block)
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(
+            first_backward_idx, block)
 
         # structure of grad_param_segments is
         # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
@@ -371,24 +374,23 @@ class RawProgramOptimizer(MetaOptimizerBase):
             # not to use reversed since needs the absolute index value
             grad_segment, param_segment = grad_param_segments[i]
             # insert coalesce tensor
-            fused_var = block.create_var(
-                name=unique_name.generate('FusedOutput_{}'.format(grad_segment[
-                    0].name)),
-                dtype=grad_segment[0].dtype,
-                persistable=False,
-                stop_gradient=True)
+            fused_var = block.create_var(name=unique_name.generate(
+                'FusedOutput_{}'.format(grad_segment[0].name)),
+                                         dtype=grad_segment[0].dtype,
+                                         persistable=False,
+                                         stop_gradient=True)
             fused_vars[i] = fused_var
             after_idx = outputs_name_to_idx[grad_segment[-1]][1]
-            block._insert_op_without_sync(
-                after_idx + 1,
-                type='c_allreduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={
-                    'ring_id': ring_id,
-                    'use_calc_stream': self.calc_comm_same_stream,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
+            block._insert_op_without_sync(after_idx + 1,
+                                          type='c_allreduce_sum',
+                                          inputs={'X': fused_var},
+                                          outputs={'Out': fused_var},
+                                          attrs={
+                                              'ring_id': ring_id,
+                                              'use_calc_stream':
+                                              self.calc_comm_same_stream,
+                                              OP_ROLE_KEY: OpRole.Backward
+                                          })
             if not self.calc_comm_same_stream:
                 block._insert_op_without_sync(
                     after_idx + 1,
@@ -398,8 +400,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     attrs={OP_ROLE_KEY: OpRole.Backward})
 
         # update the outputs_name_to_idx after insertion of sync/allreduce ops
-        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
-                                                            block)
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(
+            first_backward_idx, block)
         # the before_idx is not guaranteed sorted, therefore we have to find the
         # topology to insert the coalesce ops
         pos_for_coalesce = {}
@@ -413,25 +415,25 @@ class RawProgramOptimizer(MetaOptimizerBase):
             pos_for_coalesce[i] = before_idx
 
         # insert the coalesce op based on the sorted before_idx
-        pos_for_coalesce = sorted(
-            pos_for_coalesce.items(),
-            key=lambda kv: (kv[1], kv[0]),
-            reverse=True)
+        pos_for_coalesce = sorted(pos_for_coalesce.items(),
+                                  key=lambda kv: (kv[1], kv[0]),
+                                  reverse=True)
         for i, before_idx in pos_for_coalesce:
             grad_segment, param_segment = grad_param_segments[i]
             fused_var = fused_vars[i]
-            block._insert_op_without_sync(
-                before_idx,
-                type="coalesce_tensor",
-                inputs={"Input": param_segment},
-                outputs={"Output": grad_segment,
-                         "FusedOutput": fused_var},
-                attrs={
-                    "copy_data": False,
-                    "use_align": True,
-                    "dtype": grad_segment[0].dtype,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
+            block._insert_op_without_sync(before_idx,
+                                          type="coalesce_tensor",
+                                          inputs={"Input": param_segment},
+                                          outputs={
+                                              "Output": grad_segment,
+                                              "FusedOutput": fused_var
+                                          },
+                                          attrs={
+                                              "copy_data": False,
+                                              "use_align": True,
+                                              "dtype": grad_segment[0].dtype,
+                                              OP_ROLE_KEY: OpRole.Backward
+                                          })
 
         if self.calc_comm_same_stream:
             block._sync_with_cpp()
@@ -440,13 +442,14 @@ class RawProgramOptimizer(MetaOptimizerBase):
         # insert the sync comm op
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
-                block._insert_op_without_sync(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': fused_vars},
-                    outputs={'Out': fused_vars},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                block._insert_op_without_sync(idx,
+                                              type='c_sync_comm_stream',
+                                              inputs={'X': fused_vars},
+                                              outputs={'Out': fused_vars},
+                                              attrs={
+                                                  'ring_id': ring_id,
+                                                  OP_ROLE_KEY: OpRole.Backward
+                                              })
                 break
         block._sync_with_cpp()
 

@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/api/resource_manager.h"
 
+#include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -37,7 +39,8 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
   ~EigenGpuStreamDevice() override {}
 
-  void Reinitialize(gpuStream_t cuda_stream, phi::Allocator* allocator,
+  void Reinitialize(gpuStream_t cuda_stream,
+                    phi::Allocator* allocator,
                     GPUPlace place) {
     stream_ = cuda_stream;
     allocator_ = allocator;
@@ -106,31 +109,26 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
 #endif
 }  // namespace internal
 
-ResourceManager::ResourceManager(const phi::Place& place, void* stream)
-    : place_(place) {
-  InitCPUResource();
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  InitGPUResource(stream);
-#endif
-}
-
-ResourceManager::~ResourceManager() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  DestroyGPUResource();
-#endif
-}
-
-void ResourceManager::InitCPUResource() {
-  cpu_eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* ResourceManager::GetCpuEigenDevice() {
+Eigen::DefaultDevice* CPUContextResource::GetCPUEigenDevice() const {
   return cpu_eigen_device_.get();
 }
 
+void CPUContextResource::InitCPUResource() {
+  cpu_eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CPUContextResource::CPUContextResource() { InitCPUResource(); }
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void ResourceManager::InitGPUResource(void* stream) {
+GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
+    : place_(place) {
+  InitGPUResource(stream);
+}
+
+GPUContextResource::~GPUContextResource() { DestroyGPUResource(); }
+
+void GPUContextResource::InitGPUResource(void* stream) {
+  phi::backends::gpu::GPUDeviceGuard guard(place_.device);
   if (stream == nullptr) {
     owned_stream_ = true;
     phi::InitStream(&stream_);
@@ -148,7 +146,7 @@ void ResourceManager::InitGPUResource(void* stream) {
   InitSparseHandle();
 }
 
-void ResourceManager::DestroyGPUResource() {
+void GPUContextResource::DestroyGPUResource() {
   if (owned_stream_) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_));
@@ -165,15 +163,18 @@ void ResourceManager::DestroyGPUResource() {
   DestroySparseHandle();
 }
 
-void ResourceManager::InitGpuProperties() {
-  phi::backends::gpu::GPUDeviceGuard guard(place_.device);
-  phi::InitGpuProperties(place_, &compute_capability_, &runtime_version_,
-                         &driver_version_, &multi_process_,
-                         &max_threads_per_mp_, &max_threads_per_block_,
+void GPUContextResource::InitGpuProperties() {
+  phi::InitGpuProperties(place_,
+                         &compute_capability_,
+                         &runtime_version_,
+                         &driver_version_,
+                         &multi_process_,
+                         &max_threads_per_mp_,
+                         &max_threads_per_block_,
                          &max_grid_dim_size_);
 }
 
-void ResourceManager::InitGpuEigenDevice() {
+void GPUContextResource::InitGpuEigenDevice() {
   auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
                         .GetAllocator(place_)
                         .get();
@@ -182,13 +183,15 @@ void ResourceManager::InitGpuEigenDevice() {
   gpu_eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
-void ResourceManager::InitDnnHanlde() {
+void GPUContextResource::InitDnnHanlde() {
   phi::InitDnnHandle(&dnn_handle_, stream_, place_);
 }
 
-void ResourceManager::DestroyDnnHandle() { phi::DestroyDnnHandle(dnn_handle_); }
+void GPUContextResource::DestroyDnnHandle() {
+  phi::DestroyDnnHandle(dnn_handle_);
+}
 
-void ResourceManager::InitBlasHandle() {
+void GPUContextResource::InitBlasHandle() {
   phi::InitBlasHandle(&blas_handle_, stream_);
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
@@ -204,87 +207,162 @@ void ResourceManager::InitBlasHandle() {
 #endif
 }
 
-void ResourceManager::DestroyBlasHandle() {
+void GPUContextResource::DestroyBlasHandle() {
   phi::DestroyBlasHandle(blas_handle_);
   phi::DestroyBlasHandle(blas_tensor_core_handle_);
   phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
 }
 
-void ResourceManager::InitBlasLtHandle() {
+void GPUContextResource::InitBlasLtHandle() {
   phi::InitBlasLtHandle(&blaslt_handle_);
 }
 
-void ResourceManager::DestroyBlasLtHandle() {
+void GPUContextResource::DestroyBlasLtHandle() {
   phi::DestroyBlasLtHandle(blaslt_handle_);
 }
 
-void ResourceManager::InitSolverHandle() {
+void GPUContextResource::InitSolverHandle() {
   phi::InitSolverHandle(&solver_handle_, stream_);
 }
 
-void ResourceManager::DestroySolverHandle() {
+void GPUContextResource::DestroySolverHandle() {
   phi::DestroySolverHandle(solver_handle_);
 }
 
-void ResourceManager::InitSparseHandle() {
+void GPUContextResource::InitSparseHandle() {
   phi::InitSparseHandle(&sparse_handle_, stream_);
 }
 
-void ResourceManager::DestroySparseHandle() {
+void GPUContextResource::DestroySparseHandle() {
   phi::DestroySparseHandle(sparse_handle_);
 }
 
-gpuStream_t ResourceManager::GetStream() const { return stream_; }
+gpuStream_t GPUContextResource::GetStream() const { return stream_; }
 
-dnnHandle_t ResourceManager::GetDnnHandle() const { return dnn_handle_; }
+dnnHandle_t GPUContextResource::GetDnnHandle() const { return dnn_handle_; }
 
-blasHandle_t ResourceManager::GetBlasHandle() const { return blas_handle_; }
+blasHandle_t GPUContextResource::GetBlasHandle() const { return blas_handle_; }
 
-blasHandle_t ResourceManager::GetBlasTensorCoreHandle() const {
+blasHandle_t GPUContextResource::GetBlasTensorCoreHandle() const {
   return blas_tensor_core_handle_;
 }
 
-blasHandle_t ResourceManager::GetBlasTF32Handle() const {
+blasHandle_t GPUContextResource::GetBlasTF32Handle() const {
   return blas_tf32_tensor_core_handle_;
 }
 
-blasLtHandle_t ResourceManager::GetBlasLtHandle() const {
+blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
   return blaslt_handle_;
 }
 
-phi::solverHandle_t ResourceManager::GetSolverDnHandle() const {
+phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
   return solver_handle_;
 }
 
-phi::sparseHandle_t ResourceManager::GetSparseHandle() const {
+phi::sparseHandle_t GPUContextResource::GetSparseHandle() const {
   return sparse_handle_;
 }
 
-Eigen::GpuDevice* ResourceManager::GetGpuEigenDevice() const {
+Eigen::GpuDevice* GPUContextResource::GetGpuEigenDevice() const {
   return gpu_eigen_device_.get();
 }
 
-int ResourceManager::GetGpuComputeCapability() const {
+int GPUContextResource::GetGpuComputeCapability() const {
   return compute_capability_;
 }
 
-int ResourceManager::GetGpuRuntimeVersion() const { return runtime_version_; }
+int GPUContextResource::GetGpuRuntimeVersion() const {
+  return runtime_version_;
+}
 
-int ResourceManager::GetGpuDriverVersion() const { return driver_version_; }
+int GPUContextResource::GetGpuDriverVersion() const { return driver_version_; }
 
-int ResourceManager::GetGPUMultiProcessors() const { return multi_process_; }
+int GPUContextResource::GetGPUMultiProcessors() const { return multi_process_; }
 
-int ResourceManager::GetGpuMaxThreadsPerMp() const {
+int GPUContextResource::GetGpuMaxThreadsPerMp() const {
   return max_threads_per_mp_;
 }
 
-int ResourceManager::GetGpuMaxThreadsPerBlock() const {
+int GPUContextResource::GetGpuMaxThreadsPerBlock() const {
   return max_threads_per_block_;
 }
 
-std::array<int, 3> ResourceManager::GetGpuMaxGridDimSize() const {
+std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 
 #endif
+
+void ResourceManager::InitCPUResource() {
+  std::lock_guard<std::mutex> lock_gurad(cpu_mutex_);
+  if (cpu_resource_ == nullptr) {
+    cpu_resource_.reset(new CPUContextResource());
+  }
+}
+
+CPUContextResource* ResourceManager::GetCPUResource() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      cpu_resource_.get(),
+      platform::errors::PreconditionNotMet("cpu_resource should be not null!"));
+  return cpu_resource_.get();
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
+  std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
+  if (gpu_resources_.count(stream)) {
+    Increase(stream);
+    return stream;
+  } else {
+    std::unique_ptr<GPUContextResource> resource{
+        new GPUContextResource(place, stream)};
+    gpuStream_t s = resource->GetStream();
+    ref_count_[s] = 1;
+    gpu_resources_.emplace(s, std::move(resource));
+    return s;
+  }
+}
+
+void ResourceManager::DestroyGPUResource(void* stream) {
+  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in gpu_resources.", stream));
+  Decrease(stream);
+}
+
+void ResourceManager::Decrease(void* stream) {
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in ref_count.", stream));
+  --ref_count_[stream];
+  if (ref_count_[stream] == 0) {
+    ref_count_.erase(stream);
+    gpu_resources_.erase(stream);
+  }
+}
+
+void ResourceManager::Increase(void* stream) {
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in ref_count.", stream));
+  ++ref_count_[stream];
+}
+
+GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
+  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in gpu_resources.", stream));
+  return gpu_resources_.at(stream).get();
+}
+
+int ResourceManager::RefCount(void* stream) const {
+  if (ref_count_.count(stream) == 0) return 0;
+  return ref_count_.at(stream);
+}
+#endif
+
 }  // namespace paddle

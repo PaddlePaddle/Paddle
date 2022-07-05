@@ -13,19 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
+
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/op_def_api.h"
 #include "paddle/fluid/framework/op_info.h"
 
 namespace {
 std::unordered_set<std::string> global_extra_attrs = {
-    "op_role",       "op_role_var",      "op_namescope",
-    "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
-    "is_test",       "use_mkldnn",       "mkldnn_data_type",
-    "use_quantizer", "mkldnn_data_type", "use_cudnn",
-    "name",          "with_quant_attr"};
+    "op_role",
+    "op_role_var",
+    "op_namescope",
+    "op_callstack",
+    "op_device",
+    "@ENABLE_CACHE_RUNTIME_CONTEXT@",
+    "is_test",
+    "use_mkldnn",
+    "mkldnn_data_type",
+    "use_quantizer",
+    "mkldnn_data_type",
+    "use_cudnn",
+    "name",
+    "with_quant_attr"};
 }
 
 namespace paddle {
@@ -154,7 +165,8 @@ bool InputOrOutputCompat::operator()(
 
 AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
   PADDLE_ENFORCE_EQ(
-      attr_compats_.find(attr_name), attr_compats_.end(),
+      attr_compats_.find(attr_name),
+      attr_compats_.end(),
       platform::errors::InvalidArgument(
           "The attrubute compat with the same name has been added"));
   attr_compats_.emplace(attr_name, AttrCompat(attr_name, this));
@@ -162,7 +174,8 @@ AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
 }
 
 InputOrOutputCompat& OpCompat::AddInput(const std::string& name) {
-  PADDLE_ENFORCE_EQ(input_compats_.find(name), input_compats_.end(),
+  PADDLE_ENFORCE_EQ(input_compats_.find(name),
+                    input_compats_.end(),
                     platform::errors::InvalidArgument(
                         "The input with the same name has been added"));
   input_compats_.emplace(name, InputOrOutputCompat(name, this));
@@ -170,7 +183,8 @@ InputOrOutputCompat& OpCompat::AddInput(const std::string& name) {
 }
 
 InputOrOutputCompat& OpCompat::AddOutput(const std::string& name) {
-  PADDLE_ENFORCE_EQ(output_compats_.find(name), output_compats_.end(),
+  PADDLE_ENFORCE_EQ(output_compats_.find(name),
+                    output_compats_.end(),
                     platform::errors::InvalidArgument(
                         "The output with the same name has been added"));
   output_compats_.emplace(name, InputOrOutputCompat(name, this));
@@ -288,7 +302,8 @@ OpCompat& OpCompatSensiblePass::AddOpCompat(OpCompat&& op_compat) {
 //! Tell the Op compability of a subgraph.
 bool OpCompatSensiblePass::IsCompat(
     const GraphPatternDetector::subgraph_t& subgraph, Graph*) const {
-  PADDLE_ENFORCE_EQ(op_compat_judgers_.empty(), false,
+  PADDLE_ENFORCE_EQ(op_compat_judgers_.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "At least one OpCompat instance should be added"));
   // Check the all the ops in the subgraph are contained in the

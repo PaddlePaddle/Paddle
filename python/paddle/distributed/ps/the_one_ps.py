@@ -73,28 +73,29 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
     if accessor_proto.accessor_class == "SparseAccessor":
         if fea_dim != embedding_dim + 2:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
-                format(embedding_dim + 2, fea_dim))
+                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}"
+                .format(embedding_dim + 2, fea_dim))
     else:
         if fea_dim != embedding_dim:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
-                format(embedding_dim, fea_dim))
+                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}"
+                .format(embedding_dim, fea_dim))
 
     embedx_dim = accessor_proto.embedx_dim
     if accessor_proto.accessor_class == "SparseAccessor":
         if embedx_dim != embedding_dim - 1:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
-                format(embedding_dim - 1, embedx_dim))
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}"
+                .format(embedding_dim - 1, embedx_dim))
     else:
         if embedx_dim != embedding_dim - 3:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
-                format(embedding_dim - 3, embedx_dim))
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}"
+                .format(embedding_dim - 3, embedx_dim))
 
 
 class Service:
+
     def __init__(self):
         pass
 
@@ -107,6 +108,7 @@ class Service:
 
 
 class GpuService(Service):
+
     def __init__(self):
         super(GpuService, self).__init__()
 
@@ -116,6 +118,7 @@ class GpuService(Service):
 
 
 class Accessor:
+
     def __init__(self):
         self.accessor_class = ""
         self.optimizer = None
@@ -124,8 +127,8 @@ class Accessor:
 
     # TableAccessorParameter accessor
     def _set(self, accessor_proto, varname, program_id, context):
-        main_program, startup_program, idx = get_program_by_id(context,
-                                                               program_id)
+        main_program, startup_program, idx = get_program_by_id(
+            context, program_id)
         embedding_dim = 0
         for var in main_program.list_vars():
             if var.name == varname:
@@ -208,6 +211,7 @@ class Accessor:
 
 
 class CommonAccessor(Accessor):
+
     def __init__(self):
         super(CommonAccessor, self).__init__()
         self.table_name = ''
@@ -229,11 +233,11 @@ class CommonAccessor(Accessor):
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
-        opt_input_map["adam_d2sum"] = [
-            ("Param", None), ("D2Sum", None), ("G2Sum", None), ("Moment", None),
-            ("MomentDecayRate", 1), ("AdaDecayRate", 1), ("AdaEpsilon", 1),
-            ("LearningRate", 1)
-        ]
+        opt_input_map["adam_d2sum"] = [("Param", None), ("D2Sum", None),
+                                       ("G2Sum", None), ("Moment", None),
+                                       ("MomentDecayRate", 1),
+                                       ("AdaDecayRate", 1), ("AdaEpsilon", 1),
+                                       ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
                                           ("LearningRate", 1)]
@@ -260,8 +264,8 @@ class CommonAccessor(Accessor):
         self.opt_init_map = opt_init_map
 
     def parse_entry(self, varname, program_id, context):
-        main_program, startup_program, idx = get_program_by_id(context,
-                                                               program_id)
+        main_program, startup_program, idx = get_program_by_id(
+            context, program_id)
         for op in main_program.global_block().ops:
             if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
@@ -315,8 +319,8 @@ class CommonAccessor(Accessor):
         # print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
         #     ctx.table_id(), ctx.is_datanorm_table()))
 
-        main_program, startup_program, idx = get_program_by_id(context,
-                                                               ctx.program_id())
+        main_program, startup_program, idx = get_program_by_id(
+            context, ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
@@ -326,8 +330,8 @@ class CommonAccessor(Accessor):
 
         for op in optimizer_ops:
             if ("Param" in op.input_names) and (
-                    op.input("Param")[0] ==
-                    context['grad_name_to_param_name'][grad_name]):
+                    op.input("Param")[0]
+                    == context['grad_name_to_param_name'][grad_name]):
                 oop = op
                 break
 
@@ -390,8 +394,8 @@ class CommonAccessor(Accessor):
                         param = main_program.global_block().vars[
                             "learning_rate_" + str(idx)]
 
-                    initializer = self.get_initializer_attr(param.name,
-                                                            startup_program)
+                    initializer = self.get_initializer_attr(
+                        param.name, startup_program)
                 elif formal_name == "MomentDecayRate":
                     initializer = "fill_constant&0.99"
                 elif formal_name == "AdaDecayRate":
@@ -415,8 +419,8 @@ class CommonAccessor(Accessor):
                     param = main_program.global_block().vars[oop.input(
                         formal_name)[0]]
 
-                    initializer = self.get_initializer_attr(param.name,
-                                                            startup_program)
+                    initializer = self.get_initializer_attr(
+                        param.name, startup_program)
                 elif formal_name == "SummaryDecayRate":
                     initializer = "fill_constant&0.999999"
                 else:
@@ -444,8 +448,8 @@ class CommonAccessor(Accessor):
                                                    pserver_id)
                     dims.append(shape)
 
-                    initializer = self.get_initializer_attr(param.name,
-                                                            startup_program)
+                    initializer = self.get_initializer_attr(
+                        param.name, startup_program)
                     initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
@@ -472,12 +476,13 @@ class CommonAccessor(Accessor):
 
 
 class Tensor:
+
     def __init__(self, tesnor_dcit):
         self.tensor_dict = tesnor_dcit
 
     def _set(self, tensor_proto):
-        tensor_proto.main_program_id = self.tensor_dict.get("main_program_id",
-                                                            0)
+        tensor_proto.main_program_id = self.tensor_dict.get(
+            "main_program_id", 0)
         tensor_proto.startup_program_id = self.tensor_dict.get(
             "startup_program_id", 0)
         tensor_proto.feed_var_name = self.tensor_dict.get("feed_var_name", '')
@@ -487,6 +492,7 @@ class Tensor:
 
 
 class Table:
+
     def __init__(self):
         self.table_class = None
         self.shard_num = -1
@@ -501,6 +507,7 @@ class Table:
 
 
 class BarrierTable(Table):
+
     def __init__(self, context, idx):
         super(BarrierTable, self).__init__()
         self.type = None
@@ -536,6 +543,7 @@ class BarrierTable(Table):
 
 
 class TensorTable(Table):
+
     def __init__(self, idx, tensor_dict, role_maker):
         super(TensorTable, self).__init__()
         self.idx = idx
@@ -549,8 +557,8 @@ class TensorTable(Table):
 
         table_proto.accessor.accessor_class = "CommMergeAccessor"
 
-        table_proto.common.table_name = self.tensor_dict.get("feed_var_name",
-                                                             '')
+        table_proto.common.table_name = self.tensor_dict.get(
+            "feed_var_name", '')
         table_proto.common.trainer_num = get_trainers(self.role_maker)
 
         tensor = Tensor(self.tensor_dict)
@@ -558,6 +566,7 @@ class TensorTable(Table):
 
 
 class SparseTable(Table):
+
     def __init__(self, context, send_ctx):
         super(SparseTable, self).__init__()
         self.context = context
@@ -568,8 +577,8 @@ class SparseTable(Table):
 
     def _set(self, table_proto):
         ctx = self.ctx
-        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
-                ctx.is_sparse() == False):
+        if ctx.is_tensor_table() or len(
+                ctx.origin_varnames()) < 1 or (ctx.is_sparse() == False):
             return
         table_proto.table_id = ctx.table_id()
         table_proto.table_class = self.table_class
@@ -613,14 +622,15 @@ class SparseTable(Table):
                             ctx.program_id(), self.context)
 
         self.common.parse_by_optimizer(ctx, self.context)
-        self.common.parse_entry(self.common.table_name,
-                                ctx.program_id(), self.context)
+        self.common.parse_entry(self.common.table_name, ctx.program_id(),
+                                self.context)
         self.common.sync = True if self.context['is_sync'] else False
 
         self.common._set(table_proto.common)
 
 
 class GeoSparseTable(SparseTable):
+
     def __init__(self, context, send_ctx):
         super(GeoSparseTable, self).__init__(context, send_ctx)
         self.table_class = "MemorySparseGeoTable"
@@ -629,8 +639,8 @@ class GeoSparseTable(SparseTable):
 
     def _set(self, table_proto):
         ctx = self.ctx
-        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
-                ctx.is_sparse() == False):
+        if ctx.is_tensor_table() or len(
+                ctx.origin_varnames()) < 1 or (ctx.is_sparse() == False):
             return
         table_proto.table_id = ctx.table_id()
         table_proto.table_class = self.table_class
@@ -644,13 +654,14 @@ class GeoSparseTable(SparseTable):
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
         self.common.parse_by_optimizer(ctx, self.context)
-        self.common.parse_entry(self.common.table_name,
-                                ctx.program_id(), self.context)
+        self.common.parse_entry(self.common.table_name, ctx.program_id(),
+                                self.context)
         self.common.sync = False
         self.common._set(table_proto.common)
 
 
 class DenseTable(Table):
+
     def __init__(self, context, send_ctx):
         super(DenseTable, self).__init__()
         self.context = context
@@ -659,8 +670,8 @@ class DenseTable(Table):
 
     def _set(self, table_proto):
         ctx = self.ctx
-        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
-                ctx.is_sparse() == True):
+        if ctx.is_tensor_table() or len(
+                ctx.origin_varnames()) < 1 or (ctx.is_sparse() == True):
             return
 
         table_proto.table_id = ctx.table_id()
@@ -675,14 +686,15 @@ class DenseTable(Table):
 
         self.common.table_name = "MergedDense"
         self.common.parse_by_optimizer(ctx, self.context)
-        self.common.parse_entry(self.common.table_name,
-                                ctx.program_id(), self.context)
+        self.common.parse_entry(self.common.table_name, ctx.program_id(),
+                                self.context)
         self.common.sync = True if self.context['is_sync'] else False
 
         self.common._set(table_proto.common)
 
 
 class Server:
+
     def __init__(self):
         pass
 
@@ -691,6 +703,7 @@ class Server:
 
 
 class DownpourServer(Server):
+
     def __init__(self):
         super(DownpourServer, self).__init__()
 
@@ -699,6 +712,7 @@ class DownpourServer(Server):
 
 
 class Worker:
+
     def __init__(self):
         pass
 
@@ -707,6 +721,7 @@ class Worker:
 
 
 class DownpourWorker(Worker):
+
     def __init__(self):
         super(DownpourWorker, self).__init__()
 
@@ -715,6 +730,7 @@ class DownpourWorker(Worker):
 
 
 class fsClient:
+
     def __init__(self, fs_client_param):
         self.fs_client_param = fs_client_param
 
@@ -728,6 +744,7 @@ class fsClient:
 
 
 class PsDescBuilder(object):
+
     def __init__(self, context):
         self.context = context
         self.is_sync = context['is_sync']
@@ -817,6 +834,7 @@ class PsDescBuilder(object):
 
 
 class TheOnePSRuntime(RuntimeBase):
+
     def __init__(self):
         super(TheOnePSRuntime, self).__init__()
         self._communicator = None
@@ -839,8 +857,8 @@ class TheOnePSRuntime(RuntimeBase):
         self.context[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
-        self.context['trainer'] = TrainerRuntimeConfig(context[
-            'valid_strategy'])
+        self.context['trainer'] = TrainerRuntimeConfig(
+            context['valid_strategy'])
         self.context['ps_mode'] = self.context['trainer'].mode
         self.context['use_ps_gpu'] = context['valid_strategy'].a_sync_configs[
             'use_ps_gpu']
@@ -912,8 +930,9 @@ class TheOnePSRuntime(RuntimeBase):
                 main_program._fleet_opt = {}
             main_program._fleet_opt["use_ps_gpu"] = True
             gpus_env = os.getenv("FLAGS_selected_gpus")
-            main_program._fleet_opt[
-                "worker_places"] = [int(s) for s in gpus_env.split(",")]
+            main_program._fleet_opt["worker_places"] = [
+                int(s) for s in gpus_env.split(",")
+            ]
 
         def sync_strategy_envs():
             kwargs = {}
@@ -991,8 +1010,9 @@ class TheOnePSRuntime(RuntimeBase):
         # for GEO
         if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
             # for ps-heter mode load all parameters on first_worker
-            init_params = get_the_one_recv_context(
-                self.context, split_dense_table=True, use_origin_program=True)
+            init_params = get_the_one_recv_context(self.context,
+                                                   split_dense_table=True,
+                                                   use_origin_program=True)
         else:
             init_params = dense_map
 
@@ -1077,8 +1097,8 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".
-                        format(distributed_varnames))
+                        "fleet.init server can only load sparse variables in {}"
+                        .format(distributed_varnames))
             load_varnames = var_names
 
         if dirname is None or not load_varnames:
@@ -1108,6 +1128,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
+
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -1182,17 +1203,17 @@ class TheOnePSRuntime(RuntimeBase):
         saved_varnames = sparse_varnames
 
         remaining_vars = list(
-            filter(
-                TheOnePSRuntime.__exclude_vars(saved_varnames),
-                main_program.list_vars()))
+            filter(TheOnePSRuntime.__exclude_vars(saved_varnames),
+                   main_program.list_vars()))
 
         import paddle
         for var in remaining_vars:
             # if var.name not in recv_dense_varnames:
             #     continue
             tensor = var.get_value()
-            paddle.save(
-                tensor, os.path.join(dirname, var.name), use_binary_format=True)
+            paddle.save(tensor,
+                        os.path.join(dirname, var.name),
+                        use_binary_format=True)
 
     def _ps_inference_save_persistables(self,
                                         executor,
@@ -1302,16 +1323,14 @@ class TheOnePSRuntime(RuntimeBase):
             "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
         generate_vars = [var for var in generate_vars]
         remaining_vars = list(
-            filter(
-                TheOnePSRuntime.__exclude_vars(sparse_names),
-                infer_program.list_vars()))
+            filter(TheOnePSRuntime.__exclude_vars(sparse_names),
+                   infer_program.list_vars()))
 
         for var in remaining_vars:
             tensor = var.get_value(scope)
-            paddle.save(
-                tensor,
-                os.path.join(model_path, var.name),
-                use_binary_format=True)
+            paddle.save(tensor,
+                        os.path.join(model_path, var.name),
+                        use_binary_format=True)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
@@ -1395,9 +1414,8 @@ class TheOnePSRuntime(RuntimeBase):
         loaded_varnames = sparse_varnames
 
         remaining_vars = list(
-            filter(
-                TheOnePSRuntime.__exclude_vars(loaded_varnames),
-                main_program.list_vars()))
+            filter(TheOnePSRuntime.__exclude_vars(loaded_varnames),
+                   main_program.list_vars()))
 
         if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
             model_path = "./dnn_plugin"

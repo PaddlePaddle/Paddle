@@ -14,6 +14,7 @@
 #pragma once
 
 #include <queue>
+
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,7 +31,8 @@ class InterpreterCoreGarbageCollector {
   InterpreterCoreGarbageCollector();
   virtual ~InterpreterCoreGarbageCollector() {}
   virtual void Add(Variable* var) = 0;
-  virtual void Add(Variable* var, platform::DeviceEvent* event,
+  virtual void Add(Variable* var,
+                   platform::DeviceEvent* event,
                    const platform::DeviceContext* ctx) = 0;
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 

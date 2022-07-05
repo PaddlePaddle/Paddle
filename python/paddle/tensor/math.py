@@ -1319,7 +1319,7 @@ def nanmean(x, axis=None, keepdim=False, name=None):
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
     """
-    This OP is used to sum one or more Tensor of the input.
+    Sum one or more Tensor of the input.
     
     For example:
 
@@ -1365,7 +1365,7 @@ def add_n(inputs, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
@@ -1377,6 +1377,9 @@ def add_n(inputs, name=None):
     if in_dygraph_mode():
         if isinstance(inputs, Variable):
             inputs = [inputs]
+        for x in inputs:
+            if not x.is_dense():
+                return _C_ops.sum(inputs, 'use_mkldnn', False)
         return _C_ops.final_state_add_n(inputs)
     if _in_legacy_dygraph():
         if isinstance(inputs, Variable):
@@ -1610,20 +1613,24 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     input_shape = input.shape
     x_shape = x.shape
     y_shape = y.shape
-    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
-        raise ValueError("The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".format(input_shape, x_shape, y_shape))
-    if input_shape[0] != x_shape[0]:
-        if input_shape[0] != 1:
-            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
-        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
-            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
-    if input_shape[1] != y_shape[1]:
-        if input_shape[1] != 1:
-            raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
-        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
-            raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+    if not len(x_shape) == len(y_shape) == 2:
+        raise ValueError("The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(x_shape, y_shape))
     if x_shape[1] != y_shape[0]:
         raise ValueError("The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(x_shape, y_shape))
+    if len(input_shape) == 2:
+        if input_shape[0] != x_shape[0]:
+            if input_shape[0] != 1:
+                raise ValueError( "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(input_shape[0]))
+            if input_shape[1] != y_shape[1] and input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+        if input_shape[1] != y_shape[1]:
+            if input_shape[1] != 1:
+                raise ValueError( "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(input_shape[1]))
+    elif len(input_shape) == 1:
+        if input_shape[0] not in (y_shape[1], 1):
+            raise ValueError("The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(input_shape, x_shape[0], y_shape[1]))
+    else:
+        raise ValueError("The dimention of input should be 2 or 1 but receive input's shape: {}".format(input_shape))
 
 
 
@@ -2905,7 +2912,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     The cumulative sum of the elements along a given axis. 
     
     **Note**:
-    The first element of the result is the same of the first element of the input. 
+    The first element of the result is the same as the first element of the input. 
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
@@ -2965,6 +2972,79 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+
+def logcumsumexp(x, axis=None, dtype=None, name=None):
+    r"""
+    The logarithm of the cumulative summation of the exponentiation of the elements along a given axis. 
+
+    For summation index j given by `axis` and other indices i, the result is
+
+    .. math::
+
+        logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
+    
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor.
+        axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of logcumsumexp operator. 
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            
+            data = paddle.arange(12, dtype='float64')
+            data = paddle.reshape(data, (3, 4))
+
+            y = paddle.logcumsumexp(data)
+            # [ 0.         1.3132617  2.4076061  3.4401898  4.4519143  5.4561934
+            #   6.4577627  7.4583397  8.458551   9.45863   10.458658  11.458669 ]
+
+            y = paddle.logcumsumexp(data, axis=0)
+            # [[ 0.        1.        2.        3.      ]
+            #  [ 4.01815   5.01815   6.01815   7.01815 ]
+            #  [ 8.018479  9.018479 10.018479 11.018479]]
+            
+            y = paddle.logcumsumexp(data, axis=-1)
+            # [[ 0.         1.3132617  2.4076061  3.4401898]
+            #  [ 4.         5.3132615  6.407606   7.44019  ]
+            #  [ 8.         9.313262  10.407606  11.440189 ]]
+
+            y = paddle.logcumsumexp(data, dtype='float64')
+            print(y.dtype)
+            # paddle.float64
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast(x, dtype)
+
+    if in_dygraph_mode():
+        if axis is None: axis = -1
+        return _C_ops.final_state_logcumsumexp(x, axis, flatten, False, False)
+    if _in_legacy_dygraph():
+        if axis is None:
+            return _C_ops.logcumsumexp(x, 'flatten', flatten)
+        else:
+            return _C_ops.logcumsumexp(x, 'axis', axis, 'flatten', flatten)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+
+    helper = LayerHelper('logcumsumexp', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logcumsumexp', inputs={'X': x}, outputs={'Out': out}, attrs={'axis': axis, 'flatten': flatten})
+    return out
+
 
 def cumprod(x, dim=None, dtype=None, name=None):
     """
@@ -3183,9 +3263,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
-    input = x
     dim = axis
-    keep_dim = keepdim
     if dim is not None and not isinstance(dim, list):
         if isinstance(dim, tuple):
             dim = list(dim)
@@ -3195,24 +3273,29 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
+
+    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+    if dim is None or len(dim) == 0:
+        dim = [0]
+
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(
-            input, dim if dim != None and dim != [] else [0], keep_dim, True if
-            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+        return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)
+    if _in_legacy_dygraph():
+        return _C_ops.reduce_prod(
+            x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all)
 
     helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+        x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_prod',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] or
-            len(dim) == len(input.shape) else False
+            'dim': dim,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all
         })
     return out
 

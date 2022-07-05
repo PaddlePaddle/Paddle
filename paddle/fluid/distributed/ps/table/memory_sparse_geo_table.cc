@@ -32,16 +32,17 @@ int32_t MemorySparseGeoTable::Pull(TableContext& context) {
 int32_t MemorySparseGeoTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (!context.push_context.is_param) {
-    return PushSparse(context.push_context.keys, context.push_context.values,
-                      context.num);
+    return PushSparse(
+        context.push_context.keys, context.push_context.values, context.num);
   } else {
-    return PushSparseParam(context.push_context.keys,
-                           context.push_context.values, context.num);
+    return PushSparseParam(
+        context.push_context.keys, context.push_context.values, context.num);
   }
 }
 
 int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
-                                              const float* values, size_t num) {
+                                              const float* values,
+                                              size_t num) {
   VLOG(5) << "DEBUG MemorySparseGeoTable::PushSparseParam begin "
              "PushSparseParam "
           << num;
@@ -49,7 +50,7 @@ int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
   std::vector<std::vector<uint64_t>> offset_bucket;
   offset_bucket.resize(shard_num);
 
-  for (int x = 0; x < num; ++x) {
+  for (size_t x = 0; x < num; ++x) {
     auto y = keys[x] % shard_num;
     offset_bucket[y].push_back(x);
     if (x < 10) {
@@ -66,7 +67,7 @@ int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
           auto& local_shard = _local_shards[shard_id];
           auto& offsets = offset_bucket[shard_id];
 
-          for (int i = 0; i < offsets.size(); ++i) {
+          for (size_t i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
             auto& feature_value = local_shard[id];
@@ -113,7 +114,8 @@ int32_t MemorySparseGeoTable::PullGeoParam(const uint32_t trainer_id,
 }
 
 int32_t MemorySparseGeoTable::PushSparse(const uint64_t* keys,
-                                         const float* values, size_t num) {
+                                         const float* values,
+                                         size_t num) {
   VLOG(5) << "DEBUG MemorySparseGeoTable::PushSparse keys[0]" << keys[0]
           << " key_num: " << num;
   std::vector<uint64_t> ids;
@@ -132,7 +134,7 @@ int32_t MemorySparseGeoTable::Initialize() {
 
   _dim = _config.common().dims()[0];
   _shards_task_pool.resize(_task_pool_size);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
+  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
 
@@ -191,7 +193,8 @@ int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
 }
 
 int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
-                                          const float* values, size_t num) {
+                                          const float* values,
+                                          size_t num) {
   auto shard_num = _task_pool_size;
   std::vector<std::future<int>> tasks(shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(shard_num);
@@ -200,14 +203,14 @@ int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
     task_keys[shard_id].push_back({keys[i], i});
   }
 
-  for (size_t shard_id = 0; shard_id < shard_num; ++shard_id) {
+  for (int shard_id = 0; shard_id < shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id]->enqueue(
         [this, shard_id, values, &task_keys]() -> int {
           auto& keys = task_keys[shard_id];
           auto& local_shard = _local_shards[shard_id];
           auto blas = GetBlas<float>();
 
-          for (int i = 0; i < keys.size(); ++i) {
+          for (size_t i = 0; i < keys.size(); ++i) {
             uint64_t key = keys[i].first;
             uint64_t push_data_idx = keys[i].second;
             const float* update_data = values + push_data_idx * _dim;

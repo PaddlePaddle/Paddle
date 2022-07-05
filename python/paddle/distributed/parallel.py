@@ -19,6 +19,7 @@ from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
 import sys
+import paddle
 
 from paddle import compat as cpt
 
@@ -46,7 +47,7 @@ __all__ = []
 
 ParallelStrategy = core.ParallelStrategy
 
-# NOTE(chenweihang): Maintain a global parallel env to avoid 
+# NOTE(chenweihang): Maintain a global parallel env to avoid
 # initializing ParallelEnv every time and improve performance
 _global_parallel_env = None
 
@@ -70,9 +71,10 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and (
-            core.is_compiled_with_cuda() or core.is_compiled_with_xpu() or
-            core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
+    if backend in [
+            'auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'
+    ] and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+           or core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -158,14 +160,14 @@ def init_parallel_env():
             "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
         )
         return
-    # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
+    # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo prarllel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
-    # 1. gpu xpu check, must be gpu or xpu, 
-    if not (is_cpu_only or core.is_compiled_with_cuda() or
-            core.is_compiled_with_xpu() or core.is_compiled_with_npu() or
-            core.is_compiled_with_mlu()):
+    # 1. gpu xpu check, must be gpu or xpu,
+    if not (is_cpu_only or core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu() or core.is_compiled_with_npu()
+            or core.is_compiled_with_mlu()):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
@@ -219,8 +221,8 @@ def init_parallel_env():
             "required to create a process group.")
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
-        endpoints = ":".join(
-            [master_addr, master_port]) if master_addr and master_port else None
+        endpoints = ":".join([master_addr, master_port
+                              ]) if master_addr and master_port else None
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
@@ -234,31 +236,30 @@ def init_parallel_env():
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-        default_store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
-            stop_check_timeout=stop_check_timeout)
+        default_store = core.TCPStore(master_addr,
+                                      master_port,
+                                      is_master,
+                                      world_size,
+                                      timeout=stop_check_timeout)
         _set_default_store(default_store)
-        pg = _new_process_group_impl(
-            backend,
-            default_store,
-            rank,
-            world_size,
-            _default_group_name,
-            pg_options=None)
+        pg = _new_process_group_impl(backend,
+                                     default_store,
+                                     rank,
+                                     world_size,
+                                     _default_group_name,
+                                     pg_options=None)
         ranks = list(range(world_size))
-        group = Group(
-            rank,
-            world_size,
-            id=0,
-            ranks=ranks,
-            pg=pg,
-            name=_default_group_name)
+        group = Group(rank,
+                      world_size,
+                      id=0,
+                      ranks=ranks,
+                      pg=pg,
+                      name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         parallel_helper._set_parallel_ctx(True)
+
+        paddle.distributed.barrier(group=group)
         return group
 
     node_num = set([i.split(":")[0] for i in parallel_env.trainer_endpoints])
@@ -275,9 +276,8 @@ def init_parallel_env():
             size = {'_worker': parallel_env.world_size}
             if backend == "heter":
                 size = {'_worker': len(node_num)}
-            http_server = Process(
-                target=_start_kv_server,
-                args=(int(ep_rank_0[1]), http_server_d, size))
+            http_server = Process(target=_start_kv_server,
+                                  args=(int(ep_rank_0[1]), http_server_d, size))
             http_server.daemon = True
             http_server_d["running"] = True
             http_server.start()
@@ -325,7 +325,7 @@ def init_parallel_env():
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
     if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:
-        # compare to init_gloo, we don't need to 
+        # compare to init_gloo, we don't need to
         # init gloo, because we do this in _init_parallel_ctx;
         http_server_d["running"] = False
         http_server.join()

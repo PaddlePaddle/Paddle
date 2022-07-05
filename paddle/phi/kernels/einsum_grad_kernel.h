@@ -21,6 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void EinsumGradKernel(const Context& dev_ctx,
                       const std::vector<const DenseTensor*>& x,
+                      const std::vector<const DenseTensor*>& inner_cache,
                       const DenseTensor& out_grad,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad);

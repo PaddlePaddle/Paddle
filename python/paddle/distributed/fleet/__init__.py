@@ -30,17 +30,11 @@ from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
 
-__all__ = [ #noqa
-      "CommunicateTopology",
-      "UtilBase",
-      "HybridCommunicateGroup",
-      "MultiSlotStringDataGenerator",
-      "UserDefinedRoleMaker",
-      "DistributedStrategy",
-      "Role",
-      "MultiSlotDataGenerator",
-      "PaddleCloudRoleMaker",
-      "Fleet"
+__all__ = [  #noqa
+    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
+    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker", "Fleet"
 ]
 
 fleet = Fleet()

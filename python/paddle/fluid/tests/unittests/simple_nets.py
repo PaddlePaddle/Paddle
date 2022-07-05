@@ -23,8 +23,8 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
             hidden,
             size=100,
             act='relu',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
     prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
@@ -44,8 +44,8 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             hidden,
             size=200,
             act='relu',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
 
         hidden = fluid.layers.batch_norm(input=hidden)
 
@@ -73,11 +73,14 @@ def bow_net(use_feed,
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1)
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    emb = fluid.layers.embedding(
-        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim])
+    emb = fluid.layers.embedding(input=data,
+                                 is_sparse=is_sparse,
+                                 size=[dict_dim, emb_dim])
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = fluid.layers.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")

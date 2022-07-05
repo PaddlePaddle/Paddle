@@ -14,13 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/storage.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
+
+namespace dtype {
+class pstring;
+}  // namespace dtype
 
 /// \brief In Paddle 2.3, we add a new type of Tensor, StringTensor,
 /// which is designed for string data management.

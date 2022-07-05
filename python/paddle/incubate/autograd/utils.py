@@ -17,6 +17,7 @@ from paddle.fluid import framework as framework
 
 
 class PrimOption(object):
+
     def __init__(self):
         self.enable_prim = False
 
@@ -155,13 +156,6 @@ def get_output_var_list(op):
             get_var_block(op.block, op.output(n))
             for n in sorted(op.output_names)
         ]
-
-
-def to_tensors(xs):
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
 
 
 def flatten(inp):

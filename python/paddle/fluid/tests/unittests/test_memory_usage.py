@@ -43,6 +43,7 @@ def train_simulator(test_batch_size=10):
 
 
 class TestMemoryUsage(unittest.TestCase):
+
     def test_with_unit_B(self):
         with self.program_scope_guard():
             train_simulator()

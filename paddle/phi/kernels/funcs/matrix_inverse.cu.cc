@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 namespace funcs {

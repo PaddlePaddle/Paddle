@@ -116,6 +116,10 @@ class TensorWrapper {
     return recovered_tensor;
   }
 
+  paddle::experimental::Tensor get_intermidiate_tensor() {
+    return intermidiate_tensor_;
+  }
+
   void clear() { intermidiate_tensor_.reset(); }
 
  private:
@@ -134,7 +138,8 @@ class TensorWrapper {
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
       uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       PADDLE_ENFORCE_EQ(
-          tensor_version, wrapper_version_snapshot,
+          tensor_version,
+          wrapper_version_snapshot,
           paddle::platform::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
@@ -142,7 +147,8 @@ class TensorWrapper {
               "Please fix your code to void calling an inplace operator "
               "after using the Tensor which will used in gradient "
               "computation.",
-              intermidiate_tensor_.name(), tensor_version,
+              intermidiate_tensor_.name(),
+              tensor_version,
               wrapper_version_snapshot));
       VLOG(6) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "

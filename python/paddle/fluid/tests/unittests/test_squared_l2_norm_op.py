@@ -39,11 +39,13 @@ class TestL2LossOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=self.max_relative_error)
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=self.max_relative_error)
 
 
 class TestL2LossDeterministic(unittest.TestCase):
+
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')

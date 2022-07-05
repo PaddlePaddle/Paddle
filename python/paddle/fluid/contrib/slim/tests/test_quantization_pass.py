@@ -46,6 +46,7 @@ def linear_fc(num):
 
 
 def residual_block(num, quant_skip_pattern=None):
+
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -53,38 +54,42 @@ def residual_block(num, quant_skip_pattern=None):
                       padding,
                       act='relu',
                       bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
-    data = fluid.layers.data(
-        name='image',
-        shape=[1, 1, 32, 32],
-        dtype='float32',
-        append_batch_size=False)
-    label = fluid.layers.data(
-        name='label', shape=[1, 1], dtype='int64', append_batch_size=False)
+    data = fluid.layers.data(name='image',
+                             shape=[1, 1, 32, 32],
+                             dtype='float32',
+                             append_batch_size=False)
+    label = fluid.layers.data(name='label',
+                              shape=[1, 1],
+                              dtype='int64',
+                              append_batch_size=False)
     hidden = data
     for _ in six.moves.xrange(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    matmul_weight = fluid.layers.create_parameter(
-        shape=[1, 16, 32, 32], dtype='float32')
+    matmul_weight = fluid.layers.create_parameter(shape=[1, 16, 32, 32],
+                                                  dtype='float32')
     hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
-            pool = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+            pool = fluid.layers.pool2d(input=hidden,
+                                       pool_size=2,
+                                       pool_type='avg',
+                                       pool_stride=2)
     else:
-        pool = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+        pool = fluid.layers.pool2d(input=hidden,
+                                   pool_size=2,
+                                   pool_type='avg',
+                                   pool_stride=2)
     fc = fluid.layers.fc(input=pool, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = fluid.layers.mean(loss)
@@ -92,23 +97,21 @@ def residual_block(num, quant_skip_pattern=None):
 
 
 def conv_net(img, label, quant_skip_pattern):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=img,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='max',
-        act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='max',
+                                                  act="relu")
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        pool_type='avg',
-        act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='avg',
+                                                  act="relu")
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     with fluid.name_scope(quant_skip_pattern):
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
@@ -118,6 +121,7 @@ def conv_net(img, label, quant_skip_pattern):
 
 
 class TestQuantizationTransformPass(unittest.TestCase):
+
     def setUp(self):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
@@ -193,8 +197,9 @@ class TestQuantizationTransformPass(unittest.TestCase):
         self.linear_fc_quant('range_abs_max', 'abs_max', for_ci=True)
 
     def test_linear_fc_quant_moving_average_abs_max(self):
-        self.linear_fc_quant(
-            'moving_average_abs_max', 'channel_wise_abs_max', for_ci=True)
+        self.linear_fc_quant('moving_average_abs_max',
+                             'channel_wise_abs_max',
+                             for_ci=True)
 
     def residual_block_quant(self,
                              activation_quant_type,
@@ -236,24 +241,28 @@ class TestQuantizationTransformPass(unittest.TestCase):
 
     def test_residual_block_abs_max(self):
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            'abs_max', 'abs_max', quantizable_op_type, for_ci=True)
+        self.residual_block_quant('abs_max',
+                                  'abs_max',
+                                  quantizable_op_type,
+                                  for_ci=True)
 
     def test_residual_block_range_abs_max(self):
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            'range_abs_max', 'abs_max', quantizable_op_type, for_ci=True)
+        self.residual_block_quant('range_abs_max',
+                                  'abs_max',
+                                  quantizable_op_type,
+                                  for_ci=True)
 
     def test_residual_block_moving_average_abs_max(self):
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            'moving_average_abs_max',
-            'channel_wise_abs_max',
-            quantizable_op_type,
-            for_ci=True)
+        self.residual_block_quant('moving_average_abs_max',
+                                  'channel_wise_abs_max',
+                                  quantizable_op_type,
+                                  for_ci=True)
 
 
 class TestQuantizationFreezePass(unittest.TestCase):
+
     def freeze_graph(self,
                      use_cuda,
                      seed,
@@ -262,15 +271,18 @@ class TestQuantizationFreezePass(unittest.TestCase):
                      weight_quant_type='abs_max',
                      for_ci=True,
                      quant_skip_pattern='skip_quant'):
+
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
+                    img = fluid.layers.data(name='image',
+                                            shape=[1, 28, 28],
+                                            dtype='float32')
+                    label = fluid.layers.data(name='label',
+                                              shape=[1],
+                                              dtype='int64')
                     loss = conv_net(img, label, quant_skip_pattern)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.001)
@@ -308,14 +320,16 @@ class TestQuantizationFreezePass(unittest.TestCase):
             for op in main_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            main_graph.draw('.', 'main' + dev_name + activation_quant_type + '_'
-                            + weight_quant_type, marked_nodes)
+            main_graph.draw(
+                '.', 'main' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, marked_nodes)
             marked_nodes = set()
             for op in test_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            test_graph.draw('.', 'test' + dev_name + activation_quant_type + '_'
-                            + weight_quant_type, marked_nodes)
+            test_graph.draw(
+                '.', 'test' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, marked_nodes)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
@@ -327,12 +341,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
         iters = 5
         batch_size = 8
 
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
@@ -341,9 +354,9 @@ class TestQuantizationFreezePass(unittest.TestCase):
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
                 if not for_ci:
-                    print('{}: {}'.format('loss' + dev_name +
-                                          activation_quant_type + '_' +
-                                          weight_quant_type, loss_v))
+                    print('{}: {}'.format(
+                        'loss' + dev_name + activation_quant_type + '_' +
+                        weight_quant_type, loss_v))
 
         test_data = next(test_reader())
         with fluid.program_guard(quantized_test_program):
@@ -365,9 +378,9 @@ class TestQuantizationFreezePass(unittest.TestCase):
             for op in test_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            test_graph.draw('.', 'test_freeze' + dev_name +
-                            activation_quant_type + '_' + weight_quant_type,
-                            marked_nodes)
+            test_graph.draw(
+                '.', 'test_freeze' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, marked_nodes)
 
         server_program = test_graph.to_program()
         with fluid.scope_guard(scope):
@@ -376,20 +389,22 @@ class TestQuantizationFreezePass(unittest.TestCase):
                                   fetch_list=[loss])
         self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
         if not for_ci:
-            print(
-                '{}: {}'.format('test_loss1' + dev_name + activation_quant_type
-                                + '_' + weight_quant_type, test_loss1))
-            print(
-                '{}: {}'.format('test_loss2' + dev_name + activation_quant_type
-                                + '_' + weight_quant_type, test_loss2))
+            print('{}: {}'.format(
+                'test_loss1' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, test_loss1))
+            print('{}: {}'.format(
+                'test_loss2' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, test_loss2))
         w_freeze = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
         # Maybe failed, this is due to the calculation precision
         # self.assertAlmostEqual(np.sum(w_freeze), np.sum(w_quant))
         if not for_ci:
-            print('{}: {}'.format('w_freeze' + dev_name + activation_quant_type
-                                  + '_' + weight_quant_type, np.sum(w_freeze)))
-            print('{}: {}'.format('w_quant' + dev_name + activation_quant_type +
-                                  '_' + weight_quant_type, np.sum(w_quant)))
+            print('{}: {}'.format(
+                'w_freeze' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, np.sum(w_freeze)))
+            print('{}: {}'.format(
+                'w_quant' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, np.sum(w_quant)))
 
         # Convert parameter to 8-bit.
         convert_int8_pass = ConvertToInt8Pass(scope=scope, place=place)
@@ -399,8 +414,9 @@ class TestQuantizationFreezePass(unittest.TestCase):
             for op in test_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            test_graph.draw('.', 'test_int8' + dev_name + activation_quant_type
-                            + '_' + weight_quant_type, marked_nodes)
+            test_graph.draw(
+                '.', 'test_int8' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, marked_nodes)
         server_program_int8 = test_graph.to_program()
         # Save the 8-bit parameter and model file.
         with fluid.scope_guard(scope):
@@ -417,10 +433,12 @@ class TestQuantizationFreezePass(unittest.TestCase):
         self.assertEqual(w_8bit.dtype, np.int8)
         self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
         if not for_ci:
-            print('{}: {}'.format('w_8bit' + dev_name + activation_quant_type +
-                                  '_' + weight_quant_type, np.sum(w_8bit)))
-            print('{}: {}'.format('w_freeze' + dev_name + activation_quant_type
-                                  + '_' + weight_quant_type, np.sum(w_freeze)))
+            print('{}: {}'.format(
+                'w_8bit' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, np.sum(w_8bit)))
+            print('{}: {}'.format(
+                'w_freeze' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, np.sum(w_freeze)))
 
         mobile_pass = TransformForMobilePass()
         mobile_pass.apply(test_graph)
@@ -429,9 +447,9 @@ class TestQuantizationFreezePass(unittest.TestCase):
             for op in test_graph.all_op_nodes():
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
-            test_graph.draw('.', 'test_mobile' + dev_name +
-                            activation_quant_type + '_' + weight_quant_type,
-                            marked_nodes)
+            test_graph.draw(
+                '.', 'test_mobile' + dev_name + activation_quant_type + '_' +
+                weight_quant_type, marked_nodes)
 
         mobile_program = test_graph.to_program()
         with fluid.scope_guard(scope):
@@ -443,63 +461,56 @@ class TestQuantizationFreezePass(unittest.TestCase):
     def test_freeze_graph_cuda_dynamic(self):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
-                self.freeze_graph(
-                    True,
-                    seed=1,
-                    activation_quant_type='abs_max',
-                    weight_quant_type='abs_max',
-                    for_ci=True)
+                self.freeze_graph(True,
+                                  seed=1,
+                                  activation_quant_type='abs_max',
+                                  weight_quant_type='abs_max',
+                                  for_ci=True)
             with fluid.unique_name.guard():
-                self.freeze_graph(
-                    True,
-                    seed=1,
-                    activation_quant_type='abs_max',
-                    weight_quant_type='channel_wise_abs_max',
-                    for_ci=True)
+                self.freeze_graph(True,
+                                  seed=1,
+                                  activation_quant_type='abs_max',
+                                  weight_quant_type='channel_wise_abs_max',
+                                  for_ci=True)
 
     def test_freeze_graph_cpu_dynamic(self):
         with fluid.unique_name.guard():
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='abs_max',
-                weight_quant_type='abs_max',
-                for_ci=True)
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='abs_max',
-                weight_quant_type='channel_wise_abs_max',
-                for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='abs_max',
+                              weight_quant_type='abs_max',
+                              for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='abs_max',
+                              weight_quant_type='channel_wise_abs_max',
+                              for_ci=True)
 
     def test_freeze_graph_cuda_static(self):
         if fluid.core.is_compiled_with_cuda():
             with fluid.unique_name.guard():
-                self.freeze_graph(
-                    True,
-                    seed=1,
-                    activation_quant_type='range_abs_max',
-                    bias_correction=True,
-                    weight_quant_type='abs_max',
-                    for_ci=True)
-                self.freeze_graph(
-                    True,
-                    seed=1,
-                    activation_quant_type='range_abs_max',
-                    weight_quant_type='abs_max',
-                    for_ci=True)
+                self.freeze_graph(True,
+                                  seed=1,
+                                  activation_quant_type='range_abs_max',
+                                  bias_correction=True,
+                                  weight_quant_type='abs_max',
+                                  for_ci=True)
+                self.freeze_graph(True,
+                                  seed=1,
+                                  activation_quant_type='range_abs_max',
+                                  weight_quant_type='abs_max',
+                                  for_ci=True)
                 self.freeze_graph(
                     True,
                     seed=1,
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='abs_max',
                     for_ci=True)
-                self.freeze_graph(
-                    True,
-                    seed=1,
-                    activation_quant_type='range_abs_max',
-                    weight_quant_type='channel_wise_abs_max',
-                    for_ci=True)
+                self.freeze_graph(True,
+                                  seed=1,
+                                  activation_quant_type='range_abs_max',
+                                  weight_quant_type='channel_wise_abs_max',
+                                  for_ci=True)
                 self.freeze_graph(
                     True,
                     seed=1,
@@ -516,33 +527,30 @@ class TestQuantizationFreezePass(unittest.TestCase):
 
     def test_freeze_graph_cpu_static(self):
         with fluid.unique_name.guard():
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='range_abs_max',
-                weight_quant_type='abs_max',
-                for_ci=True)
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='moving_average_abs_max',
-                weight_quant_type='abs_max',
-                for_ci=True)
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='range_abs_max',
-                weight_quant_type='channel_wise_abs_max',
-                for_ci=True)
-            self.freeze_graph(
-                False,
-                seed=2,
-                activation_quant_type='moving_average_abs_max',
-                weight_quant_type='channel_wise_abs_max',
-                for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='range_abs_max',
+                              weight_quant_type='abs_max',
+                              for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='moving_average_abs_max',
+                              weight_quant_type='abs_max',
+                              for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='range_abs_max',
+                              weight_quant_type='channel_wise_abs_max',
+                              for_ci=True)
+            self.freeze_graph(False,
+                              seed=2,
+                              activation_quant_type='moving_average_abs_max',
+                              weight_quant_type='channel_wise_abs_max',
+                              for_ci=True)
 
 
 def quant_dequant_residual_block(num, quant_skip_pattern=None):
+
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -550,19 +558,19 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
                       padding,
                       act='relu',
                       bias_attr=False):
-        tmp = fluid.layers.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
-            bias_attr=bias_attr)
+        tmp = fluid.layers.conv2d(input=input,
+                                  filter_size=filter_size,
+                                  num_filters=ch_out,
+                                  stride=stride,
+                                  padding=padding,
+                                  act=None,
+                                  bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    data2 = fluid.layers.data(
-        name='matmul_input', shape=[16, 32, 32], dtype='float32')
+    data2 = fluid.layers.data(name='matmul_input',
+                              shape=[16, 32, 32],
+                              dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = data1
     for _ in six.moves.xrange(num):
@@ -572,29 +580,43 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     hidden = fluid.layers.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2)
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu')
+            pool1 = fluid.layers.pool2d(input=hidden,
+                                        pool_size=2,
+                                        pool_type='avg',
+                                        pool_stride=2)
+            pool2 = fluid.layers.pool2d(input=hidden,
+                                        pool_size=2,
+                                        pool_type='max',
+                                        pool_stride=2)
+            pool_add = fluid.layers.elementwise_add(x=pool1,
+                                                    y=pool2,
+                                                    act='relu')
     elif isinstance(quant_skip_pattern, list):
         assert len(
             quant_skip_pattern
         ) > 1, 'test config error: the len of quant_skip_pattern list should be greater than 1.'
         with fluid.name_scope(quant_skip_pattern[0]):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2)
+            pool1 = fluid.layers.pool2d(input=hidden,
+                                        pool_size=2,
+                                        pool_type='avg',
+                                        pool_stride=2)
+            pool2 = fluid.layers.pool2d(input=hidden,
+                                        pool_size=2,
+                                        pool_type='max',
+                                        pool_stride=2)
         with fluid.name_scope(quant_skip_pattern[1]):
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu')
+            pool_add = fluid.layers.elementwise_add(x=pool1,
+                                                    y=pool2,
+                                                    act='relu')
     else:
-        pool1 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
-        pool2 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='max', pool_stride=2)
+        pool1 = fluid.layers.pool2d(input=hidden,
+                                    pool_size=2,
+                                    pool_type='avg',
+                                    pool_stride=2)
+        pool2 = fluid.layers.pool2d(input=hidden,
+                                    pool_size=2,
+                                    pool_type='max',
+                                    pool_stride=2)
         pool_add = fluid.layers.elementwise_add(x=pool1, y=pool2, act='relu')
     fc = fluid.layers.fc(input=pool_add, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
@@ -603,6 +625,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
 
 
 class TestAddQuantDequantPass(unittest.TestCase):
+
     def setUp(self):
         self._target_ops = {'elementwise_add', 'pool2d'}
         self._target_grad_ops = {'elementwise_add_grad', 'pool2d_grad'}
@@ -626,9 +649,9 @@ class TestAddQuantDequantPass(unittest.TestCase):
                 for input_name in op_node.input_arg_names():
                     in_node = graph._find_node_by_name(op_node.inputs,
                                                        input_name)
-                    in_nodes_all_not_persistable = (
-                        in_nodes_all_not_persistable and
-                        not in_node.persistable())
+                    in_nodes_all_not_persistable = (in_nodes_all_not_persistable
+                                                    and
+                                                    not in_node.persistable())
                 if not in_nodes_all_not_persistable:
                     continue
                 input_names = op_node.input_arg_names()
@@ -671,23 +694,25 @@ class TestAddQuantDequantPass(unittest.TestCase):
 
     def test_residual_block(self):
         quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            quantizable_op_type, skip_pattern=None, for_ci=True)
+        self.residual_block_quant(quantizable_op_type,
+                                  skip_pattern=None,
+                                  for_ci=True)
 
     def test_residual_block_skip_pattern(self):
         quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            quantizable_op_type, skip_pattern='skip_quant', for_ci=True)
+        self.residual_block_quant(quantizable_op_type,
+                                  skip_pattern='skip_quant',
+                                  for_ci=True)
 
     def test_residual_block_skip_pattern_1(self):
         quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            quantizable_op_type,
-            skip_pattern=['skip_quant1', 'skip_quant2'],
-            for_ci=True)
+        self.residual_block_quant(quantizable_op_type,
+                                  skip_pattern=['skip_quant1', 'skip_quant2'],
+                                  for_ci=True)
 
 
 class TestQuantizationTransformPassV2(unittest.TestCase):
+
     def setUp(self):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
@@ -802,13 +827,17 @@ class TestQuantizationTransformPassV2(unittest.TestCase):
 
     def test_residual_block_abs_max(self):
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            'abs_max', 'abs_max', quantizable_op_type, for_ci=True)
+        self.residual_block_quant('abs_max',
+                                  'abs_max',
+                                  quantizable_op_type,
+                                  for_ci=True)
 
     def test_residual_block_channel_wise_abs_max(self):
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
-        self.residual_block_quant(
-            'abs_max', 'channel_wise_abs_max', quantizable_op_type, for_ci=True)
+        self.residual_block_quant('abs_max',
+                                  'channel_wise_abs_max',
+                                  quantizable_op_type,
+                                  for_ci=True)
 
 
 if __name__ == '__main__':

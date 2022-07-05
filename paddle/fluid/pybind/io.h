@@ -20,6 +20,7 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {

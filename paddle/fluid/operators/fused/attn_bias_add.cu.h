@@ -46,13 +46,22 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-template <typename InT, typename OutT, int ShapeSize, int VecSize,
-          int DATA_PER_THREAD, typename Functor>
+template <typename InT,
+          typename OutT,
+          int ShapeSize,
+          int VecSize,
+          int DATA_PER_THREAD,
+          typename Functor>
 __global__ void BroadcastKernelBinary(
-    const InT* __restrict__ in0, const InT* __restrict__ in1, OutT* out,
-    phi::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
+    const InT* __restrict__ in0,
+    const InT* __restrict__ in1,
+    OutT* out,
+    phi::Array<bool, MAX_INPUT_NUM> use_broadcast,
+    uint32_t numel,
     phi::Array<kps::details::BroadcastConfig, MAX_INPUT_NUM> configlists,
-    int main_tid, int tail_tid, Functor func) {
+    int main_tid,
+    int tail_tid,
+    Functor func) {
   int fix = blockIdx.x * blockDim.x * VecSize;
   int num = tail_tid;
   InT arg0[VecSize * DATA_PER_THREAD];
@@ -80,14 +89,18 @@ __global__ void BroadcastKernelBinary(
   kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(
       result, arg0, arg1, func);
   // store
-  kernel_primitives::WriteData<OutT, VecSize, 1, 1, true>(out + fix, result,
-                                                          num);
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1, true>(
+      out + fix, result, num);
 }
 
 // bias add forward impl for "[m, n] + [n] = [m, n]"
 template <typename T>
-void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
-                           const T* in0, const T* in1, T* out) {
+void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx,
+                           int m,
+                           int n,
+                           const T* in0,
+                           const T* in1,
+                           T* out) {
   int in_vec_size =
       std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
   int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
@@ -120,24 +133,42 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   auto stream = ctx.stream();
   switch (vec_size) {
     case 4: {
-      BroadcastKernelBinary<T, T, 2, 4,
-                            data_per_thread><<<blocks, threads, 0, stream>>>(
-          in0, in1, out, use_broadcast, numel, configlists, main_tid, tail_tid,
-          func);
+      BroadcastKernelBinary<T, T, 2, 4, data_per_thread>
+          <<<blocks, threads, 0, stream>>>(in0,
+                                           in1,
+                                           out,
+                                           use_broadcast,
+                                           numel,
+                                           configlists,
+                                           main_tid,
+                                           tail_tid,
+                                           func);
       break;
     }
     case 2: {
-      BroadcastKernelBinary<T, T, 2, 2,
-                            data_per_thread><<<blocks, threads, 0, stream>>>(
-          in0, in1, out, use_broadcast, numel, configlists, main_tid, tail_tid,
-          func);
+      BroadcastKernelBinary<T, T, 2, 2, data_per_thread>
+          <<<blocks, threads, 0, stream>>>(in0,
+                                           in1,
+                                           out,
+                                           use_broadcast,
+                                           numel,
+                                           configlists,
+                                           main_tid,
+                                           tail_tid,
+                                           func);
       break;
     }
     case 1: {
-      BroadcastKernelBinary<T, T, 2, 1,
-                            data_per_thread><<<blocks, threads, 0, stream>>>(
-          in0, in1, out, use_broadcast, numel, configlists, main_tid, tail_tid,
-          func);
+      BroadcastKernelBinary<T, T, 2, 1, data_per_thread>
+          <<<blocks, threads, 0, stream>>>(in0,
+                                           in1,
+                                           out,
+                                           use_broadcast,
+                                           numel,
+                                           configlists,
+                                           main_tid,
+                                           tail_tid,
+                                           func);
       break;
     }
     default: {
@@ -149,9 +180,8 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
 }
 
 template <typename T, int BlockDim>
-__global__ void LAUNCH_BOUNDS(BlockDim)
-    Compute1DColumnReduceKernel(const int reduce_num, const int left_num,
-                                const T* in, T* out) {
+__global__ void LAUNCH_BOUNDS(BlockDim) Compute1DColumnReduceKernel(
+    const int reduce_num, const int left_num, const T* in, T* out) {
   typedef cub::BlockReduce<ReduceParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage mean_storage;
 
@@ -170,19 +200,25 @@ __global__ void LAUNCH_BOUNDS(BlockDim)
 }
 
 template <typename T>
-void Launch1DColumnReduce(gpuStream_t stream, const int max_threads,
-                          const int reduce_num, const int left_num,
-                          const T* d_out, T* d_bias) {
+void Launch1DColumnReduce(gpuStream_t stream,
+                          const int max_threads,
+                          const int reduce_num,
+                          const int left_num,
+                          const T* d_out,
+                          T* d_bias) {
   const int block = 256;
   const int max_blocks = std::max(max_threads / block, 1);
   const int grid = std::min(left_num, max_blocks);
-  Compute1DColumnReduceKernel<T, block><<<grid, block, 0, stream>>>(
-      reduce_num, left_num, d_out, d_bias);
+  Compute1DColumnReduceKernel<T, block>
+      <<<grid, block, 0, stream>>>(reduce_num, left_num, d_out, d_bias);
 }
 
-void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
-                              const int left_num, int* blocking_size,
-                              bool* should_reduce_again, dim3* block_dim,
+void SetConfigForColumnReduce(const int max_threads,
+                              const int reduce_num,
+                              const int left_num,
+                              int* blocking_size,
+                              bool* should_reduce_again,
+                              dim3* block_dim,
                               dim3* grid_dim) {
   block_dim->z = 1;
   grid_dim->z = 1;
@@ -210,8 +246,10 @@ void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
 }
 
 template <typename T>
-__global__ void BiasAddBwSinglePassKernel(const T* in, int reduce_num,
-                                          int left_num, T* out) {
+__global__ void BiasAddBwSinglePassKernel(const T* in,
+                                          int reduce_num,
+                                          int left_num,
+                                          T* out) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   ReduceParamType<T> x_sum = static_cast<ReduceParamType<T>>(0);
   if (idx < left_num) {
@@ -225,8 +263,10 @@ __global__ void BiasAddBwSinglePassKernel(const T* in, int reduce_num,
 }
 
 template <typename T>
-__global__ void BiasAddBw2DReduceKernel(const T* x, int reduce_num,
-                                        int left_num, int workload_per_thread,
+__global__ void BiasAddBw2DReduceKernel(const T* x,
+                                        int reduce_num,
+                                        int left_num,
+                                        int workload_per_thread,
                                         ReduceParamType<T>* temp_x_sum) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int idy = blockIdx.y * workload_per_thread;
@@ -247,7 +287,8 @@ __global__ void BiasAddBw2DReduceKernel(const T* x, int reduce_num,
 
 template <typename T>
 __global__ void BiasAddBw1DReduceKernel(const ReduceParamType<T>* temp_sum,
-                                        int workload_per_thread, int left_num,
+                                        int workload_per_thread,
+                                        int left_num,
                                         T* out) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   ReduceParamType<T> x_sum = static_cast<ReduceParamType<T>>(0);
@@ -262,26 +303,37 @@ __global__ void BiasAddBw1DReduceKernel(const ReduceParamType<T>* temp_sum,
 
 template <typename T>
 void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
-                          const int max_threads, const int reduce_num,
-                          const int left_num, const T* d_out, T* d_bias) {
+                          const int max_threads,
+                          const int reduce_num,
+                          const int left_num,
+                          const T* d_out,
+                          T* d_bias) {
   dim3 block;
   dim3 grid;
   bool should_reduce_again = false;
   int blocking_size = 1;
-  SetConfigForColumnReduce(max_threads, reduce_num, left_num, &blocking_size,
-                           &should_reduce_again, &block, &grid);
+  SetConfigForColumnReduce(max_threads,
+                           reduce_num,
+                           left_num,
+                           &blocking_size,
+                           &should_reduce_again,
+                           &block,
+                           &grid);
   const auto& stream = dev_ctx.stream();
 
   if (!should_reduce_again) {
-    BiasAddBwSinglePassKernel<T><<<grid, block, 0, stream>>>(d_out, reduce_num,
-                                                             left_num, d_bias);
+    BiasAddBwSinglePassKernel<T>
+        <<<grid, block, 0, stream>>>(d_out, reduce_num, left_num, d_bias);
   } else {
     framework::Tensor tmp_sum;
     tmp_sum.Resize({grid.y, left_num});
     tmp_sum.mutable_data<ReduceParamType<T>>(dev_ctx.GetPlace());
 
     BiasAddBw2DReduceKernel<T><<<grid, block, 0, stream>>>(
-        d_out, reduce_num, left_num, blocking_size,
+        d_out,
+        reduce_num,
+        left_num,
+        blocking_size,
         tmp_sum.template data<ReduceParamType<T>>());
 
     BiasAddBw1DReduceKernel<T><<<grid.x, block.x, 0, stream>>>(
@@ -293,19 +345,22 @@ void Launch2DColumnReduce(const platform::CUDADeviceContext& dev_ctx,
 // input
 // and d_bias[n] as output.
 template <typename T>
-void LaunchBiasAddBwKernel(const platform::CUDADeviceContext& dev_ctx, int m,
-                           int n, const T* d_out, T* d_bias) {
+void LaunchBiasAddBwKernel(const platform::CUDADeviceContext& dev_ctx,
+                           int m,
+                           int n,
+                           const T* d_out,
+                           T* d_bias) {
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int reduce_num = m;
   int left_num = n;
   bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
                          (left_num > REDUCE_SPLIT_BOUNDARY);
   if (!is_large_enough) {
-    Launch1DColumnReduce(dev_ctx.stream(), max_threads, reduce_num, left_num,
-                         d_out, d_bias);
+    Launch1DColumnReduce(
+        dev_ctx.stream(), max_threads, reduce_num, left_num, d_out, d_bias);
   } else {
-    Launch2DColumnReduce(dev_ctx, max_threads, reduce_num, left_num, d_out,
-                         d_bias);
+    Launch2DColumnReduce(
+        dev_ctx, max_threads, reduce_num, left_num, d_out, d_bias);
   }
 }
 

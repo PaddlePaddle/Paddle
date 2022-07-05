@@ -43,7 +43,8 @@ namespace detail {
 
 constexpr static int TEST_GPU_ID = 0;
 
-int* TestBuddyAllocator(BuddyAllocator* allocator, size_t size_bytes,
+int* TestBuddyAllocator(BuddyAllocator* allocator,
+                        size_t size_bytes,
                         bool use_system_allocator = false,
                         bool free_ptr = true) {
   bool freed = false;
@@ -90,7 +91,8 @@ TEST(BuddyAllocator, GpuFraction) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
@@ -98,9 +100,11 @@ TEST(BuddyAllocator, GpuFraction) {
   TestBuddyAllocator(&buddy_allocator, 1 << 20);
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 500 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     500 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -112,7 +116,8 @@ TEST(BuddyAllocator, InitRealloc) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   // Less then initial size and reallocate size
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
@@ -120,9 +125,11 @@ TEST(BuddyAllocator, InitRealloc) {
   TestBuddyAllocator(&buddy_allocator, 80 << 20);
   TestBuddyAllocator(&buddy_allocator, 99 << 20);
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 101 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     101 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -134,7 +141,8 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   // Less than initial size and reallocate size
   TestBuddyAllocator(&buddy_allocator, 1 << 20);
@@ -143,9 +151,11 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
   TestBuddyAllocator(&buddy_allocator, 8 << 20);
   TestBuddyAllocator(&buddy_allocator, 9 << 20);
   // Greater than max trunk size
-  TestBuddyAllocator(&buddy_allocator, 11 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     11 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -157,10 +167,12 @@ TEST(BuddyAllocator, FractionRefillPool) {
   size_t max_chunk_size = platform::GpuMaxChunkSize();
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), max_chunk_size);
+      platform::GpuMinChunkSize(),
+      max_chunk_size);
 
   // Less than pool size
-  int* p0 = TestBuddyAllocator(&buddy_allocator, max_chunk_size - 1000,
+  int* p0 = TestBuddyAllocator(&buddy_allocator,
+                               max_chunk_size - 1000,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
@@ -170,7 +182,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
   // be able to alloc 60% of the remaining GPU
-  int* p1 = TestBuddyAllocator(&buddy_allocator, alloc,
+  int* p1 = TestBuddyAllocator(&buddy_allocator,
+                               alloc,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
@@ -180,7 +193,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
   // be able to alloc 60% of the remaining GPU
-  TestBuddyAllocator(&buddy_allocator, alloc,
+  TestBuddyAllocator(&buddy_allocator,
+                     alloc,
                      /* use_system_allocator = */ false);
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
@@ -200,15 +214,18 @@ TEST(BuddyAllocator, DeviceRefillPool) {
   size_t max_chunk_size = platform::GpuMaxChunkSize();
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), max_chunk_size);
+      platform::GpuMinChunkSize(),
+      max_chunk_size);
 
-  int* p0 = TestBuddyAllocator(&buddy_allocator, malloc_bytes - 1000,
+  int* p0 = TestBuddyAllocator(&buddy_allocator,
+                               malloc_bytes - 1000,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
-  int* p1 = TestBuddyAllocator(&buddy_allocator, malloc_bytes - 1000,
+  int* p1 = TestBuddyAllocator(&buddy_allocator,
+                               malloc_bytes - 1000,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
@@ -240,7 +257,8 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, 10);
   TestBuddyAllocator(&buddy_allocator, 10 << 10);
@@ -272,7 +290,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
@@ -294,7 +313,8 @@ TEST(BuddyAllocator, SpeedAna) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
@@ -365,7 +385,8 @@ TEST(BuddyAllocator, Release) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
-      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+      platform::GpuMinChunkSize(),
+      platform::GpuMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
@@ -385,7 +406,8 @@ TEST(BuddyAllocator, NpuFraction) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new NPUAllocator(0)),
-      platform::NPUMinChunkSize(), platform::NPUMaxChunkSize());
+      platform::NPUMinChunkSize(),
+      platform::NPUMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
@@ -394,9 +416,11 @@ TEST(BuddyAllocator, NpuFraction) {
   buddy_allocator.Release();
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 300 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     300 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 #endif
@@ -410,7 +434,8 @@ TEST(BuddyAllocator, MluFraction) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);
@@ -419,9 +444,11 @@ TEST(BuddyAllocator, MluFraction) {
   buddy_allocator.Release();
 
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 600 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     600 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -433,7 +460,8 @@ TEST(BuddyAllocator, InitRealloc) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   // Less then initial size and reallocate size
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
@@ -441,9 +469,11 @@ TEST(BuddyAllocator, InitRealloc) {
   TestBuddyAllocator(&buddy_allocator, 80 << 20);
   TestBuddyAllocator(&buddy_allocator, 99 << 20);
   // Greater than max chunk size
-  TestBuddyAllocator(&buddy_allocator, 101 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     101 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -455,7 +485,8 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   // Less than initial size and reallocate size
   TestBuddyAllocator(&buddy_allocator, 1 << 20);
@@ -464,9 +495,11 @@ TEST(BuddyAllocator, ReallocSizeGreaterThanInit) {
   TestBuddyAllocator(&buddy_allocator, 8 << 20);
   TestBuddyAllocator(&buddy_allocator, 9 << 20);
   // Greater than max trunk size
-  TestBuddyAllocator(&buddy_allocator, 11 << 20,
+  TestBuddyAllocator(&buddy_allocator,
+                     11 << 20,
                      /* use_system_allocator = */ true);
-  TestBuddyAllocator(&buddy_allocator, 1 * static_cast<size_t>(1 << 30),
+  TestBuddyAllocator(&buddy_allocator,
+                     1 * static_cast<size_t>(1 << 30),
                      /* use_system_allocator = */ true);
 }
 
@@ -478,10 +511,12 @@ TEST(BuddyAllocator, FractionRefillPool) {
   size_t max_chunk_size = platform::MLUMaxChunkSize();
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), max_chunk_size);
+      platform::MLUMinChunkSize(),
+      max_chunk_size);
 
   // Less than pool size
-  int* p0 = TestBuddyAllocator(&buddy_allocator, max_chunk_size - 1000,
+  int* p0 = TestBuddyAllocator(&buddy_allocator,
+                               max_chunk_size - 1000,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
@@ -491,7 +526,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
       platform::MLUAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable mlu, and should
   // be able to alloc 60% of the remaining MLU
-  int* p1 = TestBuddyAllocator(&buddy_allocator, alloc,
+  int* p1 = TestBuddyAllocator(&buddy_allocator,
+                               alloc,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
   // Max chunk size should be same during allocation
@@ -501,7 +537,8 @@ TEST(BuddyAllocator, FractionRefillPool) {
       platform::MLUAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
   // Exceed pool trigger refilling size of fraction of avaiable mlu, and should
   // be able to alloc 60% of the remaining MLU
-  TestBuddyAllocator(&buddy_allocator, alloc,
+  TestBuddyAllocator(&buddy_allocator,
+                     alloc,
                      /* use_system_allocator = */ false);
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
@@ -528,7 +565,8 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   // BuddyAllocator should be able to alloc the remaining MLU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, 10);
   TestBuddyAllocator(&buddy_allocator, 10 << 10);
@@ -552,7 +590,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   // BuddyAllocator should be able to alloc the remaining MLU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
@@ -570,7 +609,8 @@ TEST(BuddyAllocator, Release) {
 
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new MLUAllocator(0)),
-      platform::MLUMinChunkSize(), platform::MLUMaxChunkSize());
+      platform::MLUMinChunkSize(),
+      platform::MLUMaxChunkSize());
 
   // Less than pool size
   TestBuddyAllocator(&buddy_allocator, 10);

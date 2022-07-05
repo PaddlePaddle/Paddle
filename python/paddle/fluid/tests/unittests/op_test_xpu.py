@@ -42,6 +42,7 @@ from xpu.get_test_cover_info import is_empty_grad_op_type
 
 
 class XPUOpTest(OpTest):
+
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
@@ -100,8 +101,9 @@ class XPUOpTest(OpTest):
 
         if self.dtype == np.float16:
             atol = 0.1
-        return super().check_output_with_place(
-            place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol)
+        return super().check_output_with_place(place, atol, no_check_set,
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
 
     def check_grad(self,
                    inputs_to_check,
@@ -210,13 +212,12 @@ class XPUOpTest(OpTest):
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 
-        self.op = create_op(
-            self.scope,
-            self.op_type,
-            op_inputs,
-            op_outputs,
-            op_attrs,
-            cache_list=cache_list)
+        self.op = create_op(self.scope,
+                            self.op_type,
+                            op_inputs,
+                            op_outputs,
+                            op_attrs,
+                            cache_list=cache_list)
 
         if use_onednn:
             op_attrs["use_mkldnn"] = True
@@ -225,9 +226,9 @@ class XPUOpTest(OpTest):
             no_grad_set = set()
         else:
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-                ) and (
-                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
-                ) and (not self.is_bfloat16_op()):
+                ) and (self.op_type
+                       not in no_grad_set_white_list.NOT_CHECK_OP_LIST) and (
+                           not self.is_bfloat16_op()):
                 raise AssertionError("no_grad_set must be None, op_type is " +
                                      self.op_type + " Op.")
 

@@ -76,8 +76,10 @@ class PdIArray final : public popart::IArray {
   std::size_t rank() const { return tensor_.dims().size(); }
   int64_t dim(size_t index) const { return tensor_.dims().at(index); }
   std::size_t nelms() const {
-    return std::accumulate(shape_.begin(), shape_.end(),
-                           static_cast<int64_t>(1), std::multiplies<int64_t>());
+    return std::accumulate(shape_.begin(),
+                           shape_.end(),
+                           static_cast<int64_t>(1),
+                           std::multiplies<int64_t>());
   }
   const popart::Shape shape() const { return shape_; }
 
@@ -88,11 +90,7 @@ class PdIArray final : public popart::IArray {
 
 }  // namespace
 
-Executor::~Executor() {
-  Detach();
-  session_.reset();
-  executor_resources_.reset();
-}
+Executor::~Executor() { Reset(); }
 
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
@@ -112,14 +110,23 @@ void Executor::Prepare(const std::string &proto) {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
     auto optimizer = compiler_resources_->NewOptimizer();
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, compiler_resources_->loss_var, *optimizer, device_,
-        popart::InputShapeInfo(), ipu_strategy_->popart_options,
+        proto,
+        dataFlow,
+        compiler_resources_->loss_var,
+        *optimizer,
+        device_,
+        popart::InputShapeInfo(),
+        ipu_strategy_->popart_options,
         ipu_strategy_->popart_patterns);
   } else {
     VLOG(10) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(
-        proto, dataFlow, device_, popart::InputShapeInfo(),
-        ipu_strategy_->popart_options, ipu_strategy_->popart_patterns);
+        proto,
+        dataFlow,
+        device_,
+        popart::InputShapeInfo(),
+        ipu_strategy_->popart_options,
+        ipu_strategy_->popart_patterns);
   }
   VLOG(10) << "Creating session from Onnx Model...done";
 
@@ -247,8 +254,10 @@ void Executor::AcquireDevice() {
     VLOG(10) << "Create IPU model device...";
     std::map<std::string, std::string> deviceOpts{
         {
-            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
@@ -258,8 +267,10 @@ void Executor::AcquireDevice() {
     VLOG(10) << "Create offline device...";
     std::map<std::string, std::string> deviceOpts{
         {
-            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+            "numIPUs",
+            std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ =
@@ -284,8 +295,9 @@ void Executor::AcquireDevice() {
         popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
             RequestIpus(ipu_strategy_->num_ipus));
     PADDLE_ENFORCE_NOT_NULL(
-        device_, errors::Unavailable("Can't attach IPU, ipu_num = %d.",
-                                     RequestIpus(ipu_strategy_->num_ipus)));
+        device_,
+        errors::Unavailable("Can't attach IPU, ipu_num = %d.",
+                            RequestIpus(ipu_strategy_->num_ipus)));
     VLOG(10) << "Create IPU device...done";
   }
   VLOG(10) << "leave Executor::AcquireDevice";
@@ -297,6 +309,12 @@ void Executor::Detach() {
     device_->detach();
     VLOG(10) << " detached IPU";
   }
+}
+
+void Executor::Reset() {
+  Detach();
+  session_.reset();
+  executor_resources_.reset();
 }
 
 void Executor::SetWeightsIO() {
@@ -368,19 +386,23 @@ void Executor::ConvertWeights(bool align_to_popart) {
       auto num_elem = info.nelms();
       if (align_to_popart) {
         std::vector<uint16_t> fp16_data;
-        std::transform(data_ptr, data_ptr + num_elem,
+        std::transform(data_ptr,
+                       data_ptr + num_elem,
                        std::back_inserter(fp16_data),
                        [&](float elem) { return popart::floatToHalf(elem); });
-        memcpy(reinterpret_cast<void *>(data_ptr), fp16_data.data(),
+        memcpy(reinterpret_cast<void *>(data_ptr),
+               fp16_data.data(),
                num_elem * sizeof(float16));
       } else {
         std::vector<float> fp32_data;
         auto fp16_data_ptr = reinterpret_cast<uint16_t *>(data_ptr);
-        std::transform(fp16_data_ptr, fp16_data_ptr + num_elem,
-                       std::back_inserter(fp32_data), [&](uint16_t elem) {
-                         return popart::halfToFloat(elem);
-                       });
-        memcpy(reinterpret_cast<void *>(data_ptr), fp32_data.data(),
+        std::transform(
+            fp16_data_ptr,
+            fp16_data_ptr + num_elem,
+            std::back_inserter(fp32_data),
+            [&](uint16_t elem) { return popart::halfToFloat(elem); });
+        memcpy(reinterpret_cast<void *>(data_ptr),
+               fp32_data.data(),
                num_elem * sizeof(float));
       }
     } else {

@@ -30,8 +30,10 @@ class Variable;
 namespace paddle {
 namespace platform {
 
-void PrintVar(framework::Scope* scope, const std::string& var_name,
-              const std::string& print_info, std::stringstream* sstream) {
+void PrintVar(framework::Scope* scope,
+              const std::string& var_name,
+              const std::string& print_info,
+              std::stringstream* sstream) {
   framework::Variable* var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(0) << "Variable Name " << var_name << " does not exist in your scope";

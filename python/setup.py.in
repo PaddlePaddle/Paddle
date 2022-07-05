@@ -281,6 +281,8 @@ packages=['paddle',
           'paddle.incubate.tensor',
           'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
+          'paddle.incubate.sparse',
+          'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
           'paddle.distributed.sharding',
@@ -373,6 +375,10 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
+          'paddle.incubate.sparse',
+          'paddle.incubate.sparse.nn',
+          'paddle.incubate.sparse.nn.layer',
+          'paddle.incubate.sparse.nn.functional',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -393,9 +399,6 @@ packages=['paddle',
           'paddle.device.cuda',
           'paddle.version',
           'paddle.profiler',
-          'paddle.sparse',
-          'paddle.sparse.layer',
-          'paddle.sparse.functional',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -500,6 +503,10 @@ if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
     package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
+    if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
+        command = "patchelf --set-rpath '$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
+        if os.system(command) != 0:
+            raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
@@ -529,15 +536,11 @@ if '${WITH_MKLDNN}' == 'ON':
 
 if '${WITH_ONNXRUNTIME}' == 'ON':
     shutil.copy('${ONNXRUNTIME_SHARED_LIB}', libs_path)
+    shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
     if os.name == 'nt':
-        shutil.copy('${PADDLE2ONNX_SHARED_LIB}', libs_path)
         package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
     else:
-        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
-        if sys.platform == 'darwin':
-            package_data['paddle.libs']+=['libpaddle2onnx.dylib', 'libonnxruntime.1.10.0.dylib']
-        else:
-            package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
+        package_data['paddle.libs']+=['${PADDLE2ONNX_LIB_NAME}', '${ONNXRUNTIME_LIB_NAME}']
 
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,
@@ -575,7 +578,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands = ["patchelf --set-soname '${FLUID_CORE_NAME}.so' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands.append("patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -614,6 +618,8 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
+    # capi headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
     # utila api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)))  # paddle utils headers
 

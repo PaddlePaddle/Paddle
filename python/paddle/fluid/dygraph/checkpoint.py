@@ -119,7 +119,7 @@ def save_dygraph(state_dict, model_path):
         pickle.dump(model_dict, f, protocol=2)
 
 
-# NOTE(chenweihang): load_dygraph will deprecated in future, we don't 
+# NOTE(chenweihang): load_dygraph will deprecated in future, we don't
 # support new loading features for it
 # TODO(qingqing01): remove dygraph_only to support loading static model.
 # maybe need to unify the loading interface after 2.0 API is ready.
@@ -217,11 +217,11 @@ def load_dygraph(model_path, **configs):
         if os.path.exists(model_file_path):
             # Load state dict by `jit.save/io.save_inference_model` save format
             # NOTE(chenweihang): [ Compatibility of save_inference_model save format ]
-            # The model saved by `save_inference_model` does not completely correspond to 
-            # the information required by the `state_dict` under the dygraph. 
-            # `save_inference_model` not save structured name, we need to remind 
+            # The model saved by `save_inference_model` does not completely correspond to
+            # the information required by the `state_dict` under the dygraph.
+            # `save_inference_model` not save structured name, we need to remind
             # the user to configure the `use_structured_name` argument when `set_state_dict`
-            # NOTE(chenweihang): `jit.save` doesn't save optimizer state 
+            # NOTE(chenweihang): `jit.save` doesn't save optimizer state
 
             # 1. load program desc & construct _ProgramHolder
             programs = _construct_program_holders(model_path,
@@ -259,11 +259,11 @@ def load_dygraph(model_path, **configs):
             # load state dict by `io.save_params/persistables` save format
             # TODO(chenweihang): [ Now only supports loading parameters separately ]
             # If users save all parameters as one file, the [ variable.name -> variable ]
-            # mapping info will lost, so users need to give variable list, but users build 
+            # mapping info will lost, so users need to give variable list, but users build
             # variable list in dygraph mode is difficult, we recommend users to use
             # paddle.static.load_program_state in this case
 
-            # Try to load all the files in the directory in VarBase format, 
+            # Try to load all the files in the directory in VarBase format,
             # the file name is used as the name of VarBase
             load_var_list = []
 

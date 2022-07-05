@@ -50,6 +50,7 @@ UNK_IDX = 2
 
 
 def __read_to_dict(tar_file, dict_size):
+
     def __to_dict(fd, size):
         out_dict = dict()
         for line_count, line in enumerate(fd):
@@ -76,6 +77,7 @@ def __read_to_dict(tar_file, dict_size):
 
 
 def reader_creator(tar_file, file_name, dict_size):
+
     def reader():
         src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
         with tarfile.open(tar_file, mode='r') as f:

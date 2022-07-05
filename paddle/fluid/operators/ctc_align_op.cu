@@ -15,17 +15,23 @@ limitations under the License. */
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include <vector>
+
 #include "paddle/fluid/operators/ctc_align_op.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
-                                      const size_t num_seq, size_t* lod0,
-                                      const int blank, const int merge_repeated,
-                                      size_t* out_lod0, T* output) {
+__global__ void MergeAndDelCudaKernel(const int64_t num_token,
+                                      const T* tokens,
+                                      const size_t num_seq,
+                                      size_t* lod0,
+                                      const int blank,
+                                      const int merge_repeated,
+                                      size_t* out_lod0,
+                                      T* output) {
   int output_idx = 0;
   out_lod0[0] = 0;
 
@@ -43,10 +49,15 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
 }
 
 template <typename T>
-__global__ void PaddingMergeAndDelCudaKernel(
-    const int64_t num_token, const T* tokens, const T* tokens_length,
-    const int blank, const int merge_repeated, const int padding_value,
-    const int64_t batch_size, T* output, T* output_length) {
+__global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
+                                             const T* tokens,
+                                             const T* tokens_length,
+                                             const int blank,
+                                             const int merge_repeated,
+                                             const int padding_value,
+                                             const int64_t batch_size,
+                                             T* output,
+                                             T* output_length) {
   int ind = blockIdx.x * blockDim.x + threadIdx.x;
   if (ind >= batch_size) return;
   int output_idx = ind * num_token;
@@ -69,7 +80,8 @@ template <typename T>
 class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::InvalidArgument(
                           "CTCAlign operator CUDA kernel must use CUDAPlace "
                           "rather than CPUPlace."));
@@ -92,10 +104,17 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto* output_length = ctx.Output<LoDTensor>("OutputLength");
       T* output_length_data =
           output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
-      PaddingMergeAndDelCudaKernel<
-          T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
-          input_dims[1], tokens, input_length_data, blank, merge_repeated,
-          padding_value, input_dims[0], output_data, output_length_data);
+      PaddingMergeAndDelCudaKernel<T>
+          <<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
+              input_dims[1],
+              tokens,
+              input_length_data,
+              blank,
+              merge_repeated,
+              padding_value,
+              input_dims[0],
+              output_data,
+              output_length_data);
     } else {
       const size_t level = 0;
       auto input_lod = framework::ToAbsOffset(input->lod());
@@ -111,10 +130,15 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
       paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
-      MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
-          num_tokens, tokens, num_seq,
-          mixv_input_lod.CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
-          dev_out_lod0_ptr, output_data);
+      MergeAndDelCudaKernel<T>
+          <<<1, 1, 0, stream>>>(num_tokens,
+                                tokens,
+                                num_seq,
+                                mixv_input_lod.CUDAMutableData(ctx.GetPlace()),
+                                blank,
+                                merge_repeated,
+                                dev_out_lod0_ptr,
+                                output_data);
       mixv_input_lod.CopyToCPU();
 
       // set output lod
@@ -132,7 +156,8 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
         output->mutable_data<T>(ctx.GetPlace());
         phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
         set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
-                     output, -1);
+                     output,
+                     -1);
       }
     }
   }
@@ -141,5 +166,6 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(ctc_align, paddle::operators::CTCAlignOpCUDAKernel<int>,
+REGISTER_OP_CUDA_KERNEL(ctc_align,
+                        paddle::operators::CTCAlignOpCUDAKernel<int>,
                         paddle::operators::CTCAlignOpCUDAKernel<int64_t>);

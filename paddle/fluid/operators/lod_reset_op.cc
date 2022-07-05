@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lod_reset_op.h"
+
 #include <memory>
 #include <string>
 
@@ -30,7 +31,8 @@ class LoDResetOp : public framework::OperatorWithKernel {
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
       PADDLE_ENFORCE_GT(
-          static_cast<int64_t>(level0.size()), 0,
+          static_cast<int64_t>(level0.size()),
+          0,
           platform::errors::InvalidArgument(
               "If Input(Y) is not provided, the output's LoD should be "
               "specified by attribute 'target_lod'. But the size of "
@@ -68,7 +70,8 @@ class LoDResetOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -184,8 +187,10 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDResetGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
-                   framework::GradVarName("Out"), "LoDResetGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Output",
+                   framework::GradVarName("Out"),
+                   "LoDResetGrad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -229,21 +234,27 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
+REGISTER_OPERATOR(lod_reset,
+                  ops::LoDResetOp,
+                  ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::framework::OpDesc>,
                   ops::LoDResetGradMaker<paddle::imperative::OpBase>,
-                  ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
-REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
+                  ops::LoDResetOpVarTypeInference,
+                  ops::LoDResetInplaceInferer);
+REGISTER_OPERATOR(lod_reset_grad,
+                  ops::LoDResetGradOp,
                   ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
+    lod_reset,
+    ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    lod_reset_grad, ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
+    lod_reset_grad,
+    ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int64_t>);

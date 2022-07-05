@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import sys
+
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
@@ -29,6 +30,7 @@ paddle.enable_static()
 
 
 class TestOneHotOp(XPUOpTest):
+
     def setUp(self):
         self.use_xpu = True
         self.op_type = 'one_hot_v2'
@@ -54,6 +56,7 @@ class TestOneHotOp(XPUOpTest):
 
 
 class TestOneHotOp_attr(XPUOpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -78,6 +81,7 @@ class TestOneHotOp_attr(XPUOpTest):
 
 
 class TestOneHotOp_default_dtype(XPUOpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -102,6 +106,7 @@ class TestOneHotOp_default_dtype(XPUOpTest):
 
 
 class TestOneHotOp_default_dtype_attr(XPUOpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -126,6 +131,7 @@ class TestOneHotOp_default_dtype_attr(XPUOpTest):
 
 
 class TestOneHotOp_out_of_range(XPUOpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -145,6 +151,7 @@ class TestOneHotOp_out_of_range(XPUOpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
+
     def test_api(self):
         depth = 10
         self._run(depth)
@@ -171,21 +178,23 @@ class TestOneHotOpApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'label': label_data, },
+        ret = exe.run(feed={
+            'label': label_data,
+        },
                       fetch_list=[one_hot_label],
                       return_numpy=False)
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                label = fluid.layers.data(
-                    name="label",
-                    shape=[4],
-                    append_batch_size=False,
-                    dtype="float32")
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="float32")
                 one_hot_label = fluid.one_hot(input=label, depth=4)
 
             self.assertRaises(TypeError, test_bad_x)

@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
 
@@ -29,7 +30,8 @@ namespace tensorrt {
 class YoloBoxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid yolo box op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -60,8 +62,16 @@ class YoloBoxOpConverter : public OpConverter {
     auto input_dim = X_tensor->getDimensions();
     auto* yolo_box_plugin = new plugin::YoloBoxPlugin(
         type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        anchors, class_num, conf_thresh, downsample_ratio, clip_bbox, scale_x_y,
-        iou_aware, iou_aware_factor, input_dim.d[1], input_dim.d[2]);
+        anchors,
+        class_num,
+        conf_thresh,
+        downsample_ratio,
+        clip_bbox,
+        scale_x_y,
+        iou_aware,
+        iou_aware_factor,
+        input_dim.d[1],
+        input_dim.d[2]);
 
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;
     yolo_box_inputs.push_back(X_tensor);
@@ -74,8 +84,8 @@ class YoloBoxOpConverter : public OpConverter {
     output_names.push_back(op_desc.Output("Boxes").front());
     output_names.push_back(op_desc.Output("Scores").front());
 
-    RreplenishLayerAndOutput(yolo_box_layer, "yolo_box", output_names,
-                             test_mode);
+    RreplenishLayerAndOutput(
+        yolo_box_layer, "yolo_box", output_names, test_mode);
   }
 };
 

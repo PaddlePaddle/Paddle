@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include <stdio.h>
+
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -34,8 +36,11 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 
 template <typename T>
-__global__ void transpose(T *src, T *dst, const int batch_size,
-                          const int seq_len, const int head_num,
+__global__ void transpose(T *src,
+                          T *dst,
+                          const int batch_size,
+                          const int seq_len,
+                          const int head_num,
                           const int size_per_head) {
   int batch_id = blockIdx.x / (head_num * seq_len);
   int seq_id = blockIdx.x % seq_len;
@@ -68,9 +73,12 @@ __global__ void TransposeQkvKernel(const int H, const T *input, T *output) {
   output[out_offset + i] = input[in_offset + i];
 }
 
-inline void TransposeQKV(const int batch, const int seq_len,
-                         const int head_size, const int head_num,
-                         const float *input, float *output,
+inline void TransposeQKV(const int batch,
+                         const int seq_len,
+                         const int head_size,
+                         const int head_num,
+                         const float *input,
+                         float *output,
                          cudaStream_t stream) {
   int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
@@ -80,10 +88,13 @@ inline void TransposeQKV(const int batch, const int seq_len,
     float4 *output4 = reinterpret_cast<float4 *>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num, 1024,
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024 * 4));
+                          head_num,
+                          head_size,
+                          1024 * 4));
     TransposeQkvKernel<float4><<<grid, block, 0, stream>>>(h, input4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
@@ -91,26 +102,36 @@ inline void TransposeQKV(const int batch, const int seq_len,
     float2 *output2 = reinterpret_cast<float2 *>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num, 1024,
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024 * 2));
+                          head_num,
+                          head_size,
+                          1024 * 2));
     TransposeQkvKernel<float2><<<grid, block, 0, stream>>>(h, input2, output2);
   } else {
     const dim3 block(head_size, head_num, 1);
     // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(head_size * head_num, 1024,
+    PADDLE_ENFORCE_LE(head_size * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024));
-    TransposeQkvKernel<float><<<grid, block, 0, stream>>>(head_size, input,
-                                                          output);
+                          head_num,
+                          head_size,
+                          1024));
+    TransposeQkvKernel<float>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
   }
 }
 
-inline void TransposeQKV(const int batch, const int seq_len,
-                         const int head_size, const int head_num,
-                         const half *input, half *output, cudaStream_t stream) {
+inline void TransposeQKV(const int batch,
+                         const int seq_len,
+                         const int head_size,
+                         const int head_num,
+                         const half *input,
+                         half *output,
+                         cudaStream_t stream) {
   int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   if (head_size % 8 == 0 && scratch_size % 8 == 0) {
@@ -119,10 +140,13 @@ inline void TransposeQKV(const int batch, const int seq_len,
     int4 *output4 = reinterpret_cast<int4 *>(output);
     dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num, 1024,
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024 * 8));
+                          head_num,
+                          head_size,
+                          1024 * 8));
     TransposeQkvKernel<int4><<<grid, block, 0, stream>>>(h, input4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
@@ -130,39 +154,49 @@ inline void TransposeQKV(const int batch, const int seq_len,
     half2 *output2 = reinterpret_cast<half2 *>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(h * head_num, 1024,
+    PADDLE_ENFORCE_LE(h * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024 * 2));
+                          head_num,
+                          head_size,
+                          1024 * 2));
     TransposeQkvKernel<half2><<<grid, block, 0, stream>>>(h, input2, output2);
   } else {
     const dim3 block(head_size, head_num, 1);
     // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE(head_size * head_num, 1024,
+    PADDLE_ENFORCE_LE(head_size * head_num,
+                      1024,
                       platform::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
-                          head_num, head_size, 1024));
-    TransposeQkvKernel<half><<<grid, block, 0, stream>>>(head_size, input,
-                                                         output);
+                          head_num,
+                          head_size,
+                          1024));
+    TransposeQkvKernel<half>
+        <<<grid, block, 0, stream>>>(head_size, input, output);
   }
 }
 
 int QkvToContextPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
   // input[0], (B, S, 3 * N * H, 1, 1)
   // input[1], (B, head_num, seq_len, seq_len)
   // output, (B, seq_len, hidden)
-  PADDLE_ENFORCE_EQ(output_index, 0,
+  PADDLE_ENFORCE_EQ(output_index,
+                    0,
                     platform::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
                         "so the index should be zero,"
                         "but it's (%d)",
                         output_index));
   PADDLE_ENFORCE_EQ(
-      nb_inputs, 2,
+      nb_inputs,
+      2,
       platform::errors::InvalidArgument(
           "The Input of the EmbEltwiseLayernorm should be 3, but we found "
           "it has (%d) inputs",
@@ -176,17 +210,22 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
 }
 
 bool QkvToContextPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
@@ -215,13 +254,16 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types,
+    int index,
+    const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      index, 0, platform::errors::InvalidArgument(
-                    "The EmbEltwiseLayernorm Plugin only has one input, so the "
-                    "index value should be 0, but get %d.",
-                    index));
+      index,
+      0,
+      platform::errors::InvalidArgument(
+          "The EmbEltwiseLayernorm Plugin only has one input, so the "
+          "index value should be 0, but get %d.",
+          index));
   return input_types[0];
 }
 
@@ -237,14 +279,17 @@ __global__ void apply_scale(T *data, T scale, int n) {
 
 inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
-      multiple, 0,
+      multiple,
+      0,
       platform::errors::InvalidArgument(
           "multiple should be a positive number，but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
 template <typename T>
-__global__ void broadcast(const T *src, T *dst, const int seq_len,
+__global__ void broadcast(const T *src,
+                          T *dst,
+                          const int seq_len,
                           const int head_num) {
   int batch_id = blockIdx.x / (head_num * seq_len);
   int dst_offset = blockIdx.x * seq_len;
@@ -255,8 +300,11 @@ __global__ void broadcast(const T *src, T *dst, const int seq_len,
 
 int QkvToContextPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
-    const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int input_num = ProductDim(input_dims);
   // input[0], (B, S, 3 * N * H, 1, 1)
@@ -288,14 +336,16 @@ int QkvToContextPluginDynamic::enqueue(
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
-          static_cast<const float *>(inputs[1]), temp_qk_bias, seq_len,
+          static_cast<const float *>(inputs[1]),
+          temp_qk_bias,
+          seq_len,
           head_number_);
       qk_bias = temp_qk_bias;
     }
     const float *input1_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
-                 stream);
+    TransposeQKV(
+        batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
     auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -303,15 +353,22 @@ int QkvToContextPluginDynamic::enqueue(
 
     const platform::CUDADeviceContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<float> multihead_compute_func;
-    multihead_compute_func(dev_ctx, batch, seq_len, head_number_, head_size_,
-                           qkptr, input1_data, tptr, scale_,
+    multihead_compute_func(dev_ctx,
+                           batch,
+                           seq_len,
+                           head_number_,
+                           head_size_,
+                           qkptr,
+                           input1_data,
+                           tptr,
+                           scale_,
                            static_cast<float>(0.0));
 
     int grid = batch * head_number_ * seq_len;
     int block = head_size_;
     float *output = static_cast<float *>(outputs[0]);
-    transpose<float><<<grid, block, 0, stream>>>(tptr, output, batch, seq_len,
-                                                 head_number_, head_size_);
+    transpose<float><<<grid, block, 0, stream>>>(
+        tptr, output, batch, seq_len, head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -335,14 +392,16 @@ int QkvToContextPluginDynamic::enqueue(
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
-          static_cast<const half *>(inputs[1]), temp_qk_bias, seq_len,
+          static_cast<const half *>(inputs[1]),
+          temp_qk_bias,
+          seq_len,
           head_number_);
       qk_bias = temp_qk_bias;
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    TransposeQKV(batch, seq_len, head_size_, head_number_, input0_data, tptr,
-                 stream);
+    TransposeQKV(
+        batch, seq_len, head_size_, head_number_, input0_data, tptr, stream);
 
     auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(
@@ -352,19 +411,27 @@ int QkvToContextPluginDynamic::enqueue(
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
 
-    apply_scale<<<blocks, threads, 0, stream>>>(tptr, static_cast<half>(scale_),
-                                                n_q);
+    apply_scale<<<blocks, threads, 0, stream>>>(
+        tptr, static_cast<half>(scale_), n_q);
 
     const platform::CUDADeviceContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
-    multihead_compute_func(dev_ctx, batch, seq_len, head_number_, head_size_,
-                           qkptr, input1_data, tptr, half(1.), half(0.0));
+    multihead_compute_func(dev_ctx,
+                           batch,
+                           seq_len,
+                           head_number_,
+                           head_size_,
+                           qkptr,
+                           input1_data,
+                           tptr,
+                           half(1.),
+                           half(0.0));
 
     int grid = batch * head_number_ * seq_len;
     int block = head_size_;
     half *output = static_cast<half *>(outputs[0]);
-    transpose<half><<<grid, block, 0, stream>>>(tptr, output, batch, seq_len,
-                                                head_number_, head_size_);
+    transpose<half><<<grid, block, 0, stream>>>(
+        tptr, output, batch, seq_len, head_number_, head_size_);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "

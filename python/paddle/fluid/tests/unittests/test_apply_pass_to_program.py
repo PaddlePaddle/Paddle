@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,8 +26,9 @@ def get_resnet50_model():
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        image = paddle.static.data(
-            name="image", shape=[None, 3, 224, 224], dtype="float32")
+        image = paddle.static.data(name="image",
+                                   shape=[None, 3, 224, 224],
+                                   dtype="float32")
         label = paddle.static.data(name="label", shape=[None, 1], dtype="int64")
         model = resnet50()
         loss_fn = CrossEntropyLoss()
@@ -47,6 +48,7 @@ def global_block_contains_op(program, op_type):
 
 
 class TestApplyPassToProgram(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
 
@@ -72,6 +74,7 @@ class TestApplyPassToProgram(unittest.TestCase):
 
 
 class TestIRPassBase(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -183,12 +186,13 @@ class TestIRPassBase(unittest.TestCase):
 
         for idx in range(batch_num):
             feed = {
-                image.name: np.random.rand(*image_shape).astype('float32'),
-                label.name: np.random.randint(
-                    low=0,
-                    high=self.num_classes,
-                    size=label_shape,
-                    dtype='int64'),
+                image.name:
+                np.random.rand(*image_shape).astype('float32'),
+                label.name:
+                np.random.randint(low=0,
+                                  high=self.num_classes,
+                                  size=label_shape,
+                                  dtype='int64'),
             }
             with paddle.static.scope_guard(scope1):
                 loss_value1 = self.executor.run(main1,

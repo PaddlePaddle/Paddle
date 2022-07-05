@@ -29,6 +29,7 @@ paddle.enable_static()
 
 
 class TestVariable(unittest.TestCase):
+
     def test_np_dtype_convert(self):
         DT = core.VarDesc.VarType
         convert = convert_np_dtype_to_dtype_
@@ -44,8 +45,10 @@ class TestVariable(unittest.TestCase):
 
     def test_var(self):
         b = default_main_program().current_block()
-        w = b.create_var(
-            dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
+        w = b.create_var(dtype="float64",
+                         shape=[784, 100],
+                         lod_level=0,
+                         name="fc.w")
         self.assertNotEqual(str(w), "")
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
@@ -63,10 +66,9 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: b.create_var(name="fc.w", shape=(24, 100)))
 
-        w = b.create_var(
-            dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
-            shape=[1],
-            name="str_var")
+        w = b.create_var(dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
+                         shape=[1],
+                         name="str_var")
         self.assertEqual(None, w.lod_level)
 
     def test_element_size(self):
@@ -101,8 +103,8 @@ class TestVariable(unittest.TestCase):
     def test_step_scopes(self):
         prog = Program()
         b = prog.current_block()
-        var = b.create_var(
-            name='step_scopes', type=core.VarDesc.VarType.STEP_SCOPES)
+        var = b.create_var(name='step_scopes',
+                           type=core.VarDesc.VarType.STEP_SCOPES)
         self.assertEqual(core.VarDesc.VarType.STEP_SCOPES, var.type)
 
     def _test_slice(self, place):
@@ -135,10 +137,10 @@ class TestVariable(unittest.TestCase):
         main = fluid.Program()
         with fluid.program_guard(main):
             exe = fluid.Executor(place)
-            tensor_array = np.array(
-                [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                 [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                 [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype('float32')
+            tensor_array = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                     [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                                     [[19, 20, 21], [22, 23, 24],
+                                      [25, 26, 27]]]).astype('float32')
             var = fluid.layers.assign(tensor_array)
             var1 = var[0, 1, 1]
             var2 = var[1:]
@@ -276,7 +278,8 @@ class TestVariable(unittest.TestCase):
 
         expected = [
             data[0:, ..., 1:], data[0:, ...], data[..., 1:], data[...],
-            data[[1, 0], [0, 0]], data[([1, 0], [0, 0])], np.array([1])
+            data[[1, 0], [0, 0]], data[([1, 0], [0, 0])],
+            np.array([1])
         ]
 
         self.assertTrue((result[0] == expected[0]).all())
@@ -413,12 +416,11 @@ class TestVariable(unittest.TestCase):
     def test_create_selected_rows(self):
         b = default_main_program().current_block()
 
-        var = b.create_var(
-            name="var",
-            shape=[1, 1],
-            dtype="float32",
-            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
-            persistable=True)
+        var = b.create_var(name="var",
+                           shape=[1, 1],
+                           dtype="float32",
+                           type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+                           persistable=True)
 
         def _test():
             var.lod_level()
@@ -453,8 +455,9 @@ class TestVariable(unittest.TestCase):
         scope = fluid.core.Scope()
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main, startup):
-                x = paddle.static.data(
-                    name='x', shape=[3, 2, 1], dtype='float32')
+                x = paddle.static.data(name='x',
+                                       shape=[3, 2, 1],
+                                       dtype='float32')
                 x.persistable = True
                 feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
                 detach_x = x.detach()
@@ -472,8 +475,9 @@ class TestVariable(unittest.TestCase):
                 self.assertTrue((result[1] == modified_value).all())
                 self.assertTrue((result[0] == result[1]).all())
 
-                modified_value = np.random.uniform(
-                    -1, 1, size=[3, 2, 1]).astype('float32')
+                modified_value = np.random.uniform(-1, 1,
+                                                   size=[3, 2,
+                                                         1]).astype('float32')
                 x.set_value(modified_value, scope)
                 result = exe.run(main, fetch_list=[x, detach_x])
                 self.assertTrue((result[1] == modified_value).all())
@@ -481,6 +485,7 @@ class TestVariable(unittest.TestCase):
 
 
 class TestVariableSlice(unittest.TestCase):
+
     def _test_item_none(self, place):
         data = np.random.rand(2, 3, 4).astype("float32")
         prog = paddle.static.Program()
@@ -539,6 +544,7 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
+
     def numel(self, shape):
         return reduce(lambda x, y: x * y, shape)
 
@@ -546,8 +552,8 @@ class TestListIndex(unittest.TestCase):
         paddle.enable_static()
 
         inps_shape = [3, 4, 5, 2]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [3, 3, 2, 1]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
@@ -558,8 +564,9 @@ class TestListIndex(unittest.TestCase):
             index_mod = (index % (array.shape[0])).tolist()
 
             with paddle.static.program_guard(program):
-                x = paddle.static.data(
-                    name='x', shape=array.shape, dtype='float32')
+                x = paddle.static.data(name='x',
+                                       shape=array.shape,
+                                       dtype='float32')
 
                 y = x[index_mod]
 
@@ -612,16 +619,16 @@ class TestListIndex(unittest.TestCase):
     def test_static_graph_list_index_muti_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [2, 2]
         index1 = np.arange(self.numel(index_shape)).reshape(index_shape)
         index2 = np.arange(self.numel(index_shape)).reshape(index_shape) + 2
 
         value_shape = [3, 2, 2, 3]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
 
         index_mod1 = (index1 % (min(array.shape))).tolist()
         index_mod2 = (index2 % (min(array.shape))).tolist()
@@ -631,12 +638,15 @@ class TestListIndex(unittest.TestCase):
 
             x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
-            value = paddle.static.data(
-                name='value', shape=value_np.shape, dtype='float32')
-            index1 = paddle.static.data(
-                name='index1', shape=index1.shape, dtype='int32')
-            index2 = paddle.static.data(
-                name='index2', shape=index2.shape, dtype='int32')
+            value = paddle.static.data(name='value',
+                                       shape=value_np.shape,
+                                       dtype='float32')
+            index1 = paddle.static.data(name='index1',
+                                        shape=index1.shape,
+                                        dtype='int32')
+            index2 = paddle.static.data(name='index2',
+                                        shape=index2.shape,
+                                        dtype='int32')
 
             y = x[index1, index2]
 
@@ -661,23 +671,23 @@ class TestListIndex(unittest.TestCase):
                                  },
                                  fetch_list=fetch_list)
 
-            self.assertTrue(
-                np.array_equal(y2, getitem_pp[0]),
-                msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]))
+            self.assertTrue(np.array_equal(y2, getitem_pp[0]),
+                            msg='\n numpy:{},\n paddle:{}'.format(
+                                y2, getitem_pp[0]))
 
     def test_dygraph_list_index_muti_dim(self):
         paddle.disable_static()
         inps_shape = [3, 4, 5]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [2, 2]
         index1 = np.arange(self.numel(index_shape)).reshape(index_shape)
         index2 = np.arange(self.numel(index_shape)).reshape(index_shape) + 2
 
         value_shape = [3, 2, 2, 3]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
 
         index_mod1 = (index1 % (min(array.shape))).tolist()
         index_mod2 = (index2 % (min(array.shape))).tolist()
@@ -714,9 +724,9 @@ class TestListIndex(unittest.TestCase):
         getitem_pp = exe.run(prog, feed={x.name: array}, fetch_list=fetch_list)
 
         print(getitem_pp)
-        self.assertTrue(
-            np.array_equal(value_np, getitem_pp[0]),
-            msg='\n numpy:{},\n paddle:{}'.format(value_np, getitem_pp[0]))
+        self.assertTrue(np.array_equal(value_np, getitem_pp[0]),
+                        msg='\n numpy:{},\n paddle:{}'.format(
+                            value_np, getitem_pp[0]))
 
     def test_static_graph_getitem_bool_index(self):
         paddle.enable_static()
@@ -748,8 +758,9 @@ class TestListIndex(unittest.TestCase):
     def run_setitem_list_index(self, array, index, value_np):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
-        value = paddle.static.data(
-            name='value', shape=value_np.shape, dtype='float32')
+        value = paddle.static.data(name='value',
+                                   shape=value_np.shape,
+                                   dtype='float32')
 
         x[index] = value
         y = x
@@ -766,34 +777,37 @@ class TestListIndex(unittest.TestCase):
             array2[index] = value_np
         except:
             with self.assertRaises(ValueError):
-                setitem_pp = exe.run(
-                    prog,
-                    feed={x.name: array,
-                          value.name: value_np},
-                    fetch_list=fetch_list)
+                setitem_pp = exe.run(prog,
+                                     feed={
+                                         x.name: array,
+                                         value.name: value_np
+                                     },
+                                     fetch_list=fetch_list)
             return
         setitem_pp = exe.run(prog,
-                             feed={x.name: array,
-                                   value.name: value_np},
+                             feed={
+                                 x.name: array,
+                                 value.name: value_np
+                             },
                              fetch_list=fetch_list)
 
-        self.assertTrue(
-            np.allclose(array2, setitem_pp[0]),
-            msg='\n numpy:{},\n paddle:{}'.format(array2, setitem_pp[0]))
+        self.assertTrue(np.allclose(array2, setitem_pp[0]),
+                        msg='\n numpy:{},\n paddle:{}'.format(
+                            array2, setitem_pp[0]))
 
     def test_static_graph_setitem_list_index(self):
         paddle.enable_static()
         # case 1:
         inps_shape = [3, 4, 5, 2, 3]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [3, 3, 1, 2]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = inps_shape[3:]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
 
         for _ in range(3):
             program = paddle.static.Program()
@@ -808,15 +822,15 @@ class TestListIndex(unittest.TestCase):
 
         # case 2:
         inps_shape = [3, 4, 5, 4, 3]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [4, 3, 2, 2]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = [3]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
 
         for _ in range(4):
             program = paddle.static.Program()
@@ -830,15 +844,15 @@ class TestListIndex(unittest.TestCase):
 
         # case 3:
         inps_shape = [3, 4, 5, 3, 3]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [4, 3, 2, 2]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = [3, 2, 2, 3]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
         index_mod = (index % (min(array.shape))).tolist()
         self.run_setitem_list_index(array, index_mod, value_np)
 
@@ -881,18 +895,18 @@ class TestListIndex(unittest.TestCase):
     def test_static_graph_tensor_index_setitem_muti_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5, 4]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [2, 3, 4]
-        index1 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape)
-        index2 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+        index1 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape)
+        index2 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape) + 2
 
         value_shape = [4]
-        value_np = np.arange(
-            self.numel(value_shape), dtype='float32').reshape(value_shape) + 100
+        value_np = np.arange(self.numel(value_shape),
+                             dtype='float32').reshape(value_shape) + 100
         for _ in range(3):
 
             index_mod1 = index1 % (min(array.shape))
@@ -906,17 +920,22 @@ class TestListIndex(unittest.TestCase):
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
 
-                x1 = paddle.static.data(
-                    name='x1', shape=array.shape, dtype='float32')
-                x2 = paddle.static.data(
-                    name='x2', shape=array.shape, dtype='float32')
+                x1 = paddle.static.data(name='x1',
+                                        shape=array.shape,
+                                        dtype='float32')
+                x2 = paddle.static.data(name='x2',
+                                        shape=array.shape,
+                                        dtype='float32')
 
-                value = paddle.static.data(
-                    name='value', shape=value_np.shape, dtype='float32')
-                index_1 = paddle.static.data(
-                    name='index_1', shape=index1.shape, dtype='int32')
-                index_2 = paddle.static.data(
-                    name='index_2', shape=index2.shape, dtype='int32')
+                value = paddle.static.data(name='value',
+                                           shape=value_np.shape,
+                                           dtype='float32')
+                index_1 = paddle.static.data(name='index_1',
+                                             shape=index1.shape,
+                                             dtype='int32')
+                index_2 = paddle.static.data(name='index_2',
+                                             shape=index2.shape,
+                                             dtype='int32')
 
                 x1[index_1, index_2] = value
                 x2[index_1] = value
@@ -940,14 +959,12 @@ class TestListIndex(unittest.TestCase):
                                          index_2.name: index_mod2
                                      },
                                      fetch_list=fetch_list)
-                self.assertTrue(
-                    np.array_equal(array2, setitem_pp[0]),
-                    msg='\n numpy:{},\n paddle:{}'.format(array2,
-                                                          setitem_pp[0]))
-                self.assertTrue(
-                    np.array_equal(array3, setitem_pp[1]),
-                    msg='\n numpy:{},\n paddle:{}'.format(array3,
-                                                          setitem_pp[1]))
+                self.assertTrue(np.array_equal(array2, setitem_pp[0]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    array2, setitem_pp[0]))
+                self.assertTrue(np.array_equal(array3, setitem_pp[1]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    array3, setitem_pp[1]))
             array = array[0]
             index1 = index1[0]
             index2 = index2[0]
@@ -955,14 +972,14 @@ class TestListIndex(unittest.TestCase):
     def test_static_graph_array_index_muti_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5, 4]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
 
         index_shape = [2, 3, 4]
-        index1 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape)
-        index2 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+        index1 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape)
+        index2 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape) + 2
 
         for _ in range(3):
             index_mod1 = index1 % (min(array.shape))
@@ -978,10 +995,12 @@ class TestListIndex(unittest.TestCase):
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
 
-                x1 = paddle.static.data(
-                    name='x1', shape=array.shape, dtype='float32')
-                x2 = paddle.static.data(
-                    name='x2', shape=array.shape, dtype='float32')
+                x1 = paddle.static.data(name='x1',
+                                        shape=array.shape,
+                                        dtype='float32')
+                x2 = paddle.static.data(name='x2',
+                                        shape=array.shape,
+                                        dtype='float32')
 
                 x1[index_mod1, index_mod2] = 1
                 x2[index_mod1] = 2.5
@@ -997,24 +1016,24 @@ class TestListIndex(unittest.TestCase):
                 fetch_list = [x1.name, x2.name, y1.name, y2.name]
 
                 setitem_pp = exe.run(prog,
-                                     feed={x1.name: array,
-                                           x2.name: array},
+                                     feed={
+                                         x1.name: array,
+                                         x2.name: array
+                                     },
                                      fetch_list=fetch_list)
-                self.assertTrue(
-                    np.array_equal(array2, setitem_pp[0]),
-                    msg='\n numpy:{},\n paddle:{}'.format(array2,
-                                                          setitem_pp[0]))
-                self.assertTrue(
-                    np.array_equal(array3, setitem_pp[1]),
-                    msg='\n numpy:{},\n paddle:{}'.format(array3,
-                                                          setitem_pp[1]))
+                self.assertTrue(np.array_equal(array2, setitem_pp[0]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    array2, setitem_pp[0]))
+                self.assertTrue(np.array_equal(array3, setitem_pp[1]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    array3, setitem_pp[1]))
 
-                self.assertTrue(
-                    np.array_equal(y_np1, setitem_pp[2]),
-                    msg='\n numpy:{},\n paddle:{}'.format(y_np1, setitem_pp[2]))
-                self.assertTrue(
-                    np.array_equal(y_np2, setitem_pp[3]),
-                    msg='\n numpy:{},\n paddle:{}'.format(y_np2, setitem_pp[3]))
+                self.assertTrue(np.array_equal(y_np1, setitem_pp[2]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    y_np1, setitem_pp[2]))
+                self.assertTrue(np.array_equal(y_np2, setitem_pp[3]),
+                                msg='\n numpy:{},\n paddle:{}'.format(
+                                    y_np2, setitem_pp[3]))
             array = array[0]
             index1 = index1[0]
             index2 = index2[0]
@@ -1022,13 +1041,13 @@ class TestListIndex(unittest.TestCase):
     def test_dygraph_array_index_muti_dim(self):
         paddle.disable_static()
         inps_shape = [3, 4, 5, 4]
-        array = np.arange(
-            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+        array = np.arange(self.numel(inps_shape),
+                          dtype='float32').reshape(inps_shape)
         index_shape = [2, 3, 4]
-        index1 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape)
-        index2 = np.arange(
-            self.numel(index_shape), dtype='int32').reshape(index_shape) + 2
+        index1 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape)
+        index2 = np.arange(self.numel(index_shape),
+                           dtype='int32').reshape(index_shape) + 2
 
         for _ in range(3):
 
@@ -1043,26 +1062,26 @@ class TestListIndex(unittest.TestCase):
 
             y_t1 = tensor1[index_mod_t2, index_mod_t1]
 
-            self.assertTrue(
-                np.array_equal(y_t1.numpy(), y_np1),
-                msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()))
+            self.assertTrue(np.array_equal(y_t1.numpy(), y_np1),
+                            msg='\n numpy:{},\n paddle:{}'.format(
+                                y_np1, y_t1.numpy()))
             # 1 dim getitem
             array2 = array.copy()
             y_np2 = array2[index_mod2]
             tensor2 = paddle.to_tensor(array)
 
             y_t2 = tensor2[index_mod_t2]
-            self.assertTrue(
-                np.array_equal(y_t2.numpy(), y_np2),
-                msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()))
+            self.assertTrue(np.array_equal(y_t2.numpy(), y_np2),
+                            msg='\n numpy:{},\n paddle:{}'.format(
+                                y_np2, y_t2.numpy()))
 
             # 2 dim setitem
             array1 = array.copy()
             array1[index_mod1, index_mod2] = 1
             tensor1[index_mod_t1, index_mod_t2] = 1
-            self.assertTrue(
-                np.array_equal(tensor1.numpy(), array1),
-                msg='\n numpy:{},\n paddle:{}'.format(array1, tensor1.numpy()))
+            self.assertTrue(np.array_equal(tensor1.numpy(), array1),
+                            msg='\n numpy:{},\n paddle:{}'.format(
+                                array1, tensor1.numpy()))
             # 1 dim setitem
             array2 = array.copy()
 
@@ -1070,9 +1089,9 @@ class TestListIndex(unittest.TestCase):
 
             tensor2[index_mod_t1] = 2.5
 
-            self.assertTrue(
-                np.array_equal(tensor2.numpy(), array2),
-                msg='\n numpy:{},\n paddle:{}'.format(array2, tensor2.numpy()))
+            self.assertTrue(np.array_equal(tensor2.numpy(), array2),
+                            msg='\n numpy:{},\n paddle:{}'.format(
+                                array2, tensor2.numpy()))
 
             array = array[0]
             index1 = index1[0]

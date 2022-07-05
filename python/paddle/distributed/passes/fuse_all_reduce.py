@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,12 +44,12 @@ def find_adjacent_match_sequences(iterable,
 
 def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
                                output_var_names, dtype, attrs):
-    fused_var = block.create_var(
-        name=unique_name.generate("FusedOutput_{}".format(input_var_names[0])),
-        dtype=dtype)
+    fused_var = block.create_var(name=unique_name.generate(
+        "FusedOutput_{}".format(input_var_names[0])),
+                                 dtype=dtype)
 
-    # FIXME(zengjinle): here we assume that we use 
-    # c_sync_calc_stream/c_sync_comm_stream to do sync. 
+    # FIXME(zengjinle): here we assume that we use
+    # c_sync_calc_stream/c_sync_comm_stream to do sync.
     # But someone may use c_wait_compute/c_wait_comm instead.
     if not attrs["use_calc_stream"]:
         ring_id = attrs["ring_id"]
@@ -103,21 +103,21 @@ def insert_fuse_all_reduce_ops(block, reversed_op_indices, input_var_names,
     }
 
     if not attrs["use_calc_stream"]:
-        block._insert_op_without_sync(
-            insert_idx,
-            type="c_sync_calc_stream",
-            inputs={"X": fused_var},
-            outputs={"Out": fused_var,
-                     op_role_key: attrs[op_role_key]})
+        block._insert_op_without_sync(insert_idx,
+                                      type="c_sync_calc_stream",
+                                      inputs={"X": fused_var},
+                                      outputs={
+                                          "Out": fused_var,
+                                          op_role_key: attrs[op_role_key]
+                                      })
         insert_idx += 1
 
-    # c_allreduce_sum should insert  
-    block._insert_op_without_sync(
-        insert_idx,
-        type="c_allreduce_sum",
-        inputs={"X": fused_var},
-        outputs={"Out": fused_var},
-        attrs=attrs)
+    # c_allreduce_sum should insert
+    block._insert_op_without_sync(insert_idx,
+                                  type="c_allreduce_sum",
+                                  inputs={"X": fused_var},
+                                  outputs={"Out": fused_var},
+                                  attrs=attrs)
 
     for op_idx in reversed_op_indices:
         block._remove_op(op_idx)
@@ -186,8 +186,9 @@ def find_all_fuse_all_reduce_groups(block):
             return False
         return True
 
-    match_seqs = find_adjacent_match_sequences(
-        collective_ops, is_valid_allreduce_op, is_same_adjacent_op)
+    match_seqs = find_adjacent_match_sequences(collective_ops,
+                                               is_valid_allreduce_op,
+                                               is_same_adjacent_op)
     new_match_seqs = []
     for i, j in match_seqs:
         new_match_seqs.append([collective_op_indices[k] for k in range(i, j)])
@@ -330,6 +331,7 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
 
 @register_pass("fuse_all_reduce")
 class FuseAllReducePass(PassBase):
+
     def __init__(self):
         super(FuseAllReducePass, self).__init__()
         self.set_attr("max_memory_size", -1)
@@ -344,11 +346,11 @@ class FuseAllReducePass(PassBase):
     def _type(self):
         return PassType.COMM_OPT
 
-    # NOTE: why FuseAllReducePass can override apply_single_impl instead of 
-    # apply_impl? AllReduce is a collective operation, so the program of each 
-    # rank inside the same communication group should have the same 
-    # c_allreduce_sum operations. Therefore, FuseAllReducePass can override 
-    # apply_single_impl directly.  
+    # NOTE: why FuseAllReducePass can override apply_single_impl instead of
+    # apply_impl? AllReduce is a collective operation, so the program of each
+    # rank inside the same communication group should have the same
+    # c_allreduce_sum operations. Therefore, FuseAllReducePass can override
+    # apply_single_impl directly.
     def _apply_single_impl(self, main_program, startup_program, context):
         max_memory_size = self.get_attr("max_memory_size")
         op_deps = main_program.desc.get_op_deps()
@@ -356,8 +358,8 @@ class FuseAllReducePass(PassBase):
         for i in range(num_blocks):
             block = main_program.block(i)
             groups = find_all_fuse_all_reduce_groups(block)
-            groups = split_fuse_all_reduce_groups_by_deps(block, groups,
-                                                          op_deps[i])
+            groups = split_fuse_all_reduce_groups_by_deps(
+                block, groups, op_deps[i])
             insert_fuse_all_reduce_by_memory_size(block, groups,
                                                   max_memory_size)
         main_program._sync_with_cpp()

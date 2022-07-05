@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/data_type.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -28,6 +29,7 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/string/printf.h"
@@ -41,7 +43,7 @@ using float16 = paddle::platform::float16;
 namespace experimental {
 class InternalUtils;
 };
-}
+}  // namespace paddle_infer
 ///
 /// \file analysis_predictor.h
 ///
@@ -55,10 +57,10 @@ class InternalUtils;
 
 namespace paddle {
 
-using inference::analysis::Argument;
-using inference::analysis::Analyzer;
-using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
+using framework::proto::ProgramDesc;
+using inference::analysis::Analyzer;
+using inference::analysis::Argument;
 
 ///
 /// \class AnalysisPredictor
@@ -185,6 +187,14 @@ class AnalysisPredictor : public PaddlePredictor {
 #endif
 
   ///
+  /// \brief Get the execution stream on devices with a concept of stream,
+  /// otherwise returns nullptr.
+  ///
+  /// \return The execution stream or nullptr (CPU).
+  ///
+  void *GetExecStream() const override;
+
+  ///
   /// \brief Create feed fetch variables
   ///
   /// \param[in] scope Scope needed to create variables
@@ -235,7 +245,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
   ///
   /// \brief Get the scope used by predictor
   ///
@@ -393,9 +403,16 @@ class AnalysisPredictor : public PaddlePredictor {
   FRIEND_TEST(AnalysisPredictor, with_gpu);
 #endif
 
+ protected:
+  const void *GetDeviceContexts() const override;
+
  private:
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
+
+  void InitPlace();
+  void InitDeviceContexts();
+  void InitResourceManager(void *stream);
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
@@ -438,9 +455,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] block: the block to insert comm ops
   /// \param[in] ring_id: the ring id to be used to init NCCL env
   ///
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string> &peer_endpoints,
-                    framework::BlockDesc *block, int ring_id);
+                    framework::BlockDesc *block,
+                    int ring_id);
 #endif
 
  private:
@@ -458,6 +478,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization
@@ -488,6 +510,11 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   static int clone_num_;
+
+  bool private_context_{false};
+  void *predictor_stream_{nullptr};
+  std::map<phi::Place, std::shared_future<std::unique_ptr<phi::DeviceContext>>>
+      device_contexts_;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet executor related

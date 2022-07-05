@@ -18,6 +18,7 @@ __all__ = []
 
 
 class WeightDecayHelper(object):
+
     def __init__(self):
         pass
 

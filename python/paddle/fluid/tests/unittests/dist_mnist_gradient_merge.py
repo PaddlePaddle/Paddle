@@ -28,6 +28,7 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -40,20 +41,21 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        batch_acc = fluid.layers.accuracy(input=predict,
+                                          label=label,
+                                          total=batch_size_tensor)
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
         opt = fluid.optimizer.GradientMergeOptimizer(opt, 2)
 
         # Reader
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+        train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                    batch_size=batch_size)
+        test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                   batch_size=batch_size)
         opt.minimize(avg_cost)
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 

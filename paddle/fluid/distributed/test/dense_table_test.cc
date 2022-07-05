@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ThreadPool.h>
+
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/memory_dense_table.h"

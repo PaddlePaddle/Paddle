@@ -14,9 +14,11 @@
 #pragma once
 
 #include <iostream>
+
 #include "paddle/phi/core/enforce.h"
 
-static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
+static PyObject *eager_api_run_program(PyObject *self,
+                                       PyObject *args,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
@@ -27,8 +29,9 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
     framework::AttributeMap attrs;
-    ConstructAttrMapFromPyArgs("run_program", args, 5, PyTuple_GET_SIZE(args),
-                               attrs);
+    // TODO(zengjinle): support CUDA Graph on eager mode
+    ConstructAttrMapFromPyArgs(
+        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
     run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
@@ -54,7 +57,8 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
   }
 }
 
-static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
+static PyObject *eager_api_final_state_linear(PyObject *self,
+                                              PyObject *args,
                                               PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
@@ -65,7 +69,7 @@ static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
     if (bias.initialized()) {
       auto mm_out =
           matmul_final_state_dygraph_function(x, weight, false, false);
-      auto out = add_final_state_dygraph_function(bias, mm_out);
+      auto out = add_final_state_dygraph_function(mm_out, bias);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
@@ -96,7 +100,8 @@ static PyObject *eager_api_final_state_linear(PyObject *self, PyObject *args,
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {
-    {"run_program", (PyCFunction)(void (*)(void))eager_api_run_program,
+    {"run_program",
+     (PyCFunction)(void (*)(void))eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {"final_state_linear",

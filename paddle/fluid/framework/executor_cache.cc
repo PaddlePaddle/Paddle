@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor_cache.h"
+
 #include "paddle/fluid/framework/op_info.h"
 
 namespace paddle {
@@ -74,7 +75,8 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
  *   2. it is an input var used in backward_op
  */
 void ParseSafeEagerDeletionSkipVars(
-    const ProgramDesc &program, int64_t forward_op_nums,
+    const ProgramDesc &program,
+    int64_t forward_op_nums,
     const std::vector<std::string> &output_var_names,
     std::vector<std::string> *skip_eager_delete_vars) {
   auto all_ops = program.Block(0).AllOps();
@@ -137,10 +139,40 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
   return g_exe_cache_info_map;
 }
 
+static PEAndGraphPair CreateExecutorInfo(
+    const ProgramDesc &program_desc,
+    const platform::Place &place,
+    int64_t start_op_index,
+    int64_t end_op_index,
+    framework::Scope *scope,
+    const details::BuildStrategy &build_strategy) {
+  auto execution_strategy = details::GetExecutionStrategy(place);
+  auto graph = std::make_shared<framework::ir::Graph>(
+      program_desc, start_op_index, end_op_index);
+  auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
+      place, scope, execution_strategy, build_strategy, graph.get());
+  parallel_executor->PrepareVariables(scope);
+  return std::make_pair(parallel_executor, graph);
+}
+
+PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc &program_desc,
+                                          const platform::Place &place,
+                                          int64_t start_op_index,
+                                          int64_t end_op_index,
+                                          framework::Scope *scope) {
+  details::BuildStrategy build_strategy;
+  build_strategy.fix_op_run_order_ = true;
+  auto pe_and_graph = CreateExecutorInfo(
+      program_desc, place, start_op_index, end_op_index, scope, build_strategy);
+  return pe_and_graph;
+}
+
 CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
                                    const platform::Place &place,
-                                   int64_t start_op_index, int64_t end_op_index,
-                                   bool is_grad, int64_t program_id,
+                                   int64_t start_op_index,
+                                   int64_t end_op_index,
+                                   bool is_grad,
+                                   int64_t program_id,
                                    framework::Scope *scope) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
@@ -153,21 +185,21 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     }
 
     VLOG(1) << "create exe_info for " << program_id << " is_grad: " << is_grad;
-    auto execution_strategy = details::GetExecutionStrategy(place);
     auto &build_strategy = cached_exe_info.GetBuildStrategy(program_id);
 
     // 2. Construct Graph and ParallelExecutor.
-    auto graph = std::make_shared<framework::ir::Graph>(
-        program_desc, start_op_index, end_op_index);
-    auto parallel_executor = std::make_shared<framework::ParallelExecutor>(
-        place, scope, execution_strategy, build_strategy, graph.get());
-    parallel_executor->PrepareVariables(scope);
+    auto pe_and_graph = CreateExecutorInfo(program_desc,
+                                           place,
+                                           start_op_index,
+                                           end_op_index,
+                                           scope,
+                                           build_strategy);
 
     // 3. Insert value into cached map.
     auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);
-    cached_value.executor_ = parallel_executor;
-    cached_value.graph_ = std::move(graph);
-    return std::make_pair(parallel_executor, /*is_new_created=*/true);
+    cached_value.executor_ = pe_and_graph.first;
+    cached_value.graph_ = pe_and_graph.second;
+    return std::make_pair(pe_and_graph.first, /*is_new_created=*/true);
   } else {
     VLOG(1) << "get exe_info from cache by: " << program_id
             << " is_grad: " << is_grad;

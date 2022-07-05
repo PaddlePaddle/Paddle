@@ -23,10 +23,10 @@ std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
   return std::static_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
-std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
-    const paddle::optional<const Tensor&>& tensor) {
+paddle::optional<phi::DenseTensor> TensorToDenseTensor(
+    const paddle::optional<Tensor>& tensor) {
   if (tensor) {
-    return std::static_pointer_cast<phi::DenseTensor>(tensor->impl());
+    return {*std::static_pointer_cast<phi::DenseTensor>(tensor->impl())};
   }
   return nullptr;
 }
@@ -48,10 +48,10 @@ std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
   return std::static_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
-std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const paddle::optional<const Tensor&>& tensor) {
+paddle::optional<phi::SelectedRows> TensorToSelectedRows(
+    const paddle::optional<Tensor>& tensor) {
   if (tensor) {
-    return std::static_pointer_cast<phi::SelectedRows>(tensor->impl());
+    return {*std::static_pointer_cast<phi::SelectedRows>(tensor->impl())};
   }
   return nullptr;
 }
@@ -62,16 +62,16 @@ std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor) {
 
 /* ----------------- for infer_meta --------------------- */
 
-phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
+phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor) {
   return phi::MetaTensor(tensor);
 }
 
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::DenseTensor&>& tensor) {
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::DenseTensor>& tensor) {
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
   }
-  return {paddle::none};
+  return phi::MetaTensor();
 }
 
 std::vector<phi::MetaTensor> MakeMetaTensor(
@@ -94,20 +94,12 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
-  return phi::MetaTensor(tensor);
-}
-
-paddle::optional<phi::MetaTensor> MakeMetaTensor(
-    const paddle::optional<const phi::SelectedRows&>& tensor) {
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SelectedRows>& tensor) {
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
   }
-  return {paddle::none};
-}
-
-phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {
-  return phi::MetaTensor(tensor);
+  return phi::MetaTensor();
 }
 
 /* ------------------ for output ----------------------- */

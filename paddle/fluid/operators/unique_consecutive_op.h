@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
@@ -30,8 +31,11 @@ namespace paddle {
 namespace operators {
 template <typename InT, typename IndexT>
 static void UniqueConsecutiveFlattendTensor(
-    const framework::ExecutionContext& context, const framework::Tensor& in,
-    framework::Tensor* out, bool return_inverse, bool return_counts) {
+    const framework::ExecutionContext& context,
+    const framework::Tensor& in,
+    framework::Tensor* out,
+    bool return_inverse,
+    bool return_counts) {
   const InT* in_data = in.data<InT>();
   std::vector<InT> out_vec(in.numel());
   std::vector<IndexT> inverse_vec(in.numel());
@@ -81,9 +85,12 @@ static void UniqueConsecutiveFlattendTensor(
 
 template <class ForwardIt, typename InT, typename IndexT>
 static ForwardIt UniqueConsecutiveDimImpl(
-    const framework::ExecutionContext& context, ForwardIt first, ForwardIt last,
+    const framework::ExecutionContext& context,
+    ForwardIt first,
+    ForwardIt last,
     const std::vector<IndexT>& sorted_indices_vec,
-    std::vector<IndexT>* inverse_vec, std::vector<IndexT>* counts_vec) {
+    std::vector<IndexT>* inverse_vec,
+    std::vector<IndexT>* counts_vec) {
   if (first == last) {
     return last;
   }
@@ -112,8 +119,10 @@ static ForwardIt UniqueConsecutiveDimImpl(
 template <typename DeviceContext, typename InT, typename IndexT>
 static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
                                  const framework::Tensor& in,
-                                 framework::Tensor* out, bool return_inverse,
-                                 bool return_counts, int axis) {
+                                 framework::Tensor* out,
+                                 bool return_inverse,
+                                 bool return_counts,
+                                 int axis) {
   // transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   std::vector<int> permute(in.dims().size());
   std::iota(permute.begin(), permute.end(), 0);
@@ -127,8 +136,8 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  TransCompute<DeviceContext, InT>(in.dims().size(), dev_ctx, in, &in_trans,
-                                   permute);
+  TransCompute<DeviceContext, InT>(
+      in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   framework::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
@@ -153,8 +162,12 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   auto last =
       UniqueConsecutiveDimImpl<std::vector<framework::Tensor>::iterator, InT>(
-          context, input_unbind.begin(), input_unbind.end(), sorted_indices_vec,
-          &inverse_vec, &counts_vec);
+          context,
+          input_unbind.begin(),
+          input_unbind.end(),
+          sorted_indices_vec,
+          &inverse_vec,
+          &counts_vec);
   input_unbind.erase(last, input_unbind.end());
   counts_vec.erase(counts_vec.begin() + input_unbind.size(), counts_vec.end());
 
@@ -168,8 +181,8 @@ static void UniqueConsecutiveDim(const framework::ExecutionContext& context,
   out->Resize(phi::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
-  TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
-                                   out, permute);
+  TransCompute<DeviceContext, InT>(
+      out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
     framework::TensorFromVector(inverse_vec, context.device_context(), inverse);
@@ -189,8 +202,11 @@ struct UniqueConsecutiveFlattendTensorFunctor {
   const bool return_counts_;
 
   UniqueConsecutiveFlattendTensorFunctor(
-      const framework::ExecutionContext& context, const framework::Tensor& in,
-      framework::Tensor* out, bool return_inverse, bool return_counts)
+      const framework::ExecutionContext& context,
+      const framework::Tensor& in,
+      framework::Tensor* out,
+      bool return_inverse,
+      bool return_counts)
       : ctx_(context),
         in_(in),
         out_(out),
@@ -214,8 +230,10 @@ struct UniqueConsecutiveDimFunctor {
   const bool return_counts_;
   UniqueConsecutiveDimFunctor(const framework::ExecutionContext& context,
                               const framework::Tensor& in,
-                              framework::Tensor* out, const int axis,
-                              bool return_inverse, bool return_counts)
+                              framework::Tensor* out,
+                              const int axis,
+                              bool return_inverse,
+                              bool return_counts)
       : ctx_(context),
         in_(in),
         out_(out),
@@ -239,7 +257,8 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
         context.Attr<int>("dtype"));
     if (data_type == framework::proto::VarType::INT32) {
       PADDLE_ENFORCE_LE(
-          x->numel(), INT_MAX,
+          x->numel(),
+          INT_MAX,
           platform::errors::InvalidArgument(
               "The number of elements in Input(X) should be less than or "
               "equal to INT_MAX, but received num is %d. Please set `dtype` to "
@@ -252,8 +271,9 @@ class UniqueConsecutiveKernel : public framework::OpKernel<T> {
 
     if (axis_vec.empty()) {
       framework::VisitDataTypeTiny(
-          data_type, UniqueConsecutiveFlattendTensorFunctor<DeviceContext, T>(
-                         context, *x, out, return_inverse, return_counts));
+          data_type,
+          UniqueConsecutiveFlattendTensorFunctor<DeviceContext, T>(
+              context, *x, out, return_inverse, return_counts));
     } else {
       int axis = axis_vec[0];
       framework::VisitDataTypeTiny(

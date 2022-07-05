@@ -27,23 +27,29 @@ class OptimizerConfig {
   float learning_rate = 0.05;
   float initial_g2sum = 3.0;
   float initial_range = 0;
-  float beta1_decay_rate = 0.9; //adam
-  float beta2_decay_rate = 0.999; //adam
+  float beta1_decay_rate = 0.9;    // adam
+  float beta2_decay_rate = 0.999;  // adam
   float ada_epsilon = 1e-8;
 
   float mf_create_thresholds = 10;
   float mf_learning_rate = 0.05;
   float mf_initial_g2sum = 3.0;
   float mf_initial_range = 1e-4;
-  float mf_beta1_decay_rate = 0.9; //adam
-  float mf_beta2_decay_rate = 0.999; //adam
+  float mf_beta1_decay_rate = 0.9;    // adam
+  float mf_beta2_decay_rate = 0.999;  // adam
   float mf_min_bound = -10;
   float mf_max_bound = 10;
   float mf_ada_epsilon = 1e-8;
 
-  void set_sparse_sgd(float nonclk_coeff, float clk_coeff, float min_bound,
-                      float max_bound, float learning_rate, float initial_g2sum,
-                      float initial_range, float beta1_decay_rate, float beta2_decay_rate,
+  void set_sparse_sgd(float nonclk_coeff,
+                      float clk_coeff,
+                      float min_bound,
+                      float max_bound,
+                      float learning_rate,
+                      float initial_g2sum,
+                      float initial_range,
+                      float beta1_decay_rate,
+                      float beta2_decay_rate,
                       float ada_epsilon) {
     this->nonclk_coeff = nonclk_coeff;
     this->clk_coeff = clk_coeff;
@@ -70,10 +76,14 @@ class OptimizerConfig {
     this->ada_epsilon = optimizer_config.ada_epsilon;
   }
 
-  void set_embedx_sgd(float mf_create_thresholds, float mf_learning_rate,
-                      float mf_initial_g2sum, float mf_initial_range,
-                      float mf_min_bound, float mf_max_bound, 
-                      float mf_beta1_decay_rate, float mf_beta2_decay_rate,
+  void set_embedx_sgd(float mf_create_thresholds,
+                      float mf_learning_rate,
+                      float mf_initial_g2sum,
+                      float mf_initial_range,
+                      float mf_min_bound,
+                      float mf_max_bound,
+                      float mf_beta1_decay_rate,
+                      float mf_beta2_decay_rate,
                       float mf_ada_epsilon) {
     this->mf_create_thresholds = mf_create_thresholds;
     this->mf_learning_rate = mf_learning_rate;

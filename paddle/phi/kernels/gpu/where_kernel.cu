@@ -40,8 +40,7 @@ void WhereKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
 
   CondFunctor<T> func;
-  funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
-      ctx, ins, &outs, -1, func);
+  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(ctx, ins, &outs, func);
 }
 
 }  // namespace phi

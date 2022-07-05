@@ -30,6 +30,7 @@ __all__ = []
 
 
 class ParameterServerRuntime(RuntimeBase):
+
     def __init__(self):
         super(ParameterServerRuntime, self).__init__()
         self._communicator = None
@@ -67,9 +68,10 @@ class ParameterServerRuntime(RuntimeBase):
     def build_compiled_startegy(self):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import CompileTimeStrategy
 
-        compiled_config = CompileTimeStrategy(
-            self.origin_main_program, self.origin_main_program,
-            self.async_strategy, self.role_maker)
+        compiled_config = CompileTimeStrategy(self.origin_main_program,
+                                              self.origin_main_program,
+                                              self.async_strategy,
+                                              self.role_maker)
         return compiled_config
 
     def _load_sparse_params(self,
@@ -86,7 +88,8 @@ class ParameterServerRuntime(RuntimeBase):
             return var.name in varnames
 
         load_vars = list(
-            filter(_in_varnames, fluid.default_main_program().list_vars()))
+            filter(_in_varnames,
+                   fluid.default_main_program().list_vars()))
         if main_program is None:
             main_program = self.origin_main_program
 
@@ -99,20 +102,24 @@ class ParameterServerRuntime(RuntimeBase):
             new_var = fluid.io._clone_var_in_block_(load_block, each_var)
             var_path = os.path.join(dirname, origin_varname)
             if not os.path.exists(var_path):
-                raise ValueError("SelectedRows var {} can not find at {}".
-                                 format(new_var.name, var_path))
+                raise ValueError(
+                    "SelectedRows var {} can not find at {}".format(
+                        new_var.name, var_path))
 
             if os.path.isfile(var_path):
-                load_block.append_op(
-                    type='sparse_tensor_load',
-                    inputs={},
-                    outputs={'Out': [new_var]},
-                    attrs={
-                        'file_path': os.path.join(dirname, origin_varname),
-                        'node_index': self.role_maker._server_index(),
-                        'node_num': self.role_maker._server_num(),
-                        'shape': each_var.shape
-                    })
+                load_block.append_op(type='sparse_tensor_load',
+                                     inputs={},
+                                     outputs={'Out': [new_var]},
+                                     attrs={
+                                         'file_path':
+                                         os.path.join(dirname, origin_varname),
+                                         'node_index':
+                                         self.role_maker._server_index(),
+                                         'node_num':
+                                         self.role_maker._server_num(),
+                                         'shape':
+                                         each_var.shape
+                                     })
             check_vars.append(each_var)
 
         executor.run(load_prog)
@@ -129,6 +136,7 @@ class ParameterServerRuntime(RuntimeBase):
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
+
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -151,6 +159,7 @@ class ParameterServerRuntime(RuntimeBase):
         return is_valid
 
     def _init_worker(self):
+
         def sync_strategy_envs():
             kwargs = {}
             kwargs[
@@ -166,8 +175,9 @@ class ParameterServerRuntime(RuntimeBase):
                 opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
                 opt_init_map["fill_constant"] = ["value"]
                 opt_init_map["uniform_random"] = ["seed", "min", "max"]
-                opt_init_map[
-                    "truncated_gaussian_random"] = ["seed", "mean", "std"]
+                opt_init_map["truncated_gaussian_random"] = [
+                    "seed", "mean", "std"
+                ]
 
                 dist_varnames = get_sparse_tablenames(self.origin_main_program,
                                                       True)
@@ -181,8 +191,8 @@ class ParameterServerRuntime(RuntimeBase):
 
                 init_attrs = []
                 for value_name in sparse_varnames:
-                    value_var = self.origin_main_program.global_block().vars[
-                        value_name]
+                    value_var = self.origin_main_program.global_block(
+                    ).vars[value_name]
                     value_attr = [
                         value_name,
                         ",".join([str(dim) for dim in value_var.shape])
@@ -287,8 +297,8 @@ class ParameterServerRuntime(RuntimeBase):
             model_dirname = None
 
         executor = self._get_executor()
-        if self.role_maker._is_heter_worker() and self.context[
-                "valid_strategy"].a_sync_configs["launch_barrier"]:
+        if self.role_maker._is_heter_worker(
+        ) and self.context["valid_strategy"].a_sync_configs["launch_barrier"]:
             # for heter trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
         executor.run(fluid.default_startup_program())
@@ -328,23 +338,21 @@ class ParameterServerRuntime(RuntimeBase):
             raise ValueError("There is no directory named '%s'", model_dirname)
 
         # load dense
-        fluid.io.load_vars(
-            executor,
-            main_program=fluid.default_main_program(),
-            dirname=model_dirname,
-            vars=remaining_vars)
+        fluid.io.load_vars(executor,
+                           main_program=fluid.default_main_program(),
+                           dirname=model_dirname,
+                           vars=remaining_vars)
 
         # load sparse
-        self._load_sparse_params(
-            executor=executor,
-            dirname=model_dirname,
-            varnames=sparse_varnames + sparse_related_optimize_varnames)
+        self._load_sparse_params(executor=executor,
+                                 dirname=model_dirname,
+                                 varnames=sparse_varnames +
+                                 sparse_related_optimize_varnames)
 
         # load large scale
-        self._load_distributed_params(
-            dirname=model_dirname,
-            varnames=distribtued_varnames +
-            distributed_related_optimize_varnames)
+        self._load_distributed_params(dirname=model_dirname,
+                                      varnames=distribtued_varnames +
+                                      distributed_related_optimize_varnames)
 
     def _run_server(self):
         executor = self._get_executor()
@@ -368,8 +376,9 @@ class ParameterServerRuntime(RuntimeBase):
         reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
         reshaped_val_map["momentum"] = ["velocity_0"]
         reshaped_val_map["lars_momentum"] = ["velocity_0"]
-        reshaped_val_map[
-            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
+        reshaped_val_map["rmsprop"] = [
+            "momentum_0", "mean_square_0", "mean_grad_0"
+        ]
         reshaped_val_map["decayed_adagrad"] = ["moment_0"]
         reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
 
@@ -379,8 +388,8 @@ class ParameterServerRuntime(RuntimeBase):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".
-                format(op, supported_opts))
+                "fleet can not support optimizer: {}, only this can be supported: {}"
+                .format(op, supported_opts))
 
         reshaped_names = [
             param_name + "_" + val for val in reshaped_val_map[op]
@@ -423,19 +432,23 @@ class ParameterServerRuntime(RuntimeBase):
 
             for var_name in [varname] + reshaped_varnames + origin_varnames:
                 var = self.origin_main_program.global_block().vars[var_name]
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": self.role_maker._worker_index(),
-                        "shape": var.shape,
-                        "slice_shapes":
-                        [",".join([str(i) for i in var.shape])],
-                        "slice_varnames": [var.name],
-                        "remote_varnames": [var.name],
-                        "is_sparse": False,
-                        "endpoints": var_ctx.split_endpoints(),
-                        "file_path": os.path.join(dirname, var.name)
-                    })
+                block.append_op(type='recv_save',
+                                attrs={
+                                    "trainer_id":
+                                    self.role_maker._worker_index(),
+                                    "shape":
+                                    var.shape,
+                                    "slice_shapes":
+                                    [",".join([str(i) for i in var.shape])],
+                                    "slice_varnames": [var.name],
+                                    "remote_varnames": [var.name],
+                                    "is_sparse":
+                                    False,
+                                    "endpoints":
+                                    var_ctx.split_endpoints(),
+                                    "file_path":
+                                    os.path.join(dirname, var.name)
+                                })
 
         executor.run(prog)
         return local_vars
@@ -463,30 +476,37 @@ class ParameterServerRuntime(RuntimeBase):
             for section in var_ctx.sections():
                 slice_shapes.append(str(section) + dims1)
 
-            block.append_op(
-                type='recv_save',
-                attrs={
-                    "trainer_id": self.role_maker._worker_index(),
-                    "shape": var.shape,
-                    "slice_shapes": slice_shapes,
-                    "slice_varnames": var_ctx.split_varnames(),
-                    "remote_varnames": var_ctx.split_varnames(),
-                    "is_sparse": True,
-                    "endpoints": var_ctx.split_endpoints(),
-                    "pserver_num":
-                    len(self.role_maker._get_pserver_endpoints()),
-                    "file_path": os.path.join(dirname, var.name)
-                })
+            block.append_op(type='recv_save',
+                            attrs={
+                                "trainer_id":
+                                self.role_maker._worker_index(),
+                                "shape":
+                                var.shape,
+                                "slice_shapes":
+                                slice_shapes,
+                                "slice_varnames":
+                                var_ctx.split_varnames(),
+                                "remote_varnames":
+                                var_ctx.split_varnames(),
+                                "is_sparse":
+                                True,
+                                "endpoints":
+                                var_ctx.split_endpoints(),
+                                "pserver_num":
+                                len(self.role_maker._get_pserver_endpoints()),
+                                "file_path":
+                                os.path.join(dirname, var.name)
+                            })
 
             for reshaped_varname in reshaped_varnames:
-                var = self.origin_main_program.global_block().vars[
-                    reshaped_varname]
+                var = self.origin_main_program.global_block(
+                ).vars[reshaped_varname]
 
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append("{}.block{}".format(reshaped_varname,
-                                                              i))
+                    slice_varnames.append("{}.block{}".format(
+                        reshaped_varname, i))
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -505,22 +525,26 @@ class ParameterServerRuntime(RuntimeBase):
                     })
 
             for origin_varname in origin_varnames:
-                var = self.origin_main_program.global_block().vars[
-                    origin_varname]
+                var = self.origin_main_program.global_block(
+                ).vars[origin_varname]
 
-                block.append_op(
-                    type='recv_save',
-                    attrs={
-                        "trainer_id": self.role_maker._worker_index(),
-                        "shape": var.shape,
-                        "slice_shapes":
-                        [",".join([str(i) for i in var.shape])],
-                        "slice_varnames": [origin_varname],
-                        "remote_varnames": [origin_varname],
-                        "is_sparse": False,
-                        "endpoints": var_ctx.split_endpoints()[:1],
-                        "file_path": os.path.join(dirname, var.name)
-                    })
+                block.append_op(type='recv_save',
+                                attrs={
+                                    "trainer_id":
+                                    self.role_maker._worker_index(),
+                                    "shape":
+                                    var.shape,
+                                    "slice_shapes":
+                                    [",".join([str(i) for i in var.shape])],
+                                    "slice_varnames": [origin_varname],
+                                    "remote_varnames": [origin_varname],
+                                    "is_sparse":
+                                    False,
+                                    "endpoints":
+                                    var_ctx.split_endpoints()[:1],
+                                    "file_path":
+                                    os.path.join(dirname, var.name)
+                                })
         executor.run(prog)
         return context.keys()
 
@@ -529,16 +553,15 @@ class ParameterServerRuntime(RuntimeBase):
         block = prog.global_block()
 
         for name, var_ctx in context.items():
-            block.append_op(
-                type='checkpoint_notify',
-                attrs={
-                    "varname": name,
-                    "mode": mode,
-                    "slice_varnames": var_ctx.split_varnames(),
-                    "remote_varnames": var_ctx.split_varnames(),
-                    "endpoints": var_ctx.split_endpoints(),
-                    "dirname": dirname
-                })
+            block.append_op(type='checkpoint_notify',
+                            attrs={
+                                "varname": name,
+                                "mode": mode,
+                                "slice_varnames": var_ctx.split_varnames(),
+                                "remote_varnames": var_ctx.split_varnames(),
+                                "endpoints": var_ctx.split_endpoints(),
+                                "dirname": dirname
+                            })
 
         executor.run(prog)
         return context.keys()
@@ -557,8 +580,9 @@ class ParameterServerRuntime(RuntimeBase):
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
 
-        recv_sparse_varnames = self._save_sparse_params(
-            executor, dirname, sparse_ctx, main_program)
+        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
+                                                        sparse_ctx,
+                                                        main_program)
 
         recv_distributed_varnames = self._save_distributed_params(
             executor, dirname, distributed_ctx, mode)
@@ -567,15 +591,13 @@ class ParameterServerRuntime(RuntimeBase):
             recv_sparse_varnames) + list(recv_distributed_varnames)
 
         remaining_vars = list(
-            filter(
-                ParameterServerRuntime.__exclude_vars(saved_varnames),
-                main_program.list_vars()))
+            filter(ParameterServerRuntime.__exclude_vars(saved_varnames),
+                   main_program.list_vars()))
 
-        fluid.io.save_vars(
-            executor,
-            main_program=main_program,
-            dirname=dirname,
-            vars=remaining_vars)
+        fluid.io.save_vars(executor,
+                           main_program=main_program,
+                           dirname=dirname,
+                           vars=remaining_vars)
 
     def _ps_inference_save_persistables(self,
                                         executor,
@@ -659,8 +681,10 @@ class ParameterServerRuntime(RuntimeBase):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(fluid.default_main_program())
-            self._ps_inference_save_persistables(
-                executor, dirname, program, mode=0)
+            self._ps_inference_save_persistables(executor,
+                                                 dirname,
+                                                 program,
+                                                 mode=0)
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)

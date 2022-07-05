@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import sys
+
 sys.path.append("..")
 
 import numpy as np
@@ -28,13 +29,16 @@ paddle.enable_static()
 
 
 class XPUTestSqueeze2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "squeeze2"
         self.use_dynamic_create_class = False
 
     class TestSqueeze2Op(XPUOpTest):
+
         def setUp(self):
             self.op_type = "squeeze2"
+            self.__class__.op_type = "squeeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -78,6 +82,7 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: There is mins axis.
     class TestSqueeze2Op1(TestSqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = (0, -2)
@@ -85,13 +90,15 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: No axes input.
     class TestSqueeze2Op2(TestSqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = ()
             self.new_shape = (20, 5)
 
-    # Correct: Just part of axes be squeezed. 
+    # Correct: Just part of axes be squeezed.
     class TestSqueeze2Op3(TestSqueeze2Op):
+
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)
             self.axes = (1, -1)

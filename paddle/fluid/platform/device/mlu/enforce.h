@@ -108,14 +108,14 @@ inline std::string build_mlu_error_msg(cnclStatus e) {
     }                                                          \
   } while (0)
 
-#define PADDLE_ENFORCE_MLU_LAUNCH_SUCCESS(OP)                                  \
-  do {                                                                         \
-    auto res = cnrtGetLastError();                                             \
-    if (UNLIKELY(res != cnrtSuccess)) {                                        \
-      auto msg = ::paddle::platform::build_mlu_error_msg(res);                 \
-      PADDLE_THROW(platform::errors::Fatal("CNRT error after kernel (%s): %s", \
-                                           OP, msg));                          \
-    }                                                                          \
+#define PADDLE_ENFORCE_MLU_LAUNCH_SUCCESS(OP)                  \
+  do {                                                         \
+    auto res = cnrtGetLastError();                             \
+    if (UNLIKELY(res != cnrtSuccess)) {                        \
+      auto msg = ::paddle::platform::build_mlu_error_msg(res); \
+      PADDLE_THROW(platform::errors::Fatal(                    \
+          "CNRT error after kernel (%s): %s", OP, msg));       \
+    }                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {

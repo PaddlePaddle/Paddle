@@ -30,4 +30,4 @@ TEST(Table, Initialize) {
   ASSERT_EQ(ret, -1);
 }
 }  // namespace distributed
-}  // // namespace paddle
+}  // namespace paddle

@@ -21,6 +21,7 @@ import paddle.nn.functional as functional
 
 
 class EmbeddingStatic(unittest.TestCase):
+
     def test_1(self):
         prog = fluid.Program()
         with fluid.program_guard(prog):
@@ -29,23 +30,24 @@ class EmbeddingStatic(unittest.TestCase):
                 initializer = fluid.initializer.NumpyArrayInitializer(
                     np.random.random(size=(128, 100)))
 
-                param_attr = fluid.ParamAttr(
-                    name="emb_weight",
-                    learning_rate=0.5,
-                    initializer=initializer,
-                    trainable=True)
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
 
-                weight = prog.global_block().create_parameter(
-                    (128, 100), attr=param_attr, dtype="float32")
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
 
-                label = fluid.layers.data(
-                    name="label",
-                    shape=[4],
-                    append_batch_size=False,
-                    dtype="int64")
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int64")
 
-                emb = functional.embedding(
-                    x=label, weight=weight, sparse=True, name="embedding")
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           sparse=True,
+                                           name="embedding")
 
             test_bad_x()
 
@@ -57,27 +59,25 @@ class EmbeddingStatic(unittest.TestCase):
                 initializer = fluid.initializer.NumpyArrayInitializer(
                     np.random.random(size=(128, 100)))
 
-                param_attr = fluid.ParamAttr(
-                    name="emb_weight",
-                    learning_rate=0.5,
-                    initializer=initializer,
-                    trainable=True)
+                param_attr = fluid.ParamAttr(name="emb_weight",
+                                             learning_rate=0.5,
+                                             initializer=initializer,
+                                             trainable=True)
 
-                weight = prog.global_block().create_parameter(
-                    (128, 100), attr=param_attr, dtype="float32")
+                weight = prog.global_block().create_parameter((128, 100),
+                                                              attr=param_attr,
+                                                              dtype="float32")
 
-                label = fluid.layers.data(
-                    name="label",
-                    shape=[4],
-                    append_batch_size=False,
-                    dtype="int32")
+                label = fluid.layers.data(name="label",
+                                          shape=[4],
+                                          append_batch_size=False,
+                                          dtype="int32")
 
-                emb = functional.embedding(
-                    x=label,
-                    weight=weight,
-                    padding_idx=129,
-                    sparse=True,
-                    name="embedding")
+                emb = functional.embedding(x=label,
+                                           weight=weight,
+                                           padding_idx=129,
+                                           sparse=True,
+                                           name="embedding")
 
         with self.assertRaises(ValueError):
             test_bad_x()

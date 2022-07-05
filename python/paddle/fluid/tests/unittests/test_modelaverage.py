@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@ import paddle.nn as nn
 
 
 class TestModelAverage(unittest.TestCase):
+
     def test_model_average_static(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
@@ -39,8 +40,8 @@ class TestModelAverage(unittest.TestCase):
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = fluid.layers.mean(hidden)
                 test_program = train_program.clone()
-                optimizer = paddle.optimizer.Momentum(
-                    learning_rate=0.2, momentum=0.1)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
+                                                      momentum=0.1)
 
                 optimizer.minimize(loss)
                 # build ModelAverage optimizer
@@ -59,28 +60,18 @@ class TestModelAverage(unittest.TestCase):
                     'fc_0.b_0_old_num_accumulates_0', 'fc_0.b_0_num_updates_0'
                 ])
         self.assertTrue(
-            np.equal(
-                sum_1, np.zeros(
-                    shape=[10], dtype='float32')).all())
+            np.equal(sum_1, np.zeros(shape=[10], dtype='float32')).all())
         self.assertTrue(
-            np.equal(
-                sum_2, np.zeros(
-                    shape=[10], dtype='float32')).all())
+            np.equal(sum_2, np.zeros(shape=[10], dtype='float32')).all())
         self.assertTrue(
-            np.equal(
-                num_accumulates, np.array(
-                    [0], dtype='int64')).all())
+            np.equal(num_accumulates, np.array([0], dtype='int64')).all())
         self.assertTrue(
-            np.equal(
-                old_num_accumulates, np.array(
-                    [2], dtype='int64')).all())
+            np.equal(old_num_accumulates, np.array([2], dtype='int64')).all())
         self.assertTrue(
-            np.equal(
-                num_updates, np.array(
-                    [10], dtype='int64')).all())
+            np.equal(num_updates, np.array([10], dtype='int64')).all())
 
-        average_b = (sum_1 + sum_2 + sum_3) / (
-            num_accumulates + old_num_accumulates)
+        average_b = (sum_1 + sum_2 + sum_3) / (num_accumulates +
+                                               old_num_accumulates)
         # apply ModelAverage
         with model_average.apply(exe):
             x = np.random.random(size=(10, 1)).astype('float32')
@@ -105,6 +96,7 @@ class TestModelAverage(unittest.TestCase):
 
         # define a random dataset
         class RandomDataset(paddle.io.Dataset):
+
             def __init__(self, num_samples):
                 self.num_samples = num_samples
 
@@ -118,6 +110,7 @@ class TestModelAverage(unittest.TestCase):
                 return self.num_samples
 
         class LinearNet(nn.Layer):
+
             def __init__(self):
                 super(LinearNet, self).__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
@@ -142,12 +135,12 @@ class TestModelAverage(unittest.TestCase):
             sum_1 = model_average._get_accumulator('sum_1', layer.bias)
             sum_2 = model_average._get_accumulator('sum_2', layer.bias)
             sum_3 = model_average._get_accumulator('sum_3', layer.bias)
-            num_accumulates = model_average._get_accumulator('num_accumulates',
-                                                             layer.bias)
+            num_accumulates = model_average._get_accumulator(
+                'num_accumulates', layer.bias)
             old_num_accumulates = model_average._get_accumulator(
                 'old_num_accumulates', layer.bias)
-            num_updates = model_average._get_accumulator('num_updates',
-                                                         layer.bias)
+            num_updates = model_average._get_accumulator(
+                'num_updates', layer.bias)
 
             return ((sum_1 + sum_2 + sum_3) /
                     (num_accumulates + old_num_accumulates)).numpy()
@@ -157,10 +150,9 @@ class TestModelAverage(unittest.TestCase):
                 out = layer(image)
                 loss = loss_fn(out, label)
                 loss.backward()
-                self.assertAlmostEqual(
-                    np.mean(layer.bias.numpy()),
-                    np.mean(check_param),
-                    delta=5e-3)
+                self.assertAlmostEqual(np.mean(layer.bias.numpy()),
+                                       np.mean(check_param),
+                                       delta=5e-3)
                 # print("Evaluate batch {}: loss = {}, bias = {}".format(
                 #     batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
 
@@ -168,8 +160,9 @@ class TestModelAverage(unittest.TestCase):
 
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
-        optimizer = paddle.optimizer.Momentum(
-            learning_rate=0.2, momentum=0.1, parameters=layer.parameters())
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
+                                              momentum=0.1,
+                                              parameters=layer.parameters())
         # build ModelAverage optimizer
         model_average = paddle.incubate.optimizer.ModelAverage(
             0.15,
@@ -179,18 +172,16 @@ class TestModelAverage(unittest.TestCase):
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        loader = paddle.io.DataLoader(
-            dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=2)
-        eval_loader = paddle.io.DataLoader(
-            dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=1)
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=BATCH_SIZE,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      num_workers=2)
+        eval_loader = paddle.io.DataLoader(dataset,
+                                           batch_size=BATCH_SIZE,
+                                           shuffle=True,
+                                           drop_last=True,
+                                           num_workers=1)
         # train
         check_param = train(layer, loader, loss_fn, optimizer, model_average)
         # print(check_param)

@@ -12,17 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "gtest/gtest.h"
 #include "paddle/phi/api/include/api.h"
-
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/kernels/full_kernel.h"
-
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "gtest/gtest.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -49,7 +49,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
@@ -77,8 +78,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     const int64_t input_width = inputdims[inputdims.size() - 1];
     const auto& dev_ctx = ctx.cuda_device_context();
     if ((input_width <= 1024 || k >= 128 || k == input_width)) {
-      if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
-                      indices)) {
+      if (SortTopk<T>(
+              dev_ctx, input, input_width, input_height, k, output, indices)) {
         // Successed, return.
         return;
       } else {
@@ -96,10 +97,16 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     switch (GetDesiredBlockDim(input_width)) {
       FIXED_BLOCK_DIM(
-          KeMatrixTopK<T, 5,
-                       kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-              output_data, k, indices_data, input_data, input_width,
-              input_width, static_cast<int>(k), gridx, input_height));
+          KeMatrixTopK<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                      k,
+                                                      indices_data,
+                                                      input_data,
+                                                      input_width,
+                                                      input_width,
+                                                      static_cast<int>(k),
+                                                      gridx,
+                                                      input_height));
       default:
         PADDLE_THROW(platform::errors::Unavailable(
             "Calculation error occurred in TopK Operator's CUDA Kernel."));
@@ -112,7 +119,8 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
+        platform::is_gpu_place(context.GetPlace()),
+        true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     auto* x = context.Input<Tensor>("X");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
@@ -133,8 +141,8 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
     int gridx = row < kMaxHeight ? row : kMaxHeight;
     switch (GetDesiredBlockDim(col)) {
       FIXED_BLOCK_DIM(
-          AssignGrad<T, 5,
-                     kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+          AssignGrad<T, 5, kBlockDim>
+          <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:
         PADDLE_THROW(

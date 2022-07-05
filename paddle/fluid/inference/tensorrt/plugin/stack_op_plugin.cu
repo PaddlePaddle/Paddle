@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
 namespace paddle {
@@ -64,7 +65,9 @@ void StackPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs output(inputs[0]);
   output.nbDims = inputs[0].nbDims + 1;
@@ -77,11 +80,14 @@ nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
 }
 
 void StackPluginDynamic::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
-    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) TRT_NOEXCEPT {}
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nbOutputs) TRT_NOEXCEPT {}
 
 size_t StackPluginDynamic::getWorkspaceSize(
-    const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc* inputs,
+    int nbInputs,
     const nvinfer1::PluginTensorDesc* outputs,
     int nbOutputs) const TRT_NOEXCEPT {
   return num_stack_ * sizeof(uintptr_t);
@@ -92,17 +98,22 @@ void StackPluginDynamic::destroy() TRT_NOEXCEPT { delete this; }
 void StackPluginDynamic::terminate() TRT_NOEXCEPT {}
 
 bool StackPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of stack plugin should not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of stack plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
@@ -126,15 +137,20 @@ bool StackPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType StackPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
-                                  "The index should be equal to 0"));
+  PADDLE_ENFORCE_EQ(
+      index,
+      0,
+      platform::errors::InvalidArgument("The index should be equal to 0"));
   return input_types[0];
 }
 
 template <typename T>
-__global__ void StackKernel(const T* const* input, T* output, int num_stack,
+__global__ void StackKernel(const T* const* input,
+                            T* output,
+                            int num_stack,
                             int base_unit) {
   int stack_id = blockIdx.x;
   int lead_id = blockIdx.y;
@@ -147,7 +163,8 @@ __global__ void StackKernel(const T* const* input, T* output, int num_stack,
 
 int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                 const nvinfer1::PluginTensorDesc* output_desc,
-                                const void* const* inputs, void* const* outputs,
+                                const void* const* inputs,
+                                void* const* outputs,
                                 void* workspace,
                                 cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;  // (batch, seq, seq)
@@ -156,7 +173,8 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   int base_unit = 1;
   for (int i = axis_ + 1; i < out_num_dims; ++i) {
-    PADDLE_ENFORCE_GT(out_dims.d[i], 0,
+    PADDLE_ENFORCE_GT(out_dims.d[i],
+                      0,
                       platform::errors::InvalidArgument(
                           "Input dimensions should be greater than 0"));
     base_unit *= out_dims.d[i];
@@ -164,18 +182,22 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
   int lead_unit = 1;
   for (int i = 0; i < axis_; ++i) {
-    PADDLE_ENFORCE_GT(out_dims.d[i], 0,
+    PADDLE_ENFORCE_GT(out_dims.d[i],
+                      0,
                       platform::errors::InvalidArgument(
                           "Input dimensions should be greater than 0"));
     lead_unit *= out_dims.d[i];
   }
 
   PADDLE_ENFORCE_EQ(
-      out_dims.d[axis_], num_stack_,
+      out_dims.d[axis_],
+      num_stack_,
       platform::errors::InvalidArgument("number of stack axis should be same"));
 
-  cudaMemcpyAsync(workspace, reinterpret_cast<const void* const>(inputs),
-                  sizeof(void*) * out_dims.d[axis_], cudaMemcpyHostToDevice,
+  cudaMemcpyAsync(workspace,
+                  reinterpret_cast<const void* const>(inputs),
+                  sizeof(void*) * out_dims.d[axis_],
+                  cudaMemcpyHostToDevice,
                   stream);
 
   const int num_stacks = out_dims.d[axis_];
@@ -187,13 +209,17 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     VLOG(1) << "TRT Plugin DataType selected. Stack-->fp32";
     float* output = static_cast<float*>(outputs[0]);
     StackKernel<float><<<num_blocks, num_threads, 0, stream>>>(
-        reinterpret_cast<const float* const*>(workspace), output, num_stacks,
+        reinterpret_cast<const float* const*>(workspace),
+        output,
+        num_stacks,
         base_unit);
   } else if (infer_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. Stack-->fp16";
     __half* output = static_cast<__half*>(outputs[0]);
     StackKernel<__half><<<num_blocks, num_threads, 0, stream>>>(
-        reinterpret_cast<const __half* const*>(workspace), output, num_stacks,
+        reinterpret_cast<const __half* const*>(workspace),
+        output,
+        num_stacks,
         base_unit);
   } else {
     PADDLE_THROW(
@@ -242,7 +268,8 @@ nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2* StackPluginDynamicCreator::deserializePlugin(
-    const char* name, const void* serial_data,
+    const char* name,
+    const void* serial_data,
     size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new StackPluginDynamic(serial_data, serial_length);
   return plugin;

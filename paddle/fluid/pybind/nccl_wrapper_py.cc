@@ -33,7 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 
 namespace py = pybind11;

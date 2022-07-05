@@ -29,24 +29,30 @@ namespace tensorrt {
 class EmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-#if IS_TRT_VERSION_GE(6000)
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto word_id_name = op_desc.Input("WordId").front();
-    auto pos_id_name = op_desc.Input("PosId").front();
+    auto pos_id_name = engine_->tensorrt_transformer_posid();
     engine_->Set("ernie_pos_name", new std::string(pos_id_name));
 
     auto sent_id_name = op_desc.Input("SentId").front();
+    auto mask_id_name = engine_->tensorrt_transformer_maskid();
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
 
     std::vector<std::string> id_names;
     std::vector<std::string> emb_names;
+    bool flag_varseqlen =
+        engine_->use_varseqlen() && pos_id_name != "" && mask_id_name != "";
 
-    if (engine_->use_oss()) {
+    if (flag_varseqlen) {
+      engine_->SetITensor("word_id", engine_->GetITensor(word_id_name));
+      engine_->SetITensor("pos_id", engine_->GetITensor(pos_id_name));
+      engine_->SetITensor("mask_id", engine_->GetITensor(mask_id_name));
       id_names =
           std::vector<std::string>{word_id_name, pos_id_name, sent_id_name};
       emb_names =
@@ -89,7 +95,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
       PADDLE_ENFORCE_EQ(
-          emb_dims.size(), 2,
+          emb_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The fused EmbEltwiseLayerNorm's emb should be 2 dims."));
       hidden = emb_dims[1];
@@ -106,37 +113,44 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
-    if (engine_->use_oss()) {
+    if (flag_varseqlen) {
       int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
       if (enable_int8) {
         output_fp16 = 1;
       }
       PADDLE_ENFORCE_EQ(
-          input_num, 3,
+          input_num,
+          3,
           platform::errors::InvalidArgument(
               "When using oss and var-len, embedding_eltwise_layernorm op"
               "should have 3 inputs only, but got %d.",
               input_num));
       PADDLE_ENFORCE_EQ(
-          output_fp16, 1,
+          output_fp16,
+          1,
           platform::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
-              "ernie(bert) model with config.EnableTensorRtOSS(). "
+              "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
       const std::vector<nvinfer1::PluginField> fields{
-          {"bert_embeddings_layernorm_beta", bias,
+          {"bert_embeddings_layernorm_beta",
+           bias,
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(bias_size)},
-          {"bert_embeddings_layernorm_gamma", scale,
+          {"bert_embeddings_layernorm_gamma",
+           scale,
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(scale_size)},
-          {"bert_embeddings_word_embeddings", input_embs[0],
+          {"bert_embeddings_word_embeddings",
+           input_embs[0],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[0])},
-          {"bert_embeddings_token_type_embeddings", input_embs[2],
+          {"bert_embeddings_token_type_embeddings",
+           input_embs[2],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[2])},
-          {"bert_embeddings_position_embeddings", input_embs[1],
+          {"bert_embeddings_position_embeddings",
+           input_embs[1],
            nvinfer1::PluginFieldType::kFLOAT32,
            static_cast<int32_t>(emb_sizes[1])},
           {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
@@ -159,8 +173,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_inputs.emplace_back(
           engine_->GetITensor(pos_id_name));  // cu_seqlens,
                                               // eval_placeholder_2
-      auto max_seqlen_tensor =
-          engine_->GetITensor(engine_->network()->getInput(3)->getName());
+      auto max_seqlen_tensor = engine_->GetITensor(mask_id_name);
       auto* shuffle_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
       nvinfer1::Dims shape_dim;
@@ -193,8 +206,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_scale);
       }
       if (engine_->with_interleaved()) {
-        VLOG(4)
-            << "fused emb_eltwise_layernorm op: use_oss and with_interleaved";
+        VLOG(4) << "fused emb_eltwise_layernorm op: use_varseqlen and "
+                   "with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
               platform::errors::Fatal("use with_interleaved must be int8."));
@@ -212,7 +225,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       } else {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
-        RreplenishLayerAndOutput(layer, "CustomEmbLayerNormPluginDynamic_V2",
+        RreplenishLayerAndOutput(layer,
+                                 "CustomEmbLayerNormPluginDynamic_V2",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
       }
@@ -221,20 +235,20 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
-          input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-          eps, with_fp16);
+      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(input_embs,
+                                                            bias,
+                                                            scale,
+                                                            emb_sizes,
+                                                            bias_size,
+                                                            scale_size,
+                                                            hidden,
+                                                            eps,
+                                                            with_fp16);
       layer = engine_->AddDynamicPlugin(input_ids.data(), input_num, plugin);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
-                               test_mode);
+      RreplenishLayerAndOutput(
+          layer, "emb_eltwise_layernorm", {output_name}, test_mode);
     }
-
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
   }
 };
 

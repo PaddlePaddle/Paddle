@@ -75,12 +75,12 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                     loss_val = exe.run(program=fleet.main_program,
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
-                    reduce_output = fleet.util.all_reduce(
-                        np.array(loss_val), mode="sum")
+                    reduce_output = fleet.util.all_reduce(np.array(loss_val),
+                                                          mode="sum")
                     loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     loss_val = float(reduce_output) / len(loss_all_trainer)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
-                                                                      loss_val)
+                    message = "TRAIN ---> pass: {} loss: {}\n".format(
+                        epoch_id, loss_val)
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
@@ -88,8 +88,9 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
                 self.reader.reset()
 
         model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
+        fleet.save_inference_model(exe, model_dir,
+                                   [feed.name for feed in self.feeds],
+                                   self.avg_cost)
         self.check_model_right(model_dir)
         if fleet.is_first_worker():
             fleet.save_persistables(executor=exe, dirname=model_dir)
@@ -125,13 +126,12 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         for epoch_id in range(1):
             pass_start = time.time()
             dataset.set_filelist(filelist)
-            exe.train_from_dataset(
-                program=fleet.main_program,
-                dataset=dataset,
-                fetch_list=[self.avg_cost],
-                fetch_info=["cost"],
-                print_period=2,
-                debug=int(os.getenv("Debug", "0")))
+            exe.train_from_dataset(program=fleet.main_program,
+                                   dataset=dataset,
+                                   fetch_list=[self.avg_cost],
+                                   fetch_info=["cost"],
+                                   print_period=2,
+                                   debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
 
         if os.getenv("SAVE_MODEL") == "1":

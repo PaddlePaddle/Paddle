@@ -12,17 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/lib/data_transform.h"
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
+// clang-format on
 
 namespace paddle {
 namespace experimental {
@@ -174,20 +176,6 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   if (!platform::is_cuda_pinned_place(tensor.place())) {
     pool.Get(tensor.place())->Wait();
     pool.Get(dst_place)->Wait();
-  } else if (platform::is_gpu_place(dst_place)) {
-    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(dst_place));
-    phi::Copy(*dev_ctx, tensor, dst_place, false, &out);
-
-    // Note: This is an empty callback, the only way is to "reference"
-    // tensor, so it will not be destructed until the kernels launched at
-    // current
-    // stream of given place is finished.
-    auto callback = [tensor, dst_place]() {
-      VLOG(4) << "Run callback of tensor:" << &tensor << " at place "
-              << dst_place;
-    };
-    dev_ctx->AddStreamCallback(callback);
-    return out;
   }
 #endif
 
@@ -204,23 +192,31 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   return out;
 }
 
-phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
+phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag) {
-  phi::DenseTensor out = tensor;
+  phi::DenseTensor out = *tensor;
+  bool trans_layout = false;
+  bool trans_dtype = false;
   if (NeedTransformLayout(
-          tensor.layout(), target_args_def.layout, transform_flag)) {
+          tensor->layout(), target_args_def.layout, transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
+    trans_layout = true;
   }
 
   if (NeedTransformDataType(
-          tensor.dtype(), target_args_def.dtype, transform_flag)) {
+          tensor->dtype(), target_args_def.dtype, transform_flag)) {
     out = TransDataType(out, target_args_def.dtype);
+    trans_dtype = true;
   }
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
     out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
+    if (!trans_layout && !trans_dtype &&
+        tensor->place().GetType() == AllocationType::GPUPINNED) {
+      tensor->ShareBufferWith(out);
+    }
   }
   return out;
 }
@@ -243,31 +239,20 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out =
-        TransformData(dense_tensor, target_args_def, transform_flag);
+        TransformData(&dense_tensor, target_args_def, transform_flag);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
 }
 
-std::shared_ptr<phi::DenseTensor> PrepareData(
+paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return PrepareData(*input, target_args_def, transform_flag);
+    return {*PrepareData(*input, target_args_def, transform_flag)};
   }
-  return {nullptr};
-}
-
-std::shared_ptr<phi::DenseTensor> PrepareData(
-    const paddle::optional<const Tensor&> input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
-  if (input.get_ptr() != nullptr) {
-    return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
-  }
-
-  return {nullptr};
+  return paddle::none;
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
@@ -290,7 +275,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
       pt_tensors->emplace_back(
-          TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
+          TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
                         target_args_def,
                         transform_flag));
     }

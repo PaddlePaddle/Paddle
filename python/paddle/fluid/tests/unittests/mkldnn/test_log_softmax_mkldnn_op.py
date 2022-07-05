@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_flo
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestLogSoftmaxOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_dtype()
@@ -52,38 +53,45 @@ class TestLogSoftmaxOneDNNOp(OpTest):
 
 
 class TestLogSoftmax1DOneDNNOp(TestLogSoftmaxOneDNNOp):
+
     def set_shape(self):
         self.shape = [100]
 
 
 class TestLogSoftmax3DOneDNNOp(TestLogSoftmaxOneDNNOp):
+
     def set_shape(self):
         self.shape = [12, 10, 3]
 
 
 class TestLogSoftmax5DOneDNNOp(TestLogSoftmaxOneDNNOp):
+
     def set_shape(self):
         self.shape = [2, 3, 4, 5, 6]
 
 
 class TestLogSoftmaxPositiveAxisOneDNNOp(TestLogSoftmaxOneDNNOp):
+
     def set_axis(self):
         self.axis = 2
 
 
 # BF16 TESTS
 class TestLogSoftmax1DBF16OneDNNOp(TestLogSoftmax1DOneDNNOp):
+
     def set_dtype(self):
         self.dtype = np.uint16
 
 
-class TestLogSoftmaxPositiveAxisBF16OneDNNOp(
-        TestLogSoftmaxPositiveAxisOneDNNOp):
+class TestLogSoftmaxPositiveAxisBF16OneDNNOp(TestLogSoftmaxPositiveAxisOneDNNOp
+                                             ):
+
     def set_dtype(self):
         self.dtype = np.uint16
 
 
 class TestLogSoftmax5DBF16OneDNNOp(TestLogSoftmax5DOneDNNOp):
+
     def set_shape(self):
         self.shape = [2, 3, 4, 5, 6]
 

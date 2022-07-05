@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <vector>
 
 #include "paddle/fluid/framework/ir/mkldnn/shuffle_channel_mkldnn_detect_pass.h"
@@ -22,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);

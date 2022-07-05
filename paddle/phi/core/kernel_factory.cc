@@ -15,7 +15,6 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #include "glog/logging.h"
-
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

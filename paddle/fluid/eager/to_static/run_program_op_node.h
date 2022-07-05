@@ -17,7 +17,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
-
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -51,14 +50,16 @@ static std::vector<std::string> GetTensorsName(
 }
 
 static void CheckInputVarStatus(const Tensor &tensor) {
-  PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(), true,
+  PADDLE_ENFORCE_EQ(tensor.defined() && tensor.is_dense_tensor(),
+                    true,
                     paddle::platform::errors::InvalidArgument(
                         "The input tensor %s of "
                         "RunProgram(Grad)Op holds "
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
 
-  PADDLE_ENFORCE_EQ(tensor.initialized(), true,
+  PADDLE_ENFORCE_EQ(tensor.initialized(),
+                    true,
                     paddle::platform::errors::InvalidArgument(
                         "The tensor in input tensor %s of "
                         "RunProgram(Grad)Op "
@@ -69,19 +70,22 @@ static void CheckInputVarStatus(const Tensor &tensor) {
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                                  const Tensor &dst_tensor) {
   auto name = dst_tensor.name();
-  PADDLE_ENFORCE_EQ(dst_tensor.defined(), true,
+  PADDLE_ENFORCE_EQ(dst_tensor.defined(),
+                    true,
                     paddle::platform::errors::InvalidArgument(
                         "dst_tensor shall be defined."));
 
   if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor), true,
+    PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
+                      true,
                       paddle::platform::errors::InvalidArgument(
                           "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(), true,
+    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
+                      true,
                       paddle::platform::errors::InvalidArgument(
                           "The tensor in output tensor %s get from "
                           "RunProgram(Grad)Op's internal "
@@ -89,13 +93,15 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           name));
   } else if (dst_tensor.is_selected_rows()) {
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
-    PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor), true,
+    PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
+                      true,
                       paddle::platform::errors::InvalidArgument(
                           "The output tensodfr %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(), true,
+    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
+                      true,
                       paddle::platform::errors::InvalidArgument(
                           "The tensor in output tensor %s get from "
                           "RunProgram(Grad)Op's "
@@ -151,11 +157,12 @@ static void ShareTensorsFromScope(
     // NOTE: Here skip not found var is dangerous, if a bug is caused here,
     // the result is grad calculation error, which will be very hidden!
     auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, paddle::platform::errors::NotFound(
-                                     "The output tensor %s is not in "
-                                     "RunProgram(Grad)Op'"
-                                     "s internal scope.",
-                                     name));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        paddle::platform::errors::NotFound("The output tensor %s is not in "
+                                           "RunProgram(Grad)Op'"
+                                           "s internal scope.",
+                                           name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
@@ -198,7 +205,8 @@ inline void RunProgramAPI(
   // here. Originally, here can use scope directly.
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
-      out_scope_vec->size(), 1,
+      out_scope_vec->size(),
+      1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
@@ -227,9 +235,14 @@ inline void RunProgramAPI(
     auto dout_names = details::GetTensorsName(dout);
     auto *program = global_block->Program();
 
-    auto cache_info = paddle::framework::GetExecutorInfoFromCache(
-        *program, place, start_op_index, end_op_index,
-        /*is_grad=*/false, program_id, &scope);
+    auto cache_info =
+        paddle::framework::GetExecutorInfoFromCache(*program,
+                                                    place,
+                                                    start_op_index,
+                                                    end_op_index,
+                                                    /*is_grad=*/false,
+                                                    program_id,
+                                                    &scope);
     auto &parallel_executor = cache_info.first;
     // all out_vars are skip_eager_var
     auto &skip_eager_delete_vars =
@@ -238,9 +251,10 @@ inline void RunProgramAPI(
     if (cache_info.second /*is_new_created*/) {
       parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, input_names);
       skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
-                                    output_names.begin(), output_names.end());
-      skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
-                                    dout_names.begin(), dout_names.end());
+                                    output_names.begin(),
+                                    output_names.end());
+      skip_eager_delete_vars.insert(
+          skip_eager_delete_vars.end(), dout_names.begin(), dout_names.end());
       paddle::framework::details::ParseSafeEagerDeletionSkipVars(
           *program, end_op_index, output_names, &skip_eager_delete_vars);
     }
@@ -273,7 +287,7 @@ inline void RunProgramGradAPI(
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
-    ) {
+) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
@@ -290,14 +304,16 @@ inline void RunProgramGradAPI(
 
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
-      out_scope_vec->size(), 1,
+      out_scope_vec->size(),
+      1,
       paddle::platform::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
   auto sub_scope_num = global_inner_scope->kids().size();
   VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
-  PADDLE_ENFORCE_GT(sub_scope_num, 0,
+  PADDLE_ENFORCE_GT(sub_scope_num,
+                    0,
                     paddle::platform::errors::InvalidArgument(
                         "The OutScope of RunProgramGradOp should hold at "
                         "least one sub scope."));
@@ -321,9 +337,14 @@ inline void RunProgramGradAPI(
 
     // Step 2. prepare executor and scope
     auto *program = global_block->Program();
-    auto cache_info = paddle::framework::GetExecutorInfoFromCache(
-        *program, place, start_op_index, end_op_index,
-        /*is_grad*/ true, program_id, &scope);
+    auto cache_info =
+        paddle::framework::GetExecutorInfoFromCache(*program,
+                                                    place,
+                                                    start_op_index,
+                                                    end_op_index,
+                                                    /*is_grad*/ true,
+                                                    program_id,
+                                                    &scope);
     auto &parallel_executor = cache_info.first;
 
     auto &skip_eager_delete_vars =
@@ -333,7 +354,8 @@ inline void RunProgramGradAPI(
       parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, out_grad_names);
 
       skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
-                                    x_grad_names.begin(), x_grad_names.end());
+                                    x_grad_names.begin(),
+                                    x_grad_names.end());
       paddle::framework::details::AppendSkipDeletionVars(
           param_grad_names, &skip_eager_delete_vars);
     }
@@ -374,13 +396,14 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
-    PADDLE_ENFORCE_EQ(hooked_grads.size(), 1,
+    PADDLE_ENFORCE_EQ(hooked_grads.size(),
+                      1,
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
-    egr::EagerUtils::FillZeroForEmptyGradInputs(&hooked_grads,
-                                                this->InputMeta());
+    egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
+                                                       this->InputMeta()[0]);
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
@@ -397,15 +420,21 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
 
-    PADDLE_ENFORCE_EQ(hooked_grads[0].size(), fwd_out_names_.size(),
+    PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
+                      fwd_out_names_.size(),
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
                           "fwd_out_names_.size() should be equal."));
     for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
       hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
     }
-    RunProgramGradAPI(x_, params_, hooked_grads[0], step_scope_, attrs_,
-                      x_grad_ptr, params_grad_ptr);
+    RunProgramGradAPI(x_,
+                      params_,
+                      hooked_grads[0],
+                      step_scope_,
+                      attrs_,
+                      x_grad_ptr,
+                      params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
   }

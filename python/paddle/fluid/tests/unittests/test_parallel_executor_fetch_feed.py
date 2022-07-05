@@ -38,6 +38,7 @@ def Lenet(data, class_dim):
 
 
 class TestFetchAndFeed(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -52,8 +53,9 @@ class TestFetchAndFeed(unittest.TestCase):
         startup = fluid.Program()
         startup.random_seed = seed
         with fluid.program_guard(main_program, startup):
-            data = fluid.layers.data(
-                name='image', shape=[3, 224, 224], dtype='float32')
+            data = fluid.layers.data(name='image',
+                                     shape=[3, 224, 224],
+                                     dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = Lenet(data, class_dim=102)
             loss = fluid.layers.cross_entropy(input=out, label=label)
@@ -84,13 +86,14 @@ class TestFetchAndFeed(unittest.TestCase):
 
     def run_parallel_exe_with_fetch(self, compiled_program, exe, use_cuda, data,
                                     label, loss):
+
         def get_data(batch_size=8):
             np.random.seed(5)
             while True:
-                img = np.random.random(
-                    size=[batch_size, 3, 224, 224]).astype(np.float32)
-                l = (np.random.random(size=[batch_size, 1]) *
-                     10).astype(np.int64)
+                img = np.random.random(size=[batch_size, 3, 224, 224]).astype(
+                    np.float32)
+                l = (np.random.random(size=[batch_size, 1]) * 10).astype(
+                    np.int64)
                 yield img, l
 
         fetch_list = []
@@ -117,15 +120,16 @@ class TestFetchAndFeed(unittest.TestCase):
 
     def run_parallel_exe_with_feed(self, compiled_program, exe, use_cuda, data,
                                    label, loss):
+
         def get_data(batch_size=8):
             np.random.seed(5)
             while True:
                 train_data = []
                 for _ in range(batch_size):
-                    img = np.random.random(
-                        size=[1, 3, 224, 224]).astype(np.float32)
-                    label = (np.random.random(size=[1, 1]) *
-                             10).astype(np.int64)
+                    img = np.random.random(size=[1, 3, 224, 224]).astype(
+                        np.float32)
+                    label = (np.random.random(size=[1, 1]) * 10).astype(
+                        np.int64)
                     train_data.append([img, label])
                 yield train_data
 
@@ -143,30 +147,28 @@ class TestFetchAndFeed(unittest.TestCase):
 
     def check_executor(self, use_faster_executor=False, num_threads=4):
         if core.is_compiled_with_cuda():
-            self.parallel_exe(
-                use_cuda=True,
-                run_parallel_exe=self.run_parallel_exe_with_fetch,
-                use_faster_executor=use_faster_executor,
-                num_threads=num_threads)
-        self.parallel_exe(
-            use_cuda=False,
-            run_parallel_exe=self.run_parallel_exe_with_fetch,
-            use_faster_executor=use_faster_executor,
-            num_threads=num_threads)
+            self.parallel_exe(use_cuda=True,
+                              run_parallel_exe=self.run_parallel_exe_with_fetch,
+                              use_faster_executor=use_faster_executor,
+                              num_threads=num_threads)
+        self.parallel_exe(use_cuda=False,
+                          run_parallel_exe=self.run_parallel_exe_with_fetch,
+                          use_faster_executor=use_faster_executor,
+                          num_threads=num_threads)
 
     def test_fetch(self):
         for use_faster_executor in {True, False}:
-            self.check_executor(
-                use_faster_executor=use_faster_executor, num_threads=4)
-            self.check_executor(
-                use_faster_executor=use_faster_executor, num_threads=1)
+            self.check_executor(use_faster_executor=use_faster_executor,
+                                num_threads=4)
+            self.check_executor(use_faster_executor=use_faster_executor,
+                                num_threads=1)
 
     def test_feed(self):
         if core.is_compiled_with_cuda():
-            self.parallel_exe(
-                use_cuda=True, run_parallel_exe=self.run_parallel_exe_with_feed)
-        self.parallel_exe(
-            use_cuda=False, run_parallel_exe=self.run_parallel_exe_with_feed)
+            self.parallel_exe(use_cuda=True,
+                              run_parallel_exe=self.run_parallel_exe_with_feed)
+        self.parallel_exe(use_cuda=False,
+                          run_parallel_exe=self.run_parallel_exe_with_feed)
 
 
 if __name__ == '__main__':

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 #include <glog/logging.h>
+
 #include <string>
 
 #include "cuda_runtime_api.h"  // NOLINT
@@ -48,7 +49,8 @@ void TensorRTEngine::InitNetwork() {
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
-void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
+void TensorRTEngine::Execute(int batch_size,
+                             std::vector<void *> *buffers,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
@@ -128,14 +130,32 @@ void TensorRTEngine::FreezeNetwork() {
       }
 
 #if IS_TRT_VERSION_GE(5122)
-      auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
+      auto layer_int8_fallback = [&](nvinfer1::ILayer *layer) -> bool {
+        if (layer->getType() == nvinfer1::LayerType::kSHAPE) {
+          return false;
+        }
+        bool all_int = true;
+        for (int j = 0; j < layer->getNbInputs(); j++) {
+          auto *temp_in = layer->getInput(j);
+          if (temp_in->getType() != nvinfer1::DataType::kINT32) {
+            all_int = false;
+          }
+        }
+        for (int j = 0; j < layer->getNbOutputs(); j++) {
+          auto *temp_out = layer->getOutput(j);
+          if (temp_out->getType() != nvinfer1::DataType::kINT32) {
+            all_int = false;
+          }
+        }
+        if (all_int) return false;
+
         for (int j = 0; j < layer->getNbInputs(); j++) {
           auto *temp_in = layer->getInput(j);
           if (!temp_in->dynamicRangeIsSet()) {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its input("
                     << temp_in->getName() << ") doesn't have dynamic range.";
-            return false;
+            return true;
           }
         }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
@@ -144,10 +164,10 @@ void TensorRTEngine::FreezeNetwork() {
             VLOG(1) << "Layer(Name: " << layer->getName()
                     << ") is set to float32 because its output("
                     << temp_out->getName() << ") doesn't have dynamic range.";
-            return false;
+            return true;
           }
         }
-        return true;
+        return false;
       };
       // If a layer's output is the network's output, or not all of its inputs
       // and outputs have scales,
@@ -156,7 +176,7 @@ void TensorRTEngine::FreezeNetwork() {
       int layers_no_int8 = 0;
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
-        if (!is_layer_int8(layer)) {
+        if (layer_int8_fallback(layer)) {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
           ++layers_no_int8;
         }
@@ -207,7 +227,8 @@ void TensorRTEngine::FreezeNetwork() {
       for (auto &input : min_input_shape_) {
 #if IS_TRT_VERSION_LT(7000)
         // trt6 will check all_of input > 0
-        if (!(std::all_of(input.second.begin(), input.second.end(),
+        if (!(std::all_of(input.second.begin(),
+                          input.second.end(),
                           [](int x) { return x > 0; }) &&
               std::all_of(max_input_shape_[input.first].begin(),
                           max_input_shape_[input.first].end(),
@@ -224,13 +245,16 @@ void TensorRTEngine::FreezeNetwork() {
                 << ", opt: " << Vec2Str(optim_input_shape_[input.first]);
 
         optim_profiles_[i]->setDimensions(
-            input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kMIN,
             Vec2TRT_Dims(input.second, input.first, true));
         optim_profiles_[i]->setDimensions(
-            input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kMAX,
             Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
         optim_profiles_[i]->setDimensions(
-            input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
@@ -264,9 +288,10 @@ void TensorRTEngine::FreezeNetwork() {
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(
-      infer_engine_, platform::errors::Fatal(
-                         "Build TensorRT cuda engine failed! Please recheck "
-                         "you configurations related to paddle-TensorRT."));
+      infer_engine_,
+      platform::errors::Fatal(
+          "Build TensorRT cuda engine failed! Please recheck "
+          "you configurations related to paddle-TensorRT."));
 
   binding_num_ = infer_engine_->getNbBindings();
   // reset status for dynamic shape clone
@@ -281,16 +306,19 @@ void TensorRTEngine::FreezeNetwork() {
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 nvinfer1::DataType dtype,
                                                 const nvinfer1::Dims &dims) {
-  PADDLE_ENFORCE_EQ(network() != nullptr, true,
+  PADDLE_ENFORCE_EQ(network() != nullptr,
+                    true,
                     platform::errors::InvalidArgument(
                         "The TRT network should be initialized first."));
   auto *input = network()->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE_NOT_NULL(
-      input, platform::errors::InvalidArgument("Adding input %s failed in "
-                                               "TensorRT inference network. "
-                                               "Please recheck your input.",
-                                               name));
-  PADDLE_ENFORCE_EQ(input->isNetworkInput(), true,
+      input,
+      platform::errors::InvalidArgument("Adding input %s failed in "
+                                        "TensorRT inference network. "
+                                        "Please recheck your input.",
+                                        name));
+  PADDLE_ENFORCE_EQ(input->isNetworkInput(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Input %s is not the input of TRT inference network. "
                         "Please recheck your input.",
@@ -299,22 +327,26 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
   return input;
 }
 
-void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
+void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
+                                   int offset,
                                    const std::string &name) {
   auto *output = layer->getOutput(offset);
   SetITensor(name, output);
   PADDLE_ENFORCE_NOT_NULL(
-      output, platform::errors::InvalidArgument(
-                  "The output %s of TRT engine should not be null.", name));
+      output,
+      platform::errors::InvalidArgument(
+          "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
-  PADDLE_ENFORCE_EQ(output->isNetworkInput(), false,
+  PADDLE_ENFORCE_EQ(output->isNetworkInput(),
+                    false,
                     platform::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
   PADDLE_ENFORCE_EQ(
-      output->isNetworkOutput(), true,
+      output->isNetworkOutput(),
+      true,
       platform::errors::InvalidArgument(
           "The output %s of TRT engine should be the output of the network.",
           name));
@@ -323,10 +355,12 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
 void TensorRTEngine::DeclareOutput(const std::string &name) {
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE_NOT_NULL(
-      output, platform::errors::InvalidArgument(
-                  "The output %s of TRT engine should not be null.", name));
+      output,
+      platform::errors::InvalidArgument(
+          "The output %s of TRT engine should not be null.", name));
   output->setName(name.c_str());
-  PADDLE_ENFORCE_EQ(output->isNetworkInput(), false,
+  PADDLE_ENFORCE_EQ(output->isNetworkInput(),
+                    false,
                     platform::errors::InvalidArgument(
                         "The output %s of TRT engine should not be the input "
                         "of the network at the same time.",
@@ -337,66 +371,76 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
 void TensorRTEngine::SetITensor(const std::string &name,
                                 nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
-      tensor, platform::errors::InvalidArgument(
-                  "Tensor named %s of TRT engine should not be null.", name));
+      tensor,
+      platform::errors::InvalidArgument(
+          "Tensor named %s of TRT engine should not be null.", name));
   PADDLE_ENFORCE_EQ(
-      0, itensor_map_.count(name),
+      0,
+      itensor_map_.count(name),
       platform::errors::InvalidArgument(
           "Tensor named %s of TRT engine should not be duplicated", name));
   itensor_map_[name] = tensor;
 }
 
 nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
-  PADDLE_ENFORCE_EQ(itensor_map_.count(name), true,
+  PADDLE_ENFORCE_EQ(itensor_map_.count(name),
+                    true,
                     platform::errors::NotFound(
                         "Tensor named %s is not found in TRT engine", name));
   return itensor_map_[name];
+}
+
+std::unordered_map<std::string, nvinfer1::ITensor *>
+    *TensorRTEngine::GetITensorMap() {
+  return &itensor_map_;
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
   runtime_batch_ = batch_size;
 }
 
-float *TensorRTEngine::GetWeightCPUData(const std::string &name,
-                                        framework::Tensor *weight_tensor) {
-  static int name_suffix_counter = 0;
-  std::string name_suffix = std::to_string(name_suffix_counter);
-  std::string splitter = "__";
-  std::string name_with_suffix = name + splitter + name_suffix;
+template <typename T = float>
+T *TensorRTEngine::GetWeightCPUData(const std::string &name,
+                                    framework::Tensor *weight_tensor) {
+  std::unique_ptr<framework::Tensor> cpu_weight_tensor(new framework::Tensor());
   platform::CPUPlace cpu_place;
-  PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix), 0,
-                    platform::errors::AlreadyExists(
-                        "The weight named %s is set into the weight map "
-                        "twice in TRT OP converter.",
-                        name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
-  weight_map[name_with_suffix]->Resize(weight_tensor->dims());
-  paddle::framework::TensorCopySync(*weight_tensor, cpu_place,
-                                    weight_map[name_with_suffix].get());
-  float *weight_data =
-      weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
-  name_suffix_counter += 1;
+  cpu_weight_tensor->Resize(weight_tensor->dims());
+  paddle::framework::TensorCopySync(
+      *weight_tensor, cpu_place, cpu_weight_tensor.get());
+  T *weight_data = cpu_weight_tensor->mutable_data<T>(cpu_place);
+  SetWeights(name, std::move(cpu_weight_tensor));
   return weight_data;
 }
+
+template float *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
+template int32_t *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
+
+template int64_t *TensorRTEngine::GetWeightCPUData(
+    const std::string &name, framework::Tensor *weight_tensor);
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
 
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPlugin(
-    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::ITensor *const *inputs,
+    int num_inputs,
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
-    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::ITensor *const *inputs,
+    int num_inputs,
     plugin::PluginTensorRTV2Ext *plugin) {
   owned_plugin_v2ext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
 nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
-    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::ITensor *const *inputs,
+    int num_inputs,
     nvinfer1::IPluginV2IOExt *plugin) {
   owned_plugin_v2ioext_.emplace_back(plugin);
   return network()->addPluginV2(inputs, num_inputs, *plugin);
@@ -405,10 +449,12 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
 void TensorRTEngine::freshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
-  PADDLE_ENFORCE_LT(device_id_, count,
+  PADDLE_ENFORCE_LT(device_id_,
+                    count,
                     platform::errors::OutOfRange(
                         "Device id %d exceeds the current device count: %d.",
-                        device_id_, count));
+                        device_id_,
+                        count));
   platform::SetDeviceId(device_id_);
 }
 

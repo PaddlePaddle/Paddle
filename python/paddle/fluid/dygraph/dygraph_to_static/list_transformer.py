@@ -21,11 +21,11 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-
 from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class ListTransformer(gast.NodeTransformer):
+class ListTransformer(BaseTransformer):
     """
     This class transforms python list used in control flow into Static Graph Ast.
     """
@@ -129,7 +129,7 @@ class ListTransformer(gast.NodeTransformer):
         elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
             i = "paddle.cast(" \
-                "x=paddle.jit.dy2static.to_static_variable({})," \
+                "x=_jst.to_static_variable({})," \
                 "dtype='int64')".format(ast_to_source_code(slice_node))
             assign_code = "{} = paddle.tensor.array_write(x={}, i={}, array={})" \
                 .format(target_name, value_code, i, target_name)
@@ -252,7 +252,7 @@ class ListTransformer(gast.NodeTransformer):
         # 2. pop stmt for a list or dict if len(args_str) == 1
         # 3. pop stmt for a dict if len(args_str) == 2
         if len(args_str) <= 2:
-            new_pop_str = "paddle.jit.dy2static.convert_pop({}, {})"\
+            new_pop_str = "_jst.Pop({}, {})"\
                 .format(target_str, ",".join(args_str))
             new_pop_node = gast.parse(new_pop_str).body[0].value
             return new_pop_node
