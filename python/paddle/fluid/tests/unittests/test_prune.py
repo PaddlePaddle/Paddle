@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.compat as cpt
@@ -31,7 +32,7 @@ class TestPrune(unittest.TestCase):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         y = fluid.layers.fc(input=[x], size=2, act="softmax")
         loss = fluid.layers.cross_entropy(input=y, label=label)
-        loss = fluid.layers.mean(x=loss)
+        loss = paddle.mean(x=loss)
         return x, y, label, loss
 
     def test_prune_with_input(self):
@@ -41,14 +42,14 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune_with_input(
             feeded_var_names=[y.name, label.name], targets=[loss])
         self.assertEqual(len(pruned_program.global_block().ops), 2)
         self.assertEqual([op.type for op in pruned_program.global_block().ops],
-                         ["cross_entropy2", "mean"])
+                         ["cross_entropy2", "reduce_mean"])
 
     def test_prune(self):
         program = framework.Program()
@@ -57,14 +58,16 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune(targets=[loss])
         self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
 
     def test_prune_target_not_list(self):
         program = framework.Program()
@@ -73,14 +76,16 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune(targets=loss)
         self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
 
     def test_prune_target_none(self):
         program = framework.Program()
@@ -89,9 +94,9 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         try:
             pruned_program = program._prune(targets=None)
         except ValueError as e:
@@ -128,9 +133,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             act="softmax",
                             param_attr=w_param_attrs)
         loss1 = fluid.layers.cross_entropy(input=y, label=label)
-        loss1 = fluid.layers.mean(x=loss1)
+        loss1 = paddle.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y, label=label)
-        loss2 = fluid.layers.mean(x=loss2)
+        loss2 = paddle.mean(x=loss2)
         loss1.persistable = True
         loss2.persistable = True
         return x, y, label, loss1, loss2, w_param_attrs
@@ -158,9 +163,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                              act="softmax",
                              param_attr=w2_param_attrs)
         loss1 = fluid.layers.cross_entropy(input=y1, label=label)
-        loss1 = fluid.layers.mean(x=loss1)
+        loss1 = paddle.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y2, label=label)
-        loss2 = fluid.layers.mean(x=loss2)
+        loss2 = paddle.mean(x=loss2)
         return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
 
     def test_not_prune(self):

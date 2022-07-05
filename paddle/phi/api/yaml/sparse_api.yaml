@@ -141,6 +141,15 @@
     layout : x
     data_type : dtype
 
+- api: fused_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
+  output : Tensor(out), Tensor(softmax)
+  kernel :
+    func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
+    layout : sparse_mask
+  intermediate : softmax
+  backward: fused_attention_grad
+
 - api: masked_matmul
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)

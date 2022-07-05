@@ -66,7 +66,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 #include "paddle/phi/backends/dynload/port.h"

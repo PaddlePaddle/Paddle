@@ -254,7 +254,7 @@ void testVol2col<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, vol2col) {
-  testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  testVol2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   testVol2col<paddle::platform::CUDADeviceContext,
               paddle::platform::CUDAPlace>();

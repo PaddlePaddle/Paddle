@@ -38,7 +38,7 @@ def simple_fc_net(use_feed):
                 value=1.0)))
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -61,7 +61,7 @@ def fc_with_batchnorm(use_feed):
         prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     with fluid.name_scope("loss"):
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
     return loss
 
 

@@ -77,7 +77,7 @@ def train(to_static, build_strategy=None):
                                       level='O2'):
                 pred = resnet(img)
                 loss = fluid.layers.cross_entropy(input=pred, label=label)
-            avg_loss = fluid.layers.mean(x=pred)
+            avg_loss = paddle.mean(x=pred)
             acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
             acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
 

@@ -36,7 +36,7 @@ def simple_fc_net(use_feed):
         x = fluid.layers.fc(input=x, size=20, act='relu')
     y_predict = fluid.layers.fc(input=x, size=10, act='softmax')
     cost = fluid.layers.cross_entropy(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     return avg_cost
 
 
@@ -49,7 +49,7 @@ def fc_with_inplace_net(use_feed):
     reshape = fluid.layers.reshape(x=reshape, shape=[-1, 5, 2])
     y_predict = fluid.layers.fc(input=reshape, size=10, act='softmax')
     cost = fluid.layers.cross_entropy(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     return avg_cost
 
 

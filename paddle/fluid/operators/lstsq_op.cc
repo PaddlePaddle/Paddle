@@ -150,7 +150,6 @@ This API processes Lstsq functor for general matrices.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstsq, ops::LstsqOp, ops::LstsqOpMaker)
 
-REGISTER_OP_CPU_KERNEL(
-    lstsq,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lstsq,
+                       ops::LstsqCPUKernel<phi::CPUContext, float>,
+                       ops::LstsqCPUKernel<phi::CPUContext, double>);
