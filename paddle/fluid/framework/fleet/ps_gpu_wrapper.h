@@ -176,6 +176,8 @@ class PSGPUWrapper {
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
+  void start_build_thread();
+  void pre_build_thread();
   void build_task();
 
   void Finalize() {
@@ -183,9 +185,12 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
+    data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     gpu_free_channel_->Close();
     running_ = false;
+    VLOG(3) << "begin stop pre_build_threads_";
+    pre_build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
   }
@@ -245,6 +250,8 @@ class PSGPUWrapper {
       }
 #endif
       heter_devices_ = dev_ids;
+      data_ready_channel_->Open();
+      data_ready_channel_->SetCapacity(3);
       buildcpu_ready_channel_->Open();
       buildcpu_ready_channel_->SetCapacity(3);
       gpu_free_channel_->Open();
@@ -254,6 +261,8 @@ class PSGPUWrapper {
       gpu_free_channel_->Put(current_task_);
 
       table_id_ = 0;
+      // start build cpu&gpu ps thread
+      start_build_thread();
     }
   }
 
@@ -452,6 +461,8 @@ class PSGPUWrapper {
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+  std::queue<Dataset*> dataset_pipe_;
+  std::mutex dataset_mutex_;
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif

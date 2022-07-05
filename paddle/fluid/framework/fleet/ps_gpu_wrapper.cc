@@ -118,10 +118,15 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   int remain = 0;
   size_t begin = 0;
 
-  std::string data_set_name = std::string(typeid(*dataset_).name());
+  dataset_mutex_.lock();
+  Dataset* cur_dataset = dataset_pipe_.front();
+  dataset_pipe_.pop();
+  dataset_mutex_.unlock();
+
+  std::string data_set_name = std::string(typeid(*cur_dataset).name());
 
   if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
-    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(cur_dataset);
     auto input_channel = dataset->GetInputChannel();
     VLOG(0) << "psgpu wrapperinputslotchannle size: " << input_channel->Size();
     const std::deque<SlotRecord>& vec_data = input_channel->GetData();
@@ -839,16 +844,39 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
   InitSlotInfo();
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
-  VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 
-  VLOG(3) << "PreBuildTask start.";
-  timer.Start();
-  // build cpu ps data process
-  PreBuildTask(gpu_task);
-  timer.Pause();
-  VLOG(0) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
-          << "s";
-  buildcpu_ready_channel_->Put(gpu_task);
+  dataset_mutex_.lock();
+  dataset_pipe_.push(dataset_);
+  dataset_mutex_.unlock();
+  data_ready_channel_->Put(gpu_task);
+
+  VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
+}
+
+void PSGPUWrapper::start_build_thread() {
+  running_ = true;
+  VLOG(3) << "start build CPU ps thread.";
+  pre_build_threads_ = std::thread([this] { pre_build_thread(); });
+}
+
+void PSGPUWrapper::pre_build_thread() {
+  // prebuild: process load_data
+  while (running_) {
+    std::shared_ptr<HeterContext> gpu_task = nullptr;
+    if (!data_ready_channel_->Get(gpu_task)) {
+      continue;
+    }
+    VLOG(3) << "thread PreBuildTask start.";
+    platform::Timer timer;
+    timer.Start();
+    // build cpu ps data process
+    PreBuildTask(gpu_task);
+    timer.Pause();
+    VLOG(0) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
+            << "s";
+    buildcpu_ready_channel_->Put(gpu_task);
+  }
+  VLOG(3) << "build cpu thread end";
 }
 
 void PSGPUWrapper::build_task() {
