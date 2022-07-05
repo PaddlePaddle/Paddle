@@ -263,7 +263,6 @@ ipu_stage_attr_name = 'ipu_stage'
 
 @signature_safe_contextmanager
 def _enable_standalone_executor(enable=True):
-    print('enable', enable)
     global _enable_standalone_executor_
     original_ = _enable_standalone_executor_
     _enable_standalone_executor_ = enable

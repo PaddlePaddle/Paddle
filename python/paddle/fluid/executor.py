@@ -399,15 +399,12 @@ def _is_enable_standalone_executor():
     """
     flag = False
     from ..distributed.fleet import fleet
-    print(framework._enable_standalone_executor_)
     # use standalone_executor by default if not distributed
     if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
         framework._enable_standalone_executor_ = 1
 
     if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
         flag = True
-
-    print('use enable_standalone', flag)
 
     return flag
 

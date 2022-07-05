@@ -109,7 +109,6 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         self.place = paddle.CUDAPlace(
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
         self.perf_path = './perfstat'
-        os.environ['FLAGS_static_executor_perfstat_filepath'] = self.perf_path
 
     def test_parallel_executor_statistics(self):
         self.run_with_statistics(executor='ParallelExecutor')
@@ -121,6 +120,8 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         self.run_with_statistics(executor='StandaloneExecutor')
 
     def run_with_statistics(self, executor=None):
+        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
+            return
         paddle.seed(2020)
         # note: startup program is empty
         main_program, startup_program, fetch_list = build_program()
