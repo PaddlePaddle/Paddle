@@ -286,6 +286,10 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
       auto* downpour_value =
           (paddle::ps::DownpourFixedFeatureValue*)(xpu_val.cpu_ptr);
       int downpour_value_size = downpour_value->size();
+      int real_mf_size = sizeof(xpu_val.mf) / sizeof(float);
+      PADDLE_ENFORCE_GE(real_mf_size, xpu_val.mf_size,
+        platform::errors::PreconditionNotMet(
+            "sizeof(xpu_val.mf) / sizeof(float) must be equal or greater than xpu_val.mf_size, but real_mf_size is: %d, xpu_val.mf_size is: %d", real_mf_size, xpu_val.mf_size));
       if (xpu_val.mf_size > 0 && downpour_value_size == 7) {
         downpour_value->resize(xpu_val.mf_size + downpour_value_size);
       }
