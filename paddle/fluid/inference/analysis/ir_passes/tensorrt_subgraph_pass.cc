@@ -221,7 +221,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // fluid.
   std::vector<std::string> repetitive_params;
 
-  for (auto *node : framework::ir::TopologySortOperations(*graph)) {
+  for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
 

@@ -60,9 +60,6 @@ class GroupNormOpConverter : public OpConverter {
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
 
-    int64_t scale_numel = phi::product(scale_dims);
-    int64_t bias_numel = phi::product(bias_dims);
-
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;
     scale_nv_dims.nbDims = scale_dims.size();
