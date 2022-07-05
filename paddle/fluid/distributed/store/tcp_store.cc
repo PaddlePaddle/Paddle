@@ -45,7 +45,6 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
 MasterDaemon::~MasterDaemon() {
   VLOG(4) << ("begin to destruct MasterDaemon");
   StopByControlFd();
-  _background_thread.join();
   tcputils::close_socket(_listen_socket);
   for (SocketType socket : _sockets) {
     tcputils::close_socket(socket);
@@ -125,7 +124,13 @@ void MasterDaemon::CloseControlFd() {
 void MasterDaemon::StopByControlFd() {
   VLOG(4) << ("begin to run StopByControlFd");
   if (_control_fd[1] != -1) {
-    ::write(_control_fd[1], "\0", 1);
+    if (::write(_control_fd[1], "\0", 1) < 0) {
+      LOG(FATAL) << paddle::string::Sprintf("Write to control pipe errno:%d",
+                                            errno);
+    } else {
+      _background_thread.join();
+    }
+
     // close the write end of the pipe
     ::close(_control_fd[1]);
     _control_fd[1] = -1;
