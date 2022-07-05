@@ -1,0 +1,60 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_XPU_KP
+
+// Please do not modify the following code
+#if defined(__CUDA_ARCH__)
+#undef __CUDA_ARCH__
+#endif
+
+#if defined(__CUDACC__)
+#undef __CUDACC__
+#endif
+
+#if defined(__CUDA__)
+#undef __CUDA__
+#endif
+
+#if defined(__NVCC__)
+#undef __NVCC__
+#endif
+
+#include <xpu/runtime.h>                // NOLINT
+#include "xpu/kernel/cluster_header.h"  // NOLINT
+#include "xpu/kernel/debug.h"           // NOLINT
+#include "xpu/kernel/math.h"            // NOLINT
+#else
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#endif
+
+#include "paddle/fluid/operators/pull_box_sparse_op.h"
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
+#ifdef PADDLE_WITH_XPU_KP
+REGISTER_OP_KERNEL(pull_box_sparse,
+                   KP,
+                   plat::XPUPlace,
+                   ops::PullBoxSparseKernel<float>);
+REGISTER_OP_KERNEL(push_box_sparse,
+                   KP,
+                   plat::XPUPlace,
+                   ops::PushBoxSparseKernel<float>);
+#else
+REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseKernel<float>);
+REGISTER_OP_CUDA_KERNEL(push_box_sparse, ops::PushBoxSparseKernel<float>);
+#endif

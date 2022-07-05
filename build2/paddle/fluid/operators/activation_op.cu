@@ -1,0 +1,764 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+
+#include "paddle/phi/kernels/funcs/activation_functor.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename T>
+struct CudaSoftReluFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // soft_relu(x) = log(1 + exp(max(min(x, threshold), -threshold)))
+  // threshold should not be negative
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType t = static_cast<MPType>(threshold);
+    MPType temp_min = x < t ? x : t;
+    MPType temp_max = temp_min > -t ? temp_min : -t;
+    return static_cast<T>(log(one + exp(temp_max)));
+  }
+};
+
+template <typename T>
+struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > -threshold && out < threshold) ? dout * (1 - exp(-out)) : 0
+  // threshold should not be negative
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    MPType t = static_cast<MPType>(threshold);
+    return (out > -t && out < t) ? static_cast<T>(dout * (one - exp(-out)))
+                                 : static_cast<T>(0.0f);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaRelu6Functor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // relu6(x) = min(max(0, x), 6)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return x <= zero ? zero : (x < t ? x : t);
+  }
+};
+
+template <typename T>
+struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > 0 && out < t) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    T t = static_cast<T>(threshold);
+    return (out > zero && out < t) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    return x / (one + abs(x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + abs(x))^2
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    T temp = one + abs(x);
+    return dout / (temp * temp);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaCELUFunctor : public BaseActivationFunctor<T> {
+  using CT = typename details::MPTypeTrait<T>::Type;
+  CT zero = static_cast<CT>(0.0f);
+  CT one = static_cast<CT>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // celu(x) = max(0, x) + min(0, alpha * (exp(x/alpha) - 1))
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    CT x = static_cast<CT>(arg_x);
+    CT temp = static_cast<CT>(alpha) * (exp(x / static_cast<CT>(alpha)) - one);
+    CT res = (x > zero ? x : zero) + (temp > zero ? zero : temp);
+    return static_cast<T>(res);
+  }
+};
+
+template <typename T>
+struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename details::MPTypeTrait<T>::Type;
+  MPType zero = static_cast<MPType>(0.0f);
+  MPType one = static_cast<MPType>(1.0f);
+  float alpha;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+
+  // dx = dout, if alpha > 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha > 0 and x <= 0
+  // dx = dout , if alpha < 0 and x > 0
+  // dx = dout * (x/alpha).exp(), if alpha < 0 and x <=0
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType a = static_cast<MPType>(alpha);
+    MPType temp_a_pos = static_cast<MPType>(alpha > 0.0f);
+    MPType temp_a_neg = static_cast<MPType>(alpha <= 0.0f);
+    MPType temp_x_pos = static_cast<MPType>(x > zero);
+    MPType temp_x_neg = static_cast<MPType>(x <= zero);
+    return static_cast<T>(
+        dout *
+        (temp_a_pos * temp_x_pos + temp_a_pos * temp_x_neg * exp(x / a) +
+         temp_a_neg * temp_x_pos + exp(x / a) * temp_a_neg * temp_x_neg));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename DeviceContext, typename Functor>
+class ActivationCudaKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor* x = nullptr;
+    framework::Tensor* out = nullptr;
+    ExtractActivationTensor(ctx, &x, &out);
+    out->mutable_data<T>(ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<framework::Tensor*> outs = {out};
+    auto functor = Functor();
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        dev_ctx, ins, &outs, functor);
+  }
+};
+
+template <typename DeviceContext, typename Functor>
+class ActivationGradCudaKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *x, *out, *d_out;
+    framework::Tensor* d_x = nullptr;
+    x = out = d_out = nullptr;
+    ExtractActivationGradTensor<Functor::FwdDeps()>(
+        ctx, &x, &out, &d_out, &d_x);
+    d_x->mutable_data<T>(ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto functor = Functor();
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
+
+    std::vector<const framework::Tensor*> ins = {d_out};
+    std::vector<framework::Tensor*> outs = {d_x};
+
+    if (static_cast<int>(Functor::FwdDeps()) ==
+        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+      // Only need forward output Out
+      ins.push_back(out);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          dev_ctx, ins, &outs, functor);
+    } else if (static_cast<int>(Functor::FwdDeps()) ==
+               static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+      // Only need forward input X
+      ins.push_back(x);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          dev_ctx, ins, &outs, functor);
+    } else {
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          dev_ctx, ins, &outs, functor);
+    }
+  }
+};
+
+USE_PHI_FUNCTOR(CudaCos)
+USE_PHI_FUNCTOR(CudaTan)
+USE_PHI_FUNCTOR(CudaAcos)
+USE_PHI_FUNCTOR(CudaSin)
+USE_PHI_FUNCTOR(CudaAsin)
+USE_PHI_FUNCTOR(CudaAtan)
+USE_PHI_FUNCTOR(CudaSinh)
+USE_PHI_FUNCTOR(CudaCosh)
+USE_PHI_FUNCTOR(CudaAsinh)
+USE_PHI_FUNCTOR(CudaAcosh)
+USE_PHI_FUNCTOR(CudaAtanh)
+USE_PHI_FUNCTOR(CudaTanh)
+USE_PHI_FUNCTOR(CudaBRelu)
+USE_PHI_FUNCTOR(CudaLeakyRelu)
+USE_PHI_FUNCTOR(CudaThresholdedRelu)
+USE_PHI_FUNCTOR(CudaHardShrink)
+USE_PHI_FUNCTOR(CudaSoftShrink)
+USE_PHI_FUNCTOR(CudaTanhShrink)
+USE_PHI_FUNCTOR(CudaSilu)
+USE_PHI_FUNCTOR(CudaELU)
+USE_PHI_FUNCTOR(CudaSigmoid)
+USE_PHI_FUNCTOR(CudaLogSigmoid)
+USE_PHI_FUNCTOR(CudaHardSigmoid)
+USE_PHI_FUNCTOR(CudaLog)
+USE_PHI_FUNCTOR(CudaLog2)
+USE_PHI_FUNCTOR(CudaLog10)
+USE_PHI_FUNCTOR(CudaLog1p)
+USE_PHI_FUNCTOR(CudaSwish)
+USE_PHI_FUNCTOR(CudaHardSwish)
+
+template <typename T>
+using CudaRoundFunctor = phi::funcs::CudaRoundFunctor<T>;
+
+template <typename T>
+using CudaFloorFunctor = phi::funcs::CudaFloorFunctor<T>;
+
+template <typename T>
+using CudaCeilFunctor = phi::funcs::CudaCeilFunctor<T>;
+
+template <typename T>
+using CudaZeroGradFunctor = phi::funcs::CudaZeroGradFunctor<T>;
+
+USE_PHI_FUNCTOR(CudaExp)
+USE_PHI_FUNCTOR(CudaExpm1)
+USE_PHI_FUNCTOR(CudaMish)
+USE_PHI_FUNCTOR(CudaSTanh)
+USE_PHI_FUNCTOR(CudaReciprocal)
+USE_PHI_FUNCTOR(CudaSquare)
+USE_PHI_FUNCTOR(CudaSqrt)
+USE_PHI_FUNCTOR(CudaRsqrt)
+USE_PHI_FUNCTOR(CudaSoftplus)
+
+template <typename T>
+using CudaELUGradNegativeAlphaFunctor =
+    phi::funcs::CudaELUGradNegativeAlphaFunctor<T>;
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
+#define REGISTER_ACTIVATION_CUDA_KERNEL(                               \
+    act_type, op_name, functor, grad_functor)                          \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type,                                                        \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<float>>,                  \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<double>>,                 \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::float16>>,          \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::bfloat16>>);        \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type##_grad,                                                 \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<float>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<double>>,        \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<plat::float16>>, \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<plat::bfloat16>>);
+
+#define REGISTER_ACTIVATION_CUDA_KERNEL_INT(                           \
+    act_type, op_name, functor, grad_functor)                          \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type,                                                        \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<float>>,                  \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<double>>,                 \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<int>>,                    \
+      ops::ActivationCudaKernel<paddle::platform::CUDADeviceContext,   \
+                                ops::functor<int64_t>>,                \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::float16>>,          \
+      ops::ActivationCudaKernel<plat::CUDADeviceContext,               \
+                                ops::functor<plat::bfloat16>>);        \
+  REGISTER_OP_CUDA_KERNEL(                                             \
+      act_type##_grad,                                                 \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<float>>,         \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<double>>,        \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<int>>,           \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<int64_t>>,       \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<plat::float16>>, \
+      ops::ActivationGradCudaKernel<plat::CUDADeviceContext,           \
+                                    ops::grad_functor<plat::bfloat16>>);
+
+/* ========================================================================== */
+
+/* ======================== celu register  ============================ */
+REGISTER_ACTIVATION_CUDA_KERNEL(celu,
+                                CELU,
+                                CudaCELUFunctor,
+                                CudaCELUGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    celu_grad_grad,
+    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::CELUGradGradFunctor<float>>,
+    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::CELUGradGradFunctor<double>>,
+    ops::CELUDoubleGradKernel<plat::CUDADeviceContext,
+                              ops::CELUGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ===========================   sqrt register  ============================= */
+
+REGISTER_OP_CUDA_KERNEL(
+    sqrt_grad_grad,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<float>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<double>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<plat::float16>>,
+    ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::SqrtGradGradFunctor<plat::bfloat16>>);
+/* ========================================================================== */
+
+/* ===========================   rsqrt register  =============================
+ */
+
+REGISTER_OP_CUDA_KERNEL(
+    rsqrt_grad_grad,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<float>>,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<double>>,
+    ops::RsqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               ops::RsqrtGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ===========================  square register  ============================ */
+
+REGISTER_OP_CUDA_KERNEL(
+    square_grad_grad,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<float>>,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<double>>,
+    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<plat::float16>>,
+    ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<plat::bfloat16>>,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<int>>,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================   logit register  ============================ */
+namespace ops = paddle::operators;
+/* ========================================================================== */
+
+/* ==========================   exp register  ============================ */
+/* ========================================================================== */
+
+/* ==========================   expm1 register  ============================ */
+/* ========================================================================== */
+
+#define FOR_EACH_ACTIVATION_CUDA_OP(__macro)                                  \
+  __macro(soft_relu, SoftRelu, CudaSoftReluFunctor, CudaSoftReluGradFunctor); \
+  __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);              \
+  __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor);
+
+FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
+
+#ifdef PADDLE_WITH_XPU_KP
+REGISTER_OP_KERNEL(
+    brelu,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaBReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    brelu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  phi::funcs::CudaBReluGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(ceil,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaCeilFunctor<float>>);
+REGISTER_OP_KERNEL(
+    ceil_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaZeroGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(celu,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaCELUFunctor<float>>);
+REGISTER_OP_KERNEL(
+    celu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaCELUGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(elu,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaELUFunctor<float>>);
+REGISTER_OP_KERNEL(
+    elu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaELUGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(exp,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaExpFunctor<float>>);
+REGISTER_OP_KERNEL(
+    exp_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaExpGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(floor,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaFloorFunctor<float>>);
+REGISTER_OP_KERNEL(
+    floor_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaZeroGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    hard_shrink,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaHardShrinkFunctor<float>>);
+REGISTER_OP_KERNEL(
+    hard_shrink_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaHardShrinkGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    hard_sigmoid,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaHardSigmoidFunctor<float>>);
+REGISTER_OP_KERNEL(
+    hard_sigmoid_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaHardSigmoidGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(hard_swish,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaHardSwishFunctor<float>>);
+REGISTER_OP_KERNEL(
+    hard_swish_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaHardSwishGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    leaky_relu,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaLeakyReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    leaky_relu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  phi::funcs::CudaLeakyReluGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(log,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaLogFunctor<float>>);
+REGISTER_OP_KERNEL(
+    log_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaLogGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(log1p,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaLog1pFunctor<float>>);
+REGISTER_OP_KERNEL(
+    log1p_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaLog1pGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    logsigmoid,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaLogSigmoidFunctor<float>>);
+REGISTER_OP_KERNEL(
+    logsigmoid_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaLogSigmoidGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    reciprocal,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaReciprocalFunctor<float>>);
+REGISTER_OP_KERNEL(
+    reciprocal_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaReciprocalGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    relu,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    relu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  phi::funcs::CudaReluGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(relu6,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaRelu6Functor<float>>);
+REGISTER_OP_KERNEL(
+    relu6_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaRelu6GradFunctor<float>>);
+
+REGISTER_OP_KERNEL(sigmoid,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSigmoidFunctor<float>>);
+REGISTER_OP_KERNEL(
+    sigmoid_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSigmoidGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(silu,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSiluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    silu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSiluGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(soft_relu,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSoftReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    soft_relu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSoftReluGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(softplus,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSoftplusFunctor<float>>);
+REGISTER_OP_KERNEL(
+    softplus_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSoftplusGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    softshrink,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaSoftShrinkFunctor<float>>);
+REGISTER_OP_KERNEL(
+    softshrink_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSoftShrinkGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(softsign,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSoftsignFunctor<float>>);
+REGISTER_OP_KERNEL(
+    softsign_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSoftsignGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(sqrt,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSqrtFunctor<float>>);
+REGISTER_OP_KERNEL(
+    sqrt_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSqrtGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(square,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSquareFunctor<float>>);
+REGISTER_OP_KERNEL(
+    square_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSquareGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(swish,
+                   KP,
+                   plat::XPUPlace,
+                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                                             ops::CudaSwishFunctor<float>>);
+REGISTER_OP_KERNEL(
+    swish_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaSwishGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    thresholded_relu,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              ops::CudaThresholdedReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    thresholded_relu_grad,
+    KP,
+    plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  ops::CudaThresholdedReluGradFunctor<float>>);
+
+#endif  // PADDLE_WITH_XPU_KP

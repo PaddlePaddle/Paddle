@@ -1,0 +1,1921 @@
+The system is: Linux - 4.14.0_1-0-0-46 - x86_64
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+Compiler: /usr/local/gcc-8.2/bin/c++ 
+Build flags: 
+Id flags:  
+
+The output was:
+0
+
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+
+The CXX compiler identification is GNU, found in "/wangxianming/myPro/Paddle/build2/CMakeFiles/3.16.0/CompilerIdCXX/a.out"
+
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler: /usr/local/gcc-8.2/bin/gcc 
+Build flags: 
+Id flags:  
+
+The output was:
+0
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+
+The C compiler identification is GNU, found in "/wangxianming/myPro/Paddle/build2/CMakeFiles/3.16.0/CompilerIdC/a.out"
+
+Determining if the CXX compiler works passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_4c800/fast && /usr/bin/make -f CMakeFiles/cmTC_4c800.dir/build.make CMakeFiles/cmTC_4c800.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_4c800.dir/testCXXCompiler.cxx.o
+/usr/local/gcc-8.2/bin/c++     -o CMakeFiles/cmTC_4c800.dir/testCXXCompiler.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/testCXXCompiler.cxx
+Linking CXX executable cmTC_4c800
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4c800.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++       CMakeFiles/cmTC_4c800.dir/testCXXCompiler.cxx.o  -o cmTC_4c800 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Detecting CXX compiler ABI info compiled with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_e503a/fast && /usr/bin/make -f CMakeFiles/cmTC_e503a.dir/build.make CMakeFiles/cmTC_e503a.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o
+/usr/local/gcc-8.2/bin/c++    -v -o CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCXXCompilerABI.cpp
+Using built-in specs.
+COLLECT_GCC=/usr/local/gcc-8.2/bin/c++
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -version -o /tmp/ccDgE7IA.s
+GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"
+ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ .
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include
+ /usr/local/include
+ /usr/local/gcc-8.2/include
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: 7d135433b0c74efc52bdfca490c15261
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ as -v --64 -o CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccDgE7IA.s
+GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+Linking CXX executable cmTC_e503a
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e503a.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++      -v CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o  -o cmTC_e503a 
+Using built-in specs.
+COLLECT_GCC=/usr/local/gcc-8.2/bin/c++
+COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_e503a' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccTGSEYG.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_e503a /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_e503a' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Parsed CXX implicit include dir info from above output: rv=done
+  found start of include info
+  found start of implicit include info
+    add: [.]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+    add: [/usr/local/include]
+    add: [/usr/local/gcc-8.2/include]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+    add: [/usr/include/x86_64-linux-gnu]
+    add: [/usr/include]
+  end of search list found
+  skipping relative include dir [.]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0] ==> [/usr/local/gcc-8.2/include/c++/8.2.0]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu] ==> [/usr/local/gcc-8.2/include/c++/8.2.0/x86_64-pc-linux-gnu]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward] ==> [/usr/local/gcc-8.2/include/c++/8.2.0/backward]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  collapse include dir [/usr/local/include] ==> [/usr/local/include]
+  collapse include dir [/usr/local/gcc-8.2/include] ==> [/usr/local/gcc-8.2/include]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+  collapse include dir [/usr/include] ==> [/usr/include]
+  implicit include dirs: [/usr/local/gcc-8.2/include/c++/8.2.0;/usr/local/gcc-8.2/include/c++/8.2.0/x86_64-pc-linux-gnu;/usr/local/gcc-8.2/include/c++/8.2.0/backward;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include;/usr/local/include;/usr/local/gcc-8.2/include;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed;/usr/include/x86_64-linux-gnu;/usr/include]
+
+
+Parsed CXX implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command(s):/usr/bin/make cmTC_e503a/fast && /usr/bin/make -f CMakeFiles/cmTC_e503a.dir/build.make CMakeFiles/cmTC_e503a.dir/build]
+  ignore line: [make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp']
+  ignore line: [Building CXX object CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o]
+  ignore line: [/usr/local/gcc-8.2/bin/c++    -v -o CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCXXCompilerABI.cpp]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/local/gcc-8.2/bin/c++]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpbase CMakeCXXCompilerABI.cpp -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -version -o /tmp/ccDgE7IA.s]
+  ignore line: [GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"]
+  ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+  ignore line: [ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ .]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/local/gcc-8.2/include]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  ignore line: [ /usr/include/x86_64-linux-gnu]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [Compiler executable checksum: 7d135433b0c74efc52bdfca490c15261]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [ as -v --64 -o CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccDgE7IA.s]
+  ignore line: [GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  ignore line: [Linking CXX executable cmTC_e503a]
+  ignore line: [/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e503a.dir/link.txt --verbose=1]
+  ignore line: [/usr/local/gcc-8.2/bin/c++      -v CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o  -o cmTC_e503a ]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/local/gcc-8.2/bin/c++]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_e503a' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  link line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccTGSEYG.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_e503a /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o]
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/ccTGSEYG.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_x86_64] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_e503a] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crt1.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crti.o] ==> ignore
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o] ==> ignore
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64]
+    arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+    arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+    arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+    arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+    arg [-L/usr/local/cuda/lib64/stubs] ==> dir [/usr/local/cuda/lib64/stubs]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..]
+    arg [CMakeFiles/cmTC_e503a.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+    arg [-lstdc++] ==> lib [stdc++]
+    arg [-lm] ==> lib [m]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [-lc] ==> lib [c]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crtn.o] ==> ignore
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> [/usr/local/gcc-8.2/lib64]
+  collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+  collapse library dir [/lib/../lib64] ==> [/lib64]
+  collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+  collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+  collapse library dir [/usr/local/cuda/lib64/stubs] ==> [/usr/local/cuda/lib64/stubs]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> [/usr/local/gcc-8.2/lib]
+  implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+  implicit dirs: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0;/usr/local/gcc-8.2/lib64;/lib/x86_64-linux-gnu;/lib64;/usr/lib/x86_64-linux-gnu;/usr/lib64;/usr/local/cuda/lib64/stubs;/usr/local/gcc-8.2/lib]
+  implicit fwks: []
+
+
+Determining if the C compiler works passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_9e26d/fast && /usr/bin/make -f CMakeFiles/cmTC_9e26d.dir/build.make CMakeFiles/cmTC_9e26d.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_9e26d.dir/testCCompiler.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_9e26d.dir/testCCompiler.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/testCCompiler.c
+Linking C executable cmTC_9e26d
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9e26d.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_9e26d.dir/testCCompiler.c.o  -o cmTC_9e26d 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_f2b7e/fast && /usr/bin/make -f CMakeFiles/cmTC_f2b7e.dir/build.make CMakeFiles/cmTC_f2b7e.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o
+/usr/local/gcc-8.2/bin/gcc   -v -o CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o   -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCCompilerABI.c
+Using built-in specs.
+COLLECT_GCC=/usr/local/gcc-8.2/bin/gcc
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o -version -o /tmp/ccBaBJ5Z.s
+GNU C17 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include
+ /usr/local/include
+ /usr/local/gcc-8.2/include
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+GNU C17 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: 1314b0d756a7922e6c71010c99050bb0
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+ as -v --64 -o CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o /tmp/ccBaBJ5Z.s
+GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64'
+Linking C executable cmTC_f2b7e
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f2b7e.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc     -v CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o  -o cmTC_f2b7e 
+Using built-in specs.
+COLLECT_GCC=/usr/local/gcc-8.2/bin/gcc
+COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f2b7e' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccRBfTt2.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f2b7e /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o -lgcc --as-needed -lgcc_s --no-as-needed -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f2b7e' '-mtune=generic' '-march=x86-64'
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Parsed C implicit include dir info from above output: rv=done
+  found start of include info
+  found start of implicit include info
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+    add: [/usr/local/include]
+    add: [/usr/local/gcc-8.2/include]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+    add: [/usr/include/x86_64-linux-gnu]
+    add: [/usr/include]
+  end of search list found
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  collapse include dir [/usr/local/include] ==> [/usr/local/include]
+  collapse include dir [/usr/local/gcc-8.2/include] ==> [/usr/local/gcc-8.2/include]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+  collapse include dir [/usr/include] ==> [/usr/include]
+  implicit include dirs: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include;/usr/local/include;/usr/local/gcc-8.2/include;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed;/usr/include/x86_64-linux-gnu;/usr/include]
+
+
+Parsed C implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command(s):/usr/bin/make cmTC_f2b7e/fast && /usr/bin/make -f CMakeFiles/cmTC_f2b7e.dir/build.make CMakeFiles/cmTC_f2b7e.dir/build]
+  ignore line: [make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp']
+  ignore line: [Building C object CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o]
+  ignore line: [/usr/local/gcc-8.2/bin/gcc   -v -o CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o   -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCCompilerABI.c]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/local/gcc-8.2/bin/gcc]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCCompilerABI.c -quiet -dumpbase CMakeCCompilerABI.c -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o -version -o /tmp/ccBaBJ5Z.s]
+  ignore line: [GNU C17 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+  ignore line: [ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/local/gcc-8.2/include]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  ignore line: [ /usr/include/x86_64-linux-gnu]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [GNU C17 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [Compiler executable checksum: 1314b0d756a7922e6c71010c99050bb0]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [ as -v --64 -o CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o /tmp/ccBaBJ5Z.s]
+  ignore line: [GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64']
+  ignore line: [Linking C executable cmTC_f2b7e]
+  ignore line: [/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f2b7e.dir/link.txt --verbose=1]
+  ignore line: [/usr/local/gcc-8.2/bin/gcc     -v CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o  -o cmTC_f2b7e ]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/local/gcc-8.2/bin/gcc]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_f2b7e' '-mtune=generic' '-march=x86-64']
+  link line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/ccRBfTt2.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_f2b7e /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o -lgcc --as-needed -lgcc_s --no-as-needed -lc -lgcc --as-needed -lgcc_s --no-as-needed /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o]
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/ccRBfTt2.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_x86_64] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_f2b7e] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crt1.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crti.o] ==> ignore
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o] ==> ignore
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64]
+    arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+    arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+    arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+    arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+    arg [-L/usr/local/cuda/lib64/stubs] ==> dir [/usr/local/cuda/lib64/stubs]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..]
+    arg [CMakeFiles/cmTC_f2b7e.dir/CMakeCCompilerABI.c.o] ==> ignore
+    arg [-lgcc] ==> lib [gcc]
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--no-as-needed] ==> ignore
+    arg [-lc] ==> lib [c]
+    arg [-lgcc] ==> lib [gcc]
+    arg [--as-needed] ==> ignore
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [--no-as-needed] ==> ignore
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crtn.o] ==> ignore
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> [/usr/local/gcc-8.2/lib64]
+  collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+  collapse library dir [/lib/../lib64] ==> [/lib64]
+  collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+  collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+  collapse library dir [/usr/local/cuda/lib64/stubs] ==> [/usr/local/cuda/lib64/stubs]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> [/usr/local/gcc-8.2/lib]
+  implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+  implicit dirs: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0;/usr/local/gcc-8.2/lib64;/lib/x86_64-linux-gnu;/lib64;/usr/lib/x86_64-linux-gnu;/usr/lib64;/usr/local/cuda/lib64/stubs;/usr/local/gcc-8.2/lib]
+  implicit fwks: []
+
+
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_94673/fast && /usr/bin/make -f CMakeFiles/cmTC_94673.dir/build.make CMakeFiles/cmTC_94673.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_94673.dir/CheckIncludeFile.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC    -o CMakeFiles/cmTC_94673.dir/CheckIncludeFile.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_94673
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_94673.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc -fPIC     CMakeFiles/cmTC_94673.dir/CheckIncludeFile.c.o  -o cmTC_94673 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the function pthread_create exists in the pthread passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_b9509/fast && /usr/bin/make -f CMakeFiles/cmTC_b9509.dir/build.make CMakeFiles/cmTC_b9509.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_b9509.dir/CheckFunctionExists.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_b9509.dir/CheckFunctionExists.c.o   -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CheckFunctionExists.c
+Linking C executable cmTC_b9509
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b9509.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc -fPIC -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_b9509.dir/CheckFunctionExists.c.o  -o cmTC_b9509  -lpthread 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Compiling the CUDA compiler identification source file "CMakeCUDACompilerId.cu" succeeded.
+Compiler: /usr/local/cuda/bin/nvcc 
+Build flags: 
+Id flags:  -v;--keep;--keep-dir;tmp
+
+The output was:
+0
+#$ _NVVM_BRANCH_=nvvm
+#$ _SPACE_= 
+#$ _CUDART_=cudart
+#$ _HERE_=/usr/local/cuda/bin
+#$ _THERE_=/usr/local/cuda/bin
+#$ _TARGET_SIZE_=
+#$ _TARGET_DIR_=
+#$ _TARGET_DIR_=targets/x86_64-linux
+#$ TOP=/usr/local/cuda/bin/..
+#$ NVVMIR_LIBRARY_DIR=/usr/local/cuda/bin/../nvvm/libdevice
+#$ LD_LIBRARY_PATH=/usr/local/cuda/bin/../lib:/usr/local/python3.7.0/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib64/:/usr/local/lib/
+#$ PATH=/usr/local/cuda/bin/../nvvm/bin:/usr/local/cuda/bin:/wangxianming/ci-script:/usr/local/python3.7.0/bin:/usr/local/python3.7.0/include:/home/cmake-3.16.0-Linux-x86_64/bin:/usr/local/gcc-8.2/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/root/gopath/bin
+#$ INCLUDES="-I/usr/local/cuda/bin/../targets/x86_64-linux/include"  
+#$ LIBRARIES=  "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"
+#$ CUDAFE_FLAGS=
+#$ PTXAS_FLAGS=
+#$ rm tmp/a_dlink.reg.c
+#$ gcc -D__CUDA_ARCH__=300 -E -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp1.ii" 
+#$ cicc --c++14 --gnu_version=80200 --allow_managed   -arch compute_30 -m64 -ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 --include_file_name "CMakeCUDACompilerId.fatbin.c" -tused -nvvmir-library "/usr/local/cuda/bin/../nvvm/libdevice/libdevice.10.bc" --gen_module_id_file --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" --orig_src_file_name "CMakeCUDACompilerId.cu" --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.c" --stub_file_name "tmp/CMakeCUDACompilerId.cudafe1.stub.c" --gen_device_file_name "tmp/CMakeCUDACompilerId.cudafe1.gpu"  "tmp/CMakeCUDACompilerId.cpp1.ii" -o "tmp/CMakeCUDACompilerId.ptx"
+#$ ptxas -arch=sm_30 -m64  "tmp/CMakeCUDACompilerId.ptx"  -o "tmp/CMakeCUDACompilerId.sm_30.cubin" 
+#$ fatbinary --create="tmp/CMakeCUDACompilerId.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " "--image3=kind=elf,sm=30,file=tmp/CMakeCUDACompilerId.sm_30.cubin" "--image3=kind=ptx,sm=30,file=tmp/CMakeCUDACompilerId.ptx" --embedded-fatbin="tmp/CMakeCUDACompilerId.fatbin.c" 
+#$ gcc -E -x c++ -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp4.ii" 
+#$ cudafe++ --c++14 --gnu_version=80200 --allow_managed  --m64 --parse_templates --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.cpp" --stub_file_name "CMakeCUDACompilerId.cudafe1.stub.c" --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" "tmp/CMakeCUDACompilerId.cpp4.ii" 
+#$ gcc -D__CUDA_ARCH__=300 -c -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"   -m64 "tmp/CMakeCUDACompilerId.cudafe1.cpp" -o "tmp/CMakeCUDACompilerId.o" 
+#$ nvlink --arch=sm_30 --register-link-binaries="tmp/a_dlink.reg.c"  -m64   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib" -cpu-arch=X86_64 "tmp/CMakeCUDACompilerId.o"  -o "tmp/a_dlink.sm_30.cubin"
+#$ fatbinary --create="tmp/a_dlink.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " -link "--image3=kind=elf,sm=30,file=tmp/a_dlink.sm_30.cubin" --embedded-fatbin="tmp/a_dlink.fatbin.c" 
+#$ gcc -c -x c++ -DFATBINFILE="\"tmp/a_dlink.fatbin.c\"" -DREGISTERLINKBINARYFILE="\"tmp/a_dlink.reg.c\"" -I. -D__NV_EXTRA_INITIALIZATION= -D__NV_EXTRA_FINALIZATION= -D__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -m64 "/usr/local/cuda/bin/crt/link.stub" -o "tmp/a_dlink.o" 
+#$ g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" 
+
+
+Compilation of the CUDA compiler identification source "CMakeCUDACompilerId.cu" produced "a.out"
+
+The CUDA compiler identification is NVIDIA, found in "/wangxianming/myPro/Paddle/build2/CMakeFiles/3.16.0/CompilerIdCUDA/a.out"
+
+Parsed CUDA nvcc implicit link information from above output:
+  found 'PATH=' string: [/usr/local/cuda/bin/../nvvm/bin:/usr/local/cuda/bin:/wangxianming/ci-script:/usr/local/python3.7.0/bin:/usr/local/python3.7.0/include:/home/cmake-3.16.0-Linux-x86_64/bin:/usr/local/gcc-8.2/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/root/gopath/bin]
+  found 'LIBRARIES=' string: ["-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"]
+  considering line: [#$ rm tmp/a_dlink.reg.c]
+  considering line: [gcc -D__CUDA_ARCH__=300 -E -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp1.ii" ]
+  considering line: [cicc --c++14 --gnu_version=80200 --allow_managed   -arch compute_30 -m64 -ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 --include_file_name "CMakeCUDACompilerId.fatbin.c" -tused -nvvmir-library "/usr/local/cuda/bin/../nvvm/libdevice/libdevice.10.bc" --gen_module_id_file --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" --orig_src_file_name "CMakeCUDACompilerId.cu" --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.c" --stub_file_name "tmp/CMakeCUDACompilerId.cudafe1.stub.c" --gen_device_file_name "tmp/CMakeCUDACompilerId.cudafe1.gpu"  "tmp/CMakeCUDACompilerId.cpp1.ii" -o "tmp/CMakeCUDACompilerId.ptx"]
+  considering line: [ptxas -arch=sm_30 -m64  "tmp/CMakeCUDACompilerId.ptx"  -o "tmp/CMakeCUDACompilerId.sm_30.cubin" ]
+  considering line: [fatbinary --create="tmp/CMakeCUDACompilerId.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " "--image3=kind=elf,sm=30,file=tmp/CMakeCUDACompilerId.sm_30.cubin" "--image3=kind=ptx,sm=30,file=tmp/CMakeCUDACompilerId.ptx" --embedded-fatbin="tmp/CMakeCUDACompilerId.fatbin.c" ]
+  considering line: [gcc -E -x c++ -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp4.ii" ]
+  considering line: [cudafe++ --c++14 --gnu_version=80200 --allow_managed  --m64 --parse_templates --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.cpp" --stub_file_name "CMakeCUDACompilerId.cudafe1.stub.c" --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" "tmp/CMakeCUDACompilerId.cpp4.ii" ]
+  considering line: [gcc -D__CUDA_ARCH__=300 -c -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"   -m64 "tmp/CMakeCUDACompilerId.cudafe1.cpp" -o "tmp/CMakeCUDACompilerId.o" ]
+  considering line: [nvlink --arch=sm_30 --register-link-binaries="tmp/a_dlink.reg.c"  -m64   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib" -cpu-arch=X86_64 "tmp/CMakeCUDACompilerId.o"  -o "tmp/a_dlink.sm_30.cubin"]
+    ignoring nvlink line
+  considering line: [fatbinary --create="tmp/a_dlink.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " -link "--image3=kind=elf,sm=30,file=tmp/a_dlink.sm_30.cubin" --embedded-fatbin="tmp/a_dlink.fatbin.c" ]
+  considering line: [gcc -c -x c++ -DFATBINFILE="\"tmp/a_dlink.fatbin.c\"" -DREGISTERLINKBINARYFILE="\"tmp/a_dlink.reg.c\"" -I. -D__NV_EXTRA_INITIALIZATION= -D__NV_EXTRA_FINALIZATION= -D__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -m64 "/usr/local/cuda/bin/crt/link.stub" -o "tmp/a_dlink.o" ]
+  considering line: [g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+    extracted link line: [g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+  considering line: []
+  extracted link launcher name: [g++]
+  found link launcher absolute path: [/usr/local/gcc-8.2/bin/g++]
+
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  link line: [cuda-fake-ld g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+    arg [cuda-fake-ld] ==> ignore
+    arg [g++] ==> ignore
+    arg [-m64] ==> ignore
+    arg [-Wl,--start-group] ==> ignore
+    arg [tmp/a_dlink.o] ==> ignore
+    arg [tmp/CMakeCUDACompilerId.o] ==> ignore
+    arg [-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs] ==> dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs]
+    arg [-L/usr/local/cuda/bin/../targets/x86_64-linux/lib] ==> dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib]
+    arg [-lcudadevrt] ==> lib [cudadevrt]
+    arg [-lcudart_static] ==> lib [cudart_static]
+    arg [-lrt] ==> lib [rt]
+    arg [-lpthread] ==> lib [pthread]
+    arg [-ldl] ==> lib [dl]
+    arg [-Wl,--end-group] ==> ignore
+    arg [-o] ==> ignore
+    arg [a.out] ==> ignore
+  collapse library dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs] ==> [/usr/local/cuda/targets/x86_64-linux/lib/stubs]
+  collapse library dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib] ==> [/usr/local/cuda/targets/x86_64-linux/lib]
+  implicit libs: [cudadevrt;cudart_static;rt;pthread;dl]
+  implicit dirs: [/usr/local/cuda/targets/x86_64-linux/lib/stubs;/usr/local/cuda/targets/x86_64-linux/lib]
+  implicit fwks: []
+
+
+Parsed CUDA nvcc include information from above output:
+  found 'PATH=' string: [/usr/local/cuda/bin/../nvvm/bin:/usr/local/cuda/bin:/wangxianming/ci-script:/usr/local/python3.7.0/bin:/usr/local/python3.7.0/include:/home/cmake-3.16.0-Linux-x86_64/bin:/usr/local/gcc-8.2/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/root/gopath/bin]
+  found 'LIBRARIES=' string: ["-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"]
+  considering line: [#$ rm tmp/a_dlink.reg.c]
+  considering line: [gcc -D__CUDA_ARCH__=300 -E -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp1.ii" ]
+  considering line: [cicc --c++14 --gnu_version=80200 --allow_managed   -arch compute_30 -m64 -ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 --include_file_name "CMakeCUDACompilerId.fatbin.c" -tused -nvvmir-library "/usr/local/cuda/bin/../nvvm/libdevice/libdevice.10.bc" --gen_module_id_file --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" --orig_src_file_name "CMakeCUDACompilerId.cu" --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.c" --stub_file_name "tmp/CMakeCUDACompilerId.cudafe1.stub.c" --gen_device_file_name "tmp/CMakeCUDACompilerId.cudafe1.gpu"  "tmp/CMakeCUDACompilerId.cpp1.ii" -o "tmp/CMakeCUDACompilerId.ptx"]
+  considering line: [ptxas -arch=sm_30 -m64  "tmp/CMakeCUDACompilerId.ptx"  -o "tmp/CMakeCUDACompilerId.sm_30.cubin" ]
+  considering line: [fatbinary --create="tmp/CMakeCUDACompilerId.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " "--image3=kind=elf,sm=30,file=tmp/CMakeCUDACompilerId.sm_30.cubin" "--image3=kind=ptx,sm=30,file=tmp/CMakeCUDACompilerId.ptx" --embedded-fatbin="tmp/CMakeCUDACompilerId.fatbin.c" ]
+  considering line: [gcc -E -x c++ -D__CUDACC__ -D__NVCC__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -include "cuda_runtime.h" -m64 "CMakeCUDACompilerId.cu" -o "tmp/CMakeCUDACompilerId.cpp4.ii" ]
+  considering line: [cudafe++ --c++14 --gnu_version=80200 --allow_managed  --m64 --parse_templates --gen_c_file_name "tmp/CMakeCUDACompilerId.cudafe1.cpp" --stub_file_name "CMakeCUDACompilerId.cudafe1.stub.c" --module_id_file_name "tmp/CMakeCUDACompilerId.module_id" "tmp/CMakeCUDACompilerId.cpp4.ii" ]
+  considering line: [gcc -D__CUDA_ARCH__=300 -c -x c++  -DCUDA_DOUBLE_MATH_FUNCTIONS "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"   -m64 "tmp/CMakeCUDACompilerId.cudafe1.cpp" -o "tmp/CMakeCUDACompilerId.o" ]
+  considering line: [nvlink --arch=sm_30 --register-link-binaries="tmp/a_dlink.reg.c"  -m64   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib" -cpu-arch=X86_64 "tmp/CMakeCUDACompilerId.o"  -o "tmp/a_dlink.sm_30.cubin"]
+    ignoring nvlink line
+  considering line: [fatbinary --create="tmp/a_dlink.fatbin" -64 --cicc-cmdline="-ftz=0 -prec_div=1 -prec_sqrt=1 -fmad=1 " -link "--image3=kind=elf,sm=30,file=tmp/a_dlink.sm_30.cubin" --embedded-fatbin="tmp/a_dlink.fatbin.c" ]
+  considering line: [gcc -c -x c++ -DFATBINFILE="\"tmp/a_dlink.fatbin.c\"" -DREGISTERLINKBINARYFILE="\"tmp/a_dlink.reg.c\"" -I. -D__NV_EXTRA_INITIALIZATION= -D__NV_EXTRA_FINALIZATION= -D__CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__  "-I/usr/local/cuda/bin/../targets/x86_64-linux/include"    -D__CUDACC_VER_MAJOR__=10 -D__CUDACC_VER_MINOR__=2 -D__CUDACC_VER_BUILD__=89 -m64 "/usr/local/cuda/bin/crt/link.stub" -o "tmp/a_dlink.o" ]
+  considering line: [g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+    extracted link line: [g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+  considering line: []
+  extracted link launcher name: [g++]
+  found link launcher absolute path: [/usr/local/gcc-8.2/bin/g++]
+  found 'INCLUDES=' string: ["-I/usr/local/cuda/bin/../targets/x86_64-linux/include"  ]
+
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  link line: [cuda-fake-ld g++ -m64 -Wl,--start-group "tmp/a_dlink.o" "tmp/CMakeCUDACompilerId.o"   "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs" "-L/usr/local/cuda/bin/../targets/x86_64-linux/lib"  -lcudadevrt  -lcudart_static  -lrt -lpthread  -ldl  -Wl,--end-group -o "a.out" ]
+    arg [cuda-fake-ld] ==> ignore
+    arg [g++] ==> ignore
+    arg [-m64] ==> ignore
+    arg [-Wl,--start-group] ==> ignore
+    arg [tmp/a_dlink.o] ==> ignore
+    arg [tmp/CMakeCUDACompilerId.o] ==> ignore
+    arg [-L/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs] ==> dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs]
+    arg [-L/usr/local/cuda/bin/../targets/x86_64-linux/lib] ==> dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib]
+    arg [-lcudadevrt] ==> lib [cudadevrt]
+    arg [-lcudart_static] ==> lib [cudart_static]
+    arg [-lrt] ==> lib [rt]
+    arg [-lpthread] ==> lib [pthread]
+    arg [-ldl] ==> lib [dl]
+    arg [-Wl,--end-group] ==> ignore
+    arg [-o] ==> ignore
+    arg [a.out] ==> ignore
+  collapse library dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib/stubs] ==> [/usr/local/cuda/targets/x86_64-linux/lib/stubs]
+  collapse library dir [/usr/local/cuda/bin/../targets/x86_64-linux/lib] ==> [/usr/local/cuda/targets/x86_64-linux/lib]
+  implicit libs: [cudadevrt;cudart_static;rt;pthread;dl]
+  implicit dirs: [/usr/local/cuda/targets/x86_64-linux/lib/stubs;/usr/local/cuda/targets/x86_64-linux/lib]
+  implicit fwks: []
+
+
+Determining if the CUDA compiler works passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_e169a/fast && /usr/bin/make -f CMakeFiles/cmTC_e169a.dir/build.make CMakeFiles/cmTC_e169a.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CUDA object CMakeFiles/cmTC_e169a.dir/main.cu.o
+/usr/local/cuda/bin/nvcc     -x cu -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/main.cu -o CMakeFiles/cmTC_e169a.dir/main.cu.o
+Linking CUDA executable cmTC_e169a
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e169a.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/g++   CMakeFiles/cmTC_e169a.dir/main.cu.o -o cmTC_e169a  -L"/usr/local/cuda/targets/x86_64-linux/lib/stubs" -L"/usr/local/cuda/targets/x86_64-linux/lib" -lcudadevrt -lcudart_static -lrt -lpthread -ldl
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Detecting CUDA compiler ABI info compiled with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_40403/fast && /usr/bin/make -f CMakeFiles/cmTC_40403.dir/build.make CMakeFiles/cmTC_40403.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CUDA object CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o
+/usr/local/cuda/bin/nvcc    -Xcompiler=-v -x cu -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o
+Using built-in specs.
+COLLECT_GCC=gcc
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-E' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -E -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDA_ARCH__=300 -D CUDA_DOUBLE_MATH_FUNCTIONS -D __CUDACC__ -D __NVCC__ -D __CUDACC_VER_MAJOR__=10 -D __CUDACC_VER_MINOR__=2 -D __CUDACC_VER_BUILD__=89 -include cuda_runtime.h /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o /tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii -m64 -mtune=generic -march=x86-64
+ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"
+ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/local/cuda/bin/../targets/x86_64-linux/include
+ .
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include
+ /usr/local/include
+ /usr/local/gcc-8.2/include
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-E' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii' '-mtune=generic' '-march=x86-64'
+Using built-in specs.
+COLLECT_GCC=gcc
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-E' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -E -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDACC__ -D __NVCC__ -D __CUDACC_VER_MAJOR__=10 -D __CUDACC_VER_MINOR__=2 -D __CUDACC_VER_BUILD__=89 -include cuda_runtime.h /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o /tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii -m64 -mtune=generic -march=x86-64
+ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"
+ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/local/cuda/bin/../targets/x86_64-linux/include
+ .
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include
+ /usr/local/include
+ /usr/local/gcc-8.2/include
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-E' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii' '-mtune=generic' '-march=x86-64'
+Using built-in specs.
+COLLECT_GCC=gcc
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDA_ARCH__=300 -D CUDA_DOUBLE_MATH_FUNCTIONS /tmp/tmpxft_00005aef_00000000-5_CMakeCUDACompilerABI.cudafe1.cpp -quiet -dumpbase tmpxft_00005aef_00000000-5_CMakeCUDACompilerABI.cudafe1.cpp -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -version -o /tmp/ccScuBOo.s
+GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"
+ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"
+#include "..." search starts here:
+#include <...> search starts here:
+ /usr/local/cuda/bin/../targets/x86_64-linux/include
+ .
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include
+ /usr/local/include
+ /usr/local/gcc-8.2/include
+ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed
+ /usr/include/x86_64-linux-gnu
+ /usr/include
+End of search list.
+GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)
+	compiled by GNU C version 8.2.0, GMP version 6.1.0, MPFR version 3.1.4, MPC version 1.0.3, isl version isl-0.18-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+Compiler executable checksum: 7d135433b0c74efc52bdfca490c15261
+COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64'
+ as -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include --64 -o CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o /tmp/ccScuBOo.s
+GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64'
+Linking CUDA executable cmTC_40403
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_40403.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/g++  -v CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -o cmTC_40403  -L"/usr/local/cuda/targets/x86_64-linux/lib/stubs" -L"/usr/local/cuda/targets/x86_64-linux/lib" -lcudadevrt -lcudart_static -lrt -lpthread -ldl
+Using built-in specs.
+COLLECT_GCC=/usr/local/gcc-8.2/bin/g++
+COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper
+Target: x86_64-pc-linux-gnu
+Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib
+Thread model: posix
+gcc version 8.2.0 (GCC) 
+COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/
+LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_40403' '-L/usr/local/cuda/targets/x86_64-linux/lib/stubs' '-L/usr/local/cuda/targets/x86_64-linux/lib' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/cco64UQA.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_40403 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/cuda/targets/x86_64-linux/lib/stubs -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -lcudadevrt -lcudart_static -lrt -lpthread -ldl -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o
+COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_40403' '-L/usr/local/cuda/targets/x86_64-linux/lib/stubs' '-L/usr/local/cuda/targets/x86_64-linux/lib' '-shared-libgcc' '-mtune=generic' '-march=x86-64'
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Parsed CUDA implicit include dir info from above output: rv=done
+  found start of include info
+  found start of implicit include info
+    add: [/usr/local/cuda/bin/../targets/x86_64-linux/include]
+    add: [.]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+    add: [/usr/local/include]
+    add: [/usr/local/gcc-8.2/include]
+    add: [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+    add: [/usr/include/x86_64-linux-gnu]
+    add: [/usr/include]
+  end of search list found
+  collapse include dir [/usr/local/cuda/bin/../targets/x86_64-linux/include] ==> [/usr/local/cuda/targets/x86_64-linux/include]
+  skipping relative include dir [.]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0] ==> [/usr/local/gcc-8.2/include/c++/8.2.0]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu] ==> [/usr/local/gcc-8.2/include/c++/8.2.0/x86_64-pc-linux-gnu]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward] ==> [/usr/local/gcc-8.2/include/c++/8.2.0/backward]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  collapse include dir [/usr/local/include] ==> [/usr/local/include]
+  collapse include dir [/usr/local/gcc-8.2/include] ==> [/usr/local/gcc-8.2/include]
+  collapse include dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+  collapse include dir [/usr/include] ==> [/usr/include]
+  implicit include dirs: [/usr/local/cuda/targets/x86_64-linux/include;/usr/local/gcc-8.2/include/c++/8.2.0;/usr/local/gcc-8.2/include/c++/8.2.0/x86_64-pc-linux-gnu;/usr/local/gcc-8.2/include/c++/8.2.0/backward;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include;/usr/local/include;/usr/local/gcc-8.2/include;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed;/usr/include/x86_64-linux-gnu;/usr/include]
+
+
+Parsed CUDA implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command(s):/usr/bin/make cmTC_40403/fast && /usr/bin/make -f CMakeFiles/cmTC_40403.dir/build.make CMakeFiles/cmTC_40403.dir/build]
+  ignore line: [make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp']
+  ignore line: [Building CUDA object CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o]
+  ignore line: [/usr/local/cuda/bin/nvcc    -Xcompiler=-v -x cu -c /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=gcc]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-E' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -E -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDA_ARCH__=300 -D CUDA_DOUBLE_MATH_FUNCTIONS -D __CUDACC__ -D __NVCC__ -D __CUDACC_VER_MAJOR__=10 -D __CUDACC_VER_MINOR__=2 -D __CUDACC_VER_BUILD__=89 -include cuda_runtime.h /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o /tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii -m64 -mtune=generic -march=x86-64]
+  ignore line: [ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"]
+  ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+  ignore line: [ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/local/cuda/bin/../targets/x86_64-linux/include]
+  ignore line: [ .]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/local/gcc-8.2/include]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  ignore line: [ /usr/include/x86_64-linux-gnu]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-E' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-6_CMakeCUDACompilerABI.cpp1.ii' '-mtune=generic' '-march=x86-64']
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=gcc]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-E' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -E -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDACC__ -D __NVCC__ -D __CUDACC_VER_MAJOR__=10 -D __CUDACC_VER_MINOR__=2 -D __CUDACC_VER_BUILD__=89 -include cuda_runtime.h /home/cmake-3.16.0-Linux-x86_64/share/cmake-3.16/Modules/CMakeCUDACompilerABI.cu -o /tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii -m64 -mtune=generic -march=x86-64]
+  ignore line: [ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"]
+  ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+  ignore line: [ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/local/cuda/bin/../targets/x86_64-linux/include]
+  ignore line: [ .]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/local/gcc-8.2/include]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  ignore line: [ /usr/include/x86_64-linux-gnu]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-E' '-D' '__CUDACC__' '-D' '__NVCC__' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-D' '__CUDACC_VER_MAJOR__=10' '-D' '__CUDACC_VER_MINOR__=2' '-D' '__CUDACC_VER_BUILD__=89' '-include' 'cuda_runtime.h' '-m64' '-o' '/tmp/tmpxft_00005aef_00000000-4_CMakeCUDACompilerABI.cpp4.ii' '-mtune=generic' '-march=x86-64']
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=gcc]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64']
+  ignore line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/cc1plus -quiet -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D __CUDA_ARCH__=300 -D CUDA_DOUBLE_MATH_FUNCTIONS /tmp/tmpxft_00005aef_00000000-5_CMakeCUDACompilerABI.cudafe1.cpp -quiet -dumpbase tmpxft_00005aef_00000000-5_CMakeCUDACompilerABI.cudafe1.cpp -m64 -mtune=generic -march=x86-64 -auxbase-strip CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -version -o /tmp/ccScuBOo.s]
+  ignore line: [GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [ignoring nonexistent directory "/usr/local/python3.7.0/include/python3.7"]
+  ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+  ignore line: [ignoring nonexistent directory "/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../x86_64-pc-linux-gnu/include"]
+  ignore line: [#include "..." search starts here:]
+  ignore line: [#include <...> search starts here:]
+  ignore line: [ /usr/local/cuda/bin/../targets/x86_64-linux/include]
+  ignore line: [ .]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/x86_64-pc-linux-gnu]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../include/c++/8.2.0/backward]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include]
+  ignore line: [ /usr/local/include]
+  ignore line: [ /usr/local/gcc-8.2/include]
+  ignore line: [ /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/include-fixed]
+  ignore line: [ /usr/include/x86_64-linux-gnu]
+  ignore line: [ /usr/include]
+  ignore line: [End of search list.]
+  ignore line: [GNU C++14 (GCC) version 8.2.0 (x86_64-pc-linux-gnu)]
+  ignore line: [	compiled by GNU C version 8.2.0  GMP version 6.1.0  MPFR version 3.1.4  MPC version 1.0.3  isl version isl-0.18-GMP]
+  ignore line: []
+  ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+  ignore line: [Compiler executable checksum: 7d135433b0c74efc52bdfca490c15261]
+  ignore line: [COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64']
+  ignore line: [ as -v -I /usr/local/cuda/bin/../targets/x86_64-linux/include --64 -o CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o /tmp/ccScuBOo.s]
+  ignore line: [GNU assembler version 2.27 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.27]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-D' '__CUDA_ARCH__=300' '-c' '-D' 'CUDA_DOUBLE_MATH_FUNCTIONS' '-v' '-I' '/usr/local/cuda/bin/../targets/x86_64-linux/include' '-m64' '-o' 'CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o' '-mtune=generic' '-march=x86-64']
+  ignore line: [Linking CUDA executable cmTC_40403]
+  ignore line: [/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_40403.dir/link.txt --verbose=1]
+  ignore line: [/usr/local/gcc-8.2/bin/g++  -v CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -o cmTC_40403  -L"/usr/local/cuda/targets/x86_64-linux/lib/stubs" -L"/usr/local/cuda/targets/x86_64-linux/lib" -lcudadevrt -lcudart_static -lrt -lpthread -ldl]
+  ignore line: [Using built-in specs.]
+  ignore line: [COLLECT_GCC=/usr/local/gcc-8.2/bin/g++]
+  ignore line: [COLLECT_LTO_WRAPPER=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper]
+  ignore line: [Target: x86_64-pc-linux-gnu]
+  ignore line: [Configured with: ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib]
+  ignore line: [Thread model: posix]
+  ignore line: [gcc version 8.2.0 (GCC) ]
+  ignore line: [COMPILER_PATH=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/]
+  ignore line: [LIBRARY_PATH=/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64/:/lib/x86_64-linux-gnu/:/lib/../lib64/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib64/:/usr/local/cuda/lib64/stubs/:/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../:/lib/:/usr/lib/]
+  ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_40403' '-L/usr/local/cuda/targets/x86_64-linux/lib/stubs' '-L/usr/local/cuda/targets/x86_64-linux/lib' '-shared-libgcc' '-mtune=generic' '-march=x86-64']
+  link line: [ /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2 -plugin /usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so -plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper -plugin-opt=-fresolution=/tmp/cco64UQA.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --eh-frame-hdr -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_40403 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o -L/usr/local/cuda/targets/x86_64-linux/lib/stubs -L/usr/local/cuda/targets/x86_64-linux/lib -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0 -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/local/cuda/lib64/stubs -L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../.. CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o -lcudadevrt -lcudart_static -lrt -lpthread -ldl -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o /usr/lib/x86_64-linux-gnu/crtn.o]
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/collect2] ==> ignore
+    arg [-plugin] ==> ignore
+    arg [/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/liblto_plugin.so] ==> ignore
+    arg [-plugin-opt=/usr/local/gcc-8.2/libexec/gcc/x86_64-pc-linux-gnu/8.2.0/lto-wrapper] ==> ignore
+    arg [-plugin-opt=-fresolution=/tmp/cco64UQA.res] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lc] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+    arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+    arg [--eh-frame-hdr] ==> ignore
+    arg [-m] ==> ignore
+    arg [elf_x86_64] ==> ignore
+    arg [-dynamic-linker] ==> ignore
+    arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTC_40403] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crt1.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crti.o] ==> ignore
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtbegin.o] ==> ignore
+    arg [-L/usr/local/cuda/targets/x86_64-linux/lib/stubs] ==> dir [/usr/local/cuda/targets/x86_64-linux/lib/stubs]
+    arg [-L/usr/local/cuda/targets/x86_64-linux/lib] ==> dir [/usr/local/cuda/targets/x86_64-linux/lib]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64]
+    arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+    arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+    arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+    arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+    arg [-L/usr/local/cuda/lib64/stubs] ==> dir [/usr/local/cuda/lib64/stubs]
+    arg [-L/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..]
+    arg [CMakeFiles/cmTC_40403.dir/CMakeCUDACompilerABI.cu.o] ==> ignore
+    arg [-lcudadevrt] ==> lib [cudadevrt]
+    arg [-lcudart_static] ==> lib [cudart_static]
+    arg [-lrt] ==> lib [rt]
+    arg [-lpthread] ==> lib [pthread]
+    arg [-ldl] ==> lib [dl]
+    arg [-lstdc++] ==> lib [stdc++]
+    arg [-lm] ==> lib [m]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [-lc] ==> lib [c]
+    arg [-lgcc_s] ==> lib [gcc_s]
+    arg [-lgcc] ==> lib [gcc]
+    arg [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/crtend.o] ==> ignore
+    arg [/usr/lib/x86_64-linux-gnu/crtn.o] ==> ignore
+  collapse library dir [/usr/local/cuda/targets/x86_64-linux/lib/stubs] ==> [/usr/local/cuda/targets/x86_64-linux/lib/stubs]
+  collapse library dir [/usr/local/cuda/targets/x86_64-linux/lib] ==> [/usr/local/cuda/targets/x86_64-linux/lib]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0] ==> [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../../../lib64] ==> [/usr/local/gcc-8.2/lib64]
+  collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+  collapse library dir [/lib/../lib64] ==> [/lib64]
+  collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+  collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+  collapse library dir [/usr/local/cuda/lib64/stubs] ==> [/usr/local/cuda/lib64/stubs]
+  collapse library dir [/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0/../../..] ==> [/usr/local/gcc-8.2/lib]
+  implicit libs: [cudadevrt;cudart_static;rt;pthread;dl;stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+  implicit dirs: [/usr/local/cuda/targets/x86_64-linux/lib/stubs;/usr/local/cuda/targets/x86_64-linux/lib;/usr/local/gcc-8.2/lib/gcc/x86_64-pc-linux-gnu/8.2.0;/usr/local/gcc-8.2/lib64;/lib/x86_64-linux-gnu;/lib64;/usr/lib/x86_64-linux-gnu;/usr/lib64;/usr/local/cuda/lib64/stubs;/usr/local/gcc-8.2/lib]
+  implicit fwks: []
+
+
+Performing C++ SOURCE FILE Test MMX_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_575e1/fast && /usr/bin/make -f CMakeFiles/cmTC_575e1.dir/build.make CMakeFiles/cmTC_575e1.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_575e1.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DMMX_FOUND -mmmx   -o CMakeFiles/cmTC_575e1.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_575e1
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_575e1.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DMMX_FOUND -mmmx    CMakeFiles/cmTC_575e1.dir/src.cxx.o  -o cmTC_575e1 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <mmintrin.h>
+int main()
+{
+    _mm_setzero_si64();
+    return 0;
+}
+Performing C++ SOURCE FILE Test SSE2_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_3a67e/fast && /usr/bin/make -f CMakeFiles/cmTC_3a67e.dir/build.make CMakeFiles/cmTC_3a67e.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_3a67e.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DSSE2_FOUND -msse2   -o CMakeFiles/cmTC_3a67e.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_3a67e
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3a67e.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DSSE2_FOUND -msse2    CMakeFiles/cmTC_3a67e.dir/src.cxx.o  -o cmTC_3a67e 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <emmintrin.h>
+int main()
+{
+    _mm_setzero_si128();
+    return 0;
+}
+Performing C++ SOURCE FILE Test SSE3_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_544ab/fast && /usr/bin/make -f CMakeFiles/cmTC_544ab.dir/build.make CMakeFiles/cmTC_544ab.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_544ab.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DSSE3_FOUND -msse3   -o CMakeFiles/cmTC_544ab.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_544ab
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_544ab.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DSSE3_FOUND -msse3    CMakeFiles/cmTC_544ab.dir/src.cxx.o  -o cmTC_544ab 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <pmmintrin.h>
+int main()
+{
+    __m128d a = _mm_set1_pd(6.28);
+    __m128d b = _mm_set1_pd(3.14);
+    __m128d result = _mm_addsub_pd(a, b);
+    result = _mm_movedup_pd(result);
+    return 0;
+}
+Performing C++ SOURCE FILE Test AVX_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_5616d/fast && /usr/bin/make -f CMakeFiles/cmTC_5616d.dir/build.make CMakeFiles/cmTC_5616d.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_5616d.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX_FOUND -mavx   -o CMakeFiles/cmTC_5616d.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_5616d
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5616d.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX_FOUND -mavx    CMakeFiles/cmTC_5616d.dir/src.cxx.o  -o cmTC_5616d 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <immintrin.h>
+int main()
+{
+    __m256 a = _mm256_set_ps (-1.0f, 2.0f, -3.0f, 4.0f, -1.0f, 2.0f, -3.0f, 4.0f);
+    __m256 b = _mm256_set_ps (1.0f, 2.0f, 3.0f, 4.0f, 1.0f, 2.0f, 3.0f, 4.0f);
+    __m256 result = _mm256_add_ps (a, b);
+    return 0;
+}
+Performing C++ SOURCE FILE Test AVX2_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_947ac/fast && /usr/bin/make -f CMakeFiles/cmTC_947ac.dir/build.make CMakeFiles/cmTC_947ac.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_947ac.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX2_FOUND -mavx2   -o CMakeFiles/cmTC_947ac.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_947ac
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_947ac.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX2_FOUND -mavx2    CMakeFiles/cmTC_947ac.dir/src.cxx.o  -o cmTC_947ac 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <immintrin.h>
+int main()
+{
+    __m256i a = _mm256_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4);
+    __m256i result = _mm256_abs_epi32 (a);
+    return 0;
+}
+Performing C++ SOURCE FILE Test AVX512F_FOUND succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_74d9c/fast && /usr/bin/make -f CMakeFiles/cmTC_74d9c.dir/build.make CMakeFiles/cmTC_74d9c.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_74d9c.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX512F_FOUND -mavx512f   -o CMakeFiles/cmTC_74d9c.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_74d9c
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_74d9c.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -DAVX512F_FOUND -mavx512f    CMakeFiles/cmTC_74d9c.dir/src.cxx.o  -o cmTC_74d9c 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+...and run output:
+
+Return value: 1
+Source file was:
+
+#include <immintrin.h>
+int main()
+{
+    __m512i a = _mm512_set_epi32 (-1, 2, -3, 4, -1, 2, -3, 4,
+                                  13, -5, 6, -7, 9, 2, -6, 3);
+    __m512i result = _mm512_abs_epi32 (a);
+    return 0;
+}
+Determining if the UINT64_MAX exist passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_f1c18/fast && /usr/bin/make -f CMakeFiles/cmTC_f1c18.dir/build.make CMakeFiles/cmTC_f1c18.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_f1c18.dir/CheckSymbolExists.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14    -o CMakeFiles/cmTC_f1c18.dir/CheckSymbolExists.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
+Linking CXX executable cmTC_f1c18
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f1c18.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14     CMakeFiles/cmTC_f1c18.dir/CheckSymbolExists.cxx.o  -o cmTC_f1c18 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+File /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
+/* */
+#include <stdint.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef UINT64_MAX
+  return ((int*)(&UINT64_MAX))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+Determining if the include file sys/types.h exists passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_4ef98/fast && /usr/bin/make -f CMakeFiles/cmTC_4ef98.dir/build.make CMakeFiles/cmTC_4ef98.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_4ef98.dir/CheckIncludeFile.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_4ef98.dir/CheckIncludeFile.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_4ef98
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4ef98.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_4ef98.dir/CheckIncludeFile.c.o  -o cmTC_4ef98 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the include file stdint.h exists passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_f4e4a/fast && /usr/bin/make -f CMakeFiles/cmTC_f4e4a.dir/build.make CMakeFiles/cmTC_f4e4a.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_f4e4a.dir/CheckIncludeFile.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_f4e4a.dir/CheckIncludeFile.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_f4e4a
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f4e4a.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_f4e4a.dir/CheckIncludeFile.c.o  -o cmTC_f4e4a 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Determining if the include file stddef.h exists passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_bcbcf/fast && /usr/bin/make -f CMakeFiles/cmTC_bcbcf.dir/build.make CMakeFiles/cmTC_bcbcf.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bcbcf.dir/CheckIncludeFile.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_bcbcf.dir/CheckIncludeFile.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTC_bcbcf
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bcbcf.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_bcbcf.dir/CheckIncludeFile.c.o  -o cmTC_bcbcf 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Determining size of pthread_spinlock_t passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_9c414/fast && /usr/bin/make -f CMakeFiles/cmTC_9c414.dir/build.make CMakeFiles/cmTC_9c414.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_9c414.dir/SPINLOCK_FOUND.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_9c414.dir/SPINLOCK_FOUND.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CheckTypeSize/SPINLOCK_FOUND.c
+Linking C executable cmTC_9c414
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9c414.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_9c414.dir/SPINLOCK_FOUND.c.o  -o cmTC_9c414 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Determining size of pthread_barrier_t passed with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_66729/fast && /usr/bin/make -f CMakeFiles/cmTC_66729.dir/build.make CMakeFiles/cmTC_66729.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_66729.dir/BARRIER_FOUND.c.o
+/usr/local/gcc-8.2/bin/gcc    -o CMakeFiles/cmTC_66729.dir/BARRIER_FOUND.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CheckTypeSize/BARRIER_FOUND.c
+Linking C executable cmTC_66729
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_66729.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc      CMakeFiles/cmTC_66729.dir/BARRIER_FOUND.c.o  -o cmTC_66729 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__fPIC succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_64186/fast && /usr/bin/make -f CMakeFiles/cmTC_64186.dir/build.make CMakeFiles/cmTC_64186.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_64186.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -DC_COMPILER_SUPPORT_FLAG__fPIC   -fPIC -o CMakeFiles/cmTC_64186.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_64186
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_64186.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -DC_COMPILER_SUPPORT_FLAG__fPIC    CMakeFiles/cmTC_64186.dir/src.c.o  -o cmTC_64186 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__fPIC succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_0cbd0/fast && /usr/bin/make -f CMakeFiles/cmTC_0cbd0.dir/build.make CMakeFiles/cmTC_0cbd0.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_0cbd0.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -DCXX_COMPILER_SUPPORT_FLAG__fPIC   -fPIC -o CMakeFiles/cmTC_0cbd0.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_0cbd0
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0cbd0.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -DCXX_COMPILER_SUPPORT_FLAG__fPIC    CMakeFiles/cmTC_0cbd0.dir/src.cxx.o  -o cmTC_0cbd0 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_56cc6/fast && /usr/bin/make -f CMakeFiles/cmTC_56cc6.dir/build.make CMakeFiles/cmTC_56cc6.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_56cc6.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -DC_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer   -fno-omit-frame-pointer -o CMakeFiles/cmTC_56cc6.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_56cc6
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_56cc6.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -DC_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer    CMakeFiles/cmTC_56cc6.dir/src.c.o  -o cmTC_56cc6 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_97182/fast && /usr/bin/make -f CMakeFiles/cmTC_97182.dir/build.make CMakeFiles/cmTC_97182.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_97182.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -DCXX_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer   -fno-omit-frame-pointer -o CMakeFiles/cmTC_97182.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_97182
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_97182.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -DCXX_COMPILER_SUPPORT_FLAG__fno_omit_frame_pointer    CMakeFiles/cmTC_97182.dir/src.cxx.o  -o cmTC_97182 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Werror succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_07746/fast && /usr/bin/make -f CMakeFiles/cmTC_07746.dir/build.make CMakeFiles/cmTC_07746.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_07746.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -DC_COMPILER_SUPPORT_FLAG__Werror   -Werror -o CMakeFiles/cmTC_07746.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_07746
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_07746.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -DC_COMPILER_SUPPORT_FLAG__Werror    CMakeFiles/cmTC_07746.dir/src.c.o  -o cmTC_07746 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Werror succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ecaf9/fast && /usr/bin/make -f CMakeFiles/cmTC_ecaf9.dir/build.make CMakeFiles/cmTC_ecaf9.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_ecaf9.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -DCXX_COMPILER_SUPPORT_FLAG__Werror   -Werror -o CMakeFiles/cmTC_ecaf9.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_ecaf9
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ecaf9.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -DCXX_COMPILER_SUPPORT_FLAG__Werror    CMakeFiles/cmTC_ecaf9.dir/src.cxx.o  -o cmTC_ecaf9 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wall succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_062b5/fast && /usr/bin/make -f CMakeFiles/cmTC_062b5.dir/build.make CMakeFiles/cmTC_062b5.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_062b5.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -DC_COMPILER_SUPPORT_FLAG__Wall   -Wall -o CMakeFiles/cmTC_062b5.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_062b5
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_062b5.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -DC_COMPILER_SUPPORT_FLAG__Wall    CMakeFiles/cmTC_062b5.dir/src.c.o  -o cmTC_062b5 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wall succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_cfcb8/fast && /usr/bin/make -f CMakeFiles/cmTC_cfcb8.dir/build.make CMakeFiles/cmTC_cfcb8.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_cfcb8.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -DCXX_COMPILER_SUPPORT_FLAG__Wall   -Wall -o CMakeFiles/cmTC_cfcb8.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_cfcb8
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cfcb8.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -DCXX_COMPILER_SUPPORT_FLAG__Wall    CMakeFiles/cmTC_cfcb8.dir/src.cxx.o  -o cmTC_cfcb8 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wextra succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_8d83f/fast && /usr/bin/make -f CMakeFiles/cmTC_8d83f.dir/build.make CMakeFiles/cmTC_8d83f.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_8d83f.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -DC_COMPILER_SUPPORT_FLAG__Wextra   -Wextra -o CMakeFiles/cmTC_8d83f.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_8d83f
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8d83f.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -DC_COMPILER_SUPPORT_FLAG__Wextra    CMakeFiles/cmTC_8d83f.dir/src.c.o  -o cmTC_8d83f 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wextra succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_20d01/fast && /usr/bin/make -f CMakeFiles/cmTC_20d01.dir/build.make CMakeFiles/cmTC_20d01.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_20d01.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -DCXX_COMPILER_SUPPORT_FLAG__Wextra   -Wextra -o CMakeFiles/cmTC_20d01.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_20d01
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_20d01.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -DCXX_COMPILER_SUPPORT_FLAG__Wextra    CMakeFiles/cmTC_20d01.dir/src.cxx.o  -o cmTC_20d01 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wnon_virtual_dtor succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_909d4/fast && /usr/bin/make -f CMakeFiles/cmTC_909d4.dir/build.make CMakeFiles/cmTC_909d4.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_909d4.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -DCXX_COMPILER_SUPPORT_FLAG__Wnon_virtual_dtor   -Wnon-virtual-dtor -o CMakeFiles/cmTC_909d4.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_909d4
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_909d4.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -DCXX_COMPILER_SUPPORT_FLAG__Wnon_virtual_dtor    CMakeFiles/cmTC_909d4.dir/src.cxx.o  -o cmTC_909d4 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wdelete_non_virtual_dtor succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_4f99f/fast && /usr/bin/make -f CMakeFiles/cmTC_4f99f.dir/build.make CMakeFiles/cmTC_4f99f.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_4f99f.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -DCXX_COMPILER_SUPPORT_FLAG__Wdelete_non_virtual_dtor   -Wdelete-non-virtual-dtor -o CMakeFiles/cmTC_4f99f.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_4f99f
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4f99f.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -DCXX_COMPILER_SUPPORT_FLAG__Wdelete_non_virtual_dtor    CMakeFiles/cmTC_4f99f.dir/src.cxx.o  -o cmTC_4f99f 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_unused_parameter succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_09b79/fast && /usr/bin/make -f CMakeFiles/cmTC_09b79.dir/build.make CMakeFiles/cmTC_09b79.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_09b79.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -DC_COMPILER_SUPPORT_FLAG__Wno_unused_parameter   -Wno-unused-parameter -o CMakeFiles/cmTC_09b79.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_09b79
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_09b79.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -DC_COMPILER_SUPPORT_FLAG__Wno_unused_parameter    CMakeFiles/cmTC_09b79.dir/src.c.o  -o cmTC_09b79 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_unused_parameter succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_91a12/fast && /usr/bin/make -f CMakeFiles/cmTC_91a12.dir/build.make CMakeFiles/cmTC_91a12.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_91a12.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -DCXX_COMPILER_SUPPORT_FLAG__Wno_unused_parameter   -Wno-unused-parameter -o CMakeFiles/cmTC_91a12.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_91a12
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_91a12.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -DCXX_COMPILER_SUPPORT_FLAG__Wno_unused_parameter    CMakeFiles/cmTC_91a12.dir/src.cxx.o  -o cmTC_91a12 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_unused_function succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_a30b0/fast && /usr/bin/make -f CMakeFiles/cmTC_a30b0.dir/build.make CMakeFiles/cmTC_a30b0.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a30b0.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -DC_COMPILER_SUPPORT_FLAG__Wno_unused_function   -Wno-unused-function -o CMakeFiles/cmTC_a30b0.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_a30b0
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a30b0.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -DC_COMPILER_SUPPORT_FLAG__Wno_unused_function    CMakeFiles/cmTC_a30b0.dir/src.c.o  -o cmTC_a30b0 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_unused_function succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_dea6b/fast && /usr/bin/make -f CMakeFiles/cmTC_dea6b.dir/build.make CMakeFiles/cmTC_dea6b.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_dea6b.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -DCXX_COMPILER_SUPPORT_FLAG__Wno_unused_function   -Wno-unused-function -o CMakeFiles/cmTC_dea6b.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_dea6b
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dea6b.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -DCXX_COMPILER_SUPPORT_FLAG__Wno_unused_function    CMakeFiles/cmTC_dea6b.dir/src.cxx.o  -o cmTC_dea6b 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_bad8d/fast && /usr/bin/make -f CMakeFiles/cmTC_bad8d.dir/build.make CMakeFiles/cmTC_bad8d.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_bad8d.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -DC_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix   -Wno-error=literal-suffix -o CMakeFiles/cmTC_bad8d.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_bad8d
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bad8d.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -DC_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix    CMakeFiles/cmTC_bad8d.dir/src.c.o  -o cmTC_bad8d 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_14d6a/fast && /usr/bin/make -f CMakeFiles/cmTC_14d6a.dir/build.make CMakeFiles/cmTC_14d6a.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_14d6a.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix   -Wno-error=literal-suffix -o CMakeFiles/cmTC_14d6a.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_14d6a
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_14d6a.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_literal_suffix    CMakeFiles/cmTC_14d6a.dir/src.cxx.o  -o cmTC_14d6a 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_668c0/fast && /usr/bin/make -f CMakeFiles/cmTC_668c0.dir/build.make CMakeFiles/cmTC_668c0.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_668c0.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -DC_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs   -Wno-error=unused-local-typedefs -o CMakeFiles/cmTC_668c0.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_668c0
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_668c0.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -DC_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs    CMakeFiles/cmTC_668c0.dir/src.c.o  -o cmTC_668c0 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_07b25/fast && /usr/bin/make -f CMakeFiles/cmTC_07b25.dir/build.make CMakeFiles/cmTC_07b25.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_07b25.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs   -Wno-error=unused-local-typedefs -o CMakeFiles/cmTC_07b25.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_07b25
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_07b25.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_unused_local_typedefs    CMakeFiles/cmTC_07b25.dir/src.cxx.o  -o cmTC_07b25 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_a083f/fast && /usr/bin/make -f CMakeFiles/cmTC_a083f.dir/build.make CMakeFiles/cmTC_a083f.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a083f.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -DC_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes   -Wno-error=ignored-attributes -o CMakeFiles/cmTC_a083f.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_a083f
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a083f.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -DC_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes    CMakeFiles/cmTC_a083f.dir/src.c.o  -o cmTC_a083f 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_aa88b/fast && /usr/bin/make -f CMakeFiles/cmTC_aa88b.dir/build.make CMakeFiles/cmTC_aa88b.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_aa88b.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes   -Wno-error=ignored-attributes -o CMakeFiles/cmTC_aa88b.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_aa88b
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_aa88b.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_ignored_attributes    CMakeFiles/cmTC_aa88b.dir/src.cxx.o  -o cmTC_aa88b 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_terminate succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_5a19a/fast && /usr/bin/make -f CMakeFiles/cmTC_5a19a.dir/build.make CMakeFiles/cmTC_5a19a.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_5a19a.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -DC_COMPILER_SUPPORT_FLAG__Wno_error_terminate   -Wno-error=terminate -o CMakeFiles/cmTC_5a19a.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_5a19a
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5a19a.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -DC_COMPILER_SUPPORT_FLAG__Wno_error_terminate    CMakeFiles/cmTC_5a19a.dir/src.c.o  -o cmTC_5a19a 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_terminate succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c2d86/fast && /usr/bin/make -f CMakeFiles/cmTC_c2d86.dir/build.make CMakeFiles/cmTC_c2d86.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_c2d86.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_terminate   -Wno-error=terminate -o CMakeFiles/cmTC_c2d86.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_c2d86
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c2d86.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_terminate    CMakeFiles/cmTC_c2d86.dir/src.cxx.o  -o cmTC_c2d86 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_3e48c/fast && /usr/bin/make -f CMakeFiles/cmTC_3e48c.dir/build.make CMakeFiles/cmTC_3e48c.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_3e48c.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -DC_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context   -Wno-error=int-in-bool-context -o CMakeFiles/cmTC_3e48c.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_3e48c
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3e48c.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -DC_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context    CMakeFiles/cmTC_3e48c.dir/src.c.o  -o cmTC_3e48c 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d7843/fast && /usr/bin/make -f CMakeFiles/cmTC_d7843.dir/build.make CMakeFiles/cmTC_d7843.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_d7843.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context   -Wno-error=int-in-bool-context -o CMakeFiles/cmTC_d7843.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_d7843
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d7843.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_int_in_bool_context    CMakeFiles/cmTC_d7843.dir/src.cxx.o  -o cmTC_d7843 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0 succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_7def0/fast && /usr/bin/make -f CMakeFiles/cmTC_7def0.dir/build.make CMakeFiles/cmTC_7def0.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_7def0.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -DC_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0   -Wimplicit-fallthrough=0 -o CMakeFiles/cmTC_7def0.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_7def0
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7def0.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -DC_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0    CMakeFiles/cmTC_7def0.dir/src.c.o  -o cmTC_7def0 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0 succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ad741/fast && /usr/bin/make -f CMakeFiles/cmTC_ad741.dir/build.make CMakeFiles/cmTC_ad741.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_ad741.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -DCXX_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0   -Wimplicit-fallthrough=0 -o CMakeFiles/cmTC_ad741.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_ad741
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ad741.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -DCXX_COMPILER_SUPPORT_FLAG__Wimplicit_fallthrough_0    CMakeFiles/cmTC_ad741.dir/src.cxx.o  -o cmTC_ad741 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_c13aa/fast && /usr/bin/make -f CMakeFiles/cmTC_c13aa.dir/build.make CMakeFiles/cmTC_c13aa.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_c13aa.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -DC_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized   -Wno-error=maybe-uninitialized -o CMakeFiles/cmTC_c13aa.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_c13aa
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c13aa.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -DC_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized    CMakeFiles/cmTC_c13aa.dir/src.c.o  -o cmTC_c13aa 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_75743/fast && /usr/bin/make -f CMakeFiles/cmTC_75743.dir/build.make CMakeFiles/cmTC_75743.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_75743.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized   -Wno-error=maybe-uninitialized -o CMakeFiles/cmTC_75743.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_75743
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_75743.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_maybe_uninitialized    CMakeFiles/cmTC_75743.dir/src.cxx.o  -o cmTC_75743 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_format_truncation succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_267e3/fast && /usr/bin/make -f CMakeFiles/cmTC_267e3.dir/build.make CMakeFiles/cmTC_267e3.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_267e3.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -DC_COMPILER_SUPPORT_FLAG__Wno_format_truncation   -Wno-format-truncation -o CMakeFiles/cmTC_267e3.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_267e3
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_267e3.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -DC_COMPILER_SUPPORT_FLAG__Wno_format_truncation    CMakeFiles/cmTC_267e3.dir/src.c.o  -o cmTC_267e3 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_format_truncation succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_4fd02/fast && /usr/bin/make -f CMakeFiles/cmTC_4fd02.dir/build.make CMakeFiles/cmTC_4fd02.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_4fd02.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -DCXX_COMPILER_SUPPORT_FLAG__Wno_format_truncation   -Wno-format-truncation -o CMakeFiles/cmTC_4fd02.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_4fd02
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4fd02.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -DCXX_COMPILER_SUPPORT_FLAG__Wno_format_truncation    CMakeFiles/cmTC_4fd02.dir/src.cxx.o  -o cmTC_4fd02 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_parentheses succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_97f4d/fast && /usr/bin/make -f CMakeFiles/cmTC_97f4d.dir/build.make CMakeFiles/cmTC_97f4d.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_97f4d.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -DC_COMPILER_SUPPORT_FLAG__Wno_error_parentheses   -Wno-error=parentheses -o CMakeFiles/cmTC_97f4d.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_97f4d
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_97f4d.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -DC_COMPILER_SUPPORT_FLAG__Wno_error_parentheses    CMakeFiles/cmTC_97f4d.dir/src.c.o  -o cmTC_97f4d 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_parentheses succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_4954c/fast && /usr/bin/make -f CMakeFiles/cmTC_4954c.dir/build.make CMakeFiles/cmTC_4954c.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_4954c.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_parentheses   -Wno-error=parentheses -o CMakeFiles/cmTC_4954c.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_4954c
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4954c.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_parentheses    CMakeFiles/cmTC_4954c.dir/src.cxx.o  -o cmTC_4954c 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_catch_value succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_36910/fast && /usr/bin/make -f CMakeFiles/cmTC_36910.dir/build.make CMakeFiles/cmTC_36910.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_36910.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_catch_value   -Wno-error=catch-value -o CMakeFiles/cmTC_36910.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_36910
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_36910.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_catch_value    CMakeFiles/cmTC_36910.dir/src.c.o  -o cmTC_36910 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_catch_value succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_885ba/fast && /usr/bin/make -f CMakeFiles/cmTC_885ba.dir/build.make CMakeFiles/cmTC_885ba.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_885ba.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_catch_value   -Wno-error=catch-value -o CMakeFiles/cmTC_885ba.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_885ba
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_885ba.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_catch_value    CMakeFiles/cmTC_885ba.dir/src.cxx.o  -o cmTC_885ba 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_01400/fast && /usr/bin/make -f CMakeFiles/cmTC_01400.dir/build.make CMakeFiles/cmTC_01400.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_01400.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -DC_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare   -Wno-error=nonnull-compare -o CMakeFiles/cmTC_01400.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_01400
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_01400.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -DC_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare    CMakeFiles/cmTC_01400.dir/src.c.o  -o cmTC_01400 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_08250/fast && /usr/bin/make -f CMakeFiles/cmTC_08250.dir/build.make CMakeFiles/cmTC_08250.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_08250.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare   -Wno-error=nonnull-compare -o CMakeFiles/cmTC_08250.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_08250
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_08250.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_nonnull_compare    CMakeFiles/cmTC_08250.dir/src.cxx.o  -o cmTC_08250 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_address succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_13758/fast && /usr/bin/make -f CMakeFiles/cmTC_13758.dir/build.make CMakeFiles/cmTC_13758.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_13758.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -DC_COMPILER_SUPPORT_FLAG__Wno_error_address   -Wno-error=address -o CMakeFiles/cmTC_13758.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_13758
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_13758.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -DC_COMPILER_SUPPORT_FLAG__Wno_error_address    CMakeFiles/cmTC_13758.dir/src.c.o  -o cmTC_13758 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_error_address succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_5cb43/fast && /usr/bin/make -f CMakeFiles/cmTC_5cb43.dir/build.make CMakeFiles/cmTC_5cb43.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_5cb43.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_address   -Wno-error=address -o CMakeFiles/cmTC_5cb43.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_5cb43
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5cb43.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -DCXX_COMPILER_SUPPORT_FLAG__Wno_error_address    CMakeFiles/cmTC_5cb43.dir/src.cxx.o  -o cmTC_5cb43 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_338f2/fast && /usr/bin/make -f CMakeFiles/cmTC_338f2.dir/build.make CMakeFiles/cmTC_338f2.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_338f2.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -DC_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers   -Wno-ignored-qualifiers -o CMakeFiles/cmTC_338f2.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_338f2
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_338f2.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -DC_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers    CMakeFiles/cmTC_338f2.dir/src.c.o  -o cmTC_338f2 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_da5a9/fast && /usr/bin/make -f CMakeFiles/cmTC_da5a9.dir/build.make CMakeFiles/cmTC_da5a9.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_da5a9.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -DCXX_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers   -Wno-ignored-qualifiers -o CMakeFiles/cmTC_da5a9.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_da5a9
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_da5a9.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -DCXX_COMPILER_SUPPORT_FLAG__Wno_ignored_qualifiers    CMakeFiles/cmTC_da5a9.dir/src.cxx.o  -o cmTC_da5a9 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_d013b/fast && /usr/bin/make -f CMakeFiles/cmTC_d013b.dir/build.make CMakeFiles/cmTC_d013b.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_d013b.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -DC_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes   -Wno-ignored-attributes -o CMakeFiles/cmTC_d013b.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_d013b
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d013b.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -DC_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes    CMakeFiles/cmTC_d013b.dir/src.c.o  -o cmTC_d013b 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_458db/fast && /usr/bin/make -f CMakeFiles/cmTC_458db.dir/build.make CMakeFiles/cmTC_458db.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_458db.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -DCXX_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes   -Wno-ignored-attributes -o CMakeFiles/cmTC_458db.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_458db
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_458db.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -DCXX_COMPILER_SUPPORT_FLAG__Wno_ignored_attributes    CMakeFiles/cmTC_458db.dir/src.cxx.o  -o cmTC_458db 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_parentheses succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_33bfd/fast && /usr/bin/make -f CMakeFiles/cmTC_33bfd.dir/build.make CMakeFiles/cmTC_33bfd.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_33bfd.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -DC_COMPILER_SUPPORT_FLAG__Wno_parentheses   -Wno-parentheses -o CMakeFiles/cmTC_33bfd.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_33bfd
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_33bfd.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -DC_COMPILER_SUPPORT_FLAG__Wno_parentheses    CMakeFiles/cmTC_33bfd.dir/src.c.o  -o cmTC_33bfd 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C++ SOURCE FILE Test CXX_COMPILER_SUPPORT_FLAG__Wno_parentheses succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_11399/fast && /usr/bin/make -f CMakeFiles/cmTC_11399.dir/build.make CMakeFiles/cmTC_11399.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_11399.dir/src.cxx.o
+/usr/local/gcc-8.2/bin/c++    -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -DCXX_COMPILER_SUPPORT_FLAG__Wno_parentheses   -Wno-parentheses -o CMakeFiles/cmTC_11399.dir/src.cxx.o -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_11399
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_11399.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/c++   -Wno-error=deprecated-declarations -Wno-deprecated-declarations -std=c++14 -m64 -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -DCXX_COMPILER_SUPPORT_FLAG__Wno_parentheses    CMakeFiles/cmTC_11399.dir/src.cxx.o  -o cmTC_11399 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_unused_function succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_ee74c/fast && /usr/bin/make -f CMakeFiles/cmTC_ee74c.dir/build.make CMakeFiles/cmTC_ee74c.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ee74c.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_unused_function   -Wno-error=unused-function -o CMakeFiles/cmTC_ee74c.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_ee74c
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ee74c.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_unused_function    CMakeFiles/cmTC_ee74c.dir/src.c.o  -o cmTC_ee74c 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
+Performing C SOURCE FILE Test C_COMPILER_SUPPORT_FLAG__Wno_error_array_bounds succeeded with the following output:
+Change Dir: /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/make cmTC_1dcd0/fast && /usr/bin/make -f CMakeFiles/cmTC_1dcd0.dir/build.make CMakeFiles/cmTC_1dcd0.dir/build
+make[1]: Entering directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_1dcd0.dir/src.c.o
+/usr/local/gcc-8.2/bin/gcc   -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_array_bounds   -Wno-error=array-bounds -o CMakeFiles/cmTC_1dcd0.dir/src.c.o   -c /wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp/src.c
+Linking C executable cmTC_1dcd0
+/home/cmake-3.16.0-Linux-x86_64/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1dcd0.dir/link.txt --verbose=1
+/usr/local/gcc-8.2/bin/gcc  -fPIC -fno-omit-frame-pointer -Werror -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -Wno-error=literal-suffix -Wno-error=unused-local-typedefs -Wno-error=ignored-attributes -Wno-error=terminate -Wno-error=int-in-bool-context -Wimplicit-fallthrough=0 -Wno-error=maybe-uninitialized -Wno-format-truncation -Wno-error=parentheses -Wno-error=catch-value -Wno-error=nonnull-compare -Wno-error=address -Wno-ignored-qualifiers -Wno-ignored-attributes -Wno-parentheses -DC_COMPILER_SUPPORT_FLAG__Wno_error_array_bounds    CMakeFiles/cmTC_1dcd0.dir/src.c.o  -o cmTC_1dcd0 
+make[1]: Leaving directory '/wangxianming/myPro/Paddle/build2/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main(void) { return 0; }
