@@ -19,6 +19,9 @@
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd_header.h"
 
+#include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
+#include <type_traits>
+
 namespace phi {
 namespace kps {
 namespace details {
@@ -44,6 +47,323 @@ static inline __device__ void sync_all() {
       "sync_local\t\n"
       "csr_set csr3, %0\t\n"
       "sync_group csr3" ::"r"(-1));
+}
+
+static __device__ inline float32x16_t vload_sm_float32x16(_shared_ptr_ const float* src_ptr) {
+    float32x16_t ret;
+    __asm__ __volatile__("vloads_mask16.mz %0{mr1}, 0(%1)":"=v"(ret):"r"(src_ptr));
+    return ret;
+}
+
+static __device__ inline float loada_float(_shared_ptr_ const float* ptr) {
+    float ret;
+    __asm__ __volatile__("loada.w %0,%1":"=r"(ret):"r"(ptr));
+    return ret;
+}
+
+static __device__ inline bool storea_float(_shared_ptr_ float* ptr, float value) {
+    bool ret;
+    __asm__ __volatile__("storea.w %0,%1,%2":"=r"(ret):"r"(value), "r"(ptr));
+    return ret;
+}
+
+static __device__ void atomic_mul(_shared_ptr_ float* ptr, float value) {
+    bool fail = true;
+    while (fail) {
+        float a = SM2REG_atomic(ptr);
+        a = a * value;
+        fail = REG2SM_atomic(ptr, a);
+    }
+}
+
+static __device__ void atomic_add(_shared_ptr_ float* ptr, float value) {
+    bool fail = true;
+    while (fail) {
+        float a = loada_float(ptr);
+        a += value;
+        fail = storea_float(ptr, a);
+    }
+}
+
+static __device__ void atomic_max(_shared_ptr_ float* ptr, float value) {
+    bool fail = true;
+    while (fail) {
+        float a = loada_float(ptr);
+        a = fmax(a, value);
+        fail = storea_float(ptr, a);
+    }
+}
+
+static __device__ void atomic_min(_shared_ptr_ float* ptr, float value) {
+    bool fail = true;
+    while (fail) {
+        float a = loada_float(ptr);
+        a = fmin(a, value);
+        fail = storea_float(ptr, a);
+    }
+}
+
+static __device__ float do_mul(float* lmptr, int size) {
+    while ((size % 16) != 0) {
+        lmptr[size] = 1.0f;
+        size++;
+    }
+    mfence();
+    __simd__ float acc_buf[16];
+    int offset_last = size - 16;
+    float32x16_t v_last = vload_lm_float32x16(lmptr + offset_last);
+    for (int i = 0; i < offset_last; i += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+        v_last = vvmul_float32x16(v_last, v0);
+    }
+    vstore_lm_float32x16(acc_buf, v_last);
+    mfence();
+    float res = 1.0f;
+    for (int i = 0; i < 16; i++) {
+        res = res * acc_buf[i];
+    }
+    return res;
+}
+
+static __device__ float do_max(float* lmptr, int size) {
+    while ((size % 16) != 0) {
+        lmptr[size] = -1e30;
+        size++;
+    }
+    mfence();
+    __simd__ float acc_buf[16];
+    int offset_last = size - 16;
+    float32x16_t v_last = vload_lm_float32x16(lmptr + offset_last);
+    for (int i = 0; i < offset_last; i += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+        v_last = vvmax_float32x16(v_last, v0);
+    }
+    vstore_lm_float32x16(acc_buf, v_last);
+    mfence();
+    float res = -1e30;
+    for (int i = 0; i < 16; i++) {
+        res = fmax(res, acc_buf[i]);
+    }
+    return res;
+}
+
+static __device__ float do_min(float* lmptr, int size) {
+    while ((size % 16) != 0) {
+        lmptr[size] = 1e30;
+        size++;
+    }
+    mfence();
+    __simd__ float acc_buf[16];
+    int offset_last = size - 16;
+    float32x16_t v_last = vload_lm_float32x16(lmptr + offset_last);
+    for (int i = 0; i < offset_last; i += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+        v_last = vvmin_float32x16(v_last, v0);
+    }
+    vstore_lm_float32x16(acc_buf, v_last);
+    mfence();
+    float res = 1e30;
+    for (int i = 0; i < 16; i++) {
+        res = fmin(res, acc_buf[i]);
+    }
+    return res;
+}
+
+static __device__ float do_add(float* lmptr, int size) {
+    while ((size % 16) != 0) {
+        lmptr[size] = 0.0f;
+        size++;
+    }
+    mfence();
+    __simd__ float acc_buf[16];
+    int offset_last = size - 16;
+    float32x16_t v_last = vload_lm_float32x16(lmptr + offset_last);
+    for (int i = 0; i < offset_last; i += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+        v_last = vvadd_float32x16(v_last, v0);
+    }
+    vstore_lm_float32x16(acc_buf, v_last);
+    mfence();
+    float res = 0.0f;
+    for (int i = 0; i < 16; i++) {
+        res = res + acc_buf[i];
+    }
+    return res;
+}
+
+static inline __device__ void do_max_2d(float* buffer, int tt, int nn) {
+    float* lm_out = buffer;
+    for (int n_iter = 0; n_iter < nn; n_iter += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lm_out);
+        float* lm_in = lm_out + nn;
+        for (int curr_t = 0; curr_t < tt; curr_t++) {
+            float32x16_t v1 = vload_lm_float32x16(lm_in);
+            v0 = vvmax_float32x16(v0, v1);
+            lm_in += nn;
+        }
+        vstore_lm_float32x16(lm_out, v0);
+        lm_out = lm_out + 16;
+    }
+    mfence();
+}
+
+static inline __device__ void do_min_2d(float* buffer, int tt, int nn) {
+    float* lm_out = buffer;
+    for (int n_iter = 0; n_iter < nn; n_iter += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lm_out);
+        float* lm_in = lm_out + nn;
+        for (int curr_t = 0; curr_t < tt; curr_t++) {
+            float32x16_t v1 = vload_lm_float32x16(lm_in);
+            v0 = vvmin_float32x16(v0, v1);
+            lm_in += nn;
+        }
+        vstore_lm_float32x16(lm_out, v0);
+        lm_out = lm_out + 16;
+    }
+    mfence();
+}
+
+static inline __device__ void do_add_2d(float* buffer, int tt, int nn) {
+    float* lm_out = buffer;
+    for (int n_iter = 0; n_iter < nn; n_iter += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lm_out);
+        float* lm_in = lm_out + nn;
+        for (int curr_t = 0; curr_t < tt; curr_t++) {
+            float32x16_t v1 = vload_lm_float32x16(lm_in);
+            v0 = vvadd_float32x16(v0, v1);
+            lm_in += nn;
+        }
+        vstore_lm_float32x16(lm_out, v0);
+        lm_out = lm_out + 16;
+    }
+    mfence();
+}
+
+static inline __device__ void mean_apply(float* buffer, int t, int nn) {
+    float scale = 1.0f / t;
+    float* lm_out = buffer;
+    for (int n_iter = 0; n_iter < nn; n_iter++) {
+        buffer[n_iter] = buffer[n_iter] * scale;
+    }
+    mfence();
+}
+
+static inline __device__ void mfence_sm() {
+    __asm__("mfence {sm}\n\t");
+}
+
+
+template<typename MPType>
+__device__ void initializeSharedMemory(int sm_start, int sm_end, _shared_ptr_ float* sm_buffer, MPType init) {
+    int cid = core_id();
+    int ncores = core_num();
+    for (int i = cid; i < sm_end - sm_start; i += ncores) {
+        sm_buffer[i] = (float)init;
+    }
+    mfence();
+    sync_all();
+}
+
+template<class T>
+__device__ void ReduceLastDim(_shared_ptr_ float* sm_buffer, float* buffer, int curr_tt, int op) {
+    if (op == 0 || op == 1) {
+        float res = do_add(buffer, curr_tt);
+        atomic_add(sm_buffer, res);
+    }
+    if (op == 2) {
+        float res = do_max(buffer, curr_tt);
+        atomic_max(sm_buffer, res);
+    }
+    if (op == 3) {
+        float res = do_min(buffer, curr_tt);
+        atomic_min(sm_buffer, res);
+    }
+    if (op == 4) {
+        float res = do_mul(buffer, curr_tt);
+        atomic_mul(sm_buffer, res);
+    }
+}
+
+static inline __device__ void mean_apply_2d(_shared_ptr_ float* buffer, int mm, int t) {
+    float scale = 1.0f / t;
+    for (int m_iter = 0; m_iter < mm; m_iter++) {
+        buffer[m_iter] = buffer[m_iter] * scale;
+    }
+    mfence();
+}
+
+// template<class T>
+__device__ void ReduceLastDimPost(_shared_ptr_ float* sm_buffer, int m_start, int m_end, int t, int op) {
+    int cid = core_id();
+    if (cid == 0 && op == 1) {
+        mean_apply(sm_buffer, m_end - m_start, t);
+    }
+}
+
+template<class Ty>
+__device__ void WriteDataReduce(_shared_ptr_ float* sm_buffer, _global_ptr_ float* y, int m_start, int m_end) {
+    int cid = core_id();
+    if (cid == 0) {
+        SM2GM((_shared_ptr_ Ty*)sm_buffer, y + m_start, (m_end - m_start) * sizeof(Ty));
+    }
+}
+
+static inline __device__ void do_mul_2d(float* lm_out, int tt, int nn) {
+    for (int n_iter = 0; n_iter < nn; n_iter += 16) {
+        float32x16_t v0 = vload_lm_float32x16(lm_out);
+        float* lm_in = lm_out + nn;
+        for (int curr_t = 0; curr_t < tt; curr_t++) {
+            float32x16_t v1 = vload_lm_float32x16(lm_in);
+            v0 = vvmul_float32x16(v0, v1);
+            lm_in += nn;
+        }
+        vstore_lm_float32x16(lm_out, v0);
+        lm_out = lm_out + 16;
+    }
+    mfence();
+}
+
+template<typename Tx, typename Ty>
+__global__ void ReduceOneDim(const Tx* x, Ty* y, phi::kps::MulFunctor<float> reducer, int m, int t, int n) {
+    int ncores = core_num();
+    int cid = core_id();
+    if (cid >= ncores) {
+        return;
+    }
+    __simd__ float buffer[1024];
+    int max_nn = roundup32(min(256, n));
+    int max_tt = 1024 / max_nn - 1;
+    int total_block = m * roundup_div(n, max_nn);
+    int thread_id = cluster_num() * cid + cluster_id();
+    int total_thread = cluster_num() * ncores;
+    for (int b = thread_id; b < total_block; b += total_thread) {
+        // reduce [curr_m, 0:t, n_start:n_end] to [curr_m, n_start:n_end]
+        int curr_m = b % m;
+        int n_start = b / m * max_nn;
+        int n_end = min(n, n_start + max_nn);
+        int nn = n_end - n_start;
+        __global_ptr__ const Tx* curr_x = x + (curr_m * t * n + n_start);
+        GM2LM(curr_x, (Tx*)buffer, nn * sizeof(Tx));
+        curr_x += n;
+        for (int t_start = 1; t_start < t; t_start += max_tt) {
+            int t_end = min(t, t_start + max_tt);
+            int tt = t_end - t_start;
+            Tx* curr_lm = (Tx*)(buffer + max_nn);
+            if (max_nn == n) {
+                GM2LM_ASYNC(curr_x, curr_lm, tt * n * sizeof(Tx));
+                curr_x += tt * n;
+            } else {
+                for (int curr_t = t_start; curr_t < t_end; curr_t++) {
+                    GM2LM_ASYNC(curr_x, curr_lm, nn * sizeof(Tx));
+                    curr_x += n;
+                    curr_lm += max_nn;
+                }
+            }
+            mfence();
+            do_mul_2d(buffer, tt, max_nn);
+        }
+        LM2GM((Ty*)buffer, y + (curr_m * n + n_start), nn * sizeof(Ty));
+    }
 }
 
 #define ncores 64
@@ -333,6 +653,7 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
  * reducer: Compute function which was declared like ReduceFunctor<InT>().
  * reduce_last_dim: if the last dim gets involved in reduction.
  */
+
 template <typename T,
           int NX,
           int NY,

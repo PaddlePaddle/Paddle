@@ -670,56 +670,24 @@ template <typename Tx,
 __device__ __forceinline__ void ReadDataReduce(
     Ty* dst,
     const Tx _global_ptr_* __restrict__ src,
-    int block_offset,
+    int curr_block,
     const IndexCal& index_cal,
-    int size_nx,
-    int size_ny,
-    int stride_nx,
-    int stride_ny,
+    int mm,
+    int t,
+    int m_start,
+    int m_end,
     Functor func,
     bool reduce_last_dim) {
-  __local__ Tx in_temp[1];
-  int thread_offset = 0;
-  int left_idx = 0;
-  if (reduce_last_dim) {
-    thread_offset = core_id();
-    left_idx = 0;
-  } else {
-    thread_offset = 0;
-    left_idx = 0;
-  }
+    if (reduce_last_dim) {
+        const int reduce_buffer_size = 768;
+        int mm = m_end - m_start;
+        int curr_m = (curr_block % mm) + m_start;
+        int curr_t_start = (curr_block / mm) * reduce_buffer_size;
+        int curr_tt = min(reduce_buffer_size, t - curr_t_start);
+        GM2LM(src + curr_m * t + curr_t_start, (Tx*)dst, curr_tt * sizeof(Tx));
+    } else {
 
-  if (NX == 1) {
-#pragma unroll
-    for (int ny = 0; ny < NY; ++ny) {
-      if (IsBoundary) {
-        if (thread_offset >= size_ny) {
-          break;
-        }
-      }
-      uint32_t index_src = index_cal(thread_offset + block_offset);
-      GM2LM(src + index_src, in_temp, sizeof(Tx));
-      dst[ny] = static_cast<Ty>(func(in_temp[0]));
-      thread_offset += stride_ny;
     }
-  } else {
-#pragma unroll
-    for (int nx = 0; nx < NX; ++nx) {
-#pragma unroll
-      for (int ny = 0; ny < NY; ++ny) {
-        if (IsBoundary) {
-          if ((thread_offset >= size_ny) ||
-              (left_idx + nx * stride_nx >= size_nx)) {
-            break;
-          }
-        }
-        uint32_t index_src = index_cal(thread_offset + block_offset);
-        GM2LM(src + index_src, in_temp, sizeof(Tx));
-        dst[nx + ny * NX] = static_cast<Ty>(func(in_temp[0]));
-        thread_offset += stride_ny;
-      }
-    }
-  }
 }
 /**
  * @brief Write 1D data from registers to global memory. When IsBoundary = true
