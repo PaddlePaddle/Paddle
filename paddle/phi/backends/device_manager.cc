@@ -394,6 +394,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Clear() {
+  // TODO(wangran16): fix coredump when using npu plugin
+
   // Instance().device_map_.clear();
   // Instance().device_impl_map_.clear();
 }

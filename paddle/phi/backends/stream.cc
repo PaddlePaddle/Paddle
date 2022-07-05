@@ -40,6 +40,9 @@ bool Stream::Init(const Place& place,
                   const Flag& flag) {
   place_ = place;
   device_ = phi::DeviceManager::GetDeviceWithPlace(place);
+
+  // note(wangran16): bind device to the current thread. fix npu plugin null
+  // context bug.
   phi::DeviceManager::SetDevice(place_);
   device_->CreateStream(this, priority, flag);
 

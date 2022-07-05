@@ -36,6 +36,9 @@ Event::~Event() { Destroy(); }
 bool Event::Init(const Place& place, Flag flags) {
   place_ = place;
   device_ = phi::DeviceManager::GetDeviceWithPlace(place);
+
+  // note(wangran16): bind device to the current thread. fix npu plugin null
+  // context bug.
   phi::DeviceManager::SetDevice(place_);
   device_->CreateEvent(this, flags);
   VLOG(3) << "Init Event: " << event_ << ", place: " << place_
