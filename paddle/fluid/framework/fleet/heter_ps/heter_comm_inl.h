@@ -581,6 +581,17 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   sync_stream(stream);
 }
 
+static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value) {
+  int8_t * in_int8_ptr = reinterpret_cast<int8_t*>(in_ptr);
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto xpu_context = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  int r = xpu::constant<int8_t>(xpu_context, in_int8_ptr, len, value);
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "reset_xpu_memory: XPU constant kernel return wrong value[%d %s]", r,
+                        XPUAPIErrorMsg[r]));
+}
+
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                                                         KeyType* d_keys,
@@ -644,6 +655,9 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
   xpu_wait(stream);
+  reset_xpu_memory(place, d_shard_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
+  xpu_wait();
+
   // local search
   tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
@@ -655,6 +669,8 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto d_all_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
   VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_all_vals_ptr = reinterpret_cast<ValType*>(d_all_vals->ptr());
+  reset_xpu_memory(place, d_all_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
+  xpu_wait();
 
   VLOG(0) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
@@ -896,17 +912,6 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
 #elif defined(PADDLE_WITH_XPU_KP)
 
-static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value) {
-  int8_t * in_int8_ptr = reinterpret_cast<int8_t*>(in_ptr);
-  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-  auto xpu_context = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
-  int r = xpu::constant<int8_t>(xpu_context, in_int8_ptr, len, value);
-  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                    platform::errors::External(
-                        "reset_xpu_memory: XPU constant kernel return wrong value[%d %s]", r,
-                        XPUAPIErrorMsg[r]));
-}
-
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                                         KeyType* d_keys,
@@ -977,6 +982,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   auto d_all_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
   VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
   GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
+  reset_xpu_memory(place, d_all_grads_ptr, h_fid_seq->size() * sizeof(GradType), 0);
 
   VLOG(0) << "heter comm inl push sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
@@ -990,6 +996,7 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     VLOG(0) << "heter comm inl push sparse unnecessary all reduce";
     d_all_grads_ptr = d_shard_grads_ptr;
   }
+  xpu_wait(stream);
 
   // update
   tables_[dev_num]->update(place, d_fid_seq_ptr, d_all_grads_ptr, h_fid_seq -> size(), stream);
