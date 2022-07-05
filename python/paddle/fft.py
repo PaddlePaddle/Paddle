@@ -1204,7 +1204,8 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
 
     Args:
         n (int): Dimension inputed.
-        d (scalar, optional): Sample spacing (inverse of the sampling rate). Defaults is 1.
+        d (scalar, optional): Sample spacing (inverse of the sampling rate). Default is 1.
+        dtype (str, optional): Data type of Tensor. Default is the return data type of paddle.get_default_dtype().
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1253,7 +1254,8 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
 
     Args:
         n (int): Dimension inputed.
-        d (scalar, optional): Sample spacing (inverse of the sampling rate). Defaults is 1.
+        d (scalar, optional): Sample spacing (inverse of the sampling rate). Default is 1.
+        dtype (str, optional): Data type of Tensor. Default is the return data type of paddle.get_default_dtype().
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
