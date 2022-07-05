@@ -111,6 +111,12 @@ def select_input_with_buildin_type(inputs, mask):
     support_ret_buildin_type = (bool, float, six.integer_types)
     false_var, true_var = inputs
 
+    if isinstance(false_var, UndefinedVar) and isinstance(
+            true_var, UndefinedVar):
+        """ None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None.
+        """
+        return None
+
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
         return select_input(inputs, mask)
 
@@ -2562,16 +2568,21 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
             "true_fn returns non-None while false_fn returns None")
 
     # Merge ture and false output if they are not None
-    true_output, false_output = expand_undefined_var(true_output, false_output)
-    true_output, false_output = change_none_to_undefinedvar(
-        true_output, false_output)
+    if return_name_ids is None:
+        return_name_ids = ["no name"] * len(to_sequence(true_output))
+    else:
+        """ 
+        dy2static will set the return_name_ids and expand the return values to UndefinedVar.
+        """
+        true_output, false_output = expand_undefined_var(
+            true_output, false_output, return_name_ids)
+        true_output, false_output = change_none_to_undefinedvar(
+            true_output, false_output)
     if len(to_sequence(true_output)) != len(to_sequence(false_output)):
         raise ValueError(
             "true fn returns {} vars, but false fn returns {} vars, which is not equals"
             .format(len(to_sequence(true_output)),
                     len(to_sequence(false_output))))
-    if return_name_ids is None:
-        return_name_ids = ["no name"] * len(to_sequence(true_output))
     for true_out, false_out, return_name in zip(to_sequence(true_output),
                                                 to_sequence(false_output),
                                                 to_sequence(return_name_ids)):
@@ -2601,20 +2612,24 @@ def change_none_to_undefinedvar(nest1, nest2):
     return nest1_out, nest2_out
 
 
-def expand_undefined_var(nest1, nest2):
+def expand_undefined_var(nest1, nest2, names):
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_VALUE_PREFIX
 
     def pack_undefined_var_as(seq):
         return pack_sequence_as(seq,
                                 [UndefinedVar("padding") for i in flatten(seq)])
 
-    def map_fn(n1, n2):
-        if isinstance(n1, UndefinedVar) or n1 is None:
+    def map_fn(n1, n2, name):
+        if not name.startswith(RETURN_VALUE_PREFIX) and (isinstance(
+                n1, UndefinedVar) or n1 is None):
             return pack_undefined_var_as(n2)
         return n1
 
-    nest1_out = list(map(map_fn, to_sequence(nest1), to_sequence(nest2)))
-    nest2_out = list(map(map_fn, to_sequence(nest2), to_sequence(nest1)))
+    nest1_out = list(
+        map(map_fn, to_sequence(nest1), to_sequence(nest2), to_sequence(names)))
+    nest2_out = list(
+        map(map_fn, to_sequence(nest2), to_sequence(nest1), to_sequence(names)))
     if not is_sequence(nest1): nest1_out = nest1_out[0]
     if not is_sequence(nest2): nest2_out = nest2_out[0]
     return nest1_out, nest2_out

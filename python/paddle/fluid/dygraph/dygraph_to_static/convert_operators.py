@@ -234,13 +234,17 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
 
     def new_true_fn():
         set_args(init_args)
-        true_fn()
-        return get_args()
+        ret = true_fn()
+        # IfExpr will return a non-None return value, so we just return ret.
+        # We assume normal return has no return value.
+        if ret is None: return get_args()
+        else: return ret
 
     def new_false_fn():
         set_args(init_args)
-        false_fn()
-        return get_args()
+        ret = false_fn()
+        if ret is None: return get_args()
+        else: return ret
 
     try:
         cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn, None,

@@ -43,7 +43,9 @@ RETURN_VALUE_INIT_NAME = '__return_value_init'
 # solve it in dy2stat, we put float64 value with this magic number at Static
 # graph as a place holder to indicate the returning placeholder means no value
 # should return.
-RETURN_NO_VALUE_MAGIC_NUM = 1.77113e+279
+
+# Assign not support float64, use float32 value as magic number.
+RETURN_NO_VALUE_MAGIC_NUM = 1.77113e+27
 RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
 
 

@@ -25,6 +25,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
+import paddle
 
 np.random.seed(123)
 
@@ -40,6 +41,8 @@ class TestCondInputOutput(unittest.TestCase):
         else:
             return -1
         """
+
+        paddle.enable_static()
 
         def true_func():
             return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
@@ -72,6 +75,8 @@ class TestCondInputOutput(unittest.TestCase):
         else:
             return 3, 2
         """
+
+        paddle.enable_static()
 
         def true_func():
             return layers.fill_constant(shape=[1, 2], dtype='int32',
@@ -114,6 +119,8 @@ class TestCondInputOutput(unittest.TestCase):
                 a = a - (i - 1)
         """
 
+        paddle.enable_static()
+
         def true_func(a, i):
             a = a * (i + 1)
             return a
@@ -152,6 +159,8 @@ class TestCondInputOutput(unittest.TestCase):
                 pass
         """
 
+        paddle.enable_static()
+
         def true_func():
             pass
 
@@ -180,6 +189,8 @@ class TestCondInputOutput(unittest.TestCase):
         """
         test returning different number of tensors cannot merge into output
         """
+
+        paddle.enable_static()
 
         def func_return_none():
             return None
@@ -223,10 +234,11 @@ class TestCondInputOutput(unittest.TestCase):
                 out = layers.cond(pred, func_return_one_tensor,
                                   func_return_two_tensors)
             self.assertTrue(
-                "Incompatible return values of true_fn and false_fn in cond" in
-                str(e.exception))
+                "true fn returns 1 vars, but false fn returns 2 vars, which is not equals"
+                in str(e.exception))
 
     def test_extremely_simple_net_with_op_in_condition(self):
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
@@ -272,6 +284,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
                     return a / a
         """
 
+        paddle.enable_static()
+
         def less_than_branch(i, a):
             return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a),
                                lambda: layers.elementwise_sub(a, a))
@@ -308,6 +322,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[1][0], expected_a_grad)
 
     def test_cond_op_in_condition(self):
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
 
@@ -344,6 +359,7 @@ class TestCondBackward(unittest.TestCase):
         """
         Helper function that compares calculated backward value is close to dy/dx
         """
+        paddle.enable_static()
         main_program = Program()
         main_program.random_seed = 123
         startup_program = Program()
@@ -474,6 +490,8 @@ class TestCondBackward(unittest.TestCase):
 
     def test_cond_backward(self):
 
+        paddle.enable_static()
+
         def cond_func(i, img, label):
             predicate = ((i % 2) == 0)
             return layers.cond(
@@ -494,6 +512,7 @@ class TestCondBackward(unittest.TestCase):
                                       use_parallel_exe)
 
     def test_half_nested_cond_backward(self):
+        paddle.enable_static()
 
         def branch(i, img, label):
             return layers.cond(
@@ -530,6 +549,7 @@ class TestCondBackward(unittest.TestCase):
                                       use_parallel_exe)
 
     def test_nested_cond_backward(self):
+        paddle.enable_static()
 
         def branch(i, img, label, mod_two):
             if mod_two:
@@ -560,6 +580,7 @@ class TestCondBackward(unittest.TestCase):
 class TestCondWithError(unittest.TestCase):
 
     def test_input_type_error(self):
+        paddle.enable_static()
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
