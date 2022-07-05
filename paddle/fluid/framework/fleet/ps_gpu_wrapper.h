@@ -518,7 +518,10 @@ class PSGPUWrapper {
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
                                            // pools of totol dims number
 #endif
-
+  std::shared_ptr<
+      paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
+      data_ready_channel_ =
+          paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       buildcpu_ready_channel_ =
@@ -528,6 +531,7 @@ class PSGPUWrapper {
       gpu_free_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
   std::shared_ptr<HeterContext> current_task_ = nullptr;
+  std::thread pre_build_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
