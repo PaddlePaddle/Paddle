@@ -52,7 +52,8 @@ class MemorySparseTable : public Table {
     return local_shard_num;
   }
 
-  static size_t get_sparse_shard(uint32_t shard_num, uint32_t server_num,
+  static size_t get_sparse_shard(uint32_t shard_num,
+                                 uint32_t server_num,
                                  uint64_t key) {
     return (key % shard_num) / sparse_local_shard_num(shard_num, server_num);
   }
@@ -83,7 +84,6 @@ class MemorySparseTable : public Table {
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
-
   int64_t LocalSize();
   int64_t LocalMFSize();
 

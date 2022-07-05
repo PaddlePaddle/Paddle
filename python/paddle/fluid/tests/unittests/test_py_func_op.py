@@ -127,7 +127,7 @@ def simple_fc_net(img, label, use_py_func_op):
         assert loss == loss_out and dummy_var == dummy_var_out, \
             "py_func failed with multi input and output"
 
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 

@@ -26,6 +26,33 @@ extern "C" {
 #define PADDLE_CUSTOM_RUNTIME_PATCH_VERSION 1
 
 typedef enum {
+  UNDEFINED = 0,
+  BOOL,
+  UINT8,
+  UINT16,
+  UINT32,
+  UINT64,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FLOAT16,
+  FLOAT32,
+  FLOAT64,
+  BFLOAT16,
+} C_DataType;
+
+typedef enum {
+  ANY = 0,
+  NHWC,
+  NCHW,
+  NCDHW,
+  NDHWC,
+  NUM_DATA_LAYOUTS,
+  ALL_LAYOUT = ANY,
+} C_DataLayout;
+
+typedef enum {
   C_SUCCESS = 0,    // success
   C_WARNING,        // results may not meet expectation (such as an asynchronous
                     // interface is actually synchronous)

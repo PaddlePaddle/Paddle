@@ -106,28 +106,35 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   return res;
 }
 
-int32_t GraphTable::add_node_to_ssd(int type_id, int idx, int64_t src_id,
-                                    char *data, int len) {
+int32_t GraphTable::add_node_to_ssd(
+    int type_id, int idx, int64_t src_id, char *data, int len) {
   if (_db != NULL) {
     char ch[sizeof(int) * 2 + sizeof(int64_t)];
     memcpy(ch, &type_id, sizeof(int));
     memcpy(ch + sizeof(int), &idx, sizeof(int));
     memcpy(ch + sizeof(int) * 2, &src_id, sizeof(int64_t));
     std::string str;
-    if (_db->get(src_id % shard_num % task_pool_size_, ch,
-                 sizeof(int) * 2 + sizeof(int64_t), str) == 0) {
+    if (_db->get(src_id % shard_num % task_pool_size_,
+                 ch,
+                 sizeof(int) * 2 + sizeof(int64_t),
+                 str) == 0) {
       int64_t *stored_data = ((int64_t *)str.c_str());
       int n = str.size() / sizeof(int64_t);
       char *new_data = new char[n * sizeof(int64_t) + len];
       memcpy(new_data, stored_data, n * sizeof(int64_t));
       memcpy(new_data + n * sizeof(int64_t), data, len);
-      _db->put(src_id % shard_num % task_pool_size_, ch,
-               sizeof(int) * 2 + sizeof(int64_t), (char *)new_data,
+      _db->put(src_id % shard_num % task_pool_size_,
+               ch,
+               sizeof(int) * 2 + sizeof(int64_t),
+               (char *)new_data,
                n * sizeof(int64_t) + len);
       delete[] new_data;
     } else {
-      _db->put(src_id % shard_num % task_pool_size_, ch,
-               sizeof(int) * 2 + sizeof(int64_t), (char *)data, len);
+      _db->put(src_id % shard_num % task_pool_size_,
+               ch,
+               sizeof(int) * 2 + sizeof(int64_t),
+               (char *)data,
+               len);
     }
     // _db->flush(src_id % shard_num % task_pool_size_);
     // std::string x;
@@ -154,8 +161,11 @@ int32_t GraphTable::add_node_to_ssd(int type_id, int idx, int64_t src_id,
   return 0;
 }
 char *GraphTable::random_sample_neighbor_from_ssd(
-    int idx, int64_t id, int sample_size,
-    const std::shared_ptr<std::mt19937_64> rng, int &actual_size) {
+    int idx,
+    int64_t id,
+    int sample_size,
+    const std::shared_ptr<std::mt19937_64> rng,
+    int &actual_size) {
   if (_db == NULL) {
     actual_size = 0;
     return NULL;
@@ -166,8 +176,10 @@ char *GraphTable::random_sample_neighbor_from_ssd(
   memset(ch, 0, sizeof(int));
   memcpy(ch + sizeof(int), &idx, sizeof(int));
   memcpy(ch + sizeof(int) * 2, &id, sizeof(int64_t));
-  if (_db->get(id % shard_num % task_pool_size_, ch,
-               sizeof(int) * 2 + sizeof(int64_t), str) == 0) {
+  if (_db->get(id % shard_num % task_pool_size_,
+               ch,
+               sizeof(int) * 2 + sizeof(int64_t),
+               str) == 0) {
     int64_t *data = ((int64_t *)str.c_str());
     int n = str.size() / sizeof(int64_t);
     std::unordered_map<int, int> m;
@@ -431,7 +443,10 @@ int32_t GraphTable::load_edges_to_ssd(const std::string &path,
         dist_data.push_back(std::stoll(x));
         total_memory_cost += sizeof(int64_t);
       }
-      add_node_to_ssd(0, idx, src_id, (char *)dist_data.data(),
+      add_node_to_ssd(0,
+                      idx,
+                      src_id,
+                      (char *)dist_data.data(),
                       (int)(dist_data.size() * sizeof(int64_t)));
     }
   }
@@ -458,7 +473,10 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
               s.push_back(v[j]->get_neighbor_id(k));
             }
             cost += v[j]->get_neighbor_size() * sizeof(int64_t);
-            add_node_to_ssd(0, idx, v[j]->get_id(), (char *)s.data(),
+            add_node_to_ssd(0,
+                            idx,
+                            v[j]->get_id(),
+                            (char *)s.data(),
                             s.size() * sizeof(int64_t));
           }
           return cost;
@@ -833,7 +851,8 @@ int32_t GraphTable::add_comm_edge(int idx, int64_t src_id, int64_t dst_id) {
   edge_shards[idx][index]->add_neighbor(src_id, dst_id, 1.0);
   return 0;
 }
-int32_t GraphTable::add_graph_node(int idx, std::vector<int64_t> &id_list,
+int32_t GraphTable::add_graph_node(int idx,
+                                   std::vector<int64_t> &id_list,
                                    std::vector<bool> &is_weight_list) {
   auto &shards = edge_shards[idx];
   size_t node_size = id_list.size();
@@ -974,7 +993,9 @@ int32_t GraphTable::Load(const std::string &path, const std::string &param) {
 }
 
 int32_t GraphTable::get_nodes_ids_by_ranges(
-    int type_id, int idx, std::vector<std::pair<int, int>> ranges,
+    int type_id,
+    int idx,
+    std::vector<std::pair<int, int>> ranges,
     std::vector<int64_t> &res) {
   int start = 0, end, index = 0, total_size = 0;
   res.clear();
@@ -1087,7 +1108,8 @@ int32_t GraphTable::build_sampler(int idx, std::string sample_type) {
   }
   return 0;
 }
-int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
+int32_t GraphTable::load_edges(const std::string &path,
+                               bool reverse_edge,
                                const std::string &edge_type) {
 #ifdef PADDLE_WITH_HETERPS
   // if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
@@ -1205,13 +1227,15 @@ uint32_t GraphTable::get_thread_pool_index_by_shard_index(int64_t shard_index) {
 
 int32_t GraphTable::clear_nodes(int type_id, int idx) {
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     search_shards[i]->clear();
   }
   return 0;
 }
 
-int32_t GraphTable::random_sample_nodes(int type_id, int idx, int sample_size,
+int32_t GraphTable::random_sample_nodes(int type_id,
+                                        int idx,
+                                        int sample_size,
                                         std::unique_ptr<char[]> &buffer,
                                         int &actual_size) {
   int total_size = 0;
@@ -1278,8 +1302,11 @@ int32_t GraphTable::random_sample_nodes(int type_id, int idx, int sample_size,
   return 0;
 }
 int32_t GraphTable::random_sample_neighbors(
-    int idx, int64_t *node_ids, int sample_size,
-    std::vector<std::shared_ptr<char>> &buffers, std::vector<int> &actual_sizes,
+    int idx,
+    int64_t *node_ids,
+    int sample_size,
+    std::vector<std::shared_ptr<char>> &buffers,
+    std::vector<int> &actual_sizes,
     bool need_weight) {
   size_t node_num = buffers.size();
   std::function<void(char *)> char_del = [](char *c) { delete[] c; };
@@ -1365,8 +1392,8 @@ int32_t GraphTable::random_sample_neighbors(
         }
       }
       if (sample_res.size()) {
-        scaled_lru->insert(i, sample_keys.data(), sample_res.data(),
-                           sample_keys.size());
+        scaled_lru->insert(
+            i, sample_keys.data(), sample_res.data(), sample_keys.size());
       }
       return 0;
     }));
@@ -1377,7 +1404,8 @@ int32_t GraphTable::random_sample_neighbors(
   return 0;
 }
 
-int32_t GraphTable::get_node_feat(int idx, const std::vector<int64_t> &node_ids,
+int32_t GraphTable::get_node_feat(int idx,
+                                  const std::vector<int64_t> &node_ids,
                                   const std::vector<std::string> &feature_names,
                                   std::vector<std::vector<std::string>> &res) {
   size_t node_num = node_ids.size();
@@ -1411,7 +1439,8 @@ int32_t GraphTable::get_node_feat(int idx, const std::vector<int64_t> &node_ids,
 }
 
 int32_t GraphTable::set_node_feat(
-    int idx, const std::vector<int64_t> &node_ids,
+    int idx,
+    const std::vector<int64_t> &node_ids,
     const std::vector<std::string> &feature_names,
     const std::vector<std::vector<std::string>> &res) {
   size_t node_num = node_ids.size();
@@ -1473,12 +1502,13 @@ std::pair<int32_t, std::string> GraphTable::parse_feature(
   return std::make_pair<int32_t, std::string>(-1, "");
 }
 
-std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
+std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id,
+                                                         int idx,
                                                          int slice_num) {
   std::vector<std::vector<int64_t>> res(slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<std::vector<int64_t>>> tasks;
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i]() -> std::vector<int64_t> {
           return search_shards[i]->get_all_id();
@@ -1493,10 +1523,13 @@ std::vector<std::vector<int64_t>> GraphTable::get_all_id(int type_id, int idx,
   }
   return res;
 }
-int32_t GraphTable::pull_graph_list(int type_id, int idx, int start,
+int32_t GraphTable::pull_graph_list(int type_id,
+                                    int idx,
+                                    int start,
                                     int total_size,
                                     std::unique_ptr<char[]> &buffer,
-                                    int &actual_size, bool need_feature,
+                                    int &actual_size,
+                                    bool need_feature,
                                     int step) {
   if (start < 0) start = 0;
   int size = 0, cur_size;
@@ -1511,8 +1544,8 @@ int32_t GraphTable::pull_graph_list(int type_id, int idx, int start,
     int count = std::min(1 + (size + cur_size - start - 1) / step, total_size);
     int end = start + (count - 1) * step + 1;
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-        [&search_shards, this, i, start, end, step,
-         size]() -> std::vector<Node *> {
+        [&search_shards, this, i, start, end, step, size]()
+            -> std::vector<Node *> {
           return search_shards[i]->get_batch(start - size, end - size, step);
         }));
     start += count * step;

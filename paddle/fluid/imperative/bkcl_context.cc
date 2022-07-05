@@ -33,11 +33,14 @@
 namespace paddle {
 namespace imperative {
 
-static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
-                      const XPUStream stream, const platform::BKCLComm *comm) {
+static void AllReduce(const framework::Tensor &src,
+                      framework::Tensor *dst,
+                      const XPUStream stream,
+                      const platform::BKCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_xpu_place(place), true,
+      platform::is_xpu_place(place),
+      true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
 
@@ -48,8 +51,13 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
       platform::ToBKCLDataType(framework::TransToProtoVarType(src.dtype()));
 
   PADDLE_ENFORCE_EQ(
-      bkcl_all_reduce(comm->comm(), src_ptr, dst_ptr, src.numel(), bkcl_dtype,
-                      BKCL_ADD, stream),
+      bkcl_all_reduce(comm->comm(),
+                      src_ptr,
+                      dst_ptr,
+                      src.numel(),
+                      bkcl_dtype,
+                      BKCL_ADD,
+                      stream),
       BKCL_SUCCESS,
       platform::errors::PreconditionNotMet("BKCL all reduce failed"));
 }
@@ -83,7 +91,8 @@ void BKCLParallelContext::Init() {
     // generate the unique bkclid on the root worker
     for (size_t i = 0; i < bkcl_ids.size(); ++i) {
       auto ret = bkcl_get_unique_id(&bkcl_ids[i]);
-      PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+      PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                        ret,
                         platform::errors::PreconditionNotMet(
                             "BKCL get unique id failed [%d]", ret));
     }
@@ -96,9 +105,11 @@ void BKCLParallelContext::Init() {
             << " local rank: " << strategy_.local_rank_ << " xpu id: " << xpu_id
             << " ring id: " << ring_id;
     // it will assign bkcl_comm in XPUDeviceContext within ring_id
-    platform::BKCLCommContext::Instance().CreateComm(
-        &bkcl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, xpu_id,
-        ring_id);
+    platform::BKCLCommContext::Instance().CreateComm(&bkcl_ids[ring_id],
+                                                     strategy_.nranks_,
+                                                     strategy_.local_rank_,
+                                                     xpu_id,
+                                                     ring_id);
   }
 }
 
@@ -109,7 +120,8 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
   if (strategy_.local_rank_ == 0) {
     // generate the unique bkclid on the root worker
     auto ret = bkcl_get_unique_id(&bkcl_ids[0]);
-    PADDLE_ENFORCE_EQ(BKCL_SUCCESS, ret,
+    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
+                      ret,
                       platform::errors::PreconditionNotMet(
                           "BKCL get unique id failed [%d]", ret));
   }
@@ -126,9 +138,11 @@ void BKCLParallelContext::InitWithRingID(int ring_id) {
 
 void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
-                                            int ring_id, bool use_calc_stream) {
+                                            int ring_id,
+                                            bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_xpu_place(place_), true,
+      platform::is_xpu_place(place_),
+      true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto place = place_;
@@ -145,7 +159,9 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+              dst->GetMutable<framework::LoDTensor>(),
+              stream,
+              comm);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
@@ -166,8 +182,13 @@ void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   auto data_type = platform::ToBKCLDataType(
       framework::TransToProtoVarType(src_tensor->dtype()));
 
-  PADDLE_ENFORCE_EQ(bkcl_broadcast(comm->comm(), src_ptr, src_ptr,
-                                   src_tensor->numel(), data_type, 0, stream),
+  PADDLE_ENFORCE_EQ(bkcl_broadcast(comm->comm(),
+                                   src_ptr,
+                                   src_ptr,
+                                   src_tensor->numel(),
+                                   data_type,
+                                   0,
+                                   stream),
                     BKCL_SUCCESS,
                     platform::errors::Unavailable("bkcl_broadcast failed"));
 }
@@ -181,28 +202,34 @@ paddle::platform::DeviceContext *BKCLParallelContext::GetDeviceContext(
 }
 
 void BKCLParallelContext::WaitCompute(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0,
+  PADDLE_ENFORCE_GE(ring_id,
+                    0,
                     platform::errors::OutOfRange(
                         "Ring id expected >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(
-      ring_id, strategy_.nrings_,
+      ring_id,
+      strategy_.nrings_,
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
-                                   ring_id, strategy_.nrings_));
+                                   ring_id,
+                                   strategy_.nrings_));
   auto compute_dev_ctx = static_cast<platform::XPUDeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place_));
   compute_dev_ctx->Wait();
 }
 
 void BKCLParallelContext::WaitComm(int ring_id) {
-  PADDLE_ENFORCE_GE(ring_id, 0,
+  PADDLE_ENFORCE_GE(ring_id,
+                    0,
                     platform::errors::OutOfRange(
                         "Ring id expected >= 0, but got %d", ring_id));
   PADDLE_ENFORCE_LT(
-      ring_id, strategy_.nrings_,
+      ring_id,
+      strategy_.nrings_,
       platform::errors::OutOfRange("Ring id expected < nrings,"
                                    "but got ring id = %d, nrings = %d",
-                                   ring_id, strategy_.nrings_));
+                                   ring_id,
+                                   strategy_.nrings_));
   auto comm_dev_ctx =
       platform::BKCLCommContext::Instance().Get(ring_id, place_)->dev_context();
   comm_dev_ctx->Wait();

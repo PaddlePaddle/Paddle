@@ -32,7 +32,8 @@ class SumXPUKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
     int N = in_vars.size();
     PADDLE_ENFORCE_EQ(
-        out_var->IsType<framework::LoDTensor>(), true,
+        out_var->IsType<framework::LoDTensor>(),
+        true,
         platform::errors::InvalidArgument("XPU only surpport LodTensor"));
     if (!in_place) {
       out->mutable_data<T>(context.GetPlace());
@@ -41,7 +42,8 @@ class SumXPUKernel : public framework::OpKernel<T> {
     std::vector<const XPUType *> ptrs;
     for (int i = 0; i < N; ++i) {
       PADDLE_ENFORCE_EQ(
-          in_vars[i]->IsType<framework::LoDTensor>(), true,
+          in_vars[i]->IsType<framework::LoDTensor>(),
+          true,
           platform::errors::InvalidArgument("XPU only surpport LodTensor"));
       auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
       if (in_t.numel() == 0) {
@@ -49,12 +51,15 @@ class SumXPUKernel : public framework::OpKernel<T> {
       }
       ptrs.push_back(reinterpret_cast<const XPUType *>(in_t.data<T>()));
     }
-    int r = xpu::sum(dev_ctx.x_context(), ptrs,
-                     reinterpret_cast<XPUType *>(out->data<T>()), out->numel());
+    int r = xpu::sum(dev_ctx.x_context(),
+                     ptrs,
+                     reinterpret_cast<XPUType *>(out->data<T>()),
+                     out->numel());
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU sum kernel return wrong value[%d %s]",
-                                   r, XPUAPIErrorMsg[r]));
+        r,
+        XPU_SUCCESS,
+        platform::errors::External(
+            "XPU sum kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -64,7 +69,8 @@ class SumXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    sum, ops::SumXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    sum,
+    ops::SumXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::SumXPUKernel<paddle::platform::XPUDeviceContext,
                       paddle::platform::float16>);
 #endif

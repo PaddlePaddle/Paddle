@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.nn.functional as F
-from paddle.autograd.functional import _as_tensors
+from paddle.autograd.utils import as_tensors
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 import config
@@ -33,7 +33,7 @@ from utils import matmul, mul, nested, o2, pow, reduce, reduce_dim, unuse
 
 
 def make_v(f, inputs):
-    outputs = _as_tensors(f(*inputs))
+    outputs = as_tensors(f(*inputs))
     return [paddle.ones_like(x) for x in outputs]
 
 

@@ -222,7 +222,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
 
             out = layers.while_loop(cond, body, [i, x])
-            mean = layers.mean(out[1])
+            mean = paddle.mean(out[1])
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -264,7 +264,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             x.stop_gradient = False
 
             out = layers.while_loop(cond, body, [i, x])
-            mean = layers.mean(out[1])
+            mean = paddle.mean(out[1])
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -351,7 +351,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                                     [i, j, x, mem_array])
 
             sum_result = layers.array_read(array=mem_array, i=j)
-            mean = layers.mean(sum_result)
+            mean = paddle.mean(sum_result)
             append_backward(mean)
 
             place = fluid.CUDAPlace(

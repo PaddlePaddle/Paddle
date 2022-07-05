@@ -32,7 +32,8 @@ namespace operators {
 
 class AssignOp : public framework::OperatorWithKernel {
  public:
-  AssignOp(const std::string &type, const framework::VariableNameMap &inputs,
+  AssignOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -59,7 +60,8 @@ class AssignOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -100,7 +102,8 @@ class AssignKernel {
       return;
     }
     PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
+        ctx.HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -149,8 +152,15 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
-                               ops::AssignKernel, int, ops::AssignKernel,
-                               int64_t, ops::AssignKernel, bool,
+REGISTER_OP_XPU_KERNEL_FUNCTOR(assign,
+                               float,
+                               ops::AssignKernel,
+                               double,
+                               ops::AssignKernel,
+                               int,
+                               ops::AssignKernel,
+                               int64_t,
+                               ops::AssignKernel,
+                               bool,
                                ops::AssignKernel);
 #endif

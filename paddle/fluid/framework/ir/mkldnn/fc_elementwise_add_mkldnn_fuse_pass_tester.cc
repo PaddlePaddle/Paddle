@@ -50,7 +50,8 @@ OpDesc* Create_Op_FC(ProgramDesc* prog,
 }
 
 OpDesc* Create_Op_elementwise_add(
-    ProgramDesc* prog, const std::vector<test::InOutVarNamePair>& inputs,
+    ProgramDesc* prog,
+    const std::vector<test::InOutVarNamePair>& inputs,
     const std::vector<test::InOutVarNamePair>& outputs,
     bool use_mkldnn = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
@@ -75,7 +76,8 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsY) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+  Create_Op_FC(&prog,
+               {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
                {{"Out", "c"}});
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
@@ -83,8 +85,11 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsY) {
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "e", nodes_removed, nodes_added));
+                                     "fc_elementwise_add_mkldnn_fuse_pass",
+                                     "a",
+                                     "e",
+                                     nodes_removed,
+                                     nodes_added));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
 }
 
@@ -93,7 +98,8 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
       test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+  Create_Op_FC(&prog,
+               {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
                {{"Out", "c"}});
 
   Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
@@ -102,8 +108,11 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "e", nodes_removed, nodes_added));
+                                     "fc_elementwise_add_mkldnn_fuse_pass",
+                                     "a",
+                                     "e",
+                                     nodes_removed,
+                                     nodes_added));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
 }
 
@@ -112,10 +121,12 @@ TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
                                      {"bias", "weights", "bias2", "weights2"});
 
   test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  Create_Op_FC(&prog, {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+  Create_Op_FC(&prog,
+               {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
                {{"Out", "c"}});
 
-  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias2"}, {"W", "weights2"}},
+  Create_Op_FC(&prog,
+               {{"Input", "d"}, {"Bias", "bias2"}, {"W", "weights2"}},
                {{"Out", "e"}});
 
   Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "e"}}, {{"Out", "f"}});
@@ -135,13 +146,16 @@ TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
 
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
 
-  test::CreateOp(&prog, "layer_norm",
+  test::CreateOp(&prog,
+                 "layer_norm",
                  {{"X", "c"}, {"Bias", "ln_bias"}, {"Scale", "ln_scale"}},
                  {{"Y", "d"}});
-  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+  Create_Op_FC(&prog,
+               {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
                {{"Out", "e"}});
   test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
-  Create_Op_FC(&prog, {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+  Create_Op_FC(&prog,
+               {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
                {{"Out", "g"}});
   Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
   test::CreateOp(&prog, "relu", {{"X", "h"}}, {{"Out", "i"}});
@@ -149,43 +163,65 @@ TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "i", nodes_removed, nodes_added));
+                                     "fc_elementwise_add_mkldnn_fuse_pass",
+                                     "a",
+                                     "i",
+                                     nodes_removed,
+                                     nodes_added));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 1}}));
 }
 
 TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_Sequence) {
   auto prog = test::BuildProgramDesc(
       {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"},
-      {"ln_bias", "ln_scale", "bias", "weights", "bias2", "weights2",
-       "ln_bias2", "ln_scale2", "bias3", "weights3", "bias4", "weights4"});
+      {"ln_bias",
+       "ln_scale",
+       "bias",
+       "weights",
+       "bias2",
+       "weights2",
+       "ln_bias2",
+       "ln_scale2",
+       "bias3",
+       "weights3",
+       "bias4",
+       "weights4"});
 
   Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "b"}}, {{"Out", "c"}});
 
-  test::CreateOp(&prog, "layer_norm",
+  test::CreateOp(&prog,
+                 "layer_norm",
                  {{"X", "c"}, {"Bias", "ln_bias"}, {"Scale", "ln_scale"}},
                  {{"Y", "d"}});
-  Create_Op_FC(&prog, {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
+  Create_Op_FC(&prog,
+               {{"Input", "d"}, {"Bias", "bias"}, {"W", "weights"}},
                {{"Out", "e"}});
   test::CreateOp(&prog, "gelu", {{"X", "e"}}, {{"Out", "f"}});
-  Create_Op_FC(&prog, {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
+  Create_Op_FC(&prog,
+               {{"Input", "f"}, {"Bias", "bias2"}, {"W", "weights2"}},
                {{"Out", "g"}});
   Create_Op_elementwise_add(&prog, {{"X", "g"}, {"Y", "c"}}, {{"Out", "h"}});
-  test::CreateOp(&prog, "layer_norm",
+  test::CreateOp(&prog,
+                 "layer_norm",
                  {{"X", "h"}, {"Bias", "ln_bias2"}, {"Scale", "ln_scale2"}},
                  {{"Y", "i"}});
-  Create_Op_FC(&prog, {{"Input", "i"}, {"Bias", "bias3"}, {"W", "weights3"}},
+  Create_Op_FC(&prog,
+               {{"Input", "i"}, {"Bias", "bias3"}, {"W", "weights3"}},
                {{"Out", "j"}});
   test::CreateOp(&prog, "gelu", {{"X", "j"}}, {{"Out", "k"}});
-  Create_Op_FC(&prog, {{"Input", "k"}, {"Bias", "bias4"}, {"W", "weights4"}},
+  Create_Op_FC(&prog,
+               {{"Input", "k"}, {"Bias", "bias4"}, {"W", "weights4"}},
                {{"Out", "l"}});
   Create_Op_elementwise_add(&prog, {{"X", "h"}, {"Y", "l"}}, {{"Out", "m"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "m", nodes_removed * 2, nodes_added * 2));
+                                     "fc_elementwise_add_mkldnn_fuse_pass",
+                                     "a",
+                                     "m",
+                                     nodes_removed * 2,
+                                     nodes_added * 2));
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 4}, {"elementwise_add", 1}}));
 }
 

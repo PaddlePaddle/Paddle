@@ -25,13 +25,27 @@ namespace operators {
 namespace math {
 
 template <class T>
-__global__ void vol2col(int num_kernels, const T* data_vol, int depth,
-                        int height, int width, int dilation_d, int dilation_h,
-                        int dilation_w, int filter_depth, int filter_height,
-                        int filter_width, int stride_depth, int stride_height,
-                        int stride_width, int padding_depth, int padding_height,
-                        int padding_width, int output_detph, int output_height,
-                        int output_width, T* data_col,
+__global__ void vol2col(int num_kernels,
+                        const T* data_vol,
+                        int depth,
+                        int height,
+                        int width,
+                        int dilation_d,
+                        int dilation_h,
+                        int dilation_w,
+                        int filter_depth,
+                        int filter_height,
+                        int filter_width,
+                        int stride_depth,
+                        int stride_height,
+                        int stride_width,
+                        int padding_depth,
+                        int padding_height,
+                        int padding_width,
+                        int output_detph,
+                        int output_height,
+                        int output_width,
+                        T* data_col,
                         const DataLayout data_layout) {
   int input_channels =
       num_kernels / output_detph / output_height / output_width;
@@ -89,15 +103,20 @@ __global__ void vol2col(int num_kernels, const T* data_vol, int depth,
 //  public:
 template <class DeviceContext, class T>
 void Vol2ColFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const framework::Tensor& vol,
-    const std::vector<int>& dilations, const std::vector<int>& strides,
-    const std::vector<int>& paddings, framework::Tensor* col,
+    const DeviceContext& context,
+    const framework::Tensor& vol,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    framework::Tensor* col,
     const DataLayout data_layout) const {
-  PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
+  PADDLE_ENFORCE_EQ(vol.dims().size(),
+                    4,
                     platform::errors::InvalidArgument(
                         "The dimension of  vol should be 4, but received %d.",
                         vol.dims().size()));
-  PADDLE_ENFORCE_EQ(col->dims().size(), 7,
+  PADDLE_ENFORCE_EQ(col->dims().size(),
+                    7,
                     platform::errors::InvalidArgument(
                         "The dimension of col should be 7, but received %d.",
                         col->dims().size()));
@@ -128,27 +147,33 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                           ((dilations[0] * (filter_depth - 1) + 1))) /
                              strides[0] +
                          1;
-  PADDLE_ENFORCE_EQ(input_depth_tmp, output_depth,
+  PADDLE_ENFORCE_EQ(input_depth_tmp,
+                    output_depth,
                     platform::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
-                        input_depth_tmp, output_depth));
+                        input_depth_tmp,
+                        output_depth));
   auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
                            ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1;
   PADDLE_ENFORCE_EQ(
-      input_height_tmp, output_height,
+      input_height_tmp,
+      output_height,
       platform::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
-          input_height_tmp, output_height));
+          input_height_tmp,
+          output_height));
   auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
                           ((dilations[2] * (filter_width - 1) + 1))) /
                              strides[2] +
                          1;
-  PADDLE_ENFORCE_EQ(input_width_tmp, output_width,
+  PADDLE_ENFORCE_EQ(input_width_tmp,
+                    output_width,
                     platform::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
-                        input_width_tmp, output_width));
+                        input_width_tmp,
+                        output_width));
 
   int num_outputs =
       input_channels * output_depth * output_height * output_width;
@@ -161,23 +186,53 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   const int threads = max_threads;
   const int blocks = (num_outputs + max_threads - 1) / max_threads;
 
-  vol2col<T><<<blocks, threads, 0, context.stream()>>>(
-      num_outputs, vol.data<T>(), input_depth, input_height, input_width,
-      dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-      filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
-      pad_w_left, output_depth, output_height, output_width, col->data<T>(),
-      data_layout);
+  vol2col<T><<<blocks, threads, 0, context.stream()>>>(num_outputs,
+                                                       vol.data<T>(),
+                                                       input_depth,
+                                                       input_height,
+                                                       input_width,
+                                                       dilations[0],
+                                                       dilations[1],
+                                                       dilations[2],
+                                                       filter_depth,
+                                                       filter_height,
+                                                       filter_width,
+                                                       strides[0],
+                                                       strides[1],
+                                                       strides[2],
+                                                       pad_d_forth,
+                                                       pad_h_up,
+                                                       pad_w_left,
+                                                       output_depth,
+                                                       output_height,
+                                                       output_width,
+                                                       col->data<T>(),
+                                                       data_layout);
 }
 // };
 
 template <class T>
-__global__ void col2vol(int num_kernels, const T* data_col, int depth,
-                        int height, int width, int dilation_d, int dilation_h,
-                        int dilation_w, int filter_depth, int filter_height,
-                        int filter_width, int stride_depth, int stride_height,
-                        int stride_width, int padding_depth, int padding_height,
-                        int padding_width, int output_detph, int output_height,
-                        int output_width, T* data_vol,
+__global__ void col2vol(int num_kernels,
+                        const T* data_col,
+                        int depth,
+                        int height,
+                        int width,
+                        int dilation_d,
+                        int dilation_h,
+                        int dilation_w,
+                        int filter_depth,
+                        int filter_height,
+                        int filter_width,
+                        int stride_depth,
+                        int stride_height,
+                        int stride_width,
+                        int padding_depth,
+                        int padding_height,
+                        int padding_width,
+                        int output_detph,
+                        int output_height,
+                        int output_width,
+                        T* data_vol,
                         const DataLayout data_layout) {
   const int d_filter_depth = dilation_d * (filter_depth - 1) + 1;
   const int d_filter_height = dilation_h * (filter_height - 1) + 1;
@@ -254,15 +309,20 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
 //  public:
 template <class DeviceContext, class T>
 void Col2VolFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context, const framework::Tensor& col,
-    const std::vector<int>& dilations, const std::vector<int>& strides,
-    const std::vector<int>& paddings, framework::Tensor* vol,
+    const DeviceContext& context,
+    const framework::Tensor& col,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    framework::Tensor* vol,
     const DataLayout data_layout) const {
-  PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
+  PADDLE_ENFORCE_EQ(vol->dims().size(),
+                    4,
                     platform::errors::InvalidArgument(
                         "The dimension of vol  should be 4, but received %d.",
                         vol->dims().size()));
-  PADDLE_ENFORCE_EQ(col.dims().size(), 7,
+  PADDLE_ENFORCE_EQ(col.dims().size(),
+                    7,
                     platform::errors::InvalidArgument(
                         "The dimension of col  should be 7, but received %d.",
                         col.dims().size()));
@@ -294,27 +354,33 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                           ((dilations[0] * (filter_depth - 1) + 1))) /
                              strides[0] +
                          1;
-  PADDLE_ENFORCE_EQ(input_depth_tmp, output_depth,
+  PADDLE_ENFORCE_EQ(input_depth_tmp,
+                    output_depth,
                     platform::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
-                        input_depth_tmp, output_depth));
+                        input_depth_tmp,
+                        output_depth));
   auto input_height_tmp = (input_height + pad_h_up + pad_h_down -
                            ((dilations[1] * (filter_height - 1) + 1))) /
                               strides[1] +
                           1;
   PADDLE_ENFORCE_EQ(
-      input_height_tmp, output_height,
+      input_height_tmp,
+      output_height,
       platform::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
-          input_height_tmp, output_height));
+          input_height_tmp,
+          output_height));
   auto input_width_tmp = (input_width + pad_w_left + pad_w_right -
                           ((dilations[2] * (filter_width - 1) + 1))) /
                              strides[2] +
                          1;
-  PADDLE_ENFORCE_EQ(input_width_tmp, output_width,
+  PADDLE_ENFORCE_EQ(input_width_tmp,
+                    output_width,
                     platform::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
-                        input_width_tmp, output_width));
+                        input_width_tmp,
+                        output_width));
 
   int num_kernels = input_channels * input_depth * input_height * input_width;
 
@@ -326,12 +392,28 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   const int threads = max_threads;
   const int blocks = (num_kernels + max_threads - 1) / max_threads;
 
-  col2vol<T><<<blocks, threads, 0, context.stream()>>>(
-      num_kernels, col.data<T>(), input_depth, input_height, input_width,
-      dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
-      filter_width, strides[0], strides[1], strides[2], pad_d_forth, pad_h_up,
-      pad_w_left, output_depth, output_height, output_width, vol->data<T>(),
-      data_layout);
+  col2vol<T><<<blocks, threads, 0, context.stream()>>>(num_kernels,
+                                                       col.data<T>(),
+                                                       input_depth,
+                                                       input_height,
+                                                       input_width,
+                                                       dilations[0],
+                                                       dilations[1],
+                                                       dilations[2],
+                                                       filter_depth,
+                                                       filter_height,
+                                                       filter_width,
+                                                       strides[0],
+                                                       strides[1],
+                                                       strides[2],
+                                                       pad_d_forth,
+                                                       pad_h_up,
+                                                       pad_w_left,
+                                                       output_depth,
+                                                       output_height,
+                                                       output_width,
+                                                       vol->data<T>(),
+                                                       data_layout);
 }
 // };
 

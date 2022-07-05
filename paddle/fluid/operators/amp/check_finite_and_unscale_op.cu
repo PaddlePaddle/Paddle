@@ -26,9 +26,12 @@ __global__ void InverseAndMemset(const T* s, T* o, bool* found_inf) {
 }
 
 template <typename T, typename MT>
-__global__ void CheckFiniteAndUnscale(const T** xs, const MT* scale,
-                                      int64_t size, int64_t* starts,
-                                      bool* found_inf, T** outs) {
+__global__ void CheckFiniteAndUnscale(const T** xs,
+                                      const MT* scale,
+                                      int64_t size,
+                                      int64_t* starts,
+                                      bool* found_inf,
+                                      T** outs) {
   const int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   // copy starts array from global memory to shared memory
@@ -117,8 +120,12 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       h_starts[i] = h_starts[i - 1] + xs[i - 1]->numel();
     }
     int64_t total_num = h_starts[xs_size];
-    memory::Copy(dev_ctx.GetPlace(), d_starts, cpu_place, h_starts,
-                 (xs_size + 1) * sizeof(int64_t), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(),
+                 d_starts,
+                 cpu_place,
+                 h_starts,
+                 (xs_size + 1) * sizeof(int64_t),
+                 dev_ctx.stream());
 
     // copy each tensor's data address to device
     auto h_mem = memory::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
@@ -133,8 +140,12 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
       h_xs[i] = xs[i]->data<T>();
       h_outs[i] = outs[i]->mutable_data<T>(dev_ctx.GetPlace());
     }
-    memory::Copy(dev_ctx.GetPlace(), d_xs, cpu_place, h_xs,
-                 2 * xs_size * sizeof(T*), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(),
+                 d_xs,
+                 cpu_place,
+                 h_xs,
+                 2 * xs_size * sizeof(T*),
+                 dev_ctx.stream());
 
     // Launch Kernel
     int threads_per_block = std::min(static_cast<int64_t>(1024), total_num);
@@ -143,10 +154,11 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
     int blocks_per_grid =
         (total_num + elements_per_block - 1) / elements_per_block;
     VLOG(3) << "launch kernel";
-    CheckFiniteAndUnscale<T, MPDType>
-        <<<blocks_per_grid, threads_per_block, (xs_size + 1) * sizeof(int64_t),
-           dev_ctx.stream()>>>(d_xs, inverse_scale_v, xs_size, d_starts,
-                               found_inf_data, d_outs);
+    CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
+                                        threads_per_block,
+                                        (xs_size + 1) * sizeof(int64_t),
+                                        dev_ctx.stream()>>>(
+        d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
     VLOG(3) << "finish kernel";
   }
 };

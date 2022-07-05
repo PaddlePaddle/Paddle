@@ -32,8 +32,8 @@ static void fs_add_read_converter_internal(std::string& path,  // NOLINT
   }
 
   if (!is_pipe) {
-    path = string::format_string("( %s ) < \"%s\"", converter.c_str(),
-                                 path.c_str());
+    path = string::format_string(
+        "( %s ) < \"%s\"", converter.c_str(), path.c_str());
     is_pipe = true;
   } else {
     path = string::format_string("%s | %s", path.c_str(), converter.c_str());
@@ -48,8 +48,8 @@ static void fs_add_write_converter_internal(std::string& path,  // NOLINT
   }
 
   if (!is_pipe) {
-    path = string::format_string("( %s ) > \"%s\"", converter.c_str(),
-                                 path.c_str());
+    path = string::format_string(
+        "( %s ) > \"%s\"", converter.c_str(), path.c_str());
     is_pipe = true;
   } else {
     path = string::format_string("%s | %s", converter.c_str(), path.c_str());
@@ -92,7 +92,8 @@ static bool fs_begin_with_internal(const std::string& path,
 static bool fs_end_with_internal(const std::string& path,
                                  const std::string& str) {
   return path.length() >= str.length() &&
-         strncmp(&path[path.length() - str.length()], str.c_str(),
+         strncmp(&path[path.length() - str.length()],
+                 str.c_str(),
                  str.length()) == 0;
 }
 
@@ -158,7 +159,8 @@ std::vector<std::string> localfs_list(const std::string& path) {
   std::shared_ptr<FILE> pipe;
   int err_no = 0;
   pipe = shell_popen(
-      string::format_string("find %s -type f -maxdepth 1", path.c_str()), "r",
+      string::format_string("find %s -type f -maxdepth 1", path.c_str()),
+      "r",
       &err_no);
   string::LineFileReader reader;
   std::vector<std::string> list;
@@ -255,14 +257,21 @@ void set_download_command(const std::string& x) {
   customized_download_cmd_internal() = x;
 }
 
+<<<<<<< HEAD
 std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                      const std::string& converter,
                                      bool read_data) {
+=======
+std::shared_ptr<FILE> hdfs_open_read(std::string path,
+                                     int* err_no,
+                                     const std::string& converter) {
+>>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
   if (download_cmd() != "") {  // use customized download command
-    path = string::format_string("%s \"%s\"", download_cmd().c_str(),
-                                 path.c_str());
+    path = string::format_string(
+        "%s \"%s\"", download_cmd().c_str(), path.c_str());
   } else {
     if (fs_end_with_internal(path, ".gz")) {
+<<<<<<< HEAD
       if (read_data) {
         path = string::format_string(
             "%s -text \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
@@ -278,6 +287,13 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
         path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
                                      path.c_str());
       }
+=======
+      path = string::format_string(
+          "%s -text \"%s\"", hdfs_command().c_str(), path.c_str());
+    } else {
+      path = string::format_string(
+          "%s -cat \"%s\"", hdfs_command().c_str(), path.c_str());
+>>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
     }
   }
 
@@ -287,10 +303,11 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
   return fs_open_internal(path, is_pipe, "r", hdfs_buffer_size(), err_no);
 }
 
-std::shared_ptr<FILE> hdfs_open_write(std::string path, int* err_no,
+std::shared_ptr<FILE> hdfs_open_write(std::string path,
+                                      int* err_no,
                                       const std::string& converter) {
-  path = string::format_string("%s -put - \"%s\"", hdfs_command().c_str(),
-                               path.c_str());
+  path = string::format_string(
+      "%s -put - \"%s\"", hdfs_command().c_str(), path.c_str());
   bool is_pipe = true;
 
   if (fs_end_with_internal(path, ".gz\"")) {
@@ -306,8 +323,8 @@ void hdfs_remove(const std::string& path) {
     return;
   }
 
-  shell_execute(string::format_string("%s -rmr %s &>/dev/null; true",
-                                      hdfs_command().c_str(), path.c_str()));
+  shell_execute(string::format_string(
+      "%s -rmr %s &>/dev/null; true", hdfs_command().c_str(), path.c_str()));
 }
 
 std::vector<std::string> hdfs_list(const std::string& path) {
@@ -327,8 +344,10 @@ std::vector<std::string> hdfs_list(const std::string& path) {
     std::shared_ptr<FILE> pipe;
     pipe = shell_popen(
         string::format_string("%s -ls %s | ( grep ^- ; [ $? != 2 ] )",
-                              hdfs_command().c_str(), path.c_str()),
-        "r", &err_no);
+                              hdfs_command().c_str(),
+                              path.c_str()),
+        "r",
+        &err_no);
     string::LineFileReader reader;
     list.clear();
 
@@ -368,8 +387,8 @@ void hdfs_mkdir(const std::string& path) {
     return;
   }
 
-  shell_execute(string::format_string("%s -mkdir %s; true",
-                                      hdfs_command().c_str(), path.c_str()));
+  shell_execute(string::format_string(
+      "%s -mkdir %s; true", hdfs_command().c_str(), path.c_str()));
 }
 
 void hdfs_mv(const std::string& src, const std::string& dest) {
@@ -390,9 +409,15 @@ int fs_select_internal(const std::string& path) {
   return 0;
 }
 
+<<<<<<< HEAD
 std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
                                    const std::string& converter,
                                    bool read_data) {
+=======
+std::shared_ptr<FILE> fs_open_read(const std::string& path,
+                                   int* err_no,
+                                   const std::string& converter) {
+>>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
   switch (fs_select_internal(path)) {
     case 0:
       return localfs_open_read(path, converter);
@@ -409,7 +434,8 @@ std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
   return {};
 }
 
-std::shared_ptr<FILE> fs_open_write(const std::string& path, int* err_no,
+std::shared_ptr<FILE> fs_open_write(const std::string& path,
+                                    int* err_no,
                                     const std::string& converter) {
   switch (fs_select_internal(path)) {
     case 0:
@@ -427,8 +453,10 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path, int* err_no,
   return {};
 }
 
-std::shared_ptr<FILE> fs_open(const std::string& path, const std::string& mode,
-                              int* err_no, const std::string& converter) {
+std::shared_ptr<FILE> fs_open(const std::string& path,
+                              const std::string& mode,
+                              int* err_no,
+                              const std::string& converter) {
   if (mode == "r" || mode == "rb") {
     return fs_open_read(path, err_no, converter);
   }

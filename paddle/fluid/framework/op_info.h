@@ -66,7 +66,8 @@ class OpInfo {
     PADDLE_ENFORCE_NOT_NULL(
         proto_,
         platform::errors::NotFound("Operator's Proto has not been registered"));
-    PADDLE_ENFORCE_EQ(proto_->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(proto_->IsInitialized(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Operator's Proto in op info is not initialized."));
     return *proto_;
@@ -90,7 +91,8 @@ class OpInfo {
             "registered.\nPlease check whether (%s) operator has "
             "gradient operator.\nIf not, please set stop_gradient to be True "
             "for its input and output variables using var.stop_gradient=True.",
-            type.c_str(), type.c_str()));
+            type.c_str(),
+            type.c_str()));
     return grad_op_maker_;
   }
 
@@ -112,7 +114,8 @@ class OpInfo {
             "registered.\nPlease check whether (%s) operator has "
             "gradient operator.\nIf not, please set stop_gradient to be True "
             "for its input and output variables using var.stop_gradient=True.",
-            type.c_str(), type.c_str()));
+            type.c_str(),
+            type.c_str()));
     return dygraph_grad_op_maker_;
   }
 
@@ -138,7 +141,8 @@ class OpInfoMap {
   }
 
   void Insert(const std::string& type, const OpInfo& info) {
-    PADDLE_ENFORCE_NE(Has(type), true,
+    PADDLE_ENFORCE_NE(Has(type),
+                      true,
                       platform::errors::AlreadyExists(
                           "Operator (%s) has been registered.", type));
     map_.insert({type, info});

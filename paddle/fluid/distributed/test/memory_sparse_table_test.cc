@@ -142,7 +142,7 @@ TEST(MemorySparseTable, SGD) {
   // table->PullSparse(pull_values.data(), value);
 
   for (size_t i = 0; i < init_keys.size(); ++i) {
-    for (size_t j = 2; j < emb_dim + 3; ++j) {
+    for (int j = 2; j < emb_dim + 3; ++j) {
       auto update_val = init_values[i * (emb_dim + 1) + j] -
                         0.1 * total_gradients[3 + i * (emb_dim + 4) + j];
       VLOG(3) << total_gradients[i * (emb_dim + 4) + j + 3] << ":"

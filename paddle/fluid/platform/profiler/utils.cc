@@ -43,10 +43,14 @@ std::string json_vector<std::string>(
 }
 
 #ifdef PADDLE_WITH_CUPTI
-float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
+float CalculateEstOccupancy(uint32_t DeviceId,
+                            uint16_t RegistersPerThread,
                             int32_t StaticSharedMemory,
-                            int32_t DynamicSharedMemory, int32_t BlockX,
-                            int32_t BlockY, int32_t BlockZ, float BlocksPerSm) {
+                            int32_t DynamicSharedMemory,
+                            int32_t BlockX,
+                            int32_t BlockY,
+                            int32_t BlockZ,
+                            float BlocksPerSm) {
   float occupancy = 0.0;
   std::vector<int> device_ids = GetSelectedDevices();
   if (DeviceId < device_ids.size()) {
@@ -63,9 +67,13 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
     size_t dynamicSmemSize = DynamicSharedMemory;
     cudaOccResult occ_result;
     cudaOccDeviceProp prop(device_property);
-    cudaOccError status = cudaOccMaxActiveBlocksPerMultiprocessor(
-        &occ_result, &prop, &occFuncAttr, &occDeviceState, blockSize,
-        dynamicSmemSize);
+    cudaOccError status =
+        cudaOccMaxActiveBlocksPerMultiprocessor(&occ_result,
+                                                &prop,
+                                                &occFuncAttr,
+                                                &occDeviceState,
+                                                blockSize,
+                                                dynamicSmemSize);
     if (status == CUDA_OCC_SUCCESS) {
       if (occ_result.activeBlocksPerMultiprocessor < BlocksPerSm) {
         BlocksPerSm = occ_result.activeBlocksPerMultiprocessor;
@@ -83,18 +91,28 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
 #endif
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
-  static const char* categary_name_[] = {"Allocate", "Free"};
+  static const char* categary_name_[] = {
+      "Allocate", "Free", "ReservedAllocate", "ReservedFree"};
   return categary_name_[static_cast<int>(type)];
 }
 
 const char* StringTracerEventType(TracerEventType type) {
-  static const char* categary_name_[] = {
-      "Operator",      "Dataloader",  "ProfileStep",
-      "CudaRuntime",   "Kernel",      "Memcpy",
-      "Memset",        "UserDefined", "OperatorInner",
-      "Forward",       "Backward",    "Optimization",
-      "Communication", "PythonOp",    "PythonUserDefined",
-      "MluRuntime"};
+  static const char* categary_name_[] = {"Operator",
+                                         "Dataloader",
+                                         "ProfileStep",
+                                         "CudaRuntime",
+                                         "Kernel",
+                                         "Memcpy",
+                                         "Memset",
+                                         "UserDefined",
+                                         "OperatorInner",
+                                         "Forward",
+                                         "Backward",
+                                         "Optimization",
+                                         "Communication",
+                                         "PythonOp",
+                                         "PythonUserDefined",
+                                         "MluRuntime"};
   return categary_name_[static_cast<int>(type)];
 }
 

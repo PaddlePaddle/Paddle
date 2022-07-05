@@ -41,7 +41,8 @@ phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
 #else
   int error = posix_memalign(&p, kAlignment, size);
   PADDLE_ENFORCE_EQ(
-      error, 0,
+      error,
+      0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif

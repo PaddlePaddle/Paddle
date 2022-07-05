@@ -16,7 +16,8 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(assign_value, ops::AssignValueKernel<bool>,
+REGISTER_OP_MLU_KERNEL(assign_value,
+                       ops::AssignValueKernel<bool>,
                        ops::AssignValueKernel<int>,
                        ops::AssignValueKernel<int64_t>,
                        ops::AssignValueKernel<float>);

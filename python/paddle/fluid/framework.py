@@ -75,7 +75,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode', '1') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -574,7 +574,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.CUDAPlace(0)
+                _global_expected_place_ = core.CUDAPlace(_cuda_ids()[0])
             else:
                 warnings.warn(
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
@@ -586,7 +586,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.XPUPlace(0)
+                _global_expected_place_ = core.XPUPlace(_xpu_ids()[0])
             else:
                 warnings.warn(
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
@@ -598,7 +598,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.MLUPlace(0)
+                _global_expected_place_ = core.MLUPlace(_mlu_ids()[0])
             else:
                 warnings.warn(
                     "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."

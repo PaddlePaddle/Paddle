@@ -21,13 +21,6 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(copy_sr, CPU, ALL_LAYOUT);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(copy_sr, GPU, ALL_LAYOUT);
-#endif
-
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
 class AutogradMetaTest : public AbstractAutogradMeta {
@@ -212,7 +205,8 @@ TEST(EagerVariable, Constructor) {
 TEST(EagerVariable, DataLayout) {
   paddle::experimental::Tensor tensor;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1, 1, 1}),
+      phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                           phi::make_ddim({1, 1, 1, 1}),
                            paddle::experimental::DataLayout::UNDEFINED);
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(

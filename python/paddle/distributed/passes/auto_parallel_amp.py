@@ -143,8 +143,8 @@ class AMPState(object):
         """
         num_cast_ops = 0
 
+        var_name_dict = {}
         for in_name in op.input_names:
-            var_name_dict = {}
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
                     op, in_name):
                 continue

@@ -112,7 +112,9 @@ class ListenAndServOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    listen_and_serv, ops::ListenAndServOp,
+    listen_and_serv,
+    ops::ListenAndServOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::ListenAndServOpMaker, ops::ListenAndServOpShapeInference);
+    ops::ListenAndServOpMaker,
+    ops::ListenAndServOpShapeInference);

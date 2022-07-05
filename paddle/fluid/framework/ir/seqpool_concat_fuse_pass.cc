@@ -91,8 +91,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
         [=](Node* x) {
           return x && x->IsVar() && is_nth_input_var_of_concat(x, i) &&
                  x->inputs.size() == 1 &&
-                 is_seqpool_op_with_pootype_of_nth_input_of_concat(x->inputs[0],
-                                                                   "SUM", i);
+                 is_seqpool_op_with_pootype_of_nth_input_of_concat(
+                     x->inputs[0], "SUM", i);
         },
         name_scope + "/sequence_pool_out_" + std::to_string(i));
 
@@ -100,8 +100,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
         [=](Node* x) {
           return x && x->IsVar() && x->inputs.size() == 1 &&
                  x->outputs.size() == 0 &&
-                 is_seqpool_op_with_pootype_of_nth_input_of_concat(x->inputs[0],
-                                                                   "SUM", i);
+                 is_seqpool_op_with_pootype_of_nth_input_of_concat(
+                     x->inputs[0], "SUM", i);
         },
         name_scope + "/sequence_pool_unused_out_" + std::to_string(i));
 
@@ -117,8 +117,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
           bool basic = x && x->IsVar() && x->outputs.size() >= 1;
           bool next_is_fine = false;
           for (auto* o : x->outputs) {
-            if (is_seqpool_op_with_pootype_of_nth_input_of_concat(o, "SUM",
-                                                                  i)) {
+            if (is_seqpool_op_with_pootype_of_nth_input_of_concat(
+                    o, "SUM", i)) {
               next_is_fine = true;
               break;
             }
@@ -136,7 +136,8 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
   return concat_out_var;
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
+static int BuildFusion(Graph* graph,
+                       const std::string& name_scope,
                        int num_inputs) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
@@ -145,12 +146,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
+                      0,
                       platform::errors::NotFound(
                           "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
-                                   "Subgraph has no node %s.", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(
+        p,
+        platform::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -164,15 +167,16 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     for (int i = 0; i < num_inputs; ++i) {
       input_vars[i] =
           retrieve_node(name_scope + "/sequence_pool_in_" + std::to_string(i),
-                        subgraph, fused_pattern);
+                        subgraph,
+                        fused_pattern);
       input_names[i] = input_vars[i]->Name();
     }
     auto* concat_op =
         retrieve_node(name_scope + "/concat_op", subgraph, fused_pattern);
     auto* concat_out_var =
         retrieve_node(name_scope + "/concat_out_var", subgraph, fused_pattern);
-    auto* seqpool_op0 = retrieve_node(name_scope + "/sequence_pool_op_0",
-                                      subgraph, fused_pattern);
+    auto* seqpool_op0 = retrieve_node(
+        name_scope + "/sequence_pool_op_0", subgraph, fused_pattern);
 
     // Create New OpDesc
     OpDesc op_desc;

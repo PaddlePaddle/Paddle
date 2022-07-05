@@ -48,7 +48,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             img, label = init_feed_dict()
             feed_dict_data = {"image": img, "label": label}
 
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,
@@ -56,7 +56,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             fuse_all_reduce_ops=False,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
             optimizer=optimizer)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,

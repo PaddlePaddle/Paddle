@@ -53,8 +53,10 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
                                   ? ctx.Attr<std::string>("data_format")
                                   : "AnyLayout";
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        framework::StringToDataLayout(data_format), library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace(),
+        framework::StringToDataLayout(data_format),
+        library_);
   }
 };
 
@@ -113,21 +115,27 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "SequenceSoftmaxGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "SequenceSoftmaxGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "SequenceSoftmaxGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceSoftmaxGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "SequenceSoftmaxGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@GRAD",
+                   "SequenceSoftmaxGrad");
 
     auto out_dim = ctx->GetInputDim("Out");
     auto out_grad_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
-        out_dim, out_grad_dim,
+        out_dim,
+        out_grad_dim,
         platform::errors::InvalidArgument(
             "The shape of Input(Out) and Input(Out@GRAD) of "
             "SequenceSoftmaxGrad operator do not match. The Input(Out)'s shape "
             "is [%s], the Input(Out@GRAD)'s shape is [%s].",
-            out_dim, out_grad_dim));
+            out_dim,
+            out_grad_dim));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -154,8 +162,10 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
                                   ? ctx.Attr<std::string>("data_format")
                                   : "AnyLayout";
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace(),
-        framework::StringToDataLayout(data_format), library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"),
+        ctx.GetPlace(),
+        framework::StringToDataLayout(data_format),
+        library_);
   }
 };
 
@@ -167,16 +177,17 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sequence_softmax, ops::SequenceSoftmaxOp, ops::SequenceSoftmaxOpMaker,
+    sequence_softmax,
+    ops::SequenceSoftmaxOp,
+    ops::SequenceSoftmaxOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp,
+REGISTER_OPERATOR(sequence_softmax_grad,
+                  ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_softmax,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_softmax,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_softmax_grad,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, float>,
+                       ops::SequenceSoftmaxGradKernel<phi::CPUContext, double>);

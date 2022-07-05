@@ -73,6 +73,13 @@ class TestDygraphIfElse3(TestDygraphIfElse):
         self.dyfunc = dyfunc_with_if_else3
 
 
+class TestDygraphIfElse4(TestDygraphIfElse):
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_empty_nonlocal
+
+
 class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
 
     def setUp(self):
@@ -244,7 +251,7 @@ def relu(x):
 
 
 def call_external_func(x, label=None):
-    if fluid.layers.mean(x) < 0:
+    if paddle.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = add_fn(x)
@@ -267,7 +274,7 @@ class NetWithExternalFunc(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x, label=None):
-        if fluid.layers.mean(x) < 0:
+        if paddle.mean(x) < 0:
             x_v = x - 1
         else:
             x_v = add_fn(x)

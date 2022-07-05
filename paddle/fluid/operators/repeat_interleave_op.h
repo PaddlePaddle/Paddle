@@ -71,19 +71,22 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
       auto repeats_tensor =
           context.Input<framework::LoDTensor>("RepeatsTensor");
 
-      PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == inputs.dims()[dim], true,
+      PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == inputs.dims()[dim],
+                        true,
                         platform::errors::InvalidArgument(
                             "The length of Input(RepeatsTensor) must be the "
                             "same as length of Input(X) in axis. "
                             "But received: [%s], required: [%d].",
-                            repeats_tensor->dims()[0], inputs.dims()[dim]));
+                            repeats_tensor->dims()[0],
+                            inputs.dims()[dim]));
 
       const auto& index_type =
           framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(
-          index_type_match, true,
+          index_type_match,
+          true,
           platform::errors::InvalidArgument(
               "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
               "desires to be %s or %s",
@@ -98,16 +101,16 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
         auto output_dim = phi::vectorize(inputs.dims());
         output_dim[dim] = index.dims()[0];
         output->Resize(phi::make_ddim(output_dim));
-        IndexSelectInner<DeviceContext, T, int>(context, &inputs, index, output,
-                                                dim);
+        IndexSelectInner<DeviceContext, T, int>(
+            context, &inputs, index, output, dim);
       } else if (index_type == framework::proto::VarType::INT64) {
         RepeatsTensor2IndexTensor<DeviceContext, int64_t>(*repeats_tensor,
                                                           &index);
         auto output_dim = phi::vectorize(inputs.dims());
         output_dim[dim] = index.dims()[0];
         output->Resize(phi::make_ddim(output_dim));
-        IndexSelectInner<DeviceContext, T, int64_t>(context, &inputs, index,
-                                                    output, dim);
+        IndexSelectInner<DeviceContext, T, int64_t>(
+            context, &inputs, index, output, dim);
       }
     } else if (repeats > 0) {
       int64_t index_size = inputs.dims()[dim] * repeats;
@@ -122,8 +125,8 @@ class RepeatInterleaveKernel : public framework::OpKernel<T> {
       output_dim[dim] = index_size;
       output->Resize(phi::make_ddim(output_dim));
 
-      IndexSelectInner<DeviceContext, T, int>(context, &inputs, index, output,
-                                              dim);
+      IndexSelectInner<DeviceContext, T, int>(
+          context, &inputs, index, output, dim);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "repeats must given with RepeatsTensor (tensor) or repeats (int)"));
@@ -156,7 +159,8 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE_EQ(
-          index_type_match, true,
+          index_type_match,
+          true,
           platform::errors::InvalidArgument(
               "Input(Repeats) holds the wrong type, it holds %s, but "
               "desires to be %s or %s",
@@ -168,13 +172,13 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
 
       if (index_type == framework::proto::VarType::INT32) {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
-        IndexSelectGradInner<DeviceContext, T, int>(context, *out_grad, index,
-                                                    x_grad, dim);
+        IndexSelectGradInner<DeviceContext, T, int>(
+            context, *out_grad, index, x_grad, dim);
       } else if (index_type == framework::proto::VarType::INT64) {
         RepeatsTensor2IndexTensor<DeviceContext, int64_t>(*repeats_tensor,
                                                           &index);
-        IndexSelectGradInner<DeviceContext, T, int64_t>(context, *out_grad,
-                                                        index, x_grad, dim);
+        IndexSelectGradInner<DeviceContext, T, int64_t>(
+            context, *out_grad, index, x_grad, dim);
       }
     } else if (repeats > 0) {
       int64_t index_size = x_grad->dims()[dim] * repeats;
@@ -185,8 +189,8 @@ class RepeatInterleaveGradKernel : public framework::OpKernel<T> {
       index.Resize(phi::make_ddim({index_size}));
       paddle::framework::TensorFromVector<int>(index_vec, &index);
 
-      IndexSelectGradInner<DeviceContext, T, int>(context, *out_grad, index,
-                                                  x_grad, dim);
+      IndexSelectGradInner<DeviceContext, T, int>(
+          context, *out_grad, index, x_grad, dim);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "repeats must given with RepeatsTensor (tensor) or repeats (int)"));

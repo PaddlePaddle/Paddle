@@ -41,15 +41,18 @@ void SparseNaiveSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& param,
   }
 }
 
-void SparseNaiveSGDRule::UpdateValueWork(float* w, float* sgd,
-                                         const float* push_value, float scale) {
+void SparseNaiveSGDRule::UpdateValueWork(float* w,
+                                         float* sgd,
+                                         const float* push_value,
+                                         float scale) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     w[i] -= learning_rate_ * push_value[i];
     BoundValue(w[i]);
   }
 }
 
-void SparseNaiveSGDRule::InitValueWork(float* value, float* sgd,
+void SparseNaiveSGDRule::InitValueWork(float* value,
+                                       float* sgd,
                                        bool zero_init) {
   if (zero_init) {
     for (size_t i = 0; i < _embedding_dim; ++i) {
@@ -85,8 +88,10 @@ void SparseAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& param,
   }
 }
 
-void SparseAdaGradSGDRule::UpdateValueWork(float* w, float* sgd,
-                                           const float* grad, float scale) {
+void SparseAdaGradSGDRule::UpdateValueWork(float* w,
+                                           float* sgd,
+                                           const float* grad,
+                                           float scale) {
   float& g2sum = sgd[G2SumIndex()];
   double add_g2sum = 0;
 
@@ -101,7 +106,8 @@ void SparseAdaGradSGDRule::UpdateValueWork(float* w, float* sgd,
   g2sum += add_g2sum / _embedding_dim;
 }
 
-void SparseAdaGradSGDRule::InitValueWork(float* value, float* sgd,
+void SparseAdaGradSGDRule::InitValueWork(float* value,
+                                         float* sgd,
                                          bool zero_init) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
@@ -139,7 +145,9 @@ void StdAdaGradSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& param,
   }
 }
 
-void StdAdaGradSGDRule::UpdateValueWork(float* w, float* sgd, const float* grad,
+void StdAdaGradSGDRule::UpdateValueWork(float* w,
+                                        float* sgd,
+                                        const float* grad,
                                         float scale) {
   for (size_t i = 0; i < _embedding_dim; i++) {
     float& g2sum = sgd[G2SumIndex() + i];
@@ -151,7 +159,8 @@ void StdAdaGradSGDRule::UpdateValueWork(float* w, float* sgd, const float* grad,
   }
 }
 
-void StdAdaGradSGDRule::InitValueWork(float* value, float* sgd,
+void StdAdaGradSGDRule::InitValueWork(float* value,
+                                      float* sgd,
                                       bool zero_init) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
@@ -190,7 +199,9 @@ void SparseAdamSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& param,
   }
 }
 
-void SparseAdamSGDRule::UpdateValueWork(float* w, float* sgd, const float* grad,
+void SparseAdamSGDRule::UpdateValueWork(float* w,
+                                        float* sgd,
+                                        const float* grad,
                                         float scale) {
   float* gsum = sgd + GSumIndex();
   float* g2sum = sgd + G2SumIndex();
@@ -217,7 +228,8 @@ void SparseAdamSGDRule::UpdateValueWork(float* w, float* sgd, const float* grad,
   (*beta2_pow) *= _beta2_decay_rate;
 }
 
-void SparseAdamSGDRule::InitValueWork(float* value, float* sgd,
+void SparseAdamSGDRule::InitValueWork(float* value,
+                                      float* sgd,
                                       bool zero_init) {
   for (size_t i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {

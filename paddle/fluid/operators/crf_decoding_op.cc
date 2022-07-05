@@ -89,44 +89,52 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Emission"), "Input", "Emission",
-                   "CRFDecoding");
-    OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
-                   "CRFDecoding");
-    OP_INOUT_CHECK(ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath",
-                   "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Emission"), "Input", "Emission", "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Transition"), "Input", "Transition", "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath", "CRFDecoding");
 
     auto emission_dims = ctx->GetInputDim("Emission");
     bool has_length = ctx->HasInput("Length");
 
     if (has_length) {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(emission_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a 3-D tensor. But "
                             "received: input rank %u, input shape [%s]. ",
-                            emission_dims.size(), emission_dims));
+                            emission_dims.size(),
+                            emission_dims));
     } else {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
+      PADDLE_ENFORCE_EQ(emission_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a 2-D tensor. But "
                             "received: input rank %u, input shape [%s].",
-                            emission_dims.size(), emission_dims));
+                            emission_dims.size(),
+                            emission_dims));
     }
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The Input(Transition) should be a 2-D tensor. But "
                           "received: input rank %u, input shape [%s].",
-                          transition_dims.size(), transition_dims));
+                          transition_dims.size(),
+                          transition_dims));
     PADDLE_ENFORCE_EQ(
-        transition_dims[0] - 2, transition_dims[1],
+        transition_dims[0] - 2,
+        transition_dims[1],
         platform::errors::InvalidArgument(
             "An invalid dimension for the Input(Transition), which should "
             "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
             "rank %u, "
             "input shape [%s].",
-            transition_dims.size(), transition_dims));
+            transition_dims.size(),
+            transition_dims));
     if (ctx->IsRuntime() || (emission_dims[emission_dims.size() - 1] > 0 &&
                              transition_dims[transition_dims.size() - 1] > 0)) {
       PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
@@ -138,8 +146,10 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                             "Input(Emission): rank "
                             "%u, shape [%s]; received Input(Transition): rank "
                             "%u, shape [%s].",
-                            emission_dims.size(), emission_dims,
-                            transition_dims.size(), transition_dims));
+                            emission_dims.size(),
+                            emission_dims,
+                            transition_dims.size(),
+                            transition_dims));
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
@@ -153,7 +163,8 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                 "fixed to 1 or a 2-D tensor in padding mode. But received: "
                 "input "
                 "rank %u, input shape [%s].",
-                label_dims.size(), label_dims));
+                label_dims.size(),
+                label_dims));
       } else {
         PADDLE_ENFORCE_EQ(
             (label_dims.size() == 2UL && label_dims[1] == 1) ||
@@ -163,16 +174,20 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                 "The Input(Label) should be a 2-D tensor with last "
                 "dimension fixed to 1 or a 1-D tensor. But received: "
                 "input rank %u, input shape [%s].",
-                label_dims.size(), label_dims));
+                label_dims.size(),
+                label_dims));
       }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
-            emission_dims[0], label_dims[0],
+            emission_dims[0],
+            label_dims[0],
             platform::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape [%s]; received Input(Label): rank %u, shape [%s].",
-                emission_dims.size(), emission_dims, label_dims.size(),
+                emission_dims.size(),
+                emission_dims,
+                label_dims.size(),
                 label_dims));
       }
     }
@@ -197,9 +212,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(crf_decoding, ops::CRFDecodingOp,
+REGISTER_OP_WITHOUT_GRADIENT(crf_decoding,
+                             ops::CRFDecodingOp,
                              ops::CRFDecodingOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    crf_decoding,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(crf_decoding,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, float>,
+                       ops::CRFDecodingOpKernel<phi::CPUContext, double>);

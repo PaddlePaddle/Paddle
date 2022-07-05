@@ -53,8 +53,15 @@ class SkipLayerNormKernel : public framework::OpKernel<T> {
     auto &device_ctx = context.template device_context<DeviceContext>();
     operators::math::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
-    skip_layer_norm_func(num, hidden, X_d, Y_d, scale_d, bias_d, output_d,
-                         epsilon, device_ctx.stream());
+    skip_layer_norm_func(num,
+                         hidden,
+                         X_d,
+                         Y_d,
+                         scale_d,
+                         bias_d,
+                         output_d,
+                         epsilon,
+                         device_ctx.stream());
   }
 };
 

@@ -768,7 +768,7 @@ __global__ void VectorizedElementwiseKernel(
         ins, outs, data_offset, read_lens * BLOCK_NUM_X, read_lens, func);
   }
 
-  int remain = numel - data_offset;
+  kps::IndexType remain = numel - data_offset;
   if (remain > 0) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -776,7 +776,7 @@ __global__ void VectorizedElementwiseKernel(
                                     NumOuts,
                                     VecSize,
                                     true>(
-        ins, outs, data_offset, remain, read_lens, func);
+        ins, outs, data_offset, static_cast<int>(remain), read_lens, func);
   }
 }
 

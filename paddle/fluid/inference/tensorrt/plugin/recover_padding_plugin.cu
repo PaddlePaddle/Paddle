@@ -19,7 +19,8 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-__global__ void RecoverPaddingKernel(const float* input0, const int32_t* input1,
+__global__ void RecoverPaddingKernel(const float* input0,
+                                     const int32_t* input1,
                                      float* output) {
   int word_id = blockIdx.x * gridDim.y + blockIdx.y;
   int32_t seqence_length = input1[blockIdx.x + 1] - input1[blockIdx.x];
@@ -35,32 +36,39 @@ __global__ void RecoverPaddingKernel(const float* input0, const int32_t* input1,
 }
 
 nvinfer1::DataType RecoverPaddingPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
 nvinfer1::DimsExprs RecoverPaddingPlugin::getOutputDimensions(
-    int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
+    int outputIndex,
+    const nvinfer1::DimsExprs* inputs,
+    int nbInputs,
     nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs output_dims{};
   output_dims.nbDims = 3;
   const auto* one = exprBuilder.constant(1);
-  output_dims.d[0] = exprBuilder.operation(nvinfer1::DimensionOperation::kSUB,
-                                           *inputs[1].d[0], *one);
+  output_dims.d[0] = exprBuilder.operation(
+      nvinfer1::DimensionOperation::kSUB, *inputs[1].d[0], *one);
   output_dims.d[1] = inputs[2].d[1];
   output_dims.d[2] = inputs[0].d[1];
   return output_dims;
 }
 
 bool RecoverPaddingPlugin::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* inOut,
+    int nbInputs,
     int nbOutputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nbInputs, 3,
+  PADDLE_ENFORCE_EQ(nbInputs,
+                    3,
                     platform::errors::InvalidArgument("Must have 3 inputs, "
                                                       "but got %d input(s). ",
                                                       nbInputs));
-  PADDLE_ENFORCE_EQ(nbOutputs, getNbOutputs(),
+  PADDLE_ENFORCE_EQ(nbOutputs,
+                    getNbOutputs(),
                     platform::errors::InvalidArgument("Must have 1 output, "
                                                       "but got %d output(s). ",
                                                       nbOutputs));
@@ -79,12 +87,14 @@ bool RecoverPaddingPlugin::supportsFormatCombination(
 }
 
 void RecoverPaddingPlugin::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* inputs,
+    int nbInputs,
     const nvinfer1::DynamicPluginTensorDesc* outputs,
     int nbOutputs) TRT_NOEXCEPT {}
 
 void RecoverPaddingPlugin::attachToContext(
-    cudnnContext* cudnnContext, cublasContext* cublasContext,
+    cudnnContext* cudnnContext,
+    cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {}
 
 void RecoverPaddingPlugin::detachFromContext() TRT_NOEXCEPT {}
@@ -94,7 +104,8 @@ void RecoverPaddingPlugin::terminate() TRT_NOEXCEPT {}
 int RecoverPaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                   const nvinfer1::PluginTensorDesc* outputDesc,
                                   const void* const* inputs,
-                                  void* const* outputs, void* workspace,
+                                  void* const* outputs,
+                                  void* workspace,
                                   cudaStream_t stream) TRT_NOEXCEPT {
   const auto input0_desc = inputDesc[0];
   const auto input1_desc = inputDesc[1];
@@ -105,12 +116,13 @@ int RecoverPaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   float* output = static_cast<float*>(outputs[0]);
   const int32_t num_threads = 256;
   const dim3 num_blocks(
-      input1_desc.dims.d[0] - 1, input2_desc.dims.d[1],
+      input1_desc.dims.d[0] - 1,
+      input2_desc.dims.d[1],
       input0_desc.dims.d[1] / num_threads);  //  batchs, max sequnce length
                                              //  (mask_id.dims.d[1]),
                                              //  input.dims.d[1]/256
-  RecoverPaddingKernel<<<num_blocks, num_threads, 0, stream>>>(input0, input1,
-                                                               output);
+  RecoverPaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
+      input0, input1, output);
   return cudaGetLastError() != cudaSuccess;
 }
 
