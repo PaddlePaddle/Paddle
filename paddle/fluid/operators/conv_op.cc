@@ -361,65 +361,6 @@ void Conv2DOpMaker::Make() {
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false)
       .AsExtra();
-  AddAttr<bool>(
-      "use_quantizer",
-      "(bool, default false) "
-      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"})
-      .AsExtra();
-  AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<float>("fuse_alpha",
-                 "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f)
-      .AsExtra();
-  AddAttr<bool>(
-      "use_addto",
-      "(bool, default false) If use addto strategy or not, only used in "
-      "cudnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_residual_connection",
-                "(bool, default false) Only used in mkldnn kernel. Used "
-                "whenever convolution output is as an input to residual "
-                "connection.")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<float>("Scale_in",
-                 "Scale_in to be used for int8 input data."
-                 "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f)
-      .AsExtra();
-  AddAttr<float>("Scale_out",
-                 "Scale_out to be used for int8 output data."
-                 "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f)
-      .AsExtra();
-  AddAttr<float>("Scale_in_eltwise",
-                 "Scale_in_eltwise to be used for int8 eltwise input data."
-                 "Only used with MKL-DNN INT8.")
-      .SetDefault(1.0f)
-      .AsExtra();
-  AddAttr<std::vector<float>>("Scale_weights",
-                              "Scale_weights to be used for int8 weights data."
-                              "Only used with MKL-DNN INT8.")
-      .SetDefault({1.0f})
-      .AsExtra();
-  AddAttr<bool>("force_fp32_output",
-                "(bool, default false) Force INT8 kernel output FP32, only "
-                "used in MKL-DNN INT8")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "

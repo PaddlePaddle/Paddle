@@ -73,7 +73,8 @@ class OpDesc {
   void RemoveInput(const std::string &name);
 
   bool HasAttr(const std::string &name) const {
-    return attrs_.find(name) != attrs_.end();
+    return attrs_.find(name) != attrs_.end() ||
+           runtime_attrs_.find(name) != runtime_attrs_.end();
   }
 
   bool HasProtoAttr(const std::string &name) const;

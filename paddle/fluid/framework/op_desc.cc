@@ -676,6 +676,9 @@ void OpDesc::SetAttrMap(
 
 Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
+  if (it == attrs_.end()) {
+    it = runtime_attrs_.find(name);
+  }
   PADDLE_ENFORCE_NE(
       it,
       attrs_.end(),

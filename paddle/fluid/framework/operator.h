@@ -176,7 +176,9 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) || runtime_attrs_.count(name);
+  }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE_NE(
