@@ -1741,7 +1741,22 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 self._get_argument_names(node))
 
         def post_func():
-            if self._father_name_scope():
+            """ NOTE: why we need merge w_vars here ? 
+                because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
+            """
+            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
+            from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
+            control_flow_function_def = [
+                WHILE_BODY_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX,
+                FOR_BODY_PREFIX, TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
+            ]
+
+            def is_control_flow_def_node():
+                for prefix in control_flow_function_def:
+                    if node.name.startswith(prefix): return True
+                return False
+
+            if self._father_name_scope() and is_control_flow_def_node():
                 self._father_name_scope().w_vars |= self._current_name_scope(
                 ).w_vars
 

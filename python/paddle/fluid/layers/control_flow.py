@@ -2572,7 +2572,7 @@ def cond(pred, true_fn=None, false_fn=None, return_name_ids=None, name=None):
                     len(to_sequence(false_output))))
     for true_out, false_out, return_name in zip(to_sequence(true_output),
                                                 to_sequence(false_output),
-                                                return_name_ids):
+                                                to_sequence(return_name_ids)):
         try:
             assert_same_structure(true_out, false_out, check_types=False)
         except ValueError as e:
