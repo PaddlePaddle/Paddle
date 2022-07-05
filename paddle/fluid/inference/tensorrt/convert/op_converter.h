@@ -247,7 +247,7 @@ class OpConverter {
       }
       X_v = scope.FindVar(X_name);
       // If this weight is shared between ops, it needn't to be convtered to
-      // itensor twice
+      // itensor once again
       if (engine->GetITensorMap()->count(X_name)) {
         continue;
       }
