@@ -20,7 +20,7 @@
 
 ### 报告安全问题
 
-我们鼓励向飞桨负责任地披露安全问题，请将所发现的安全问题发送电子邮件到 security@paddlepaddle.org。
+我们鼓励向飞桨负责任地披露安全问题，请将所发现的安全问题发送电子邮件到 paddle-security@baidu.com。
 
 在安全团队收到邮件后将会及时与您沟通并反馈问题修复进度。
 
@@ -41,4 +41,4 @@
 
 如果输入非预期的参数后，对飞桨代码造成了内存破坏，或者非干净退出，这类行为被认定为存在安全问题。
 
-### [安全公告](https://github.com/PaddlePaddle/Paddle/security/README_cn.md)
+### [安全公告](https://github.com/PaddlePaddle/Paddle/blob/develop/security/README_cn.md)

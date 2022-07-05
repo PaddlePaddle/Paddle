@@ -60,7 +60,7 @@ namespace gpu {
  *      }
  *    }
  *
-*/
+ */
 
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \

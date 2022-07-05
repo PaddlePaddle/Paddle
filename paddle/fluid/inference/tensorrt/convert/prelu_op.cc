@@ -25,7 +25,8 @@ namespace tensorrt {
 class PReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid prelu op to tensorrt prelu layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -46,8 +47,8 @@ class PReluOpConverter : public OpConverter {
     std::unique_ptr<framework::LoDTensor> alpha_tensor_temp(
         new framework::LoDTensor());
     alpha_tensor_temp->Resize(alpha_tensor->dims());
-    paddle::framework::TensorCopySync(*alpha_tensor, cpu_place,
-                                      alpha_tensor_temp.get());
+    paddle::framework::TensorCopySync(
+        *alpha_tensor, cpu_place, alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
     nvinfer1::ILayer* layer = nullptr;
@@ -60,7 +61,8 @@ class PReluOpConverter : public OpConverter {
       float* alpha_weight_data =
           engine_->GetWeightCPUData(op_desc.Input("Alpha")[0], alpha_tensor);
       TensorRTEngine::Weight alpha_weight{
-          nvinfer1::DataType::kFLOAT, static_cast<void*>(alpha_weight_data),
+          nvinfer1::DataType::kFLOAT,
+          static_cast<void*>(alpha_weight_data),
           static_cast<size_t>(alpha_tensor->numel())};
 
       nvinfer1::Dims dims;
@@ -77,8 +79,8 @@ class PReluOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, alpha_weight.get());
       auto alpha_layer_output = alpha_layer->getOutput(0);
 
-      layer = TRT_ENGINE_ADD_LAYER(engine_, ParametricReLU, *input,
-                                   *alpha_layer_output);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, ParametricReLU, *input, *alpha_layer_output);
 #else
       plugin::PReluPlugin* plugin = new plugin::PReluPlugin(
           alpha_data, alpha_tensor_temp->numel(), mode, data_format);

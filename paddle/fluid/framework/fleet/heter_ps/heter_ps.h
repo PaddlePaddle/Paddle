@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #if defined(PADDLE_WITH_CUDA)
@@ -33,22 +34,40 @@ class HeterPs : public HeterPsBase {
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
 
-  virtual void pull_sparse(int num, FeatureKey* d_keys, FeatureValue* d_vals,
-                           size_t len) override;
-  virtual void build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
-                        size_t len, size_t chunk_size, int stream_num) override;
-
+  void pull_sparse(int num,
+                   FeatureKey* d_keys,
+                   FeatureValue* d_vals,
+                   size_t len) override;
+  void build_ps(int num,
+                FeatureKey* h_keys,
+                FeatureValue* h_vals,
+                size_t len,
+                size_t chunk_size,
+                int stream_num) override;
+  void build_ps(int num,
+                FeatureKey* h_keys,
+                char* pool,
+                size_t len,
+                size_t feature_value_size,
+                size_t chunk_size,
+                int stream_num) override;
 #if defined(PADDLE_WITH_CUDA)
-  virtual void set_nccl_comm_and_size(
-      const std::vector<ncclComm_t>& inner_comms,
-      const std::vector<ncclComm_t>& inter_comms, int comm_size) override;
+  void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
+                              const std::vector<ncclComm_t>& inter_comms,
+                              int comm_size) override;
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
 #endif
 
-  virtual void end_pass() override;
-  virtual int get_index_by_devid(int devid) override;
-  virtual void show_one_table(int gpu_num) override;
-  virtual void push_sparse(int num, FeatureKey* d_keys,
-                           FeaturePushValue* d_grads, size_t len) override;
+  void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
+  void set_embedx_sgd(const OptimizerConfig& optimizer_config) override;
+
+  void end_pass() override;
+  int get_index_by_devid(int devid) override;
+  void show_one_table(int gpu_num) override;
+  void push_sparse(int num,
+                   FeatureKey* d_keys,
+                   FeaturePushValue* d_grads,
+                   size_t len) override;
 
  private:
   std::shared_ptr<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>> comm_;

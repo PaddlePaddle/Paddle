@@ -23,9 +23,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool use_mkldnn,
+           const std::vector<std::string>& outputs,
+           bool use_mkldnn,
            const std::string& mkldnn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
@@ -65,22 +68,23 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 static const std::initializer_list<std::string> variable_names{
     "z", "a", "b", "c", "d", "e", "f", "g", "h", "i"};
 
-void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
-                 const std::initializer_list<std::string> variable_names,
-                 int* original_nodes_num, int* current_nodes_num) {
+void PreparePass(std::unique_ptr<ir::Graph>& graph,
+                 int* original_nodes_num,
+                 int* current_nodes_num) {
   auto pass = PassRegistry::Instance().Get("cpu_bfloat16_pass");
 
-  *original_nodes_num = (*graph)->Nodes().size();
-  (*graph).reset(pass->Apply((*graph).release()));
-  *current_nodes_num = (*graph)->Nodes().size();
+  *original_nodes_num = graph->Nodes().size();
+  graph.reset(pass->Apply(graph.release()));
+  *current_nodes_num = graph->Nodes().size();
 }
 
-void MainTest(const ProgramDesc& prog, const int& quant_count,
-              const int& dequant_count, const int& added_nodes_count) {
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+void MainTest(const ProgramDesc& prog,
+              const int& quant_count,
+              const int& dequant_count,
+              const int& added_nodes_count) {
+  auto graph = std::make_unique<ir::Graph>(prog);
   int original_nodes_num, current_nodes_num;
-  PreparePass(&graph, prog, variable_names, &original_nodes_num,
-              &current_nodes_num);
+  PreparePass(graph, &original_nodes_num, &current_nodes_num);
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
@@ -130,8 +134,13 @@ ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
   SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
   SetOp(&prog, "matmul", "Matmul", {"b", "b"}, {"c"}, use_mkldnn, "bfloat16");
   SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_mkldnn, "float32");
-  SetOp(&prog, "elementwise_add", "ElemetwiseAdd", {"c", "e"}, {"f"},
-        use_mkldnn, "bfloat16");
+  SetOp(&prog,
+        "elementwise_add",
+        "ElemetwiseAdd",
+        {"c", "e"},
+        {"f"},
+        use_mkldnn,
+        "bfloat16");
   SetOp(&prog, "reshape2", "Reshape", {"f"}, {"g"}, use_mkldnn, "bfloat16");
 
   return prog;
@@ -143,7 +152,9 @@ TEST(CpuBfloat16Pass, double_input_ops) {
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDoubleInput(use_mkldnn), quant_op, dequant_op,
+  MainTest(BuildProgramDescDoubleInput(use_mkldnn),
+           quant_op,
+           dequant_op,
            added_nodes);
 }
 
@@ -168,7 +179,9 @@ TEST(CpuBfloat16Pass, duplicated_input_ops) {
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDuplicatedInput(use_mkldnn), quant_op, dequant_op,
+  MainTest(BuildProgramDescDuplicatedInput(use_mkldnn),
+           quant_op,
+           dequant_op,
            added_nodes);
 }
 
@@ -191,7 +204,9 @@ TEST(CpuBfloat16Pass, duplicated_output_ops) {
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDuplicatedOutput(use_mkldnn), quant_op, dequant_op,
+  MainTest(BuildProgramDescDuplicatedOutput(use_mkldnn),
+           quant_op,
+           dequant_op,
            added_nodes);
 }
 
@@ -200,12 +215,12 @@ ProgramDesc BuildProgramDescDoubleOutputs(bool use_mkldnn) {
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "layer_norm", "LayerNorm1", {"a"}, {"b"}, use_mkldnn,
-        "bfloat16");
+  SetOp(
+      &prog, "layer_norm", "LayerNorm1", {"a"}, {"b"}, use_mkldnn, "bfloat16");
   SetOp(&prog, "dropout", "Dropout1", {"b"}, {"c"}, use_mkldnn, "float32");
   SetOp(&prog, "transpose2", "Transpose", {"b"}, {"d"}, use_mkldnn, "bfloat16");
-  SetOp(&prog, "layer_norm", "LayerNorm2", {"d"}, {"e"}, use_mkldnn,
-        "bfloat16");
+  SetOp(
+      &prog, "layer_norm", "LayerNorm2", {"d"}, {"e"}, use_mkldnn, "bfloat16");
   SetOp(&prog, "reshape2", "Reshape", {"e"}, {"f"}, use_mkldnn, "float32");
   SetOp(&prog, "dropout", "Dropout2", {"e"}, {"g"}, use_mkldnn, "float32");
 
@@ -218,7 +233,9 @@ TEST(CpuBfloat16Pass, double_outputs_ops) {
   int dequant_op = 3;
   // each added op consists of 2 nodes
   int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDoubleOutputs(use_mkldnn), quant_op, dequant_op,
+  MainTest(BuildProgramDescDoubleOutputs(use_mkldnn),
+           quant_op,
+           dequant_op,
            added_nodes);
 }
 

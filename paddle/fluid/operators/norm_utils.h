@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -22,8 +23,12 @@ namespace operators {
 using DataLayout = framework::DataLayout;
 
 inline void ExtractNCWHD(const framework::DDim &dims,
-                         const DataLayout &data_layout, int *N, int *C, int *H,
-                         int *W, int *D) {
+                         const DataLayout &data_layout,
+                         int *N,
+                         int *C,
+                         int *H,
+                         int *W,
+                         int *D) {
   *N = dims[0];
   if (dims.size() == 2) {
     *C = dims[1];

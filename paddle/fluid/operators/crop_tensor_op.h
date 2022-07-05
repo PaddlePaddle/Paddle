@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
@@ -23,7 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {  // Internal
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using framework::Tensor;
@@ -35,7 +38,8 @@ inline std::vector<int> get_new_data(
   for (size_t i = 0; i < list_new_tensor.size(); ++i) {
     auto tensor = list_new_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), phi::make_ddim({1}),
+        tensor->dims(),
+        phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The tensor's shape in list of Op(crop_tensor) should be [1], "
             "but the value received is %d.",
@@ -59,24 +63,31 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
   auto in_dim_size = in_dims.size();
   auto shape_size = shape.size();
   PADDLE_ENFORCE_EQ(
-      in_dim_size, shape_size,
+      in_dim_size,
+      shape_size,
       platform::errors::InvalidArgument(
           "The number of elements (%d) for shape of Op(crop_tensor) should be "
           "equal to the number of dimensions (%d) of the input tensor.",
-          shape_size, in_dim_size));
+          shape_size,
+          in_dim_size));
   std::vector<int64_t> output_shape(shape.size(), 0);
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i] <= 0 && in_dims[i] > 0) {
-      PADDLE_ENFORCE_NE(shape[i], 0,
+      PADDLE_ENFORCE_NE(shape[i],
+                        0,
                         platform::errors::InvalidArgument(
                             "The value (%d) of the %uth element for shape of "
                             "Op(crop_tensor) should not be zero.",
-                            shape[i], i));
-      PADDLE_ENFORCE_EQ(shape[i], -1, platform::errors::InvalidArgument(
-                                          "When the value (%d) of the %uth "
-                                          "element for shape of Op(crop_tensor)"
-                                          " is negative, only -1 is supported.",
-                                          shape[i], i));
+                            shape[i],
+                            i));
+      PADDLE_ENFORCE_EQ(shape[i],
+                        -1,
+                        platform::errors::InvalidArgument(
+                            "When the value (%d) of the %uth "
+                            "element for shape of Op(crop_tensor)"
+                            " is negative, only -1 is supported.",
+                            shape[i],
+                            i));
       output_shape[i] = in_dims[i] - offsets[i];
     } else {
       output_shape[i] = static_cast<int64_t>(shape[i]);
@@ -93,12 +104,14 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
   if (list_new_shape_tensor.size() > 0) {
     // have offsets tensor list
     PADDLE_ENFORCE_EQ(
-        list_new_shape_tensor.size(), rank,
+        list_new_shape_tensor.size(),
+        rank,
         platform::errors::InvalidArgument(
             "The number of tensors (%d) for the input ShapeTensor of "
             "Op(crop_tensor) must be equal to the number of "
             "dimensions (%d) of the input.",
-            list_new_shape_tensor.size(), rank));
+            list_new_shape_tensor.size(),
+            rank));
     res = get_new_data(list_new_shape_tensor);
 
     return res;
@@ -111,8 +124,8 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
     auto* shape_data = shape_tensor->data<int>();
     framework::Tensor cpu_shape_tensor;
     if (platform::is_gpu_place(shape_tensor->place())) {
-      paddle::framework::TensorCopySync(*shape_tensor, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      paddle::framework::TensorCopySync(
+          *shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
       shape_data = cpu_shape_tensor.data<int>();
     }
     res = std::vector<int>(shape_data, shape_data + shape_tensor->numel());
@@ -135,37 +148,42 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
 
   if (ctx.HasInput("Offsets")) {
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
-    PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
+    PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The number of dimensions of input 'Offsets' must "
                           "be 1, but the value received is: %d.",
                           offsets_tensor->dims().size()));
-    PADDLE_ENFORCE_EQ(rank, offsets_tensor->dims()[0],
+    PADDLE_ENFORCE_EQ(rank,
+                      offsets_tensor->dims()[0],
                       platform::errors::InvalidArgument(
                           "The number of elements (%d) for "
                           "input 'Offsets' must be equal to "
                           "the number of dimensions (%d) of the input tensor.",
-                          offsets_tensor->dims()[0], rank));
+                          offsets_tensor->dims()[0],
+                          rank));
 
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
       offsets_data = offsets_tensor->data<int>();
     } else {
-      framework::TensorCopySync(*offsets_tensor, platform::CPUPlace(),
-                                &cpu_tmp_tensor);
+      framework::TensorCopySync(
+          *offsets_tensor, platform::CPUPlace(), &cpu_tmp_tensor);
       offsets_data = cpu_tmp_tensor.data<int>();
     }
     res = std::vector<int>(offsets_data, offsets_data + rank);
   } else {
     res = ctx.Attr<std::vector<int>>("offsets");
     PADDLE_ENFORCE_EQ(
-        rank, static_cast<int>(res.size()),
+        rank,
+        static_cast<int>(res.size()),
         platform::errors::InvalidArgument("The number of elements (%d) for "
                                           "input 'Offsets' must be equal to "
                                           "the number of dimensions (%d) "
                                           "of the input tensor.",
-                                          static_cast<int>(res.size()), rank));
+                                          static_cast<int>(res.size()),
+                                          rank));
   }
   return res;
 }
@@ -190,13 +208,17 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
   out_dims = ValidateShape(shape, offsets, x->dims());
   out->mutable_data<T>(out_dims, context.GetPlace());
   for (size_t i = 0; i < offsets.size(); ++i) {
-    PADDLE_ENFORCE_LE(offsets[i] + shape[i], x_dims[i],
+    PADDLE_ENFORCE_LE(offsets[i] + shape[i],
+                      x_dims[i],
                       platform::errors::InvalidArgument(
                           "The sum of the %uth elements of "
                           "offsets (%d) and shape (%d) of Op(crop_tensor) "
                           "should be less than or "
                           "equal to the size of %uth dimension of the input.",
-                          i, offsets[i], shape[i], i));
+                          i,
+                          offsets[i],
+                          shape[i],
+                          i));
   }
 
   auto x_tensor = EigenTensor<T, D>::From(*x);
@@ -219,18 +241,21 @@ class CropTensorKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     int rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for "
             "Op(crop_tensor) must be greater than or equal to 1, but the "
             "value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, 6, platform::errors::InvalidArgument(
-                     "The number of dimensions of the input 'x' for "
-                     "Op(crop_tensor) must be less than or equal to 6, but the "
-                     "value received is %d.",
-                     rank));
+        rank,
+        6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for "
+            "Op(crop_tensor) must be less than or equal to 6, but the "
+            "value received is %d.",
+            rank));
     switch (rank) {
       case 1:
         CropTensorFunction<DeviceContext, T, 1>(context);
@@ -283,14 +308,16 @@ class CropTensorGradKernel : public framework::OpKernel<T> {
     size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "Op(crop_tensor_grad) must be greater than or equal to 1, but the "
             "value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, 6,
+        rank,
+        6,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "Op(crop_tensor_grad) must be less than or equal to 6, but the "

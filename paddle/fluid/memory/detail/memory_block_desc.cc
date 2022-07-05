@@ -21,8 +21,12 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
-                        MemoryBlock* l, MemoryBlock* r)
+MemoryBlock::Desc::Desc(MemoryBlock::Type t,
+                        size_t i,
+                        size_t s,
+                        size_t ts,
+                        MemoryBlock* l,
+                        MemoryBlock* r)
     : type(t),
       index(i),
       size(s),
@@ -62,18 +66,12 @@ inline size_t hash(const MemoryBlock::Desc& metadata, size_t initial_seed) {
 }  // namespace
 
 void MemoryBlock::Desc::UpdateGuards() {
-#ifdef PADDLE_WITH_TESTING
   guard_begin = hash(*this, 1);
   guard_end = hash(*this, 2);
-#endif
 }
 
 bool MemoryBlock::Desc::CheckGuards() const {
-#ifdef PADDLE_WITH_TESTING
   return guard_begin == hash(*this, 1) && guard_end == hash(*this, 2);
-#else
-  return true;
-#endif
 }
 
 }  // namespace detail

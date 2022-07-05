@@ -45,8 +45,10 @@ class LUOp : public framework::OperatorWithKernel {
     bool pivots = context->Attrs().Get<bool>("pivots");
     auto x_dims = context->GetInputDim("X");
     int x_rank = x_dims.size();
-    PADDLE_ENFORCE_GE(x_rank, 2, platform::errors::InvalidArgument(
-                                     "the rank of input must greater than 2"));
+    PADDLE_ENFORCE_GE(x_rank,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "the rank of input must greater than 2"));
     context->SetOutputDim("Out", x_dims);
     int m = x_dims[x_rank - 1];
     int n = x_dims[x_rank - 2];
@@ -88,12 +90,12 @@ class LUOpVarTypeInference : public framework::VarTypeInference {
     ctx->SetOutputDataType("Out", data_type, framework::ALL_ELEMENTS);
 
     ctx->SetOutputType("Pivots", var_type, framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType("Pivots", framework::proto::VarType::INT32,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        "Pivots", framework::proto::VarType::INT32, framework::ALL_ELEMENTS);
 
     ctx->SetOutputType("Infos", var_type, framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType("Infos", framework::proto::VarType::INT32,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        "Infos", framework::proto::VarType::INT32, framework::ALL_ELEMENTS);
   }
 };
 
@@ -106,14 +108,13 @@ class LUKernel : public framework::OpKernel<T> {
     auto *out = ctx.Output<framework::Tensor>("Out");
     auto *IpivT = ctx.Output<framework::Tensor>("Pivots");
     auto *InfoT = ctx.Output<framework::Tensor>("Infos");
-    PADDLE_ENFORCE_EQ(pivots, true,
+    PADDLE_ENFORCE_EQ(pivots,
+                      true,
                       platform::errors::InvalidArgument(
                           "lu without pivoting is not implemented on the CPU, "
                           "but got pivots=False"));
 
-    math::DeviceIndependenceTensorOperations<paddle::platform::CPUDeviceContext,
-                                             T>
-        helper(ctx);
+    math::DeviceIndependenceTensorOperations<phi::CPUContext, T> helper(ctx);
     *out = helper.Transpose(*xin);
 
     auto outdims = out->dims();
@@ -142,8 +143,8 @@ class LUKernel : public framework::OpKernel<T> {
       auto out_data_item = &out_data[b * m * n];
       int *info_data_item = &info_data[b];
       int *ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-      phi::funcs::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
-                              info_data_item);
+      phi::funcs::lapackLu<T>(
+          m, n, out_data_item, lda, ipiv_data_item, info_data_item);
     }
     *out = helper.Transpose(*out);
   }
@@ -172,10 +173,10 @@ class LUGradOpVarTypeInference : public framework::VarTypeInference {
     auto var_type = ctx->GetInputType("X", 0);
     auto data_type = ctx->GetInputDataType("X", 0);
 
-    ctx->SetOutputType(framework::GradVarName("X"), var_type,
-                       framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType(framework::GradVarName("X"), data_type,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        framework::GradVarName("X"), var_type, framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        framework::GradVarName("X"), data_type, framework::ALL_ELEMENTS);
   }
 };
 
@@ -187,8 +188,10 @@ class LUGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lu");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "lu");
     OP_INOUT_CHECK(ctx->HasInput("Pivots"), "Input", "Pivots", "lu");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "lu");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "lu");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -216,14 +219,19 @@ DECLARE_INPLACE_OP_INFERER(LUGradOpInplaceInferer,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(lu, ops::LUOp, ops::LUOpMaker, ops::LUOpVarTypeInference,
+REGISTER_OPERATOR(lu,
+                  ops::LUOp,
+                  ops::LUOpMaker,
+                  ops::LUOpVarTypeInference,
                   ops::LUOpGradMaker<paddle::framework::OpDesc>,
                   ops::LUOpGradMaker<paddle::imperative::OpBase>,
                   ops::LUOpInplaceInferer);
-REGISTER_OPERATOR(lu_grad, ops::LUGradOp, ops::LUGradOpVarTypeInference,
+REGISTER_OPERATOR(lu_grad,
+                  ops::LUGradOp,
+                  ops::LUGradOpVarTypeInference,
                   ops::LUGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(lu, ops::LUKernel<float>, ops::LUKernel<double>);
 REGISTER_OP_CPU_KERNEL(lu_grad,
-                       ops::LUGradKernel<plat::CPUDeviceContext, float>,
-                       ops::LUGradKernel<plat::CPUDeviceContext, double>);
+                       ops::LUGradKernel<phi::CPUContext, float>,
+                       ops::LUGradKernel<phi::CPUContext, double>);

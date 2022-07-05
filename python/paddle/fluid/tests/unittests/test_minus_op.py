@@ -21,6 +21,7 @@ import paddle
 
 
 class TestMinusOp(OpTest):
+
     def setUp(self):
         self.op_type = "minus"
         self.inputs = {

@@ -27,6 +27,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTInstanceNormTest(InferencePassTest):
+
     def setUp(self):
         self.bs = 4
         self.channel = 4
@@ -47,7 +48,9 @@ class TRTInstanceNormTest(InferencePassTest):
             out = fluid.layers.batch_norm(instance_norm_out, is_test=True)
 
         shape[0] = self.bs
-        self.feeds = {'in': np.random.random(shape).astype('float32'), }
+        self.feeds = {
+            'in': np.random.random(shape).astype('float32'),
+        }
         self.fetch_list = [out]
 
     def check_output(self, remove_cache=False):

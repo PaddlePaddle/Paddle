@@ -367,7 +367,7 @@ class PReLU(Layer):
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
             1 - a single parameter `alpha` is used for all input channels;
-            Number of channels - a seperate `alpha` is used for each input channel.
+            Number of channels - a separate `alpha` is used for each input channel.
             Default is 1.
         init (float, optional): Init value of learnable `weight`. Default is 0.25.
         weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`.
@@ -419,12 +419,12 @@ class PReLU(Layer):
         self._name = name
         self._data_format = data_format
 
-        self._weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[self._num_parameters],
-            dtype=get_default_dtype(),
-            is_bias=False,
-            default_initializer=Constant(self._init))
+        self._weight = self.create_parameter(attr=self._weight_attr,
+                                             shape=[self._num_parameters],
+                                             dtype=get_default_dtype(),
+                                             is_bias=False,
+                                             default_initializer=Constant(
+                                                 self._init))
 
     def forward(self, x):
         return F.prelu(x, self._weight, data_format=self._data_format)
@@ -434,6 +434,95 @@ class PReLU(Layer):
         return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
             self._num_parameters, self._data_format, self._init, self._dtype,
             name_str)
+
+
+class RReLU(Layer):
+    r"""
+    RReLU activation layer.
+
+    Applies the randomized leaky rectified liner unit function to improve generalization performance,
+    as described in the paper:
+    `Empirical Evaluation of Rectified Activations in Convolutional Network <https://arxiv.org/abs/1505.00853>`_
+
+    During training, randomly samples the negative slope for activation values as described below:
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    a * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`a` is randomly sampled from uniform distribution in range (:math:`lower`, :math:`upper`),
+
+    In the test phase, the negative slope will take the average value of :math:`lower` and :math:`upper`:
+
+    .. math::
+
+        RReLU(x)=
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    (lower + upper) * 0.5 * x, & & otherwise \\
+                \end{array}
+            \right.
+
+    where :math:`x` is the input tensor,
+    :math:`lower` and :math:`upper` are the bounds of uniform distribution.
+
+    Parameters:
+        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
+        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape. Default dtype is float32.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            :name: RReLU-example
+
+            import paddle
+
+            input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+                                            [ 3.0, -4.0,  5.0, -6.0],
+                                            [-7.0, -8.0,  8.0,  9.0]],
+                                            [[ 1.0, -2.0, -3.0,  4.0],
+                                            [-5.0,  6.0,  7.0, -8.0],
+                                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+
+            rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
+            output = rrelu_layer(input_tensor)
+            #[[[[-0.20000899  3.         -0.88108218  5.        ]
+            #   [ 3.         -0.55175185  5.         -1.07761011]
+            #   [-1.06806871 -1.98962009  8.          9.        ]]
+            #  [[ 1.         -0.52382672 -0.65515128  4.        ]
+            #   [-1.37663394  6.          7.         -2.34657836]
+            #   [ 6.          7.          8.          9.        ]]]]
+    """
+
+    def __init__(self, lower=1. / 8., upper=1. / 3., name=None):
+        super(RReLU, self).__init__()
+        self._lower = lower
+        self._upper = upper
+        self._name = name
+
+    def forward(self, x):
+        return F.rrelu(x,
+                       lower=self._lower,
+                       upper=self._upper,
+                       training=self.training)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self._name) if self._name else ''
+        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
+            self._lower, self._upper, self.training, self._dtype, name_str)
 
 
 class ReLU(Layer):
@@ -1338,3 +1427,55 @@ class Maxout(Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'groups={}, axis={}{}'.format(self._groups, self._axis, name_str)
+
+
+class Softmax2D(Layer):
+    r"""
+    Softmax2D Activation.
+    Given a Tensor with shape (B, C, H, W) or (C, H, W), it will apply Softmax to each location (C, h_i, w_j).
+    The sum of result in each location (C, H_i, W_j) will be one.
+
+    Shape:
+        - Input: :math:`(B, C, H, W)` or :math:`(C, H, W)`
+        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)`(same as input)
+
+    Return:
+        A Tensor of the same shape and dtype as input with value in range [0, 1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([1, 2, 3, 4])
+            # [[[[0.42496058 0.1172187  0.14664008 0.8151267 ]
+            #    [0.24430142 0.42052492 0.60372984 0.79307914]
+            #    [0.4539401  0.90458065 0.10235776 0.62009853]]
+
+            #   [[0.11731581 0.16053623 0.05667042 0.91876775]
+            #    [0.9413854  0.30770817 0.6788164  0.9543593 ]
+            #    [0.4145064  0.75909156 0.11598814 0.73599935]]]]
+            m = paddle.nn.Softmax2D()
+            out = m(x)
+            # [[[[0.5763103  0.48917228 0.5224772  0.4741129 ]
+            #    [0.3324591  0.5281743  0.48123717 0.45976716]
+            #    [0.5098571  0.5363083  0.49659243 0.4710572 ]]
+
+            #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
+            #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
+            #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+    """
+
+    def __init__(self, name=None):
+        super(Softmax2D, self).__init__()
+        self._dtype = None
+        self._name = name
+
+    def forward(self, x):
+        assert x.ndim == 3 or x.ndim == 4, "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
+            x.ndim)
+        return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
+
+    def extra_repr(self):
+        name_str = 'name={}'.format(self._name) if self._name else ''
+        return name_str

@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #pragma once
+
 #include <cmath>
-#include <mutex>
-#include <numeric>
-#include "glog/logging.h"
+
 #include "paddle/phi/kernels/autotune/cache.h"
 
 namespace phi {
@@ -31,45 +30,11 @@ class AutoTuneStatus {
 
   bool UseAutoTune() { return use_autotune_; }
 
-  // EnableAutoTune and DisableAutoTune Should be used for debug only.
-  void EnableAutoTune() {
-    use_autotune_ = true;
-    Init();
-  }
+  // EnableAutoTune and DisableAutoTune should be used for debug only.
+  void EnableAutoTune();
+  void DisableAutoTune();
 
-  void DisableAutoTune() {
-    use_autotune_ = false;
-    Init();
-  }
-
-  void Update() {
-    current_steps_id_ += 1;
-
-    if (!use_autotune_ && !update_use_autotune_) {
-      return;
-    }
-
-    if (current_steps_id_ < start_step_id_) {
-      use_autotune_ = false;
-    } else if (current_steps_id_ >= start_step_id_ &&
-               current_steps_id_ < stop_step_id_) {
-      use_autotune_ = true;
-      AutoTuneCache::Instance().UpdateStatus();
-      step_hit_rates_.push_back(StepHitRate());
-      VLOG(3) << "Step ID " << current_steps_id_
-              << ", Accumulative Cache Hit Rate: "
-              << AutoTuneCache::Instance().CacheHitRate()
-              << ", Cache Size: " << AutoTuneCache::Instance().Size()
-              << ", Current Step Hit Rate: " << StepHitRate();
-    } else if (current_steps_id_ == stop_step_id_) {
-      use_autotune_ = false;
-      update_use_autotune_ = false;
-      // clean cache according miss rate
-      float miss_rate = static_cast<float>(1) - RecentHitRate();
-      AutoTuneCache::Instance().Clean(miss_rate);
-      VLOG(3) << "Recent Miss Rate: " << miss_rate;
-    }
-  }
+  void Update();
 
   int64_t StepID() { return current_steps_id_; }
 
@@ -84,19 +49,25 @@ class AutoTuneStatus {
 
   // Hit Rate of Current Step
   float StepHitRate() {
-    int64_t current_hits = AutoTuneCache::Instance().CacheHits();
-    int64_t current_misses = AutoTuneCache::Instance().CacheMisses();
-    int64_t step_hits_ = current_hits - previous_hits_;
-    int64_t step_misses_ = current_misses - previous_misses_;
-    float step_hit_rate = 0.;
-    int64_t step_num_accesses = step_hits_ + step_misses_;
-    if (step_num_accesses != 0) {
-      step_hit_rate = static_cast<float>(step_hits_) /
-                      static_cast<float>(step_num_accesses);
+    static int64_t last_step_id = -2;
+
+    if (last_step_id != current_steps_id_) {
+      int64_t current_hits = AutoTuneCache::Instance().CacheHits();
+      int64_t current_misses = AutoTuneCache::Instance().CacheMisses();
+      int64_t step_hits_ = current_hits - previous_hits_;
+      int64_t step_misses_ = current_misses - previous_misses_;
+      float step_hit_rate = 0.;
+      int64_t step_num_accesses = step_hits_ + step_misses_;
+      if (step_num_accesses != 0) {
+        step_hit_rate = static_cast<float>(step_hits_) /
+                        static_cast<float>(step_num_accesses);
+      }
+      previous_hits_ = current_hits;
+      previous_misses_ = current_misses;
+      current_step_hit_rate_ = step_hit_rate;
+      last_step_id = current_steps_id_;
     }
-    previous_hits_ = current_hits;
-    previous_misses_ = current_misses;
-    return step_hit_rate;
+    return current_step_hit_rate_;
   }
 
   void SetAutoTuneRange(int64_t start, int64_t stop) {
@@ -108,21 +79,21 @@ class AutoTuneStatus {
   AutoTuneStatus() = default;
 
   void Init() {
-    update_use_autotune_ = use_autotune_;
+    use_autotune_ = false;
     current_steps_id_ = -1;
     previous_hits_ = 0;
     previous_misses_ = 0;
     step_hit_rates_.clear();
-    AutoTuneCache::Instance().Clean(1.0);
+    AutoTuneCache::Instance().Clean();
   }
 
-  int64_t start_step_id_ = 0;
-  int64_t stop_step_id_ = 10;
-  int64_t current_steps_id_ = -1;
-  bool use_autotune_ = false;
-  bool update_use_autotune_ = false;
-  int64_t previous_hits_ = 0;
-  int64_t previous_misses_ = 0;
+  bool use_autotune_{false};
+  int64_t start_step_id_{1};
+  int64_t stop_step_id_{10};
+  int64_t current_steps_id_{-1};
+  int64_t previous_hits_{0};
+  int64_t previous_misses_{0};
+  float current_step_hit_rate_{0.f};
   std::vector<float> step_hit_rates_;
 };
 

@@ -21,6 +21,7 @@ import unittest
 
 
 class Conv3DTransposeTestCase(unittest.TestCase):
+
     def __init__(self,
                  methodName='runTest',
                  batch_size=2,
@@ -58,8 +59,8 @@ class Conv3DTransposeTestCase(unittest.TestCase):
             input_shape = (self.batch_size, ) + self.spartial_shape + (
                 self.num_channels, )
         else:
-            input_shape = (self.batch_size, self.num_channels
-                           ) + self.spartial_shape
+            input_shape = (self.batch_size,
+                           self.num_channels) + self.spartial_shape
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -68,8 +69,8 @@ class Conv3DTransposeTestCase(unittest.TestCase):
             filter_size = self.filter_size
         self.weight_shape = weight_shape = (self.num_channels, self.num_filters
                                             // self.groups) + tuple(filter_size)
-        self.weight = np.random.uniform(
-            -1, 1, size=weight_shape).astype(self.dtype)
+        self.weight = np.random.uniform(-1, 1,
+                                        size=weight_shape).astype(self.dtype)
         if self.no_bias:
             self.bias = None
         else:
@@ -115,20 +116,20 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                 input_shape = (-1, -1, -1, -1, self.num_channels) \
                     if self.channel_last else (-1, self.num_channels, -1, -1, -1)
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                w_var = fluid.data(
-                    "weight", self.weight_shape, dtype=self.dtype)
-                b_var = fluid.data(
-                    "bias", (self.num_filters, ), dtype=self.dtype)
-                y_var = F.conv3d_transpose(
-                    x_var,
-                    w_var,
-                    None if self.no_bias else b_var,
-                    output_size=self.output_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format)
+                w_var = fluid.data("weight",
+                                   self.weight_shape,
+                                   dtype=self.dtype)
+                b_var = fluid.data("bias", (self.num_filters, ),
+                                   dtype=self.dtype)
+                y_var = F.conv3d_transpose(x_var,
+                                           w_var,
+                                           None if self.no_bias else b_var,
+                                           output_size=self.output_size,
+                                           padding=self.padding,
+                                           stride=self.stride,
+                                           dilation=self.dilation,
+                                           groups=self.groups,
+                                           data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -139,15 +140,14 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.Conv3DTranspose(
-            self.num_channels,
-            self.num_filters,
-            self.filter_size,
-            padding=self.padding,
-            stride=self.stride,
-            dilation=self.dilation,
-            groups=self.groups,
-            data_format=self.data_format)
+        conv = nn.Conv3DTranspose(self.num_channels,
+                                  self.num_filters,
+                                  self.filter_size,
+                                  padding=self.padding,
+                                  stride=self.stride,
+                                  dilation=self.dilation,
+                                  groups=self.groups,
+                                  data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -174,6 +174,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
 
 class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -184,63 +185,65 @@ class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):
 def add_cases(suite):
     suite.addTest(Conv3DTransposeTestCase(methodName='runTest'))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', stride=[1, 2, 1], dilation=2, no_bias=True))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                stride=[1, 2, 1],
+                                dilation=2,
+                                no_bias=True))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest',
-            output_size=[12, 19, 12],
-            stride=[1, 2, 1],
-            dilation=2))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                output_size=[12, 19, 12],
+                                stride=[1, 2, 1],
+                                dilation=2))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', stride=2, dilation=(2, 1, 2)))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                stride=2,
+                                dilation=(2, 1, 2)))
+    suite.addTest(Conv3DTransposeTestCase(methodName='runTest',
+                                          padding="valid"))
+    suite.addTest(Conv3DTransposeTestCase(methodName='runTest',
+                                          padding='valid'))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', padding="valid"))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                filter_size=1,
+                                padding=(2, 3, 1)))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', padding='valid'))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                padding=[1, 2, 2, 3, 2, 1]))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', filter_size=1, padding=(2, 3, 1)))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                padding=[[0, 0], [0, 0], [2, 3], [1, 2], [2,
+                                                                          1]]))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', padding=[1, 2, 2, 3, 2, 1]))
+        Conv3DTransposeTestCase(methodName='runTest', data_format="NDHWC"))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest',
-            padding=[[0, 0], [0, 0], [2, 3], [1, 2], [2, 1]]))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                data_format="NDHWC",
+                                padding=[[0, 0], [1, 1], [2, 2], [3, 3], [0,
+                                                                          0]]))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', data_format="NDHWC"))
+        Conv3DTransposeTestCase(methodName='runTest', groups=2,
+                                padding="valid"))
     suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest',
-            data_format="NDHWC",
-            padding=[[0, 0], [1, 1], [2, 2], [3, 3], [0, 0]]))
-    suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest', groups=2, padding="valid"))
-    suite.addTest(
-        Conv3DTransposeTestCase(
-            methodName='runTest',
-            num_filters=6,
-            num_channels=3,
-            groups=3,
-            padding="valid"))
+        Conv3DTransposeTestCase(methodName='runTest',
+                                num_filters=6,
+                                num_channels=3,
+                                groups=3,
+                                padding="valid"))
 
 
 def add_error_cases(suite):
     suite.addTest(
-        Conv3DTransposeErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2))
+        Conv3DTransposeErrorTestCase(methodName='runTest',
+                                     num_channels=5,
+                                     groups=2))
     suite.addTest(
-        Conv3DTransposeErrorTestCase(
-            methodName='runTest', output_size="not_valid"))
+        Conv3DTransposeErrorTestCase(methodName='runTest',
+                                     output_size="not_valid"))
     suite.addTest(
-        Conv3DTransposeErrorTestCase(
-            methodName='runTest', num_channels=5, groups=2, padding=[-1, 1, 3]))
+        Conv3DTransposeErrorTestCase(methodName='runTest',
+                                     num_channels=5,
+                                     groups=2,
+                                     padding=[-1, 1, 3]))
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -35,11 +35,10 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -48,7 +47,8 @@
 #endif
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||        \
+     defined(PADDLE_WITH_ASCEND_CL))
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #endif
 
@@ -66,7 +66,8 @@ class ProcessGroupHeter : public ProcessGroup {
   class HeterTask : public ProcessGroup::Task,
                     public std::enable_shared_from_this<HeterTask> {
    public:
-    HeterTask(int rank, CommType CommType,
+    HeterTask(int rank,
+              CommType CommType,
               const std::vector<phi::DenseTensor>&);
 
     bool IsCompleted();
@@ -80,22 +81,39 @@ class ProcessGroupHeter : public ProcessGroup {
     virtual ~HeterTask();
   };
 
-  ProcessGroupHeter(const std::shared_ptr<Store>& store, int rank, int size,
-                    int gid, int local_rank, int local_size, int gloo_rank,
-                    int gloo_size, bool with_switch,
-                    std::string switch_endpoints);
+  ProcessGroupHeter(const std::shared_ptr<Store>& store,
+                    int rank,
+                    int size,
+                    const platform::Place& place,
+                    int gid,
+                    int local_rank,
+                    int local_size,
+                    int gloo_rank,
+                    int gloo_size,
+                    bool with_switch,
+                    std::string switch_endpoints,
+                    int src_rank,
+                    int dst_rank);
 
   const std::string GetBackendName() const override {
     return std::string(HETER_BACKEND_NAME);
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
+      std::vector<phi::DenseTensor>&,
+      std::vector<phi::DenseTensor>&,
       const AllreduceOptions& = AllreduceOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>&, std::vector<phi::DenseTensor>&,
+      std::vector<phi::DenseTensor>&,
+      std::vector<phi::DenseTensor>&,
       const BroadcastOptions& = BroadcastOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& in_tensors, int peer) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& out_tensors, int peer) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupHeter::HeterTask> CreateTask(
@@ -112,6 +130,10 @@ class ProcessGroupHeter : public ProcessGroup {
   int gloo_size_;
   bool with_switch_;
   std::string switch_endpoint_;
+  int src_rank_;
+  int dst_rank_;
+  static int send_count;
+  static int recv_count;
 };
 
 }  //  namespace distributed

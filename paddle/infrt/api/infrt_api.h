@@ -27,6 +27,7 @@ class InfRtConfig {
   std::vector<std::string> shared_libs_;
 
   // TODO(wilber): Design an easy-to-use interface.
+  bool gpu_enabled_{false};
   bool tensorrt_enabled_{false};
 
  public:
@@ -41,6 +42,9 @@ class InfRtConfig {
     shared_libs_ = shared_libs;
   }
   const std::vector<std::string>& shared_libs() const { return shared_libs_; }
+
+  void enable_gpu() { gpu_enabled_ = true; }
+  bool gpu_enabled() const { return gpu_enabled_; }
 
   // TODO(wilber): Design an easy-to-use interface.
   void enable_tensorrt() { tensorrt_enabled_ = true; }

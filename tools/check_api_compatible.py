@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,16 +61,16 @@ def check_compatible(old_api_spec, new_api_spec):
     """
     check compatible, FullArgSpec
     """
-    if not (isinstance(old_api_spec, inspect.FullArgSpec) and isinstance(
-            new_api_spec, inspect.FullArgSpec)):
+    if not (isinstance(old_api_spec, inspect.FullArgSpec)
+            and isinstance(new_api_spec, inspect.FullArgSpec)):
         logger.warning(
             "new_api_spec or old_api_spec is not instance of inspect.FullArgSpec"
         )
         return False
     return _check_compatible(
-        old_api_spec.args, new_api_spec.args, []
-        if old_api_spec.defaults is None else old_api_spec.defaults, []
-        if new_api_spec.defaults is None else new_api_spec.defaults)
+        old_api_spec.args, new_api_spec.args,
+        [] if old_api_spec.defaults is None else old_api_spec.defaults,
+        [] if new_api_spec.defaults is None else new_api_spec.defaults)
 
 
 def check_compatible_str(old_api_spec_str, new_api_spec_str):
@@ -129,13 +129,15 @@ def parse_args():
         'prev',
         type=argparse.FileType('r'),
         help='the previous version (the version from develop branch)')
-    parser.add_argument(
-        'post',
-        type=argparse.FileType('r'),
-        help='the post version (the version from PullRequest)')
+    parser.add_argument('post',
+                        type=argparse.FileType('r'),
+                        help='the post version (the version from PullRequest)')
     for item in arguments:
-        parser.add_argument(
-            item[0], dest=item[1], help=item[4], type=item[2], default=item[3])
+        parser.add_argument(item[0],
+                            dest=item[1],
+                            help=item[4],
+                            type=item[2],
+                            default=item[3])
 
     if len(sys.argv) < 2:
         parser.print_help()

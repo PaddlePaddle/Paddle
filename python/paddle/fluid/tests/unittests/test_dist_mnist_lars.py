@@ -18,6 +18,7 @@ from test_dist_base import TestDistBase
 
 
 class TestDistMnist2x2Lars(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False

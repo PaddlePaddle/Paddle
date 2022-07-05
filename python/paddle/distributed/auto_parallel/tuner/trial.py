@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Notice that the following codes are modified from KerasTuner to implement our own tuner.
+# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/trial.py.
+
 import hashlib
 import random
 import time
@@ -30,7 +33,10 @@ class TrialStatus:
 
 
 class Trial(Storable):
-    def __init__(self, tunable_space, trial_id=None,
+
+    def __init__(self,
+                 tunable_space,
+                 trial_id=None,
                  status=TrialStatus.RUNNING):
         self._id = _generate_trial_id() if trial_id is None else trial_id
         self._space = tunable_space

@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
 namespace sparse {
@@ -25,7 +25,7 @@ namespace sparse {
  * x: (N, D, H, W, C)
  * kernel: (D, H, W, C, OC)
  * out: (N, D, H, W, OC)
-**/
+ **/
 template <typename T, typename IntT = int>
 void Conv3dCPUKernel(const CPUContext& dev_ctx,
                      const SparseCooTensor& x,
@@ -50,16 +50,19 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
     kernel_sizes[i] = kernel_dims[i];
   }
 
-  phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
-
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {
+    // the out shape of subm_conv is same as input shape
+    // reset the padding=kernel_size/2 and strides=1
     phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
         kernel.dims(), &subm_paddings, &subm_strides);
   }
+
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
+  const int in_channels = kernel_dims[3];
+  const int out_channels = kernel_dims[4];
+
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook

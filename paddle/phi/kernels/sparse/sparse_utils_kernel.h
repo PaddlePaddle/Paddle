@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -109,7 +109,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor SparseCooToDense(const Context& dev_ctx, const SparseCooTensor& x) {
-  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
   SparseCooToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
@@ -128,7 +128,7 @@ void SparseCsrToDenseKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
-  DenseTensorMeta meta(x.dtype(), x.dims(), x.layout());
+  DenseTensorMeta meta(x.dtype(), x.dims(), x.non_zero_elements().layout());
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
   SparseCsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
@@ -154,9 +154,9 @@ void SparseCooTensorKernel(const Context& dev_ctx,
                            const DenseTensor& indices,
                            const IntArray& dense_shape,
                            SparseCooTensor* out) {
-  *out =
-      SparseCooTensor(indices, values, phi::make_ddim(dense_shape.GetData()));
-  // TODO(zhangkaihuo): sort and merge the dumplicate indices
+  SparseCooTensor before_coalesced(
+      indices, values, phi::make_ddim(dense_shape.GetData()));
+  CoalescedKernel<T, Context>(dev_ctx, before_coalesced, out);
 }
 
 }  // namespace sparse

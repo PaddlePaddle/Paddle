@@ -15,20 +15,25 @@
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <hiprand_kernel.h>
+
 #include <hipcub/hipcub.hpp>
 typedef hiprandState curandState;
 namespace cub = hipcub;
 #else
 #include <curand.h>
 #include <curand_kernel.h>
+
 #include <cub/cub.cuh>
 #endif
 
 #include <iterator>
 #include <random>
+
 #include "paddle/fluid/operators/class_center_sample_op.h"
+#include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -38,7 +43,8 @@ namespace operators {
 #define CUDA_KERNEL_LOOP(i, n)                            \
   for (int32_t i = blockIdx.x * blockDim.x + threadIdx.x, \
                step = blockDim.x * gridDim.x;             \
-       i < (n); i += step)
+       i < (n);                                           \
+       i += step)
 
 using Tensor = framework::Tensor;
 
@@ -51,9 +57,11 @@ inline int32_t NumBlocks(const int32_t n) {
 }
 
 template <typename T>
-__global__ void RandomSampleClassCenter(const int64_t n, int64_t seed,
+__global__ void RandomSampleClassCenter(const int64_t n,
+                                        int64_t seed,
                                         int64_t increment,
-                                        const int64_t max_val, T* buffer) {
+                                        const int64_t max_val,
+                                        T* buffer) {
   const int id = blockIdx.x * blockDim.x + threadIdx.x;
   curandState localState;
   size_t local_seed =
@@ -78,9 +86,11 @@ __global__ void Range(const int64_t n, T* out) {
 }
 
 template <typename T>
-__global__ void MarkPositiveClassCenter(const int64_t n, const int64_t rank,
+__global__ void MarkPositiveClassCenter(const int64_t n,
+                                        const int64_t rank,
                                         const T* class_interval_ptr,
-                                        const int num_classes, const T* labels,
+                                        const int num_classes,
+                                        const T* labels,
                                         T* out) {
   CUDA_KERNEL_LOOP(i, n) {
     T label = labels[i] - class_interval_ptr[rank];
@@ -92,7 +102,8 @@ __global__ void MarkPositiveClassCenter(const int64_t n, const int64_t rank,
 
 template <typename T>
 __device__ void FindIntervalIndex(const T* class_interval_ptr,
-                                  const int64_t nranks, const T value,
+                                  const int64_t nranks,
+                                  const T value,
                                   int64_t* find_index) {
   int64_t start = 0;
   int64_t end = nranks;
@@ -109,10 +120,13 @@ __device__ void FindIntervalIndex(const T* class_interval_ptr,
 }
 
 template <typename T>
-__global__ void GetClassCenterBound(const int64_t n, const int64_t nranks,
+__global__ void GetClassCenterBound(const int64_t n,
+                                    const int64_t nranks,
                                     const T* class_interval_ptr,
-                                    const T* key_ptr, const T* value_ptr,
-                                    T* bound_index, T* bound_value) {
+                                    const T* key_ptr,
+                                    const T* value_ptr,
+                                    T* bound_index,
+                                    T* bound_value) {
   CUDA_KERNEL_LOOP(i, n) {
     if (i != 0) {
       int64_t cur_index, pre_index;
@@ -143,10 +157,13 @@ __global__ void GetClassCenterBound(const int64_t n, const int64_t nranks,
 }
 
 template <typename T>
-__global__ void GetRemappedLabel(const int64_t n, const int64_t nranks,
+__global__ void GetRemappedLabel(const int64_t n,
+                                 const int64_t nranks,
                                  const T* sampled_class_interval_ptr,
-                                 const T* bound_index, const T* bound_value,
-                                 const T* label_map_key, T* label_map_value,
+                                 const T* bound_index,
+                                 const T* bound_value,
+                                 const T* label_map_key,
+                                 T* label_map_value,
                                  T* mapped_label) {
   CUDA_KERNEL_LOOP(i, n) {
 #pragma unroll
@@ -204,6 +221,12 @@ class NotEqualToPreviousAdjacentIterator {
   }
 
   template <typename Distance>
+  __host__ __device__ __forceinline__ self_type operator-(Distance n) const {
+    self_type ret(arr_, offset_ - n);
+    return ret;
+  }
+
+  template <typename Distance>
   __host__ __device__ __forceinline__ reference operator[](Distance n) const {
     return *(*this + n);
   }
@@ -226,8 +249,10 @@ struct ActualNumSampledFunctor {
 template <typename T>
 class MemoryBuffer {
  public:
-  MemoryBuffer(const int num_buffer_ele, const int num_temp_ele,
-               const int nranks, const platform::Place& place) {
+  MemoryBuffer(const int num_buffer_ele,
+               const int num_temp_ele,
+               const int nranks,
+               const platform::Place& place) {
     offset1 = 0;
     offset2 = offset1 + num_buffer_ele;
     offset3 = offset2 + num_buffer_ele;
@@ -284,26 +309,30 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
 
     int seed = ctx.Attr<int>("seed");
     bool fix_seed = ctx.Attr<bool>("fix_seed");
-    PADDLE_ENFORCE_GT(num_classes, 0,
+    PADDLE_ENFORCE_GT(num_classes,
+                      0,
                       platform::errors::InvalidArgument(
                           "The value 'num_classes' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
                           num_classes));
 
-    PADDLE_ENFORCE_GT(num_samples, 0,
+    PADDLE_ENFORCE_GT(num_samples,
+                      0,
                       platform::errors::InvalidArgument(
                           "The value 'num_samples' for Op(class_center_sample) "
                           "must be greater than 0, "
                           "but the value given is %d.",
                           num_samples));
 
-    PADDLE_ENFORCE_LE(num_samples, num_classes,
+    PADDLE_ENFORCE_LE(num_samples,
+                      num_classes,
                       platform::errors::InvalidArgument(
                           "The value 'num_samples' for Op(class_center_sample) "
                           "must be less than or equal to %d, "
                           "but the value given is %d.",
-                          num_classes, num_samples));
+                          num_classes,
+                          num_samples));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto place = dev_ctx.GetPlace();
@@ -322,25 +351,43 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
     std::vector<T> shard_dim_vec(nranks + 1, 0);
     shard_dim_vec[rank + 1] = num_classes;
     Tensor num_classes_per_device;
-    framework::TensorFromVector(shard_dim_vec, ctx.cuda_device_context(),
-                                &num_classes_per_device);
+    framework::TensorFromVector(
+        shard_dim_vec, ctx.cuda_device_context(), &num_classes_per_device);
     T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (nranks > 1) {
-      const auto& comm =
-          platform::NCCLCommContext::Instance().Get(rid, ctx.GetPlace());
-      // use global calculate stream
-      const auto calcu_stream =
-          static_cast<platform::CUDADeviceContext*>(
-              platform::DeviceContextPool::Instance().Get(ctx.GetPlace()))
-              ->stream();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-          num_classes_per_device_ptr, num_classes_per_device_ptr,
-          num_classes_per_device.numel(),
-          platform::ToNCCLDataType(
-              framework::TransToProtoVarType(num_classes_per_device.dtype())),
-          ncclSum, comm->comm(), calcu_stream));
+      auto map = distributed::ProcessGroupMapFromGid::getInstance();
+      if (map->has(rid)) {
+        // Use ProcessGroup
+        distributed::ProcessGroup* pg = map->get(rid);
+        std::vector<phi::DenseTensor> in_tensor;
+        std::vector<phi::DenseTensor> out_tensor;
+        in_tensor.push_back(num_classes_per_device);
+        out_tensor.push_back(num_classes_per_device);
+
+        distributed::AllreduceOptions opts;
+        opts.reduce_op = distributed::ReduceOp::SUM;
+        auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+        task->Wait();
+      } else {
+        const auto& comm =
+            platform::NCCLCommContext::Instance().Get(rid, ctx.GetPlace());
+        // use global calculate stream
+        const auto calcu_stream =
+            static_cast<platform::CUDADeviceContext*>(
+                platform::DeviceContextPool::Instance().Get(ctx.GetPlace()))
+                ->stream();
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+            num_classes_per_device_ptr,
+            num_classes_per_device_ptr,
+            num_classes_per_device.numel(),
+            platform::ToNCCLDataType(
+                framework::TransToProtoVarType(num_classes_per_device.dtype())),
+            ncclSum,
+            comm->comm(),
+            calcu_stream));
+      }
     }
 #endif
 
@@ -348,23 +395,38 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
     int num_buffer_ele = std::max(batch_size, num_classes);
     size_t cub_sort_temp_store_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceRadixSort::SortPairs<T, T>(
-        nullptr, cub_sort_temp_store_size, nullptr, nullptr, nullptr, nullptr,
-        num_buffer_ele, 0, sizeof(T) * 8, ctx.cuda_device_context().stream())));
+        nullptr,
+        cub_sort_temp_store_size,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        num_buffer_ele,
+        0,
+        sizeof(T) * 8,
+        ctx.cuda_device_context().stream())));
 
     size_t cub_sum_temp_store_size = 0;
     NotEqualToPreviousAdjacentIterator<T> unique_counting_iter_temp(nullptr, 0);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        (cub::DeviceScan::InclusiveSum<NotEqualToPreviousAdjacentIterator<T>,
-                                       T*>(
-            nullptr, cub_sum_temp_store_size, unique_counting_iter_temp,
-            nullptr, batch_size, ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS((
+        cub::DeviceScan::InclusiveSum<NotEqualToPreviousAdjacentIterator<T>,
+                                      T*>(nullptr,
+                                          cub_sum_temp_store_size,
+                                          unique_counting_iter_temp,
+                                          nullptr,
+                                          batch_size,
+                                          ctx.cuda_device_context().stream())));
 
     size_t cub_scan_temp_store_size = 0;
     ActualNumSampledFunctor<T> actual_num_sampled_op_temp(num_samples);
-    PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceScan::InclusiveScan(
-        nullptr, cub_scan_temp_store_size, num_classes_per_device_ptr,
-        num_classes_per_device_ptr, actual_num_sampled_op_temp, nranks + 1,
-        ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        (cub::DeviceScan::InclusiveScan(nullptr,
+                                        cub_scan_temp_store_size,
+                                        num_classes_per_device_ptr,
+                                        num_classes_per_device_ptr,
+                                        actual_num_sampled_op_temp,
+                                        nranks + 1,
+                                        ctx.cuda_device_context().stream())));
 
     size_t cub_temp_storage_bytes =
         std::max(std::max(cub_sort_temp_store_size, cub_scan_temp_store_size),
@@ -385,10 +447,13 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
     void* cub_temp_storage_ptr = memory_buffer.cub_temp_storage_ptr();
 
     // step 4: Calculate class interval among nranks
-    PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceScan::InclusiveSum(
-        cub_temp_storage_ptr, cub_temp_storage_bytes,
-        num_classes_per_device_ptr, class_interval_ptr, nranks + 1,
-        ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        (cub::DeviceScan::InclusiveSum(cub_temp_storage_ptr,
+                                       cub_temp_storage_bytes,
+                                       num_classes_per_device_ptr,
+                                       class_interval_ptr,
+                                       nranks + 1,
+                                       ctx.cuda_device_context().stream())));
 
     // step 5: random sample negative class center
     uint64_t seed_data;
@@ -399,89 +464,140 @@ class ClassCenterSampleCUDAKernel : public framework::OpKernel<T> {
                    1) *
                   vec_size;
     int device_id = ctx.GetPlace().GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy() && (!fix_seed)) {
+    auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+    if (!fix_seed) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;
       increment = seed_offset.second;
     } else {
-      std::random_device rnd;
-      seed_data = fix_seed ? seed + rank : rnd();
+      seed_data = seed + rank;
       increment = offset;
     }
-    RandomSampleClassCenter<T><<<NumBlocks(num_classes), kNumCUDAThreads, 0,
+    RandomSampleClassCenter<T><<<NumBlocks(num_classes),
+                                 kNumCUDAThreads,
+                                 0,
                                  ctx.cuda_device_context().stream()>>>(
         num_classes, seed_data, increment, num_classes, cub_sort_keys_ptr);
 
     // step 6: mark positive class center as negative value
     // fill the sort values to index 0, 1, ..., batch_size-1
-    MarkPositiveClassCenter<<<NumBlocks(batch_size), kNumCUDAThreads, 0,
+    MarkPositiveClassCenter<<<NumBlocks(batch_size),
+                              kNumCUDAThreads,
+                              0,
                               ctx.cuda_device_context().stream()>>>(
-        batch_size, rank, class_interval_ptr, num_classes, label->data<T>(),
+        batch_size,
+        rank,
+        class_interval_ptr,
+        num_classes,
+        label->data<T>(),
         cub_sort_keys_ptr);
-    Range<T><<<NumBlocks(num_buffer_ele), kNumCUDAThreads, 0,
+    Range<T><<<NumBlocks(num_buffer_ele),
+               kNumCUDAThreads,
+               0,
                ctx.cuda_device_context().stream()>>>(num_buffer_ele,
                                                      cub_sort_values_ptr);
 
     // step 7: sort class center by ascending, so that positive class center
     // always be sampled.
     PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceRadixSort::SortPairs<T, T>(
-        cub_temp_storage_ptr, cub_temp_storage_bytes, cub_sort_keys_ptr,
-        cub_sort_keys_out_ptr, cub_sort_values_ptr, cub_sort_values_out_ptr,
-        num_classes, 0, sizeof(T) * 8, ctx.cuda_device_context().stream())));
+        cub_temp_storage_ptr,
+        cub_temp_storage_bytes,
+        cub_sort_keys_ptr,
+        cub_sort_keys_out_ptr,
+        cub_sort_values_ptr,
+        cub_sort_values_out_ptr,
+        num_classes,
+        0,
+        sizeof(T) * 8,
+        ctx.cuda_device_context().stream())));
 
     // step 8: sort input label ascending
     PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceRadixSort::SortPairs<T, T>(
-        cub_temp_storage_ptr, cub_temp_storage_bytes, label->data<T>(),
-        cub_sort_keys_out_ptr, cub_sort_values_ptr, cub_sort_keys_ptr,
-        batch_size, 0, sizeof(T) * 8, ctx.cuda_device_context().stream())));
+        cub_temp_storage_ptr,
+        cub_temp_storage_bytes,
+        label->data<T>(),
+        cub_sort_keys_out_ptr,
+        cub_sort_values_ptr,
+        cub_sort_keys_ptr,
+        batch_size,
+        0,
+        sizeof(T) * 8,
+        ctx.cuda_device_context().stream())));
 
     // step 9: Calculate new index using InclusiveSum on ascending sorted input
     // label
     NotEqualToPreviousAdjacentIterator<T> unique_counting_iter(
         cub_sort_keys_out_ptr, 0);
-    PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceScan::InclusiveSum<
-                                NotEqualToPreviousAdjacentIterator<T>, T*>(
-        cub_temp_storage_ptr, cub_temp_storage_bytes, unique_counting_iter,
-        cub_sort_values_ptr, batch_size, ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS((
+        cub::DeviceScan::InclusiveSum<NotEqualToPreviousAdjacentIterator<T>,
+                                      T*>(cub_temp_storage_ptr,
+                                          cub_temp_storage_bytes,
+                                          unique_counting_iter,
+                                          cub_sort_values_ptr,
+                                          batch_size,
+                                          ctx.cuda_device_context().stream())));
 
     // step 10: Calculate new class center bound among ranks
-    GetClassCenterBound<T><<<NumBlocks(batch_size), kNumCUDAThreads, 0,
-                             ctx.cuda_device_context().stream()>>>(
-        batch_size, nranks, class_interval_ptr, cub_sort_keys_out_ptr,
-        cub_sort_values_ptr, bound_index_ptr, bound_value_ptr);
+    GetClassCenterBound<T>
+        <<<NumBlocks(batch_size),
+           kNumCUDAThreads,
+           0,
+           ctx.cuda_device_context().stream()>>>(batch_size,
+                                                 nranks,
+                                                 class_interval_ptr,
+                                                 cub_sort_keys_out_ptr,
+                                                 cub_sort_values_ptr,
+                                                 bound_index_ptr,
+                                                 bound_value_ptr);
 
     // step 11: Calculate actual number of sampled class per device.
     // Since maybe num_positive_class_center > num_samples,
     // we need to ensure all positive class center per device are sampled.
     ActualNumSampledFunctor<T> actual_num_sampled_op(num_samples);
-    PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceScan::InclusiveScan(
-        cub_temp_storage_ptr, cub_temp_storage_bytes, bound_value_ptr,
-        num_classes_per_device_ptr, actual_num_sampled_op, nranks + 1,
-        ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        (cub::DeviceScan::InclusiveScan(cub_temp_storage_ptr,
+                                        cub_temp_storage_bytes,
+                                        bound_value_ptr,
+                                        num_classes_per_device_ptr,
+                                        actual_num_sampled_op,
+                                        nranks + 1,
+                                        ctx.cuda_device_context().stream())));
 
     // step 12: Calculate actual sampled class interval among nranks
-    PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceScan::InclusiveSum(
-        cub_temp_storage_ptr, cub_temp_storage_bytes,
-        num_classes_per_device_ptr, class_interval_ptr, nranks + 1,
-        ctx.cuda_device_context().stream())));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        (cub::DeviceScan::InclusiveSum(cub_temp_storage_ptr,
+                                       cub_temp_storage_bytes,
+                                       num_classes_per_device_ptr,
+                                       class_interval_ptr,
+                                       nranks + 1,
+                                       ctx.cuda_device_context().stream())));
 
     // step 13: Get remapped label for output
-    GetRemappedLabel<T><<<NumBlocks(batch_size), kNumCUDAThreads, 0,
+    GetRemappedLabel<T><<<NumBlocks(batch_size),
+                          kNumCUDAThreads,
+                          0,
                           ctx.cuda_device_context().stream()>>>(
-        batch_size, nranks, class_interval_ptr, bound_index_ptr,
-        bound_value_ptr, cub_sort_keys_ptr, cub_sort_values_ptr,
+        batch_size,
+        nranks,
+        class_interval_ptr,
+        bound_index_ptr,
+        bound_value_ptr,
+        cub_sort_keys_ptr,
+        cub_sort_values_ptr,
         remapped_label->mutable_data<T>(ctx.GetPlace()));
 
     // step 14: Get sampled class center for output
-    framework::TensorCopySync(num_classes_per_device, platform::CPUPlace(),
-                              &num_classes_per_device);
+    framework::TensorCopySync(
+        num_classes_per_device, platform::CPUPlace(), &num_classes_per_device);
     T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
     T* sampled_local_class_center_ptr =
         sampled_local_class_center->mutable_data<T>({actual_num_samples},
                                                     ctx.GetPlace());
-    memory::Copy(place, sampled_local_class_center_ptr, place,
-                 cub_sort_values_out_ptr, actual_num_samples * sizeof(T),
+    memory::Copy(place,
+                 sampled_local_class_center_ptr,
+                 place,
+                 cub_sort_values_out_ptr,
+                 actual_num_samples * sizeof(T),
                  nullptr);
   }
 };

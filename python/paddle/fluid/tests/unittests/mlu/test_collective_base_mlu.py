@@ -53,6 +53,7 @@ def DataTypeCast(date_type):
 
 
 class TestCollectiveRunnerBase(object):
+
     def get_model(self, train_prog, startup_prog, col_type):
         raise NotImplementedError(
             "get model should be implemented by child class.")
@@ -63,9 +64,8 @@ class TestCollectiveRunnerBase(object):
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
-                with closing(
-                        socket.socket(socket.AF_INET,
-                                      socket.SOCK_STREAM)) as sock:
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
                     sock.settimeout(2)
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if hasattr(socket, 'SO_REUSEPORT'):
@@ -78,12 +78,13 @@ class TestCollectiveRunnerBase(object):
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-                sys.stderr.write("not ready endpoints:" + str(
-                    not_ready_endpoints) + "\n")
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
+
 
 #endpoints should be ["ip1:port1","ip2:port2"]
 
@@ -94,30 +95,27 @@ class TestCollectiveRunnerBase(object):
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
-        cncl_id_var = block.create_var(
-            name=nameGen.generate('cncl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
+        cncl_id_var = block.create_var(name=nameGen.generate('cncl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
 
-        block.append_op(
-            type='c_gen_cncl_id',
-            inputs={},
-            outputs={'Out': cncl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints
-            })
+        block.append_op(type='c_gen_cncl_id',
+                        inputs={},
+                        outputs={'Out': cncl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
 
-        block.append_op(
-            type='c_comm_init',
-            inputs={'X': cncl_id_var},
-            outputs={},
-            attrs={
-                'nranks': nranks,
-                'rank': rank,
-                'ring_id': self.global_ring_id
-            })
+        block.append_op(type='c_comm_init',
+                        inputs={'X': cncl_id_var},
+                        outputs={},
+                        attrs={
+                            'nranks': nranks,
+                            'rank': rank,
+                            'ring_id': self.global_ring_id
+                        })
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -162,6 +160,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -170,6 +169,7 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(socket.socket(socket.AF_INET,
                                        socket.SOCK_STREAM)) as s:
@@ -210,17 +210,15 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
-        tr0_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr0_pipe,
-            env=env0)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
 
-        tr1_proc = subprocess.Popen(
-            tr0_cmd.strip().split(),
-            stdout=subprocess.PIPE,
-            stderr=tr1_pipe,
-            env=env1)
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -252,8 +250,8 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
-        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
-                                                         required_envs)
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+            model_file, required_envs)
         np_data_type = DataTypeCast(data_type)
         np.random.seed(pid0)
         input1 = np.random.random((10, 1000)).astype(np_data_type)
@@ -266,35 +264,27 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "allreduce_sum":
             need_result = input1 + input2
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "allreduce_prod":
             need_result = input1 * input2
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "allreduce_max":
             need_result = np.maximum(input1, input2)
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "allreduce_min":
             need_result = np.minimum(input1, input2)
             self.assertTrue(
-                np.allclose(
-                    tr0_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
             self.assertTrue(
-                np.allclose(
-                    tr1_out, need_result, rtol=1e-05, atol=1e-05))
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
         elif col_type == "reduce_sum":
             need_result = input1 + input2
             self.assertTrue(np.allclose(tr1_out, need_result))

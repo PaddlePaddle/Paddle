@@ -45,6 +45,7 @@ dim_feedforward = 4 * d_model
 
 
 class EmbeddingNet(Layer):
+
     def __init__(self):
         super(EmbeddingNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
@@ -58,6 +59,7 @@ class EmbeddingNet(Layer):
 
 
 class TransformerNet(Layer):
+
     def __init__(self):
         super(TransformerNet, self).__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -87,17 +89,20 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
+
     def forward(self, x):
         return super().forward(x)
 
 
 class TransformerNetPipe(TransformerNet):
+
     def forward(self, x):
         output = super().forward(x)
         return output
 
 
 class CriterionPipe(Layer):
+
     def __init__(self):
         super(CriterionPipe, self).__init__()
 
@@ -107,6 +112,7 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
+
     def __init__(self, topology):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
@@ -114,17 +120,17 @@ class ModelPipe(PipelineLayer):
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
-        super().__init__(
-            layers=self.descs,
-            loss_fn=CriterionPipe(),
-            topology=topology,
-            seg_method="layer:TransformerNetPipe",
-            recompute_interval=1,
-            recompute_partition=False,
-            recompute_offload=False)
+        super().__init__(layers=self.descs,
+                         loss_fn=CriterionPipe(),
+                         topology=topology,
+                         seg_method="layer:TransformerNetPipe",
+                         recompute_interval=1,
+                         recompute_partition=False,
+                         recompute_offload=False)
 
 
 class TestDistPPTraning(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -151,8 +157,9 @@ class TestDistPPTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(topology)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
+                                                       values=[0.001, 0.002],
+                                                       verbose=True)
         optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
                                          parameters=model.parameters())
 

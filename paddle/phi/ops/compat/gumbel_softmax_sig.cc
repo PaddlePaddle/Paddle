@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature GumbelSoftmaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("gumbel_softmax_grad",
-                         {"Out", GradVarName("Out")},
-                         {"axis"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "gumbel_softmax_grad", {"Out", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 
 }  // namespace phi

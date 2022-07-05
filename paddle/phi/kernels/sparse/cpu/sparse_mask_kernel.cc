@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_mask_kernel.h"
+
+#include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
+#include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
 
 namespace phi {
 namespace sparse {
@@ -37,7 +39,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.non_zero_indices();
   const DenseTensor& values = mask.non_zero_elements();
-  int sparse_dim = indices.dims().size();
+  const int sparse_dim = mask.sparse_dim();
 
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
   DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
@@ -56,10 +58,10 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
   std::vector<IntT> out_indexs(non_zero_num), sparse_offsets(sparse_dim);
 
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
-      dims, sparse_dim, &sparse_offsets);
+      dims, sparse_dim, sparse_offsets.data());
 
   for (int64_t i = 0; i < non_zero_num; i++) {
-    int64_t index = phi::funcs::sparse::IndicesToIndex<IntT>(
+    int64_t index = phi::funcs::sparse::CoordinateToIndex<IntT>(
         indices_ptr, sparse_offsets.data(), non_zero_num, sparse_dim, i);
     memcpy(out_values_ptr + i * cols, x_ptr + index * cols, cols * sizeof(T));
   }
@@ -71,7 +73,7 @@ void SparseMaskCPUKernel(const CPUContext& dev_ctx,
  * @brief Filter the DenseTensor x by the
  * mask.non_zero_indices() and output a SparseCooTensor
  * x and mask must have the same shape.
-**/
+ **/
 template <typename T, typename Context>
 void SparseMaskKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -93,12 +95,12 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
       2,
       phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
-  const int64_t sparse_dim = x.non_zero_indices().dims()[0];
+  const int32_t sparse_dim = x.sparse_dim();
 
   std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz()),
       mask_indexs(mask_indices.dims()[1]);
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
-      x.dims(), sparse_dim, &sparse_offsets);
+      x.dims(), sparse_dim, sparse_offsets.data());
 
   phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
                                      sparse_offsets.data(),
@@ -123,7 +125,7 @@ void SparseMaskHelperCPUKernel(const CPUContext& dev_ctx,
   T* out_ptr = out->data<T>();
   memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
   const int64_t stride =
-      x.dims().size() == sparse_dim ? 1 : x.dims().size() - sparse_dim;
+      x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
   const T* in_ptr = x.non_zero_elements().data<T>();
   // TODO(zhangkaihuo): multithreading can be used for acceleration
   for (uint64_t i = 0; i < mask_indexs.size(); i++) {

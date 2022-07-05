@@ -16,6 +16,7 @@ from __future__ import print_function
 
 from collections import Counter
 import unittest
+import paddle
 import paddle.fluid as fluid
 from simple_nets import init_data
 
@@ -27,11 +28,12 @@ def test_trainable():
                               size=10,
                               param_attr=fluid.ParamAttr(trainable=False))
     loss = fluid.layers.cross_entropy(input=feature, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
 class TestTrainable(unittest.TestCase):
+
     def check_trainable(self,
                         model,
                         feed_dict,
@@ -64,18 +66,21 @@ class TestTrainable(unittest.TestCase):
         feed_dict = {'image': img, 'label': label}
         # Note that, because the Weight of FC is not trainable and the x is stop_gradient,
         # so the 'mul_grad' should not be appended.
+        self.check_trainable(test_trainable,
+                             feed_dict,
+                             op_count={
+                                 'adam': 1,
+                                 'scale': 0,
+                                 'mul_grad': 0
+                             })
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adam': 1,
-                      'scale': 0,
-                      'mul_grad': 0})
-        self.check_trainable(
-            test_trainable,
-            feed_dict,
-            op_count={'adamax': 1,
-                      'scale': 1,
-                      'mul_grad': 0},
+            op_count={
+                'adamax': 1,
+                'scale': 1,
+                'mul_grad': 0
+            },
             optimizer=fluid.optimizer.Adamax(learning_rate=0.2))
 
 

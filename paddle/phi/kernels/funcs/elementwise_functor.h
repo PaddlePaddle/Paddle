@@ -18,6 +18,11 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
+#if defined(__xpu__)
+#include <xpu/runtime.h>
+
+#include "xpu/kernel/math_xpu2.h"  //pow()
+#endif
 
 namespace phi {
 namespace funcs {
@@ -540,9 +545,18 @@ struct InverseModuloFunctor<
 };
 
 template <typename T>
+struct ElementwiseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return a == static_cast<T>(0) ? b : static_cast<T>(a > 0);
+  }
+};
+
+template <typename T>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(std::trunc(a / b));
   }
 };
@@ -550,7 +564,9 @@ struct FloorDivideFunctor {
 template <typename T>
 struct InverseFloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(std::trunc(b / a));
   }
 };
@@ -569,6 +585,9 @@ struct ElementwisePowFunctor {
       return std::llrint(
           std::pow(static_cast<double>(a), static_cast<double>(b)));
     }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    return pow(a, b);
 #endif
     return std::pow(a, b);
   }

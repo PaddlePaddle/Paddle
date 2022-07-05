@@ -46,12 +46,15 @@ OP_STYLE = {
 
 VAR_STYLE = {}
 
-GRAPH_STYLE = {"rankdir": "TB", }
+GRAPH_STYLE = {
+    "rankdir": "TB",
+}
 
 GRAPH_ID = 0
 
 
 def unique_id():
+
     def generator():
         GRAPH_ID += 1
         return GRAPH_ID
@@ -112,13 +115,12 @@ def draw_graph(startup_program, main_program, **kwargs):
     filename = kwargs.get("filename")
     if filename == None:
         filename = str(graph_id) + ".gv"
-    g = Graph(
-        name=str(graph_id),
-        filename=filename,
-        graph_attr=GRAPH_STYLE,
-        node_attr=OP_STYLE,
-        edge_attr=VAR_STYLE,
-        **kwargs)
+    g = Graph(name=str(graph_id),
+              filename=filename,
+              graph_attr=GRAPH_STYLE,
+              node_attr=OP_STYLE,
+              edge_attr=VAR_STYLE,
+              **kwargs)
 
     var_dict = {}
     parse_graph(startup_program, g, var_dict)

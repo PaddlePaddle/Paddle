@@ -75,17 +75,17 @@ class PADDLE_API DeviceContext {
   void SetHostAllocator(const Allocator*);
 
   /**
-  * @brief Set the zero-size Allocator object.
-  *
-  * @param allocator
-  */
+   * @brief Set the zero-size Allocator object.
+   *
+   * @param allocator
+   */
   void SetZeroAllocator(const Allocator*);
 
   /**
-  * @brief Set the zero-size Allocator object.
-  *
-  * @param allocator
-  */
+   * @brief Set the zero-size Allocator object.
+   *
+   * @param allocator
+   */
   void SetPinnedAllocator(const Allocator*);
 
   /**
@@ -135,10 +135,10 @@ class PADDLE_API DeviceContext {
   virtual void Wait() const {}
 
   /**
-  * @brief Set the generator for special op.
-  *
-  * @param Generator
-  */
+   * @brief Set the generator for special op.
+   *
+   * @param Generator
+   */
   void SetGenerator(Generator*);
   /**
    * @brief Get the generator object.
@@ -148,10 +148,10 @@ class PADDLE_API DeviceContext {
   Generator* GetGenerator() const;
 
   /**
-  * @brief Set the host generator for special op.
-  *
-  * @param Generator
-  */
+   * @brief Set the host generator for special op.
+   *
+   * @param Generator
+   */
   void SetHostGenerator(Generator*);
   /**
    * @brief Get the host generator object.

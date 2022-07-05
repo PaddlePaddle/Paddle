@@ -21,11 +21,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
@@ -40,8 +39,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using KernelSignature = phi::KernelSignature;
-
 /* Kernel Key translate */
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
@@ -55,9 +52,9 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 class KernelArgsNameMaker {
  public:
   virtual ~KernelArgsNameMaker() {}
-  virtual const paddle::SmallVector<std::string>& GetInputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string>& GetOutputArgsNames() = 0;
-  virtual const paddle::SmallVector<std::string>& GetAttrsArgsNames() = 0;
+  virtual const paddle::small_vector<const char*>& GetInputArgsNames() = 0;
+  virtual const paddle::small_vector<const char*>& GetOutputArgsNames() = 0;
+  virtual const paddle::small_vector<const char*>& GetAttrsArgsNames() = 0;
 };
 
 void InitDefaultKernelSignatureMap();
@@ -69,7 +66,7 @@ struct ConvertToPhiContext {
 };
 
 template <>
-struct ConvertToPhiContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<phi::CPUContext> {
   using TYPE = phi::CPUContext;
 };
 

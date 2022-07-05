@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/shuffle_batch_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
@@ -25,19 +27,24 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Seed"), true,
+        ctx->HasInput("Seed"),
+        true,
         platform::errors::NotFound("Input(Seed) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ShuffleIdx"), true,
+        ctx->HasOutput("ShuffleIdx"),
+        true,
         platform::errors::NotFound("Output(ShuffleIdx) should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SeedOut"), true,
+        ctx->HasOutput("SeedOut"),
+        true,
         platform::errors::NotFound("Output(SeedOut) should not be null."));
 
     ctx->ShareDim("X", "Out");
@@ -55,7 +62,8 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "Seed") {
       return expected_kernel_type;
@@ -97,13 +105,16 @@ class ShuffleBatchOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ShuffleIdx"), true,
+        ctx->HasInput("ShuffleIdx"),
+        true,
         platform::errors::NotFound("Input(ShuffleIdx) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound("Grad Input(Out) should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::NotFound("Grad Output(X) should not be null"));
 
     ctx->ShareDim(framework::GradVarName("Out"), framework::GradVarName("X"));
@@ -138,17 +149,21 @@ class ShuffleBatchGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shuffle_batch, ops::ShuffleBatchOp, ops::ShuffleBatchOpMaker,
+REGISTER_OPERATOR(shuffle_batch,
+                  ops::ShuffleBatchOp,
+                  ops::ShuffleBatchOpMaker,
                   ops::ShuffleBatchGradOpMaker<paddle::framework::OpDesc>,
                   ops::ShuffleBatchGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shuffle_batch_grad, ops::ShuffleBatchOpGrad);
 
-REGISTER_OP_CPU_KERNEL(shuffle_batch, ops::ShuffleBatchKernel<float>,
+REGISTER_OP_CPU_KERNEL(shuffle_batch,
+                       ops::ShuffleBatchKernel<float>,
                        ops::ShuffleBatchKernel<double>,
                        ops::ShuffleBatchKernel<int32_t>,
                        ops::ShuffleBatchKernel<int64_t>);
 
-REGISTER_OP_CPU_KERNEL(shuffle_batch_grad, ops::ShuffleBatchGradKernel<float>,
+REGISTER_OP_CPU_KERNEL(shuffle_batch_grad,
+                       ops::ShuffleBatchGradKernel<float>,
                        ops::ShuffleBatchGradKernel<double>,
                        ops::ShuffleBatchGradKernel<int32_t>,
                        ops::ShuffleBatchGradKernel<int64_t>);

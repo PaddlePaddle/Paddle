@@ -21,6 +21,7 @@ namespace cub = hipcub;
 #endif
 
 #include <paddle/fluid/memory/allocation/allocator.h>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
@@ -46,11 +47,17 @@ static inline int NumBlocks(const int N) {
 }
 
 template <class T>
-__global__ void GPUDistFpnProposalsHelper(
-    const int nthreads, const T* rois, const int lod_size,
-    const int refer_level, const int refer_scale, const int max_level,
-    const int min_level, int* roi_batch_id_data, int* sub_lod_list,
-    int* target_lvls, bool pixel_offset = true) {
+__global__ void GPUDistFpnProposalsHelper(const int nthreads,
+                                          const T* rois,
+                                          const int lod_size,
+                                          const int refer_level,
+                                          const int refer_scale,
+                                          const int max_level,
+                                          const int min_level,
+                                          int* roi_batch_id_data,
+                                          int* sub_lod_list,
+                                          int* target_lvls,
+                                          bool pixel_offset = true) {
   CUDA_KERNEL_LOOP(i, nthreads) {
     const T* offset_roi = rois + i * BBoxSize;
     int roi_batch_ind = roi_batch_id_data[i];
@@ -86,7 +93,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     // check that the fpn_rois is not empty
     if (!ctx.HasInput("RoisNum")) {
       PADDLE_ENFORCE_EQ(
-          fpn_rois->lod().size(), 1UL,
+          fpn_rois->lod().size(),
+          1UL,
           platform::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
                                             "with one level"));
     }
@@ -115,8 +123,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
     // copy batch id list to GPU
     Tensor roi_batch_id_list_gpu;
-    framework::TensorCopySync(roi_batch_id_list, dev_ctx.GetPlace(),
-                              &roi_batch_id_list_gpu);
+    framework::TensorCopySync(
+        roi_batch_id_list, dev_ctx.GetPlace(), &roi_batch_id_list_gpu);
 
     Tensor sub_lod_list;
     sub_lod_list.Resize({num_level, lod_size});
@@ -132,9 +140,17 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
     // get target levels and sub_lod list
     GPUDistFpnProposalsHelper<T><<<dist_blocks, threads, 0, dev_ctx.stream()>>>(
-        roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
-        max_level, min_level, roi_batch_id_list_gpu.data<int>(),
-        sub_lod_list_data, target_lvls_data, pixel_offset);
+        roi_num,
+        fpn_rois->data<T>(),
+        lod_size,
+        refer_level,
+        refer_scale,
+        max_level,
+        min_level,
+        roi_batch_id_list_gpu.data<int>(),
+        sub_lod_list_data,
+        target_lvls_data,
+        pixel_offset);
     auto place = dev_ctx.GetPlace();
 
     Tensor index_in_t;
@@ -149,31 +165,55 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
-    cub::DeviceRadixSort::SortPairs<int, int>(
-        nullptr, temp_storage_bytes, target_lvls_data, keys_out, idx_in,
-        idx_out, roi_num, 0, sizeof(int) * 8, dev_ctx.stream());
+    cub::DeviceRadixSort::SortPairs<int, int>(nullptr,
+                                              temp_storage_bytes,
+                                              target_lvls_data,
+                                              keys_out,
+                                              idx_in,
+                                              idx_out,
+                                              roi_num,
+                                              0,
+                                              sizeof(int) * 8,
+                                              dev_ctx.stream());
     // Allocate temporary storage
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
     // sort target level to get corresponding index
-    cub::DeviceRadixSort::SortPairs<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
-        idx_in, idx_out, roi_num, 0, sizeof(int) * 8, dev_ctx.stream());
+    cub::DeviceRadixSort::SortPairs<int, int>(d_temp_storage->ptr(),
+                                              temp_storage_bytes,
+                                              target_lvls_data,
+                                              keys_out,
+                                              idx_in,
+                                              idx_out,
+                                              roi_num,
+                                              0,
+                                              sizeof(int) * 8,
+                                              dev_ctx.stream());
 
     int* restore_idx_data =
         restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
     // sort current index to get restore index
-    cub::DeviceRadixSort::SortPairs<int, int>(
-        d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
-        restore_idx_data, roi_num, 0, sizeof(int) * 8, dev_ctx.stream());
+    cub::DeviceRadixSort::SortPairs<int, int>(d_temp_storage->ptr(),
+                                              temp_storage_bytes,
+                                              idx_out,
+                                              keys_out,
+                                              idx_in,
+                                              restore_idx_data,
+                                              roi_num,
+                                              0,
+                                              sizeof(int) * 8,
+                                              dev_ctx.stream());
 
     int start = 0;
     auto multi_rois_num = ctx.MultiOutput<Tensor>("MultiLevelRoIsNum");
 
     std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-    memory::Copy(platform::CPUPlace(), sub_lod_list_cpu.data(), place,
-                 sub_lod_list_data, sizeof(int) * lod_size * num_level,
+    memory::Copy(platform::CPUPlace(),
+                 sub_lod_list_cpu.data(),
+                 place,
+                 sub_lod_list_data,
+                 sizeof(int) * lod_size * num_level,
                  dev_ctx.stream());
     dev_ctx.Wait();
 
@@ -193,16 +233,16 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         start = end;
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());
-        phi::funcs::GPUGather<T>(dev_ctx, *fpn_rois, sub_idx,
-                                 multi_fpn_rois[i]);
+        phi::funcs::GPUGather<T>(
+            dev_ctx, *fpn_rois, sub_idx, multi_fpn_rois[i]);
       } else {
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());
       }
       if (multi_rois_num.size() > 0) {
         Tensor* rois_num_t = multi_rois_num[i];
-        paddle::framework::TensorCopySync(sub_lod, dev_ctx.GetPlace(),
-                                          rois_num_t);
+        paddle::framework::TensorCopySync(
+            sub_lod, dev_ctx.GetPlace(), rois_num_t);
         rois_num_t->Resize({lod_size});
       }
       framework::LoD lod;

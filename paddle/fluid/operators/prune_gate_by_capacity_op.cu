@@ -11,6 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// The file has been adapted from the two files:
+//     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cu
+//     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cuh
+//     Git commit hash: 295a615aacce7e54a37e7935274ba15e901c78e4
+// We retain the following license from the original files:
+//     Copyright 2021, Jiaao He. All rights reserved.
+//  Licensed under the Apache License, Version 2.0 (the "License").
 
 #include "paddle/fluid/operators/prune_gate_by_capacity_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -71,9 +79,11 @@ class PruneGateByCapacityFunctor {
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 
-    prune_gate_by_capacity_kernel<T1,
-                                  T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        gate_idx_data, new_gate_idx_data_, expert_count_out_data, batch_size);
+    prune_gate_by_capacity_kernel<T1, T2>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(gate_idx_data,
+                                                   new_gate_idx_data_,
+                                                   expert_count_out_data,
+                                                   batch_size);
   }
 
  private:
@@ -90,7 +100,7 @@ static void VisitDataType(paddle::experimental::DataType type,
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The recieved values gate_id type %s can not meet input requirements. "
+        "The received values gate_id type %s can not meet input requirements. "
         "Because the given gate_id data type of operators must be "
         "int64. Please input appropriate gate_id again! ",
         "framework::DataTypeToString(type)"));

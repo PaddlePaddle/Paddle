@@ -18,7 +18,8 @@ from ..dist_attribute import OperatorDistributedAttribute
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
-    "elementwise_add", "gelu", "dropout", "cast", "gather", "concat"
+    "elementwise", "gelu", "dropout", "cast", "gather", "concat",
+    "fused_softmax_mask_upper_triangle"
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
@@ -26,11 +27,13 @@ BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 def is_elementwise_op(op_type):
     if op_type in _g_elementwise_ops:
         return True
-    else:
-        return False
+    if "elementwise" in op_type:
+        return True
+    return False
 
 
 class DistributedOperatorImplContainer:
+
     def __init__(self, op_type):
         self._type = op_type
         self._impls = []
@@ -80,6 +83,7 @@ class DistributedOperatorImplContainer:
 
 
 class DistributedOperatorImpl(abc.ABC):
+
     def __init__(self, name):
         self._name = name
         self._type = None
@@ -156,7 +160,7 @@ def register_distributed_operator_impl(op_type, dist_impl):
         assert False, "Must register distributed operator registry first."
 
 
-def find_best_compatible_distributed_operator_impl(dist_op, fwd=True):
+def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
     Here just return the first compatible implemention. 
     This will be improved by cost model in the future.
@@ -168,39 +172,55 @@ def find_best_compatible_distributed_operator_impl(dist_op, fwd=True):
     dist_op_default_impl_container = get_distributed_operator_impl_container(
         "default")
     compatible_impls = []
-    if fwd:
-        # First, find impls in the corresponding container
-        if dist_op_impl_container:
-            compatible_impls.extend(
-                dist_op_impl_container.get_input_compatible_impls(dist_op))
-        # Second, find impls in the elementwise container
-        if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
-            compatible_impls.extend(
-                dist_op_eltwise_impl_container.get_input_compatible_impls(
-                    dist_op))
-        # Third, find impls in the default container
-        if dist_op_default_impl_container:
-            compatible_impls.extend(
-                dist_op_default_impl_container.get_input_compatible_impls(
-                    dist_op))
+    if partial:
+        if fwd:
+            # First, find impls in the corresponding container
+            if dist_op_impl_container:
+                compatible_impls.extend(
+                    dist_op_impl_container.get_input_compatible_impls(dist_op))
+            # Second, find impls in the elementwise container
+            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
+                compatible_impls.extend(
+                    dist_op_eltwise_impl_container.get_input_compatible_impls(
+                        dist_op))
+            # Third, find impls in the default container
+            if dist_op_default_impl_container:
+                compatible_impls.extend(
+                    dist_op_default_impl_container.get_input_compatible_impls(
+                        dist_op))
+        else:
+            # First, find impls in the corresponding container
+            if dist_op_impl_container:
+                compatible_impls.extend(
+                    dist_op_impl_container.get_output_compatible_impls(dist_op))
+            # Second, find impls in the elementwise container
+            if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
+                compatible_impls.extend(
+                    dist_op_eltwise_impl_container.get_output_compatible_impls(
+                        dist_op))
+            # Third, find impls in the default container
+            if dist_op_default_impl_container:
+                compatible_impls.extend(
+                    dist_op_default_impl_container.get_output_compatible_impls(
+                        dist_op))
     else:
         # First, find impls in the corresponding container
         if dist_op_impl_container:
             compatible_impls.extend(
-                dist_op_impl_container.get_output_compatible_impls(dist_op))
+                dist_op_impl_container.get_compatible_impls(dist_op))
         # Second, find impls in the elementwise container
         if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
             compatible_impls.extend(
-                dist_op_eltwise_impl_container.get_output_compatible_impls(
-                    dist_op))
+                dist_op_eltwise_impl_container.get_compatible_impls(dist_op))
         # Third, find impls in the default container
         if dist_op_default_impl_container:
             compatible_impls.extend(
-                dist_op_default_impl_container.get_output_compatible_impls(
-                    dist_op))
+                dist_op_default_impl_container.get_compatible_impls(dist_op))
+
     if compatible_impls:
         # For now, just return the first compatible impl
-        best_compatible_impl = compatible_impls[0]
+        # best_compatible_impl = compatible_impls[0]
+        best_compatible_impl = compatible_impls
     else:
         best_compatible_impl = None
     return best_compatible_impl

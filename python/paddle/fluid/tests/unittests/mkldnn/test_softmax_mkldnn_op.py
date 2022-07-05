@@ -30,6 +30,7 @@ def stable_softmax(x):
 
 
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [10, 10]
 
@@ -69,46 +70,53 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place, ["X"],
-                    "Out",
-                    max_relative_error=0.01,
-                    check_dygraph=False)
+                self.check_grad_with_place(place, ["X"],
+                                           "Out",
+                                           max_relative_error=0.01,
+                                           check_dygraph=False)
         else:
-            self.check_grad(
-                ["X"], "Out", max_relative_error=0.01, check_dygraph=False)
+            self.check_grad(["X"],
+                            "Out",
+                            max_relative_error=0.01,
+                            check_dygraph=False)
 
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 # Check if primitives already exist in backward
 class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
+
     def setUp(self):
         super(TestSoftmaxMKLDNNPrimitivesAlreadyExist, self).setUp()
 
@@ -124,8 +132,9 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
         return out * (out_grad - np.dot(out, out_grad))
 
     def test_check(self):
-        check_if_mkldnn_primitives_exist_in_bwd(
-            self, self.op_type, self.x, self.out, self.out_grad, self.x_grad)
+        check_if_mkldnn_primitives_exist_in_bwd(self, self.op_type, self.x,
+                                                self.out, self.out_grad,
+                                                self.x_grad)
 
 
 if __name__ == '__main__':

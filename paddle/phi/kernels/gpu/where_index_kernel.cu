@@ -20,13 +20,12 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/select_impl.cu.h"
-#include "paddle/phi/kernels/where_index_kernel.h"
-
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/select_impl.cu.h"
+#include "paddle/phi/kernels/where_index_kernel.h"
 
 namespace phi {
 template <typename MaskT, typename IndexT, typename OutT>

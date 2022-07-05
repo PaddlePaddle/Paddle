@@ -38,10 +38,11 @@ class TakeAlongAxisOp : public framework::OperatorWithKernel {
         ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -77,10 +78,11 @@ class TakeAlongAxisGradOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -105,9 +107,11 @@ class TakeAlongAxisGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(take_along_axis, TakeAlongAxisInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(take_along_axis,
+                            TakeAlongAxisInferShapeFunctor,
                             PD_INFER_META(phi::TakeAlongAxisInferMeta));
-REGISTER_OPERATOR(take_along_axis, ops::TakeAlongAxisOp,
+REGISTER_OPERATOR(take_along_axis,
+                  ops::TakeAlongAxisOp,
                   ops::TakeAlongAxisOpMaker,
                   ops::TakeAlongAxisGradOpMaker<paddle::framework::OpDesc>,
                   ops::TakeAlongAxisGradOpMaker<paddle::imperative::OpBase>,

@@ -97,18 +97,21 @@ def fused_elemwise_activation(x,
     helper = LayerHelper('fused_elemwise_activation', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     intermediate_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='fused_elemwise_activation',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out,
-                 'IntermediateOut': intermediate_out},
-        attrs={
-            'axis': axis,
-            'scale': scale,
-            'save_intermediate_out': save_intermediate_out,
-            'functor_list': functor_list
-        })
+    helper.append_op(type='fused_elemwise_activation',
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={
+                         'Out': out,
+                         'IntermediateOut': intermediate_out
+                     },
+                     attrs={
+                         'axis': axis,
+                         'scale': scale,
+                         'save_intermediate_out': save_intermediate_out,
+                         'functor_list': functor_list
+                     })
     return out
 
 
@@ -202,30 +205,32 @@ def var_conv_2d(input,
     filter_param = helper.create_parameter(
         attr=helper.param_attr,
         shape=filter_shape,
-        dtype=dtype, )
+        dtype=dtype,
+    )
 
     conv_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True)
+    tmp_res = helper.create_variable_for_type_inference(dtype,
+                                                        stop_gradient=True)
 
-    helper.append_op(
-        type='var_conv_2d',
-        inputs={
-            'X': input,
-            'ROW': row,
-            'COLUMN': col,
-            'W': filter_param,
-        },
-        outputs={"Out": conv_res,
-                 "Col": tmp_res},
-        attrs={
-            'InputChannel': input_channel,
-            'OutputChannel': output_channel,
-            'StrideH': stride[0],
-            'StrideW': stride[1],
-            'KernelH': filter_size[0],
-            'KernelW': filter_size[1],
-        })
+    helper.append_op(type='var_conv_2d',
+                     inputs={
+                         'X': input,
+                         'ROW': row,
+                         'COLUMN': col,
+                         'W': filter_param,
+                     },
+                     outputs={
+                         "Out": conv_res,
+                         "Col": tmp_res
+                     },
+                     attrs={
+                         'InputChannel': input_channel,
+                         'OutputChannel': output_channel,
+                         'StrideH': stride[0],
+                         'StrideW': stride[1],
+                         'KernelH': filter_size[0],
+                         'KernelW': filter_size[1],
+                     })
 
     return helper.append_activation(conv_res)
 
@@ -294,25 +299,28 @@ def match_matrix_tensor(x,
 
     x_shape = list(x.shape)
     y_shape = list(y.shape)
-    assert len(x_shape) == 2 and len(y_shape) == 2 and x_shape[-1] == y_shape[
-        -1]
+    assert len(x_shape) == 2 and len(
+        y_shape) == 2 and x_shape[-1] == y_shape[-1]
 
     weight_shape = [x_shape[-1], channel_num, y_shape[-1]]
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=weight_shape, dtype=dtype, is_bias=False)
+    w = helper.create_parameter(attr=helper.param_attr,
+                                shape=weight_shape,
+                                dtype=dtype,
+                                is_bias=False)
     mm_res = helper.create_variable_for_type_inference(dtype)
-    tmp_res = helper.create_variable_for_type_inference(
-        dtype, stop_gradient=True)
-    helper.append_op(
-        type='match_matrix_tensor',
-        inputs={
-            'X': x,
-            'Y': y,
-            'W': w,
-        },
-        outputs={"Out": mm_res,
-                 "Tmp": tmp_res},
-        attrs={'dim_t': channel_num})
+    tmp_res = helper.create_variable_for_type_inference(dtype,
+                                                        stop_gradient=True)
+    helper.append_op(type='match_matrix_tensor',
+                     inputs={
+                         'X': x,
+                         'Y': y,
+                         'W': w,
+                     },
+                     outputs={
+                         "Out": mm_res,
+                         "Tmp": tmp_res
+                     },
+                     attrs={'dim_t': channel_num})
 
     return helper.append_activation(mm_res), tmp_res
 
@@ -370,17 +378,22 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
     """
     helper = LayerHelper('sequence_topk_avg_pooling', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    pos = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype(), stop_gradient=True)
-    helper.append_op(
-        type='sequence_topk_avg_pooling',
-        inputs={'X': input,
-                'ROW': row,
-                'COLUMN': col},
-        outputs={'Out': out,
-                 'pos': pos},
-        attrs={'topks': topks,
-               'channel_num': channel_num})
+    pos = helper.create_variable_for_type_inference(dtype=helper.input_dtype(),
+                                                    stop_gradient=True)
+    helper.append_op(type='sequence_topk_avg_pooling',
+                     inputs={
+                         'X': input,
+                         'ROW': row,
+                         'COLUMN': col
+                     },
+                     outputs={
+                         'Out': out,
+                         'pos': pos
+                     },
+                     attrs={
+                         'topks': topks,
+                         'channel_num': channel_num
+                     })
 
     return out
 
@@ -439,16 +452,21 @@ edge_set(${edge_set_type}) : $ { edge_set_comment }
     dtype = helper.input_dtype('nodes_vector')
     feature_size = nodes_vector.shape[2]
     W_shape = [feature_size, 3, output_size, num_filters]
-    W = helper.create_parameter(
-        attr=param_attr, shape=W_shape, dtype=dtype, is_bias=False)
+    W = helper.create_parameter(attr=param_attr,
+                                shape=W_shape,
+                                dtype=dtype,
+                                is_bias=False)
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='tree_conv',
-        inputs={'NodesVector': nodes_vector,
-                'EdgeSet': edge_set,
-                'Filter': W},
-        outputs={'Out': out, },
-        attrs={'max_depth': max_depth})
+    helper.append_op(type='tree_conv',
+                     inputs={
+                         'NodesVector': nodes_vector,
+                         'EdgeSet': edge_set,
+                         'Filter': W
+                     },
+                     outputs={
+                         'Out': out,
+                     },
+                     attrs={'max_depth': max_depth})
     if helper.bias_attr:
         pre_activation = helper.append_bias_op(out)
     else:
@@ -505,21 +523,24 @@ def fused_embedding_seq_pool(input,
                 is_sparse=False)
     """
     helper = LayerHelper('fused_embedding_seq_pool', **locals())
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
+    w = helper.create_parameter(attr=helper.param_attr,
+                                shape=size,
+                                dtype=dtype,
+                                is_bias=False)
     out = helper.create_variable_for_type_inference(dtype)
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
-    helper.append_op(
-        type='fused_embedding_seq_pool',
-        inputs={'Ids': input,
-                'W': w},
-        outputs={'Out': out},
-        attrs={
-            'is_sparse': is_sparse,
-            'combiner': combiner,
-            'padding_idx': padding_idx
-        })
+    helper.append_op(type='fused_embedding_seq_pool',
+                     inputs={
+                         'Ids': input,
+                         'W': w
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'is_sparse': is_sparse,
+                         'combiner': combiner,
+                         'padding_idx': padding_idx
+                     })
     return out
 
 
@@ -589,17 +610,18 @@ def fused_seqpool_cvm(input,
         for i in range(len(inputs))
     ]
 
-    helper.append_op(
-        type="fused_seqpool_cvm",
-        inputs={"X": inputs,
-                "CVM": cvm},
-        outputs={"Out": outs},
-        attrs={
-            "pooltype": pool_type.upper(),
-            "pad_value": pad_value,
-            "use_cvm": use_cvm,
-            "cvm_offset": cvm_offset,
-        })
+    helper.append_op(type="fused_seqpool_cvm",
+                     inputs={
+                         "X": inputs,
+                         "CVM": cvm
+                     },
+                     outputs={"Out": outs},
+                     attrs={
+                         "pooltype": pool_type.upper(),
+                         "pad_value": pad_value,
+                         "use_cvm": use_cvm,
+                         "cvm_offset": cvm_offset,
+                     })
 
     return outs
 
@@ -710,21 +732,24 @@ def multiclass_nms2(bboxes,
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     index = helper.create_variable_for_type_inference(dtype='int')
-    helper.append_op(
-        type="multiclass_nms2",
-        inputs={'BBoxes': bboxes,
-                'Scores': scores},
-        attrs={
-            'background_label': background_label,
-            'score_threshold': score_threshold,
-            'nms_top_k': nms_top_k,
-            'nms_threshold': nms_threshold,
-            'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
-            'normalized': normalized
-        },
-        outputs={'Out': output,
-                 'Index': index})
+    helper.append_op(type="multiclass_nms2",
+                     inputs={
+                         'BBoxes': bboxes,
+                         'Scores': scores
+                     },
+                     attrs={
+                         'background_label': background_label,
+                         'score_threshold': score_threshold,
+                         'nms_top_k': nms_top_k,
+                         'nms_threshold': nms_threshold,
+                         'keep_top_k': keep_top_k,
+                         'nms_eta': nms_eta,
+                         'normalized': normalized
+                     },
+                     outputs={
+                         'Out': output,
+                         'Index': index
+                     })
     output.stop_gradient = True
     index.stop_gradient = True
 
@@ -787,22 +812,28 @@ def search_pyramid_hash(input,
     helper = LayerHelper('search_pyramid_hash', **locals())
 
     w_shape = [space_len + rand_len, 1]
-    w = helper.create_parameter(
-        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    w = helper.create_parameter(attr=param_attr,
+                                shape=w_shape,
+                                dtype=dtype,
+                                is_bias=False)
     w.stop_gradient = True
 
     input_vars = {'X': input, 'W': w}
     if white_list_len > 0:
         wl_shape = [white_list_len, 1]
-        white_list = helper.create_parameter(
-            attr=param_attr_wl, shape=wl_shape, dtype=dtype, is_bias=False)
+        white_list = helper.create_parameter(attr=param_attr_wl,
+                                             shape=wl_shape,
+                                             dtype=dtype,
+                                             is_bias=False)
         white_list.stop_gradient = True
         input_vars['WhiteList'] = white_list
 
     if black_list_len >= 0:
         bl_shape = [black_list_len, 1]
-        black_list = helper.create_parameter(
-            attr=param_attr_bl, shape=bl_shape, dtype=dtype, is_bias=False)
+        black_list = helper.create_parameter(attr=param_attr_bl,
+                                             shape=bl_shape,
+                                             dtype=dtype,
+                                             is_bias=False)
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
@@ -825,26 +856,27 @@ def search_pyramid_hash(input,
     res = helper.create_variable_for_type_inference(dtype)
     drop_pos = helper.create_variable_for_type_inference(dtype)
     x_temp_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pyramid_hash',
-        inputs=input_vars,
-        outputs={"Out": res,
-                 "X_Temp_Out": x_temp_out,
-                 'DropPos': drop_pos},
-        attrs={
-            'num_emb': num_emb,
-            'space_len': space_len,
-            'pyramid_layer': pyramid_layer,
-            'rand_len': rand_len,
-            'drop_out_percent': drop_out_percent,
-            'is_training': is_training,
-            'use_filter': use_filter,
-            'white_list_len': white_list_len,
-            'black_list_len': black_list_len,
-            'seed': seed,
-            'lr': lr,
-            'distribute_update_vars': distribute_update_vars_str
-        })
+    helper.append_op(type='pyramid_hash',
+                     inputs=input_vars,
+                     outputs={
+                         "Out": res,
+                         "X_Temp_Out": x_temp_out,
+                         'DropPos': drop_pos
+                     },
+                     attrs={
+                         'num_emb': num_emb,
+                         'space_len': space_len,
+                         'pyramid_layer': pyramid_layer,
+                         'rand_len': rand_len,
+                         'drop_out_percent': drop_out_percent,
+                         'is_training': is_training,
+                         'use_filter': use_filter,
+                         'white_list_len': white_list_len,
+                         'black_list_len': black_list_len,
+                         'seed': seed,
+                         'lr': lr,
+                         'distribute_update_vars': distribute_update_vars_str
+                     })
 
     return res
 
@@ -902,14 +934,17 @@ def shuffle_batch(x, seed=None):
             name=unique_name.generate("shuffle_batch_seed"),
             dtype="int64",
             persistable=True)
-    helper.append_op(
-        type='shuffle_batch',
-        inputs={'X': x,
-                'Seed': seed},
-        outputs={'Out': out,
-                 'ShuffleIdx': shuffle_idx,
-                 'SeedOut': seed},
-        attrs=op_attrs)
+    helper.append_op(type='shuffle_batch',
+                     inputs={
+                         'X': x,
+                         'Seed': seed
+                     },
+                     outputs={
+                         'Out': out,
+                         'ShuffleIdx': shuffle_idx,
+                         'SeedOut': seed
+                     },
+                     attrs=op_attrs)
     return out
 
 
@@ -968,11 +1003,10 @@ def partial_concat(input, start_index=0, length=-1):
     attrs = {'start_index': start_index, 'length': length}
     helper = LayerHelper('partial_concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='partial_concat',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs)
+    helper.append_op(type='partial_concat',
+                     inputs=inputs,
+                     outputs={'Out': [out]},
+                     attrs=attrs)
     return out
 
 
@@ -1025,8 +1059,10 @@ def partial_sum(input, start_index=0, length=-1):
     attrs['length'] = length
     helper = LayerHelper('partial_sum', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+    helper.append_op(type='partial_sum',
+                     inputs=inputs,
+                     outputs={'Out': [out]},
+                     attrs=attrs)
     return out
 
 
@@ -1155,12 +1191,11 @@ def sparse_embedding(input,
     check_dtype(dtype, 'dtype', ['float32', 'float64'],
                 'paddle.static.nn.sparse_embedding')
 
-    w = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=size,
-        type=core.VarDesc.VarType.SELECTED_ROWS,
-        dtype=dtype,
-        is_bias=False)
+    w = helper.create_parameter(attr=helper.param_attr,
+                                shape=size,
+                                type=core.VarDesc.VarType.SELECTED_ROWS,
+                                dtype=dtype,
+                                is_bias=False)
 
     tmp = helper.create_variable_for_type_inference(dtype)
 
@@ -1185,20 +1220,21 @@ def sparse_embedding(input,
             )
         entry_str = entry._to_attr()
 
-    helper.append_op(
-        type='lookup_table',
-        inputs={'Ids': input,
-                'W': w},
-        outputs={'Out': tmp},
-        attrs={
-            'padding_idx': padding_idx,
-            'is_sparse': True,
-            'is_distributed': True,
-            'remote_prefetch': True,
-            'is_test': is_test,
-            'entry': entry_str,
-            'table_class': table_class
-        })
+    helper.append_op(type='lookup_table',
+                     inputs={
+                         'Ids': input,
+                         'W': w
+                     },
+                     outputs={'Out': tmp},
+                     attrs={
+                         'padding_idx': padding_idx,
+                         'is_sparse': True,
+                         'is_distributed': True,
+                         'remote_prefetch': True,
+                         'is_test': is_test,
+                         'entry': entry_str,
+                         'table_class': table_class
+                     })
 
     return tmp
 
@@ -1266,25 +1302,29 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     check_dtype(dtype, 'dtype', ['int32', 'int64'],
                 'fluid.contrib.layers.tdm_child')
     c_dtype = convert_np_dtype_to_dtype_(dtype)
-    tree_info = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[node_nums, 3 + child_nums],
-        dtype=dtype,
-        default_initializer=Constant(0))
+    tree_info = helper.create_parameter(attr=helper.param_attr,
+                                        shape=[node_nums, 3 + child_nums],
+                                        dtype=dtype,
+                                        default_initializer=Constant(0))
     tree_info.stop_gradient = True
 
     child = helper.create_variable_for_type_inference(dtype=dtype)
     leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper.append_op(
-        type='tdm_child',
-        inputs={'X': x,
-                'TreeInfo': tree_info},
-        outputs={'Child': child,
-                 'LeafMask': leaf_mask},
-        attrs={'child_nums': child_nums,
-               'dtype': c_dtype},
-        stop_gradient=True)
+    helper.append_op(type='tdm_child',
+                     inputs={
+                         'X': x,
+                         'TreeInfo': tree_info
+                     },
+                     outputs={
+                         'Child': child,
+                         'LeafMask': leaf_mask
+                     },
+                     attrs={
+                         'child_nums': child_nums,
+                         'dtype': c_dtype
+                     },
+                     stop_gradient=True)
     return (child, leaf_mask)
 
 
@@ -1411,23 +1451,21 @@ def tdm_sampler(x,
                 "The number of negative samples must be less than the number of nodes "
                 "in the layer {}, But received negative nums {}, and num of node at layer {} "
                 "is {}, please check your input.".format(
-                    layer_idx, neg_samples_num_list[
-                        layer_idx], layer_idx, layer_node_num_list[layer_idx]))
+                    layer_idx, neg_samples_num_list[layer_idx], layer_idx,
+                    layer_node_num_list[layer_idx]))
     assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
 
     travel_shape = [leaf_node_num, layer_nums]
-    travel = helper.create_parameter(
-        attr=tree_travel_attr,
-        shape=travel_shape,
-        dtype=tree_dtype,
-        default_initializer=Constant(0))
+    travel = helper.create_parameter(attr=tree_travel_attr,
+                                     shape=travel_shape,
+                                     dtype=tree_dtype,
+                                     default_initializer=Constant(0))
 
     layer_shape = [node_nums, 1]
-    layer = helper.create_parameter(
-        attr=tree_layer_attr,
-        shape=layer_shape,
-        dtype=tree_dtype,
-        default_initializer=Constant(0))
+    layer = helper.create_parameter(attr=tree_layer_attr,
+                                    shape=layer_shape,
+                                    dtype=tree_dtype,
+                                    default_initializer=Constant(0))
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     out.stop_gradient = True
@@ -1438,21 +1476,24 @@ def tdm_sampler(x,
     mask = helper.create_variable_for_type_inference(dtype=dtype)
     mask.stop_gradient = True
 
-    helper.append_op(
-        type='tdm_sampler',
-        inputs={"X": x,
-                "Travel": travel,
-                "Layer": layer},
-        outputs={'Out': out,
-                 'Labels': labels,
-                 'Mask': mask},
-        attrs={
-            'neg_samples_num_list': neg_samples_num_list,
-            'output_positive': output_positive,
-            'layer_offset_lod': tree_layer_offset_lod,
-            'seed': seed,
-            'dtype': c_dtype
-        })
+    helper.append_op(type='tdm_sampler',
+                     inputs={
+                         "X": x,
+                         "Travel": travel,
+                         "Layer": layer
+                     },
+                     outputs={
+                         'Out': out,
+                         'Labels': labels,
+                         'Mask': mask
+                     },
+                     attrs={
+                         'neg_samples_num_list': neg_samples_num_list,
+                         'output_positive': output_positive,
+                         'layer_offset_lod': tree_layer_offset_lod,
+                         'seed': seed,
+                         'dtype': c_dtype
+                     })
 
     if output_list:
         output_list = []
@@ -1466,12 +1507,18 @@ def tdm_sampler(x,
         for layer_sample_num in neg_samples_num_list:
             end_offset = start_offset + \
                 layer_sample_num + positive_flag
-            layer_samples = slice(
-                out, axes=[1], starts=[start_offset], ends=[end_offset])
-            layer_labels = slice(
-                labels, axes=[1], starts=[start_offset], ends=[end_offset])
-            layer_mask = slice(
-                mask, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_samples = slice(out,
+                                  axes=[1],
+                                  starts=[start_offset],
+                                  ends=[end_offset])
+            layer_labels = slice(labels,
+                                 axes=[1],
+                                 starts=[start_offset],
+                                 ends=[end_offset])
+            layer_mask = slice(mask,
+                               axes=[1],
+                               starts=[start_offset],
+                               ends=[end_offset])
 
             layer_samples = reshape(layer_samples,
                                     [-1, layer_sample_num + positive_flag, 1])
@@ -1540,28 +1587,32 @@ def rank_attention(input,
     input_shape = input.shape
     assert input_shape[1] * max_rank * max_rank == rank_param_shape[0]
 
-    rank_param = helper.create_parameter(
-        attr=rank_param_attr, shape=rank_param_shape, dtype=dtype)
+    rank_param = helper.create_parameter(attr=rank_param_attr,
+                                         shape=rank_param_shape,
+                                         dtype=dtype)
     rank_param.stop_gradient = False
 
     output = helper.create_variable_for_type_inference(dtype)
-    input_help = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    ins_rank = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
+    input_help = helper.create_variable_for_type_inference(dtype=dtype,
+                                                           stop_gradient=True)
+    ins_rank = helper.create_variable_for_type_inference(dtype=dtype,
+                                                         stop_gradient=True)
 
-    helper.append_op(
-        type="rank_attention",
-        inputs={
-            "X": input,
-            "RankOffset": rank_offset,
-            "RankParam": rank_param
-        },
-        outputs={"Out": output,
-                 "InputHelp": input_help,
-                 "InsRank": ins_rank},
-        attrs={"MaxRank": max_rank,
-               "MaxSize": max_size})
+    helper.append_op(type="rank_attention",
+                     inputs={
+                         "X": input,
+                         "RankOffset": rank_offset,
+                         "RankParam": rank_param
+                     },
+                     outputs={
+                         "Out": output,
+                         "InputHelp": input_help,
+                         "InsRank": ins_rank
+                     },
+                     attrs={
+                         "MaxRank": max_rank,
+                         "MaxSize": max_size
+                     })
     return output
 
 
@@ -1614,17 +1665,22 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     dtype = helper.input_dtype()
     check_dtype(dtype, 'input', ['float32', 'float64'], 'batch_fc')
 
-    w = helper.create_parameter(
-        attr=param_attr, shape=param_size, dtype=dtype, is_bias=False)
-    b = helper.create_parameter(
-        attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=False)
+    w = helper.create_parameter(attr=param_attr,
+                                shape=param_size,
+                                dtype=dtype,
+                                is_bias=False)
+    b = helper.create_parameter(attr=bias_attr,
+                                shape=bias_size,
+                                dtype=dtype,
+                                is_bias=False)
     pre_act = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="batch_fc",
-        inputs={"Input": input,
-                "W": w,
-                "Bias": b},
-        outputs={"Out": pre_act})
+    helper.append_op(type="batch_fc",
+                     inputs={
+                         "Input": input,
+                         "W": w,
+                         "Bias": b
+                     },
+                     outputs={"Out": pre_act})
     return helper.append_activation(pre_act)
 
 
@@ -1663,13 +1719,16 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
         helper.create_variable_for_type_inference(dtype)
         for i in range(len(inputs))
     ]
-    helper.append_op(
-        type='pull_box_extended_sparse',
-        inputs={'Ids': inputs},
-        outputs={'Out': outs,
-                 'OutExtend': outs_extend},
-        attrs={'emb_size': size,
-               'emb_extended_size': extend_size})
+    helper.append_op(type='pull_box_extended_sparse',
+                     inputs={'Ids': inputs},
+                     outputs={
+                         'Out': outs,
+                         'OutExtend': outs_extend
+                     },
+                     attrs={
+                         'emb_size': size,
+                         'emb_extended_size': extend_size
+                     })
     if len(outs) == 1:
         return outs[0], outs_extend[0]
     return outs, outs_extend
@@ -1730,11 +1789,10 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     helper = LayerHelper("bilateral_slice", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-    helper.append_op(
-        type='bilateral_slice',
-        inputs=inputs,
-        attrs={'has_offset': has_offset},
-        outputs={'Out': out})
+    helper.append_op(type='bilateral_slice',
+                     inputs=inputs,
+                     attrs={'has_offset': has_offset},
+                     outputs={'Out': out})
     return out
 
 
@@ -1800,19 +1858,20 @@ def correlation(x,
     else:
         helper = LayerHelper("correlation", **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type="correlation",
-            inputs={"Input1": x,
-                    "Input2": y},
-            attrs={
-                "pad_size": pad_size,
-                "kernel_size": kernel_size,
-                "max_displacement": max_displacement,
-                "stride1": stride1,
-                "stride2": stride2,
-                "corr_type_multiply": corr_type_multiply
-            },
-            outputs={"Output": output})
+        helper.append_op(type="correlation",
+                         inputs={
+                             "Input1": x,
+                             "Input2": y
+                         },
+                         attrs={
+                             "pad_size": pad_size,
+                             "kernel_size": kernel_size,
+                             "max_displacement": max_displacement,
+                             "stride1": stride1,
+                             "stride2": stride2,
+                             "corr_type_multiply": corr_type_multiply
+                         },
+                         outputs={"Output": output})
     return output
 
 
@@ -1939,29 +1998,25 @@ def fused_bn_add_act(x,
     param_shape = [channel_num]
 
     # create parameter
-    scale = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=param_shape,
-        dtype=bn_param_dtype,
-        default_initializer=Constant(1.0))
-    bias = helper.create_parameter(
-        attr=helper.bias_attr,
-        shape=param_shape,
-        dtype=bn_param_dtype,
-        is_bias=True)
-    mean = helper.create_parameter(
-        attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False),
-        shape=param_shape,
-        dtype=bn_param_dtype)
+    scale = helper.create_parameter(attr=helper.param_attr,
+                                    shape=param_shape,
+                                    dtype=bn_param_dtype,
+                                    default_initializer=Constant(1.0))
+    bias = helper.create_parameter(attr=helper.bias_attr,
+                                   shape=param_shape,
+                                   dtype=bn_param_dtype,
+                                   is_bias=True)
+    mean = helper.create_parameter(attr=ParamAttr(name=moving_mean_name,
+                                                  initializer=Constant(0.0),
+                                                  trainable=False),
+                                   shape=param_shape,
+                                   dtype=bn_param_dtype)
     mean.stop_gradient = True
-    variance = helper.create_parameter(
-        attr=ParamAttr(
-            name=moving_variance_name,
-            initializer=Constant(1.0),
-            trainable=False),
-        shape=param_shape,
-        dtype=bn_param_dtype)
+    variance = helper.create_parameter(attr=ParamAttr(name=moving_variance_name,
+                                                      initializer=Constant(1.0),
+                                                      trainable=False),
+                                       shape=param_shape,
+                                       dtype=bn_param_dtype)
     variance.stop_gradient = True
 
     # create output
@@ -1969,8 +2024,8 @@ def fused_bn_add_act(x,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(dtype=bn_param_dtype,
+                                                           stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     reserve_space = helper.create_variable_for_type_inference(
@@ -1995,11 +2050,10 @@ def fused_bn_add_act(x,
         "ReserveSpace": reserve_space
     }
 
-    helper.append_op(
-        type="fused_bn_add_activation",
-        inputs=inputs,
-        outputs=outputs,
-        attrs=attrs)
+    helper.append_op(type="fused_bn_add_activation",
+                     inputs=inputs,
+                     outputs=outputs,
+                     attrs=attrs)
 
     return batch_norm_out
 
@@ -2019,21 +2073,25 @@ def pow2_decay_with_linear_warmup(warmup_steps,
     helper.set_variable_initializer(
         lr, Constant(value=float(base_lr) / warmup_steps))
 
-    step = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1])
+    step = helper.create_global_variable(persistable=True,
+                                         dtype='int64',
+                                         shape=[1])
     helper.set_variable_initializer(step, Constant(value=0))
     assert warmup_steps <= total_steps, "warmup_steps cannot be larger than total_steps"
 
-    helper.append_op(
-        type="pow2_decay_with_linear_warmup",
-        inputs={"LearningRate": lr,
-                "Step": step},
-        outputs={"LearningRateOut": lr,
-                 "StepOut": step},
-        attrs={
-            "warmup_steps": warmup_steps,
-            "total_steps": total_steps,
-            "base_lr": base_lr,
-            "end_lr": end_lr,
-        })
+    helper.append_op(type="pow2_decay_with_linear_warmup",
+                     inputs={
+                         "LearningRate": lr,
+                         "Step": step
+                     },
+                     outputs={
+                         "LearningRateOut": lr,
+                         "StepOut": step
+                     },
+                     attrs={
+                         "warmup_steps": warmup_steps,
+                         "total_steps": total_steps,
+                         "base_lr": base_lr,
+                         "end_lr": end_lr,
+                     })
     return lr

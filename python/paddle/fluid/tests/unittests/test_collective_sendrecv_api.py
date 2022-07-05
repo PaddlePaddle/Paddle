@@ -23,6 +23,7 @@ paddle.enable_static()
 
 
 class TestCollectiveSendRecvAPI(TestDistBase):
+
     def _setup_config(self):
         pass
 
@@ -33,11 +34,10 @@ class TestCollectiveSendRecvAPI(TestDistBase):
 
     def test_sendrecv_nccl_dygraph(self):
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "collective_sendrecv_api_dygraph.py",
-                "sendrecv",
-                "nccl",
-                static_mode='0')
+            self.check_with_place("collective_sendrecv_api_dygraph.py",
+                                  "sendrecv",
+                                  "nccl",
+                                  static_mode='0')
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import random
+
 SEED = 2020
 
 
@@ -88,9 +89,8 @@ def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
 
         # ensure at least mask one word in a sentence
         while not mask_flag:
-            token_index = int(
-                self_random.randint(
-                    1, high=len(sent) - 1, size=1))
+            token_index = int(self_random.randint(1, high=len(sent) - 1,
+                                                  size=1))
             if sent[token_index] != SEP and sent[token_index] != CLS:
                 mask_label.append(sent[token_index])
                 sent[token_index] = MASK
@@ -132,8 +132,8 @@ def pad_batch_data(insts,
 
     if return_input_mask:
         # This is used to avoid attention on paddings.
-        input_mask_data = np.array([[1] * len(inst) + [0] *
-                                    (max_len - len(inst)) for inst in insts])
+        input_mask_data = np.array(
+            [[1] * len(inst) + [0] * (max_len - len(inst)) for inst in insts])
         input_mask_data = np.expand_dims(input_mask_data, axis=-1)
         return_list += [input_mask_data.astype("float32")]
 
@@ -177,28 +177,26 @@ def prepare_batch_data(insts,
 
     # First step: do mask without padding
     if mask_id >= 0:
-        out, mask_label, mask_pos = mask(
-            batch_src_ids,
-            total_token_num,
-            vocab_size=voc_size,
-            CLS=cls_id,
-            SEP=sep_id,
-            MASK=mask_id)
+        out, mask_label, mask_pos = mask(batch_src_ids,
+                                         total_token_num,
+                                         vocab_size=voc_size,
+                                         CLS=cls_id,
+                                         SEP=sep_id,
+                                         MASK=mask_id)
     else:
         out = batch_src_ids
     # Second step: padding
-    src_id, self_input_mask = pad_batch_data(
-        out, pad_idx=pad_id, return_input_mask=True)
-    pos_id = pad_batch_data(
-        batch_pos_ids,
-        pad_idx=pad_id,
-        return_pos=False,
-        return_input_mask=False)
-    sent_id = pad_batch_data(
-        batch_sent_ids,
-        pad_idx=pad_id,
-        return_pos=False,
-        return_input_mask=False)
+    src_id, self_input_mask = pad_batch_data(out,
+                                             pad_idx=pad_id,
+                                             return_input_mask=True)
+    pos_id = pad_batch_data(batch_pos_ids,
+                            pad_idx=pad_id,
+                            return_pos=False,
+                            return_input_mask=False)
+    sent_id = pad_batch_data(batch_sent_ids,
+                             pad_idx=pad_id,
+                             return_pos=False,
+                             return_input_mask=False)
 
     if mask_id >= 0:
         return_list = [
@@ -212,6 +210,7 @@ def prepare_batch_data(insts,
 
 
 class DataReader(object):
+
     def __init__(self,
                  batch_size=4096,
                  in_tokens=True,
@@ -268,7 +267,9 @@ class DataReader(object):
             yield token_ids, sent_ids, pos_ids, label
 
     def data_generator(self):
+
         def wrapper():
+
             def reader():
                 for epoch in range(self.epoch):
                     self.current_epoch = epoch + 1
@@ -292,25 +293,25 @@ class DataReader(object):
                         total_token_num += len(token_ids)
                     else:
                         yield batch, total_token_num
-                        batch, total_token_num, max_len = [parsed_line], len(
-                            token_ids), len(token_ids)
+                        batch, total_token_num, max_len = [
+                            parsed_line
+                        ], len(token_ids), len(token_ids)
 
                 if len(batch) > 0:
                     yield batch, total_token_num
 
             for batch_data, total_token_num in batch_reader(
                     reader, self.batch_size, self.in_tokens):
-                yield prepare_batch_data(
-                    batch_data,
-                    total_token_num,
-                    voc_size=self.voc_size,
-                    pad_id=self.pad_id,
-                    cls_id=self.cls_id,
-                    sep_id=self.sep_id,
-                    mask_id=self.mask_id,
-                    return_input_mask=True,
-                    return_max_len=False,
-                    return_num_token=False)
+                yield prepare_batch_data(batch_data,
+                                         total_token_num,
+                                         voc_size=self.voc_size,
+                                         pad_id=self.pad_id,
+                                         cls_id=self.cls_id,
+                                         sep_id=self.sep_id,
+                                         mask_id=self.mask_id,
+                                         return_input_mask=True,
+                                         return_max_len=False,
+                                         return_num_token=False)
 
         return wrapper
 
@@ -325,12 +326,11 @@ class ModelHyperParams(object):
 
 def get_feed_data_reader(bert_config):
     args = ModelHyperParams()
-    data_reader = DataReader(
-        batch_size=args.batch_size,
-        in_tokens=args.in_tokens,
-        voc_size=bert_config['vocab_size'],
-        epoch=args.epoch,
-        max_seq_len=args.max_seq_len,
-        generate_neg_sample=args.generate_neg_sample)
+    data_reader = DataReader(batch_size=args.batch_size,
+                             in_tokens=args.in_tokens,
+                             voc_size=bert_config['vocab_size'],
+                             epoch=args.epoch,
+                             max_seq_len=args.max_seq_len,
+                             generate_neg_sample=args.generate_neg_sample)
 
     return data_reader

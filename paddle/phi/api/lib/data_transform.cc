@@ -12,15 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/lib/data_transform.h"
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
-#include "paddle/fluid/framework/data_device_transform.h"
+#include "paddle/fluid/framework/tensor_util.h"
+// clang-format on
 
 namespace paddle {
 namespace experimental {
@@ -36,11 +40,17 @@ inline bool NeedTransformDataType(const DataType& input,
 inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
-  bool ret =
-      input.GetType() == AllocationType::GPUPINNED ||
-      (transform_flag.need_trans_backend() && target != Backend::ALL_BACKEND &&
-       phi::TransToPhiBackend(input) !=
-           (target != Backend::GPUDNN ? target : Backend::GPU));
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as api.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = input.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(input) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
 
@@ -133,9 +143,8 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;
 
-  phi::DenseTensor out(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(tensor.place()),
-      {dtype, tensor.dims(), tensor.layout()});
+  DefaultAllocator alloc(tensor.place());
+  phi::DenseTensor out(&alloc, {dtype, tensor.dims(), tensor.layout()});
 
   if (platform::is_cpu_place(tensor.place())) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
@@ -152,26 +161,62 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   return out;
 }
 
-phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
+inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
+                                       Place dst_place) {
+  VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
+          << " dst_place: " << dst_place;
+
+  DefaultAllocator alloc(dst_place);
+  phi::DenseTensor out(&alloc,
+                       {tensor.dtype(), tensor.dims(), tensor.layout()});
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  // NOTE(yy): TransDataPlace should wait for computation of input.
+  if (!platform::is_cuda_pinned_place(tensor.place())) {
+    pool.Get(tensor.place())->Wait();
+    pool.Get(dst_place)->Wait();
+  }
+#endif
+
+  // FIXME(zcd): TransDataPlace is used to transform data from GPU to CPU and
+  // the enforced checkings have been done in GetDeviceContext, so the
+  // `dev_ctx->Wait()` is necessary. But `dev_ctx->Wait()` will make the program
+  // slow, especially when the number of elements is little, for example,
+  // the elements of learning rate are one and it's CPU side.
+  // One solution is to use a CUDA kernel to complete the copy operation when
+  // the transforming is from CPU to GPU and the number of elements is little.
+  // But the embarrassment is that this solution this solution makes training
+  // slower.
+  paddle::framework::TensorCopySync(tensor, dst_place, &out);
+  return out;
+}
+
+phi::DenseTensor TransformData(phi::DenseTensor* tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag) {
-  phi::DenseTensor out = tensor;
+  phi::DenseTensor out = *tensor;
+  bool trans_layout = false;
+  bool trans_dtype = false;
   if (NeedTransformLayout(
-          tensor.layout(), target_args_def.layout, transform_flag)) {
+          tensor->layout(), target_args_def.layout, transform_flag)) {
     out = TransDataLayout(out, target_args_def.layout);
+    trans_layout = true;
   }
 
   if (NeedTransformDataType(
-          tensor.dtype(), target_args_def.dtype, transform_flag)) {
+          tensor->dtype(), target_args_def.dtype, transform_flag)) {
     out = TransDataType(out, target_args_def.dtype);
+    trans_dtype = true;
   }
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
-    phi::DenseTensor result;
-    framework::TransDataDevice(
-        out, phi::TransToPhiPlace(target_args_def.backend), &result);
-    out = result;
+    out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
+    if (!trans_layout && !trans_dtype &&
+        tensor->place().GetType() == AllocationType::GPUPINNED) {
+      tensor->ShareBufferWith(out);
+    }
   }
   return out;
 }
@@ -194,31 +239,20 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out =
-        TransformData(dense_tensor, target_args_def, transform_flag);
+        TransformData(&dense_tensor, target_args_def, transform_flag);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
 }
 
-std::shared_ptr<phi::DenseTensor> PrepareData(
+paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return PrepareData(*input, target_args_def, transform_flag);
+    return {*PrepareData(*input, target_args_def, transform_flag)};
   }
-  return {nullptr};
-}
-
-std::shared_ptr<phi::DenseTensor> PrepareData(
-    const paddle::optional<const Tensor&> input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
-  if (input.get_ptr() != nullptr) {
-    return PrepareData(*(input.get_ptr()), target_args_def, transform_flag);
-  }
-
-  return {nullptr};
+  return paddle::none;
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
@@ -241,13 +275,13 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
       pt_tensors->emplace_back(
-          TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
+          TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
                         target_args_def,
                         transform_flag));
     }
   }
 
-  return std::move(pt_tensors);
+  return pt_tensors;
 }
 
 }  // namespace experimental

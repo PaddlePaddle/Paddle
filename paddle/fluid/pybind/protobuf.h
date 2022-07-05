@@ -13,12 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
 #include <Python.h>
 
 #include <fstream>
 #include <vector>
 
-#include "paddle/fluid/platform/variant.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
 #include "paddle/fluid/operators/load_op.h"
+
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -67,10 +67,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
-    load, ops::LoadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::bfloat16>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    load,
+    ops::LoadOpKernel<phi::CPUContext, float>,
+    ops::LoadOpKernel<phi::CPUContext, double>,
+    ops::LoadOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadOpKernel<phi::CPUContext, int>,
+    ops::LoadOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadOpKernel<phi::CPUContext, int64_t>);

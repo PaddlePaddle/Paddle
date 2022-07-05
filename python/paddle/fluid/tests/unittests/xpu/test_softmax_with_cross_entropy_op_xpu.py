@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 
 from test_softmax_op import stable_softmax
@@ -47,6 +48,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
 
 
 class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'softmax_with_cross_entropy'
         self.use_dynamic_create_class = True
@@ -106,8 +108,10 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             else:
                 axis_dim = self.shape[self.axis]
                 self.shape[self.axis] = 1
-                labels = np.random.randint(
-                    0, axis_dim, self.shape, dtype="int64")
+                labels = np.random.randint(0,
+                                           axis_dim,
+                                           self.shape,
+                                           dtype="int64")
 
             loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
                                  self.ignore_index)
@@ -136,8 +140,9 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 paddle.enable_static()
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(
-                    place, ["Logits"], "Loss", max_relative_error=0.2)
+                self.check_grad_with_place(place, ["Logits"],
+                                           "Loss",
+                                           max_relative_error=0.2)
 
 
 support_types = get_xpu_op_support_types('softmax_with_cross_entropy')

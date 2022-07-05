@@ -18,7 +18,10 @@ from __future__ import print_function
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
+import os
 from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
@@ -44,7 +47,19 @@ __all__ = ['DygraphToStaticAst']
 DECORATOR_NAMES = ['declarative', 'to_static', 'dygraph_to_static_func']
 
 
-class DygraphToStaticAst(gast.NodeTransformer):
+def apply_optimization(transformers):
+    """
+    Judge wheter to apply optimized transformation, such as BreakTransformOptimizer.
+    And not all optimized transformations are applied by default. It's controlled by
+    'export FLAGS_optim_transformation=1'
+    """
+    flag = str(
+        os.environ.get('FLAGS_optim_transformation')) in ['1', 'True', 'true']
+    if flag:
+        transformers.insert(3, BreakTransformOptimizer)
+
+
+class DygraphToStaticAst(BaseTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
@@ -74,10 +89,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.visit(node_wrapper.node)
 
         transformers = [
+            EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
             ListTransformer,  # List used in control flow
-            BreakTransformOptimizer,  # optimize transfromation of break in loops
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
@@ -89,6 +104,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
             CastTransformer,  # type casting statement
             GradTransformer,  # transform paddle.grad to paddle.gradients
         ]
+
+        apply_optimization(transformers)
 
         for index, transformer in enumerate(transformers):
             self._apply(transformer, node_wrapper, log_level=index + 1)

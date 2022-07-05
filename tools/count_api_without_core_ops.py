@@ -24,9 +24,11 @@ import functools
 import platform
 from paddle import _C_ops
 
-__all__ = ['get_apis_with_and_without_core_ops', ]
+__all__ = [
+    'get_apis_with_and_without_core_ops',
+]
 
-# APIs that should not be printed into API.spec 
+# APIs that should not be printed into API.spec
 omitted_list = [
     "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
     "paddle.fluid.io.ComposeNotAligned",
@@ -41,10 +43,9 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
-        print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc),
-            file=sys.stderr)
+        print("Error({}) occurred when `md5({})`, discard it.".format(
+            str(e), doc),
+              file=sys.stderr)
     return md5sum
 
 
@@ -99,8 +100,8 @@ def visit_member(parent_name, member, func):
     if inspect.isclass(member):
         func(member, cur_name)
         for name, value in inspect.getmembers(member):
-            if hasattr(value, '__name__') and (not name.startswith("_") or
-                                               name == "__init__"):
+            if hasattr(value, '__name__') and (not name.startswith("_")
+                                               or name == "__init__"):
                 visit_member(cur_name, value, func)
     elif inspect.ismethoddescriptor(member):
         return
@@ -109,8 +110,9 @@ def visit_member(parent_name, member, func):
     elif inspect.isgetsetdescriptor(member):
         return
     else:
-        raise RuntimeError("Unsupported generate signature of member, type {0}".
-                           format(str(type(member))))
+        raise RuntimeError(
+            "Unsupported generate signature of member, type {0}".format(
+                str(type(member))))
 
 
 def is_primitive(instance):
@@ -175,8 +177,8 @@ def get_apis_with_and_without_core_ops(modules):
     api_with_ops = []
     api_without_ops = []
     for m in modules:
-        visit_all_module(
-            importlib.import_module(m), split_with_and_without_core_ops)
+        visit_all_module(importlib.import_module(m),
+                         split_with_and_without_core_ops)
     return api_with_ops, api_without_ops
 
 

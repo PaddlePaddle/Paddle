@@ -67,20 +67,20 @@ Seed Operator.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    seed, ops::SeedOp, ops::SeedOpMaker,
+    seed,
+    ops::SeedOp,
+    ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    seed, ops::CPUSeedKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(seed, ops::CPUSeedKernel<phi::CPUContext, int>);
 
 /* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(seed)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(seed).AddCheckpoint(
+    R"ROC(
              Upgrade seed add a new attribute [force_cpu])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "force_cpu",
-            "If true, Force fill output variable to cpu."
-            "memory. Otherwise, fill output variable to the running "
-            "device",
-            false));
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "force_cpu",
+        "If true, Force fill output variable to cpu."
+        "memory. Otherwise, fill output variable to the running "
+        "device",
+        false));

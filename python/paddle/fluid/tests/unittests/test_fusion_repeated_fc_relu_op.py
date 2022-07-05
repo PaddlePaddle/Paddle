@@ -21,6 +21,7 @@ from test_fc_op import fc_refer, MatrixGenerate
 
 
 class TestFusionRepeatedFCReluOp(OpTest):
+
     def setUp(self):
         self.bs = 3
         self.ic = 9
@@ -38,20 +39,21 @@ class TestFusionRepeatedFCReluOp(OpTest):
         i = 0
         matrix = MatrixGenerate(self.bs, ics[i], self.oc[i], 1, 1)
         inp = np.reshape(matrix.input, [self.bs, ics[i]])
-        weights.append(('W_{0}'.format(i), np.reshape(matrix.weights,
-                                                      [ics[i], self.oc[i]])))
+        weights.append(
+            ('W_{0}'.format(i), np.reshape(matrix.weights,
+                                           [ics[i], self.oc[i]])))
         biases.append(('B_{0}'.format(i), matrix.bias))
         outs.append(
-            np.reshape(
-                np.maximum(fc_refer(matrix, True), 0), [self.bs, self.oc[i]]))
+            np.reshape(np.maximum(fc_refer(matrix, True), 0),
+                       [self.bs, self.oc[i]]))
 
         for i in range(sz - 1):
             matrix = MatrixGenerate(self.bs, ics[i + 1], self.oc[i + 1], 1, 1)
             matrix.input = np.reshape(outs[i], [self.bs, ics[i + 1], 1, 1])
             out = fc_refer(matrix, True)
-            weights.append(
-                ('W_{0}'.format(i + 1),
-                 np.reshape(matrix.weights, [ics[i + 1], self.oc[i + 1]])))
+            weights.append(('W_{0}'.format(i + 1),
+                            np.reshape(matrix.weights,
+                                       [ics[i + 1], self.oc[i + 1]])))
             biases.append(('B_{0}'.format(i + 1), matrix.bias))
             outs.append(
                 np.reshape(np.maximum(out, 0), [self.bs, self.oc[i + 1]]))
@@ -76,6 +78,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
 
 
 class TestFusionRepeatedFCReluOpBS1(TestFusionRepeatedFCReluOp):
+
     def set_conf(self):
         self.bs = 1
         self.oc = [4, 2, 7, 5, 512, 1024]

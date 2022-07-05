@@ -13,23 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/compatible.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace py = pybind11;
 
-using paddle::framework::compatible::OpAttrVariantT;
-using paddle::framework::compatible::OpUpdateInfo;
 using paddle::framework::compatible::OpAttrInfo;
-using paddle::framework::compatible::OpInputOutputInfo;
+using paddle::framework::compatible::OpAttrVariantT;
 using paddle::framework::compatible::OpBugfixInfo;
-using paddle::framework::compatible::OpUpdateType;
-using paddle::framework::compatible::OpUpdateBase;
-using paddle::framework::compatible::OpVersionDesc;
 using paddle::framework::compatible::OpCheckpoint;
+using paddle::framework::compatible::OpInputOutputInfo;
+using paddle::framework::compatible::OpUpdateBase;
+using paddle::framework::compatible::OpUpdateInfo;
+using paddle::framework::compatible::OpUpdateType;
 using paddle::framework::compatible::OpVersion;
+using paddle::framework::compatible::OpVersionDesc;
 
 namespace paddle {
 namespace pybind {
@@ -52,7 +54,8 @@ void BindOpUpdateInfo(py::module *m) {
 
 void BindOpAttrInfo(py::module *m) {
   py::class_<OpAttrInfo, OpUpdateInfo>(*m, "OpAttrInfo")
-      .def(py::init<const std::string &, const std::string &,
+      .def(py::init<const std::string &,
+                    const std::string &,
                     const OpAttrVariantT &>())
       .def(py::init<const OpAttrInfo &>())
       .def("name", &OpAttrInfo::name)
@@ -116,18 +119,22 @@ void BindOpVersionDesc(py::module *m) {
 void BindOpCheckpoint(py::module *m) {
   py::class_<OpCheckpoint>(*m, "OpCheckpoint")
       .def("note", &OpCheckpoint::note, py::return_value_policy::reference)
-      .def("version_desc", &OpCheckpoint::version_desc,
+      .def("version_desc",
+           &OpCheckpoint::version_desc,
            py::return_value_policy::reference);
 }
 
 void BindOpVersion(py::module *m) {
   py::class_<OpVersion>(*m, "OpVersion")
-      .def("version_id", &OpVersion::version_id,
+      .def("version_id",
+           &OpVersion::version_id,
            py::return_value_policy::reference)
-      .def("checkpoints", &OpVersion::checkpoints,
+      .def("checkpoints",
+           &OpVersion::checkpoints,
            py::return_value_policy::reference);
   // At least pybind v2.3.0 is required because of bug #1603 of pybind11.
-  m->def("get_op_version_map", &framework::compatible::get_op_version_map,
+  m->def("get_op_version_map",
+         &framework::compatible::get_op_version_map,
          py::return_value_policy::reference);
 }
 

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 
 import unittest
@@ -248,7 +249,7 @@ class TestRMSPropV2(XPUOpTest):
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             print(avg_cost.shape)
             linear = paddle.nn.Linear(13, 5)

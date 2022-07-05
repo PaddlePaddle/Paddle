@@ -17,6 +17,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/lstsq_op.h"
 #include "paddle/fluid/operators/qr_op.h"
@@ -83,13 +84,30 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
       auto y_data = tmp_y.mutable_data<T>(context.GetPlace());
 
       // step 1, compute QR factorization using geqrf
-      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,
-                                     tau_data, x_stride, tau_stride);
+      BatchedGeqrf<DeviceContext, T>(dev_ctx,
+                                     batch_count,
+                                     m,
+                                     n,
+                                     x_data,
+                                     m,
+                                     tau_data,
+                                     x_stride,
+                                     tau_stride);
 
       // Step 2, Y <- Q^H Y
-      BatchedOrmqr<DeviceContext, T>(dev_ctx, true, true, batch_count, m, n, k,
-                                     x_data, x_stride, tau_data, tau_stride,
-                                     y_data, y_stride);
+      BatchedOrmqr<DeviceContext, T>(dev_ctx,
+                                     true,
+                                     true,
+                                     batch_count,
+                                     m,
+                                     n,
+                                     k,
+                                     x_data,
+                                     x_stride,
+                                     tau_data,
+                                     tau_stride,
+                                     y_data,
+                                     y_stride);
 
       Tensor trans_r = dito.Transpose(tmp_x);
       Tensor slice_r = dito.Slice(trans_r, {-2}, {0}, {min_mn});
@@ -99,25 +117,40 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
       Tensor slice_y = dito.Slice(trans_y, {-2}, {0}, {min_mn});
 
       // Step 3, solve R X = Y
-      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, res_r, slice_y, true,
-                                             false, false, solution);
+      phi::TriangularSolveKernel<T, Context>(
+          phi_dev_ctx, res_r, slice_y, true, false, false, solution);
 
     } else {
       auto x_data = new_x.mutable_data<T>(context.GetPlace());
       auto y_data = new_y.mutable_data<T>(context.GetPlace());
 
       // step 1, compute QR factorization using geqrf
-      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, n, m, x_data, n,
-                                     tau_data, x_stride, tau_stride);
+      BatchedGeqrf<DeviceContext, T>(dev_ctx,
+                                     batch_count,
+                                     n,
+                                     m,
+                                     x_data,
+                                     n,
+                                     tau_data,
+                                     x_stride,
+                                     tau_stride);
 
       // Step 2, solve R^H Z = Y
       Tensor trans_r = dito.Transpose(new_x);
-      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, trans_r, new_y, true,
-                                             true, false, solution);
+      phi::TriangularSolveKernel<T, Context>(
+          phi_dev_ctx, trans_r, new_y, true, true, false, solution);
 
       // Step 3, X <- Q Z
-      BatchedOrgqr<DeviceContext, T>(dev_ctx, batch_count, n, n, min_mn, x_data,
-                                     n, tau_data, x_stride, tau_stride);
+      BatchedOrgqr<DeviceContext, T>(dev_ctx,
+                                     batch_count,
+                                     n,
+                                     n,
+                                     min_mn,
+                                     x_data,
+                                     n,
+                                     tau_data,
+                                     x_stride,
+                                     tau_stride);
       Tensor trans_q = dito.Transpose(new_x);
       Tensor slice_q = dito.Slice(trans_q, {-1}, {0}, {m});
       Tensor solu_tensor = dito.Matmul(slice_q, *solution, false, false);
@@ -128,9 +161,19 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
 
 template <>
 void BatchedOrmqr<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& dev_ctx, bool left, bool transpose,
-    int batch_size, int m, int n, int k, float* a, int a_stride, float* tau,
-    int tau_stride, float* other, int other_stride) {
+    const platform::CUDADeviceContext& dev_ctx,
+    bool left,
+    bool transpose,
+    int batch_size,
+    int m,
+    int n,
+    int k,
+    float* a,
+    int a_stride,
+    float* tau,
+    int tau_stride,
+    float* other,
+    int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -150,16 +193,33 @@ void BatchedOrmqr<platform::CUDADeviceContext, float>(
     float* tau_working_ptr = &tau[i * tau_stride];
     float* other_working_ptr = &other[i * other_stride];
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSormqr(
-        handle, side, trans, m, n, k, a_working_ptr, lda, tau_working_ptr,
-        other_working_ptr, ldc, workspace_ptr, lwork, info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnSormqr(handle,
+                                            side,
+                                            trans,
+                                            m,
+                                            n,
+                                            k,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            other_working_ptr,
+                                            ldc,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
 
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
-                 sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
-        info_h, 0,
+        info_h,
+        0,
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
@@ -167,9 +227,19 @@ void BatchedOrmqr<platform::CUDADeviceContext, float>(
 
 template <>
 void BatchedOrmqr<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& dev_ctx, bool left, bool transpose,
-    int batch_size, int m, int n, int k, double* a, int a_stride, double* tau,
-    int tau_stride, double* other, int other_stride) {
+    const platform::CUDADeviceContext& dev_ctx,
+    bool left,
+    bool transpose,
+    int batch_size,
+    int m,
+    int n,
+    int k,
+    double* a,
+    int a_stride,
+    double* tau,
+    int tau_stride,
+    double* other,
+    int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -189,16 +259,33 @@ void BatchedOrmqr<platform::CUDADeviceContext, double>(
     double* tau_working_ptr = &tau[i * tau_stride];
     double* other_working_ptr = &other[i * other_stride];
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDormqr(
-        handle, side, trans, m, n, k, a_working_ptr, lda, tau_working_ptr,
-        other_working_ptr, ldc, workspace_ptr, lwork, info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnDormqr(handle,
+                                            side,
+                                            trans,
+                                            m,
+                                            n,
+                                            k,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            other_working_ptr,
+                                            ldc,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
 
     // check the error info
     int info_h;
-    memory::Copy(platform::CPUPlace(), &info_h, dev_ctx.GetPlace(), info_d,
-                 sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
-        info_h, 0,
+        info_h,
+        0,
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
@@ -210,7 +297,8 @@ void BatchedOrmqr<platform::CUDADeviceContext, double>(
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    lstsq, ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    lstsq,
+    ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, double>);
 
 #endif  // not PADDLE_WITH_HIP

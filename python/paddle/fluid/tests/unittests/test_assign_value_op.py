@@ -24,6 +24,7 @@ import paddle.fluid.layers as layers
 
 
 class TestAssignValueOp(op_test.OpTest):
+
     def setUp(self):
         self.op_type = "assign_value"
         self.inputs = {}
@@ -43,31 +44,35 @@ class TestAssignValueOp(op_test.OpTest):
 
 
 class TestAssignValueOp2(TestAssignValueOp):
+
     def init_data(self):
         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
         self.attrs["int32_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp3(TestAssignValueOp):
+
     def init_data(self):
         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp4(TestAssignValueOp):
+
     def init_data(self):
-        self.value = numpy.random.choice(
-            a=[False, True], size=(2, 5)).astype(numpy.bool)
+        self.value = numpy.random.choice(a=[False, True],
+                                         size=(2, 5)).astype(numpy.bool)
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
+
     def setUp(self):
         self.init_dtype()
-        self.value = (
-            -100 + 200 * numpy.random.random(size=(2, 5))).astype(self.dtype)
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.value = (-100 + 200 * numpy.random.random(size=(2, 5))).astype(
+            self.dtype)
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
     def init_dtype(self):
         self.dtype = "float32"
@@ -80,29 +85,31 @@ class TestAssignApi(unittest.TestCase):
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-        self.assertTrue(
-            numpy.array_equal(fetched_x, self.value),
-            "fetch_x=%s val=%s" % (fetched_x, self.value))
+        self.assertTrue(numpy.array_equal(fetched_x, self.value),
+                        "fetch_x=%s val=%s" % (fetched_x, self.value))
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
 class TestAssignApi2(TestAssignApi):
+
     def init_dtype(self):
         self.dtype = "int32"
 
 
 class TestAssignApi3(TestAssignApi):
+
     def init_dtype(self):
         self.dtype = "int64"
 
 
 class TestAssignApi4(TestAssignApi):
+
     def setUp(self):
         self.init_dtype()
-        self.value = numpy.random.choice(
-            a=[False, True], size=(2, 5)).astype(numpy.bool)
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        self.value = numpy.random.choice(a=[False, True],
+                                         size=(2, 5)).astype(numpy.bool)
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 
     def init_dtype(self):
         self.dtype = "bool"

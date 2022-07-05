@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -28,7 +29,8 @@ namespace tensorrt {
 class MultiClassNMSOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid multiclassNMS op to tensorrt plugin";
 
     // for now, only work for static shape and regular tensor
@@ -72,14 +74,20 @@ class MultiClassNMSOpConverter : public OpConverter {
 
     const std::vector<nvinfer1::PluginField> fields{
         {"shareLocation", &shareLocation, nvinfer1::PluginFieldType::kINT32, 1},
-        {"backgroundLabelId", &background_label,
-         nvinfer1::PluginFieldType::kINT32, 1},
+        {"backgroundLabelId",
+         &background_label,
+         nvinfer1::PluginFieldType::kINT32,
+         1},
         {"numClasses", &num_classes, nvinfer1::PluginFieldType::kINT32, 1},
         {"topK", &nms_top_k, nvinfer1::PluginFieldType::kINT32, 1},
         {"keepTopK", &keep_top_k, nvinfer1::PluginFieldType::kINT32, 1},
-        {"scoreThreshold", &score_threshold,
-         nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"iouThreshold", &nms_threshold, nvinfer1::PluginFieldType::kFLOAT32,
+        {"scoreThreshold",
+         &score_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
+         1},
+        {"iouThreshold",
+         &nms_threshold,
+         nvinfer1::PluginFieldType::kFLOAT32,
          1},
         {"isNormalized", &normalized, nvinfer1::PluginFieldType::kINT32, 1},
         {"clipBoxes", &clip_boxes, nvinfer1::PluginFieldType::kINT32, 1},
@@ -121,8 +129,8 @@ class MultiClassNMSOpConverter : public OpConverter {
         engine_, Concatenation, concat_inputs.data(), concat_inputs.size());
     nms_concat_layer->setAxis(1);
 
-    RreplenishLayerAndOutput(nms_concat_layer, "multiclass_nms", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        nms_concat_layer, "multiclass_nms", {output_name}, test_mode);
   }
 };
 

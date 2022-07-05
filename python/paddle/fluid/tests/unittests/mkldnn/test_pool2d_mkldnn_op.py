@@ -20,7 +20,9 @@ from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1
 
 
 def create_test_mkldnn_use_ceil_class(parent):
+
     class TestMKLDNNPool2DUseCeilCase(parent):
+
         def init_kernel_type(self):
             self.use_mkldnn = True
 
@@ -41,7 +43,9 @@ create_test_mkldnn_use_ceil_class(TestCase2)
 
 
 def create_test_mkldnn_class(parent):
+
     class TestMKLDNNCase(parent):
+
         def init_kernel_type(self):
             self.use_mkldnn = True
 
@@ -62,6 +66,7 @@ create_test_mkldnn_class(TestCase5)
 
 
 class TestAvgPoolAdaptive(TestPool2D_Op):
+
     def init_adaptive(self):
         self.adaptive = True
 
@@ -84,6 +89,7 @@ class TestAvgPoolAdaptive(TestPool2D_Op):
 
 
 class TestAvgPoolAdaptive2(TestAvgPoolAdaptive):
+
     def init_test_case(self):
         self.ksize = [2, 3]
         self.strides = [1, 1]
@@ -93,6 +99,7 @@ class TestAvgPoolAdaptive2(TestAvgPoolAdaptive):
 
 
 class TestAvgPoolAdaptive3(TestAvgPoolAdaptive):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -102,6 +109,7 @@ class TestAvgPoolAdaptive3(TestAvgPoolAdaptive):
 
 
 class TestAsymPad(TestPool2D_Op):
+
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -127,68 +135,81 @@ class TestAsymPad(TestPool2D_Op):
 
 
 class TestAsymPadCase1(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [1, 1, 0, 0]
 
 
 class TestAsymPadCase2(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [1, 0, 1, 2]
 
 
 class TestAsymPadCase3(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [1, 2, 1, 2]
 
 
 class TestAsymPadCase4(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [1, 0, 1, 2]
 
 
 class TestAsymPadCase5(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [2, 2, 1, 2]
 
 
 class TestAsymPadMaxCase1(TestAsymPadCase1):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestAsymPadMaxCase2(TestAsymPadCase2):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestAsymPadMaxCase3(TestAsymPadCase3):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestAsymPadMaxCase4(TestAsymPadCase4):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestAsymPadMaxCase5(TestAsymPadCase5):
+
     def init_pool_type(self):
         self.pool_type = "max"
 
 
 class TestAsymPadSame(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestAsymPadValid(TestAsymPad):
+
     def init_paddings(self):
         self.paddings = [0, 0, 0, 0]
         self.padding_algorithm = "VALID"
 
 
 class TestAsymPadValidNHWC(TestAsymPadValid):
+
     def init_data_format(self):
         self.data_format = "NHWC"
 

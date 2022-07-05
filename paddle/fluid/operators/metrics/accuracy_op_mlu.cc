@@ -40,7 +40,8 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     Tensor label_int32(framework::TransToPhiDataType(VT::INT32));
     auto indices_type = framework::TransToProtoVarType(indices->type());
     if (indices_type != VT::INT32) {
-      PADDLE_ENFORCE_EQ(MLUSupportsCast(indices_type, VT::INT32), true,
+      PADDLE_ENFORCE_EQ(MLUSupportsCast(indices_type, VT::INT32),
+                        true,
                         platform::errors::Unimplemented(
                             "In accuracy mlu kernel, cast indices from [%s] to "
                             "[%s] is not supported.",
@@ -51,15 +52,20 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc org_indices_desc(*indices);
       MLUCnnlTensorDesc indices_int32_desc(indices_int32);
       cnnlCastDataType_t cast_type = GetCastDataType(indices_type, VT::INT32);
-      MLUCnnl::Cast(ctx, cast_type, org_indices_desc.get(), GetBasePtr(indices),
-                    indices_int32_desc.get(), GetBasePtr(&indices_int32));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    org_indices_desc.get(),
+                    GetBasePtr(indices),
+                    indices_int32_desc.get(),
+                    GetBasePtr(&indices_int32));
     } else {
       indices_int32.ShareDataWith(*indices);
     }
     auto label_type = framework::TransToProtoVarType(label->type());
     if (label_type != VT::INT32) {
       PADDLE_ENFORCE_EQ(
-          MLUSupportsCast(label_type, VT::INT32), true,
+          MLUSupportsCast(label_type, VT::INT32),
+          true,
           platform::errors::Unimplemented(
               "In accuracy mlu kernel, cast label from [%s] to [%s] "
               "is not supported.",
@@ -70,8 +76,12 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc org_label_desc(*label);
       MLUCnnlTensorDesc label_int32_desc(label_int32);
       cnnlCastDataType_t cast_type = GetCastDataType(label_type, VT::INT32);
-      MLUCnnl::Cast(ctx, cast_type, org_label_desc.get(), GetBasePtr(label),
-                    label_int32_desc.get(), GetBasePtr(&label_int32));
+      MLUCnnl::Cast(ctx,
+                    cast_type,
+                    org_label_desc.get(),
+                    GetBasePtr(label),
+                    label_int32_desc.get(),
+                    GetBasePtr(&label_int32));
     } else {
       label_int32.ShareDataWith(*label);
     }
@@ -83,9 +93,13 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     equal_tensor.Resize(indices->dims());
     equal_tensor.mutable_data<bool>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_tensor_desc(equal_tensor);
-    MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_EQ, indices_int32_desc.get(),
-                   GetBasePtr(&indices_int32), label_int32_desc.get(),
-                   GetBasePtr(&label_int32), equal_tensor_desc.get(),
+    MLUCnnl::Logic(ctx,
+                   CNNL_LOGIC_OP_EQ,
+                   indices_int32_desc.get(),
+                   GetBasePtr(&indices_int32),
+                   label_int32_desc.get(),
+                   GetBasePtr(&label_int32),
+                   equal_tensor_desc.get(),
                    GetBasePtr(&equal_tensor));
 
     // cast equal
@@ -94,8 +108,11 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     equal_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_fp32_desc(equal_fp32);
     cnnlCastDataType_t equal_cast_type = GetCastDataType(VT::BOOL, VT::FP32);
-    MLUCnnl::Cast(ctx, equal_cast_type, equal_tensor_desc.get(),
-                  GetBasePtr(&equal_tensor), equal_fp32_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  equal_cast_type,
+                  equal_tensor_desc.get(),
+                  GetBasePtr(&equal_tensor),
+                  equal_fp32_desc.get(),
                   GetBasePtr(&equal_fp32));
 
     // [correct]
@@ -104,54 +121,89 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     correct_max.Resize(phi::make_ddim({num_samples}));
     correct_max.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_max_desc(correct_max);
-    MLUCnnlReduceDesc reduce_max_desc(
-        {1}, CNNL_REDUCE_MAX, ToCnnlDataType<float>(), CNNL_NOT_PROPAGATE_NAN,
-        CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-    MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduce_max_desc.get(),
-                    nullptr, equal_fp32_desc.get(), GetBasePtr(&equal_fp32),
-                    0 /*indices_size*/, nullptr, nullptr,
-                    correct_max_desc.get(), GetBasePtr(&correct_max));
+    MLUCnnlReduceDesc reduce_max_desc({1},
+                                      CNNL_REDUCE_MAX,
+                                      ToCnnlDataType<float>(),
+                                      CNNL_NOT_PROPAGATE_NAN,
+                                      CNNL_REDUCE_NO_INDICES,
+                                      CNNL_32BIT_INDICES);
+    MLUCnnl::Reduce(ctx,
+                    true /*need_workspace*/,
+                    reduce_max_desc.get(),
+                    nullptr,
+                    equal_fp32_desc.get(),
+                    GetBasePtr(&equal_fp32),
+                    0 /*indices_size*/,
+                    nullptr,
+                    nullptr,
+                    correct_max_desc.get(),
+                    GetBasePtr(&correct_max));
 
     // reduce_sum
     Tensor correct_sum(framework::TransToPhiDataType(VT::FP32));
     correct_sum.Resize(correct->dims());
     correct_sum.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_sum_desc(correct_sum);
-    MLUCnnlReduceDesc reduce_sum_desc(
-        {0}, CNNL_REDUCE_ADD, ToCnnlDataType<float>(), CNNL_NOT_PROPAGATE_NAN,
-        CNNL_REDUCE_NO_INDICES, CNNL_32BIT_INDICES);
-    MLUCnnl::Reduce(ctx, true /*need_workspace*/, reduce_sum_desc.get(),
-                    nullptr, correct_max_desc.get(), GetBasePtr(&correct_max),
-                    0 /*indices_size*/, nullptr, nullptr,
-                    correct_sum_desc.get(), GetBasePtr(&correct_sum));
+    MLUCnnlReduceDesc reduce_sum_desc({0},
+                                      CNNL_REDUCE_ADD,
+                                      ToCnnlDataType<float>(),
+                                      CNNL_NOT_PROPAGATE_NAN,
+                                      CNNL_REDUCE_NO_INDICES,
+                                      CNNL_32BIT_INDICES);
+    MLUCnnl::Reduce(ctx,
+                    true /*need_workspace*/,
+                    reduce_sum_desc.get(),
+                    nullptr,
+                    correct_max_desc.get(),
+                    GetBasePtr(&correct_max),
+                    0 /*indices_size*/,
+                    nullptr,
+                    nullptr,
+                    correct_sum_desc.get(),
+                    GetBasePtr(&correct_sum));
 
     // cast to int
     correct->mutable_data<int>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_desc(*correct);
     cnnlCastDataType_t correct_cast_type = GetCastDataType(VT::FP32, VT::INT32);
-    MLUCnnl::Cast(ctx, correct_cast_type, correct_sum_desc.get(),
-                  GetBasePtr(&correct_sum), correct_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  correct_cast_type,
+                  correct_sum_desc.get(),
+                  GetBasePtr(&correct_sum),
+                  correct_desc.get(),
                   GetBasePtr(correct));
 
     // [total]
     total->mutable_data<int>(ctx.GetPlace());
     MLUCnnlTensorDesc total_desc(*total);
-    MLUCnnl::Fill(ctx, num_samples, total_desc.get(), GetBasePtr(total));
+    MLUCnnl::Fill(ctx,
+                  CNNL_POINTER_MODE_HOST,
+                  &num_samples,
+                  total_desc.get(),
+                  GetBasePtr(total));
 
     // use `total` of type `float32` for calculating accuracy
     Tensor total_fp32(framework::TransToPhiDataType(VT::FP32));
     total_fp32.Resize(total->dims());
     total_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc total_fp32_desc(total_fp32);
-    MLUCnnl::Fill(ctx, static_cast<float>(num_samples), total_fp32_desc.get(),
+    float num_samples_fp32 = static_cast<float>(num_samples);
+    MLUCnnl::Fill(ctx,
+                  CNNL_POINTER_MODE_HOST,
+                  &num_samples_fp32,
+                  total_fp32_desc.get(),
                   GetBasePtr(&total_fp32));
 
     // [accuracy]
     accuracy->mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc accuracy_desc(*accuracy);
-    MLUCnnl::Div(ctx, CNNL_COMPUTATION_HIGH_PRECISION, correct_sum_desc.get(),
-                 GetBasePtr(&correct_sum), total_fp32_desc.get(),
-                 GetBasePtr(&total_fp32), accuracy_desc.get(),
+    MLUCnnl::Div(ctx,
+                 CNNL_COMPUTATION_HIGH_PRECISION,
+                 correct_sum_desc.get(),
+                 GetBasePtr(&correct_sum),
+                 total_fp32_desc.get(),
+                 GetBasePtr(&total_fp32),
+                 accuracy_desc.get(),
                  GetBasePtr(accuracy));
   }
 };
@@ -161,7 +213,8 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(accuracy, ops::AccuracyMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(accuracy,
+                       ops::AccuracyMLUKernel<float>,
                        ops::AccuracyMLUKernel<paddle::platform::float16>,
                        ops::AccuracyMLUKernel<int16_t>,
                        ops::AccuracyMLUKernel<int64_t>,

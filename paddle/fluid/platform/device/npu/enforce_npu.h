@@ -17,10 +17,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND_CL
 #include <string>
 
-#include "paddle/fluid/platform/enforce.h"
-
 #include "acl/acl.h"
 #include "hccl/hccl_types.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {

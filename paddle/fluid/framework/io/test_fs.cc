@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <fstream>
+
 #include "paddle/fluid/framework/io/fs.h"
 
 #if defined _WIN32 || defined __APPLE__

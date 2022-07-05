@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/HCCLTools.h"
+
 #include "paddle/fluid/distributed/collective/Types.h"
 
 namespace paddle {
@@ -27,7 +28,8 @@ HcclReduceOp ToHCCLRedType(ReduceOp reduction) {
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(
-      it != red_type.end(), true,
+      it != red_type.end(),
+      true,
       platform::errors::InvalidArgument("Invalid hccl reduction. "
                                         "Must be Min | Max | Prod | Sum"));
   return it->second;

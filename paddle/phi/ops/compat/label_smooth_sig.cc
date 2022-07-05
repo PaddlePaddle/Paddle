@@ -24,10 +24,8 @@ KernelSignature LabelSmoothOpArgumentMapping(
 
 KernelSignature LabelSmoothGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("label_smooth_grad",
-                         {GradVarName("Out")},
-                         {"epsilon"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "label_smooth_grad", {"Out@GRAD"}, {"epsilon"}, {"X@GRAD"});
 }
 
 }  // namespace phi

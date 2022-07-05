@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
 
@@ -32,7 +33,8 @@ namespace tensorrt {
 
 class DeformableConvOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a deformable conv op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -83,23 +85,31 @@ class DeformableConvOpConverter : public OpConverter {
     }
     auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
         with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        weights, kernel_dims, strides, paddings, dilations, groups,
-        deformable_groups, im2col_step, with_fp16);
+        weights,
+        kernel_dims,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        deformable_groups,
+        im2col_step,
+        with_fp16);
 
     std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
     deformable_conv_inputs.push_back(input_tensor);
     deformable_conv_inputs.push_back(offset_tensor);
     deformable_conv_inputs.push_back(mask_tensor);
 
-    auto* deformable_conv_layer = engine_->network()->addPluginV2(
-        deformable_conv_inputs.data(), deformable_conv_inputs.size(),
-        *deformable_conv_plugin);
+    auto* deformable_conv_layer =
+        engine_->network()->addPluginV2(deformable_conv_inputs.data(),
+                                        deformable_conv_inputs.size(),
+                                        *deformable_conv_plugin);
 
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Output").front());
 
-    RreplenishLayerAndOutput(deformable_conv_layer, "deformable_conv",
-                             output_names, test_mode);
+    RreplenishLayerAndOutput(
+        deformable_conv_layer, "deformable_conv", output_names, test_mode);
   }
 };
 

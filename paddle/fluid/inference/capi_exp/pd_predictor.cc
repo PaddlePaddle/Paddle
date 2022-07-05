@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/capi_exp/pd_predictor.h"
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_types.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
@@ -30,8 +31,9 @@
 extern "C" {
 __pd_give PD_Predictor* PD_PredictorCreate(__pd_take PD_Config* pd_config) {
   PADDLE_ENFORCE_NOT_NULL(
-      pd_config, paddle::platform::errors::InvalidArgument(
-                     "The pointer of paddle predictor shouldn't be nullptr"));
+      pd_config,
+      paddle::platform::errors::InvalidArgument(
+          "The pointer of paddle predictor shouldn't be nullptr"));
   PD_Predictor* pd_predictor = new PD_Predictor();
   paddle_infer::Config* config =
       reinterpret_cast<paddle_infer::Config*>(pd_config);

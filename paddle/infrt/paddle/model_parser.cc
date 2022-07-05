@@ -22,6 +22,10 @@
 #include "paddle/infrt/common/target.h"
 #include "paddle/infrt/common/type.h"
 
+#ifdef INFRT_WITH_PHI
+#include "paddle/phi/common/data_type.h"
+#endif
+
 namespace infrt {
 namespace paddle {
 
@@ -169,6 +173,97 @@ void LoadParam(const std::string &path, _Variable *out, const Target &target) {
   CHECK(fin.is_open()) << "failed to open file " << path;
   LoadLoDTensor(fin, out, target);
 }
+
+#ifdef INFRT_WITH_PHI
+namespace framework_proto = ::paddle::framework::proto;
+
+inline ::phi::DataType PhiDataType(framework_proto::VarType::Type type) {
+  using Type = framework_proto::VarType::Type;
+  switch (static_cast<int>(type)) {
+    case Type::VarType_Type_BOOL:
+      return ::phi::DataType::BOOL;
+    case Type::VarType_Type_INT8:
+      return ::phi::DataType::INT8;
+    case Type::VarType_Type_UINT8:
+      return ::phi::DataType::UINT8;
+    case Type::VarType_Type_INT16:
+      return ::phi::DataType::INT16;
+    case Type::VarType_Type_INT32:
+      return ::phi::DataType::INT32;
+    case Type::VarType_Type_INT64:
+      return ::phi::DataType::INT64;
+    case Type::VarType_Type_SIZE_T:
+      return ::phi::DataType::UINT64;
+    case Type::VarType_Type_FP16:
+      return ::phi::DataType::FLOAT16;
+    case Type::VarType_Type_FP32:
+      return ::phi::DataType::FLOAT32;
+    case Type::VarType_Type_FP64:
+      return ::phi::DataType::FLOAT64;
+    default:
+      LOG(FATAL) << "unknown data type " << type;
+  }
+  return ::phi::DataType::UNDEFINED;
+}
+
+inline void TensorFromStream(std::istream &is,
+                             ::phi::DenseTensor *tensor,
+                             const ::phi::CPUContext &ctx) {
+  uint32_t version;
+  is.read(reinterpret_cast<char *>(&version), sizeof(version));
+  CHECK_EQ(version, 0U);
+  framework_proto::VarType::TensorDesc desc;
+  {  // int32_t size
+     // proto buffer
+    int32_t size = -1;
+    is.read(reinterpret_cast<char *>(&size), sizeof(size));
+    CHECK_EQ(is.good(), true);
+    CHECK_GE(size, 0);
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char *>(buf.get()), size);
+    CHECK_EQ(desc.ParseFromArray(buf.get(), size), true);
+  }
+  {  // read tensor
+    std::vector<int64_t> dims;
+    dims.reserve(static_cast<size_t>(desc.dims().size()));
+    std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
+    tensor->Resize(::phi::make_ddim(dims));
+    void *buf;
+    size_t size = tensor->numel() * SizeOfType(desc.data_type());
+    ctx.HostAlloc(tensor, PhiDataType(desc.data_type()), size);
+    buf = tensor->data();
+    is.read(static_cast<char *>(buf), size);
+  }
+}
+
+void DeserializeFromStream(std::istream &is,
+                           ::phi::DenseTensor *tensor,
+                           const ::phi::CPUContext &dev_ctx) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    CHECK_EQ(version, 0U);
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+    for (uint64_t i = 0; i < lod_level; ++i) {
+      uint64_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::vector<size_t> tmp(size / sizeof(size_t));
+      is.read(reinterpret_cast<char *>(tmp.data()),
+              static_cast<std::streamsize>(size));
+      lod[i] = tmp;
+    }
+  }
+  // the 3st filed, Tensor
+  TensorFromStream(is, tensor, dev_ctx);
+}
+#endif
 
 }  // namespace paddle
 }  // namespace infrt

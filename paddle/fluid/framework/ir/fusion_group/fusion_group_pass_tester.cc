@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -63,11 +63,7 @@ std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
@@ -109,8 +105,8 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   auto* tmp_9 = layers.elementwise_mul(tmp_7, tmp_8);
   auto* tmp_10 = layers.mul(tmp_6, tmp_9);
 
-  std::vector<VarDesc*> elementwise_vars = {tmp_0, tmp_1, tmp_2, tmp_3, tmp_4,
-                                            tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
+  std::vector<VarDesc*> elementwise_vars = {
+      tmp_0, tmp_1, tmp_2, tmp_3, tmp_4, tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
   for (auto* var : elementwise_vars) {
     var->SetShape(shape);
   }
@@ -125,11 +121,7 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
       n->Var()->SetDataType(proto::VarType::FP32);
     }
   }
-#ifdef __clang__
   return graph;
-#else
-  return std::move(graph);
-#endif
 }
 
 int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {

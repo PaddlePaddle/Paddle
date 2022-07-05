@@ -24,16 +24,13 @@ class LogSoftmaxMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward> {
  public:
   LogSoftmaxMKLDNNHandler(const dnnl::engine mkldnn_engine,
-                          platform::Place cpu_place, const Tensor* x,
+                          platform::Place cpu_place,
+                          const Tensor* x,
                           const int axis)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::logsoftmax_forward>(
             mkldnn_engine, cpu_place) {
-    const auto logsoftmax_tz = phi::vectorize(x->dims());
-    const auto md = dnnl::memory::desc(
-        logsoftmax_tz, platform::MKLDNNGetDataType<T>(), x->format());
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
-                                            md, axis);
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_inference, x->mem_desc(), axis);
   }
 };
 
@@ -59,12 +56,12 @@ class LogSoftmaxMKLDNNKernel : public framework::OpKernel<T> {
     auto logsoftmax_p = handler.AcquireForwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    logsoftmax_p->execute(astream, {{DNNL_ARG_SRC, *src_memory_p},
-                                    {DNNL_ARG_DST, *dst_memory_p}});
+    logsoftmax_p->execute(
+        astream,
+        {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(x->format());
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 }  // namespace operators
@@ -72,6 +69,8 @@ class LogSoftmaxMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(log_softmax, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(log_softmax,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::LogSoftmaxMKLDNNKernel<float>,
                    ops::LogSoftmaxMKLDNNKernel<paddle::platform::bfloat16>);

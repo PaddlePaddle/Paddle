@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -37,7 +38,9 @@ struct MetaConfig {
 
 class MetaTensor {
  public:
-  MetaTensor() = default;
+  typedef void (*unspecified_bool_type)();
+
+  MetaTensor() : tensor_(nullptr) {}
 
   // supporting implicit construction is easier to use
   MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
@@ -45,10 +48,10 @@ class MetaTensor {
       : tensor_(const_cast<TensorBase*>(&tensor)) {}
   MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
 
-  MetaTensor(const MetaTensor&) = default;
   MetaTensor(MetaTensor&&) = default;
-  MetaTensor& operator=(const MetaTensor&) = delete;
-  MetaTensor& operator=(MetaTensor&&) = delete;
+  MetaTensor& operator=(MetaTensor&&) = default;
+  MetaTensor(const MetaTensor&) = default;
+  MetaTensor& operator=(const MetaTensor&) = default;
 
   virtual ~MetaTensor() = default;
 
@@ -64,12 +67,24 @@ class MetaTensor {
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
 
+  virtual bool initialized() const;
+
+  virtual operator unspecified_bool_type() const {
+    return tensor_ == nullptr ? 0 : unspecified_bool_true;
+  }
+
+  virtual bool operator!() const { return tensor_ == nullptr; }
+
+ protected:
+  static void unspecified_bool_true() {}
+
  private:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
   TensorBase* tensor() const;
-  TensorBase* tensor_;
+
+  TensorBase* tensor_ = nullptr;
 };
 
 }  // namespace phi

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <queue>
+
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {

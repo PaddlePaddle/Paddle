@@ -51,9 +51,9 @@ void BitwiseNotKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  funcs::BitwiseNotFunctor<T> func;
-  funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-      dev_ctx, ins, &outs, -1, func);
+  funcs::BitwiseNotFunctor<T> unary_func;
+  funcs::ElementwiseKernel<T, funcs::BitwiseNotFunctor<T>>(
+      dev_ctx, ins, &outs, unary_func);
 }
 
 }  // namespace phi

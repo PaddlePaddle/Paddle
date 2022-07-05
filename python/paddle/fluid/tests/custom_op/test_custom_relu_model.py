@@ -15,6 +15,7 @@
 import os
 import unittest
 import numpy as np
+import tempfile
 
 import paddle
 from paddle import nn
@@ -72,6 +73,10 @@ class Net(nn.Layer):
 
 
 class TestDygraphModel(unittest.TestCase):
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def setUp(self):
 
         self.seed = 2021
@@ -92,12 +97,17 @@ class TestDygraphModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_dygaph_model_{}.pdparams"
-        self.model_dy2stat_path = "infer_model/custom_relu_model_dy2sta"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams')
+        self.model_dy2stat_path = os.path.join(
+            self.model_save_dir, 'infer_model/custom_relu_model_dy2sta')
 
         # for dy2stat
-        self.x_spec = paddle.static.InputSpec(
-            shape=[None, self.in_dim], dtype='float32', name='x')
+        self.x_spec = paddle.static.InputSpec(shape=[None, self.in_dim],
+                                              dtype='float32',
+                                              name='x')
 
     def func_train_eval(self):
         for device in self.devices:
@@ -107,7 +117,7 @@ class TestDygraphModel(unittest.TestCase):
             # for train
             origin_relu_train_out = self.train_model(use_custom_op=False)
             custom_relu_train_out = self.train_model(use_custom_op=True)
-            # open this when dy2stat is ready for eager 
+            # open this when dy2stat is ready for eager
             if _in_legacy_dygraph():
                 custom_relu_dy2stat_train_out = self.train_model(
                     use_custom_op=True, dy2stat=True)  # for to_static
@@ -188,6 +198,7 @@ class TestDygraphModel(unittest.TestCase):
 
 
 class TestStaticModel(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.in_dim = 10
@@ -207,24 +218,30 @@ class TestStaticModel(unittest.TestCase):
         self.devices = ['cpu', 'gpu'] if not IS_MAC else ['cpu']
 
         # for saving model
-        self.model_path_template = "infer_model/custom_relu_static_model_{}_{}"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
+        self.model_path_template = os.path.join(
+            self.model_save_dir, 'custom_relu_static_model_{}_{}')
 
         paddle.enable_static()
 
     def tearDown(self):
         paddle.disable_static()
+        self.temp_dir.cleanup()
 
     def test_train_eval(self):
         for device in self.devices:
             # for train
-            original_relu_train_out = self.train_model(
-                device, use_custom_op=False)
+            original_relu_train_out = self.train_model(device,
+                                                       use_custom_op=False)
             custom_relu_train_out = self.train_model(device, use_custom_op=True)
             # using PE
-            original_relu_train_pe_out = self.train_model(
-                device, use_custom_op=False, use_pe=True)
-            custom_relu_train_pe_out = self.train_model(
-                device, use_custom_op=True, use_pe=True)
+            original_relu_train_pe_out = self.train_model(device,
+                                                          use_custom_op=False,
+                                                          use_pe=True)
+            custom_relu_train_pe_out = self.train_model(device,
+                                                        use_custom_op=True,
+                                                        use_pe=True)
 
             self.assertTrue(
                 np.array_equal(original_relu_train_out, custom_relu_train_out))
@@ -233,14 +250,16 @@ class TestStaticModel(unittest.TestCase):
                                custom_relu_train_pe_out))
 
             # for eval
-            original_relu_eval_out = self.eval_model(
-                device, use_custom_op=False)
+            original_relu_eval_out = self.eval_model(device,
+                                                     use_custom_op=False)
             custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
             # using PE
-            original_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=False, use_pe=True)
-            custom_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=True, use_pe=True)
+            original_relu_eval_pe_out = self.eval_model(device,
+                                                        use_custom_op=False,
+                                                        use_pe=True)
+            custom_relu_eval_pe_out = self.eval_model(device,
+                                                      use_custom_op=True,
+                                                      use_pe=True)
 
             self.assertTrue(
                 np.array_equal(original_relu_eval_out, custom_relu_eval_out))
@@ -258,10 +277,12 @@ class TestStaticModel(unittest.TestCase):
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
-                x = paddle.static.data(
-                    shape=[None, self.in_dim], name='x', dtype='float32')
-                y = paddle.static.data(
-                    shape=[None, 1], name='y', dtype='float32')
+                x = paddle.static.data(shape=[None, self.in_dim],
+                                       name='x',
+                                       dtype='float32')
+                y = paddle.static.data(shape=[None, 1],
+                                       name='y',
+                                       dtype='float32')
 
                 net = Net(self.in_dim, self.out_dim, use_custom_op)
                 out = net(x)
@@ -279,8 +300,8 @@ class TestStaticModel(unittest.TestCase):
                     ) if device is 'cpu' else paddle.static.cuda_places()
                     main_program = paddle.static.CompiledProgram(
                         paddle.static.default_main_program(
-                        )).with_data_parallel(
-                            loss_name=loss.name, places=places)
+                        )).with_data_parallel(loss_name=loss.name,
+                                              places=places)
                 else:
                     main_program = paddle.static.default_main_program()
 
@@ -289,14 +310,16 @@ class TestStaticModel(unittest.TestCase):
                     y_data = self.labels[batch_id]
 
                     res = exe.run(main_program,
-                                  feed={'x': x_data,
-                                        'y': y_data},
+                                  feed={
+                                      'x': x_data,
+                                      'y': y_data
+                                  },
                                   fetch_list=[out])
 
                 # save model
                 paddle.static.save_inference_model(
-                    self.model_path_template.format(use_custom_op, use_pe),
-                    [x], [out], exe)
+                    self.model_path_template.format(use_custom_op, use_pe), [x],
+                    [out], exe)
 
                 return res[0]
 

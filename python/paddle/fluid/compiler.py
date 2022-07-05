@@ -426,9 +426,9 @@ class CompiledProgram(object):
 
         return core.ParallelExecutor(
             places, self._persistable_vars,
-            cpt.to_text(self._loss_name)
-            if self._loss_name else six.u(''), self._scope, self._local_scopes,
-            self._exec_strategy, self._build_strategy, self._graph)
+            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
+            self._scope, self._local_scopes, self._exec_strategy,
+            self._build_strategy, self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -477,8 +477,9 @@ class CompiledProgram(object):
                 use_device = DeviceType.XPU
             else:
                 use_device = DeviceType.CPU
-            self._executor = self._compile_data_parallel(
-                use_device=use_device, scope=self._scope, places=self._places)
+            self._executor = self._compile_data_parallel(use_device=use_device,
+                                                         scope=self._scope,
+                                                         places=self._places)
         return self
 
     def _get_places(self, place, place_list):
@@ -659,7 +660,9 @@ class IpuStrategy(object):
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_precision_config(enable_fp16=False)
         """
-        options = {'enable_fp16': enable_fp16, }
+        options = {
+            'enable_fp16': enable_fp16,
+        }
         self.set_options(options)
 
     def add_custom_op(self,
@@ -999,9 +1002,6 @@ class IpuCompiledProgram(object):
         a_pass = core.get_pass('popart_canonicalization_pass')
         if self._custom_op_names:
             a_pass.set('custom_ops', self._custom_op_names)
-        a_pass.apply(self._graph)
-
-        a_pass = core.get_pass("transfer_cast_op_pass")
         a_pass.apply(self._graph)
 
         passes = [

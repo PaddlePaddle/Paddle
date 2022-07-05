@@ -27,6 +27,7 @@
 namespace cub = hipcub;
 #endif
 #include <limits>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -121,33 +122,27 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
 
   if (typeid(Reducer) == typeid(cub::ArgMax)) {
     switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(
-          ArgCUDAKernel<T,
-                        IndType,
-                        Reducer,
-                        kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
-              height,
-              width,
-              post,
-              Reducer(),
-              std::numeric_limits<T>::lowest(),
-              in_data,
-              out_data));
+      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
+                               height,
+                               width,
+                               post,
+                               Reducer(),
+                               std::numeric_limits<T>::lowest(),
+                               in_data,
+                               out_data));
     }
   } else {
     switch (ComputeBlockSize(width)) {
-      FIXED_BLOCK_DIM_CASE(
-          ArgCUDAKernel<T,
-                        IndType,
-                        Reducer,
-                        kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
-              height,
-              width,
-              post,
-              Reducer(),
-              std::numeric_limits<T>::max(),
-              in_data,
-              out_data));
+      FIXED_BLOCK_DIM_CASE(ArgCUDAKernel<T, IndType, Reducer, kBlockDim>
+                           <<<grid_size, kBlockDim, 0, cu_stream>>>(
+                               height,
+                               width,
+                               post,
+                               Reducer(),
+                               std::numeric_limits<T>::max(),
+                               in_data,
+                               out_data));
     }
   }
 }
@@ -259,6 +254,7 @@ PD_REGISTER_KERNEL(arg_min,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int32_t,
@@ -270,6 +266,7 @@ PD_REGISTER_KERNEL(arg_max,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int32_t,

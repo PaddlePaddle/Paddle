@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
@@ -77,17 +78,21 @@ class KLDivLossNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*loss, cliped_target}, {*loss}, {});
       mul_runner.Run(stream);
     } else if ("batchmean" == reduction || "sum" == reduction) {
-      const auto& runner = NpuOpRunner("KLDiv", {*input, *target}, {*loss},
-                                       {{"reduction", reduction}});
+      const auto& runner = NpuOpRunner(
+          "KLDiv", {*input, *target}, {*loss}, {{"reduction", reduction}});
       runner.Run(stream);
     } else if ("mean" == reduction) {
-      const auto& runner = NpuOpRunner("KLDiv", {*input, *target}, {*loss},
+      const auto& runner = NpuOpRunner("KLDiv",
+                                       {*input, *target},
+                                       {*loss},
                                        {{"reduction", std::string("sum")}});
       runner.Run(stream);
 
       const int numel = input->numel();
       const auto& muls_runner =
-          NpuOpRunner("Muls", {*loss}, {*loss},
+          NpuOpRunner("Muls",
+                      {*loss},
+                      {*loss},
                       {{"value", static_cast<float>(1.0 / numel)}});
       muls_runner.Run(stream);
     }
@@ -157,8 +162,10 @@ class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(kldiv_loss, ops::KLDivLossNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(kldiv_loss,
+                       ops::KLDivLossNPUKernel<float>,
                        ops::KLDivLossNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(kldiv_loss_grad, ops::KLDivLossGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(kldiv_loss_grad,
+                       ops::KLDivLossGradNPUKernel<float>,
                        ops::KLDivLossGradNPUKernel<plat::float16>);

@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/operators/repeat_interleave_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/repeat_interleave_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -27,9 +27,12 @@ using LoDTensor = framework::LoDTensor;
 
 // function borrowed from repeat_interleave_op
 template <typename T, typename IndexT>
-__global__ void index_select_cuda_kernel(const T* input, T* output,
-                                         const IndexT* index, int64_t N,
-                                         int64_t stride, int64_t size,
+__global__ void index_select_cuda_kernel(const T* input,
+                                         T* output,
+                                         const IndexT* index,
+                                         int64_t N,
+                                         int64_t stride,
+                                         int64_t size,
                                          int64_t delta) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
@@ -46,9 +49,12 @@ __global__ void index_select_cuda_kernel(const T* input, T* output,
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
-                                              const IndexT* index, int64_t nums,
-                                              int64_t N, int64_t stride,
-                                              int64_t size, int64_t delta) {
+                                              const IndexT* index,
+                                              int64_t nums,
+                                              int64_t N,
+                                              int64_t stride,
+                                              int64_t size,
+                                              int64_t delta) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -92,19 +98,22 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
       auto repeats_tensor =
           context.Input<framework::LoDTensor>("RepeatsTensor");
 
-      PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == in->dims()[dim], true,
+      PADDLE_ENFORCE_EQ(repeats_tensor->dims()[0] == in->dims()[dim],
+                        true,
                         platform::errors::InvalidArgument(
                             "The length of Input(RepeatsTensor) must be the "
                             "same as length of Input(X) in axis. "
                             "But received: [%s], required: [%d].",
-                            repeats_tensor->dims()[0], in->dims()[dim]));
+                            repeats_tensor->dims()[0],
+                            in->dims()[dim]));
 
       const auto& index_type =
           framework::TransToProtoVarType(repeats_tensor->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(
-          index_type_match, true,
+          index_type_match,
+          true,
           platform::errors::InvalidArgument(
               "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
               "desires to be %s or %s",
@@ -127,10 +136,12 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         int64_t size = output_dim[dim];
         int64_t delta = input_dim[dim] - size;
 
-        index_select_cuda_kernel<T, int64_t><<<
-            (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
-                                                  numel, stride, size, delta);
+        index_select_cuda_kernel<T, int64_t>
+            <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS,
+               0,
+               stream>>>(
+                in_data, out_data, index_data, numel, stride, size, delta);
       } else {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
 
@@ -143,10 +154,12 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
         int64_t size = output_dim[dim];
         int64_t delta = input_dim[dim] - size;
 
-        index_select_cuda_kernel<T, int><<<
-            (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_data, out_data, index_data,
-                                                  numel, stride, size, delta);
+        index_select_cuda_kernel<T, int>
+            <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS,
+               0,
+               stream>>>(
+                in_data, out_data, index_data, numel, stride, size, delta);
       }
     } else if (repeats > 0) {
       int64_t index_size = in->dims()[dim] * repeats;
@@ -169,10 +182,12 @@ class RepeatInterleaveCUDAKernel : public framework::OpKernel<T> {
       int64_t delta = input_dim[dim] - size;
 
       const int* index_data = index.data<int>();
-      index_select_cuda_kernel<T, int><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                                             PADDLE_CUDA_NUM_THREADS,
-                                         PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-          in_data, out_data, index_data, numel, stride, size, delta);
+      index_select_cuda_kernel<T, int>
+          <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(
+              in_data, out_data, index_data, numel, stride, size, delta);
       platform::GpuStreamSync(stream);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -206,9 +221,11 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
 
-    index_select_grad_init<
-        T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_grad_data, numel);
+    index_select_grad_init<T>
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+           PADDLE_CUDA_NUM_THREADS,
+           0,
+           stream>>>(in_grad_data, numel);
 
     int repeats = context.Attr<int>("Repeats");
     framework::LoDTensor index;
@@ -221,7 +238,8 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
       bool index_type_match = index_type == framework::proto::VarType::INT64 ||
                               index_type == framework::proto::VarType::INT32;
       PADDLE_ENFORCE_EQ(
-          index_type_match, true,
+          index_type_match,
+          true,
           platform::errors::InvalidArgument(
               "Input(Index) holds the wrong type, it holds %s, but "
               "desires to be %s or %s",
@@ -237,22 +255,38 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
         int64_t index_nums = index.numel();
 
         const int64_t* index_data = index.data<int64_t>();
-        index_select_grad_cuda_kernel<T, int64_t><<<
-            (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-            output_grad_data, in_grad_data, index_data, index_nums, out_nums,
-            stride, size, delta);
+        index_select_grad_cuda_kernel<T, int64_t>
+            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
+                   PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS,
+               0,
+               stream>>>(output_grad_data,
+                         in_grad_data,
+                         index_data,
+                         index_nums,
+                         out_nums,
+                         stride,
+                         size,
+                         delta);
         platform::GpuStreamSync(stream);
       } else {
         RepeatsTensor2IndexTensor<DeviceContext, int>(*repeats_tensor, &index);
         int64_t index_nums = index.numel();
 
         const int* index_data = index.data<int>();
-        index_select_grad_cuda_kernel<T, int><<<
-            (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-            output_grad_data, in_grad_data, index_data, index_nums, out_nums,
-            stride, size, delta);
+        index_select_grad_cuda_kernel<T, int>
+            <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) /
+                   PADDLE_CUDA_NUM_THREADS,
+               PADDLE_CUDA_NUM_THREADS,
+               0,
+               stream>>>(output_grad_data,
+                         in_grad_data,
+                         index_data,
+                         index_nums,
+                         out_nums,
+                         stride,
+                         size,
+                         delta);
         platform::GpuStreamSync(stream);
       }
     } else if (repeats > 0) {
@@ -268,11 +302,18 @@ class RepeatInterleaveGradCUDAKernel : public framework::OpKernel<T> {
 
       const int* index_data = index.data<int>();
       int64_t index_nums = index.numel();
-      index_select_grad_cuda_kernel<T, int><<<
-          (out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(output_grad_data, in_grad_data,
-                                                index_data, index_nums,
-                                                out_nums, stride, size, delta);
+      index_select_grad_cuda_kernel<T, int>
+          <<<(out_nums + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(output_grad_data,
+                       in_grad_data,
+                       index_data,
+                       index_nums,
+                       out_nums,
+                       stride,
+                       size,
+                       delta);
       platform::GpuStreamSync(stream);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

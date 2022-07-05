@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <cusolverDn.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/cusolver.h"

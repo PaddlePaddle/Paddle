@@ -18,7 +18,6 @@
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/place.h"
-
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
@@ -86,8 +85,8 @@ struct XPUContext::Impl {
   void Init() {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
-    LOG_FIRST_N(WARNING, 1) << "Please NOTE: xpu device: "
-                            << static_cast<int>(place_.device);
+    LOG_FIRST_N(WARNING, 1)
+        << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();

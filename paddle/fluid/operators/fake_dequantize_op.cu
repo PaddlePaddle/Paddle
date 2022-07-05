@@ -12,15 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 #include "paddle/fluid/operators/fake_dequantize_op.h"
+#include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;
+using float16 = paddle::platform::float16;
 REGISTER_OP_CUDA_KERNEL(fake_dequantize_max_abs,
                         ops::FakeDequantizeMaxAbsKernel<CUDA, float>,
-                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>);
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, double>,
+                        ops::FakeDequantizeMaxAbsKernel<CUDA, float16>);
 REGISTER_OP_CUDA_KERNEL(
     fake_channel_wise_dequantize_max_abs,
     ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float>,
-    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>);
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, double>,
+    ops::FakeChannelWiseDequantizeMaxAbsKernel<CUDA, float16>);

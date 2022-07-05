@@ -21,5 +21,5 @@ namespace framework {
 const proto::OpDef& GetOpDef(const std::string& op_name);
 
 bool HasOpDef(const std::string& op_name);
-}
-}
+}  // namespace framework
+}  // namespace paddle

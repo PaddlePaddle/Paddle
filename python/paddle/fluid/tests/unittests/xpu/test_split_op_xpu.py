@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -30,12 +31,14 @@ paddle.enable_static()
 
 
 class XPUTestSplitOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'split'
         self.use_dynamic_create_class = False
 
     # test with attr(num)
     class TestSplitOp(XPUOpTest):
+
         def setUp(self):
             self.init_dtype()
             self.__class__.use_xpu = True
@@ -68,6 +71,7 @@ class XPUTestSplitOp(XPUOpTestWrapper):
 
     # unknown sections
     class TestSplitOp1(TestSplitOp):
+
         def initParameters(self):
             self.x = np.random.random((4, 5, 6)).astype(self.dtype)
             self.axis = 2
@@ -77,6 +81,7 @@ class XPUTestSplitOp(XPUOpTestWrapper):
 
     # test with int32
     class TestSplitOp2(TestSplitOp):
+
         def initParameters(self):
             self.x = np.random.random((4, 5, 6)).astype(np.int32)
             self.axis = 2

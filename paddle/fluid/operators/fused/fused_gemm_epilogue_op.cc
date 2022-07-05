@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -28,10 +30,10 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGemmEpilogueOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "FusedGemmEpilogueOp");
-    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Output", "Bias",
-                   "FusedGemmEpilogueOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "FusedGemmEpilogueOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Bias"), "Output", "Bias", "FusedGemmEpilogueOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "FusedGemmEpilogueOp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -41,32 +43,37 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     auto trans_y = ctx->Attrs().Get<bool>("trans_y");
 
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2,
+        y_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Input tensor Y's dimension of FusedGemmEpilogueOp "
             " should be 2, but got %d.",
             y_dims.size()));
 
     PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Input tensor X's dimension of FusedGemmEpilogueOp "
             " should be >= 2, but got %d.",
             x_dims.size()));
 
     PADDLE_ENFORCE_EQ(
-        bias_dims.size(), 1,
+        bias_dims.size(),
+        1,
         platform::errors::InvalidArgument(
             "The Input tensor bias's dimension of FusedGemmEpilogueOp "
             " should be == 1, but got %d.",
             bias_dims.size()));
 
-    PADDLE_ENFORCE_EQ(bias_dims[0], trans_y ? y_dims[0] : y_dims[1],
+    PADDLE_ENFORCE_EQ(bias_dims[0],
+                      trans_y ? y_dims[0] : y_dims[1],
                       platform::errors::InvalidArgument(
                           "The Input tensor bias's dimension 0"
                           " should be == Y[-1], but got bias's shape = [%s] "
                           "and Y's shape = [%s]",
-                          bias_dims, y_dims));
+                          bias_dims,
+                          y_dims));
 
     auto x_mat_dims =
         phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
@@ -75,18 +82,21 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     int K_from_y = trans_y ? y_dims[1] : y_dims[0];
 
     PADDLE_ENFORCE_EQ(
-        K_from_x, K_from_y,
+        K_from_x,
+        K_from_y,
         platform::errors::InvalidArgument(
             "The last dimension of X should be equal with Y's first dimension."
             "But received X[-1] = [%d], Y[0] = [%d].",
-            K_from_x, K_from_y));
+            K_from_x,
+            K_from_y));
 
     auto activation = ctx->Attrs().Get<std::string>("activation");
 
     if ((activation != "relu") && (activation != "gelu") &&
         (activation != "none")) {
       PADDLE_ENFORCE_EQ(
-          true, false,
+          true,
+          false,
           platform::errors::InvalidArgument(
               "The activation attribute of fused_gemm_epilogue op should be"
               " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
@@ -103,12 +113,15 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput("ReserveSpace") && activation != "none") {
       int min_size_of_n = activation == "relu" ? 128 : 8;
       int N_size = trans_y ? y_dims[0] : y_dims[1];
-      PADDLE_ENFORCE_EQ(N_size % min_size_of_n, 0,
+      PADDLE_ENFORCE_EQ(N_size % min_size_of_n,
+                        0,
                         platform::errors::InvalidArgument(
                             "The output dimension N (X(MxK) * Y(KxN) = C(MxN)) "
                             "should be multiple of %d when auxiliary_key given "
                             "and activation=%s, but got N = %d.",
-                            min_size_of_n, activation, N_size));
+                            min_size_of_n,
+                            activation,
+                            N_size));
     }
 
     std::vector<int64_t> out_dims;
@@ -198,8 +211,8 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("DOut"), "Input", "DOut",
-                   "FusedGemmEpilogueGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("DOut"), "Input", "DOut", "FusedGemmEpilogueGradOp");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGemmEpilogueGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "FusedGemmEpilogueGradOp");
     OP_INOUT_CHECK(ctx->HasOutput("DY"), "Output", "DY", "FusedGemmEpilogueOp");
@@ -208,58 +221,71 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
+    auto trans_x = ctx->Attrs().Get<bool>("trans_x");
+    auto trans_y = ctx->Attrs().Get<bool>("trans_y");
+
     PADDLE_ENFORCE_GE(
-        dout_dims.size(), 2,
+        dout_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Input tensor DOut's dimension of FusedGemmEpilogueGradOp "
             " should be >= 2, but got %d.",
             dout_dims.size()));
 
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2,
+        y_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Input tensor Y's dimension of FusedGemmEpilogueGradOp "
             " should be 2, but got %d.",
             y_dims.size()));
 
     PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The Input tensor X's dimension of FusedGemmEpilogueGradOp "
             " should be >= 2, but got %d.",
             x_dims.size()));
 
     PADDLE_ENFORCE_EQ(
-        dout_dims.size(), x_dims.size(),
+        dout_dims.size(),
+        x_dims.size(),
         platform::errors::InvalidArgument(
             "The Input tensor DOut's and X's dimension of "
             "FusedGemmEpilogueGradOp "
             " should be the same, but got DOut's dim = %d and X's = %d.",
-            dout_dims.size(), x_dims.size()));
+            dout_dims.size(),
+            x_dims.size()));
 
     auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
     auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[1], y_dims[1],
+        dout_mat_dims[1],
+        trans_y ? y_dims[0] : y_dims[1],
         platform::errors::InvalidArgument(
             "The last dimension of DOut should be equal with Y's last"
             "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
-            dout_mat_dims[1], y_dims[1]));
+            dout_mat_dims[1],
+            y_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[0], x_mat_dims[0],
+        dout_mat_dims[0],
+        trans_x ? x_mat_dims[1] : x_mat_dims[0],
         platform::errors::InvalidArgument(
             "The first dimension of DOut should be equal with X's first"
             "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
-            dout_mat_dims[0], x_mat_dims[0]));
+            dout_mat_dims[0],
+            x_mat_dims[0]));
 
     auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
     if ((activation_grad != "relu_grad") && (activation_grad != "gelu_grad") &&
         (activation_grad != "none")) {
       PADDLE_ENFORCE_EQ(
-          true, false,
+          true,
+          false,
           platform::errors::InvalidArgument(
               "The activation attribute of fused_gemm_epilogue op should be"
               " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
@@ -268,7 +294,8 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     }
 
     if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
-      PADDLE_ENFORCE_EQ(true, false,
+      PADDLE_ENFORCE_EQ(true,
+                        false,
                         platform::errors::InvalidArgument(
                             "The ReserveSpace should not be empty. "
                             "when activation_grad == {relu_grad, gelu_grad}."));
@@ -288,7 +315,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput("DBias")) {
       std::vector<int64_t> dbias_dims;
-      dbias_dims.push_back(y_dims[1]);
+      dbias_dims.push_back(trans_y ? y_dims[0] : y_dims[1]);
       ctx->SetOutputDim("DBias", phi::make_ddim(dbias_dims));
     }
   }
@@ -323,6 +350,20 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("DBias",
               "The output grad tensor to bias of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
+    AddAttr<bool>(
+        "trans_x",
+        R"DOC((bool, default false), Whether to transpose input tensor X 
+    or not. The input tensor X coulbe be more than two dimension. When 
+    set trans_x=true, it would fully reverse X. For instant: X with shpae 
+    [d0, d1, d2, d3] -> [d3, d2, d1, d0].)DOC")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "trans_y",
+        R"DOC((bool, default false), Whether to transpose input tensor Y 
+    or not. The input tensor Y should be two dimension. When 
+    set trans_y=true, it would transpose Y. For instant: Y with shpae 
+    [d0, d1] -> [d1, d0].)DOC")
+        .SetDefault(false);
 
     AddAttr<std::string>(
         "activation_grad",
@@ -343,11 +384,42 @@ X with shape [d0, d1, d2, d3] -> X_2D with shape [d0*d1*d2, d3]
   }
 };
 
+template <typename T>
+class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    const auto& act_type = this->template Attr<std::string>("activation");
+    PADDLE_ENFORCE_EQ(
+        act_type,
+        "none",
+        phi::errors::InvalidArgument("The activation should be none."));
+
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->OutputGrad("Out"));
+
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DY", this->InputGrad("Y"));
+    op->SetOutput("DBias", this->InputGrad("Bias"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_gemm_epilogue, ops::FusedGemmEpilogueOp,
-                  ops::FusedGemmEpilogueOpMaker)
-REGISTER_OPERATOR(fused_gemm_epilogue_grad, ops::FusedGemmEpilogueGradOp,
-                  ops::FusedGemmEpilogueGradOpMaker)
+REGISTER_OPERATOR(
+    fused_gemm_epilogue,
+    ops::FusedGemmEpilogueOp,
+    ops::FusedGemmEpilogueOpMaker,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fused_gemm_epilogue_grad,
+                  ops::FusedGemmEpilogueGradOp,
+                  ops::FusedGemmEpilogueGradOpMaker);

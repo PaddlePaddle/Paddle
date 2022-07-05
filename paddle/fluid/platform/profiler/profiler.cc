@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/profiler.h"
+
 #include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -27,6 +28,7 @@
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
@@ -52,6 +54,14 @@ bool Profiler::IsCuptiSupported() {
   return supported;
 }
 
+bool Profiler::IsCnpapiSupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_MLU
+  supported = true;
+#endif
+  return supported;
+}
+
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   std::bitset<32> trace_switch(options_.trace_switch);
@@ -62,6 +72,9 @@ Profiler::Profiler(const ProfilerOptions& options) {
   }
   if (trace_switch.test(kProfileGPUOptionBit)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  }
+  if (trace_switch.test(kProfileMLUOptionBit)) {
+    tracers_.emplace_back(&MluTracer::GetInstance(), false);
   }
 }
 
@@ -88,9 +101,12 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
-  std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
-                                                collector.RuntimeEvents(),
-                                                collector.DeviceEvents()));
+  std::unique_ptr<NodeTrees> tree(
+      new NodeTrees(collector.HostEvents(),
+                    collector.RuntimeEvents(),
+                    collector.DeviceEvents(),
+                    collector.MemEvents(),
+                    collector.OperatorSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
   extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),
@@ -103,7 +119,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       collector.ThreadNames();
   for (const auto& kv : thread_names) {
     extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
-                           std::string("%s"), kv.second.c_str());
+                           std::string("%s"),
+                           kv.second.c_str());
   }
   return std::unique_ptr<ProfilerResult>(
       new platform::ProfilerResult(std::move(tree), extrainfo));

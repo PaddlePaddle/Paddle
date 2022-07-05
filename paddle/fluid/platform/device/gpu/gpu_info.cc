@@ -19,14 +19,17 @@ limitations under the License. */
 #include <mutex>
 #include <set>
 #include <vector>
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
@@ -49,6 +52,15 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(enable_cublas_tensor_op_math);
 DECLARE_uint64(gpu_memory_limit_mb);
 
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+                            false,
+                            "Whether to print the message of gpu memory usage "
+                            "at exit, mainly used for UT and CI.");
+PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+                            true,
+                            "Whether to print the message of gpu memory usage "
+                            "MB as a unit of measurement.");
+
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
 USE_GPU_MEM_STAT;
@@ -57,7 +69,10 @@ namespace platform {
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
-  RecordedGpuMemGetInfo(available, total, &actual_available, &actual_total,
+  RecordedGpuMemGetInfo(available,
+                        total,
+                        &actual_available,
+                        &actual_total,
                         platform::GetCurrentDeviceId());
 }
 
@@ -85,17 +100,20 @@ size_t GpuMaxAllocSize() {
 static size_t GpuAllocSize(bool realloc) {
   size_t available_to_alloc = GpuAvailableMemToAlloc();
   PADDLE_ENFORCE_GT(
-      available_to_alloc, 0,
+      available_to_alloc,
+      0,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
-      available_to_alloc, alloc_bytes,
+      available_to_alloc,
+      alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
@@ -137,12 +155,41 @@ class RecordedGpuMallocHelper {
     if (NeedRecord()) {
       mtx_.reset(new std::mutex());
     }
+
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      // A fake UPDATE to trigger the construction of memory stat instances,
+      // make sure that they are destructed after RecordedGpuMallocHelper.
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id, 0);
+      DEVICE_MEMORY_STAT_UPDATE(Allocated, dev_id, 0);
+    }
   }
 
   DISABLE_COPY_AND_ASSIGN(RecordedGpuMallocHelper);
 
  public:
+  ~RecordedGpuMallocHelper() {
+    if (FLAGS_enable_gpu_memory_usage_log) {
+      if (FLAGS_enable_gpu_memory_usage_log_mb) {
+        std::cout << "[Memory Usage (MB)] gpu " << dev_id_ << " : Reserved = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_) /
+                         1048576.0
+                  << ", Allocated = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_) /
+                         1048576.0
+                  << std::endl;
+      } else {
+        std::cout << "[Memory Usage (Byte)] gpu " << dev_id_ << " : Reserved = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, dev_id_)
+                  << ", Allocated = "
+                  << DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, dev_id_)
+                  << std::endl;
+      }
+    }
+  }
+
   static RecordedGpuMallocHelper *Instance(int dev_id) {
+    static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
+
     std::call_once(once_flag_, [] {
       int dev_cnt = GetGPUDeviceCount();
       instances_.reserve(dev_cnt);
@@ -153,13 +200,16 @@ class RecordedGpuMallocHelper {
     });
 
     PADDLE_ENFORCE_GE(
-        dev_id, 0,
+        dev_id,
+        0,
         platform::errors::OutOfRange(
             "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
-        dev_id, instances_.size(),
+        dev_id,
+        instances_.size(),
         platform::errors::OutOfRange("Device id %d exceeds gpu card number %d.",
-                                     dev_id, instances_.size()));
+                                     dev_id,
+                                     instances_.size()));
     return instances_[dev_id].get();
   }
 
@@ -168,7 +218,8 @@ class RecordedGpuMallocHelper {
    * or cudaSuccess would be returned, and the cudaGetLastError() flag
    * would be clear.
    */
-  gpuError_t Malloc(void **ptr, size_t size,
+  gpuError_t Malloc(void **ptr,
+                    size_t size,
                     bool malloc_managed_memory = false) {
     LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
@@ -188,16 +239,19 @@ class RecordedGpuMallocHelper {
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
-      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
-               << " MB";
       result = cudaMalloc(ptr, size);
+      VLOG(10) << "[cudaMalloc] size=" << static_cast<double>(size) / (1 << 20)
+               << " MB, result=" << result;
     }
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
       STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
-
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      platform::RecordMemEvent(ptr,
+                               GPUPlace(dev_id_),
+                               size,
+                               platform::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
 #endif
@@ -235,7 +289,11 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
+      platform::RecordMemEvent(ptr,
+                               GPUPlace(dev_id_),
+                               size,
+                               platform::TracerMemEventType::ReservedFree);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
@@ -261,7 +319,9 @@ class RecordedGpuMallocHelper {
 #endif
   }
 
-  bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
+  bool GetMemInfo(size_t *avail,
+                  size_t *total,
+                  size_t *actual_avail,
                   size_t *actual_total) {
     {
       CUDADeviceGuard guard(dev_id_);
@@ -296,7 +356,8 @@ class RecordedGpuMallocHelper {
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-  CUresult MemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+  CUresult MemCreate(CUmemGenericAllocationHandle *handle,
+                     size_t size,
                      const CUmemAllocationProp *prop,
                      unsigned long long flags) {  // NOLINT
     auto result =
@@ -326,16 +387,15 @@ class RecordedGpuMallocHelper {
   mutable std::unique_ptr<std::mutex> mtx_;
 
   static std::once_flag once_flag_;
-  static std::vector<std::unique_ptr<RecordedGpuMallocHelper>> instances_;
 
   std::set<void *> gpu_ptrs;  // just for testing
 };                            // NOLINT
 
 std::once_flag RecordedGpuMallocHelper::once_flag_;
-std::vector<std::unique_ptr<RecordedGpuMallocHelper>>
-    RecordedGpuMallocHelper::instances_;
 
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+gpuError_t RecordedGpuMalloc(void **ptr,
+                             size_t size,
+                             int dev_id,
                              bool malloc_managed_memory) {
   return RecordedGpuMallocHelper::Instance(dev_id)->Malloc(
       ptr, size, malloc_managed_memory);
@@ -347,22 +407,28 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
-CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
+                              size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags, int dev_id) {  // NOLINT
-  return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(handle, size,
-                                                              prop, flags);
+                              unsigned long long flags,
+                              int dev_id) {  // NOLINT
+  return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
+      handle, size, prop, flags);
 }
 
-CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
+                               size_t size,
                                int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemRelease(handle, size);
 }
 #endif
 #endif
 
-bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id) {
+bool RecordedGpuMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->GetMemInfo(
       avail, total, actual_avail, actual_total);
 }
@@ -457,26 +523,35 @@ void GpuDestroyStream(gpuStream_t stream) {
 
 void GpuDeviceSync() { phi::backends::gpu::GpuDeviceSync(); }
 
-void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-                    gpuMemcpyKind kind, gpuStream_t stream) {
+void GpuMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    gpuMemcpyKind kind,
+                    gpuStream_t stream) {
   phi::backends::gpu::GpuMemcpyAsync(dst, src, count, kind, stream);
 }
 
-void GpuMemcpySync(void *dst, const void *src, size_t count,
+void GpuMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
                    gpuMemcpyKind kind) {
   phi::backends::gpu::GpuMemcpySync(dst, src, count, kind);
 }
 
-void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, gpuStream_t stream) {
-  phi::backends::gpu::GpuMemcpyPeerAsync(dst, dst_device, src, src_device,
-                                         count, stream);
+void GpuMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t count,
+                        gpuStream_t stream) {
+  phi::backends::gpu::GpuMemcpyPeerAsync(
+      dst, dst_device, src, src_device, count, stream);
 }
 
-void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t count) {
-  phi::backends::gpu::GpuMemcpyPeerSync(dst, dst_device, src, src_device,
-                                        count);
+void GpuMemcpyPeerSync(
+    void *dst, int dst_device, const void *src, int src_device, size_t count) {
+  phi::backends::gpu::GpuMemcpyPeerSync(
+      dst, dst_device, src, src_device, count);
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {

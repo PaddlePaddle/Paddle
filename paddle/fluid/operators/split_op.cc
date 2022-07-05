@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -27,10 +28,12 @@ class SplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of SplitOp should not be null."));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(Out) of SplitOp should not be empty."));
     auto in_dims = ctx->GetInputDim("X");
@@ -43,7 +46,8 @@ class SplitOp : public framework::OperatorWithKernel {
 
     if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(
-          sections.size(), outs_number,
+          sections.size(),
+          outs_number,
           platform::errors::InvalidArgument("tensor split sections size "
                                             "should be equal to output size."));
     }
@@ -61,8 +65,13 @@ class SplitOp : public framework::OperatorWithKernel {
     bool each_section_is_known =
         (sections.size() > 0 && !ctx->HasInputs("SectionsTensorList"));
 
-    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), each_section_is_known,
-                                    in_dims, num, sections, axis, outs_number);
+    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(),
+                                    each_section_is_known,
+                                    in_dims,
+                                    num,
+                                    sections,
+                                    axis,
+                                    outs_number);
     ctx->SetOutputsDim("Out", outs_dims);
     if (axis != 0) {
       // Only pass LoD when not spliting along the first dim.
@@ -84,11 +93,10 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          phi::vectorize(ctx.Input<Tensor>("X")->dims()),
-          dnnl::memory::data_type::f32, ctx.Input<Tensor>("X")->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      const auto x_md = ctx.Input<Tensor>("X")->mem_desc();
+      if (x_md.data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type,
+                                       ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
@@ -97,13 +105,14 @@ class SplitOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -171,6 +180,8 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
+REGISTER_OPERATOR(split,
+                  ops::SplitOp,
+                  ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);

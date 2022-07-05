@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -54,8 +55,10 @@ class FakeCopyable {
 class EventsWaiter;
 
 struct WorkQueueOptions {
-  WorkQueueOptions(const std::string& name, size_t num_threads,
-                   bool allow_spinning, bool track_task)
+  WorkQueueOptions(const std::string& name,
+                   size_t num_threads,
+                   bool allow_spinning,
+                   bool track_task)
       : name(name),
         num_threads(num_threads),
         allow_spinning(allow_spinning),
@@ -63,12 +66,17 @@ struct WorkQueueOptions {
     Validate();
   }
 
-  WorkQueueOptions(const std::string& name, size_t num_threads,
-                   bool allow_spinning, bool track_task, bool detached,
+  WorkQueueOptions(const std::string& name,
+                   size_t num_threads,
+                   bool allow_spinning,
+                   bool always_spinning,
+                   bool track_task,
+                   bool detached,
                    EventsWaiter* waiter)
       : name(name),
         num_threads(num_threads),
         allow_spinning(allow_spinning),
+        always_spinning(always_spinning),
         track_task(track_task),
         detached(detached),
         events_waiter(waiter) {
@@ -80,11 +88,15 @@ struct WorkQueueOptions {
 
   std::string name;
   size_t num_threads;
+  // Worker threads will spin for a while if this flag is set.
   bool allow_spinning;
+  // Worker threads will never sleep if this flag is set.
+  // Better performance vs. higher CPU utilization.
+  bool always_spinning{false};
   // If you need to blocking the calling  thread to wait "queue empty", set
   // track_task = true and set events_waiter. EventsWaiter::WaitEvent will
   // block the calling thread until any of events (including "queue empty")
-  // occured.
+  // occurred.
   bool track_task;
   // If you need to be noticed when a WorkQueue Destruct() , set detached =
   // false and set events_waiter.
@@ -113,10 +125,9 @@ class WorkQueue {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask([
-      t = std::move(task),
-      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
-    ]() mutable { p.Get().set_value(t()); });
+    AddTask([t = std::move(task),
+             p = FakeCopyable<std::promise<ReturnType>>(
+                 std::move(prom))]() mutable { p.Get().set_value(t()); });
     return res;
   }
 
@@ -153,10 +164,10 @@ class WorkQueueGroup {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask(queue_idx, [
-      t = std::move(task),
-      p = FakeCopyable<std::promise<ReturnType>>(std::move(prom))
-    ]() mutable { p.Get().set_value(t()); });
+    AddTask(queue_idx,
+            [t = std::move(task),
+             p = FakeCopyable<std::promise<ReturnType>>(
+                 std::move(prom))]() mutable { p.Get().set_value(t()); });
     return res;
   }
 

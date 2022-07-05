@@ -68,7 +68,7 @@ void tanh_cpu_double_backward_kernel(const data_t* out_data,
 
 std::vector<paddle::Tensor> TanhForward(const paddle::Tensor& x) {
   CHECK_CPU_INPUT(x);
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto out = paddle::empty(x.shape(), x.dtype(), x.place());
 
   PD_DISPATCH_FLOATING_TYPES(
       x.dtype(), "tanh_cpu_forward", ([&] {
@@ -82,7 +82,7 @@ std::vector<paddle::Tensor> TanhForward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> TanhBackward(const paddle::Tensor& out,
                                          const paddle::Tensor& grad_out) {
   CHECK_CPU_INPUT(out);
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto grad_x = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.dtype(), "tanh_cpu_backward", ([&] {
                                tanh_cpu_backward_kernel<data_t>(
@@ -101,8 +101,8 @@ std::vector<paddle::Tensor> TanhDoubleBackward(const paddle::Tensor& out,
   CHECK_CPU_INPUT(out);
   CHECK_CPU_INPUT(ddx);
   CHECK_CPU_INPUT(dout);
-  auto dout_new = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
-  auto ddout = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto dout_new = paddle::empty(out.shape(), out.dtype(), out.place());
+  auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.dtype(), "tanh_cpu_double_backward", ([&] {
                                tanh_cpu_double_backward_kernel<data_t>(

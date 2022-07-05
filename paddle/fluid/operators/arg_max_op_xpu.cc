@@ -28,7 +28,8 @@ class ArgMaxXPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto dtype = ctx.Attr<int>("dtype");
     PADDLE_ENFORCE_EQ(
-        (dtype < 0 || dtype == 2 || dtype == 3), true,
+        (dtype < 0 || dtype == 2 || dtype == 3),
+        true,
         platform::errors::InvalidArgument(
             "The attribute of dtype in xpu argmin/argmax must be [%s] or [%s], "
             "but "
@@ -54,11 +55,16 @@ class ArgMaxXPUKernel : public framework::OpKernel<T> {
     }
     auto xdims_vec = phi::vectorize<int>(x_dims);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::argmax(dev_ctx.x_context(), x->data<T>(), out->data<int64_t>(),
-                        xdims_vec, axis);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    int r = xpu::argmax(dev_ctx.x_context(),
+                        x->data<T>(),
+                        out->data<int64_t>(),
+                        xdims_vec,
+                        axis);
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU argmax kernel return wrong value[%d %s].", r,
+                          "XPU argmax kernel return wrong value[%d %s].",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };

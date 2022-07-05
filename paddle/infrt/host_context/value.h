@@ -91,6 +91,7 @@ using ValueVariantType =
             std::vector<::phi::DenseTensor*>,
             paddle::experimental::ScalarBase<::phi::DenseTensor>,
             paddle::experimental::IntArrayBase<::phi::DenseTensor>,
+            std::vector<const ::phi::MetaTensor*>,
             std::vector<::phi::MetaTensor*>,
             ::phi::MetaConfig,
             paddle::experimental::Backend,
@@ -158,15 +159,15 @@ class Value : public common::Object {
 
   template <typename T>
   const T& get() const {
-    CHECK(data.template is<T>()) << "typeid: " << data.index()
-                                 << " != " << ValueVariantType::IndexOf<T>;
+    CHECK(data.template is<T>())
+        << "typeid: " << data.index() << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
   template <typename T>
   T& get() {
-    CHECK(data.template is<T>()) << "typeid: " << data.index()
-                                 << " != " << ValueVariantType::IndexOf<T>;
+    CHECK(data.template is<T>())
+        << "typeid: " << data.index() << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 

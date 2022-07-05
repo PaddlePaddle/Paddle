@@ -29,9 +29,9 @@ KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("top_k_grad",
-                         {"X", "Indices", GradVarName("Out")},
+                         {"X", "Indices", "Out@GRAD"},
                          {"k", "axis", "largest", "sorted"},
-                         {GradVarName("X")});
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

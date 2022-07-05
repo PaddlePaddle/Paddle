@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/selected_rows/clip_kernel.h"
-
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/selected_rows/clip_kernel.h"
 
 namespace phi {
 namespace sr {

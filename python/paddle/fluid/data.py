@@ -115,12 +115,11 @@ def data(name, shape, dtype='float32', lod_level=0):
         if shape[i] is None:
             shape[i] = -1
 
-    return helper.create_global_variable(
-        name=name,
-        shape=shape,
-        dtype=dtype,
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        stop_gradient=True,
-        lod_level=lod_level,
-        is_data=True,
-        need_check_feed=True)
+    return helper.create_global_variable(name=name,
+                                         shape=shape,
+                                         dtype=dtype,
+                                         type=core.VarDesc.VarType.LOD_TENSOR,
+                                         stop_gradient=True,
+                                         lod_level=lod_level,
+                                         is_data=True,
+                                         need_check_feed=True)

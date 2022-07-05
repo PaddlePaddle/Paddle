@@ -10,9 +10,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
 #include "paddle/fluid/operators/dgc_clip_by_norm_op.h"
+
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -23,14 +23,17 @@ class DGCClipByNormOp : public ClipByNormOp {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
+    OP_INOUT_CHECK(ctx->HasInput("current_step"),
+                   "Input",
+                   "current_step",
                    "DGCClipByNormOp");
 
     return ClipByNormOp::InferShape(ctx);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "current_step") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -59,9 +62,9 @@ class DGCClipByNormOpMaker : public ClipByNormOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(dgc_clip_by_norm, ops::DGCClipByNormOp,
+REGISTER_OP_WITHOUT_GRADIENT(dgc_clip_by_norm,
+                             ops::DGCClipByNormOp,
                              ops::DGCClipByNormOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    dgc_clip_by_norm,
-    ops::DGCClipByNormKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(dgc_clip_by_norm,
+                       ops::DGCClipByNormKernel<phi::CPUContext, float>);

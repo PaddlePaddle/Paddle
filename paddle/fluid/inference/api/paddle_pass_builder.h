@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
@@ -71,6 +72,10 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \param[in] idx the position to delete.
   void DeletePass(size_t idx);
 
+  /// \brief Get the certain position of a pass.
+  /// \param[in] pass_type the type of insert pass.
+  size_t GetPassIndex(const std::string &pass_type);
+
   /// \brief Delete all passes that has a certain type 'pass_type'.
   /// \param[in] pass_type the certain pass type to be deleted.
   void DeletePass(const std::string &pass_type);
@@ -102,13 +107,21 @@ class PD_INFER_DECL PaddlePassBuilder {
     return passes;
   }
 
+  const std::unordered_set<std::string> &GetAllDeletedPasses() const {
+    return deleted_passes_;
+  }
+
  protected:
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass", "ir_graph_clean_pass", "ir_analysis_pass",
-       "ir_params_sync_among_devices_pass", "adjust_cudnn_workspace_size_pass",
+      {"ir_graph_build_pass",
+       "ir_graph_clean_pass",
+       "ir_analysis_pass",
+       "ir_params_sync_among_devices_pass",
+       "adjust_cudnn_workspace_size_pass",
        "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
+  std::unordered_set<std::string> deleted_passes_;
   /// \endcond
 };
 
@@ -124,9 +137,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
 
   /// \brief Enable the use of cuDNN kernel.
   virtual void EnableCUDNN() {}
-
-  /// \brief Enable use gpu fp16 kernel.
-  virtual void Exp_EnableUseGpuFp16() {}
 
   /// \brief Enable the use of MKLDNN.
   /// The MKLDNN control exists in both CPU and GPU mode, because there can
@@ -146,10 +156,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
 
-  /// \brief Check if we are using gpu fp16 kernel.
-  /// \return A bool variable implying whether we are in gpu fp16 mode.
-  bool use_gpu_fp16() const { return use_gpu_fp16_; }
-
   /// \brief Check if we are using xpu.
   /// \return A bool variable implying whether we are in xpu mode.
   bool use_xpu() const { return use_xpu_; }
@@ -162,6 +168,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in ipu mode.
   bool use_ipu() const { return use_ipu_; }
 
+  /// \brief Check if we are using CustomDevice.
+  /// \return A bool variable implying whether we are in CustomDevice mode.
+  bool use_custom_device() const { return use_custom_device_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
@@ -172,7 +182,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_npu_{false};
   bool use_ipu_{false};
   bool use_mkldnn_{false};
-  bool use_gpu_fp16_{false};
+  bool use_custom_device_{false};
+
+  bool use_gpu_low_precision_{false};
   /// \endcond
 };
 
@@ -239,9 +251,6 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
 
-  /// \brief Enable the use of gpu fp16 kernel.
-  void Exp_EnableUseGpuFp16() override;
-
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
 
@@ -260,7 +269,6 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
-  bool use_gpu_fp16_{false};
   /// \endcond
 };
 
@@ -284,6 +292,22 @@ class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
   explicit NpuPassStrategy(const NpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_npu_ = true;
+  }
+};
+
+/// \class CustomDevicePassStrategy
+/// \brief The CustomDevice passes controller, it is used in AnalysisPredictor
+/// with CustomDevice
+/// mode.
+class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
+ public:
+  CustomDevicePassStrategy() : PassStrategy({}) { use_custom_device_ = true; }
+
+  /// \brief Construct by copying another CustomDevicePassStrategy object.
+  /// \param[in] other The CustomDevicePassStrategy object we want to copy.
+  explicit CustomDevicePassStrategy(const CustomDevicePassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_custom_device_ = true;
   }
 };
 
@@ -311,5 +335,11 @@ PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
+
+/// \brief TODO(inference): Most of the existing pass fusion operators do not
+/// support fp16/bf16 precision, temporarily use low precision pass to prevent
+/// running errors. After fusion operator supports low precision, delete this.
+PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
+PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
 
 }  // namespace paddle

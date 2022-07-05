@@ -68,6 +68,7 @@ def nms(boxes, nms_threshold):
 
 
 class TestNMSOp(OpTest):
+
     def setUp(self):
         self.op_type = 'nms'
         self.dtype = np.float64

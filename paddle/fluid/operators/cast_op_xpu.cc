@@ -19,9 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/float16.h"
-#include "xpu/refactor/math.h"
-
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "xpu/refactor/math.h"
 
 namespace paddle {
 namespace operators {
@@ -52,7 +51,9 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *in, pt_out_dtype, out);
+        *in,
+        pt_out_dtype,
+        out);
   }
 };
 
@@ -61,7 +62,8 @@ class CastXPUKernel : public framework::OpKernel<InT> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    cast, ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
+    cast,
+    ops::CastXPUKernel<paddle::platform::XPUDeviceContext, int32_t>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext, float>,
     ops::CastXPUKernel<paddle::platform::XPUDeviceContext,
                        paddle::platform::float16>,

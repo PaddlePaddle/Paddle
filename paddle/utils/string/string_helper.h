@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
+
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -98,6 +99,14 @@ inline int str_to_float(const char* str, float* v) {
     head = cursor;
   }
   return index;
+}
+
+inline float* str_to_float(std::string& str) {
+  return (float*)const_cast<char*>(str.c_str());
+}
+
+inline float* str_to_float(const char* str) {
+  return (float*)const_cast<char*>(str);
 }
 
 // checks whether the test string is a suffix of the input string.

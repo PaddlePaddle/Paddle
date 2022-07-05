@@ -22,7 +22,8 @@ namespace operators {
 namespace {
 
 cnnlPoolingMode_t ToCnnlPoolingMode(const std::string &pooling_type,
-                                    bool exclusive, bool adaptive) {
+                                    bool exclusive,
+                                    bool adaptive) {
   cnnlPoolingMode_t pooling_mode;
   if (pooling_type == "max") {
     pooling_mode = CNNL_POOLING_MAX;
@@ -61,7 +62,8 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
     bool adaptive = ctx.Attr<bool>("adaptive");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
-    PADDLE_ENFORCE_EQ(in_x->dims().size(), 4,
+    PADDLE_ENFORCE_EQ(in_x->dims().size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "Only support 4-dims for mlu pool2d kernel."));
 
@@ -81,8 +83,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
       data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
-                              padding_algorithm, data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
     if (global_pooling) {
       phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
@@ -94,43 +101,75 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
         ToCnnlPoolingMode(pooling_type, exclusive, adaptive);
 
     if (!adaptive) {
-      MLUCnnlPoolingDesc pool_desc(
-          pool_mode, CNNL_NOT_PROPAGATE_NAN, ksize[0], ksize[1], paddings[0],
-          paddings[1], paddings[2], paddings[3], strides[0], strides[1],
-          1 /*row_dilation*/, 1 /*col_dilation*/, ceil_mode);
+      MLUCnnlPoolingDesc pool_desc(pool_mode,
+                                   CNNL_NOT_PROPAGATE_NAN,
+                                   ksize[0],
+                                   ksize[1],
+                                   paddings[0],
+                                   paddings[1],
+                                   paddings[2],
+                                   paddings[3],
+                                   strides[0],
+                                   strides[1],
+                                   1 /*row_dilation*/,
+                                   1 /*col_dilation*/,
+                                   ceil_mode);
 
       size_t extra_input_size = 0;
       cnnlHandle_t handle =
           ctx.template device_context<MLUDeviceContext>().cnnl_handle();
-      cnnlGetPoolingExtraInputSize(handle, pool_mode, out_w, out_h,
-                                   &extra_input_size);
+      cnnlGetPoolingExtraInputSize(
+          handle, pool_mode, out_w, out_h, &extra_input_size);
 
       if (extra_input_size > 0) {
-        paddle::platform::CPUDeviceContext cpu_ctx;
+        phi::CPUContext cpu_ctx;
         framework::Tensor extra_host_tensor =
-            ctx.AllocateTmpTensor<int8_t, platform::CPUDeviceContext>(
+            ctx.AllocateTmpTensor<int8_t, phi::CPUContext>(
                 {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
-        cnnlInitPoolingExtraInput(handle, pool_desc.get(), in_x_desc.get(),
+        cnnlInitPoolingExtraInput(handle,
+                                  pool_desc.get(),
+                                  in_x_desc.get(),
                                   out_desc.get(),
                                   GetBasePtr(&extra_host_tensor));
         framework::Tensor extra_device_tensor =
             ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
                 {static_cast<int64_t>(extra_input_size)}, dev_ctx);
-        // TODO(fwg): use Async copy, and add a callback to stream that free
-        // host
-        // memory.
-        framework::TensorCopySync(extra_host_tensor, ctx.GetPlace(),
-                                  &extra_device_tensor);
+        framework::TensorCopy(
+            extra_host_tensor, ctx.GetPlace(), &extra_device_tensor);
+        // Increase extra_host_tensor holder_ reference count until copy
+        // complete.
+        auto increase_ref_count = [extra_host_tensor]() {
+          VLOG(4) << "Finished copying extra_host_tensor["
+                  << GetBasePtr(&extra_host_tensor)
+                  << "] in mlu pooling kernel.";
+        };
+        dev_ctx.AddStreamCallback(increase_ref_count);
         MLUCnnl::PoolingForward(
-            ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
-            in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
+            ctx,
+            pool_mode,
+            out_h,
+            out_w,
+            pool_desc.get(),
+            nullptr /*alpha*/,
+            in_x_desc.get(),
+            GetBasePtr(in_x),
+            nullptr /*beta*/,
             GetBasePtr(&extra_device_tensor) /*params_shape_ptr*/,
-            out_desc.get(), GetBasePtr(out));
+            out_desc.get(),
+            GetBasePtr(out));
       } else {
-        MLUCnnl::PoolingForward(
-            ctx, pool_mode, out_h, out_w, pool_desc.get(), nullptr /*alpha*/,
-            in_x_desc.get(), GetBasePtr(in_x), nullptr /*beta*/,
-            nullptr /*params_shape_ptr*/, out_desc.get(), GetBasePtr(out));
+        MLUCnnl::PoolingForward(ctx,
+                                pool_mode,
+                                out_h,
+                                out_w,
+                                pool_desc.get(),
+                                nullptr /*alpha*/,
+                                in_x_desc.get(),
+                                GetBasePtr(in_x),
+                                nullptr /*beta*/,
+                                nullptr /*params_shape_ptr*/,
+                                out_desc.get(),
+                                GetBasePtr(out));
       }
     } else {
       // cnnl Adaptive pooling only support NHWC layout
@@ -141,22 +180,27 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
         trans_out = *out;
       } else {
         std::vector<int> perm{0, 2, 3, 1};
-        TransposeFromMLUTensor<T>(ctx, perm, in_x, &trans_in_x,
-                                  true /*need_reshape_or_alloc*/);
+        TransposeFromMLUTensor<T>(
+            ctx, perm, in_x, &trans_in_x, true /*need_reshape_or_alloc*/);
         trans_out = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
             {out_dims[0], out_dims[2], out_dims[3], out_dims[1]}, dev_ctx);
       }
-      MLUCnnlTensorDesc trans_in_x_desc(trans_in_x, CNNL_LAYOUT_NHWC,
-                                        ToCnnlDataType<T>());
-      MLUCnnlTensorDesc trans_out_desc(trans_out, CNNL_LAYOUT_NHWC,
-                                       ToCnnlDataType<T>());
-      MLUCnnl::AdaptivePoolingForward(
-          ctx, pool_mode, trans_in_x_desc.get(), GetBasePtr(&trans_in_x),
-          trans_out_desc.get(), GetBasePtr(&trans_out), nullptr, nullptr);
+      MLUCnnlTensorDesc trans_in_x_desc(
+          trans_in_x, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+      MLUCnnlTensorDesc trans_out_desc(
+          trans_out, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+      MLUCnnl::AdaptivePoolingForward(ctx,
+                                      pool_mode,
+                                      trans_in_x_desc.get(),
+                                      GetBasePtr(&trans_in_x),
+                                      trans_out_desc.get(),
+                                      GetBasePtr(&trans_out),
+                                      nullptr,
+                                      nullptr);
       if (!channel_last) {
         std::vector<int> perm{0, 3, 1, 2};
-        TransposeFromMLUTensor<T>(ctx, perm, &trans_out, out,
-                                  false /*need_reshape_or_alloc*/);
+        TransposeFromMLUTensor<T>(
+            ctx, perm, &trans_out, out, false /*need_reshape_or_alloc*/);
       }
     }
   }
@@ -192,8 +236,13 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
       data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     }
 
-    phi::funcs::UpdatePadding(&paddings, global_pooling, adaptive,
-                              padding_algorithm, data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
     if (global_pooling) {
       phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
@@ -210,75 +259,111 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
       trans_in_x_grad = *in_x_grad;
     } else {
       std::vector<int> perm{0, 2, 3, 1};
-      TransposeFromMLUTensor<T>(ctx, perm, in_x, &trans_in_x,
-                                true /*need_reshape_or_alloc*/);
-      TransposeFromMLUTensor<T>(ctx, perm, out, &trans_out,
-                                true /*need_reshape_or_alloc*/);
-      TransposeFromMLUTensor<T>(ctx, perm, out_grad, &trans_out_grad,
-                                true /*need_reshape_or_alloc*/);
+      TransposeFromMLUTensor<T>(
+          ctx, perm, in_x, &trans_in_x, true /*need_reshape_or_alloc*/);
+      TransposeFromMLUTensor<T>(
+          ctx, perm, out, &trans_out, true /*need_reshape_or_alloc*/);
+      TransposeFromMLUTensor<T>(
+          ctx, perm, out_grad, &trans_out_grad, true /*need_reshape_or_alloc*/);
       auto in_x_grad_dims = in_x_grad->dims();
-      trans_in_x_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
-          {in_x_grad_dims[0], in_x_grad_dims[2], in_x_grad_dims[3],
-           in_x_grad_dims[1]},
-          dev_ctx);
+      trans_in_x_grad =
+          ctx.AllocateTmpTensor<T, MLUDeviceContext>({in_x_grad_dims[0],
+                                                      in_x_grad_dims[2],
+                                                      in_x_grad_dims[3],
+                                                      in_x_grad_dims[1]},
+                                                     dev_ctx);
     }
-    MLUCnnlTensorDesc trans_in_x_desc(trans_in_x, CNNL_LAYOUT_NHWC,
-                                      ToCnnlDataType<T>());
-    MLUCnnlTensorDesc trans_out_desc(trans_out, CNNL_LAYOUT_NHWC,
-                                     ToCnnlDataType<T>());
-    MLUCnnlTensorDesc trans_out_grad_desc(trans_out_grad, CNNL_LAYOUT_NHWC,
-                                          ToCnnlDataType<T>());
-    MLUCnnlTensorDesc trans_in_x_grad_desc(trans_in_x_grad, CNNL_LAYOUT_NHWC,
-                                           ToCnnlDataType<T>());
+    MLUCnnlTensorDesc trans_in_x_desc(
+        trans_in_x, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+    MLUCnnlTensorDesc trans_out_desc(
+        trans_out, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+    MLUCnnlTensorDesc trans_out_grad_desc(
+        trans_out_grad, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
+    MLUCnnlTensorDesc trans_in_x_grad_desc(
+        trans_in_x_grad, CNNL_LAYOUT_NHWC, ToCnnlDataType<T>());
 
     cnnlPoolingMode_t pool_mode =
         ToCnnlPoolingMode(pooling_type, exclusive, adaptive);
-    MLUCnnlPoolingDesc pool_desc(
-        pool_mode, CNNL_NOT_PROPAGATE_NAN, ksize[0], ksize[1], paddings[0],
-        paddings[1], paddings[2], paddings[3], strides[0], strides[1],
-        1 /*row_dilation*/, 1 /*col_dilation*/, ceil_mode);
+    MLUCnnlPoolingDesc pool_desc(pool_mode,
+                                 CNNL_NOT_PROPAGATE_NAN,
+                                 ksize[0],
+                                 ksize[1],
+                                 paddings[0],
+                                 paddings[1],
+                                 paddings[2],
+                                 paddings[3],
+                                 strides[0],
+                                 strides[1],
+                                 1 /*row_dilation*/,
+                                 1 /*col_dilation*/,
+                                 ceil_mode);
 
     if (pooling_type == "max") {
       framework::Tensor index_tensor =
           ctx.AllocateTmpTensor<IDX_T, MLUDeviceContext>(trans_out_grad.dims(),
                                                          dev_ctx);
-      MLUCnnlTensorDesc index_tensor_desc(index_tensor, CNNL_LAYOUT_NHWC,
-                                          ToCnnlDataType<IDX_T>());
-      MLUCnnl::PoolingIndex(ctx, pool_desc.get(), trans_in_x_desc.get(),
-                            GetBasePtr(&trans_in_x), index_tensor_desc.get(),
+      MLUCnnlTensorDesc index_tensor_desc(
+          index_tensor, CNNL_LAYOUT_NHWC, ToCnnlDataType<IDX_T>());
+      MLUCnnl::PoolingIndex(ctx,
+                            pool_desc.get(),
+                            trans_in_x_desc.get(),
+                            GetBasePtr(&trans_in_x),
+                            index_tensor_desc.get(),
                             GetBasePtr(&index_tensor));
       if (adaptive) {
-        MLUCnnl::AdaptivePoolingBackward(
-            ctx, pool_mode, trans_out_grad_desc.get(),
-            GetBasePtr(&trans_out_grad), index_tensor_desc.get(),
-            GetBasePtr(&index_tensor), trans_in_x_grad_desc.get(),
-            GetBasePtr(&trans_in_x_grad));
+        MLUCnnl::AdaptivePoolingBackward(ctx,
+                                         pool_mode,
+                                         trans_out_grad_desc.get(),
+                                         GetBasePtr(&trans_out_grad),
+                                         index_tensor_desc.get(),
+                                         GetBasePtr(&index_tensor),
+                                         trans_in_x_grad_desc.get(),
+                                         GetBasePtr(&trans_in_x_grad));
       } else {
-        MLUCnnl::PoolingBackward(
-            ctx, pool_desc.get(), nullptr /*alpha*/, index_tensor_desc.get(),
-            GetBasePtr(&index_tensor), trans_out_grad_desc.get(),
-            GetBasePtr(&trans_out_grad), trans_in_x_desc.get(),
-            GetBasePtr(&trans_in_x), nullptr /*beta*/,
-            trans_in_x_grad_desc.get(), GetBasePtr(&trans_in_x_grad));
+        MLUCnnl::PoolingBackward(ctx,
+                                 pool_desc.get(),
+                                 nullptr /*alpha*/,
+                                 index_tensor_desc.get(),
+                                 GetBasePtr(&index_tensor),
+                                 trans_out_grad_desc.get(),
+                                 GetBasePtr(&trans_out_grad),
+                                 trans_in_x_desc.get(),
+                                 GetBasePtr(&trans_in_x),
+                                 nullptr /*beta*/,
+                                 trans_in_x_grad_desc.get(),
+                                 GetBasePtr(&trans_in_x_grad));
       }
     } else {
       if (adaptive) {
-        MLUCnnl::AdaptivePoolingBackward(
-            ctx, pool_mode, trans_out_grad_desc.get(),
-            GetBasePtr(&trans_out_grad), nullptr /*index_tensor_desc.get()*/,
-            nullptr /*GetBasePtr(&index_tensor)*/, trans_in_x_grad_desc.get(),
-            GetBasePtr(&trans_in_x_grad));
+        MLUCnnl::AdaptivePoolingBackward(ctx,
+                                         pool_mode,
+                                         trans_out_grad_desc.get(),
+                                         GetBasePtr(&trans_out_grad),
+                                         nullptr /*index_tensor_desc.get()*/,
+                                         nullptr /*GetBasePtr(&index_tensor)*/,
+                                         trans_in_x_grad_desc.get(),
+                                         GetBasePtr(&trans_in_x_grad));
       } else {
-        MLUCnnl::PoolingBackward(ctx, pool_desc.get(), nullptr /*alpha*/,
-                                 nullptr, nullptr, trans_out_grad_desc.get(),
-                                 GetBasePtr(&trans_out_grad), nullptr, nullptr,
-                                 nullptr /*beta*/, trans_in_x_grad_desc.get(),
+        MLUCnnl::PoolingBackward(ctx,
+                                 pool_desc.get(),
+                                 nullptr /*alpha*/,
+                                 nullptr,
+                                 nullptr,
+                                 trans_out_grad_desc.get(),
+                                 GetBasePtr(&trans_out_grad),
+                                 nullptr,
+                                 nullptr,
+                                 nullptr /*beta*/,
+                                 trans_in_x_grad_desc.get(),
                                  GetBasePtr(&trans_in_x_grad));
       }
     }
     if (!channel_last) {
       std::vector<int> perm{0, 3, 1, 2};
-      TransposeFromMLUTensor<T>(ctx, perm, &trans_in_x_grad, in_x_grad,
+      TransposeFromMLUTensor<T>(ctx,
+                                perm,
+                                &trans_in_x_grad,
+                                in_x_grad,
                                 false /*need_reshape_or_alloc*/);
     }
   }
@@ -288,7 +373,9 @@ class MLUPoolGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_MLU_KERNEL(pool2d, ops::MLUPoolOpKernel<float>,
+REGISTER_OP_MLU_KERNEL(pool2d,
+                       ops::MLUPoolOpKernel<float>,
                        ops::MLUPoolOpKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(pool2d_grad, ops::MLUPoolGradOpKernel<float, int>,
+REGISTER_OP_MLU_KERNEL(pool2d_grad,
+                       ops::MLUPoolGradOpKernel<float, int>,
                        ops::MLUPoolGradOpKernel<plat::float16, int16_t>);

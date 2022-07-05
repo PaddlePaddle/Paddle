@@ -56,8 +56,8 @@ def tiny(x):
     x = np.asarray(x)
 
     # Only floating types generate a tiny
-    if np.issubdtype(x.dtype, np.floating) or np.issubdtype(x.dtype,
-                                                            np.complexfloating):
+    if np.issubdtype(x.dtype, np.floating) or np.issubdtype(
+            x.dtype, np.complexfloating):
         dtype = x.dtype
     else:
         dtype = np.float32
@@ -81,7 +81,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         raise Exception("Input must be finite")
 
     # All norms only depend on magnitude, let's do that first
-    mag = np.abs(S).astype(np.float)
+    mag = np.abs(S).astype(np.float64)
 
     # For max/min norms, filling with 1 works
     fill_norm = 1
@@ -144,18 +144,19 @@ def __window_ss_fill(x, win_sq, n_frames, hop_length):  # pragma: no cover
     n_fft = len(win_sq)
     for i in range(n_frames):
         sample = i * hop_length
-        x[sample:min(n, sample + n_fft)] += win_sq[:max(0,
-                                                        min(n_fft, n - sample))]
+        x[sample:min(n, sample +
+                     n_fft)] += win_sq[:max(0, min(n_fft, n - sample))]
 
 
 def window_sumsquare(
-        window,
-        n_frames,
-        hop_length=512,
-        win_length=None,
-        n_fft=2048,
-        dtype=np.float32,
-        norm=None, ):
+    window,
+    n_frames,
+    hop_length=512,
+    win_length=None,
+    n_fft=2048,
+    dtype=np.float32,
+    norm=None,
+):
     if win_length is None:
         win_length = n_fft
 
@@ -335,8 +336,9 @@ def stft(x,
         y = np.pad(y, int(n_fft // 2), mode=pad_mode)
 
     elif n_fft > y.shape[-1]:
-        raise Exception("n_fft={} is too large for input signal of length={}".
-                        format(n_fft, y.shape[-1]))
+        raise Exception(
+            "n_fft={} is too large for input signal of length={}".format(
+                n_fft, y.shape[-1]))
 
     # Window the time series.
     y_frames = frame(y, frame_length=n_fft, hop_length=hop_length)
@@ -345,8 +347,9 @@ def stft(x,
         dtype = dtype_r2c(y.dtype)
 
     # Pre-allocate the STFT matrix
-    stft_matrix = np.empty(
-        (int(1 + n_fft // 2), y_frames.shape[1]), dtype=dtype, order="F")
+    stft_matrix = np.empty((int(1 + n_fft // 2), y_frames.shape[1]),
+                           dtype=dtype,
+                           order="F")
 
     # how many columns can we fit within MAX_MEM_BLOCK?
     n_columns = MAX_MEM_BLOCK // (stft_matrix.shape[0] * stft_matrix.itemsize)
@@ -355,8 +358,9 @@ def stft(x,
     for bl_s in range(0, stft_matrix.shape[1], n_columns):
         bl_t = min(bl_s + n_columns, stft_matrix.shape[1])
 
-        stft_matrix[:, bl_s:bl_t] = fft.rfft(
-            fft_window * y_frames[:, bl_s:bl_t], axis=0)
+        stft_matrix[:,
+                    bl_s:bl_t] = fft.rfft(fft_window * y_frames[:, bl_s:bl_t],
+                                          axis=0)
 
     if input_rank == 2:
         stft_matrix = np.expand_dims(stft_matrix, 0)
@@ -365,12 +369,13 @@ def stft(x,
 
 
 def istft(
-        x,
-        hop_length=None,
-        win_length=None,
-        window="hann",
-        center=True,
-        length=None, ):
+    x,
+    hop_length=None,
+    win_length=None,
+    window="hann",
+    center=True,
+    length=None,
+):
 
     stft_matrix = x
     input_rank = len(stft_matrix.shape)
@@ -434,7 +439,8 @@ def istft(
         win_length=win_length,
         n_fft=n_fft,
         hop_length=hop_length,
-        dtype=dtype, )
+        dtype=dtype,
+    )
 
     approx_nonzero_indices = ifft_window_sum > tiny(ifft_window_sum)
     y[approx_nonzero_indices] /= ifft_window_sum[approx_nonzero_indices]
@@ -537,6 +543,7 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
 
 
 def place(devices, key='place'):
+
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
@@ -591,8 +598,8 @@ def rand_x(dims=1,
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
         ]
     if complex:
-        return np.random.randn(*shape).astype(dtype) + 1.j * np.random.randn(
-            *shape).astype(dtype)
+        return np.random.randn(
+            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
     else:
         return np.random.randn(*shape).astype(dtype)
 

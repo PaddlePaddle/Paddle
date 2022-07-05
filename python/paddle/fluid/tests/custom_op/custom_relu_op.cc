@@ -17,8 +17,7 @@
 
 #include "paddle/extension.h"
 
-#define CHECK_CPU_INPUT(x) \
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, #x " must be a CPU Tensor.")
+#define CHECK_CPU_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 
 template <typename data_t>
 void relu_cpu_forward_kernel(const data_t* x_data,
@@ -26,7 +25,7 @@ void relu_cpu_forward_kernel(const data_t* x_data,
                              int64_t x_numel) {
   PD_CHECK(x_data != nullptr, "x_data is nullptr.");
   PD_CHECK(out_data != nullptr, "out_data is nullptr.");
-  for (int i = 0; i < x_numel; ++i) {
+  for (int64_t i = 0; i < x_numel; ++i) {
     out_data[i] = std::max(static_cast<data_t>(0.), x_data[i]);
   }
 }
@@ -36,7 +35,7 @@ void relu_cpu_backward_kernel(const data_t* grad_out_data,
                               const data_t* out_data,
                               data_t* grad_x_data,
                               int64_t out_numel) {
-  for (int i = 0; i < out_numel; ++i) {
+  for (int64_t i = 0; i < out_numel; ++i) {
     grad_x_data[i] =
         grad_out_data[i] * (out_data[i] > static_cast<data_t>(0) ? 1. : 0.);
   }
@@ -54,12 +53,12 @@ void relu_cpu_double_backward_kernel(const data_t* out_data,
 }
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
-  auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto out = paddle::empty_like(x);
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
-            x.data<data_t>(), out.mutable_data<data_t>(x.place()), x.size());
+            x.data<data_t>(), out.data<data_t>(), x.numel());
       }));
 
   return {out};
@@ -68,13 +67,13 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
+  auto grad_x = paddle::empty_like(x);
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
                                    grad_out.data<data_t>(),
                                    out.data<data_t>(),
-                                   grad_x.mutable_data<data_t>(x.place()),
+                                   grad_x.data<data_t>(),
                                    out.size());
                              }));
 
@@ -85,7 +84,7 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
   CHECK_CPU_INPUT(out);
   CHECK_CPU_INPUT(ddx);
-  auto ddout = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_double_backward", ([&] {
                                relu_cpu_double_backward_kernel<data_t>(
@@ -108,10 +107,9 @@ std::vector<paddle::Tensor> relu_cuda_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx);
 
 std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
-  // TODO(chenweihang): Check Input
-  if (x.place() == paddle::PlaceType::kCPU) {
+  if (x.is_cpu()) {
     return relu_cpu_forward(x);
-  } else if (x.place() == paddle::PlaceType::kGPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_forward(x);
   } else {
     PD_THROW("Not implemented.");
@@ -121,10 +119,9 @@ std::vector<paddle::Tensor> ReluForward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
                                          const paddle::Tensor& out,
                                          const paddle::Tensor& grad_out) {
-  // TODO(chenweihang): Check Input
-  if (x.place() == paddle::PlaceType::kCPU) {
+  if (x.is_cpu()) {
     return relu_cpu_backward(x, out, grad_out);
-  } else if (x.place() == paddle::PlaceType::kGPU) {
+  } else if (x.is_gpu()) {
     return relu_cuda_backward(x, out, grad_out);
   } else {
     PD_THROW("Not implemented.");
@@ -166,7 +163,7 @@ PD_BUILD_DOUBLE_GRAD_OP(custom_relu)
 
 std::vector<paddle::Tensor> relu_cpu_backward_without_x(
     const paddle::Tensor& out, const paddle::Tensor& grad_out) {
-  auto grad_x = paddle::Tensor(paddle::PlaceType::kCPU, out.shape());
+  auto grad_x = paddle::empty(out.shape(), out.dtype(), out.place());
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
                                relu_cpu_backward_kernel<data_t>(
@@ -215,7 +212,7 @@ void relu_cpu_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "relu_cpu_forward", ([&] {
         relu_cpu_forward_kernel<data_t>(
-            x.data<data_t>(), out->mutable_data<data_t>(x.place()), x.size());
+            x.data<data_t>(), out->mutable_data<data_t>(x.place()), x.numel());
       }));
 }
 

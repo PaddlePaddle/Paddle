@@ -25,6 +25,7 @@ from paddle.nn.utils import weight_norm, remove_weight_norm
 
 
 class TestDygraphWeightNorm(unittest.TestCase):
+
     def setUp(self):
         self.init_test_case()
         self.set_data()
@@ -39,8 +40,8 @@ class TestDygraphWeightNorm(unittest.TestCase):
         for desc in self.data_desc:
             data_name = desc[0]
             data_shape = desc[1]
-            data_value = numpy.random.random(
-                size=[self.batch_size] + data_shape).astype('float32')
+            data_value = numpy.random.random(size=[self.batch_size] +
+                                             data_shape).astype('float32')
             self.data[data_name] = data_value
 
     def norm_except_dim(self, w, dim=None):
@@ -95,11 +96,9 @@ class TestDygraphWeightNorm(unittest.TestCase):
             p_matrix = numpy.reshape(
                 p_transposed, (p_transposed.shape[0],
                                transposed_shape_numel // p_transposed.shape[0]))
-            v_norm = v / numpy.expand_dims(
-                numpy.expand_dims(
-                    numpy.linalg.norm(
-                        p_matrix, axis=1, keepdims=True), axis=0),
-                axis=(ndims - 1))
+            v_norm = v / numpy.expand_dims(numpy.expand_dims(
+                numpy.linalg.norm(p_matrix, axis=1, keepdims=True), axis=0),
+                                           axis=(ndims - 1))
             v_norm = numpy.reshape(v_norm, transposed_shape)
             v_norm = numpy.transpose(v_norm, perm)
             g = numpy.squeeze(g, axis=1)
@@ -107,11 +106,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
                 eaxis = 2
             elif dim == 2:
                 eaxis = 1
-            g_mul = numpy.expand_dims(
-                numpy.expand_dims(
-                    numpy.expand_dims(
-                        g, axis=0), axis=eaxis),
-                axis=(ndims - 1))
+            g_mul = numpy.expand_dims(numpy.expand_dims(numpy.expand_dims(
+                g, axis=0),
+                                                        axis=eaxis),
+                                      axis=(ndims - 1))
         w = g_mul * v_norm
         return g, v
 
@@ -136,11 +134,11 @@ class TestDygraphWeightNorm(unittest.TestCase):
 
         for expect, actual in zip(expect_output, self.actual_outputs):
             self.assertTrue(
-                numpy.allclose(
-                    numpy.array(actual), expect, atol=0.001))
+                numpy.allclose(numpy.array(actual), expect, atol=0.001))
 
 
 class TestDygraphWeightNormCase1(TestDygraphWeightNorm):
+
     def init_test_case(self):
         self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
@@ -148,6 +146,7 @@ class TestDygraphWeightNormCase1(TestDygraphWeightNorm):
 
 
 class TestDygraphWeightNormCase2(TestDygraphWeightNorm):
+
     def init_test_case(self):
         self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
@@ -155,6 +154,7 @@ class TestDygraphWeightNormCase2(TestDygraphWeightNorm):
 
 
 class TestDygraphWeightNormCase3(TestDygraphWeightNorm):
+
     def init_test_case(self):
         self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
@@ -162,6 +162,7 @@ class TestDygraphWeightNormCase3(TestDygraphWeightNorm):
 
 
 class TestDygraphWeightNormCase4(TestDygraphWeightNorm):
+
     def init_test_case(self):
         self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
@@ -169,6 +170,7 @@ class TestDygraphWeightNormCase4(TestDygraphWeightNorm):
 
 
 class TestDygraphRemoveWeightNorm(unittest.TestCase):
+
     def setUp(self):
         self.init_test_case()
 
@@ -185,8 +187,9 @@ class TestDygraphRemoveWeightNorm(unittest.TestCase):
         rwn = remove_weight_norm(linear)
         after_weight = linear.weight
         self.assertTrue(
-            numpy.allclose(
-                before_weight.numpy(), after_weight.numpy(), atol=0.001))
+            numpy.allclose(before_weight.numpy(),
+                           after_weight.numpy(),
+                           atol=0.001))
 
 
 if __name__ == '__main__':

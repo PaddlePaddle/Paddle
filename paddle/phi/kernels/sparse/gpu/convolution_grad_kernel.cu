@@ -12,17 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
@@ -149,15 +151,15 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * out_channels, 1);
-  GatherKernel<T, IntT><<<config.block_per_grid.x,
-                          config.thread_per_block.x,
-                          0,
-                          dev_ctx.stream()>>>(
-      out_grad.non_zero_elements().data<T>(),
-      rulebook_ptr + rulebook_len * 2,
-      out_grad_features_ptr,
-      rulebook_len,
-      out_channels);
+  GatherKernel<T, IntT>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
+                             rulebook_ptr + rulebook_len * 2,
+                             out_grad_features_ptr,
+                             rulebook_len,
+                             out_channels);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -171,16 +173,16 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     T* tmp_out_grad_ptr = out_grad_features_ptr + offsets[i] * out_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
-    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * out_channels;
+    T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
 
     // call gemm: d_kernel = transpose(x) * out_grad
     // (in_channels, n) * (n, out_channels)
     blas.GEMM(CblasTrans,
               CblasNoTrans,
-              M,
-              N,
               K,
+              N,
+              M,
               static_cast<T>(1),
               tmp_in_ptr,
               tmp_out_grad_ptr,
@@ -202,37 +204,19 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  // x_grad->ResizeAndAllocate(x.non_zero_elements().dims());
-  DenseTensorMeta index_meta(DataType::INT32, {rulebook_len}, DataLayout::NCHW);
-  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_key = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<IntT>::Type(),
-                      {rulebook_len},
-                      DataLayout::NCHW));
-  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
-
-  SortedAndUniqueIndex<GPUContext, IntT>(dev_ctx,
-                                         rulebook_ptr + rulebook_len,
-                                         rulebook_len,
-                                         &out_index,
-                                         &unique_key,
-                                         &unique_value);
-
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
 
-  ScatterKernel<T><<<config.block_per_grid.x,
-                     config.thread_per_block.x,
-                     0,
-                     dev_ctx.stream()>>>(d_x_features_ptr,
-                                         unique_value.data<int>(),
-                                         out_index.data<int>(),
-                                         x.nnz(),
-                                         rulebook_len,
-                                         in_channels,
-                                         x_grad_values_ptr,
-                                         subm);
+  phi::funcs::ScatterCUDAKernel<<<config.block_per_grid,
+                                  config.thread_per_block,
+                                  0,
+                                  dev_ctx.stream()>>>(
+      d_x_features_ptr,
+      rulebook_ptr + rulebook_len,
+      x_grad_values_ptr,
+      rulebook_len,
+      in_channels,
+      false);
 }
 
 template <typename T, typename Context>

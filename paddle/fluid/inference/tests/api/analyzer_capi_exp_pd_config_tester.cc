@@ -15,8 +15,10 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -54,8 +56,8 @@ TEST(PD_Config, interface) {
   EXPECT_TRUE(ir_optim);
 
 #ifndef PADDLE_WITH_LITE
-  PD_ConfigEnableLiteEngine(config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0,
-                            nullptr);
+  PD_ConfigEnableLiteEngine(
+      config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0, nullptr);
   bool lite_enabled = PD_ConfigLiteEngineEnabled(config);
   EXPECT_TRUE(lite_enabled);
 #endif

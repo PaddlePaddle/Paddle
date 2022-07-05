@@ -18,7 +18,6 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-// This avoids the static initialisation order fiasco,
 std::unordered_map<std::string, SymbolHandler> &SymbolHandlers() {
   static std::unordered_map<std::string, SymbolHandler> symbol_handlers;
   return symbol_handlers;
@@ -34,8 +33,6 @@ bool RegisterHandler(const std::string &symbol, const SymbolHandler &handler) {
   return new_handler;
 }
 
-// Return a pointer to a handler if one is registered for this kind of node or
-// an empty std::function otherwise.
 SymbolHandler GetHandler(const std::string &kind) {
   auto it = SymbolHandlers().find(kind);
   if (it != SymbolHandlers().end()) {
@@ -71,7 +68,9 @@ void ClearNode(Node *node) {
   }
 }
 
-void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name,
+                OpDesc *op,
+                OpDesc *new_op,
                 bool override) {
   if (new_op->HasAttr(attr_name) && !override) {
     return;
@@ -84,73 +83,15 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-const int VarType2OnnxDtype(const int type) {
-  auto dtype = static_cast<framework::proto::VarType::Type>(type);
-  switch (dtype) {
-    case framework::proto::VarType::BOOL:
-      return static_cast<int>(ONNXDataType::BOOL);
-    case framework::proto::VarType::INT16:
-      return static_cast<int>(ONNXDataType::INT16);
-    case framework::proto::VarType::INT32:
-      return static_cast<int>(ONNXDataType::INT32);
-    case framework::proto::VarType::INT64:
-      return static_cast<int>(ONNXDataType::INT64);
-    case framework::proto::VarType::FP16:
-      return static_cast<int>(ONNXDataType::FLOAT16);
-    case framework::proto::VarType::FP32:
-      return static_cast<int>(ONNXDataType::FLOAT);
-    case framework::proto::VarType::FP64:
-      return static_cast<int>(ONNXDataType::DOUBLE);
-    case framework::proto::VarType::UINT8:
-      return static_cast<int>(ONNXDataType::UINT8);
-    case framework::proto::VarType::INT8:
-      return static_cast<int>(ONNXDataType::INT8);
-    case framework::proto::VarType::BF16:
-      return static_cast<int>(ONNXDataType::BFLOAT16);
-    case framework::proto::VarType::COMPLEX64:
-      return static_cast<int>(ONNXDataType::COMPLEX64);
-    case framework::proto::VarType::COMPLEX128:
-      return static_cast<int>(ONNXDataType::COMPLEX128);
-    default:
-      PADDLE_THROW(
-          platform::errors::Unimplemented("Unsupported data type: %d.", dtype));
-  }
-}
-
-const std::string VarType2PopStr(const int type) {
-  auto dtype = static_cast<framework::proto::VarType::Type>(type);
-  switch (dtype) {
-    case framework::proto::VarType::UINT8:
-      return "UINT8";
-    case framework::proto::VarType::INT8:
-      return "INT8";
-    case framework::proto::VarType::INT16:
-      return "INT16";
-    case framework::proto::VarType::INT32:
-      return "INT32";
-    case framework::proto::VarType::INT64:
-      return "INT64";
-    case framework::proto::VarType::BOOL:
-      return "BOOL";
-    case framework::proto::VarType::FP64:
-      return "DOUBLE";
-    case framework::proto::VarType::FP32:
-      return "FLOAT";
-    case framework::proto::VarType::FP16:
-      return "FLOAT16";
-    default:
-      PADDLE_THROW(
-          paddle::platform::errors::Unavailable("Unsupported data type."));
-  }
-}
-
-Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+Node *GetInputVarNode(const std::string &input_name,
+                      const Node *op_node,
                       const int id) {
   auto var_name = op_node->Op()->Input(input_name).at(id);
   return GetInputVarNodeByVarName(var_name, op_node);
 }
 
-Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+Node *GetOutputVarNode(const std::string &output_name,
+                       const Node *op_node,
                        const int id) {
   auto var_name = op_node->Op()->Output(output_name).at(id);
   return GetOutputVarNodeByVarName(var_name, op_node);
@@ -180,15 +121,21 @@ const bool is_float_equal(float a, float b, float eps) {
   return std::fabs(a - b) <= eps;
 }
 
-const int GetOutputVarDtype(const Node *node, const std::string &output_name) {
-  auto out_node = GetOutputVarNode(output_name, node);
-  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
-                                        "Node's out node does not exist."));
-  auto var = out_node->Var();
+const ONNXDataType GetVarDType(const Node *node) {
+  auto var = node->Var();
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::Unavailable("Node is not a variable."));
   auto proto_var_type = var->GetDataType();
-  return VarType2OnnxDtype(proto_var_type);
+  return VarType2OnnxDType(proto_var_type);
+}
+
+const ONNXDataType GetOutputVarDType(const Node *node,
+                                     const std::string &output_name) {
+  auto out_node = GetOutputVarNode(output_name, node);
+  PADDLE_ENFORCE_NOT_NULL(
+      out_node,
+      platform::errors::Unavailable("Node's out node does not exist."));
+  return GetVarDType(out_node);
 }
 
 }  // namespace ipu

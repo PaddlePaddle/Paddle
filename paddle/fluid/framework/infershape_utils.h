@@ -18,38 +18,24 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
-namespace phi {
-class InferMetaContext;
-}  // namespace phi
 
 namespace paddle {
 namespace framework {
 
-phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                            const std::string& op_type);
-
-#define DECLARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
-  struct functor_name : public paddle::framework::InferShapeBase {  \
-    void operator()(                                                \
-        paddle::framework::InferShapeContext* ctx) const override { \
-      auto infer_meta_context =                                     \
-          paddle::framework::BuildInferMetaContext(ctx, #op_type);  \
-      fn(&infer_meta_context);                                      \
-    }                                                               \
-  }
-
 // TODO(chenweihang): Support TensorArray later
 class CompatMetaTensor : public phi::MetaTensor {
  public:
+  explicit CompatMetaTensor(bool is_runtime)
+      : is_runtime_(is_runtime), initialized_(false) {}
   CompatMetaTensor(InferShapeVarPtr var, bool is_runtime)
       : var_(std::move(var)), is_runtime_(is_runtime) {}
 
-  CompatMetaTensor() = default;
-  CompatMetaTensor(const CompatMetaTensor&) = default;
   CompatMetaTensor(CompatMetaTensor&&) = default;
-  CompatMetaTensor& operator=(const CompatMetaTensor&) = delete;
-  CompatMetaTensor& operator=(CompatMetaTensor&&) = delete;
+  CompatMetaTensor& operator=(CompatMetaTensor&&) = default;
+  CompatMetaTensor(const CompatMetaTensor&) = default;
+  CompatMetaTensor& operator=(const CompatMetaTensor&) = default;
 
   int64_t numel() const override;
 
@@ -71,6 +57,14 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   void share_meta(const MetaTensor& meta_tensor) override;
 
+  bool initialized() const override { return initialized_; };
+
+  operator unspecified_bool_type() const override {
+    return initialized_ ? unspecified_bool_true : 0;
+  }
+
+  bool operator!() const override { return !initialized_; }
+
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = BOOST_GET_CONST(Variable*, var_);
@@ -83,11 +77,13 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
-    PADDLE_ENFORCE_EQ(is_runtime_, true,
+    PADDLE_ENFORCE_EQ(is_runtime_,
+                      true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
     auto* var = BOOST_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
+                      true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
     return var->Get<phi::SelectedRows>();
@@ -95,7 +91,61 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   InferShapeVarPtr var_;
   bool is_runtime_;
+  bool initialized_{true};
 };
+
+// Note: In order to avoid using shared_ptr to manage MetaTensor in
+// InferMetaContext, inherit and implement InferMetaContext separately
+// for compatibility with fluid, shared_ptr will cause significant decrease
+// in scheduling performance
+class CompatInferMetaContext : public phi::InferMetaContext {
+ public:
+  CompatInferMetaContext() = default;
+  explicit CompatInferMetaContext(phi::MetaConfig config)
+      : phi::InferMetaContext(config) {}
+
+  void EmplaceBackInput(CompatMetaTensor input);
+  void EmplaceBackOutput(CompatMetaTensor output);
+
+  void EmplaceBackInputs(
+      paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
+          inputs);
+  void EmplaceBackOutputs(
+      paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+          outputs);
+
+  const phi::MetaTensor& InputAt(size_t idx) const override;
+
+  std::vector<const phi::MetaTensor*> InputsBetween(size_t start,
+                                                    size_t end) const override;
+  paddle::optional<std::vector<const phi::MetaTensor*>> OptionalInputsBetween(
+      size_t start, size_t end) const override;
+
+  phi::MetaTensor* MutableOutputAt(size_t idx) override;
+  std::vector<phi::MetaTensor*> MutableOutputBetween(size_t start,
+                                                     size_t end) override;
+
+  virtual ~CompatInferMetaContext() = default;
+
+ private:
+  paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize>
+      compat_inputs_;
+  paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
+      compat_outputs_;
+};
+
+CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                             const std::string& op_type);
+
+#define DECLARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
+  struct functor_name : public paddle::framework::InferShapeBase {  \
+    void operator()(                                                \
+        paddle::framework::InferShapeContext* ctx) const override { \
+      auto infer_meta_context =                                     \
+          paddle::framework::BuildInferMetaContext(ctx, #op_type);  \
+      fn(&infer_meta_context);                                      \
+    }                                                               \
+  }
 
 }  // namespace framework
 }  // namespace paddle

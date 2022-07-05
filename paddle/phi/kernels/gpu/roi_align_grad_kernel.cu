@@ -14,15 +14,14 @@
 
 #include "paddle/phi/kernels/roi_align_grad_kernel.h"
 
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -172,7 +171,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        paddle::optional<const DenseTensor&> boxes_num,
+                        const paddle::optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -236,21 +235,21 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int threads = kNumCUDAThreads;
 
   if (output_grad_size > 0) {
-    GPURoiAlignBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        output_grad_size,
-        boxes.data<T>(),
-        out_grad.data<T>(),
-        rois_num,
-        spatial_scale,
-        channels,
-        height,
-        width,
-        pooled_height,
-        pooled_width,
-        sampling_ratio,
-        roi_id_data,
-        dx->data<T>(),
-        aligned);
+    GPURoiAlignBackward<T>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,
+                                                   boxes.data<T>(),
+                                                   out_grad.data<T>(),
+                                                   rois_num,
+                                                   spatial_scale,
+                                                   channels,
+                                                   height,
+                                                   width,
+                                                   pooled_height,
+                                                   pooled_width,
+                                                   sampling_ratio,
+                                                   roi_id_data,
+                                                   dx->data<T>(),
+                                                   aligned);
   }
 }
 

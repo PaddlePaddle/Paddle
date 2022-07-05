@@ -118,6 +118,7 @@ class Gloo(object):
         self._http_server = http_server
 
     def _init_fs(self, fs_path, prefix):
+
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
@@ -145,6 +146,7 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
+
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
@@ -172,6 +174,7 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
+
         def __start_kv_server(http_server_d, size_d):
             print("start http_server: {}, {}".format(port, size_d))
             from paddle.distributed.fleet.utils.http_server import KVServer
@@ -185,13 +188,15 @@ class Gloo(object):
 
         def init_kv_server(http_server_d):
             worker_key = prefix + '_' + 'worker'
-            size_d = {worker_key: self._worker_num, }
+            size_d = {
+                worker_key: self._worker_num,
+            }
             print("worker_key:{}, size: {}".format(worker_key, size_d))
 
             http_server_d["running"] = True
             # child process for http server
-            _http_server = Process(
-                target=__start_kv_server, args=(http_server_d, size_d))
+            _http_server = Process(target=__start_kv_server,
+                                   args=(http_server_d, size_d))
             _http_server.daemon = True
             # set running status to True
             # start child process
@@ -224,7 +229,7 @@ class Gloo(object):
             self._worker_comm = gloo
         # TODO (sandyhouse): initialize gloo for server and all
 
-        # the closing of kv server may cause gloo init failure 
+        # the closing of kv server may cause gloo init failure
         # since it depend on the full mesh connection
         # e.g. 0 connected with 1,2,3 while 2-3 not connected yet
         # TODO(kuizhiqing)
@@ -517,6 +522,7 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
+
     def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
@@ -525,7 +531,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._kwargs = kwargs
         self._role_is_generated = False
 
-        # for heterps  
+        # for heterps
         self._stage_id = 1
         self._stage_num = 1
         self._next_heter_trainer_endpoints = []
@@ -652,8 +658,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return len(self._get_pserver_endpoints(
-        )) if self._get_pserver_endpoints() is not None else 0
+        return len(self._get_pserver_endpoints()
+                   ) if self._get_pserver_endpoints() is not None else 0
 
     def _node_num(self):
         """
@@ -814,8 +820,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
             raise ValueError(
-                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
-                format(training_role))
+                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment."
+                .format(training_role))
 
         # For Heter Parameter Server env setting
         next_heter_trainer_eplist = os.getenv(
@@ -832,8 +838,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
             if previous_heter_trainer_eplist == "":
                 assert training_role in (
-                    "TRAINER", "PSERVER"
-                ), "training_role should be trainer or pserver"
+                    "TRAINER",
+                    "PSERVER"), "training_role should be trainer or pserver"
             else:
                 try:
                     self._previous_heter_trainer_endpoints = previous_heter_trainer_eplist.split(
@@ -896,7 +902,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._stage_num = os.getenv("STAGE_NUM", None)
                 if self._stage_num == None:
                     raise ValueError(
-                        "Can not find STAGE_NUM, please check your environment.")
+                        "Can not find STAGE_NUM, please check your environment."
+                    )
                 self._stage_num = int(self._stage_num)
                 self._stage_trainers = os.getenv("PADDLE_STAGE_TRAINERS_NUM",
                                                  None)
@@ -955,8 +962,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     "Can not find HETER_DEVICE_TYPE, please check your environment."
                 )
             assert self._heter_trainer_device_type in (
-                "cpu", "gpu", "xpu"
-            ), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
+                "cpu", "gpu",
+                "xpu"), "HETER_DEVICE_TYPE should be cpu,gpu or xpu"
             if self._heter_trainer_device_type == "gpu":
                 heter_device_id = os.getenv("FLAGS_selected_gpus", "0")
                 self._heter_trainer_device = ":".join(
@@ -1068,14 +1075,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         print("Gloo init with {}: need_init_all: {}, args: {}".format(
             type, need_init_all, kwargs))
 
-        self._gloo.init(
-            rendezvous=rendezvous_type,
-            role=self._role,
-            role_id=self._role_id(),
-            worker_num=self._worker_num(),
-            server_num=self._server_num(),
-            need_init_all=need_init_all,
-            kwargs=kwargs)
+        self._gloo.init(rendezvous=rendezvous_type,
+                        role=self._role,
+                        role_id=self._role_id(),
+                        worker_num=self._worker_num(),
+                        server_num=self._server_num(),
+                        need_init_all=need_init_all,
+                        kwargs=kwargs)
 
         if rendezvous_type == Gloo.RENDEZVOUS.HTTP:
             http_server_d['running'] = False
@@ -1095,9 +1101,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
+
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
-        super(UserDefinedRoleMaker, self).__init__(
-            is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+        super(UserDefinedRoleMaker, self).__init__(is_collective=is_collective,
+                                                   init_gloo=init_gloo,
+                                                   **kwargs)
         self._init_gloo = init_gloo
 
     def _user_defined_ps_env(self):

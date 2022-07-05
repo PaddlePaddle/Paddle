@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -64,6 +64,7 @@ class Master(object):
 
 
 class HTTPMaster(Master):
+
     def lazy_init(self):
         if self.initialized:
             return
@@ -81,8 +82,8 @@ class HTTPMaster(Master):
                         self.role = Master.MAIN
                         break
                     except Exception as e:
-                        self.ctx.logger.warning("start master failed {}".format(
-                            e))
+                        self.ctx.logger.warning(
+                            "start master failed {}".format(e))
                         time.sleep(0.1)
                         continue
         else:
@@ -172,6 +173,7 @@ class HTTPMaster(Master):
 
 
 class ETCDMaster(Master):
+
     def __init__(self, ctx):
         super().__init__(ctx)
 
@@ -263,8 +265,9 @@ class ETCDMaster(Master):
             self.ctx.logger.debug("Heartbeat done")
             self.client.cancel_watch(beat_watch)
 
-        self.beat_thread = threading.Thread(
-            name='heartbeat', target=_heartbeat, daemon=True)
+        self.beat_thread = threading.Thread(name='heartbeat',
+                                            target=_heartbeat,
+                                            daemon=True)
         self.beat_thread.start()
 
     def fetch_peer_alive(self):
@@ -276,10 +279,20 @@ class ETCDMaster(Master):
         return peer_alive
 
     def wait_peer_ready(self, replicas_min, replicas_max, timeout):
+        timeout = timeout if timeout > 1 else 3
+
         end = time.time() + timeout
+        np_pre = len(self.fetch_peer_alive())
         while not self.ctx.status.is_done() and time.time() < end:
-            if len(self.fetch_peer_alive()) == replicas_max:
+            np = len(self.fetch_peer_alive())
+            if np == replicas_max:
+                # maximum replicas reached, return immediately
                 return (True, replicas_max)
+            elif np != np_pre:
+                # replicas are changing, reset timeout
+                end = time.time() + timeout
+                np_pre = np
+                time.sleep(0.2)
             else:
                 time.sleep(0.5)
 
@@ -303,5 +316,5 @@ class ETCDMaster(Master):
     def stop(self):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
-            # TODO(kuizhiqing) thread should exit
+            # daemon thread
             #self.beat_thread.join()
