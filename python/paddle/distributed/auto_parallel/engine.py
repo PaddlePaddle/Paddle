@@ -167,15 +167,6 @@ class Engine:
 
         # step1 Generate Forward program
         self._build()
-        from .utils import debug_program
-        debug_program(
-            self._dist_contexts[self._modes[0]]._original_serial_main_program,
-            "./", "build_main")
-        debug_program(
-            self._dist_contexts[
-                self._modes[0]]._original_serial_startup_program, "./",
-            "build_startup")
-
         # step2 Do Parallelism tuning
         self._plan(self._modes[0])
 
@@ -237,6 +228,8 @@ class Engine:
                 serial_main_prog, serial_startup_prog, self._optimizer, losses,
                 feed_vars, fetch_vars, self.cluster, self.strategy)
             self._dist_contexts[mode].gradient_scale = self._gradient_scale
+
+            print("acutal checkpoint: ", self.model.model.gpt.checkpoints)
 
     def _plan(self, mode):
         if self._planned_mode is None:

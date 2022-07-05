@@ -101,7 +101,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
                 stage_range.remove(self._max_stage)
             stage_range.sort()
         else:
-            stage_range = [1, 2]
+            stage_range = [0, 1, 2]
         self.stage_range = stage_range[:]
         self._max_trial = min(self._max_trial, len(self.stage_range))
 
@@ -142,53 +142,3 @@ class ShardingStageAlgorithm(AlgorithmBase):
 
     def summary(self):
         print(" algorithm.summary() " * 8)
-
-
-# class ShardingStageTuner:
-
-#     def __init__(self, strategy, tuning_config):
-#         self._strategy = copy.deepcopy(strategy)
-#         self._config = tuning_config
-#         self.stage_range = sorted(self._config["sharding"]["stage"])
-#         self._sharding_configs = copy.deepcopy(strategy.sharding_configs)
-#         print("self._sharding_configs: ", type(self._sharding_configs))
-#         print("stage_range: ", self.stage_range)
-#         assert isinstance(self.stage_range, list)
-#         self.cur_idx = len(self.stage_range) - 1
-#         # maintain "self.status"
-
-#     def get_baseline_trial(self):
-#         return self.get_next_trial()
-
-#     def get_next_trial(self):
-#         print("generate next stage: ", self.stage_range[self.cur_idx])
-
-#         if self.cur_idx >= 0:
-#             print(self._strategy.sharding_configs["stage"])
-#             print(self._strategy.sharding_configs)
-#             self._sharding_configs["stage"] = self.stage_range[self.cur_idx]
-#             self._strategy.sharding_configs = self._sharding_configs
-#             print(self._strategy.sharding_configs["stage"])
-#             print(self._strategy.sharding_configs)
-#             assert self._strategy.sharding_configs["stage"] == self.stage_range[self.cur_idx]
-#             self.cur_idx -= 1
-#             print(str(self._strategy))
-#             return copy.deepcopy(self._strategy)
-#         else:
-#             return None
-
-#     # TODO should return a trial class and trial name should be its member
-#     def get_trial_name(self):
-#         return "Sharing_stage_{}_trial".format(self.cur_idx + 1)
-
-#     def get_status(self):
-#         if self.cur_idx >= 0:
-#             return "RUNNING"
-#         else:
-#             return "STOP"
-
-#     def update_statue(self, result):
-#         pass
-
-#     def summary(self):
-#         print(" algorithm.summary() " * 8)

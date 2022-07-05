@@ -30,7 +30,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups
 from paddle.distributed.auto_parallel.utils import debug_program
 from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
-
 from paddle.distributed.passes import new_pass, PassContext
 
 from .config import TuningConfig
@@ -65,17 +64,24 @@ def _get_new_loss(target_program, ref_program, loss):
     return target_block.var(loss.name)
 
 
+def parse_process_groups():
+    group_map = {}
+    all_process_groups = get_all_process_groups()
+    for process_group in all_process_groups:
+        group_map[process_group.id] = process_group.ranks
+    return group_map
+
+
+def infer_batch_size(main_program, inputs_spec):
+    input_varname = inputs_spec[0].name
+    input_var = main_program.global_block().var(input_varname)
+    return input_var.shape[0]
+
+
 class OptimizationTuner:
     """
-    generate vanilla program
-    backup & restore vanilla program
-    select corresponding tunning algortihm（tuner, initialize it with all information it need.
-    manage while loop
-        call tuner to generate trial
-        apply pass
-        evaluation
-        check stop metric
-    summary & return 
+    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
+    of Optimization Pass in AutoParallel.
     """
 
     def __init__(
@@ -93,13 +99,14 @@ class OptimizationTuner:
         self._completer = completer
         self._config = TuningConfig(user_configs, self._dist_context._strategy)
         self._rank_id = rank
+        self._inputs_spec = inputs_spec
+        self._labels_spec = labels_spec
 
-        self._build_program_without_optimization()
-        # self._backup_context()
+        self._build_programs_without_optimization()
         self._select_tuning_algorithm()
 
     # TODO this func may be intergated into parallelizer
-    def _build_program_without_optimization(self):
+    def _build_programs_without_optimization(self):
         # NOTE (JZ-LIANG): This function is supposed to generate a compeleted program
         # with all parts like forward, backward, update, parallelism transformation,
         # only without optimization transformation. It will be update in future.
@@ -116,21 +123,13 @@ class OptimizationTuner:
             serial_main_program)
         self._dist_context._params_grads = params_grads
 
-        debug_program(self._dist_context._serial_main_program, "./",
-                      "tuner_vanilla_main")
-        debug_program(self._dist_context._serial_startup_program, "./",
-                      "tuner_vanilla_startup")
-
-    # def _backup_context(self):
-    #     self._backup_main_program = self._dist_context.serial_main_program.clone(for_test=False)
-    #     self._backup_startup_program = self._dist_context.serial_startup_program.clone(for_test=False)
-    #     self._user_optimizer = copy.deepcopy(self._dist_context.serial_optimizer)
-    #     self._backup_dist_tensors_for_program = copy.deepcopy(self._dist_context._dist_tensors_for_program)
-    #     self._backup_dist_ops_for_program = copy.deepcopy(self._dist_context._dist_ops_for_program)
-    #     self._backup_process_meshes = copy.deepcopy(self._dist_context.process_meshes)
-    #     self._backup_distop_ctx = copy.deepcopy(self._dist_context._dist_op_context)
-    #     self._backup_block_state = copy.deepcopy(self._dist_context.block_state)
-    #     # self._backup_completer = copy.deepcopy(self._completer)
+        if self._config.verbose:
+            debug_program(self._dist_context._serial_main_program,
+                          os.path.join(self._config.log_dir, "Programs"),
+                          "vanilla_main")
+            debug_program(self._dist_context._serial_startup_program,
+                          os.path.join(self._config.log_dir, "Programs"),
+                          "vanilla_startup")
 
     def _get_new_context(self):
         # TODO only dependent on dist context
@@ -164,7 +163,6 @@ class OptimizationTuner:
         new_dist_context._block_state = copy.deepcopy(
             self._dist_context.block_state)
         pass_context = PassContext()
-        # new_completer = copy.deepcopy(self._backup_completer)
         new_completer = Completer(new_dist_context)
 
         return new_dist_context, pass_context, new_completer
@@ -179,10 +177,6 @@ class OptimizationTuner:
 
         dist_context, pass_context, completer = self._get_new_context()
 
-        debug_program(dist_context.serial_main_program, "./",
-                      "new_env_{}_main".format(time))
-        debug_program(dist_context.serial_startup_program, "./",
-                      "new_env_{}_startup".format(time))
         main_program = dist_context.serial_main_program
         startup_program = dist_context.serial_startup_program
 
@@ -191,7 +185,7 @@ class OptimizationTuner:
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
 
-            # TODO AMP Pass should not use
+            # TODO AMP Pass should not use loss var
             config["loss"] = dist_context.serial_loss
             config["input_data"] = self._dist_context.serial_feed_vars["inputs"] \
                 + self._dist_context.serial_feed_vars["labels"]
@@ -214,6 +208,7 @@ class OptimizationTuner:
                                                     config)
             auto_parallel_recompute_pass.apply([main_program],
                                                [startup_program], pass_context)
+            print("apply recompute pass !" * 8)
 
         # Do logical partition
         partitioner = Partitioner(dist_context, self._rank_id)
@@ -274,41 +269,42 @@ class OptimizationTuner:
             """
             print("=====tuner" * 8)
 
-            def parse_process_groups():
-                group_map = {}
-                all_process_groups = get_all_process_groups()
-                for process_group in all_process_groups:
-                    group_map[process_group.id] = process_group.ranks
-                    print(process_group)
-                return group_map
-
             # parse path
             profile_ctx = {}
             dist_env = copy.deepcopy(paddle.distributed.ParallelEnv())
-            self.rank = dist_env.rank
-            ctx_path = "./" + self.algorithm.get_trial_name(
-            ) + ".pfcontext." + str(self.rank)
-            assert isinstance(self.rank, int)
+            rank = dist_env.rank
+            ctx_filename = self.algorithm.get_trial_name() + ".pfctx." + str(
+                rank)
+            ctx_path = os.path.join(self._config.log_dir, ctx_filename)
+            assert isinstance(rank, int)
             self.device_id = dist_env.device_id
             assert isinstance(self.device_id, int)
             self.current_endpoint = dist_env.current_endpoint
             profile_ctx['distributed_env'] = dist_env
             profile_ctx['group_map'] = parse_process_groups()
+            profile_ctx["loss_var_name"] = self._dist_context.serial_loss.name
+            profile_ctx["batch_size"] = infer_batch_size(
+                main_program, self._inputs_spec)
+            profile_ctx[
+                "main_program_decs"] = main_program.desc.serialize_to_string()
+            profile_ctx[
+                "startup_program_decs"] = startup_program.desc.serialize_to_string(
+                )
 
             with open(ctx_path, 'wb') as f:
                 pickle.dump(profile_ctx, f, protocol=4)
 
-            main_program_filename = "./" + self.algorithm.get_trial_name(
-            ) + ".main_program_decs." + str(self.rank)
-            main_binary_str = main_program.desc.serialize_to_string()
-            with open(main_program_filename, "wb") as f:
-                f.write(main_binary_str)
+            # main_program_filename = "./" + self.algorithm.get_trial_name(
+            # ) + ".main_program_decs." + str(rank)
+            # main_binary_str = main_program.desc.serialize_to_string()
+            # with open(main_program_filename, "wb") as f:
+            #     f.write(main_binary_str)
 
-            startup_program_filename = "./" + self.algorithm.get_trial_name(
-            ) + ".startup_program_decs." + str(self.rank)
-            startup_binary_str = startup_program.desc.serialize_to_string()
-            with open(startup_program_filename, "wb") as f:
-                f.write(startup_binary_str)
+            # startup_program_filename = "./" + self.algorithm.get_trial_name(
+            # ) + ".startup_program_decs." + str(rank)
+            # startup_binary_str = startup_program.desc.serialize_to_string()
+            # with open(startup_program_filename, "wb") as f:
+            #     f.write(startup_binary_str)
 
             # run profile
             if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
@@ -317,24 +313,31 @@ class OptimizationTuner:
                 coverage_args = []
             profile_args = " ".join([
                 "--rank",
-                str(self.rank),
+                str(rank),
                 "--device_id",
                 str(self.device_id),
                 "--ctx_filename",
                 ctx_path,
-                "--main_program_filename",
-                main_program_filename,
-                "--startup_program_filename",
-                startup_program_filename,
+                # "--main_program_filename",
+                # main_program_filename,
+                # "--startup_program_filename",
+                # startup_program_filename,
             ])
             new_cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
             new_cmd = [sys.executable, "-u"
                        ] + coverage_args + shlex.split(new_cmd_args)
+            # TODO if any rank hang or fail, kill all, otherwise
+            current_env = copy.copy(os.environ.copy())
+            proc_env = {
+                "FLAGS_USE_STANDALONE_EXECUTOR": "False",
+            }
+            current_env.update(proc_env)
+            print(current_env)
             print(new_cmd)
-            new_process = subprocess.Popen(new_cmd)
+            new_process = subprocess.Popen(new_cmd, env=current_env)
             new_process.wait()
             print("=====tuner" * 8)
-            assert new_process.returncode == 0, "Porfile failed !"
+            # assert new_process.returncode == 0, "Porfile failed !"
             print("Profile Successfully !")
 
         elif self._config.mode == "COSTMODEL":
@@ -348,14 +351,26 @@ class OptimizationTuner:
 
     def tune(self):
 
-        # step1: baseline trial
+        # step1: collect model info which might
+        # be used to pruned the trial by some algorithm
+        # NOTE should be changed to dist program in future
+        self.algorithm.collect_model_info(
+            self._dist_context.serial_main_program,
+            self._dist_context.serial_startup_program)
+
+        # step2: baseline trial
         new_strategy = self.algorithm.get_baseline_trial()
         new_main_program, new_startup_program = self._apply_optimization(
             new_strategy, time=0)
         last_trial_result = self._evaluate_trial(new_main_program,
                                                  new_startup_program)
-        debug_program(new_main_program, "./", "baseline_main")
-        debug_program(new_startup_program, "./", "baseline_startup")
+        if self._config.verbose:
+            debug_program(new_main_program,
+                          os.path.join(self._config.log_dir, "Programs"),
+                          "baseline_main")
+            debug_program(new_startup_program,
+                          os.path.join(self._config.log_dir, "Programs"),
+                          "baseline_startup")
 
         # step2: while loop to find out best trial
         time = 0
@@ -371,9 +386,14 @@ class OptimizationTuner:
                 new_strategy)
             last_trial_result = self._evaluate_trial(new_main_program,
                                                      new_startup_program)
-            debug_program(new_main_program, "./", "trial_{}_main".format(time))
-            debug_program(new_startup_program, "./",
-                          "trial_{}_startup".format(time))
+
+            if self._config.verbose:
+                debug_program(new_main_program,
+                              os.path.join(self._config.log_dir, "Programs"),
+                              "trial_{}_main".format(time))
+                debug_program(new_startup_program,
+                              os.path.join(self._config.log_dir, "Programs"),
+                              "trial_{}_startup".format(time))
 
             # TODO trial result class
             self.algorithm.update_statue(last_trial_result)

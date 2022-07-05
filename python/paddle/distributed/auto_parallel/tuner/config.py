@@ -46,7 +46,6 @@ class TuningConfig(object):
         if not user_config:
             user_config = {}
 
-        self._tuning_passes_configs = {}
         self._tuning_passes_name = set()
         self._dist_strategy = copy.deepcopy(strategy)
         self._mode = None
@@ -54,6 +53,7 @@ class TuningConfig(object):
         self._profile_end_step = None
         self._log_dir = None
         self._max_trial = None
+        self._verbose = None
 
         self._initialize(user_config)
 
@@ -82,6 +82,10 @@ class TuningConfig(object):
         return self._max_trial
 
     @property
+    def verbose(self):
+        return self._verbose
+
+    @property
     def dist_strategy(self):
         return self._dist_strategy
 
@@ -94,13 +98,22 @@ class TuningConfig(object):
 
         self._profile_end_step = user_config.get("profile_end_step", 30)
 
+        self._max_trial = user_config.get("max_trial", 20)
+
+        self._verbose = user_config.get("verbose", False)
+
         log_dir = user_config.get("log_dir", None)
         if not log_dir:
             log_dir = os.path.join(os.getcwd(), "tuning_results")
+
         self._log_dir = log_dir
         if not os.path.exists(self._log_dir):
             if paddle.distributed.get_rank() == 0:
                 pathlib.Path(self._log_dir).mkdir(parents=True, exist_ok=True)
+                if self._verbose:
+                    pathlib.Path(os.path.join(self._log_dir,
+                                              "Programs")).mkdir(parents=True,
+                                                                 exist_ok=True)
 
         for p in _tuning_supported_passes:
             if getattr(self._dist_strategy, p) and _get_pass_config(
@@ -110,23 +123,19 @@ class TuningConfig(object):
 
                 config_name = p + _strategy_config_suffiex
                 p_dict = getattr(self._dist_strategy, config_name)
-                self._tuning_passes_configs[config_name] = p_dict
+                self.__dict__[config_name] = p_dict
 
                 # TODO verify the user defined configs
                 user_config_for_pass = user_config.get(p, None)
                 if user_config_for_pass:
                     for k, v in user_config_for_pass.items():
-                        self._tuning_passes_configs[config_name][k] = v
+                        self.__dict__[config_name][k] = v
 
     # (NOTE)tuning config ONLY wraps dist strategy for pass config which is to be tuned
-    # (NOTE) could NOT be deepcopy
     def __getattr__(self, item):
-        if item in self._tuning_passes_configs:
-            return self._tuning_passes_configs[item]
-        else:
-            return getattr(self._dist_strategy, item)
+        return getattr(self._dist_strategy, item)
 
     # def __setattr__(self, key, value):
-    #     if key not in self._tuning_passes_configs:
-    #         raise TypeError("{} is not a config of tuning passes {}".format(key, [p for p in self._tuning_passes_name]))
-    #     self._tuning_passes_configs[key] = value
+    #     if key not in self.__dict__:
+    #         raise TypeError("{} is not a tunable passes {}".format(key))
+    #     self.__dict__[key] = value
