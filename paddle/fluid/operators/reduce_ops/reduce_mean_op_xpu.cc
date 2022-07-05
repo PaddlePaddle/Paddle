@@ -29,7 +29,8 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::Unavailable("This kernel only runs on XPU."));
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
@@ -57,13 +58,17 @@ class ReduceMeanXPUKernel : public framework::OpKernel<T> {
         }
       }
     }
-    int r = xpu::reduce_mean(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), xdims, reduce_dims);
+    int r = xpu::reduce_mean(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(input->data<T>()),
+                             reinterpret_cast<XPUType*>(output->data<T>()),
+                             xdims,
+                             reduce_dims);
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU reduce_mean kernel return wrong value[%d %s]", r,
+                          "XPU reduce_mean kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };
@@ -113,20 +118,24 @@ class ReduceMeanGradXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    int r = xpu::constant(dev_ctx.x_context(), x_data, input->numel(),
-                          static_cast<XPUType>(val));
+    int r = xpu::constant(
+        dev_ctx.x_context(), x_data, input->numel(), static_cast<XPUType>(val));
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
-                          "XPU constant kernel return wrong value[%d %s]", r,
+                          "XPU constant kernel return wrong value[%d %s]",
+                          r,
                           XPUAPIErrorMsg[r]));
-    r = xpu::broadcast_mul(dev_ctx.x_context(), x_data, dy_data, x_data, xdims,
-                           ydims);
+    r = xpu::broadcast_mul(
+        dev_ctx.x_context(), x_data, dy_data, x_data, xdims, ydims);
 
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+    PADDLE_ENFORCE_EQ(r,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "XPU broadcast_mul kernel return wrong value[%d %s]",
-                          r, XPUAPIErrorMsg[r]));
+                          r,
+                          XPUAPIErrorMsg[r]));
   }
 };
 

@@ -33,8 +33,8 @@ class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
 
     if (X->numel() != 0) {
       auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-      const auto& runner = NpuOpRunner("LogSoftmaxV2", {*X}, {*Out},
-                                       {{"axes", std::vector<int>{axis}}});
+      const auto& runner = NpuOpRunner(
+          "LogSoftmaxV2", {*X}, {*Out}, {{"axes", std::vector<int>{axis}}});
       runner.Run(stream);
     }
   }
@@ -55,7 +55,9 @@ class LogSoftmaxGradNPUKernel : public framework::OpKernel<T> {
 
     if (dOut->numel() != 0) {
       auto stream = ctx.template device_context<NPUDeviceContext>().stream();
-      const auto& runner = NpuOpRunner("LogSoftmaxGrad", {*dOut, *Out}, {*dX},
+      const auto& runner = NpuOpRunner("LogSoftmaxGrad",
+                                       {*dOut, *Out},
+                                       {*dX},
                                        {{"axis", std::vector<int>{axis}}});
       runner.Run(stream);
     }
@@ -68,8 +70,10 @@ class LogSoftmaxGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(log_softmax, ops::LogSoftmaxNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(log_softmax,
+                       ops::LogSoftmaxNPUKernel<float>,
                        ops::LogSoftmaxNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(log_softmax_grad, ops::LogSoftmaxGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(log_softmax_grad,
+                       ops::LogSoftmaxGradNPUKernel<float>,
                        ops::LogSoftmaxGradNPUKernel<plat::float16>);

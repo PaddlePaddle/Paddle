@@ -21,7 +21,8 @@ namespace tensorrt {
 class Unsqueeze2OpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a fluid unsqueeze2 op to tensorrt shuffle layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -34,7 +35,8 @@ class Unsqueeze2OpConverter : public OpConverter {
     std::vector<int> axes =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     PADDLE_ENFORCE_GT(
-        axes.size(), 0,
+        axes.size(),
+        0,
         platform::errors::InvalidArgument(
             "Attr(axes).size should be > 0 in unsqueeze2 op in TensorRT,"
             "but received axes.size() = %d.",

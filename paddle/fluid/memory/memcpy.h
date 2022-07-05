@@ -54,7 +54,7 @@ void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num);
  *
  */
 template <typename DstPlace, typename SrcPlace>
-void Copy(DstPlace, void* dst, SrcPlace, const void* src, size_t num,
-          void* stream);
+void Copy(
+    DstPlace, void* dst, SrcPlace, const void* src, size_t num, void* stream);
 }  // namespace memory
 }  // namespace paddle

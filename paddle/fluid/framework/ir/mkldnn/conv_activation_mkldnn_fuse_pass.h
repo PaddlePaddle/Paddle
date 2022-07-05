@@ -32,7 +32,9 @@ class ConvActivationMkldnnFusePass : public FusePassBase {
   void ApplyImpl(Graph *graph) const override;
 
   void FuseConvAct(
-      Graph *graph, const std::string &conv_type, std::string &act_type,
+      Graph *graph,
+      const std::string &conv_type,
+      std::string &act_type,
       const std::unordered_map<std::string, std::string> &attrs_map) const;
 };
 

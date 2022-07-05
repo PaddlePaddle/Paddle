@@ -15,12 +15,13 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class element_visitor : public boost::static_visitor<Attribute> {
+class element_visitor {
  public:
   explicit element_visitor(int index) : index_(index) {}
 
@@ -39,14 +40,14 @@ class element_visitor : public boost::static_visitor<Attribute> {
     if (index >= 0 && static_cast<size_t>(index) < attr.size()) {
       return static_cast<ET>(attr[index]);
     }
-    return boost::blank();
+    return paddle::blank();
   }
 
  private:
   int index_;
 };
 
-class operation_visitor : public boost::static_visitor<Attribute> {
+class operation_visitor {
  public:
   explicit operation_visitor(const proto::PassDesc::OperationType& type)
       : type_(type) {}
@@ -98,14 +99,14 @@ Attribute GetVarAttrValue(const VarDesc* desc,
       return shape;
     }
   }
-  return boost::blank();
+  return paddle::blank();
 }
 
 Attribute GetOpAttrValue(const OpDesc* desc,
                          const proto::PassDesc::Attr& attr) {
   Attribute value = desc->GetAttr(attr.name());
   if (attr.has_element_index()) {
-    value = boost::apply_visitor(element_visitor(attr.element_index()), value);
+    value = paddle::visit(element_visitor(attr.element_index()), value);
   }
   return value;
 }
@@ -203,7 +204,7 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         Attribute attr = GetVarAttrValue(x->Var(), condition.attr());
         if (condition.has_operation()) {
           Attribute operation = GetAttrValue(condition.operation().value());
-          attr = boost::apply_visitor(
+          attr = paddle::visit(
               operation_visitor(condition.operation().type()), attr, operation);
         }
         switch (condition.type()) {
@@ -253,7 +254,9 @@ GraphPatternDetector::handle_t GetGenerateDelete(
             // output node
             for (Node* s_node : node->outputs) {
               iter->second->outputs.push_back(s_node);
-              std::replace(s_node->inputs.begin(), s_node->inputs.end(), node,
+              std::replace(s_node->inputs.begin(),
+                           s_node->inputs.end(),
+                           node,
                            iter->second);
               s_node->Op()->RenameInput(node->Name(), iter->second->Name());
             }
@@ -386,8 +389,9 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
               if (attr_map.has_operation()) {
                 Attribute operation =
                     GetAttrValue(attr_map.operation().value());
-                attr = boost::apply_visitor(
-                    operation_visitor(attr_map.operation().type()), attr,
+                attr = paddle::visit(
+                    operation_visitor(attr_map.operation().type()),
+                    attr,
                     operation);
               }
               op_desc.SetAttr(attr_map.replace_attr().name(), attr);
@@ -442,7 +446,8 @@ void GeneratePass::ApplyImpl(Graph* graph) const {
 }
 
 void GeneratePass::VerifyDesc() const {
-  PADDLE_ENFORCE_NE(multi_pass_desc_.pass_descs_size(), 0,
+  PADDLE_ENFORCE_NE(multi_pass_desc_.pass_descs_size(),
+                    0,
                     platform::errors::InvalidArgument(
                         "Size of PassDesc should not be empty."));
 }
@@ -537,7 +542,8 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
   proto::PassDesc* pass_desc = multi_pass_desc_.add_pass_descs();
   pass_desc->mutable_pattern()->CopyFrom(pattern.ProgramDesc().blocks(0).ops());
   pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc().blocks(0).ops());
-  PADDLE_ENFORCE_EQ(pattern.InputVars().size(), replace.InputVars().size(),
+  PADDLE_ENFORCE_EQ(pattern.InputVars().size(),
+                    replace.InputVars().size(),
                     platform::errors::InvalidArgument(
                         "Size of lambda expression arguments is not equal "
                         "between pattern/replace subgraph."));
@@ -546,7 +552,8 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
     var_map->set_pattern_var(pattern.InputVars()[i]);
     var_map->set_replace_var(replace.InputVars()[i]);
   }
-  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(), replace.OutputVars().size(),
+  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(),
+                    replace.OutputVars().size(),
                     platform::errors::InvalidArgument(
                         "Size of lambda expression returns is not equal "
                         "between pattern/replace subgraph."));

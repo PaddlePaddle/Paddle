@@ -24,8 +24,8 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 #define CUDA_BLOCK_SIZE 16
 
 template <typename T>
-__global__ void PolygonBoxTransformKernel(const int n, const int h, const int w,
-                                          const T* input, T* output) {
+__global__ void PolygonBoxTransformKernel(
+    const int n, const int h, const int w, const T* input, T* output) {
   int id_n = threadIdx.x + blockDim.x * blockIdx.x;
   int id_h = threadIdx.y + blockDim.y * blockIdx.y;
   int id_w = threadIdx.z + blockDim.z * blockIdx.z;
@@ -44,7 +44,8 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::InvalidArgument(
             "The polygon_box_transform operator needs to be executed on GPU."));
     auto* in = ctx.Input<Tensor>("Input");
@@ -59,7 +60,8 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     dim3 threadsPerBlock(
         PADDLE_CUDA_NUM_THREADS / (CUDA_BLOCK_SIZE * CUDA_BLOCK_SIZE),
-        CUDA_BLOCK_SIZE, CUDA_BLOCK_SIZE);
+        CUDA_BLOCK_SIZE,
+        CUDA_BLOCK_SIZE);
     dim3 numBlocks((batch_size * geo_channels) / threadsPerBlock.x,
                    (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
                    (width + threadsPerBlock.z - 1) / threadsPerBlock.z);

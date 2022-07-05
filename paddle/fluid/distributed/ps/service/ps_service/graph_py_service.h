@@ -117,19 +117,24 @@ class GraphPyService {
   }
   int get_server_size(int server_size) { return server_size; }
   std::vector<std::string> split(std::string& str, const char pattern);
-  void set_up(std::string ips_str, int shard_num,
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
               std::vector<std::string> edge_types);
 
-  void add_table_feat_conf(std::string node_type, std::string feat_name,
-                           std::string feat_dtype, int32_t feat_shape);
+  void add_table_feat_conf(std::string node_type,
+                           std::string feat_name,
+                           std::string feat_dtype,
+                           int32_t feat_shape);
 };
 class GraphPyServer : public GraphPyService {
  public:
   GraphPyServer() {}
-  void set_up(std::string ips_str, int shard_num,
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
-              std::vector<std::string> edge_types, int rank) {
+              std::vector<std::string> edge_types,
+              int rank) {
     set_rank(rank);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
@@ -149,9 +154,11 @@ class GraphPyServer : public GraphPyService {
 };
 class GraphPyClient : public GraphPyService {
  public:
-  void set_up(std::string ips_str, int shard_num,
+  void set_up(std::string ips_str,
+              int shard_num,
               std::vector<std::string> node_types,
-              std::vector<std::string> edge_types, int client_id) {
+              std::vector<std::string> edge_types,
+              int client_id) {
     set_client_id(client_id);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
@@ -169,26 +176,32 @@ class GraphPyClient : public GraphPyService {
   void load_edge_file(std::string name, std::string filepath, bool reverse);
   void load_node_file(std::string name, std::string filepath);
   void clear_nodes(std::string name);
-  void add_graph_node(std::string name, std::vector<int64_t>& node_ids,
+  void add_graph_node(std::string name,
+                      std::vector<int64_t>& node_ids,
                       std::vector<bool>& weight_list);
   void remove_graph_node(std::string name, std::vector<int64_t>& node_ids);
   int get_client_id() { return client_id; }
   void set_client_id(int client_id) { this->client_id = client_id; }
   void start_client();
   std::pair<std::vector<std::vector<int64_t>>, std::vector<float>>
-  batch_sample_neighbors(std::string name, std::vector<int64_t> node_ids,
-                         int sample_size, bool return_weight,
+  batch_sample_neighbors(std::string name,
+                         std::vector<int64_t> node_ids,
+                         int sample_size,
+                         bool return_weight,
                          bool return_edges);
-  std::vector<int64_t> random_sample_nodes(std::string name, int server_index,
+  std::vector<int64_t> random_sample_nodes(std::string name,
+                                           int server_index,
                                            int sample_size);
   std::vector<std::vector<std::string>> get_node_feat(
-      std::string name, std::vector<int64_t> node_ids,
+      std::string name,
+      std::vector<int64_t> node_ids,
       std::vector<std::string> feature_names);
-  void set_node_feat(std::string node_type, std::vector<int64_t> node_ids,
+  void set_node_feat(std::string node_type,
+                     std::vector<int64_t> node_ids,
                      std::vector<std::string> feature_names,
                      const std::vector<std::vector<std::string>> features);
-  std::vector<FeatureNode> pull_graph_list(std::string name, int server_index,
-                                           int start, int size, int step = 1);
+  std::vector<FeatureNode> pull_graph_list(
+      std::string name, int server_index, int start, int size, int step = 1);
   ::paddle::distributed::PSParameter GetWorkerProto();
 
  protected:

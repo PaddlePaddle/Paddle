@@ -119,7 +119,6 @@ class QuantizationTransformPass(object):
                  moving_rate=0.9,
                  skip_pattern=['skip_quant'],
                  quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
-                 round_type='TiesToEven',
                  weight_quantize_func=None,
                  act_quantize_func=None,
                  weight_preprocess_func=None,
@@ -157,10 +156,6 @@ class QuantizationTransformPass(object):
             quantizable_op_type(list[str]): List the type of ops that will be quantized. 
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
             weight_quantize_func(function): Function that defines how to quantize weight.
                 Using this can quickly test if user's quantization method works or not.
                 In this function, user should both define quantization function and
@@ -211,7 +206,6 @@ class QuantizationTransformPass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._skip_pattern = skip_pattern
-        self._round_type = round_type
         self._weight_quantize_func = weight_quantize_func
         self._act_quantize_func = act_quantize_func
         self._weight_preprocess_func = weight_preprocess_func
@@ -465,12 +459,10 @@ class QuantizationTransformPass(object):
         _init_var_node(scale_var_node,
                        np.zeros(scale_var_node.shape(), dtype=data_type),
                        self._scope, self._place)
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_abs_max',
             attrs={
                 'bit_length': quant_bits,
-                'round_type': round_type,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward
             },
             inputs={'X': var_node},
@@ -525,11 +517,9 @@ class QuantizationTransformPass(object):
 
             inputs['Iter'] = self._global_step
             outputs['OutScales'] = scales_node
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
         attrs = {
             'window_size': self._window_size,
             'bit_length': quant_bits,
-            'round_type': round_type,
             'is_test': self._is_test,
             'op_role': core.op_proto_and_checker_maker.OpRole.Forward
         }
@@ -600,10 +590,8 @@ class QuantizationTransformPass(object):
             outs['OutState'] = state_out_node
             outs['OutAccum'] = accum_out_node
 
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
         attrs = {
             'bit_length': quant_bits,
-            'round_type': round_type,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
             'op_role': core.op_proto_and_checker_maker.OpRole.Forward
@@ -650,12 +638,10 @@ class QuantizationTransformPass(object):
         _init_var_node(scale_var_node,
                        np.zeros(scale_var_node.shape(), dtype=data_type),
                        self._scope, self._place)
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
         quant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_quantize_abs_max',
             attrs={
                 'bit_length': quant_bits,
-                'round_type': round_type,
                 'quant_axis': quant_axis,
                 'is_test': self._is_test,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward
@@ -949,8 +935,7 @@ class QuantizationFreezePass(object):
                  bias_correction=False,
                  weight_bits=8,
                  activation_bits=8,
-                 weight_round_algo='round',
-                 round_type='TiesToEven',
+                 round_type='round',
                  weight_quantize_type='abs_max',
                  quantizable_op_type=None):
         """
@@ -968,14 +953,10 @@ class QuantizationFreezePass(object):
                  https://arxiv.org/abs/1810.05723.
             weight_bits(int): quantization bit number for weights.
             activation_bits(int): quantization bit number for activation.
-            weight_round_algo(str, optional): The method of converting the quantized weights
+            round_type(str, optional): The method of converting the quantized weights
                 value float->int. Currently supports ['round', 'adaround'] methods.
                 Default is `round`, which is rounding nearest to the integer.
                 'adaround' is refer to https://arxiv.org/abs/2004.10568.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
             weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
                 'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
                 since weights are fixed once the model is well trained.
@@ -991,7 +972,6 @@ class QuantizationFreezePass(object):
         self._place = _get_paddle_place(place)
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
-        self._weight_round_algo = weight_round_algo
         self._round_type = round_type
         self._weight_quantize_type = weight_quantize_type
         self._fake_quant_op_names = _fake_quant_op_list
@@ -1039,7 +1019,7 @@ class QuantizationFreezePass(object):
                         scale_v = scale_v.tolist()
                     self._quant_var_scale_map[input_arg_name] = scale_v
                     # Quantize weight and restore
-                    if self._weight_round_algo == 'round':
+                    if self._round_type == 'round':
                         param_v = self._load_var(input_arg_name)
                         if any(
                                 _check_grandchild_op_node(op_node, op)
@@ -1049,7 +1029,8 @@ class QuantizationFreezePass(object):
                             quant_axis = 0
                         quantized_param_v = utils.quant_tensor(
                             param_v.copy(), scale_v, quant_axis,
-                            self._weight_bits, self._round_type)
+                            self._weight_bits)
+                        quantized_param_v = np.round(quantized_param_v)
                         # Weight bias correction
                         if self._bias_correction == True:
                             quantized_param_v = utils.bias_correction_w(
@@ -1058,6 +1039,7 @@ class QuantizationFreezePass(object):
                                 scale_v,
                                 quant_axis,
                                 weight_bits=self._weight_bits)
+                            quantized_param_v = np.round(quantized_param_v)
                         self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
 
@@ -1600,8 +1582,7 @@ class AddQuantDequantPass(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False,
-                 round_type='TiesToEven'):
+                 is_full_quantized=False):
         """
         Constructor.
 
@@ -1623,10 +1604,6 @@ class AddQuantDequantPass(object):
                 quantization to all supported quantizable op type. If set is_full_quantized
                 as False, only apply quantization to the op type according to the input 
                 quantizable_op_type.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -1634,7 +1611,6 @@ class AddQuantDequantPass(object):
         self._quant_bits = quant_bits
         self._is_test = None
         self._skip_pattern = skip_pattern
-        self._round_type = round_type
 
         if is_full_quantized:
             self._quantizable_op_type = utils._act_supported_quantizable_op_type
@@ -1769,10 +1745,8 @@ class AddQuantDequantPass(object):
             outs['OutState'] = state_out_node
             outs['OutAccum'] = accum_out_node
 
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
         attrs = {
             'bit_length': quant_bits,
-            'round_type': round_type,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
             'op_role': core.op_proto_and_checker_maker.OpRole.Forward
@@ -1812,10 +1786,6 @@ class InsertQuantizeLinear(object):
             Default is -1.
         channel_wise(bool, optional): Whether quantization with per channel or not. Default is False.
         is_test(bool, optional): Whether quantization with training or not. Default is True.
-        round_type(str, optional): The method of converting the tensor value float->int.
-            Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-            Default is `TiesToEven`, which is rounding to nearest ties to even. 
-            'TiesAwayFromZero' is rounding to nearest ties away from zero.
     """
 
     def __init__(self,
@@ -1824,15 +1794,13 @@ class InsertQuantizeLinear(object):
                  quant_bits=8,
                  quant_axis=-1,
                  channel_wise=False,
-                 is_test=True,
-                 round_type='TiesToEven'):
+                 is_test=True):
         self._place = place
         self._scope = scope
         self.quant_bits = quant_bits
         self.quant_axis = quant_axis
         self.channel_wise = channel_wise
         self._is_test = is_test
-        self._round_type = round_type
 
     def insert_quant_op(self, graph, var_node):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
@@ -1875,12 +1843,7 @@ class InsertQuantizeLinear(object):
         if zero_point_node is not None:
             inputs["ZeroPoint"] = zero_point_node
 
-        round_type = 0 if self._round_type == 'TiesToEven' else 1
-        attrs = {
-            "quant_axis": self.quant_axis,
-            "bit_length": self.quant_bits,
-            "round_type": round_type
-        }
+        attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
         outputs = {"Y": quant_var_node}
         if not self._is_test:
             attrs["is_test"] = self._is_test
@@ -1985,7 +1948,6 @@ class QuantizationTransformPassV2(object):
                  moving_rate=0.9,
                  skip_pattern=['skip_quant'],
                  quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
-                 round_type='TiesToEven',
                  weight_quantize_func=None,
                  act_quantize_func=None,
                  weight_preprocess_func=None,
@@ -2021,10 +1983,6 @@ class QuantizationTransformPassV2(object):
             quantizable_op_type(list[str]): List the type of ops that will be quantized. 
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
             weight_quantize_func(function): Function that defines how to quantize weight.
                 Using this can quickly test if user's quantization method works or not.
                 In this function, user should both define quantization function and
@@ -2074,7 +2032,6 @@ class QuantizationTransformPassV2(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._skip_pattern = skip_pattern
-        self._round_type = round_type
         self._weight_quantize_func = weight_quantize_func
         self._act_quantize_func = act_quantize_func
         self._weight_preprocess_func = weight_preprocess_func
@@ -2198,8 +2155,7 @@ class QuantizationTransformPassV2(object):
                     quant_bits=quant_bits,
                     quant_axis=quant_axis,
                     channel_wise=channel_wise,
-                    is_test=self._is_test,
-                    round_type=self._round_type)
+                    is_test=self._is_test)
                 quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
                     graph, var_node)
                 dequant_var_node = insert_quant_pass.insert_dequant_op(
@@ -2307,8 +2263,7 @@ class AddQuantDequantPassV2(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False,
-                 round_type='TiesToEven'):
+                 is_full_quantized=False):
         """
         Args:
             scope(paddle.Scope): The scope is used to initialize these new parameters.
@@ -2328,10 +2283,6 @@ class AddQuantDequantPassV2(object):
                 quantization to all supported quantizable op type. If set is_full_quantized
                 as False, only apply quantization to the op type according to the input 
                 quantizable_op_type.
-            round_type(str, optional): The method of converting the tensor value float->int.
-                Currently supports ['TiesToEven', 'TiesAwayFromZero'] methods.
-                Default is `TiesToEven`, which is rounding to nearest ties to even. 
-                'TiesAwayFromZero' is rounding to nearest ties away from zero.
         
         Examples:
         .. code-block:: python
@@ -2354,7 +2305,6 @@ class AddQuantDequantPassV2(object):
         self._quant_bits = quant_bits
         self._is_test = None
         self._skip_pattern = skip_pattern
-        self._round_type = round_type
 
         if is_full_quantized:
             self._quantizable_op_type = utils._act_supported_quantizable_op_type
@@ -2427,8 +2377,7 @@ class AddQuantDequantPassV2(object):
                                 quant_bits=self._quant_bits,
                                 quant_axis=-1,
                                 channel_wise=False,
-                                is_test=self._is_test,
-                                round_type=self._round_type)
+                                is_test=self._is_test)
                             quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
                                 graph, in_node)
                             dequant_var_node = insert_quant_pass.insert_dequant_op(
@@ -2511,8 +2460,6 @@ class ReplaceFakeQuantDequantPass(object):
             "quant_axis") else -1
         bit_length = op.op().attr("bit_length") if op.op().has_attr(
             "bit_length") else 8
-        round_type = op.op().attr("round_type") if op.op().has_attr(
-            "round_type") else 0
 
         zero_point_node = None
         quanted_node = x_node
@@ -2534,8 +2481,7 @@ class ReplaceFakeQuantDequantPass(object):
         quant_op_node = graph.create_op_node(op_type="quantize_linear",
                                              attrs={
                                                  "quant_axis": quant_axis,
-                                                 "bit_length": bit_length,
-                                                 "round_type": round_type
+                                                 "bit_length": bit_length
                                              },
                                              inputs={
                                                  "X": x_node,
@@ -2654,11 +2600,11 @@ class QuantWeightPass(object):
                 param_v = self._load_var(x_node.name())
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
-                round_type = _op.op().attr("round_type") if _op.op().has_attr(
-                    "round_type") else 0
-                quantized_param_v = utils.quant_tensor(param_v.copy(), scale_v,
-                                                       quant_axis, bits_length,
-                                                       round_type)
+                quantized_param_v = utils.quant_tensor(param_v.copy(),
+                                                       scale_v,
+                                                       quant_axis,
+                                                       bits_length,
+                                                       onnx_format=True)
                 if self._bias_correction == True:
                     quantized_param_v = utils.bias_correction_w(
                         param_v,

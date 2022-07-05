@@ -26,7 +26,8 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2,
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
@@ -82,12 +83,14 @@ class CAllGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp,
+REGISTER_OPERATOR(c_allgather,
+                  ops::CAllGatherOp,
                   ops::CAllGatherOpGradMaker<paddle::framework::OpDesc>,
                   ops::CAllGatherOpGradMaker<paddle::imperative::OpBase>,
                   ops::CAllGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_allgather, ops::CAllGatherOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(c_allgather,
+                       ops::CAllGatherOpCPUKernel<float>,
                        ops::CAllGatherOpCPUKernel<double>,
                        ops::CAllGatherOpCPUKernel<int>,
                        ops::CAllGatherOpCPUKernel<int64_t>,

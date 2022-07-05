@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/logic/tribool.hpp>
+#include "paddle/utils/tribool.h"
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 
@@ -24,15 +24,17 @@ namespace ir {
 
 class PlacementPassTest {
  private:
-  void SetOp(ProgramDesc* prog, const std::string& type,
-             const std::string& name, const std::vector<std::string>& inputs,
+  void SetOp(ProgramDesc* prog,
+             const std::string& type,
+             const std::string& name,
+             const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -64,9 +66,18 @@ class PlacementPassTest {
   ProgramDesc BuildProgramDesc() {
     ProgramDesc prog;
 
-    for (auto& v :
-         std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g",
-                                   "h", "weights2", "bias2", "k", "l"})) {
+    for (auto& v : std::vector<std::string>({"a",
+                                             "b",
+                                             "c",
+                                             "weights",
+                                             "bias",
+                                             "f",
+                                             "g",
+                                             "h",
+                                             "weights2",
+                                             "bias2",
+                                             "k",
+                                             "l"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -74,20 +85,42 @@ class PlacementPassTest {
       }
     }
 
-    SetOp(&prog, "concat", "concat1", std::vector<std::string>({"a", "b"}),
-          std::vector<std::string>({"c"}), boost::indeterminate);
-    SetOp(&prog, "conv2d", "conv1",
+    SetOp(&prog,
+          "concat",
+          "concat1",
+          std::vector<std::string>({"a", "b"}),
+          std::vector<std::string>({"c"}),
+          paddle::indeterminate);
+    SetOp(&prog,
+          "conv2d",
+          "conv1",
           std::vector<std::string>({"c", "weights", "bias"}),
-          std::vector<std::string>({"f"}), boost::indeterminate);
-    SetOp(&prog, "relu", "relu1", std::vector<std::string>({"f"}),
-          std::vector<std::string>({"g"}), false);
-    SetOp(&prog, "pool2d", "pool1", std::vector<std::string>({"g"}),
-          std::vector<std::string>({"h"}), false);
-    SetOp(&prog, "conv2d", "conv2",
+          std::vector<std::string>({"f"}),
+          paddle::indeterminate);
+    SetOp(&prog,
+          "relu",
+          "relu1",
+          std::vector<std::string>({"f"}),
+          std::vector<std::string>({"g"}),
+          false);
+    SetOp(&prog,
+          "pool2d",
+          "pool1",
+          std::vector<std::string>({"g"}),
+          std::vector<std::string>({"h"}),
+          false);
+    SetOp(&prog,
+          "conv2d",
+          "conv2",
           std::vector<std::string>({"h", "weights2", "bias2"}),
-          std::vector<std::string>({"k"}), true);
-    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"k"}),
-          std::vector<std::string>({"l"}), true);
+          std::vector<std::string>({"k"}),
+          true);
+    SetOp(&prog,
+          "relu",
+          "relu2",
+          std::vector<std::string>({"k"}),
+          std::vector<std::string>({"l"}),
+          true);
 
     return prog;
   }

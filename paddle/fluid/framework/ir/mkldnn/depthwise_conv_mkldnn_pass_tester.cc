@@ -21,9 +21,12 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
+           const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool use_mkldnn = false) {
+           const std::vector<std::string>& outputs,
+           bool use_mkldnn = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -46,9 +49,19 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
 // (d, weights3, bias3)->conv no mkldnn->e
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
-  for (auto& v : std::vector<std::string>(
-           {"a", "b", "c", "d", "e", "weights", "bias", "weights2", "bias2",
-            "weights3", "bias3", "weights4", "bias4"})) {
+  for (auto& v : std::vector<std::string>({"a",
+                                           "b",
+                                           "c",
+                                           "d",
+                                           "e",
+                                           "weights",
+                                           "bias",
+                                           "weights2",
+                                           "bias2",
+                                           "weights3",
+                                           "bias3",
+                                           "weights4",
+                                           "bias4"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias" || v == "weights2" || v == "bias2" ||
@@ -58,21 +71,33 @@ ProgramDesc BuildProgramDesc() {
   }
 
   // depthwise conv with MKL-DNN
-  SetOp(&prog, "depthwise_conv2d", "conv1",
+  SetOp(&prog,
+        "depthwise_conv2d",
+        "conv1",
         std::vector<std::string>({"a", "weights", "bias"}),
-        std::vector<std::string>({"b"}), true);
+        std::vector<std::string>({"b"}),
+        true);
   // depthwise conv without MKL-DNN
-  SetOp(&prog, "depthwise_conv2d", "conv2",
+  SetOp(&prog,
+        "depthwise_conv2d",
+        "conv2",
         std::vector<std::string>({"b", "weights2", "bias2"}),
-        std::vector<std::string>({"c"}), false);
+        std::vector<std::string>({"c"}),
+        false);
   // conv with MKL-DNN
-  SetOp(&prog, "conv2d", "conv3",
+  SetOp(&prog,
+        "conv2d",
+        "conv3",
         std::vector<std::string>({"c", "weights3", "bias3"}),
-        std::vector<std::string>({"d"}), true);
+        std::vector<std::string>({"d"}),
+        true);
   // conv without MKL-dNN
-  SetOp(&prog, "conv2d", "conv4",
+  SetOp(&prog,
+        "conv2d",
+        "conv4",
         std::vector<std::string>({"d", "weights4", "bias4"}),
-        std::vector<std::string>({"e"}), false);
+        std::vector<std::string>({"e"}),
+        false);
 
   return prog;
 }

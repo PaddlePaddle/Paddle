@@ -20,7 +20,9 @@
 namespace paddle {
 namespace operators {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
@@ -30,7 +32,9 @@ using Array2 = Eigen::DSizes<int64_t, 2>;
 using IndexPair = Eigen::IndexPair<int>;
 
 template <typename DeviceContext, typename T>
-static inline void TransCompute(const int rank, const Tensor& in, Tensor* out,
+static inline void TransCompute(const int rank,
+                                const Tensor& in,
+                                Tensor* out,
                                 const std::vector<int>& perm,
                                 const DeviceContext& dev_ctx) {
   if (rank <= 1 || rank > 5) {
@@ -63,8 +67,13 @@ static inline void TransCompute(const int rank, const Tensor& in, Tensor* out,
 
 template <typename DeviceContext, typename T>
 static inline void CalcMatrixSigmaAndNormWeight(
-    Tensor* sigma, Tensor* u, Tensor* v, Tensor* weight, const int power_iters,
-    const float eps, const framework::ExecutionContext& ctx) {
+    Tensor* sigma,
+    Tensor* u,
+    Tensor* v,
+    Tensor* weight,
+    const int power_iters,
+    const float eps,
+    const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
   auto sigma_t = EigenTensor<T, 2>::From(*sigma);
@@ -147,9 +156,13 @@ class SpectralNormKernel : public framework::OpKernel<T> {
     Tensor uu, vv;
     paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
     paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
-    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
-        &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
-        power_iters, eps, ctx);
+    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(&sigma,
+                                                   &(uu.Resize({h, 1})),
+                                                   &(vv.Resize({w, 1})),
+                                                   &weight_mat,
+                                                   power_iters,
+                                                   eps,
+                                                   ctx);
 
     if (dim != 0) {
       std::vector<int> perm;
@@ -164,11 +177,14 @@ class SpectralNormKernel : public framework::OpKernel<T> {
       }
       out->mutable_data<T>(dims, ctx.GetPlace());
       TransCompute<DeviceContext, T>(
-          rank, weight_mat.Resize(phi::make_ddim(real_dims)), out, perm,
+          rank,
+          weight_mat.Resize(phi::make_ddim(real_dims)),
+          out,
+          perm,
           dev_ctx);
     } else {
-      paddle::framework::TensorCopySync(weight_mat.Resize(dims), ctx.GetPlace(),
-                                        out);
+      paddle::framework::TensorCopySync(
+          weight_mat.Resize(dims), ctx.GetPlace(), out);
     }
   }
 };
@@ -210,15 +226,15 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
       weight_mat.mutable_data<T>(phi::make_ddim(real_dims), ctx.GetPlace());
       out_grad_mat.mutable_data<T>(phi::make_ddim(real_dims), ctx.GetPlace());
       TransCompute<DeviceContext, T>(rank, *weight, &weight_mat, perm, dev_ctx);
-      TransCompute<DeviceContext, T>(rank, *out_grad, &out_grad_mat, perm,
-                                     dev_ctx);
+      TransCompute<DeviceContext, T>(
+          rank, *out_grad, &out_grad_mat, perm, dev_ctx);
     } else {
       for (int i = 0; i < rank; i++) {
         real_dims.push_back(i);
       }
       paddle::framework::TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
-      paddle::framework::TensorCopySync(*out_grad, ctx.GetPlace(),
-                                        &out_grad_mat);
+      paddle::framework::TensorCopySync(
+          *out_grad, ctx.GetPlace(), &out_grad_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
     out_grad_mat = out_grad_mat.Resize({h, w});
@@ -228,14 +244,18 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
     Tensor uu, vv;
     paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
     paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
-    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
-        &sigma, &(uu.Resize({h, 1})), &(vv.Resize({w, 1})), &weight_mat,
-        power_iters, eps, ctx);
+    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(&sigma,
+                                                   &(uu.Resize({h, 1})),
+                                                   &(vv.Resize({w, 1})),
+                                                   &weight_mat,
+                                                   power_iters,
+                                                   eps,
+                                                   ctx);
 
     Tensor uv;
     uv.mutable_data<T>({h, w}, ctx.GetPlace());
-    blas.MatMul(uu.Resize({h, 1}), false, vv.Resize({w, 1}), false, T(1), &uv,
-                T(0));
+    blas.MatMul(
+        uu.Resize({h, 1}), false, vv.Resize({w, 1}), false, T(1), &uv, T(0));
 
     Tensor weight_grad_mat;
     weight_grad_mat.mutable_data<T>({h, w}, ctx.GetPlace());
@@ -263,11 +283,14 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
       }
       weight_grad->mutable_data<T>(dims, ctx.GetPlace());
       TransCompute<DeviceContext, T>(
-          rank, weight_grad_mat.Resize(phi::make_ddim(real_dims)), weight_grad,
-          perm, dev_ctx);
+          rank,
+          weight_grad_mat.Resize(phi::make_ddim(real_dims)),
+          weight_grad,
+          perm,
+          dev_ctx);
     } else {
-      paddle::framework::TensorCopySync(weight_grad_mat.Resize(dims),
-                                        ctx.GetPlace(), weight_grad);
+      paddle::framework::TensorCopySync(
+          weight_grad_mat.Resize(dims), ctx.GetPlace(), weight_grad);
     }
   }
 };

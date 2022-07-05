@@ -32,7 +32,9 @@ namespace operators {
 
 namespace kps = phi::kps;
 template <typename T, typename Functor, int VecSize>
-__global__ void VectorizedIndexKernel(T *out, size_t numel, size_t main_offset,
+__global__ void VectorizedIndexKernel(T *out,
+                                      size_t numel,
+                                      size_t main_offset,
                                       Functor func) {
   size_t data_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
@@ -40,16 +42,16 @@ __global__ void VectorizedIndexKernel(T *out, size_t numel, size_t main_offset,
   T result[VecSize];
   for (; data_offset < main_offset; data_offset += stride) {
     kps::InitWithDataIndex<size_t, VecSize, 1, 1>(&args[0], data_offset);
-    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(&result[0],
-                                                             &args[0], func);
-    kps::WriteData<T, VecSize, 1, 1, false>(out + data_offset, &result[0],
-                                            BLOCK_NUM_X * VecSize);
+    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(
+        &result[0], &args[0], func);
+    kps::WriteData<T, VecSize, 1, 1, false>(
+        out + data_offset, &result[0], BLOCK_NUM_X * VecSize);
   }
   size_t num = numel - data_offset;
   if (num > 0) {
     kps::InitWithDataIndex<size_t, VecSize, 1, 1>(&args[0], data_offset);
-    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(&result[0],
-                                                             &args[0], func);
+    kps::ElementwiseUnary<size_t, T, VecSize, 1, 1, Functor>(
+        &result[0], &args[0], func);
     kps::WriteData<T, VecSize, 1, 1, true>(out + data_offset, &result[0], num);
   }
 }

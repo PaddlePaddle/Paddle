@@ -26,37 +26,44 @@ class TileMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
+        rank,
+        1,
         platform::errors::InvalidArgument(
             "The rank of the input 'x' for tile op must be a positive "
             "integer, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
-        rank, MAX_RANK_SUPPORTED,
+        rank,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The rank of the input 'x' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, rank));
+            MAX_RANK_SUPPORTED,
+            rank));
     auto repeat_times = get_repeat_times(context);
     int repeat_times_size = repeat_times.size();
     PADDLE_ENFORCE_GE(
-        repeat_times_size, 1,
+        repeat_times_size,
+        1,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile "
             "op must be positive, but the value received is %d.",
             repeat_times_size));
     PADDLE_ENFORCE_LE(
-        repeat_times_size, MAX_RANK_SUPPORTED,
+        repeat_times_size,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of elements of the input 'repeat_times' for tile op "
             "must be less than or equal to %d, but the value received is %d.",
-            MAX_RANK_SUPPORTED, repeat_times_size));
+            MAX_RANK_SUPPORTED,
+            repeat_times_size));
 
     auto* in0 = context.Input<framework::Tensor>("X");
     auto in_dims = in0->dims();
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       PADDLE_ENFORCE_GT(
-          repeat_times[i], 0,
+          repeat_times[i],
+          0,
           platform::errors::InvalidArgument(
               "All elements of the input 'repeat_times' for tile op must "
               "be positive integers, but the value received is %d.",
@@ -71,11 +78,13 @@ class TileMLUKernel : public framework::OpKernel<T> {
       vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     }
     PADDLE_ENFORCE_EQ(
-        repeat_times.size(), vec_in_dims.size(),
+        repeat_times.size(),
+        vec_in_dims.size(),
         platform::errors::InvalidArgument(
             "The rank (%d) of the input 'x' and the rank (%d) of the input "
             "'repeat_times' for tile op must match after promotion.",
-            vec_in_dims.size(), repeat_times.size()));
+            vec_in_dims.size(),
+            repeat_times.size()));
 
     auto* out0 = context.Output<framework::Tensor>("Out");
     bool repeat_one_times = true;
@@ -96,8 +105,11 @@ class TileMLUKernel : public framework::OpKernel<T> {
       out0->mutable_data<T>(context.GetPlace());
       MLUCnnlTensorDesc x_desc(*in0);
       MLUCnnlTensorDesc out_desc(*out0);
-      MLUCnnl::BroadcastTo(context, x_desc.get(), GetBasePtr(in0),
-                           out_desc.get(), GetBasePtr(out0));
+      MLUCnnl::BroadcastTo(context,
+                           x_desc.get(),
+                           GetBasePtr(in0),
+                           out_desc.get(),
+                           GetBasePtr(out0));
     }
   }
 };
@@ -106,7 +118,10 @@ class TileMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(tile, ops::TileMLUKernel<bool>, ops::TileMLUKernel<int>,
-                       ops::TileMLUKernel<int64_t>, ops::TileMLUKernel<float>);
+REGISTER_OP_MLU_KERNEL(tile,
+                       ops::TileMLUKernel<bool>,
+                       ops::TileMLUKernel<int>,
+                       ops::TileMLUKernel<int64_t>,
+                       ops::TileMLUKernel<float>);
 
 #endif

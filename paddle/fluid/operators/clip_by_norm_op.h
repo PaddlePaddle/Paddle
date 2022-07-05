@@ -25,7 +25,8 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 // using SelectedRows = phi::SelectedRows;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -52,8 +53,8 @@ class ClipByNormKernel : public framework::OpKernel<T> {
           const_cast<framework::Scope&>(context.scope())
               .Var()
               ->GetMutable<phi::SelectedRows>();
-      merge_func(context.template device_context<DeviceContext>(), *x,
-                 merged_input);
+      merge_func(
+          context.template device_context<DeviceContext>(), *x, merged_input);
       input = &(merged_input->value());
 
       phi::SelectedRows* output_selected_rows =
@@ -105,17 +106,20 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of ClipByNormOp should not be null. Please "
                           "check if it is created correctly."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ClipByNormOp should not be null. "
                           "Please check if it is created correctly."));
     auto max_norm = ctx->Attrs().Get<float>("max_norm");
     PADDLE_ENFORCE_GT(
-        max_norm, 0,
+        max_norm,
+        0,
         platform::errors::InvalidArgument("max_norm should be greater than 0. "
                                           "Received max_norm is %f.",
                                           max_norm));

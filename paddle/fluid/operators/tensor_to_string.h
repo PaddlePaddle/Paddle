@@ -30,16 +30,21 @@ static const std::vector<T> &ToVector(const std::vector<T> &vec) {
 }
 
 template <typename T>
-static std::vector<T> ToVector(const T *x, size_t n,
+static std::vector<T> ToVector(const T *x,
+                               size_t n,
                                const platform::Place &place) {
 #ifdef __NVCC__
   if (platform::is_gpu_place(place)) {
-    using CopyT = typename std::conditional<std::is_same<T, bool>::value,
-                                            uint8_t, T>::type;
+    using CopyT = typename std::
+        conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<CopyT> cpu_x(n);
     auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    memory::Copy(platform::CPUPlace(), cpu_x.data(), place, x, n * sizeof(T),
+    memory::Copy(platform::CPUPlace(),
+                 cpu_x.data(),
+                 place,
+                 x,
+                 n * sizeof(T),
                  dev_ctx->stream());
     dev_ctx->Wait();
     return std::vector<T>(cpu_x.data(), cpu_x.data() + n);

@@ -24,7 +24,8 @@ class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
     auto* in = ctx.Input<Tensor>("Input");
     auto in_dims = in->dims();
@@ -57,19 +58,21 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
-                   "polygon_box_transform");
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
-                   "polygon_box_transform");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Input"), "Input", "Input", "polygon_box_transform");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Output"), "Output", "Output", "polygon_box_transform");
 
     auto in_dim = ctx->GetInputDim("Input");
 
     PADDLE_ENFORCE_EQ(
-        in_dim.size(), 4,
+        in_dim.size(),
+        4,
         platform::errors::InvalidArgument(
             "input's rank must be 4. But received: Input rank is [%d]",
             in_dim.size()));
-    PADDLE_ENFORCE_EQ(in_dim[1] % 2, 0,
+    PADDLE_ENFORCE_EQ(in_dim[1] % 2,
+                      0,
                       platform::errors::InvalidArgument(
                           "input's second dimension must be even. But "
                           "received: Input 2nd dimension is [%d]",
@@ -105,7 +108,8 @@ the geometry output contains 2*n channels.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    polygon_box_transform, ops::PolygonBoxTransformOp,
+    polygon_box_transform,
+    ops::PolygonBoxTransformOp,
     ops::PolygonBoxTransformOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

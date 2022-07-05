@@ -43,7 +43,8 @@ class TestASPStaticPruningBase(unittest.TestCase):
                                          padding=2,
                                          act="relu")
             hidden = fluid.layers.fc(input=hidden, size=32, act='softmax')
-            prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            hidden = fluid.layers.fc(input=hidden, size=3, act='softmax')
+            prediction = fluid.layers.fc(input=hidden, size=3, act='softmax')
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -65,7 +66,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
 
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            loss = fluid.layers.mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=self.predict,
                                            label=self.label))
             optimizer = paddle.incubate.asp.decorate(
@@ -88,9 +89,17 @@ class TestASPStaticPruningBase(unittest.TestCase):
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(
                     param.name).get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, func_name=self.mask_check_func, n=2, m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, func_name=self.mask_check_func, n=2, m=4))
 
 
 class TestASPStaticPruning1D(TestASPStaticPruningBase):

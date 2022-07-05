@@ -25,8 +25,10 @@ namespace tensorrt {
 int TRTInt8Calibrator::getBatchSize() const TRT_NOEXCEPT { return batch_size_; }
 
 TRTInt8Calibrator::TRTInt8Calibrator(
-    const std::unordered_map<std::string, size_t>& buffers, int batch_size,
-    std::string engine_name, const platform::Place place)
+    const std::unordered_map<std::string, size_t>& buffers,
+    int batch_size,
+    std::string engine_name,
+    const platform::Place place)
     : batch_size_(batch_size), engine_name_(engine_name) {
   int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
@@ -82,7 +84,8 @@ bool TRTInt8Calibrator::setBatch(
     if (dataptr == data_buffers_.end()) {
       PADDLE_THROW(platform::errors::Fatal(
           "%s input name '%s' does not match with the buffer names.",
-          engine_name_, it.first));
+          engine_name_,
+          it.first));
     }
     const auto& d = dataptr->second;
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -94,7 +97,8 @@ bool TRTInt8Calibrator::setBatch(
   return true;
 }
 
-bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
+bool TRTInt8Calibrator::getBatch(void** bindings,
+                                 const char** names,
                                  int num_bindings) TRT_NOEXCEPT {
   VLOG(4) << "get batch: " << engine_name_;
   std::unique_lock<std::mutex> lk(mut_);
@@ -114,7 +118,8 @@ bool TRTInt8Calibrator::getBatch(void** bindings, const char** names,
       PADDLE_THROW(
           platform::errors::Fatal("Calibration engine asked for unknown tensor "
                                   "name '%s' at position %d.",
-                                  names[i], i));
+                                  names[i],
+                                  i));
     }
     bindings[i] = it->second.first;
   }

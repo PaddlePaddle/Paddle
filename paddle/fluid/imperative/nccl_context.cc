@@ -45,7 +45,8 @@ namespace imperative {
 
 void NCCLParallelContext::BcastNCCLId(
     std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
-    int root, int server_fd) {
+    int root,
+    int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
     for (auto &ep : strategy_.trainer_endpoints_) {
@@ -55,8 +56,8 @@ void NCCLParallelContext::BcastNCCLId(
     }
     platform::SendBroadCastCommID(other_trainers, &nccl_ids);
   } else {
-    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
-                                  &nccl_ids);
+    platform::RecvBroadCastCommID(
+        server_fd, strategy_.current_endpoint_, &nccl_ids);
   }
 }
 
@@ -85,9 +86,11 @@ void NCCLParallelContext::Init() {
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
             << " ring id: " << ring_id;
     // it will assign nccl_comm in CUDADeviceContext within ring_id
-    platform::NCCLCommContext::Instance().CreateComm(
-        &nccl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, gpu_id,
-        ring_id);
+    platform::NCCLCommContext::Instance().CreateComm(&nccl_ids[ring_id],
+                                                     strategy_.nranks_,
+                                                     strategy_.local_rank_,
+                                                     gpu_id,
+                                                     ring_id);
 
     compute_events_.emplace_back(
         platform::CudaEventResourcePool::Instance().New(place_.device));
@@ -128,9 +131,11 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
 
 void NCCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
-                                            int ring_id, bool use_calc_stream) {
+                                            int ring_id,
+                                            bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(place_), true,
+      platform::is_gpu_place(place_),
+      true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
@@ -161,13 +166,16 @@ paddle::platform::DeviceContext *NCCLParallelContext::GetDeviceContext(
 
 void NCCLParallelContext::WaitCompute(int ring_id) {
   PADDLE_ENFORCE_GE(
-      ring_id, 0,
+      ring_id,
+      0,
       platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
+  PADDLE_ENFORCE_LT(ring_id,
+                    compute_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < compute events size,"
                         "but got ring id = %d, compute events size = %d",
-                        ring_id, compute_events_.size()));
+                        ring_id,
+                        compute_events_.size()));
 
   auto compute_stream = static_cast<platform::CUDADeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
@@ -188,13 +196,16 @@ void NCCLParallelContext::WaitCompute(int ring_id) {
 
 void NCCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(
-      ring_id, 0,
+      ring_id,
+      0,
       platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
+  PADDLE_ENFORCE_LT(ring_id,
+                    comm_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < comm events size,"
                         "but got ring id = %d, comm events size = %d",
-                        ring_id, comm_events_.size()));
+                        ring_id,
+                        comm_events_.size()));
 
   auto compute_stream = static_cast<platform::CUDADeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))

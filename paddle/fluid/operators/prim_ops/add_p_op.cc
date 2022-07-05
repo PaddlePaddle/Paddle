@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 class AddPrimOp : public framework::OperatorBase {
  public:
-  AddPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+  AddPrimOp(const std::string &type,
+            const framework::VariableNameMap &inputs,
             const framework::VariableNameMap &outputs,
             const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
@@ -62,18 +63,23 @@ class AddPrimOpShapeInference : public framework::InferShapeBase {
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
-    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+    PADDLE_ENFORCE_EQ(x_rank,
+                      y_rank,
                       platform::errors::InvalidArgument(
                           "The dimensions of two input tensor should be same, "
                           "but get %d and %d",
-                          x_rank, y_rank));
+                          x_rank,
+                          y_rank));
     for (size_t i = 0; i < x_rank; ++i) {
       PADDLE_ENFORCE_EQ(
-          x_shape[i], y_shape[i],
+          x_shape[i],
+          y_shape[i],
           platform::errors::InvalidArgument(
               "The shape of two input tensor at dimension %d should be same, "
               "but get %d and %d",
-              i, x_shape[i], y_shape[i]));
+              i,
+              x_shape[i],
+              y_shape[i]));
     }
 
     BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_shape);
@@ -91,16 +97,20 @@ class AddPrimOpVarTypeInference
     auto y_type = GetType(ctx, y_name);
     auto x_dtype = GetDataType(ctx, x_name);
     auto y_dtype = GetDataType(ctx, y_name);
-    PADDLE_ENFORCE_EQ(x_type, y_type,
+    PADDLE_ENFORCE_EQ(x_type,
+                      y_type,
                       platform::errors::InvalidArgument(
                           "The type of two input tensor should be same, "
                           "but get %d and %d",
-                          x_type, y_type));
-    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                          x_type,
+                          y_type));
+    PADDLE_ENFORCE_EQ(x_dtype,
+                      y_dtype,
                       platform::errors::InvalidArgument(
                           "The datatype of two input tensor should be same, "
                           "but get %d and %d",
-                          x_dtype, y_dtype));
+                          x_dtype,
+                          y_dtype));
 
     SetType(ctx, z_name, x_type);
     SetDataType(ctx, z_name, x_dtype);
@@ -110,7 +120,8 @@ class AddPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(add_p, paddle::operators::AddPrimOp,
+REGISTER_OPERATOR(add_p,
+                  paddle::operators::AddPrimOp,
                   paddle::operators::AddPrimOpMaker,
                   paddle::operators::AddPrimOpShapeInference,
                   paddle::operators::AddPrimOpVarTypeInference);

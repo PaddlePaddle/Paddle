@@ -139,12 +139,12 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 
@@ -197,13 +197,15 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
     if (use_varseqlen && pos_id != "" && mask_id != "") {
-      if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      if ((graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
           graph->Has(framework::ir::kMultiheadMatmulPass)) {
         VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
       } else {
         PADDLE_THROW(platform::errors::Fatal(
             "Use transformer'varseqlen need "
-            "embedding_eltwise_layernorm_fuse_pass. please use no_varseqlen"));
+            "trt_embedding_eltwise_layernorm_fuse_pass, "
+            "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
       }
     } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
