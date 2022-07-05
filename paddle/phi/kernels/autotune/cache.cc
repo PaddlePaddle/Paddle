@@ -77,6 +77,19 @@ void AutoTuneCache::UpdateStatus() {
     cache_hits += v.second.CacheHits();
     cache_misses += v.second.CacheMisses();
   }
+
+  for (auto& v : cudnn_auto_tune_map_) {
+    VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
+            << AlgorithmTypeString(v.first)
+            << " Cache Size: " << v.second.Size()
+            << " Hits: " << v.second.CacheHits()
+            << " Misses: " << v.second.CacheMisses()
+            << " Hit Rate: " << v.second.CacheHitRate();
+    size += v.second.Size();
+    cache_hits += v.second.CacheHits();
+    cache_misses += v.second.CacheMisses();
+  }
+
   total_size_ = size;
   total_cache_hits_ = cache_hits;
   total_cache_misses_ = cache_misses;
