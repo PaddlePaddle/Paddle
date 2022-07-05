@@ -32,6 +32,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import core
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -516,7 +517,7 @@ def create_assign_node(name, node):
     return targets, assign_node
 
 
-class RenameTransformer(gast.NodeTransformer):
+class RenameTransformer(BaseTransformer):
 
     def __init__(self, node):
         assert isinstance(
@@ -872,7 +873,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return self._compare_node_tenor_set
 
 
-class NameNodeReplaceTransformer(gast.NodeTransformer):
+class NameNodeReplaceTransformer(BaseTransformer):
     """
     This class replaces specified gast.Name node by replace_node.
     """
@@ -914,7 +915,7 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
         return node
 
 
-class ForLoopTuplePreTransformer(gast.NodeTransformer):
+class ForLoopTuplePreTransformer(BaseTransformer):
     """
     ForNodeVisitor parses 3 type statements (Here var is VarBase(Tensor) or python variable):
         1). for x in range(var[*]|var.numpy()[*])
@@ -1397,7 +1398,7 @@ class ForNodeVisitor(object):
         return None
 
 
-class SplitAssignTransformer(gast.NodeTransformer):
+class SplitAssignTransformer(BaseTransformer):
     """
     This class transforms sequence assignments and multi-target assignments to normal assignments.
     """

@@ -14,7 +14,8 @@
 
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import ORIGI_INFO
+# Repeat the definition here to solve the problem of circular import
+ORIGI_INFO = "Original information of source code for ast node."
 
 
 class BaseTransformer(gast.NodeTransformer):
