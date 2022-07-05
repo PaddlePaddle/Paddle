@@ -264,10 +264,17 @@ class OpConverter {
       if (layer->getType() == nvinfer1::LayerType::kSHUFFLE) {
         auto* input_tensor = layer->getInput(0);
         auto* output_tensor = layer->getOutput(0);
+        auto output_tensor_name = output_tensor->getName();
+        auto input_tensor_name = input_tensor->getName();
         if (engine->DynamicRangeIsSet(input_tensor) &&
             !engine->DynamicRangeIsSet(output_tensor)) {
-          engine->SetTensorDynamicRange(
-              output_tensor, engine->GetTensorDynamicRange(input_tensor));
+          float output_scale = engine->GetTensorDynamicRange(input_tensor);
+          VLOG(1) << "Set output tensor scale = " << output_scale
+                  << " for tensor in TensorRT: " << output_tensor_name << ".";
+          engine->SetTensorDynamicRange(output_tensor, output_scale);
+        } else {
+          VLOG(1) << "Failed to get input tensor scale for tensor in TensorRT: "
+                  << input_tensor_name << ".";
         }
       }
     }
