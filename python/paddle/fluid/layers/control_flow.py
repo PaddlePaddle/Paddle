@@ -2402,7 +2402,7 @@ def copy_var_to_parent_block(var, layer_helper):
     return parent_block_var
 
 
-def cond(pred, true_fn=None, false_fn=None, return_name_ids=None, name=None):
+def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
@@ -2448,7 +2448,7 @@ def cond(pred, true_fn=None, false_fn=None, return_name_ids=None, name=None):
             true. The default value is ``None`` .
         false_fn(callable, optional): A callable to be performed if ``pred`` is
             false. The default value is ``None`` .
-        return_name_ids: A list of strings to represents the name of returned vars.
+        return_name_ids: A list of strings to represents the name of returned vars. useful to debug.
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
@@ -2570,6 +2570,8 @@ def cond(pred, true_fn=None, false_fn=None, return_name_ids=None, name=None):
             "true fn returns {} vars, but false fn returns {} vars, which is not equals"
             .format(len(to_sequence(true_output)),
                     len(to_sequence(false_output))))
+    if return_name_ids is None:
+        return_name_ids = ["no name"] * len(to_sequence(true_output))
     for true_out, false_out, return_name in zip(to_sequence(true_output),
                                                 to_sequence(false_output),
                                                 to_sequence(return_name_ids)):
