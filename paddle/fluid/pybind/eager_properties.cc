@@ -163,12 +163,15 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   if (egr::IsVariableCompatTensor(self->tensor)) {
     auto* var_tensor = static_cast<const egr::VariableCompatTensor*>(
         self->tensor.impl().get());
+    // printf("this is var_tensor\n");
     if (var_tensor->IsType<paddle::framework::Vocab>()) {
       value.emplace_back(static_cast<int64_t>(
           var_tensor->Get<paddle::framework::Vocab>().size()));
+      // printf("this is var_tensor Vocab\n");
     } else if (var_tensor->IsType<paddle::framework::Strings>()) {
       value.emplace_back(static_cast<int64_t>(
           var_tensor->Get<paddle::framework::Strings>().size()));
+      // printf("this is var_tensor String\n");
     } else {
       PADDLE_THROW(paddle::platform::errors::Unavailable(
           "VariableCompatTensor only support get shape from Vocab or "
@@ -181,8 +184,22 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     for (size_t i = 0; i < rank; i++) {
       value[i] = ddim[i];
     }
+    auto tmp_value = value;
+    if (self->tensor.is_autotune()) {
+      if (self->tensor.layout() == paddle::experimental::DataLayout::NCHW) {
+        // NCHW -> NHWC
+        value[1] = tmp_value[2];
+        value[2] = tmp_value[3];
+        value[3] = tmp_value[1];
+      } else if (self->tensor.layout() ==
+                 paddle::experimental::DataLayout::NHWC) {
+        // NHWC -> NCHW
+        value[1] = tmp_value[3];
+        value[2] = tmp_value[1];
+        value[3] = tmp_value[2];
+      }
+    }
   }
-
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

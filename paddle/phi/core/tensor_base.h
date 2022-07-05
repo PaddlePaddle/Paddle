@@ -73,6 +73,11 @@ class TensorBase {
   /// return The type information of the derived class.
   TypeInfo<TensorBase> type_info() const { return type_info_; }
 
+  bool is_autotune() const { return false; }
+
+  void set_autotune(bool use_laytout) {}
+  void update_layout(DataLayout layout) {}
+
  private:
   template <typename T, typename U>
   friend class TypeInfoTraits;

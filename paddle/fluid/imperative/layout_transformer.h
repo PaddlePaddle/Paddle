@@ -15,12 +15,32 @@
 #pragma once
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/var_helper.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 namespace paddle {
 namespace imperative {
+
+template <typename VarType>
+void SetOutDataLayout(std::shared_ptr<VarType> var,
+                      const paddle::experimental::DataLayout layout) {
+  // 1.if out_var's layout != layout
+  // 2.get out_tensor and out_tensor_meta
+  // 3.make new_meta according to out_tensor_meta(datatype, layout, is_autotune)
+  // 4.SetDataLayout
+  paddle::imperative::SetDataLayout(var, layout);
+  if (layout != DataLayout::UNDEFINED) {
+    // 1. get out_tensor
+    paddle::framework::Variable* tmp_var = var->MutableVar();
+    auto* out = tmp_var->GetMutable<framework::LoDTensor>();
+    const phi::DenseTensorMeta tensor_meta = out->meta();
+    out->update_layout(layout);
+    out->set_autotune(true);
+  }
+}
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
@@ -114,7 +134,7 @@ class LayoutTransformer {
           auto out_vars = outs.at(name);
           for (auto& var : out_vars) {
             if (var != nullptr) {
-              paddle::imperative::SetDataLayout(var, layout);
+              paddle::imperative::SetOutDataLayout(var, layout);
             }
           }
           not_in_out = false;
@@ -126,7 +146,7 @@ class LayoutTransformer {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
           if (var != nullptr) {
-            paddle::imperative::SetDataLayout(var, layout);
+            paddle::imperative::SetOutDataLayout(var, layout);
           }
         }
       }
@@ -377,8 +397,8 @@ class ArgmaxOpTransformer
     bool keep_dims = BOOST_GET_CONST(bool, (*attrs)["keepdims"]);
     if (keep_dims) {
       if (var_layout != DataLayout::UNDEFINED) {
-        std::vector<int> perm_nhwc = {0, 2, 3, 1};
-        std::vector<int> perm_nchw = {0, 3, 1, 2};
+        std::vector<int> perm_nhwc = {0, 3, 1, 2};
+        std::vector<int> perm_nchw = {0, 2, 3, 1};
         auto perm = var_layout == DataLayout::NHWC ? perm_nhwc : perm_nchw;
         switch (AttrTypeID((*attrs)["axis"])) {
           case paddle::framework::proto::AttrType::INT: {

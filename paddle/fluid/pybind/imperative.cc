@@ -2018,8 +2018,27 @@ void BindImperative(py::module *m_ptr) {
           "shape",
           [](imperative::VarBase &self) {
             if (self.Var().IsType<framework::LoDTensor>()) {
-              return phi::vectorize<int>(
+              auto value = phi::vectorize<int>(
                   self.Var().Get<framework::LoDTensor>().dims());
+              auto tensor = self.Var().Get<framework::LoDTensor>();
+              auto tmp_value = value;
+              VLOG(4) << "old layout asdf"
+                      << paddle::framework::DataLayoutToString(tensor.layout());
+              if (tensor.is_autotune()) {
+                if (tensor.layout() == paddle::experimental::DataLayout::NCHW) {
+                  // NCHW -> NHWC
+                  value[1] = tmp_value[2];
+                  value[2] = tmp_value[3];
+                  value[3] = tmp_value[1];
+                } else if (tensor.layout() ==
+                           paddle::experimental::DataLayout::NHWC) {
+                  // NHWC -> NCHW
+                  value[1] = tmp_value[3];
+                  value[2] = tmp_value[1];
+                  value[3] = tmp_value[2];
+                }
+              }
+              return value;
             } else if (self.Var().IsType<phi::SelectedRows>()) {
               return phi::vectorize<int>(
                   self.Var().Get<phi::SelectedRows>().value().dims());
