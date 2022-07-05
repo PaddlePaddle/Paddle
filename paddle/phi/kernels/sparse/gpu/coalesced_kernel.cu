@@ -55,11 +55,7 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
                                      sparse_offsets.data(),
                                      sizeof(IntT) * sparse_dim,
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyHostToDevice,
-#else
-                                     cudaMemcpyHostToDevice,
-#endif
+                                     gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
 
   // 1. flatten indices
@@ -117,11 +113,7 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
                                      out_indices.data<IntT>(),
                                      sizeof(IntT),
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
-#else
-                                     cudaMemcpyDeviceToHost,
-#endif
+                                     gpuMemcpyDeviceToHost,
                                      dev_ctx.stream());
   dev_ctx.Wait();
 
@@ -188,7 +180,6 @@ void CoalescedKernel(const Context& dev_ctx,
         CoalescedGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

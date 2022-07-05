@@ -37,17 +37,9 @@ namespace sparse {
 
 using Dims4D = phi::funcs::sparse::Dims4D;
 
-// TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
-// this kernel with phi::GatherCUDAKernel;
-// Vectorization can be used to improve read and write bandwidth
-/**
- * brief: gather data from params according to indices
- * params: the inputs
- * indices: the indices you want to gather
- * output: the outputs
- * index_size: the size of indices
- * slice_size: slice size corresponding to each index, here is the channel size
- **/
+// Vectorize load and store global memory
+// In the scene of 3D point cloud, the slice_size 4,8,16,32,64 are commonly
+// used.
 template <typename T, typename IndexT = int, int VecSize>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -68,6 +60,7 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
+// the index_counts records the number of times the same index will be gather
 template <typename T, typename IntT, int VecSize>
 __global__ void GatherKernelV2(const T* inputs,
                                const int* index_counts,
@@ -96,6 +89,7 @@ __global__ void GatherKernelV2(const T* inputs,
   }
 }
 
+// double sparse, seed GroupIndexs
 template <typename T, typename IntT, int VecSize>
 __global__ void GatherKernelV3(const T* inputs,
                                const int* index_counts,
@@ -131,6 +125,7 @@ __global__ void GatherKernelV3(const T* inputs,
   }
 }
 
+// unique the out indexs in rulebook
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
                              const int rulebook_len,
@@ -168,12 +163,12 @@ __global__ void UniqueKernel(const IntT* in_indexs,
 }
 
 template <typename IntT>
-__global__ void UpdateOutIndex(const int* out_index_table,
-                               const int n,
-                               const int kernel_size,
-                               IntT* out_indexs,
-                               int* out_index_counts,
-                               int* origin_out_indexs) {
+__global__ void GroupIndexs(const int* out_index_table,
+                            const int n,
+                            const int kernel_size,
+                            IntT* out_indexs,
+                            int* out_index_counts,
+                            int* out_index_groups) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     IntT index = out_indexs[i];
     int real_index = out_index_table[index];
@@ -182,7 +177,7 @@ __global__ void UpdateOutIndex(const int* out_index_table,
     // kernel_size at most
     int j = atomicAdd(out_index_counts + real_index, 1);
     // nnz * kernel_size
-    origin_out_indexs[real_index * kernel_size + j] = i;
+    out_index_groups[real_index * kernel_size + j] = i;
   }
 }
 
@@ -461,11 +456,11 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
 }
 
 template <typename IntT>
-__global__ void UpdateOutIndex(const int n,
-                               const int kernel_size,
-                               const IntT* indexs,
-                               int* index_counts,
-                               int* index_groups) {
+__global__ void GroupIndexs(const int n,
+                            const int kernel_size,
+                            const IntT* indexs,
+                            int* index_counts,
+                            int* index_groups) {
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     IntT index = indexs[i];
     // kernel_size at most
@@ -475,14 +470,15 @@ __global__ void UpdateOutIndex(const int n,
   }
 }
 
+// double space to reduce atomicAdd conflict
 template <typename IntT>
-__global__ void UpdateOutIndexV2(const int rulebook_len,
-                                 const int non_zero_num,
-                                 const int kernel_size,
-                                 const int half_kernel_offset,
-                                 const IntT* indexs,
-                                 int* index_counts,
-                                 int* index_groups) {
+__global__ void GroupIndexsV2(const int rulebook_len,
+                              const int non_zero_num,
+                              const int kernel_size,
+                              const int half_kernel_offset,
+                              const IntT* indexs,
+                              int* index_counts,
+                              int* index_groups) {
   CUDA_KERNEL_LOOP_TYPE(i, rulebook_len, int64_t) {
     IntT index = indexs[i];
     int* counts_ptr =
@@ -545,8 +541,6 @@ int ProductRuleBook(const Context& dev_ctx,
   Dims4D d_strides(1, strides[2], strides[1], strides[0]);
   Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
   // 1. product rule book
-  // phi::funcs::SetConstant<Context, int> set_zero;
-  // set_zero(dev_ctx, counter_per_kernel, 0);
   phi::backends::gpu::GpuMemsetAsync(counter_ptr,
                                      0,
                                      sizeof(int) * counter_per_kernel->numel(),
@@ -555,11 +549,6 @@ int ProductRuleBook(const Context& dev_ctx,
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
   if (subm) {
-    // At present, hashtable is not used to map the input and output indexes.
-    // At present, the intermediate output index is generated by normal
-    // convolution,
-    // and then the intermediate output index is subtracted from the input index
-    // to obain the rulebook.
     const int rulebook_rows = 2;
     const int rulebook_cols = kernel_size * non_zero_num;
     DenseTensorMeta rulebook_meta(
@@ -582,11 +571,7 @@ int ProductRuleBook(const Context& dev_ctx,
     }
     DenseTensor out_index_table = phi::Empty<IntT>(dev_ctx, {table_size});
     IntT* out_index_table_ptr = out_index_table.data<IntT>();
-    // thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
-    //              out_index_table_ptr,
-    //              out_index_table_ptr + out_index_table.numel(),
-    //              -1);
-    cudaMemsetAsync(
+    phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
 
     auto config =
@@ -696,21 +681,6 @@ int ProductRuleBook(const Context& dev_ctx,
                                 rulebook_ptr + rulebook_rows * rulebook_cols,
                                 -1);
 
-    // phi::funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
-    //     rulebook_ptr, last, rulebook_ptr + rulebook_rows * rulebook_cols -
-    //     1);
-    // IntT rulebook_len = 0;
-    // phi::backends::gpu::GpuMemcpyAsync(
-    //     &rulebook_len,
-    //     rulebook_ptr + rulebook_rows * rulebook_cols - 1,
-    //     sizeof(IntT),
-    //     gpuMemcpyDeviceToHost,
-    //     dev_ctx.stream());
-
-    // dev_ctx.Wait();
-    // rulebook_len /= 2;
-    // printf("rulebook_len = %d\n", rulebook_len);
-    // printf("distance = %d\n", last-rulebook_ptr);
     IntT rulebook_len = (last - rulebook_ptr) / 2;
 
 #ifdef PADDLE_WITH_HIP
@@ -770,14 +740,6 @@ int ProductRuleBook(const Context& dev_ctx,
                     dev_ctx.stream());
     dev_ctx.Wait();
 
-    // thrust::pair<int*, int*> min_max =
-    // thrust::minmax_element(thrust::cuda::par.on(dev_ctx.stream()),
-    // out_index_ptr, out_index_ptr + out_nnz); int start = 0, end = 0;
-    // cudaMemcpyAsync(&start, min_max.first, sizeof(int),
-    // cudaMemcpyDeviceToHost, dev_ctx.stream()); cudaMemcpyAsync(&end,
-    // min_max.second, sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
-    // dev_ctx.Wait();
-
     const int64_t sparse_dim = 4;
     DenseTensorMeta indices_meta(
         indices_dtype, {sparse_dim, out_nnz}, DataLayout::NCHW);
@@ -789,16 +751,6 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
-    // thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
-    //              out_index_ptr,
-    //              out_index_ptr + out_nnz);
-    // printf("start = %d, end=%d, table_size=%d, nnz=%d\n", start, end,
-    // table_size); thrust::remove_copy(thrust::cuda::par.on(dev_ctx.stream()),
-    //                    out_index_table_ptr + start,
-    //                    out_index_table_ptr + end,
-    //                    out_index_ptr,
-    //                    0);
-
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
     GetOutIndexTable<IntT><<<config.block_per_grid,
                              config.thread_per_block,
@@ -809,21 +761,19 @@ int ProductRuleBook(const Context& dev_ctx,
                                                  out_index_table_ptr,
                                                  out_indices_ptr);
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    // cudaMemsetAsync(
-    //     out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
     unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
     int* unique_value_ptr = unique_value->data<int>();
 
     // return rulebook_len;
-    UpdateOutIndex<<<config.block_per_grid,
-                     config.thread_per_block,
-                     0,
-                     dev_ctx.stream()>>>(out_index_table_ptr,
-                                         rulebook_len,
-                                         kernel_size,
-                                         rulebook_ptr + rulebook_len,
-                                         out_index_ptr,
-                                         unique_value_ptr);
+    GroupIndexs<<<config.block_per_grid,
+                  config.thread_per_block,
+                  0,
+                  dev_ctx.stream()>>>(out_index_table_ptr,
+                                      rulebook_len,
+                                      kernel_size,
+                                      rulebook_ptr + rulebook_len,
+                                      out_index_ptr,
+                                      unique_value_ptr);
 
     return rulebook_len;
   }

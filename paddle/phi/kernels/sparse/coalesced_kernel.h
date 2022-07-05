@@ -26,5 +26,12 @@ void CoalescedKernel(const Context& dev_ctx,
                      const SparseCooTensor& x,
                      SparseCooTensor* out);
 
+template <typename T, typename Context>
+SparseCooTensor Coalesced(const Context& dev_ctx, const SparseCooTensor& x) {
+  SparseCooTensor coo;
+  CoalescedKernel<T, Context>(dev_ctx, x, &coo);
+  return coo;
+}
+
 }  // namespace sparse
 }  // namespace phi

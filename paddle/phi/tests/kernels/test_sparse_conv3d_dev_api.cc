@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
@@ -207,6 +208,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             1,
                                             subm,
                                             "Conv3d_0");
+  SparseCooTensor tmp_d_out = sparse::Coalesced<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -218,7 +220,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       dev_ctx_cpu,
       DenseTensorMeta(indices_dtype, {4, d_out.nnz()}, DataLayout::NCHW));
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_indices(),
+            tmp_d_out.non_zero_indices(),
             phi::CPUPlace(),
             true,
             &h_indices_tensor);
@@ -232,7 +234,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_elements(),
+            tmp_d_out.non_zero_elements(),
             phi::CPUPlace(),
             true,
             &h_features_tensor);
