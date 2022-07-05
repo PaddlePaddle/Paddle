@@ -230,8 +230,7 @@ void TestBeamSearch<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(BeamSearch, CPU) {
-  TestBeamSearch<paddle::platform::CPUDeviceContext,
-                 paddle::platform::CPUPlace>();
+  TestBeamSearch<phi::CPUContext, paddle::platform::CPUPlace>();
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

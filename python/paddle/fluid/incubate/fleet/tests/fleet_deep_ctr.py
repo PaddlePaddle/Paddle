@@ -16,6 +16,7 @@ import argparse
 import logging
 import time
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -123,7 +124,7 @@ def model():
     auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                           label=label)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     return datas, avg_cost, predict, train_file_path
 

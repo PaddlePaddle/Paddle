@@ -233,7 +233,7 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
 NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
-      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+      static_cast<phi::CPUContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
   paddle::framework::TensorFromVector(dims, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
@@ -249,7 +249,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
 NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
-      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+      static_cast<phi::CPUContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
   paddle::framework::TensorFromVector(dims, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
@@ -265,7 +265,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
 NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
-      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+      static_cast<phi::CPUContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
   paddle::framework::TensorFromVector(values, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);
@@ -281,7 +281,7 @@ NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
 NpuOpRunner &NpuOpRunner::AddInput(std::vector<double> &&values) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx =
-      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+      static_cast<phi::CPUContext *>(pool.Get(platform::CPUPlace()));
   Tensor host_tensor;
   paddle::framework::TensorFromVector(values, *dev_ctx, &host_tensor);
   host_tensors_.emplace_back(host_tensor);

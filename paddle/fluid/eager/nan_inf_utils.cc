@@ -48,8 +48,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 #endif
       return;
     }
-    paddle::framework::details::tensor_check<
-        paddle::platform::CPUDeviceContext>(
+    paddle::framework::details::tensor_check<phi::CPUContext>(
         api_name, tensor_name, *dense_tensor, place);
   }
 }

@@ -126,6 +126,41 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestAutoTuneTransposeOp(OpTest):
+
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.python_api = paddle.transpose
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float64"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+    def initTestCase(self):
+        fluid.core.set_autotune_range(0, 3)
+        fluid.core.update_autotune_status()
+        fluid.core.enable_autotune()
+        self.shape = (1, 12, 256, 1)
+        self.axis = (0, 3, 2, 1)
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'], check_eager=True)
+        fluid.core.disable_autotune()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestTransposeBF16Op(OpTest):
 
     def setUp(self):

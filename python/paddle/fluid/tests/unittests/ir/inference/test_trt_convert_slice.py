@@ -111,13 +111,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            inputs = program_config.inputs
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) == 0:
-                return 1, 2
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) != 1:
-                return 0, 3
-            if dynamic_shape == False and len(attrs[0]["decrease_axis"]) != 0:
-                return 0, 3
             if not dynamic_shape:
                 for x in attrs[0]["axes"]:
                     if x == 0:

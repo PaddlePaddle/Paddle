@@ -270,7 +270,7 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
-            set(["i", "j"])
+            set(["i"])
         ]
         self.create_var_names = [set(), set(["b"]), set()]
 

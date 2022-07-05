@@ -66,11 +66,6 @@ void profile(bool use_mkldnn = false) {
                  FLAGS_num_threads);
 }
 
-TEST(Analyzer_resnet50, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
-#endif
-
 // Check the fuse status
 TEST(Analyzer_resnet50, fuse_statis) {
   AnalysisConfig cfg;
@@ -81,6 +76,11 @@ TEST(Analyzer_resnet50, fuse_statis) {
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   LOG(INFO) << "num_ops: " << num_ops;
 }
+
+TEST(Analyzer_resnet50, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {

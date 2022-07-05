@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/logic/tribool.hpp>
+#include "paddle/utils/tribool.h"
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
 
@@ -29,12 +29,12 @@ class PlacementPassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -90,13 +90,13 @@ class PlacementPassTest {
           "concat1",
           std::vector<std::string>({"a", "b"}),
           std::vector<std::string>({"c"}),
-          boost::indeterminate);
+          paddle::indeterminate);
     SetOp(&prog,
           "conv2d",
           "conv1",
           std::vector<std::string>({"c", "weights", "bias"}),
           std::vector<std::string>({"f"}),
-          boost::indeterminate);
+          paddle::indeterminate);
     SetOp(&prog,
           "relu",
           "relu1",

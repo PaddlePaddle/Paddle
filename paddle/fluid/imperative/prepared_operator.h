@@ -257,29 +257,35 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   auto& output_defs = phi_kernel.args_def().output_defs();
   auto& attr_defs = phi_kernel.args_def().attribute_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(),
-                    input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(),
-                        input_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      input_names.size(),
+      input_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of inputs_args names (%d) must be equal to "
+          "the size of kernel input_defs (%d).",
+          kernel_signature.name,
+          input_names.size(),
+          input_defs.size()));
 
-  PADDLE_ENFORCE_EQ(output_names.size(),
-                    output_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of outputs_args names (%d) must be equal to "
-                        "the size of kernel output_defs (%d).",
-                        output_names.size(),
-                        output_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      output_names.size(),
+      output_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of outputs_args names (%d) must be equal to "
+          "the size of kernel output_defs (%d).",
+          kernel_signature.name,
+          output_names.size(),
+          output_defs.size()));
 
-  PADDLE_ENFORCE_EQ(attr_names.size(),
-                    attr_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "the size of attribute_args names (%d) must be equal "
-                        "to the size of kernel attribute_defs (%d).",
-                        attr_names.size(),
-                        attr_defs.size()));
+  PADDLE_ENFORCE_EQ(
+      attr_names.size(),
+      attr_defs.size(),
+      platform::errors::InvalidArgument(
+          "Op %s: the size of attribute_args names (%d) must be equal "
+          "to the size of kernel attribute_defs (%d).",
+          kernel_signature.name,
+          attr_names.size(),
+          attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);

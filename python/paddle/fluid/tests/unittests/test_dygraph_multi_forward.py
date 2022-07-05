@@ -143,7 +143,7 @@ class TestDygraphMultiForward(unittest.TestCase):
 
                     cost = mnist(img)
                     loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
 
@@ -169,7 +169,7 @@ class TestDygraphMultiForward(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             # initialize params and fetch them
             static_param_init_value = {}
