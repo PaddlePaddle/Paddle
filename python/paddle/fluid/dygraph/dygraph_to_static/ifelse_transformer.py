@@ -55,7 +55,6 @@ class IfElseTransformer(BaseTransformer):
         self.root = wrapper_root.node
         FunctionNameLivenessAnalysis(
             self.root)  # name analysis of current ast tree.
-        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
 
     def transform(self):
         """
