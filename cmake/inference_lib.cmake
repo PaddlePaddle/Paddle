@@ -473,12 +473,6 @@ copy(
        ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
   DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
 
-set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/boost")
-copy(
-  inference_lib_dist
-  SRCS ${BOOST_INCLUDE_DIR}/boost
-  DSTS ${dst_dir})
-
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/dlpack")
 copy(
   inference_lib_dist
