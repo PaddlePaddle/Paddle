@@ -21,7 +21,14 @@ namespace phi {
 namespace kps {
 namespace details {
 
-int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
+static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
+  const int buf_size = 256;
+  int nthreads = block_num * grid_num;
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  return read_lens;
+}
 
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
@@ -395,6 +402,65 @@ __device__ __inline__ void ReadData(Ty* dst,
   }
 }
 
+/**
+ * @brief Read 2D data from global memory to register according to Tx type, and
+ * store it as Ty type into register.
+ *
+ * @template paraments
+ * Tx: The type of data stored in the global memory.
+ * Ty: The type of data that needs to be stored in registers.
+ * NX: The number of data columns loaded by each thread.
+ * NY: The number of data rows loaded by each thread.
+ * BlockSize: Identifies the current device thread index method. For xpu,
+ * core_id() is used as the index.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The data pointer of the current block.
+ * size_nx: The maximum offset of the current block is size_nx elements in the
+ * lowest dimension. The parameters are only calculated when isboundary = true.
+ * size_ny: The maximum offset of the current block is size_ny elements in the
+ * first dimension. The parameters are only calculated when isboundary = true.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
+ * read_lens: The number of data continuously loaded by each thread.
+ */
+template <typename Tx,
+          typename Ty,
+          int NX,
+          int NY,
+          int BlockSize,
+          int VecSize,
+          bool IsBoundary = false>
+__device__ __inline__ void ReadData(Ty* dst,
+                                    const Tx _global_ptr_* src,
+                                    int size_nx,
+                                    int size_ny,
+                                    int stride_nx,
+                                    int stride_ny,
+                                    int read_lens) {
+  int thread_offset = core_id();
+  int left_size_nx = size_nx - thread_offset;
+  __local__ Tx in_temp[VecSize];
+  // Each branch is added for better performance
+  if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
+    if (IsBoundary) {
+      if (left_size_nx > 0) {
+        GM2LM(src + thread_offset, in_temp, sizeof(Tx));
+        dst[0] = static_cast<Ty>(in_temp[0]);
+      }
+    } else {
+      GM2LM(src + thread_offset * read_lens, in_temp, read_lens * sizeof(Tx));
+      for (int i = 0; i < read_lens; i++) {
+        dst[i] = static_cast<Ty>(in_temp[i]);
+      }
+    }
+  }
+}
 /**
  * @brief Initialize register with init_data.
  *

@@ -776,6 +776,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
 
 template <typename Tx,
           typename Ty,
+          int VecSize,
           typename MPType,
           typename ReduceOp,
           typename TransformOp>
@@ -789,75 +790,90 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                       int blocking_size,
                                       const kps::DimConfig dim,
                                       int mean_div,
+                                      int read_lens,
                                       bool is_mean) {
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
   auto block = ReduceIndexMapping<false>(dim);
   int idy = block.BlockIdY() * blocking_size;
-  int idx = block.BlockIdX() * block.BlockDimX();
+  int idx = block.BlockIdX() * block.BlockDimX() * read_lens;
   int idz = BLOCK_ID_Z * left_num;
-  int stride = dim.split_num_x * dim.deal_size_x;
+  int stride = dim.split_num_x * dim.deal_size_x * read_lens;
   int size = left_num - dim.rem_x;
   int loop_size = min(reduce_num - idy, blocking_size);
   int store_offset = block.BlockIdY() * left_num + idz * block.GridDimY();
-  int block_offset = idy * left_num + idz * reduce_num;
+  int block_offset = (idy * left_num + idz * reduce_num) * read_lens;
   const _ptr_ Tx* input = x + block_offset;
-  Tx reduce_input;
+  Tx reduce_input[VecSize];
+  MPType reduce_compute[VecSize];
+  MPType reduce_var[VecSize];
+  Ty result[VecSize];
+
   for (; idx < size; idx += stride) {
-    MPType reduce_var = init;
-    MPType reduce_compute = init;
+    read_lens = min(read_lens, size - idx);
+    for (int i = 0; i < read_lens; i++) {
+      reduce_compute[i] = init;
+      reduce_var[i] = init;
+    }
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
-      kps::ReadData<Tx, Tx, 1, 1, 1, false>(&reduce_input,
-                                            input + loop_idx * left_num + idx,
-                                            block.BlockDimX(),
-                                            1,
-                                            1,
-                                            left_num);
+      kps::ReadData<Tx, Tx, 1, 1, 1, VecSize, false>(
+          reduce_input,
+          input + loop_idx * left_num + idx,
+          block.BlockDimX(),
+          1,
+          1,
+          left_num,
+          read_lens);
       kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
-          &reduce_compute, &reduce_input, transformer);
+          reduce_compute, reduce_input, transformer, read_lens);
       kps::Reduce<MPType,
                   1,
                   1,
                   1,
                   ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
-          &reduce_var, &reduce_compute, reducer, false);
+          reduce_var, reduce_compute, reducer, read_lens, false);
     }
     if (is_mean) {
-      reduce_var = reduce_var / static_cast<MPType>(mean_div);
+      for (int i = 0; i < read_lens; i++) {
+        reduce_var[i] = reduce_var[i] / static_cast<MPType>(mean_div);
+      }
     }
-    Ty result = static_cast<Ty>(reduce_var);
+    for (int i = 0; i < read_lens; i++) {
+      result[i] = static_cast<Ty>(reduce_var[i]);
+    }
     kps::WriteData<Ty, 1, 1, 1, false>(
-        y + store_offset + idx, &result, block.BlockDimX());
+        y + store_offset + idx, result, block.BlockDimX(), read_lens);
   }
 
   if (idx < left_num) {
-    MPType reduce_var = init;
-    MPType reduce_compute = init;
+    Tx reduce_input_boundary;
+    MPType reduce_var_boundary = init;
+    MPType reduce_compute_boundary = init;
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
-      kps::ReadData<Tx, Tx, 1, 1, 1, true>(&reduce_input,
+      kps::ReadData<Tx, Tx, 1, 1, 1, true>(&reduce_input_boundary,
                                            input + loop_idx * left_num + idx,
                                            dim.rem_x,
                                            1,
                                            1,
                                            left_num);
       kps::ElementwiseUnary<Tx, MPType, 1, 1, 1, TransformOp>(
-          &reduce_compute, &reduce_input, transformer);
+          &reduce_compute_boundary, &reduce_input_boundary, transformer);
       kps::Reduce<MPType,
                   1,
                   1,
                   1,
                   ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
-          &reduce_var, &reduce_compute, reducer, false);
+          &reduce_var_boundary, &reduce_compute_boundary, reducer, false);
     }
 
     if (is_mean) {
-      reduce_var = reduce_var / static_cast<MPType>(mean_div);
+      reduce_var_boundary = reduce_var_boundary / static_cast<MPType>(mean_div);
     }
-    Ty result = static_cast<Ty>(reduce_var);
+    Ty result_boundary = static_cast<Ty>(reduce_var_boundary);
     kps::WriteData<Ty, 1, 1, 1, true>(
-        y + store_offset + idx, &result, dim.rem_x);
+        y + store_offset + idx, &result_boundary, dim.rem_x);
   }
 }
 
@@ -971,12 +987,18 @@ static void LaunchReduceKernel(const Tx* x_data,
 #ifdef PADDLE_WITH_XPU_KP
     int grid_size = 8;
     int block_size = 64;
+    const int VecSize = 256;
+    const int read_lens =
+        kps::details::GetXpuReadLens(config.left_num, grid_size, block_size);
 #else
     auto grid_size = grid;
     auto block_size = block;
+    const int VecSize = 1;
+    const int read_lens = VecSize;
 #endif
     ReduceHigherDimKernel<Ty,
                           Ty,
+                          VecSize,
                           MPType,
                           ReduceOp,
                           kps::IdentityFunctor<Ty, MPType>>
@@ -991,6 +1013,7 @@ static void LaunchReduceKernel(const Tx* x_data,
             config.grid.y,
             dim,
             config.reduce_num,
+            read_lens,
             is_mean);
   }
 }
@@ -1136,25 +1159,35 @@ void ReduceKernel(const KPDevice& dev_ctx,
                0);
 
 #ifdef PADDLE_WITH_XPU_KP
-    auto grid_num = 8;
-    auto block_num = 64;
+    int grid_num = 8;
+    int block_num = 64;
+    const int VecSize = 256;
+    const int read_lens =
+        kps::details::GetXpuReadLens(config.left_num, grid_num, block_num);
 #else
     auto grid_num = config.grid;
     auto block_num = config.block;
+    const int VecSize = 1;
+    const int read_lens = VecSize;
 #endif
-    ReduceHigherDimKernel<Tx, Ty, MPType, ReduceOp<MPType>, TransformOp>
-        <<<grid_num, block_num, 0, stream>>>(
-            x_data,
-            config.output_data,
-            reducer,
-            transform,
-            reducer.initial(),
-            config.reduce_num,
-            config.left_num,
-            config.blocking_size,
-            dim,
-            config.reduce_num,
-            is_mean && (!config.should_reduce_again));
+    ReduceHigherDimKernel<Tx,
+                          Ty,
+                          VecSize,
+                          MPType,
+                          ReduceOp<MPType>,
+                          TransformOp><<<grid_num, block_num, 0, stream>>>(
+        x_data,
+        config.output_data,
+        reducer,
+        transform,
+        reducer.initial(),
+        config.reduce_num,
+        config.left_num,
+        config.blocking_size,
+        dim,
+        config.reduce_num,
+        read_lens,
+        is_mean && (!config.should_reduce_again));
 
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
@@ -1166,12 +1199,18 @@ void ReduceKernel(const KPDevice& dev_ctx,
 #ifdef PADDLE_WITH_XPU_KP
       int grid_size = 8;
       int block_size = 64;
+      const int VecSize = 256;
+      const int read_lens =
+          kps::details::GetXpuReadLens(config.left_num, grid_size, block_size);
 #else
       auto grid_size = grid;
       auto block_size = block;
+      const int VecSize = 1;
+      const int read_lens = VecSize;
 #endif
       ReduceHigherDimKernel<Ty,
                             Ty,
+                            VecSize,
                             MPType,
                             ReduceOp<MPType>,
                             kps::IdentityFunctor<Ty, MPType>>
@@ -1186,6 +1225,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
               config.grid.y,
               dim2,
               config.reduce_num,
+              read_lens,
               is_mean);
     }
     return;
