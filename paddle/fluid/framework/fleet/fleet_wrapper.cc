@@ -71,6 +71,7 @@ void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #endif
 }
 
+#if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSLIB
 void add_sparse_optimizer(
     std::unordered_map<std::string, float>& config,  // NOLINT
     const ::paddle::SparseCommonSGDRuleParameter& sgd_param,
@@ -109,7 +110,6 @@ void add_sparse_optimizer(
   }
 }
 
-#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_HETERPS
 void FleetWrapper::InitializeGPUServer(const std::string& fleet_desc) {
   // optimizer config for hbmps
   // auto fleet_desc_str = trainer_desc.fleet_desc();
