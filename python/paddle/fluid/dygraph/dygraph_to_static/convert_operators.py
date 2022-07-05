@@ -243,18 +243,18 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
         return get_args()
 
     try:
-        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn,
+        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn, None,
                                       return_name_ids)
     except Exception as e:
         if re.search("Unsupported return type of true_fn and false_fn in cond",
                      str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different return type. TODO: add link to modifty."
-            )
+                "Your if/else have different return type. TODO: add link to modifty. {}"
+                .format(str(e)))
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different number of return value. TODO: add link to modifty."
-            )
+                "Your if/else have different number of return value. TODO: add link to modifty. {}"
+                .format(str(e)))
         raise e
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
 
