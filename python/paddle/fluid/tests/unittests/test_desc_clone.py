@@ -77,7 +77,7 @@ def get_model(batch_size):
     # Train program
     predict = cnn_model(images)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     # Evaluator
     batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
@@ -181,7 +181,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
         self.assertEqual(
@@ -217,7 +217,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
         self.assertEqual(
@@ -256,7 +256,7 @@ class TestCloneWithRaise(unittest.TestCase):
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
         self.assertRaises(ValueError, train_program._copy_data_info_from,

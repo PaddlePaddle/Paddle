@@ -101,7 +101,7 @@ def net(batch_size=4, lr=0.01):
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
     return datas, avg_cost
 
 
