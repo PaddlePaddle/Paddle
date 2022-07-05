@@ -35,12 +35,6 @@ class StandaloneExecutor {
 
   ~StandaloneExecutor() {}
 
-  paddle::framework::FetchList Run(
-      Scope* scope,
-      const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
-      const std::vector<std::string>& fetch_names);
-
   // NOTE(zhiqiu): feed_names are only used for caching interpretercore.
   // fetch_names are used for caching interpretercore and inserting fetch ops,
   // the latter can be moved to python side.

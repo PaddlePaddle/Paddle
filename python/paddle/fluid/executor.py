@@ -25,6 +25,7 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
 from .framework import convert_np_dtype_to_dtype_
+
 from . import core
 from . import unique_name
 from . import compiler
@@ -397,16 +398,16 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-
     from ..distributed.fleet import fleet
-    if fleet._role_maker is not None:
-        warnings.warn("do not use standalone executor in fleet by default")
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
-    else:
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+    print(framework._enable_standalone_executor_)
+    # use standalone_executor by default if not distributed
+    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
+        framework._enable_standalone_executor_ = 1
 
-    if env_val in [1, '1', True, 'True', 'true']:
+    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
         flag = True
+
+    print('use enable_standalone', flag)
 
     return flag
 

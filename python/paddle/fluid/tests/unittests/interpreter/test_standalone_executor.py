@@ -20,7 +20,7 @@ import shutil
 import unittest
 import paddle
 import json
-from paddle.fluid import core
+from paddle.fluid import core, framework
 from paddle.fluid.core import StandaloneExecutor
 from paddle.profiler import profiler
 
@@ -29,7 +29,7 @@ import numpy as np
 paddle.enable_static()
 
 
-class LinearTestCase(unittest.TestCase):
+class TestDryRun(unittest.TestCase):
 
     def setUp(self):
         place = paddle.CUDAPlace(
@@ -47,24 +47,6 @@ class LinearTestCase(unittest.TestCase):
             c = t + b
 
         return startup_program, main_program, c
-
-    def test_interp_base(self):
-        startup_program, main_program, c = self.build_program()
-        scope = core.Scope()
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_program, scope=scope)
-
-        standaloneexecutor = StandaloneExecutor(self.place, main_program.desc)
-        out = standaloneexecutor.run(
-            scope, {"a": np.ones([2, 2], dtype="float32") * 2}, [c.name])
-        for i in range(10):
-            out = standaloneexecutor.run(
-                scope, {"a": np.ones([2, 2], dtype="float32") * i}, [c.name])
-
-        for i in range(10):
-            out = standaloneexecutor.run(
-                scope, {"a": np.ones([2, 2], dtype="float32") * i},
-                ['a', c.name])
 
     def test_dry_run(self):
         scope = core.Scope()
@@ -126,103 +108,48 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         self.iter_n = 3
         self.place = paddle.CUDAPlace(
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
-
-    def test_standalone_executor_statistics(self):
-        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
-            return
-
-        paddle.seed(2020)
-        main_program, startup_program, fetch_list = build_program()
-        fetch_list = [x.name for x in fetch_list]
-
-        p = core.Place()
-        p.set_place(self.place)
-        scope = core.Scope()
-
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_program, scope=scope)
-
-        executor = StandaloneExecutor(p, main_program.desc)
-
-        helper_profiler = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
-        helper_profiler.start()
-        for i in range(self.iter_n):
-            executor.run(scope, {}, fetch_list)
-            helper_profiler.step()
-        helper_profiler.stop()
-
-        perfstat_filepath = os.environ[
-            'FLAGS_static_executor_perfstat_filepath']
-        self.assertTrue(os.path.exists(perfstat_filepath))
-        with open(perfstat_filepath, 'r') as load_f:
-            stat_res = json.load(load_f)
-            self.assertTrue(len(stat_res) > 0)
-
-        os.remove(perfstat_filepath)
-        shutil.rmtree('./profiler_log')
+        self.perf_path = './perfstat'
+        os.environ['FLAGS_static_executor_perfstat_filepath'] = self.perf_path
 
     def test_parallel_executor_statistics(self):
-        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
-            return
-
-        paddle.seed(2020)
-        main_program, startup_program, fetch_list = build_program()
-        fetch_list = [x.name for x in fetch_list]
-
-        main_program = paddle.fluid.compiler.CompiledProgram(main_program)
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
-        executor = paddle.static.Executor(self.place)
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        executor.run(startup_program)
-
-        helper_profiler = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
-        helper_profiler.start()
-        for i in range(self.iter_n):
-            executor.run(main_program, fetch_list=fetch_list)
-            helper_profiler.step()
-        helper_profiler.stop()
-
-        perfstat_filepath = os.environ[
-            'FLAGS_static_executor_perfstat_filepath']
-        self.assertTrue(os.path.exists(perfstat_filepath))
-        with open(perfstat_filepath, 'r') as load_f:
-            stat_res = json.load(load_f)
-            self.assertTrue(len(stat_res) > 0)
-
-        os.remove(perfstat_filepath)
-        shutil.rmtree('./profiler_log')
+        self.run_with_statistics(executor='ParallelExecutor')
 
     def test_executor_statistics(self):
-        if os.getenv("FLAGS_static_executor_perfstat_filepath") is None:
-            return
+        self.run_with_statistics(executor='Executor')
 
+    def test_standalone_executor_statistics(self):
+        self.run_with_statistics(executor='StandaloneExecutor')
+
+    def run_with_statistics(self, executor=None):
         paddle.seed(2020)
+        # note: startup program is empty
         main_program, startup_program, fetch_list = build_program()
-        fetch_list = [x.name for x in fetch_list]
 
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '0'
-        executor = paddle.static.Executor(self.place)
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        executor.run(startup_program)
+        enable = True
+        if executor == 'ParallelExecutor':
+            main_program = paddle.fluid.compiler.CompiledProgram(main_program)
+            enable = False
+        elif executor == 'Executor':
+            enable = False
 
-        helper_profiler = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
-        helper_profiler.start()
-        for i in range(self.iter_n):
-            executor.run(main_program, fetch_list=fetch_list)
-            helper_profiler.step()
-        helper_profiler.stop()
+        scope = paddle.static.Scope()
+        with paddle.static.scope_guard(scope):
+            with framework._enable_standalone_executor(enable):
+                exe = paddle.static.Executor(self.place)
+                helper_profiler = profiler.Profiler(
+                    targets=[profiler.ProfilerTarget.CPU], scheduler=(1, 2))
+                helper_profiler.start()
+                for i in range(self.iter_n):
+                    exe.run(main_program, fetch_list=fetch_list)
+                    helper_profiler.step()
+                helper_profiler.stop()
 
-        perfstat_filepath = os.environ[
-            'FLAGS_static_executor_perfstat_filepath']
-        self.assertTrue(os.path.exists(perfstat_filepath))
-        with open(perfstat_filepath, 'r') as load_f:
+        self.assertTrue(os.path.exists(self.perf_path))
+        with open(self.perf_path, 'r') as load_f:
             stat_res = json.load(load_f)
             self.assertTrue(len(stat_res) > 0)
 
-        os.remove(perfstat_filepath)
+        os.remove(self.perf_path)
         shutil.rmtree('./profiler_log')
 
 
@@ -234,61 +161,24 @@ class MultiStreamModelTestCase(unittest.TestCase):
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
 
     def test_result(self):
-        ground_truths = self.run_raw_executor()
-        res = self.run_new_executor()
+        ground_truths = self.run_test(False)
+        res = self.run_test(True)
 
         for gt, out in zip(ground_truths, res):
             self.assertEqual(gt[0], out[0])
 
-    def run_raw_executor(self):
+    def run_test(self, use_new_executor=True):
         paddle.seed(2020)
         main_program, startup_program, fetch_list = build_program()
 
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_program)
-
-        outs = []
-        for i in range(self.iter_n):
-            outs.append(exe.run(main_program, fetch_list=fetch_list))
-
-        return outs
-
-    def run_new_executor(self):
-        paddle.seed(2020)
-        main_program, startup_program, fetch_list = build_program()
-        fetch_list = [x.name for x in fetch_list]
-
-        p = core.Place()
-        p.set_place(self.place)
-        scope = core.Scope()
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_program, scope=scope)
-
-        inter_core = StandaloneExecutor(p, main_program.desc)
-
-        outs = []
-        for i in range(self.iter_n):
-            outs.append(
-                np.array(
-                    inter_core.run(scope, {}, fetch_list)._move_to_list()[0]))
-        return outs
-
-
-class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):
-
-    def run_new_executor(self):
-        paddle.seed(2020)
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        main_program, startup_program, fetch_list = build_program()
-        exe = paddle.static.Executor(self.place)
-        exe.run(startup_program)
-
-        outs = []
-        for i in range(self.iter_n):
-            outs.append(exe.run(main_program, fetch_list=fetch_list))
-
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
-
+        with framework._enable_standalone_executor(use_new_executor):
+            scope = core.Scope()
+            exe = paddle.static.Executor(self.place)
+            outs = []
+            for i in range(self.iter_n):
+                outs.append(
+                    exe.run(main_program, scope=scope, fetch_list=fetch_list))
+            print(outs)
         return outs
 
 
@@ -344,23 +234,23 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         return outs
 
     def run_raw_executor(self, feed, use_compiled=False):
-        # run construct program 1
-        out1 = self._run(feed,
-                         use_str=False,
-                         is_double=False,
-                         use_compiled=use_compiled)
-        # run construct program 2 with same executor
-        out2 = self._run(feed,
-                         use_str=True,
-                         is_double=True,
-                         use_compiled=use_compiled)
+        with framework._enable_standalone_executor(False):
+            # run construct program 1
+            out1 = self._run(feed,
+                             use_str=False,
+                             is_double=False,
+                             use_compiled=use_compiled)
+            # run construct program 2 with same executor
+            out2 = self._run(feed,
+                             use_str=True,
+                             is_double=True,
+                             use_compiled=use_compiled)
 
-        return [out1, out2]
+            return [out1, out2]
 
     def run_new_executor(self, feed, use_compiled=False):
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        out = self.run_raw_executor(feed, use_compiled=use_compiled)
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+        with framework._enable_standalone_executor():
+            out = self.run_raw_executor(feed, use_compiled=use_compiled)
         return out
 
     def test_with_feed(self):
@@ -376,9 +266,8 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
 
         with self.assertRaises(TypeError):
-            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-            self._run(feed[0], add_wrong_fetch=True)
-            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+            with framework._enable_standalone_executor():
+                self._run(feed[0], add_wrong_fetch=True)
 
     def test_compiled_program(self):
         data = np.ones([2, 2], dtype="float32")
@@ -393,9 +282,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         data = np.ones([2, 2], dtype="float32")
         feed = {"a": data}
 
-        os.environ['FLAGS_CONVERT_GRAPH_TO_PROGRAM'] = '1'
         res = self.run_new_executor(feed, use_compiled=True)
-        del os.environ['FLAGS_CONVERT_GRAPH_TO_PROGRAM']
         gt = self.run_raw_executor(feed, use_compiled=True)
         for x, y in zip(gt, res):
             self.assertTrue(np.array_equal(x, y))
@@ -408,9 +295,8 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         for i in range(10):
             print(i, flush=1)
-            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-            out = exe.run(program, feed=None)
-            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+            with framework._enable_standalone_executor():
+                out = exe.run(program, feed=None)
 
 
 class TestException(unittest.TestCase):
@@ -444,14 +330,12 @@ class TestException(unittest.TestCase):
 
         for feed in feeds:
             out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)
-        print(main_program)
         self.fetch_vars = fetch_vars
         return out
 
     def run_new_executor(self, feed):
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        out = self._run(feed)
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+        with framework._enable_standalone_executor():
+            out = self._run(feed)
         return out
 
     def test_exception(self):
@@ -499,14 +383,12 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
+            with framework._enable_standalone_executor():
 
-            for i in range(10):
-                a, = exe.run(paddle.static.default_main_program(),
-                             fetch_list=[x])
-                self.assertEqual(a[0], 1)
-
-            del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
+                for i in range(10):
+                    a, = exe.run(paddle.static.default_main_program(),
+                                 fetch_list=[x])
+                    self.assertEqual(a[0], 1)
 
 
 if __name__ == "__main__":

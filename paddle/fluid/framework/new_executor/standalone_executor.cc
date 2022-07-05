@@ -25,19 +25,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 paddle::framework::FetchList StandaloneExecutor::Run(
     Scope* scope,
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
-    const std::vector<std::string>& fetch_names) {
-  platform::RecordEvent record_event(
-      "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-
-  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, true);
-
-  return core->Run(feed_names, feed_tensors);
-}
-
-paddle::framework::FetchList StandaloneExecutor::Run(
-    Scope* scope,
-    const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);

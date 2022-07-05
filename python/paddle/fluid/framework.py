@@ -84,6 +84,8 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
+_enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
+                                               None))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -257,6 +259,18 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
+
+
+@signature_safe_contextmanager
+def _enable_standalone_executor(enable=True):
+    print('enable', enable)
+    global _enable_standalone_executor_
+    original_ = _enable_standalone_executor_
+    _enable_standalone_executor_ = enable
+    try:
+        yield
+    finally:
+        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager

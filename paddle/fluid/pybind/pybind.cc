@@ -3061,50 +3061,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](StandaloneExecutor &self,
               Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict,
-              std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               framework::LoDTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             paddle::framework::FetchList ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
-             }
-             return py::cast(std::move(ret));
-           })
-      .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, framework::LoDTensor>
-                  &input_dict,
-              std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(item.second);
-             }
-
-             paddle::framework::FetchList ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
-             }
-             return py::cast(std::move(ret));
-           })
-      .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
               std::vector<std::string> feed_names,
               std::vector<std::string> fetch_names) {
              paddle::framework::FetchList ret;
