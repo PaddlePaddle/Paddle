@@ -594,10 +594,12 @@ class LoopTransformer(BaseTransformer):
     #     return node
 
     def visit_While(self, node):
+        self.generic_visit(node)
         new_stmts = self.get_while_stmt_nodes(node)
         return new_stmts
 
     def visit_For(self, node):
+        self.generic_visit(node)
         new_stmts = self.get_for_stmt_nodes(node)
         return new_stmts
 
