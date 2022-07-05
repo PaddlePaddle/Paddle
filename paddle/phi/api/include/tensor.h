@@ -278,6 +278,12 @@ class PADDLE_API Tensor final {
    */
   bool is_gpu() const;
 
+  bool is_autotune() const;
+
+  void update_layout(DataLayout layout) const;
+
+  void set_autotune(bool autotune) const;
+
   /**
    * @brief Determine whether the tensor device is GPU_PINNED
    *

@@ -29,8 +29,27 @@ void ShapeKernel(const Context& ctx,
   auto out_t = out;
   out_t->Resize({in_dims.size()});
   auto out_data = ctx.template HostAlloc<int32_t>(out_t);
-  for (int i = 0; i < in_dims.size(); ++i) {
-    out_data[i] = in_dims[i];
+  VLOG(4) << "old layout is_autotune " << input.is_autotune() << " dataformat "
+          << paddle::framework::DataLayoutToString(input.layout());
+  if (input.is_autotune()) {
+    // printf("is_autotune shape.cc\n");
+    if (input.layout() == paddle::experimental::DataLayout::NCHW) {
+      // NCHW -> NHWC
+      out_data[0] = in_dims[0];
+      out_data[1] = in_dims[2];
+      out_data[2] = in_dims[3];
+      out_data[3] = in_dims[1];
+    } else if (input.layout() == paddle::experimental::DataLayout::NHWC) {
+      // NHWC -> NCHW
+      out_data[0] = in_dims[0];
+      out_data[1] = in_dims[3];
+      out_data[2] = in_dims[1];
+      out_data[3] = in_dims[2];
+    }
+  } else {
+    for (int i = 0; i < in_dims.size(); ++i) {
+      out_data[i] = in_dims[i];
+    }
   }
 }
 

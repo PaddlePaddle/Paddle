@@ -101,6 +101,10 @@ std::vector<int64_t> Tensor::shape() const {
   return phi::vectorize<int64_t>(dims);
 }
 
+bool Tensor::is_autotune()const {
+  return impl_->is_autotune();
+}
+
 void Tensor::reshape(const std::vector<int64_t> &shape) {
   LOG_FIRST_N(WARNING, 1)
       << "The function of resetting the shape of the uninitialized "
@@ -124,6 +128,12 @@ DataType Tensor::dtype() const { return impl_->dtype(); }
 DataType Tensor::type() const { return impl_->dtype(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
+
+void Tensor::update_layout(DataLayout layout) const {
+  impl_->update_layout(layout); }
+
+void Tensor::set_autotune(bool autotune) const {
+  impl_->set_autotune(autotune); }
 
 bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());

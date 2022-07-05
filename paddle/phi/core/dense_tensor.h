@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
-
-/* @jim19930609: Move to MKLDNN_Tensor in the future
- */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"
 #endif
+
+/* @jim19930609: Move to MKLDNN_Tensor in the future
+ */
 
 namespace phi {
 
@@ -84,7 +84,9 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
+  bool is_autotune() const { return meta_.is_autotune; }
 
+  void set_autotune(bool use_autotune) { meta_.is_autotune = use_autotune; }
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LoD& lod() const noexcept { return meta_.lod; }
@@ -96,6 +98,8 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept override { return meta_.layout; }
+
+  void update_layout(DataLayout new_layout) { meta_.layout = new_layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.

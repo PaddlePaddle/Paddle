@@ -58,8 +58,9 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-
-  CHECK(dst->layout() == src.layout());
+  VLOG(4) << "src layout:" << src.layout() << ", dst: layout" << dst->layout();
+  dst->set_layout(src.layout());
+  // CHECK(dst->layout() == src.layout());
 
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
