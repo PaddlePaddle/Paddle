@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 from paddle.static import InputSpec
 from paddle.fluid.framework import _enable_legacy_dygraph
-from paddle.fluid.dygraph.jit import JitLayer
+from paddle.jit.layer import Layer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 _enable_legacy_dygraph()
@@ -68,7 +68,8 @@ class TestMultiLoad(unittest.TestCase):
         place = paddle.CPUPlace()
         if paddle.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        jit_layer = JitLayer(model_path, place)
+        jit_layer = Layer()
+        jit_layer.load(model_path, place)
         forward_out2 = jit_layer.forward(x)
         infer_out2 = jit_layer.infer(x)
         self.assertEqual(np.allclose(forward_out1, forward_out2[0]), True)

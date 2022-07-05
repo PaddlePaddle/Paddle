@@ -52,6 +52,8 @@ class Layer {
 
   std::vector<std::string> FunctionNames() const;
 
+  const FunctionMap& FunctionDict() const;
+
  private:
   // internal::Object obj_;
   Name2VariableMap params_dict_;

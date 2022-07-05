@@ -122,7 +122,8 @@ set(PYBIND_SRCS
     io.cc
     generator_py.cc
     communication.cc
-    cuda_streams_py.cc)
+    cuda_streams_py.cc
+    jit.cc)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)

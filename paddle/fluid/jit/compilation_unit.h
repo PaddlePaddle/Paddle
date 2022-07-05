@@ -21,6 +21,8 @@
 
 namespace paddle {
 namespace jit {
+using FunctionMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
 
 class CompilationUnit {
  public:
@@ -34,8 +36,10 @@ class CompilationUnit {
 
   std::vector<std::string> FunctionNames() const;
 
+  const FunctionMap &FunctionDict() const;
+
  private:
-  std::unordered_map<std::string, std::shared_ptr<BaseFunction>> function_dict_;
+  FunctionMap function_dict_;
 };
 
 }  // namespace jit

@@ -46,5 +46,7 @@ std::vector<std::string> Layer::FunctionNames() const {
   return unit_.FunctionNames();
 }
 
+const FunctionMap& Layer::FunctionDict() const { return unit_.FunctionDict(); }
+
 }  // namespace jit
 }  // namespace paddle

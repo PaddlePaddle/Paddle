@@ -90,6 +90,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/fluid/pybind/jit.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -566,6 +567,7 @@ PYBIND11_MODULE(core_noavx, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
@@ -1745,48 +1747,6 @@ PYBIND11_MODULE(core_noavx, m) {
         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
         return new_rows;
       });
-
-  py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>(
-      m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC")
-      .def("__call__",
-           [](jit::ExecutorFunction &self,
-              const std::vector<std::shared_ptr<imperative::VarBase>>
-                  &tensor_inputs) {
-             std::vector<Variable> var_inputs;
-             for (auto &tensor : tensor_inputs) {
-               var_inputs.emplace_back(tensor->Var());
-             }
-             auto var_outputs = self(var_inputs);
-
-             std::vector<std::shared_ptr<imperative::VarBase>> tensor_outputs;
-             auto output_names = self.Info()->OutputArgNames();
-             for (size_t i = 0; i < var_outputs.size(); ++i) {
-               auto var = var_outputs[i];
-               std::string name = output_names[i];
-               imperative::VariableWrapper var_wrapper(name, var);
-               auto shared_wrapper =
-                   std::make_shared<imperative::VariableWrapper>(var_wrapper);
-               auto shared_varbase =
-                   std::make_shared<imperative::VarBase>(shared_wrapper);
-               tensor_outputs.emplace_back(shared_varbase);
-             }
-             return tensor_outputs;
-           });
-
-  py::class_<jit::Layer>(m, "Layer", R"DOC(Layer Class.)DOC")
-      .def("function", &jit::Layer::Function)
-      .def("forward", &jit::Layer::forward)
-      .def("function_names", &jit::Layer::FunctionNames);
-
-  m.def("Load",
-        [](const std::string &path, const platform::CPUPlace &cpu_place) {
-          return paddle::jit::Load(path, cpu_place);
-        });
-
-  m.def("Load",
-        [](const std::string &path, const platform::CUDAPlace &cuda_place) {
-          return paddle::jit::Load(path, cuda_place);
-        });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 

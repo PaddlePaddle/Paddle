@@ -42,5 +42,9 @@ std::vector<std::string> CompilationUnit::FunctionNames() const {
   return names;
 }
 
+const FunctionMap &CompilationUnit::FunctionDict() const {
+  return function_dict_;
+}
+
 }  // namespace jit
 }  // namespace paddle

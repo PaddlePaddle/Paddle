@@ -41,28 +41,11 @@ from paddle.fluid.framework import Block, ParamBase, Program, Variable, Paramete
 from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dygraph_tracer
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.core import Load
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
     'set_verbosity', 'save', 'load', 'not_to_static'
 ]
-
-
-class JitLayer():
-
-    def __init__(self, load_path, place):
-        self.cpp_jit_layer = Load(load_path, place)
-        # bind method
-        for func_name in self.cpp_jit_layer.function_names():
-            setattr(self, func_name, self.bind_funciton(func_name))
-
-    def bind_funciton(self, name):
-
-        def inner_funciton(*args):
-            return self.cpp_jit_layer.function(name)(args)
-
-        return inner_funciton
 
 
 def create_program_from_desc(program_desc):
