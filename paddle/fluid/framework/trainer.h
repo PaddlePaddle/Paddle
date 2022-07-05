@@ -36,10 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-// #ifdef PADDLE_WITH_PSLIB
-// #include "proto/ps.pb.h"
-// #endif
-
 namespace paddle {
 namespace framework {
 
@@ -275,7 +271,6 @@ class PSGPUTrainer : public TrainerBase {
 
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
-  // void InitializeGPUServer(const TrainerDesc& trainer_desc);
 
  protected:
   Dataset* dataset_;
@@ -296,9 +291,6 @@ class PSGPUTrainer : public TrainerBase {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
-
-  // _ps_param for gpups optimizer config
-  // ::paddle::PSParameter _ps_param;
 };
 #endif
 
