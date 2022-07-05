@@ -178,7 +178,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   if (in_channels % VecSize == 0) {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x.nnz() * in_channels / VecSize, 1);
-    GatherKernelV3<T, IntT, VecSize>
+    GatherKernelV2<T, IntT, VecSize>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
@@ -187,12 +187,13 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                                unique_value_ptr,
                                x.nnz(),
                                kernel_size,
-                               in_features_ptr,
-                               in_channels);
+                               in_channels,
+                               2,
+                               in_features_ptr);
   } else {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x.nnz() * in_channels, 1);
-    GatherKernelV3<T, IntT, 1>
+    GatherKernelV2<T, IntT, 1>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
@@ -201,8 +202,9 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                                unique_value_ptr,
                                x.nnz(),
                                kernel_size,
-                               in_features_ptr,
-                               in_channels);
+                               in_channels,
+                               2,
+                               in_features_ptr);
   }
 
   if (out_channels % VecSize == 0) {
@@ -277,7 +279,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   if (in_channels % VecSize == 0) {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x_grad->nnz() * in_channels / VecSize, 1);
-    phi::funcs::sparse::ScatterKernelV3<T, VecSize>
+    phi::funcs::sparse::ScatterKernelV2<T, VecSize>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
@@ -287,11 +289,12 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                                x_grad->nnz(),
                                kernel_size,
                                in_channels,
+                               2,
                                x_grad_values_ptr);
   } else {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x_grad->nnz() * in_channels, 1);
-    phi::funcs::sparse::ScatterKernelV3<T, 1>
+    phi::funcs::sparse::ScatterKernelV2<T, 1>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
@@ -301,6 +304,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                                x_grad->nnz(),
                                kernel_size,
                                in_channels,
+                               2,
                                x_grad_values_ptr);
   }
 }

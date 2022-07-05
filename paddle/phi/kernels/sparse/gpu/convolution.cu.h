@@ -60,15 +60,16 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
-// the index_counts records the number of times the same index will be gather
+// double sparse, seed GroupIndexs
 template <typename T, typename IntT, int VecSize>
 __global__ void GatherKernelV2(const T* inputs,
                                const int* index_counts,
-                               const int* origin_indexs,
+                               const int* index_groups,
                                const int non_zero_num,
                                const int kernel_size,
-                               T* output,
-                               const int channels) {
+                               const int channels,
+                               const int buffer_count,
+                               T* output) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int vec_channels = channels / VecSize;
   using LoadT = phi::AlignedVector<T, VecSize>;
@@ -77,50 +78,19 @@ __global__ void GatherKernelV2(const T* inputs,
        i += gridDim.x * blockDim.x) {
     int indices_i = i / vec_channels;
     int channels_i = i - indices_i * vec_channels;
-    int len = index_counts[indices_i];
     LoadT in_vec;
     phi::Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
                           &in_vec);
-    for (int j = 0; j < len; j++) {
-      int out_i = origin_indexs[indices_i * kernel_size + j];
-      phi::Store<T, VecSize>(in_vec,
-                             output + out_i * channels + channels_i * VecSize);
-    }
-  }
-}
-
-// double sparse, seed GroupIndexs
-template <typename T, typename IntT, int VecSize>
-__global__ void GatherKernelV3(const T* inputs,
-                               const int* index_counts,
-                               const int* origin_indexs,
-                               const int non_zero_num,
-                               const int kernel_size,
-                               T* output,
-                               const int channels) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  const int vec_channels = channels / VecSize;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  for (int i = tid; i < non_zero_num * vec_channels;
-       i += gridDim.x * blockDim.x) {
-    int indices_i = i / vec_channels;
-    int channels_i = i - indices_i * vec_channels;
-    int len1 = index_counts[indices_i];
-    LoadT in_vec;
-    phi::Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
-                          &in_vec);
-    for (int j = 0; j < len1; j++) {
-      int out_i = origin_indexs[indices_i * kernel_size + j];
-      phi::Store<T, VecSize>(in_vec,
-                             output + out_i * channels + channels_i * VecSize);
-    }
-    int len2 = index_counts[non_zero_num + indices_i];
-    for (int j = 0; j < len2; j++) {
-      int out_i = origin_indexs[indices_i * kernel_size + j +
-                                kernel_size * non_zero_num];
-      phi::Store<T, VecSize>(in_vec,
-                             output + out_i * channels + channels_i * VecSize);
+#pragma unroll
+    for (int it = 0; it < buffer_count; it++) {
+      int len = index_counts[indices_i + it * non_zero_num];
+      const int group_offset = it * kernel_size * non_zero_num;
+#pragma unroll
+      for (int j = 0; j < len; j++) {
+        int out_i = index_groups[indices_i * kernel_size + j + group_offset];
+        phi::Store<T, VecSize>(
+            in_vec, output + out_i * channels + channels_i * VecSize);
+      }
     }
   }
 }

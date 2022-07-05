@@ -246,6 +246,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                out->nnz(),
                                kernel_size,
                                out_channels,
+                               1,
                                out_values_ptr);
   } else {
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
@@ -260,6 +261,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                out->nnz(),
                                kernel_size,
                                out_channels,
+                               1,
                                out_values_ptr);
   }
 }
