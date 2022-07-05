@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace sparse {
 
@@ -36,7 +38,9 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
-                     SparseCooTensor* out) {
+                     SparseCooTensor* out,
+                     DenseTensor* rulebook,
+                     DenseTensor* counter) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -76,35 +80,41 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
+  VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
   int n = 0;
   const IntT* rulebook_ptr = nullptr;
-  PADDLE_ENFORCE_EQ(
-      key.empty(),
-      false,
-      phi::errors::Fatal("the key of sparse conv must be not null"));
-  const auto* table = x.table(key);
-  if (subm && table != nullptr) {
-    const DenseTensor& rulebook = table->first;
-    rulebook_ptr = rulebook.data<IntT>();
-    memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
-    out->SetTablePtr(x.GetTablePtr());
+  bool need_product_rulebook = true;
+  if (subm && !key.empty()) {
+    const auto* table = x.table(key);
+    if (table != nullptr) {
+      need_product_rulebook = false;
+      const DenseTensor& rulebook = table->first;
+      rulebook_ptr = rulebook.data<IntT>();
+      memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
+      out->SetTablePtr(x.GetTablePtr());
 
-    n = rulebook.dims()[1];
+      n = rulebook.dims()[1];
 
-    DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
-    phi::Copy(
-        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
-    out->SetMember(out_indices, out_values, out_dims, true);
-    IntT offset = 0;
-    for (int i = 0; i < kernel_size; i++) {
-      offsets[i] = offset;
-      offset += h_counter[i];
+      DenseTensor out_indices =
+          phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+      DenseTensor out_values =
+          phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+      phi::Copy(dev_ctx,
+                x.non_zero_indices(),
+                dev_ctx.GetPlace(),
+                false,
+                &out_indices);
+      out->SetMember(out_indices, out_values, out_dims, true);
+      IntT offset = 0;
+      for (int i = 0; i < kernel_size; i++) {
+        offsets[i] = offset;
+        offset += h_counter[i];
+      }
+      offsets[kernel_size] = offset;
     }
-    offsets[kernel_size] = offset;
-  } else {
-    DenseTensor rulebook;
+  }
+  if (need_product_rulebook) {
+    DenseTensor tmp_rulebook;
     n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
                                              x,
                                              kernel_sizes,
@@ -113,7 +123,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                              subm_strides,
                                              out_dims,
                                              subm,
-                                             &rulebook,
+                                             &tmp_rulebook,
                                              &counter_per_kernel,
                                              &offsets_per_kernel,
                                              &out_index,
@@ -121,9 +131,17 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                              out,
                                              &h_counter,
                                              &offsets);
+    rulebook_ptr = tmp_rulebook.data<IntT>();
+
     out->SetTablePtr(x.GetTablePtr());
-    out->SetTable(key, std::make_pair(rulebook, h_counter));
-    rulebook_ptr = rulebook.data<IntT>();
+    if (!key.empty()) {
+      out->SetTable(key, std::make_pair(tmp_rulebook, h_counter));
+    } else {
+      *rulebook = tmp_rulebook;
+      counter->Resize({kernel_size});
+      int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+      memcpy(counter_ptr, h_counter.data(), h_counter.size() * sizeof(int));
+    }
   }
 
   // 2. gather
@@ -245,10 +263,13 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                out_values_ptr);
   }
 }
+
 /**
- * x: (N, D, H, W, C)
- * kernel: (D, H, W, C, OC)
- * out: (N, D, H, W, OC)
+ * x: the input SparseCooTensor, shape is (N, D, H, W, C)
+ * kernel: the weight data, shape is (D, H, W, C, OC)
+ * out: the output SparseCooTensor, shape is (N, D, H, W, OC)
+ * rulebook: return rulebook if key is not vailed else return nullptr
+ * counter: return counter if key is not vailed else return nullptr
  **/
 template <typename T, typename Context>
 void Conv3dKernel(const Context& dev_ctx,
@@ -260,7 +281,9 @@ void Conv3dKernel(const Context& dev_ctx,
                   const int groups,
                   const bool subm,
                   const std::string& key,
-                  SparseCooTensor* out) {
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook,
+                  DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dGPUKernel", ([&] {
         Conv3dGPUKernel<T, data_t>(dev_ctx,
@@ -272,7 +295,9 @@ void Conv3dKernel(const Context& dev_ctx,
                                    groups,
                                    subm,
                                    key,
-                                   out);
+                                   out,
+                                   rulebook,
+                                   counter);
       }));
 }
 

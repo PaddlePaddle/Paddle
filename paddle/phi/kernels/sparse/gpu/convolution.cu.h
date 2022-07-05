@@ -718,9 +718,10 @@ int ProductRuleBook(const Context& dev_ctx,
     }
     DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
     int* out_index_table_ptr = out_index_table.data<int>();
-    cudaMemsetAsync(
+    phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
-    cudaMemsetAsync(unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
+    phi::backends::gpu::GpuMemsetAsync(
+        unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     size_t cache_size = sizeof(int) * config.thread_per_block.x;
@@ -733,11 +734,11 @@ int ProductRuleBook(const Context& dev_ctx,
                                              out_index_ptr,
                                              unique_key_ptr);
     int out_nnz = 0;
-    cudaMemcpyAsync(&out_nnz,
-                    unique_key_ptr,
-                    sizeof(int),
-                    cudaMemcpyDeviceToHost,
-                    dev_ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
+                                       unique_key_ptr,
+                                       sizeof(int),
+                                       gpuMemcpyDeviceToHost,
+                                       dev_ctx.stream());
     dev_ctx.Wait();
 
     const int64_t sparse_dim = 4;

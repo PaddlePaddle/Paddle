@@ -51,7 +51,6 @@ class TestSparseConv(unittest.TestCase):
                 padding=paddings,
                 dilation=dilations,
                 groups=1,
-                key='conv3d',
                 data_format="NDHWC")
             out.backward(out)
             out = paddle.incubate.sparse.coalesced(out)
@@ -86,7 +85,7 @@ class TestSparseConv(unittest.TestCase):
                 indices, values, dense_shape, False)
 
             sparse_conv3d = paddle.incubate.sparse.nn.Conv3D(
-                1, 1, (1, 3, 3), data_format='NDHWC', key='conv3d')
+                1, 1, (1, 3, 3), data_format='NDHWC')
             sparse_out = sparse_conv3d(sparse_input)
             #test errors
             with self.assertRaises(ValueError):
@@ -131,7 +130,6 @@ class TestSparseConv(unittest.TestCase):
             sp_conv3d = paddle.incubate.sparse.nn.Conv3D(3,
                                                          2,
                                                          3,
-                                                         key='conv3d',
                                                          data_format='NDHWC')
             sp_conv3d.weight.set_value(
                 paddle.to_tensor(conv3d.weight.numpy().transpose(2, 3, 4, 1,

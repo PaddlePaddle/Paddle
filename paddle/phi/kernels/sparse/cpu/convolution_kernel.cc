@@ -37,7 +37,9 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
                      const int groups,
                      const bool subm,
                      const std::string& key,
-                     SparseCooTensor* out) {
+                     SparseCooTensor* out,
+                     DenseTensor* rulebook,
+                     DenseTensor* counter) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -71,27 +73,34 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
 
   // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
-  PADDLE_ENFORCE(!key.empty(),
-                 phi::errors::Fatal("the key of sparse conv must be not null"));
   int n = 0;
-  const auto* table = x.table(key);
-  if (subm && table != nullptr) {
-    const DenseTensor& rulebook = table->first;
-    rulebook_ptr = rulebook.data<IntT>();
-    out->SetTablePtr(x.GetTablePtr());
-    n = rulebook.dims()[1];
+  bool need_product_rulebook = true;
+  if (subm && !key.empty()) {
+    const auto* table = x.table(key);
+    if (table != nullptr) {
+      need_product_rulebook = false;
+      const DenseTensor& rulebook = table->first;
+      rulebook_ptr = rulebook.data<IntT>();
+      out->SetTablePtr(x.GetTablePtr());
+      n = rulebook.dims()[1];
 
-    DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
-    phi::Copy(
-        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
-    out->SetMember(out_indices, out_values, out_dims, true);
-    memcpy(counter_per_kernel.data(),
-           table->second.data(),
-           kernel_size * sizeof(int));
-  } else {
-    DenseTensor rulebook;
+      DenseTensor out_indices =
+          phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+      DenseTensor out_values =
+          phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+      phi::Copy(dev_ctx,
+                x.non_zero_indices(),
+                dev_ctx.GetPlace(),
+                false,
+                &out_indices);
+      out->SetMember(out_indices, out_values, out_dims, true);
+      memcpy(counter_per_kernel.data(),
+             table->second.data(),
+             kernel_size * sizeof(int));
+    }
+  }
+  if (need_product_rulebook) {
+    DenseTensor tmp_rulebook;
     ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
                                          x,
                                          kernel_sizes,
@@ -100,15 +109,25 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
                                          subm_strides,
                                          out_dims,
                                          subm,
-                                         &rulebook,
+                                         &tmp_rulebook,
                                          &counter_per_kernel);
 
     UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
-        dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
-    n = rulebook.dims()[1];
+        dev_ctx, x, kernel_size, out_channels, out_dims, &tmp_rulebook, out);
+    n = tmp_rulebook.dims()[1];
+    rulebook_ptr = tmp_rulebook.data<IntT>();
+
     out->SetTablePtr(x.GetTablePtr());
-    out->SetTable(key, std::make_pair(rulebook, counter_per_kernel));
-    rulebook_ptr = rulebook.data<IntT>();
+    if (!key.empty()) {
+      out->SetTable(key, std::make_pair(tmp_rulebook, counter_per_kernel));
+    } else {
+      *rulebook = tmp_rulebook;
+      counter->Resize({kernel_size});
+      int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+      memcpy(counter_ptr,
+             counter_per_kernel.data(),
+             counter_per_kernel.size() * sizeof(int));
+    }
   }
   // int n = rulebook->dims()[1];
   const int* counter_ptr = counter_per_kernel.data();
@@ -183,7 +202,9 @@ void Conv3dKernel(const Context& dev_ctx,
                   const int groups,
                   const bool subm,
                   const std::string& key,
-                  SparseCooTensor* out) {
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook,
+                  DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "Conv3dCPUKernel", ([&] {
         Conv3dCPUKernel<T, data_t>(dev_ctx,
@@ -195,7 +216,9 @@ void Conv3dKernel(const Context& dev_ctx,
                                    groups,
                                    subm,
                                    key,
-                                   out);
+                                   out,
+                                   rulebook,
+                                   counter);
       }));
 }
 

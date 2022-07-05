@@ -35,6 +35,8 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& kernel,
                          const SparseCooTensor& out,
+                         const DenseTensor& rulebook,
+                         const DenseTensor& counter,
                          const SparseCooTensor& out_grad,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
@@ -48,12 +50,26 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
-  // const DenseTensor& rulebook = out.rulebook();
-  const auto* table = out.table(key);
-  const DenseTensor& rulebook = table->first;
-  const IntT* rulebook_ptr = rulebook.data<IntT>();
 
-  const int rulebook_len = rulebook.dims()[1];
+  int rulebook_len = 0;
+  const IntT* rulebook_ptr = nullptr;
+  const int* counter_ptr = nullptr;
+  bool cache_in_table = false;
+  if (!key.empty()) {
+    const auto* table = out.table(key);
+    if (table != nullptr) {
+      cache_in_table = true;
+      const DenseTensor& tmp_rulebook = table->first;
+      rulebook_ptr = tmp_rulebook.data<IntT>();
+      rulebook_len = tmp_rulebook.dims()[1];
+      counter_ptr = table->second.data();
+    }
+  }
+  if (!cache_in_table) {
+    rulebook_ptr = rulebook.data<IntT>();
+    rulebook_len = rulebook.dims()[1];
+    counter_ptr = counter.data<int>();
+  }
 
   DenseTensorMeta in_features_meta(
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
@@ -90,16 +106,14 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
                         &x_grad_indices);
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
-  std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0);
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[rulebook_ptr[i]] += 1;
-  }
-  IntT offset = 0, max_count = 0;
+  std::vector<IntT> offsets(kernel_size + 1);
+  IntT offset = 0;
+  int max_count = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
-    offset += counter[i];
+    offset += counter_ptr[i];
     if (i < half_kernel_size) {
-      max_count = std::max(max_count, counter[i]);
+      max_count = std::max(max_count, counter_ptr[i]);
     }
   }
   offsets[kernel_size] = offset;
@@ -133,11 +147,11 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0 || (subm && i == half_kernel_size)) {
+    if (counter_ptr[i] <= 0 || (subm && i == half_kernel_size)) {
       continue;
     }
 
-    const int M = counter[i];
+    const int M = counter_ptr[i];
     const int K = in_channels;
     const int N = out_channels;
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
@@ -175,7 +189,7 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
 
   // 4. scatter
   Scatter<T, IntT>(d_x_features_ptr,
-                   rulebook.data<IntT>() + rulebook_len,
+                   rulebook_ptr + rulebook_len,
                    rulebook_len,
                    in_channels,
                    x_grad_values_ptr);
@@ -186,6 +200,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& kernel,
                       const SparseCooTensor& out,
+                      const DenseTensor& rulebook,
+                      const DenseTensor& counter,
                       const SparseCooTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
@@ -201,6 +217,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
                                        x,
                                        kernel,
                                        out,
+                                       rulebook,
+                                       counter,
                                        out_grad,
                                        paddings,
                                        dilations,
