@@ -22,7 +22,6 @@
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/variant.h"  // for UNUSED
 
 DEFINE_int32(burning, 10, "Burning times.");
 DEFINE_int32(repeat, 3000, "Repeat times.");
