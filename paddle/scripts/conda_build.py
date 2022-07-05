@@ -25,9 +25,9 @@ import time
 def parse_args():
     parser = argparse.ArgumentParser("conda build for paddlepaddle version")
     parser.add_argument("--paddle_version",
-        type=str,
-        required=True,
-        help="paddle version for conda build.")
+                        type=str,
+                        required=True,
+                        help="paddle version for conda build.")
     args = parser.parse_args()
 
     return args
