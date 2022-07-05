@@ -492,6 +492,26 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn.")
         .SetDefault(false)
         .AsExtra();
+    AddAttr<std::string>(
+        "fuse_activation_type",
+        "Fused activation type used in softplus OneDNN kernel.")
+        .SetDefault("")
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_alpha",
+        "Fused activation alpha parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_beta",
+        "Fused activation beta parameter type used in softplus OneDNN kernel.")
+        .SetDefault(0.0f)
+        .AsExtra();
+    AddAttr<float>(
+        "fuse_activation_scale",
+        "Fused activation scale parameter type used in softplus OneDNN kernel.")
+        .SetDefault(1.0f)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 

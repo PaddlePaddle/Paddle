@@ -24,23 +24,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using paddle::platform::GetAttributeMap;
-using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = GetSupportedActivations();
+  auto act_types = paddle::platform::GetSupportedActivations();
 
   for (const auto &act_type : act_types) {
-    auto attr_map = GetAttributeMap(act_type);
-    FuseSoftplusActivation(graph, act_type, attr_map);
+    FuseSoftplusActivation(graph, act_type);
   }
 }
 
 void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
-    Graph *graph,
-    const std::string &fuse_activation,
-    const std::unordered_map<std::string, std::string> &attr_map) const {
+    Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("softplus_activation", graph);
@@ -48,7 +43,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   GraphPatternDetector gpd;
   patterns::OperatorActivation softplus_activation_pattern(
       gpd.mutable_pattern(), "softplus_activation");
-  softplus_activation_pattern("softplus", fuse_activation);
+  softplus_activation_pattern("softplus", act_type);
 
   int found_softplus_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -75,17 +70,18 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     auto *activation_op = activation->Op();
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
       }
     }
 
-    if (fuse_activation == "gelu" && activation_op->HasAttr("approximate") &&
+    if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
         BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
       softplus_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
-      softplus_op->SetAttr("fuse_activation", fuse_activation);
+      softplus_op->SetAttr("fuse_activation", act_type);
 
     softplus_op->SetAttr("use_mkldnn", true);
 
@@ -101,7 +97,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
-                    fuse_activation);
+                    act_type);
 }
 }  // namespace ir
 }  // namespace framework

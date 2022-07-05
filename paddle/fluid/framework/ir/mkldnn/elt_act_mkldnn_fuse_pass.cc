@@ -24,27 +24,23 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using paddle::platform::GetAttributeMap;
-using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = GetSupportedActivations();
+  auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
-      auto attr_map = GetAttributeMap(act_type);
-      FuseElementwiseAct(graph, elt_type, act_type, attr_map);
+      FuseElementwiseAct(graph, elt_type, act_type);
     }
 }
 
 void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     Graph *graph,
     const std::string &elt_type,
-    const std::string &act_type,
-    const std::unordered_map<std::string, std::string> &attr_map) const {
+    const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(elt_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
@@ -80,6 +76,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     auto *activation_op = activation->Op();
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         elementwise_op->SetAttr(attr.second,

@@ -22,26 +22,21 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using paddle::platform::GetAttributeMap;
-using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = GetSupportedActivations();
+  auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
-      auto attr_map = GetAttributeMap(act_type);
-      FuseConvAct(graph, conv_type, act_type, attr_map);
+      FuseConvAct(graph, conv_type, act_type);
     }
 }
 
-void ConvActivationMkldnnFusePass::FuseConvAct(
-    Graph* graph,
-    const std::string& conv_type,
-    std::string& act_type,
-    const std::unordered_map<std::string, std::string>& attr_map) const {
+void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
+                                               const std::string& conv_type,
+                                               std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(conv_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
@@ -69,6 +64,7 @@ void ConvActivationMkldnnFusePass::FuseConvAct(
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         conv_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));

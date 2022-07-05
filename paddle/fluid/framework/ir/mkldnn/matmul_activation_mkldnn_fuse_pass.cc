@@ -22,26 +22,20 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using paddle::platform::GetAttributeMap;
-using paddle::platform::GetSupportedActivations;
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = GetSupportedActivations();
+  auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> matmul_types = {"matmul"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
-      auto attr_map = GetAttributeMap(act_type);
-      FuseMatmulAct(graph, matmul_type, act_type, attr_map);
+      FuseMatmulAct(graph, matmul_type, act_type);
     }
 }
 
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
-    Graph* graph,
-    const std::string& matmul_type,
-    std::string& act_type,
-    const std::unordered_map<std::string, std::string>& attr_map) const {
+    Graph* graph, const std::string& matmul_type, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
@@ -70,6 +64,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     OpDesc* matmul_op = matmul->Op();
     OpDesc* act_op = activation->Op();
 
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));

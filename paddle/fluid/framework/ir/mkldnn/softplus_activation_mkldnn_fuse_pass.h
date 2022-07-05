@@ -34,10 +34,8 @@ class SoftplusActivationOneDNNPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  void FuseSoftplusActivation(
-      ir::Graph *graph,
-      const std::string &fuse_activation,
-      const std::unordered_map<std::string, std::string> &attr_map) const;
+  void FuseSoftplusActivation(ir::Graph *graph,
+                              const std::string &act_type) const;
 };
 
 }  // namespace ir
