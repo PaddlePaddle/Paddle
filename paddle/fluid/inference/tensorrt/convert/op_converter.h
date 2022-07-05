@@ -252,7 +252,6 @@ class OpConverter {
         continue;
       }
       if (X_v) {
-        std::cout << X_name << std::endl;
         ConvertWeight2ITensor(scope, X_name);
       }
     }
