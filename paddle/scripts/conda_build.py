@@ -92,7 +92,7 @@ about:
 """
 
         self.blt_const = r""" 
-pip install paddle_bfloat==0.1.2
+pip install paddle_bfloat==0.1.7
 """
 
         self.python36 = r"    - python>=3.6, <3.7"
