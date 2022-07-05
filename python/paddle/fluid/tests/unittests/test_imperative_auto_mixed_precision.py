@@ -82,7 +82,7 @@ class TestAutoCast(unittest.TestCase):
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
             with fluid.dygraph.amp_guard(True):
-                out_fp32 = fluid.layers.mean(data)
+                out_fp32 = paddle.mean(data)
 
         self.assertTrue(data.dtype == fluid.core.VarDesc.VarType.FP32)
         self.assertTrue(out_fp32.dtype == fluid.core.VarDesc.VarType.FP32)
@@ -222,7 +222,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -273,7 +273,7 @@ class TestAmpScaler(unittest.TestCase):
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
-                loss = fluid.layers.mean(out)
+                loss = paddle.mean(out)
                 if use_scaler:
                     print('use scaler')
                     scaled_loss = scaler.scale(loss)
@@ -316,7 +316,7 @@ class TestAmpScaler(unittest.TestCase):
             data = fluid.dygraph.to_variable(inp_np)
 
             out = model(data)
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
@@ -1215,7 +1215,7 @@ class TestResnet(unittest.TestCase):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
 
