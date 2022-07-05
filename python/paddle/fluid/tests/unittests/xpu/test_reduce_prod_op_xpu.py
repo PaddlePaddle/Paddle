@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 import numpy as np
@@ -61,8 +60,8 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
                 }
 
         def initTestCase(self):
-            self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.shape = (8, 10800, 50, 2)
+            self.axis = (3, )
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -73,35 +72,29 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
         def test_check_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
-    class TestProdOp5D(TestXPUReduceProdOp):
+    class Test3DReduce36(TestXPUReduceProdOp):
 
         def initTestCase(self):
-            self.shape = (1, 2, 5, 6, 10)
+            self.shape = 124332
             self.axis = (0, )
 
-    class TestProdOp6D(TestXPUReduceProdOp):
+    class Test3DReduce39(TestXPUReduceProdOp):
 
         def initTestCase(self):
-            self.shape = (1, 1, 2, 5, 6, 10)
-            self.axis = (0, )
+            self.shape = 1270080
+            self.axis = (0,)
 
-    class TestProdOp8D(TestXPUReduceProdOp):
-
-        def initTestCase(self):
-            self.shape = (1, 3, 1, 2, 1, 4, 3, 10)
-            self.axis = (0, 3)
-
-    class Test1DReduce(TestXPUReduceProdOp):
+    class Test3DReduce33(TestXPUReduceProdOp):
 
         def initTestCase(self):
-            self.shape = 120
-            self.axis = (0, )
+            self.shape = 6553600
+            self.axis = (0,)
 
-    class Test2DReduce0(TestXPUReduceProdOp):
+    class Test3DReduce35(TestXPUReduceProdOp):
 
         def initTestCase(self):
-            self.shape = (20, 10)
-            self.axis = (0, )
+            self.shape = 2235392
+            self.axis = (0,)
 
     class Test2DReduce1(TestXPUReduceProdOp):
 
@@ -127,7 +120,194 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.shape = (5, 6, 7)
             self.axis = (-2, )
 
-    class Test3DReduce3(TestXPUReduceProdOp):
+    class Test3DReduce4(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (512, 26, 1)
+            self.axis = (1,)
+
+    class Test3DReduce5(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (512, 13, 1)
+            self.axis = (1,)
+
+    class Test3DReduce6(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (512, 9)
+            self.axis = (1,)
+
+    class Test3DReduce10(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 138240)
+            self.axis = (1,)
+
+
+    class Test3DReduce11(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (307200 , 2)
+            self.axis = (1,)
+
+    class Test3DReduce12(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 432)
+            self.axis = (1,)
+
+    class Test3DReduce13(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (5548800, 2)
+            self.axis = (1,)
+
+    class Test3DReduce14(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (172800, 2)
+            self.axis = (1,)
+
+    class Test3DReduce15(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (172800, 2)
+            self.axis = (1,)
+
+    class Test3DReduce16(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (27744, 50)
+            self.axis = (1,)
+
+    class Test3DReduce17(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (3456, 2)
+            self.axis = (1,)
+
+    class Test3DReduce18(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (1080000, 2)
+            self.axis = (1,)
+
+    class Test3DReduce19(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (400, 2)
+            self.axis = (1,)
+
+    class Test3DReduce20(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (4320000, 2)
+            self.axis = (1,)
+
+    class Test3DReduce21(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 8640)
+            self.axis = (1,)
+
+    class Test3DReduce22(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 311040)
+            self.axis = (1,)
+
+    class Test3DReduce23(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 1728)
+            self.axis = (1,)
+
+    class Test3DReduce24(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (691200, 2)
+            self.axis = (1,)
+
+    class Test3DReduce25(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (13824, 2)
+            self.axis = (1,)
+
+    class Test3DReduce26(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (13824, 2)
+            self.axis = (1,)
+
+    class Test3DReduce27(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (400, 2)
+            self.axis = (1,)
+
+    class Test3DReduce28(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (13824, 2)
+            self.axis = (1,)
+
+    class Test3DReduce29(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 34560)
+            self.axis = (1,)
+
+    class Test3DReduce30(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, 6912)
+            self.axis = (1,)
+
+    class Test3DReduce31(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (2764800, 2)
+            self.axis = (1,)
+
+    class Test3DReduce32(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (55296, 2)
+            self.axis = (1,)
+
+    class Test3DReduce34(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (64, 90, 8732)
+            self.axis = (1,)
+
+    class Test3DReduce37(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (64, 8732)
+            self.axis = (1,)
+
+    class Test3DReduce38(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (5760, 8732)
+            self.axis = (1,)
+
+    class Test3DReduce40(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (64, 8732)
+            self.axis = (1,)
+
+    class Test3DReduce41(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (512, 39, 1)
+            self.axis = (1,)
+
+    class Test3DReduce3_2(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (5, 6, 7)
@@ -139,6 +319,38 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.shape = (5, 6, 10)
             self.axis = (1, )
             self.keep_dim = True
+
+'''
+    big t (m == 1 && t <= 1024)
+    class Test3DReduce9(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (8, )
+            self.axis = (0,)
+
+    class Test1DReduce(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (120, )
+            self.axis = (0, )
+
+    class Test3DReduce8(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (50, )
+            self.axis = (0,)
+
+    class Test3DReduce7(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = 512
+            self.axis = (0,)
+
+    class Test3DReduce3(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = 1
+            self.axis = (0,)
 
     class TestKeepDim8DReduce(TestXPUReduceProdOp):
 
@@ -153,7 +365,30 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.shape = (5, 6, 2, 10)
             self.axis = (0, )
             self.reduce_all = True
+    class TestProdOp5D(TestXPUReduceProdOp):
 
+        def initTestCase(self):
+            self.shape = (1, 2, 5, 6, 10)
+            self.axis = (0, )
+
+    class TestProdOp6D(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (1, 1, 2, 5, 6, 10)
+            self.axis = (0, )
+
+    class TestProdOp8D(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (1, 3, 1, 2, 1, 4, 3, 10)
+            self.axis = (0, 3)
+
+    class Test2DReduce0(TestXPUReduceProdOp):
+
+        def initTestCase(self):
+            self.shape = (20, 10)
+            self.axis = (0, )
+'''
 
 support_types = get_xpu_op_support_types('reduce_prod')
 for stype in support_types:

@@ -49,6 +49,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -696,21 +697,88 @@ __global__ void ReduceAnyKernel(const Tx* x,
   // calculate the offset, means the addr where each thread really start.
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
+#ifdef  PADDLE_WITH_XPU_KP
+  const int last_dim_reduce_vec_size = 768;
+  Tx input_reg[last_dim_reduce_vec_size];
+#else
   Tx input_reg[REDUCE_VEC_SIZE];
+#endif
   int input_idx_tmp = input_idx;
-  for (int i = 0; i < loop_left; i += stride_left) {
+
+  // can we hoist this out of the kernel code so that better error check is available?
+  int op = -1;
+  if (std::is_same<ReduceOp, phi::funcs::MeanFunctor>::value) {
+      op = 1;
+  } else if (std::is_same<ReduceOp, kps::AddFunctor<float>>::value) {
+      op = 0;
+  } else if (std::is_same<ReduceOp, kps::MinFunctor<float>>::value) {
+      op = 3;
+  } else if (std::is_same<ReduceOp, kps::MaxFunctor<float>>::value) {
+      op = 2;
+  } else if (std::is_same<ReduceOp, kps::MulFunctor<float>>::value) {
+      op = 4;
+  };
+
+  if (op == -1) {
+      // other way to check and abort?
+      return;
+  }
+
+#ifdef  PADDLE_WITH_XPU_KP
+  int m = left_num;
+  int t = reduce_num;
+  int m_start = m / cluster_num() * cluster_id() + min(m % cluster_num(), cluster_id());
+  int m_end = m_start + (m / cluster_num()) + (cluster_id() < (m % cluster_num()));
+  int loop_start = m_start;
+  int loop_end = m_end;
+  const int max_mm = 1024;
+  int loop_stride = max_mm;
+  __shared__ float sm_buffer[max_mm];
+
+  float init_values[5];
+  init_values[0] = 0.0f;
+  init_values[1] = 0.0f;
+  init_values[2] = -1e30f;
+  init_values[3] = 1e30f;
+  init_values[4] = 1.0f;
+  float init_value = init_values[op];
+
+#else
+  int loop_start = 0;
+  int loop_end = loop_left;
+  int loop_stride = left_stride;
+#endif
+
+  for (int i = loop_start; i < loop_end; i += loop_stride) {
+    MPType reduce_var = init;
+#ifdef  PADDLE_WITH_XPU_KP
+    int curr_m_end = min(m_end, m_start + max_mm);
+    const _global_ptr_ Tx* input = x;
+    int mm = curr_m_end - m_start;
+    phi::kps::details::initializeSharedMemory(m_start, curr_m_end, sm_buffer, init);
+    input_idx = core_id();
+    int total_block = mm * roundup_div(t, last_dim_reduce_vec_size);
+    int bound = total_block;
+    int block_stride = core_num();
+    bool kp_reduce_again = false;
+    block_size = 0;
+    const int reduce_vec_size = last_dim_reduce_vec_size;
+#else
+    // load REDUCE_VEC_SIZE data once, and then compute
     int input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
-    MPType reduce_var = init;
-    // load REDUCE_VEC_SIZE data once, and then compute
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
     input_idx = input_idx_tmp;
-    for (; input_idx + block_size < bound;
-         input_idx += REDUCE_VEC_SIZE * stride) {
+    int block_stride = REDUCE_VEC_SIZE * stride;
+    bool kp_reduce_again = true;
+    const int reduce_vec_size = REDUCE_VEC_SIZE;
+#endif
+
+    for (; input_idx + block_size < bound; input_idx += block_stride) {
       kps::ReadDataReduce<Tx,
                           Tx,
                           1,
-                          REDUCE_VEC_SIZE,
+                          reduce_vec_size,
                           1,
                           1,
                           Calculator,
@@ -719,12 +787,17 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                  input,
                                  input_idx,
                                  reduce_index_calculator,
-                                 1,
-                                 reduce_num,
-                                 1,
-                                 stride,
+                                 mm, /*size_nx*/
+                                 t, /*size_ny*/
+                                 m_start, /*stride_nx, but here is grid.x*/
+                                 curr_m_end, /*stride_ny */
                                  kps::IdentityFunctor<Tx>(),
                                  reduce_last_dim);
+#ifdef PADDLE_WITH_XPU_KP
+      int curr_m = (input_idx % mm) + m_start;
+      int curr_tt = min(last_dim_reduce_vec_size, t - (input_idx / mm) * last_dim_reduce_vec_size);
+      phi::kps::details::ReduceLastDim<Tx>(&sm_buffer[curr_m - m_start], (float*)&input_reg[0], curr_tt, op);
+#else
       kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
           &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType,
@@ -734,44 +807,59 @@ __global__ void ReduceAnyKernel(const Tx* x,
                   ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+#endif
     }
 
-    kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
-    kps::ReadDataReduce<Tx,
-                        MPType,
-                        1,
-                        REDUCE_VEC_SIZE,
-                        1,
-                        1,
-                        Calculator,
-                        TransformOp,
-                        true>(&input_compute[0],
-                              input,
-                              input_idx,
-                              reduce_index_calculator,
-                              1,
-                              reduce_num - input_idx,
-                              1,
-                              stride,
-                              transformer,
-                              reduce_last_dim);
-    kps::Reduce<MPType,
-                REDUCE_VEC_SIZE,
-                1,
-                1,
-                ReduceOp,
-                kps::details::ReduceMode::kLocalMode>(
-        &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+#ifdef  PADDLE_WITH_XPU_KP
+    mfence();
+    phi::kps::details::sync_all();
+    phi::kps::details::ReduceLastDimPost(sm_buffer, m_start, curr_m_end, t, op);
+#endif
 
-    kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
-        &reduce_var, &reduce_var, reducer, reduce_last_dim);
-    if (is_mean) {
-      reduce_var = reduce_var / static_cast<MPType>(reduce_num);
+    if (kp_reduce_again) {
+        kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
+        kps::ReadDataReduce<Tx,
+                            MPType,
+                            1,
+                            REDUCE_VEC_SIZE,
+                            1,
+                            1,
+                            Calculator,
+                            TransformOp,
+                            true>(&input_compute[0],
+                                  input,
+                                  input_idx,
+                                  reduce_index_calculator,
+                                  1,
+                                  reduce_num - input_idx,
+                                  1,
+                                  stride,
+                                  transformer,
+                                  reduce_last_dim);
+        kps::Reduce<MPType,
+                    REDUCE_VEC_SIZE,
+                    1,
+                    1,
+                    ReduceOp,
+                    kps::details::ReduceMode::kLocalMode>(
+                        &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+
+        kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
+            &reduce_var, &reduce_var, reducer, reduce_last_dim);
+        if (is_mean) {
+            reduce_var = reduce_var / static_cast<MPType>(reduce_num);
+        }
     }
+#ifdef  PADDLE_WITH_XPU_KP
+    phi::kps::details::WriteDataReduce<Ty>(sm_buffer, (_global_ptr_ float*)y, m_start, curr_m_end);
+    m_start += loop_stride;
+#else
     Ty result = static_cast<Ty>(reduce_var);
     kps::details::WriteData<Ty>(
         y + store_offset + i, &result, static_cast<int>(need_store));
+#endif
   }
+
 }
 
 template <typename Tx,
@@ -932,6 +1020,26 @@ static void LaunchReduceKernel(const Tx* x_data,
 #ifdef PADDLE_WITH_XPU_KP
     auto grid_num = 8;
     auto block_num = 64;
+    const auto& reduce_dims = config.reduce_dim;
+    const auto& x_dims = config.x_dim;
+    phi::kps::MulFunctor<float> temp;
+    if (!config.reduce_last_dim && config.reduce_dim.size() == 1) {
+        int m = 1, n = 1;
+        float* x = (float*)(x_data);
+        int reduce_dim = reduce_dims.back();
+        for (int i = 0; i < reduce_dim; i++) {
+            m *= x_dims[i];
+        }
+
+        for (int i = reduce_dim + 1; i < x_dims.size(); i++) {
+            n *= x_dims[i];
+        }
+
+        // PADDLE_ENFORCE_GE(8 * 1024 * 8 * 64, n * x_dims[reduce_dim] * sizeof(float));
+        phi::kps::details::ReduceOneDim<float, float><<<grid_num, block_num, 0, stream>>>(x, (float*)(config.output_data), temp, m, x_dims[reduce_dim], n);
+        return;
+    }
+
 #else
     auto grid_num = config.grid;
     auto block_num = config.block;
