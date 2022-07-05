@@ -52,7 +52,14 @@ class GeneralGrad {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
         auto* target_node = auto_grad_meta->GetMutableGradNode().get();
-
+        VLOG(8) << "Get no grad vars' grad_node: " << target_node->name()
+                << ", " << target_node << " with output rank info: "
+                << auto_grad_meta->OutRankInfo().first << ", "
+                << auto_grad_meta->OutRankInfo().second;
+        if (is_no_grad_vars) {
+          (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
+          continue;
+        }
         if (orig_to_copied_node_mapping_.count(target_node)) {
           target_node = orig_to_copied_node_mapping_[target_node].get();
         } else {
@@ -67,11 +74,8 @@ class GeneralGrad {
                                     "stop_gradient=True.",
                                     msg,
                                     i));
-        if (is_no_grad_vars) {
-          (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-        } else {  // normal input
-          (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-        }
+        // normal input
+        (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
       }
     }
   }
@@ -305,8 +309,6 @@ class GeneralGrad {
       const std::unordered_map<GradNodeBase*,
                                std::unique_ptr<GradTensorHolder>>&
           node_input_buffers_dict) {
-    // Get no_grad_vars's GradNodes and InputMeta Info
-    GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
     // Get inputs's GradNodes and InputMeta Info
     GetTargetNodesInfo(inputs, false /* is_no_grad_vars */);
     // Purify potentialstartup_ops, remove those nodes that are the same as
@@ -402,6 +404,20 @@ class GeneralGrad {
 
           std::shared_ptr<GradNodeBase> orig_next_node =
               orig_edge.GetMutableGradNode();
+
+          if (no_grad_var_nodes_inputmeta_map_.count(orig_next_node.get()) &&
+              (no_grad_var_nodes_inputmeta_map_[orig_next_node.get()]
+                   ->OutRankInfo() == orig_edge.GetEdgeRankInfo())) {
+            VLOG(8) << "Get Graph Infor grad_node: " << orig_next_node->name()
+                    << ", " << orig_next_node.get()
+                    << " with output rank info: "
+                    << orig_edge.GetEdgeRankInfo().first << ", "
+                    << orig_edge.GetEdgeRankInfo().second;
+            // Stop no grad var's preceding node
+            copied_node->MutableOutputMeta()[i][j].SetStopGradient(true);
+            copied_edge.Clear();
+            continue;
+          }
           if (!orig_next_node) continue;
 
           // Copy Next Node
@@ -638,6 +654,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
 
   if (is_general_grad) {
+    // Get no_grad_vars's GradNodes and InputMeta Info
+    GeneralGrad::Instance().GetTargetNodesInfo(no_grad_vars,
+                                               true /* is_no_grad_vars */);
     // Copy Backward Graph
     GeneralGrad::Instance().ReconstructBackwardGraph(orig_queue);
   }
@@ -694,19 +713,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     if (!inputs.empty() && is_general_grad) {
       GeneralGrad::Instance().SetResultForInputTargetVar(*node_input_buffer,
                                                          node);
-    }
-
-    // no_grad_vars
-    if (!no_grad_vars.empty() && is_general_grad) {
-      auto iter =
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->find(node);
-      if (iter !=
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->end()) {
-        VLOG(6) << "Change the input buffer[slot][rank] by Zeros";
-        auto rank_info = (iter->second)->OutRankInfo();
-        node_input_buffer->SetBufferSlotRankZeros(rank_info.first,
-                                                  rank_info.second);
-      }
     }
 
     // Check input
