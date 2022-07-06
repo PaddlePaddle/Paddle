@@ -973,6 +973,15 @@ if(WITH_DISTRIBUTE)
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
     endforeach()
+    bash_test_modules(
+      test_dygraph_hybrid_dp
+      START_BASH
+      multinode_dist_test.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}"
+      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     # solve it later.
     bash_test_modules(
       test_fleet_launch_ps
