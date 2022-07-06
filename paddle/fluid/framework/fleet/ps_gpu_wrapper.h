@@ -531,8 +531,7 @@ class PSGPUWrapper {
 
 #ifdef PADDLE_WITH_PSCORE
   void SetTableAccessor(paddle::distributed::ValueAccessor* accessor) {
-    cpu_table_accessor_ =
-        dynamic_cast<paddle::distributed::CtrDymfAccessor*>(accessor);
+    cpu_table_accessor_ = accessor;
   }
 #endif
 
@@ -592,7 +591,7 @@ class PSGPUWrapper {
   std::string accessor_class_;
   std::unordered_map<std::string, float> fleet_config_;
 #ifdef PADDLE_WITH_PSCORE
-  paddle::distributed::CtrDymfAccessor* cpu_table_accessor_;
+  paddle::distributed::ValueAccessor* cpu_table_accessor_;
 #endif
 
 #ifdef PADDLE_WITH_CUDA
