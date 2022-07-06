@@ -406,6 +406,15 @@ class TensorRTEngine {
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
   }
+
+  float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_[tensor];
+  }
+
+  bool DynamicRangeIsSet(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_.count(tensor);
+  }
+
   template <typename T = float>
   T* GetWeightCPUData(const std::string& name,
                       framework::Tensor* weight_tensor);
