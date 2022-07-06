@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "glog/logging.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
