@@ -37,8 +37,6 @@ import paddle.fluid.layers as layers
 from functools import reduce
 from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_main
 
-# paddle.enable_static()
-
 
 class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
 

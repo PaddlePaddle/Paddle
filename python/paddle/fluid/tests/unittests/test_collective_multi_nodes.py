@@ -46,14 +46,7 @@ class TestCollectiveAPIRunnerBase(object):
 def runtime_main(test_class, col_type=None):
     args = {}
     model = test_class()
-    # args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
-    # args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
-    # args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
-    # args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
-    # args["col_type"] = col_type
-    # args["backend"] = os.getenv("BACKEND")
-    # args["path_id"] = int(os.getenv("PATH_ID"))
-    args["static_mode"] = 0  # int(os.getenv("STATIC_MODE"))
+    args["static_mode"] = 0
     model.run_trainer(**args)
 
 
@@ -143,7 +136,6 @@ class TestDistBase(unittest.TestCase):
             procs.append(out)
             outputs.append(stdpipe)
             tmppaths.append(path)
-        # subouts = []
         run_sucess = True
         for i, p in enumerate(procs):
             killed = False
