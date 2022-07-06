@@ -246,12 +246,12 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     };
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       if (!multi_mf_dim_) {
-        VLOG(0) << "psgpu graph wrapper genfunc";
+        VLOG(1) << "psgpu graph wrapper genfunc";
         threads.push_back(
             std::thread(gen_graph_data_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
       } else {
-        VLOG(0) << "psgpu graph wrapper genfunc with dynamic mf";
+        VLOG(1) << "psgpu graph wrapper genfunc with dynamic mf";
         threads.push_back(
             std::thread(gen_graph_dynamic_mf_func, std::ref(vec_data), begin,
                         begin + len_per_thread + (i < remain ? 1 : 0), i));
