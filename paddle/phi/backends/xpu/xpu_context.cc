@@ -60,6 +60,7 @@ struct XPUContext::Impl {
 
   ~Impl() {
     if (owned_ && context_ != nullptr) {
+      backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
