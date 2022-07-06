@@ -90,6 +90,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
+list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
 list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
@@ -982,6 +983,7 @@ if(WITH_DISTRIBUTE)
       ENVS
       "PADDLE_DIST_UT_PORT=${dist_ut_port}"
       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    math(EXPR dist_ut_port "${dist_ut_port}+20")
     # solve it later.
     bash_test_modules(
       test_fleet_launch_ps
