@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -215,6 +216,59 @@ inline const int* GetCounterPtr(const SparseCooTensor& coo,
     }
   }
   return counter.data<int>();
+}
+
+template <typename T, typename IntT, typename Context>
+inline const IntT* PrepareSubm(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const std::string& key,
+                               const DDim& out_dims,
+                               SparseCooTensor* out,
+                               std::vector<int>* counter,
+                               std::vector<int>* offsets,
+                               int* rulebook_len,
+                               bool* need_product_rulebook) {
+  const auto* table = x.table(key);
+  if (table != nullptr) {
+    *need_product_rulebook = false;
+    const DenseTensor& rulebook = table->first;
+    memcpy(counter->data(),
+           table->second.data(),
+           table->second.size() * sizeof(int));
+    out->SetTablePtr(x.GetTablePtr());
+
+    *rulebook_len = rulebook.dims()[1];
+
+    DenseTensor out_indices =
+        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+    DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::Copy(
+        dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
+    out->SetMember(out_indices, out_values, out_dims, false);
+    PrefixSum<int>(counter->data(), offsets->data(), counter->size());
+    return rulebook.data<IntT>();
+  }
+  return nullptr;
+}
+
+template <typename Context>
+inline void SaveToTable(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const std::string& key,
+                        const DenseTensor& in_rulebook,
+                        const std::vector<int>& counter_vec,
+                        SparseCooTensor* out,
+                        DenseTensor* out_rulebook,
+                        DenseTensor* counter) {
+  out->SetTablePtr(x.GetTablePtr());
+  if (!key.empty()) {
+    out->SetTable(key, std::make_pair(in_rulebook, counter_vec));
+  } else {
+    *out_rulebook = in_rulebook;
+    counter->Resize({static_cast<int>(counter_vec.size())});
+    int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+    memcpy(counter_ptr, counter_vec.data(), counter_vec.size() * sizeof(int));
+  }
 }
 
 }  // namespace sparse

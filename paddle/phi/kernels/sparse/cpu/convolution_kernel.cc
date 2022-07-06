@@ -70,34 +70,23 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
   std::vector<int> counter_per_kernel(kernel_size, 0);
+  std::vector<int> offsets(kernel_size + 1);
 
   // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
   int n = 0;
   bool need_product_rulebook = true;
   if (subm && !key.empty()) {
-    const auto* table = x.table(key);
-    if (table != nullptr) {
-      need_product_rulebook = false;
-      const DenseTensor& rulebook = table->first;
-      rulebook_ptr = rulebook.data<IntT>();
-      out->SetTablePtr(x.GetTablePtr());
-      n = rulebook.dims()[1];
-
-      DenseTensor out_indices =
-          phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-      DenseTensor out_values =
-          phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
-      phi::Copy(dev_ctx,
-                x.non_zero_indices(),
-                dev_ctx.GetPlace(),
-                false,
-                &out_indices);
-      out->SetMember(out_indices, out_values, out_dims, true);
-      memcpy(counter_per_kernel.data(),
-             table->second.data(),
-             kernel_size * sizeof(int));
-    }
+    rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, CPUContext>(
+        dev_ctx,
+        x,
+        key,
+        out_dims,
+        out,
+        &counter_per_kernel,
+        &offsets,
+        &n,
+        &need_product_rulebook);
   }
   if (need_product_rulebook) {
     DenseTensor tmp_rulebook;
@@ -117,17 +106,14 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
     n = tmp_rulebook.dims()[1];
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
-    out->SetTablePtr(x.GetTablePtr());
-    if (!key.empty()) {
-      out->SetTable(key, std::make_pair(tmp_rulebook, counter_per_kernel));
-    } else {
-      *rulebook = tmp_rulebook;
-      counter->Resize({kernel_size});
-      int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
-      memcpy(counter_ptr,
-             counter_per_kernel.data(),
-             counter_per_kernel.size() * sizeof(int));
-    }
+    phi::funcs::sparse::SaveToTable(dev_ctx,
+                                    x,
+                                    key,
+                                    tmp_rulebook,
+                                    counter_per_kernel,
+                                    out,
+                                    rulebook,
+                                    counter);
   }
   // int n = rulebook->dims()[1];
   const int* counter_ptr = counter_per_kernel.data();
@@ -152,7 +138,6 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
-  std::vector<int> offsets(kernel_size + 1);
   int offset = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;

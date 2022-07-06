@@ -80,33 +80,16 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   const IntT* rulebook_ptr = nullptr;
   bool need_product_rulebook = true;
   if (subm && !key.empty()) {
-    const auto* table = x.table(key);
-    if (table != nullptr) {
-      need_product_rulebook = false;
-      const DenseTensor& rulebook = table->first;
-      rulebook_ptr = rulebook.data<IntT>();
-      memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
-      out->SetTablePtr(x.GetTablePtr());
-
-      rulebook_len = rulebook.dims()[1];
-
-      DenseTensor out_indices =
-          phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-      DenseTensor out_values =
-          phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
-      phi::Copy(dev_ctx,
-                x.non_zero_indices(),
-                dev_ctx.GetPlace(),
-                false,
-                &out_indices);
-      out->SetMember(out_indices, out_values, out_dims, true);
-      IntT offset = 0;
-      for (int i = 0; i < kernel_size; i++) {
-        offsets[i] = offset;
-        offset += h_counter[i];
-      }
-      offsets[kernel_size] = offset;
-    }
+    rulebook_ptr = phi::funcs::sparse::PrepareSubm<T, IntT, GPUContext>(
+        dev_ctx,
+        x,
+        key,
+        out_dims,
+        out,
+        &h_counter,
+        &offsets,
+        &rulebook_len,
+        &need_product_rulebook);
   }
 
   if (need_product_rulebook) {
@@ -129,15 +112,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
                                                         &offsets);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
-    out->SetTablePtr(x.GetTablePtr());
-    if (!key.empty()) {
-      out->SetTable(key, std::make_pair(tmp_rulebook, h_counter));
-    } else {
-      *rulebook = tmp_rulebook;
-      counter->Resize({kernel_size});
-      int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
-      memcpy(counter_ptr, h_counter.data(), h_counter.size() * sizeof(int));
-    }
+    phi::funcs::sparse::SaveToTable(
+        dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
   // 2. gather
