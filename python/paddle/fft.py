@@ -1293,14 +1293,14 @@ def fftshift(x, axes=None, name=None):
     Note that ``y[0]`` is the Nyquist component only if ``len(x)`` is even.
 
     Args:
-        n (int): Dimension inputed.
+        x (Tensor): The input data, data type is real or complex.
         axes (int|tuple, optional): The axis on which to move. The default is none, which moves all axes.
             Default is None.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. The shifted tensor.
+        Tensor. The shifted tensor.The shape and data type are the same as the input tensor, and the output after moving along axes.
     
     Examples:
 
