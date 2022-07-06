@@ -577,33 +577,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       }
     }
 #endif
-    // #ifdef PADDLE_WITH_PSCORE
-    // for (int j = 0; j < len; ++j) {
-    //   device_keys[dev][cur + j] = task_keys[dev][j];
-    //   float* ptr_val = task_ptrs[dev][j]->data();
-    //   FeatureValue& val = device_vals[dev][cur + j];
-    //   size_t dim = task_ptrs[dev][j]->size();
-    //   val.delta_score = ptr_val[2];
-    //   val.show = ptr_val[3];
-    //   val.clk = ptr_val[4];
-    //   val.slot = ptr_val[0];
-    //   val.lr = ptr_val[5];
-    //   val.lr_g2sum = ptr_val[6];
-    //   val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
-
-    //   if (dim > 7) {
-    //     val.mf_size = MF_DIM + 1;
-    //     for (int x = 0; x < val.mf_size; x++) {
-    //       val.mf[x] = ptr_val[x + 7];
-    //     }
-    //   } else {
-    //     val.mf_size = 0;
-    //     for (int x = 0; x < MF_DIM + 1; x++) {
-    //       val.mf[x] = 0;
-    //     }
-    //   }
-    // }
-    // #endif
     VLOG(3) << "GpuPs build hbmps done";
   };
 
@@ -713,15 +686,10 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
         // this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
         int mf_dim = this->index_dim_vec_[j];
         VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim;
-        // size_t feature_value_size =
-        //     TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) *
-        //     sizeof(float)));
         auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
         auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
         size_t len = device_dim_keys.size();
         CHECK(len == device_dim_ptrs.size());
-        // this->mem_pools_[i * this->multi_mf_dim_ + j] =
-        //    new MemoryPool(len, feature_value_size);
         auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
 
         // ============ add for multi-thread ================

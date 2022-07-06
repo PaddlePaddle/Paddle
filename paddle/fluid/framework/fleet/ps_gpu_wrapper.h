@@ -317,12 +317,7 @@ class PSGPUWrapper {
     config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
 
-<<<<<<< HEAD
-
-    if (accessor_class == "CtrDymfAccessor") {
-=======
     if (accessor_class_ == "CtrDymfAccessor") {
->>>>>>> b73bb24e28... fix adam accessor:template;test=develop
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
       add_sparse_optimizer(
@@ -395,31 +390,8 @@ class PSGPUWrapper {
             ? 0.999
             : config["mf_beta2_decay_rate"];
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
-<<<<<<< HEAD
                                ? 1e-8
                                : config["mf_ada_epsilon"];
-    this->SetSparseSGD(nonclk_coeff,
-                       clk_coeff,
-                       min_bound,
-                       max_bound,
-                       learning_rate,
-                       initial_g2sum,
-                       initial_range,
-                       beta1_decay_rate,
-                       beta2_decay_rate,
-                       ada_epsilon);
-    this->SetEmbedxSGD(mf_create_thresholds,
-                       mf_learning_rate,
-                       mf_initial_g2sum,
-                       mf_initial_range,
-                       mf_min_bound,
-                       mf_max_bound,
-                       mf_beta1_decay_rate,
-                       mf_beta2_decay_rate, 
-=======
-                               ? 1e-8
-                               : config["mf_ada_epsilon"];
-
     this->SetSparseSGD(nonclk_coeff,
                        clk_coeff,
                        min_bound,
@@ -438,31 +410,12 @@ class PSGPUWrapper {
                        mf_max_bound,
                        mf_beta1_decay_rate,
                        mf_beta2_decay_rate,
->>>>>>> b73bb24e28... fix adam accessor:template;test=develop
                        mf_ada_epsilon);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
                           ? 1
                           : int(config["optimizer_type"]);
-    embedx_dim_ = (config.find("embedx_dim") == config.end())
-                      ? 8
-                      : int(config["embedx_dim"]);
-    if (optimizer_type_ == 3) {  // adam
-      embed_sgd_dim_ = 4;
-      embedx_sgd_dim_ = embedx_dim_ * 2 + 2;
-    } else if (optimizer_type_ == 4) {  // shared_adam
-      embed_sgd_dim_ = 4;
-      embedx_sgd_dim_ = 4;
-    } else {
-      embed_sgd_dim_ = 1;
-      embedx_sgd_dim_ = 1;
-    }
-
-    VLOG(0) << "InitializeGPUServer embed_sgd_dim_:" << embed_sgd_dim_
-            << " embedx_sgd_dim_:" << embedx_sgd_dim_
-            << "  embedx_dim_:" << embedx_dim_
-            << " optimizer_type_:" << optimizer_type_;
   }
 
   void SetDate(int year, int month, int day) {
@@ -635,9 +588,6 @@ class PSGPUWrapper {
   bool slot_info_initialized_ = false;
   int use_afs_api_ = 0;
   int optimizer_type_ = 1;
-  int embed_sgd_dim_ = 1;
-  int embedx_sgd_dim_ = 1;
-  int embedx_dim_ = 8;
   std::string accessor_class_;
   std::unordered_map<std::string, float> fleet_config_;
 #ifdef PADDLE_WITH_PSCORE
