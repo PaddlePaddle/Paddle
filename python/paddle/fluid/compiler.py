@@ -374,7 +374,7 @@ class CompiledProgram(object):
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
-        if core.globals(
+        if "FLAGS_use_cinn" in core.globals() and core.globals(
         )["FLAGS_use_cinn"] and self._exec_strategy.num_threads != 1:
             warnings.warn("At present, when CINN is turned on, each process can " \
                   "only contain one thread, so reset the number of threads to 1 here.")
