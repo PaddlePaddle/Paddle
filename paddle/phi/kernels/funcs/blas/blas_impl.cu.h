@@ -2259,7 +2259,7 @@ void Blas<paddle::platform::CUDADeviceContext>::BatchedGEMM(
             << FLAGS_gemm_use_half_precision_compute_type;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
-    cudaDataType_t compute_type = CUDA_R_32F;
+    cudaDataType_t compute_type = fp;
 
     float h_alpha = static_cast<float>(alpha);
     float h_beta = static_cast<float>(beta);
