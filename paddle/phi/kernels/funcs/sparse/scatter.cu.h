@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define VecBytes 16
@@ -108,6 +110,48 @@ __global__ void ScatterKernelV2(const T* input,
     }
     phi::Store<T, VecSize>(sums,
                            out + indices_i * channels + channels_i * VecSize);
+  }
+}
+
+template <typename T>
+void ScatterV2(const GPUContext& dev_ctx,
+               const T* input,
+               const int* index_counts,
+               const int* index_groups,
+               const int non_zero_num,
+               const int kernel_size,
+               const int channels,
+               const int buffer_counts,
+               T* output) {
+  const int VecSize = VecBytes / sizeof(T);
+  if (channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, non_zero_num * channels / VecSize, 1);
+    ScatterKernelV2<T, VecSize><<<config.block_per_grid.x,
+                                  config.thread_per_block.x,
+                                  0,
+                                  dev_ctx.stream()>>>(input,
+                                                      index_counts,
+                                                      index_groups,
+                                                      non_zero_num,
+                                                      kernel_size,
+                                                      channels,
+                                                      buffer_counts,
+                                                      output);
+  } else {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, non_zero_num * channels, 1);
+    ScatterKernelV2<T, 1><<<config.block_per_grid.x,
+                            config.thread_per_block.x,
+                            0,
+                            dev_ctx.stream()>>>(input,
+                                                index_counts,
+                                                index_groups,
+                                                non_zero_num,
+                                                kernel_size,
+                                                channels,
+                                                buffer_counts,
+                                                output);
   }
 }
 

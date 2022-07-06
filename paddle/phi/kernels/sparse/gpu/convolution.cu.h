@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
@@ -95,6 +96,75 @@ __global__ void GatherKernelV2(const T* inputs,
   }
 }
 
+template <typename T, typename IntT>
+inline void Gather(const GPUContext& dev_ctx,
+                   const T* inputs,
+                   const IntT* indices,
+                   const int indices_size,
+                   const int channels,
+                   T* output) {
+  const int VecSize = VecBytes / sizeof(T);
+  if (channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, indices_size * channels / VecSize, 1);
+    GatherKernel<T, IntT, VecSize>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(inputs, indices, output, indices_size, channels);
+  } else {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, indices_size * channels, 1);
+    GatherKernel<T, IntT, 1>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(inputs, indices, output, indices_size, channels);
+  }
+}
+
+template <typename T, typename IntT>
+inline void GatherV2(const GPUContext& dev_ctx,
+                     const T* inputs,
+                     const int* index_counts,
+                     const int* index_groups,
+                     const int non_zero_num,
+                     const int kernel_size,
+                     const int channels,
+                     const int buffer_count,
+                     T* output) {
+  const int VecSize = VecBytes / sizeof(T);
+  if (channels % VecSize == 0) {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, non_zero_num * channels / VecSize, 1);
+    GatherKernelV2<T, IntT, VecSize><<<config.block_per_grid.x,
+                                       config.thread_per_block.x,
+                                       0,
+                                       dev_ctx.stream()>>>(inputs,
+                                                           index_counts,
+                                                           index_groups,
+                                                           non_zero_num,
+                                                           kernel_size,
+                                                           channels,
+                                                           buffer_count,
+                                                           output);
+  } else {
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, non_zero_num * channels, 1);
+    GatherKernelV2<T, IntT, 1><<<config.block_per_grid.x,
+                                 config.thread_per_block.x,
+                                 0,
+                                 dev_ctx.stream()>>>(inputs,
+                                                     index_counts,
+                                                     index_groups,
+                                                     non_zero_num,
+                                                     kernel_size,
+                                                     channels,
+                                                     buffer_count,
+                                                     output);
+  }
+}
+
 // unique the out indexs in rulebook
 template <typename IntT>
 __global__ void UniqueKernel(const IntT* in_indexs,
@@ -148,47 +218,6 @@ __global__ void GroupIndexs(const int* out_index_table,
     int j = atomicAdd(out_index_counts + real_index, 1);
     // nnz * kernel_size
     out_index_groups[real_index * kernel_size + j] = i;
-  }
-}
-
-/**
- * @brief: update the out index and indices
- * unique_keys: save the index of the output feature list
- * unique_values: indiates the index of key before deduplication
- * out_indexs: indicates the position of the output index in the rulebook
- * rulebook_len: indicates the length of rulebook
- * out_dims: indicates the output dims
- * out_indices: the indices of output, out_indices = IndexToPoint(unique_keys)
- * rulebook_out_indexs: the output index in rulebook
- **/
-template <typename T>
-__global__ void UpdateIndexKernel(const T* unique_keys,
-                                  const int* unique_values,
-                                  const int* out_indexs,
-                                  const int64_t non_zero_num,
-                                  const int rulebook_len,
-                                  const Dims4D out_dims,
-                                  T* out_indices,
-                                  T* rulebook_out_indexs) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
-    const T index = unique_keys[i];
-    T batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(
-        index, out_dims, &batch, &x, &y, &z);
-    // get out indices
-    out_indices[i] = batch;
-    out_indices[i + non_zero_num] = z;
-    out_indices[i + non_zero_num * 2] = y;
-    out_indices[i + non_zero_num * 3] = x;
-
-    // update rulebook
-    int start = unique_values[i];
-    int end = i == non_zero_num - 1 ? rulebook_len : unique_values[i + 1];
-    // max(end-start) = kernel_size
-    for (T j = start; j < end; j++) {
-      rulebook_out_indexs[out_indexs[j]] = i;
-    }
   }
 }
 
@@ -295,7 +324,6 @@ __global__ void GetOutIndexTable(int* indexs,
                                  IntT* out_indices) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT index = static_cast<IntT>(indexs[i]);
-    // index = index == -1 ? 0 : index;
     out_index_table[index] = i;
     IntT batch, x, y, z;
     phi::funcs::sparse::IndexToPoint<Dims4D>(
@@ -334,7 +362,6 @@ __global__ void CopyRuleBook(const int* counters,
       }
     }
     int inner_index = i - offsets[kernel_index];
-    // out_rulebook[i] = in_rulebook[kernel_index * non_zero_num + inner_index];
     out_rulebook[i] = in_rulebook[kernel_index * non_zero_num + inner_index];
     out_rulebook[len + i] =
         in_rulebook[kernel_size * non_zero_num + kernel_index * non_zero_num +

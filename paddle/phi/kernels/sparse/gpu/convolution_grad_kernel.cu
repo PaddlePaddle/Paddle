@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
@@ -99,7 +97,6 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
   T* d_kernel_ptr = kernel_grad->data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
-  // set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
   phi::backends::gpu::GpuMemsetAsync(
       d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
 
@@ -109,12 +106,10 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
       phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
   T* x_grad_values_ptr = x_grad_values.data<T>();
-  // set_zero(dev_ctx, &x_grad_values, static_cast<T>(0.0f));
   phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
                                      0,
                                      sizeof(T) * x_grad_values.numel(),
                                      dev_ctx.stream());
-  // set_zero(dev_ctx, &d_x_features, static_cast<T>(0.0f));
   phi::backends::gpu::GpuMemsetAsync(
       d_x_features_ptr, 0, sizeof(T) * d_x_features.numel(), dev_ctx.stream());
   phi::Copy<GPUContext>(dev_ctx,
@@ -160,7 +155,7 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
       phi::Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
   int* out_index_ptr = out_index.data<int>();
   int* unique_value_ptr = unique_value.data<int>();
-  cudaMemsetAsync(
+  phi::backends::gpu::GpuMemsetAsync(
       out_index_ptr, 0, sizeof(int) * x.nnz() * 2, dev_ctx.stream());
 
   GroupIndexsV2<<<config.block_per_grid,
@@ -174,64 +169,22 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
                                       out_index_ptr,
                                       unique_value_ptr);
 
-  const int VecSize = VecBytes / sizeof(T);
-  if (in_channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x.nnz() * in_channels / VecSize, 1);
-    GatherKernelV2<T, IntT, VecSize>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               out_index_ptr,
-                               unique_value_ptr,
-                               x.nnz(),
-                               kernel_size,
-                               in_channels,
-                               2,
-                               in_features_ptr);
-  } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x.nnz() * in_channels, 1);
-    GatherKernelV2<T, IntT, 1>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                               out_index_ptr,
-                               unique_value_ptr,
-                               x.nnz(),
-                               kernel_size,
-                               in_channels,
-                               2,
-                               in_features_ptr);
-  }
+  GatherV2<T, IntT>(dev_ctx,
+                    x.non_zero_elements().data<T>(),
+                    out_index_ptr,
+                    unique_value_ptr,
+                    x.nnz(),
+                    kernel_size,
+                    in_channels,
+                    2,
+                    in_features_ptr);
 
-  if (out_channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, rulebook_len * out_channels / VecSize, 1);
-    GatherKernel<T, IntT, VecSize>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len,
-                               out_grad_features_ptr,
-                               rulebook_len,
-                               out_channels);
-  } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, rulebook_len * out_channels, 1);
-    GatherKernel<T, IntT, 1>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(out_grad.non_zero_elements().data<T>(),
-                               rulebook_ptr + rulebook_len,
-                               out_grad_features_ptr,
-                               rulebook_len,
-                               out_channels);
-  }
+  Gather<T, IntT>(dev_ctx,
+                  out_grad.non_zero_elements().data<T>(),
+                  rulebook_ptr + rulebook_len,
+                  rulebook_len,
+                  out_channels,
+                  out_grad_features_ptr);
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -276,37 +229,15 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 4. scatter
-  if (in_channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x_grad->nnz() * in_channels / VecSize, 1);
-    phi::funcs::sparse::ScatterKernelV2<T, VecSize>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(d_x_features_ptr,
-                               out_index.data<int>(),
-                               unique_value.data<int>(),
-                               x_grad->nnz(),
-                               kernel_size,
-                               in_channels,
-                               2,
-                               x_grad_values_ptr);
-  } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, x_grad->nnz() * in_channels, 1);
-    phi::funcs::sparse::ScatterKernelV2<T, 1>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(d_x_features_ptr,
-                               out_index.data<int>(),
-                               unique_value.data<int>(),
-                               x_grad->nnz(),
-                               kernel_size,
-                               in_channels,
-                               2,
-                               x_grad_values_ptr);
-  }
+  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                   d_x_features_ptr,
+                                   out_index.data<int>(),
+                                   unique_value.data<int>(),
+                                   x_grad->nnz(),
+                                   kernel_size,
+                                   in_channels,
+                                   2,
+                                   x_grad_values_ptr);
 }
 
 template <typename T, typename Context>
