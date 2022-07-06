@@ -23,8 +23,10 @@ namespace tensorrt {
 
 inline nvinfer1::PluginFieldType GetPluginFieldType(nvinfer1::DataType type) {
   switch (type) {
+#if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
       return nvinfer1::PluginFieldType::kCHAR;
+#endif
     case nvinfer1::DataType::kFLOAT:
       return nvinfer1::PluginFieldType::kFLOAT32;
     case nvinfer1::DataType::kHALF:
