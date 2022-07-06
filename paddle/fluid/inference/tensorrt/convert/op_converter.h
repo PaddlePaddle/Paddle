@@ -231,7 +231,10 @@ class OpConverter {
                     TensorRTEngine* engine) {
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
+<<<<<<< HEAD
       printf("介绍的就放手\n");
+=======
+>>>>>>> develop
       SetEngine(engine);
       const auto& op = block.ops(i);
       framework::OpDesc op_desc(op, nullptr);
