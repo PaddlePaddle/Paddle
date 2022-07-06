@@ -548,9 +548,11 @@ def destroy_process_group(group=None):
     if group is None:
         _group_map.clear()
         _group_map_by_name.clear()
+        _group_map_backend.clear()
     else:
         del _group_map[pg.id]
         del _group_map_by_name[pg.name]
+        del _group_map_backend[pg]
 
 
 def wait(tensor, group=None, use_calc_stream=True):
