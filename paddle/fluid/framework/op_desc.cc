@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/phi/ops/compat/extra_info.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -409,6 +410,16 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const BlockDesc &block_;
 };
 
+static void InitRuntimeAttributeMapByOpExtraInfo(const std::string &op_type,
+                                                 AttributeMap *runtime_attrs) {
+  auto iter = op_extra_info_map.find(op_type);
+  if (iter != op_extra_info_map.end()) {
+    const auto &extra_attr_map = iter->second;
+    VLOG(6) << "Found " << op_type << " extra info map.";
+    runtime_attrs->insert(extra_attr_map.begin(), extra_attr_map.end());
+  }
+}
+
 OpDesc::OpDesc(const std::string &type,
                const VariableNameMap &inputs,
                const VariableNameMap &outputs,
@@ -419,6 +430,7 @@ OpDesc::OpDesc(const std::string &type,
   attrs_ = attrs;
   need_update_ = true;
   block_ = nullptr;
+  InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
@@ -432,6 +444,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  runtime_attrs_ = op_desc.runtime_attrs_;
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   need_update_ = true;
@@ -472,6 +485,7 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   this->block_ = block;
+  InitRuntimeAttributeMapByOpExtraInfo(desc.type(), &runtime_attrs_);
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -589,7 +603,7 @@ static bool IsGradOp(const std::string &name) {
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   AttributeMap *attrs_ptr = &(this->attrs_);
-  if (!HasProtoAttr(name) && IsGradOp(Type())) {
+  if (!HasProtoAttr(name) && !IsGradOp(Type())) {
     attrs_ptr = &(this->runtime_attrs_);
   }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
