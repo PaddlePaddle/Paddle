@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/phi/ops/compat/extra_info.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -412,8 +412,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
 static void InitRuntimeAttributeMapByOpExtraInfo(const std::string &op_type,
                                                  AttributeMap *runtime_attrs) {
-  auto iter = op_extra_info_map.find(op_type);
-  if (iter != op_extra_info_map.end()) {
+  auto iter = extra_attrs_map.find(op_type);
+  if (iter != extra_attrs_map.end()) {
     const auto &extra_attr_map = iter->second;
     VLOG(6) << "Found " << op_type << " extra info map.";
     runtime_attrs->insert(extra_attr_map.begin(), extra_attr_map.end());
