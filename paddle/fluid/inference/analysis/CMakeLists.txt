@@ -109,4 +109,9 @@ elseif(WIN32)
     paddle_inference_api
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_analyzer)
+  endif()
 endif()
