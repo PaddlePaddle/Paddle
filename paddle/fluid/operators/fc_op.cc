@@ -223,7 +223,6 @@ REGISTER_OPERATOR(
     ops::FCOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    fc,
-    ops::FCOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FCOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(fc,
+                       ops::FCOpKernel<phi::CPUContext, float>,
+                       ops::FCOpKernel<phi::CPUContext, double>);

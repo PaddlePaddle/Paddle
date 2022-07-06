@@ -88,7 +88,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sequence_enumerate,
                              ops::SequenceEnumerateOp,
                              ops::SequenceEnumerateOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    sequence_enumerate,
-    ops::SequenceEnumerateKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::SequenceEnumerateKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_enumerate,
+                       ops::SequenceEnumerateKernel<phi::CPUContext, int32_t>,
+                       ops::SequenceEnumerateKernel<phi::CPUContext, int64_t>);

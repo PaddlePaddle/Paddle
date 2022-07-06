@@ -210,7 +210,7 @@ void exec_fft(const DeviceContext& ctx,
   transposed_input.Resize(transposed_input_shape);
   const auto place = ctx.GetPlace();
   transposed_input.mutable_data<Ti>(place);
-  TransCompute<platform::CPUDeviceContext, Ti>(
+  TransCompute<phi::CPUContext, Ti>(
       ndim, ctx, *x, &transposed_input, dim_permute);
 
   // make an collapsed input: collapse batch axes for input
@@ -310,39 +310,39 @@ void exec_fft(const DeviceContext& ctx,
   for (int i = 0; i < ndim; i++) {
     reverse_dim_permute[dim_permute[i]] = i;
   }
-  TransCompute<platform::CPUDeviceContext, To>(
+  TransCompute<phi::CPUContext, To>(
       ndim, ctx, transposed_output, out, reverse_dim_permute);
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
-    exec_fft<platform::CPUDeviceContext, Ti, To>(
+    exec_fft<phi::CPUContext, Ti, To>(
         ctx, x, out, axes, normalization, forward);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
-    exec_fft<platform::CPUDeviceContext, Ti, To>(
+    exec_fft<phi::CPUContext, Ti, To>(
         ctx, x, out, axes, normalization, forward);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -353,14 +353,14 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
       Tensor temp;
       temp.mutable_data<Ti>(x->dims(), ctx.GetPlace());
 
-      FFTC2CFunctor<platform::CPUDeviceContext, Ti, Ti> c2c_functor;
+      FFTC2CFunctor<phi::CPUContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, x, &temp, c2c_dims, normalization, forward);
 
       const std::vector<int64_t> new_axes{axes.back()};
-      exec_fft<platform::CPUDeviceContext, Ti, To>(
+      exec_fft<phi::CPUContext, Ti, To>(
           ctx, &temp, out, new_axes, normalization, forward);
     } else {
-      exec_fft<platform::CPUDeviceContext, Ti, To>(
+      exec_fft<phi::CPUContext, Ti, To>(
           ctx, x, out, axes, normalization, forward);
     }
   }
@@ -383,8 +383,8 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -426,8 +426,8 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
 };
 
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,
@@ -483,8 +483,8 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx,
+struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
                   const Tensor* x,
                   Tensor* out,
                   const std::vector<int64_t>& axes,

@@ -247,10 +247,9 @@ learning rate, $\lambda$ the weight decay rate.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    lamb,
-    ops::LambOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LambOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lamb,
+                       ops::LambOpKernel<phi::CPUContext, float>,
+                       ops::LambOpKernel<phi::CPUContext, double>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lamb).AddCheckpoint(

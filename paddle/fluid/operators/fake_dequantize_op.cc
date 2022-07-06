@@ -23,8 +23,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   T max_range,
@@ -39,8 +39,8 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
+struct ChannelDequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
                   const framework::Tensor* in,
                   const framework::Tensor** scales,
                   const int scale_num,
@@ -139,10 +139,10 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct DequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct DequantizeFunctor<platform::CPUDeviceContext, double>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, float>;
-template struct ChannelDequantizeFunctor<platform::CPUDeviceContext, double>;
+template struct DequantizeFunctor<phi::CPUContext, float>;
+template struct DequantizeFunctor<phi::CPUContext, double>;
+template struct ChannelDequantizeFunctor<phi::CPUContext, float>;
+template struct ChannelDequantizeFunctor<phi::CPUContext, double>;
 
 class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -269,7 +269,7 @@ Notes: In general, the per-channel quantization is only applied to weights and t
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     fake_dequantize_max_abs,

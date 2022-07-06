@@ -75,7 +75,6 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];

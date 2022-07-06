@@ -376,7 +376,7 @@ def save_vars(executor,
                          vars=list(filter(predicate, main_program.list_vars())),
                          filename=filename)
     else:
-        params_var_name = unique_name.generate("saved_params")
+        params_var_name = "saved_params"
         # give warning when there is no var in model
         if len(list(vars)) == 0:
             warnings.warn(
@@ -493,7 +493,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
 
             loss = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -719,7 +719,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
             loss = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             fluid.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
@@ -1315,7 +1315,7 @@ def save_inference_model(dirname,
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
 
             loss = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())

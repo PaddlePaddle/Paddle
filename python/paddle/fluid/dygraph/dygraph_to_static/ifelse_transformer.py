@@ -33,6 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -41,7 +42,7 @@ SET_ARGS_FUNC_PREFIX = 'set_args'
 ARGS_NAME = '__args'
 
 
-class IfElseTransformer(gast.NodeTransformer):
+class IfElseTransformer(BaseTransformer):
     """
     Transform if/else statement of Dygraph into Static Graph.
     """
