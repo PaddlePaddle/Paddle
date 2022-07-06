@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+unset GREP_OPTIONS
+set -e
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # 
