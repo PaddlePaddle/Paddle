@@ -60,8 +60,15 @@ void GradTensorHolder::CopyValueFromTensor(
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Perform deep copy here
       buffer_tensor.copy_(t, t.place(), false);
-      buffer_tensor.set_autograd_meta(t.mutable_autograd_meta());
-
+      auto* meta = egr::EagerUtils::autograd_meta(&buffer_tensor);
+      auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(t);
+      if (origin_meta) {
+        auto grad_node = origin_meta->GetMutableGradNode();
+        if (grad_node && grad_node.get()) {
+          meta->SetGradNode(origin_meta->GetMutableGradNode());
+        }
+        meta->WeakGrad() = origin_meta->WeakGrad();
+      }
     } else {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Cannot copy grad_tensors' value to grad tensor holders,"
@@ -82,10 +89,10 @@ void GradTensorHolder::CopyValueFromTensor(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
             "now."));
       }
-      egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
-          ->SetStopGradient(false);
     }
   }
+  egr::EagerUtils::autograd_meta(&(buffer_[slot_id][rank]))
+      ->SetStopGradient(false);
 }
 
 void GradTensorHolder::add(size_t slot_id,

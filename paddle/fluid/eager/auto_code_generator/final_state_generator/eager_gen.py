@@ -40,6 +40,8 @@ from codegen_utils import AssertMessage, GetIndent
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
 inplace_check_blacklist = set(["assign_out_"])
+# # --- Black Ops list that's NO NEED to apply backward code generation
+black_ops_list = ["conv2d", "conv2d_grad", "conv2d_grad_grad"]
 
 
 ###########
@@ -271,7 +273,7 @@ NODE_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
-
+#include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 DECLARE_bool(check_nan_inf);
 {}
 """
@@ -298,7 +300,7 @@ FORWARD_CC_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
-
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 DECLARE_bool(check_nan_inf);
 {}
 {}
@@ -313,7 +315,7 @@ FORWARD_H_FILE_TEMPLATE = \
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
-
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 {}
 {}
 """
@@ -1479,15 +1481,15 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 optional_inplace_str = "VLOG(6) << \"No Inplace should happend for wrappered input: {inplace_grad_input_str}\";"
             else:
                 optional_inplace_str = f"""if (api_output_{out_index} != nullptr && can_be_inplaced) {{
-                egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
-            }}"""
+      egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
+    }}"""
             if IsPlainTensorType(ttype):
 
                 if backward_inplace_map and name in backward_inplace_map.values(
                 ):
-                    inplace_str = f"""  if (api_output_{out_index} != nullptr && can_be_inplaced) {{
-    egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
-  }}"""
+                    inplace_str = f""" if (api_output_{out_index} != nullptr && can_be_inplaced) {{
+      egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
+    }}"""
                     if len(next_grad_node_creation_str) > 0:
                         inplace_for_grad_outs_str += f"""
   if (trace_backward) {{
@@ -1633,6 +1635,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         if 'backward' not in forward_api_contents.keys(): return None
 
         backward_api_name = forward_api_contents['backward']
+        if backward_api_name in black_ops_list: return None
         assert backward_api_name in grad_api_dict.keys(), AssertMessage(
             backward_api_name, grad_api_dict.keys())
         backward_api_contents = grad_api_dict[backward_api_name]
@@ -1648,7 +1651,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             backward_api_contents = self.GetBackwardAPIContents(
                 forward_api_contents)
             if backward_api_contents is None: continue
-
+            if forward_api_contents['api'] in black_ops_list: continue
             # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents, backward_api_contents, namespace)

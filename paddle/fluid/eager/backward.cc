@@ -408,7 +408,8 @@ class GeneralGrad {
           if (no_grad_var_nodes_inputmeta_map_.count(orig_next_node.get()) &&
               (no_grad_var_nodes_inputmeta_map_[orig_next_node.get()]
                    ->OutRankInfo() == orig_edge.GetEdgeRankInfo())) {
-            VLOG(8) << "Get Graph Infor grad_node: " << orig_next_node->name()
+            VLOG(3) << "Get no grad edge from grad_node: " << orig_node->name()
+                    << " : " << orig_node << " to:" << orig_next_node->name()
                     << ", " << orig_next_node.get()
                     << " with output rank info: "
                     << orig_edge.GetEdgeRankInfo().first << ", "
@@ -756,7 +757,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with the same rank(i, j)
         auto next_node_shared = edge.GetMutableGradNode();
-        VLOG(3) << "Found pending node: " << next_node_shared->name();
+        VLOG(3) << "Found pending node: " << next_node_shared->name() << ": "
+                << next_node_shared.get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -806,6 +808,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         // Update queue
         node_in_degree_map[next_node]--;
+        VLOG(6) << next_node->name()
+                << " ref_cnt is: " << node_in_degree_map[next_node];
 
         PADDLE_ENFORCE(
             node_in_degree_map[next_node] >= 0,
