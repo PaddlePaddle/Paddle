@@ -240,6 +240,7 @@ if(WITH_IPU)
   pass_library(infer_shape_pass base DIR ipu)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
+  pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
 cc_library(

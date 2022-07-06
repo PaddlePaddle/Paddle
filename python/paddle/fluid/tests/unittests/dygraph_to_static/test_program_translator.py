@@ -42,7 +42,7 @@ def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
     y = fluid.layers.matmul(x, w)
-    z = fluid.layers.mean(y)
+    z = paddle.mean(y)
     return z
 
 
@@ -51,7 +51,7 @@ def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
     y = fluid.layers.matmul(x, w)
-    z = fluid.layers.mean(y)
+    z = paddle.mean(y)
     return z
 
 
@@ -91,7 +91,7 @@ class StaticCode1():
             return x_v
 
         _jst.IfElse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
+            paddle.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
             set_args_0, ('x_v', ))
 
         def get_args_1():
@@ -148,7 +148,7 @@ class StaticCode2():
             return x_v
 
         _jst.IfElse(
-            fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
+            paddle.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
             set_args_2, ('x_v', ))
 
         def get_args_3():
@@ -196,14 +196,17 @@ class TestDygraphToStaticCode(unittest.TestCase):
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
-        self.assertEqual(answer, code)
+        self.assertEqual(
+            answer.replace('\n', '').replace(' ', ''),
+            code.replace('\n', '').replace(' ', ''))
 
     def test_program_translator(self):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
-        # print(code)
-        self.assertEqual(answer, code)
+        self.assertEqual(
+            answer.replace('\n', '').replace(' ', ''),
+            code.replace('\n', '').replace(' ', ''))
 
 
 class TestEnableDeclarative(unittest.TestCase):

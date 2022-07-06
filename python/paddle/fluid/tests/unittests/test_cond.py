@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -287,7 +287,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2.0 * i
             out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
                               lambda: greater_equal_branch(i, a))
-            mean = layers.mean(out)
+            mean = paddle.mean(out)
             append_backward(mean)
 
         place = fluid.CUDAPlace(
@@ -503,10 +503,10 @@ class TestCondBackward(unittest.TestCase):
 
         def cond_func_simple_net_at_true(i, img, label):
             return layers.cond(i < 5, lambda: branch(i, img, label),
-                               lambda: layers.mean(img))
+                               lambda: paddle.mean(img))
 
         def cond_func_simple_net_at_false(i, img, label):
-            return layers.cond(i < 5, lambda: layers.mean(img),
+            return layers.cond(i < 5, lambda: paddle.mean(img),
                                lambda: branch(i, img, label))
 
         for use_parallel_exe in [False, True]:

@@ -145,7 +145,7 @@ def train_main(use_cuda):
                         dtype='int64',
                         lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
-    avg_cost = layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-3)
     optimizer.minimize(avg_cost)

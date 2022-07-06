@@ -90,6 +90,9 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   ipu_strategy_instance_->available_memory_proportion =
       graph->Get<float>("available_memory_proportion");
 
+  // Set tiles_per_ipu for IPUMODEL
+  ipu_strategy_instance_->tiles_per_ipu = 128;
+
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 
   // Get feed_list and fetch list
@@ -124,7 +127,8 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<std::string> graph_pass = {"forward_graph_extract_pass",
                                          "infer_shape_pass",
                                          "avg_shard_pass",
-                                         "popart_canonicalization_pass"};
+                                         "popart_canonicalization_pass",
+                                         "inference_dtype_transfer_pass"};
   std::vector<std::string> compile_pass = {"ipu_inplace_pass",
                                            "ipu_graph_builder_pass",
                                            "ipu_runtime_replacer_pass",

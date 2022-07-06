@@ -214,7 +214,8 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
-struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
+struct TensorSetConstantWithPlace
+    : public std::unary_function<paddle::platform::Place, void> {
   TensorSetConstantWithPlace(const paddle::platform::DeviceContext& context,
                              paddle::framework::Tensor* tensor,
                              float value)
