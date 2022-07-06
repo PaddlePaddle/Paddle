@@ -35,7 +35,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {

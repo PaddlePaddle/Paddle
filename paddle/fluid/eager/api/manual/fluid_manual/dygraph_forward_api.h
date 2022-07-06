@@ -42,3 +42,28 @@ fused_gate_attention_dygraph_function(
     const paddle::experimental::Tensor& OutLinearWeight,
     const paddle::experimental::Tensor& OutLinearBias,
     const paddle::framework::AttributeMap& attr_map);
+
+std::tuple<paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor,
+           paddle::experimental::Tensor>
+fused_feedforward_dygraph_function(
+    const paddle::experimental::Tensor& X,
+    const paddle::experimental::Tensor& Dropout1Seed,
+    const paddle::experimental::Tensor& Dropout2Seed,
+    const paddle::experimental::Tensor& Linear1Weight,
+    const paddle::experimental::Tensor& Linear1Bias,
+    const paddle::experimental::Tensor& Linear2Weight,
+    const paddle::experimental::Tensor& Linear2Bias,
+    const paddle::experimental::Tensor& Ln1Scale,
+    const paddle::experimental::Tensor& Ln1Bias,
+    const paddle::experimental::Tensor& Ln2Scale,
+    const paddle::experimental::Tensor& Ln2Bias,
+    const paddle::framework::AttributeMap& attr_map);
