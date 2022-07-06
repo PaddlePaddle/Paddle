@@ -118,8 +118,9 @@ struct DeviceContext::Impl {
                           ? zero_allocator_
                           : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
-    if (paddle::platform::CUDAGraph::IsThisThreadCapturing() &&
-        paddle::platform::is_gpu_place(place)) {
+    bool must_cuda_graph = (tensor->numel() != 0) && !pinned;
+    if (must_cuda_graph && paddle::platform::is_gpu_place(place) &&
+        paddle::platform::CUDAGraph::IsThisThreadCapturing()) {
       allocator = paddle::memory::allocation::AllocatorFacade::Instance()
                       .GetAllocator(place)
                       .get();
