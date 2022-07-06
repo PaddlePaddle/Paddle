@@ -237,6 +237,9 @@ class TestCUDAGraph(unittest.TestCase):
             self.assertTrue(np.array_equal(actual_y, y.numpy()))
 
     def test_dev_ctx_alloc(self):
+        if not can_use_cuda_graph():
+            return
+
         x = paddle.to_tensor([2], dtype='float32')
         graph = CUDAGraph()
         graph.capture_begin()
