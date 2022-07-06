@@ -23,8 +23,8 @@ def attention(query,
               key,
               value,
               sparse_mask,
-              key_padding_mask,
-              attn_mask,
+              key_padding_mask=None,
+              attn_mask=None,
               name=None):
     """
     Note:    
@@ -50,10 +50,10 @@ def attention(query,
         sparse_mask(SparseCsrTensor): The sparse layout in the Attention module. Its dense shape 
             is `[batch_size*num_heads, seq_len, seq_len]` .  `nnz` of each batch must be the same. 
             dtype of `crows` and `cols` must be int64, dtype of `values` can be float32 or float64.
-        key_padding_mask(DenseTensor): The key padding mask tensor in the Attention module. 
-            2D tensor with shape: [batch_size, seq_len]. dtype can be float32 or float64.
-        attn_mask(DenseTensor):The attention mask tensor in the Attention module. 
-            2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64.
+        key_padding_mask(DenseTensor, optional): The key padding mask tensor in the Attention module. 
+            2D tensor with shape: [batch_size, seq_len]. dtype can be float32 or float64. Default: None.
+        attn_mask(DenseTensor, optional): The attention mask tensor in the Attention module. 
+            2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64. Default: None.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
