@@ -33,14 +33,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
     if (Y_v) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-      void* weight_data = const_cast<void*>(
-          engine_->GetFp32TrtWeight(op_desc.Input("Y").front(), *Y_t)
-              .get()
-              .values);
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
-      TensorRTEngine::Weight y_weight{nvinfer1::DataType::kFLOAT,
-                                      weight_data,
-                                      static_cast<size_t>(Y_t->numel())};
+      auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
+
       nvinfer1::Dims trt_dims_y;
       trt_dims_y.nbDims = dims_y.size();
       for (int i = 0; i < trt_dims_y.nbDims; i++) {
