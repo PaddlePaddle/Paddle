@@ -27,7 +27,7 @@ from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
-
+np.random.seed(2022)
 
 class TestActivationOPBase(XPUOpTest):
 
@@ -53,7 +53,6 @@ class TestActivationOPBase(XPUOpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ['X'], 'Out')
-
 
 class XPUTestExpOP(XPUOpTestWrapper):
 
@@ -843,20 +842,18 @@ class XPUTestRelu6OP(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class XPUTestRelu6(TestActivationOPBase):
-
         def set_case(self):
             self.op_type = "relu6"
             self.dtype = self.in_type
 
-            np.random.seed(1024)
-            x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
+            x = np.random.uniform(-1, 10, [17, 12,12]).astype(self.dtype)
             x[np.abs(x) < 0.005] = 0.02
             out = ref_relu6(x)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
-
+        
 
 support_types = get_xpu_op_support_types('relu6')
 for stype in support_types:
