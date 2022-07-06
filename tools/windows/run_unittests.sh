@@ -87,8 +87,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^lite_mul_model_test$|\
 ^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$|\
-^test_tensorrt_engine_op$|\
-^test_tensorrt_engine$|\
 ^test_trt_deformable_conv$|\
 ^test_imperative_triple_grad$|\
 ^test_full_name_usage$|\
@@ -103,7 +101,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_tensor_scalar_type_promotion_static$|\
 ^test_matrix_power_op$|\
 ^test_deformable_conv_v1_op$|\
-^zero_copy_tensor_test$|\
 ^test_where_index$|\
 ^test_custom_grad_input$|\
 ^test_conv3d_transpose_op$|\
@@ -116,16 +113,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_basic_api_transformation$|\
 ^test_deformable_conv_op$|\
 ^test_variable$|\
-^test_conv_bias_mkldnn_fuse_pass_cc$|\
-^test_conv_batch_norm_mkldnn_fuse_pass$|\
-^test_compute_propagate_scales_mkldnn_pass$|\
-^test_cpu_quantize_pass$|\
-^test_cpu_quantize_squash_pass$|\
-^op_tester$|\
-^test_analyzer$|\
-^infer_io_utils_tester$|\
-^test_paddle_inference_api$|\
-^test_mkldnn_quantizer$|\
 ^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
 ^test_mkldnn_conv_hard_swish_fuse_pass$|\
 ^test_conv_act_mkldnn_fuse_pass$|\
@@ -147,11 +134,9 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_slice$|\
 ^test_conv_elementwise_add_fuse_pass$|\
 ^test_executor_and_mul$|\
-^test_op_converter$|\
 ^test_analyzer_int8_resnet50$|\
 ^test_analyzer_int8_mobilenetv1$|\
 ^test_trt_conv_pass$|\
-^test_analysis_predictor$|\
 ^test_roll_op$|\
 ^test_lcm$|\
 ^test_elementwise_floordiv_op$|\
@@ -160,7 +145,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_convert_deformable_conv$|\
 ^test_conv_elementwise_add2_act_fuse_pass$|\
 ^test_tensor_scalar_type_promotion_dynamic$|\
-^test_api_impl$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
 ^test_trt_convert_flatten$|\
