@@ -14,11 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <thrust/binary_search.h>
-#include <thrust/execution_policy.h>
 #include <thrust/remove.h>
-#include <thrust/sort.h>
 #include <thrust/unique.h>
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -31,7 +29,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -490,6 +487,34 @@ __global__ void GroupIndexsV2(const int rulebook_len,
   }
 }
 
+inline void CallThrustScan(const GPUContext& dev_ctx,
+                           const int* counter_ptr,
+                           const int kernel_size,
+                           int* offsets_ptr,
+                           int* h_counter_ptr,
+                           int* h_offsets_ptr) {
+#ifdef PADDLE_WITH_HIP
+  thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
+  thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                         counter_ptr,
+                         counter_ptr + kernel_size,
+                         offsets_ptr);
+
+  phi::backends::gpu::GpuMemcpyAsync(h_counter_ptr,
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+
+  phi::backends::gpu::GpuMemcpyAsync(h_offsets_ptr,
+                                     offsets_ptr,
+                                     kernel_size * sizeof(int),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+}
+
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
@@ -608,22 +633,13 @@ int ProductRuleBook(const Context& dev_ctx,
 
     out->SetMember(out_indices, out_values, out_dims, false);
 
-    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
-                           counter_ptr,
-                           counter_ptr + kernel_size,
-                           offsets_ptr);
+    CallThrustScan(dev_ctx,
+                   counter_ptr,
+                   kernel_size,
+                   offsets_ptr,
+                   h_counter->data(),
+                   h_offsets->data());
 
-    phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
-                                       counter_ptr,
-                                       kernel_size * sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
-
-    phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
-                                       offsets_ptr,
-                                       kernel_size * sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
     dev_ctx.Wait();
     int rulebook_len =
         (*h_offsets)[kernel_size - 1] + (*h_counter)[kernel_size - 1];
@@ -675,26 +691,12 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT rulebook_len = (last - rulebook_ptr) / 2;
 
-#ifdef PADDLE_WITH_HIP
-    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
-#else
-    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                           counter_ptr,
-                           counter_ptr + kernel_size,
-                           offsets_ptr);
-
-    phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
-                                       counter_ptr,
-                                       kernel_size * sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
-
-    phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
-                                       offsets_ptr,
-                                       kernel_size * sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
+    CallThrustScan(dev_ctx,
+                   counter_ptr,
+                   kernel_size,
+                   offsets_ptr,
+                   h_counter->data(),
+                   h_offsets->data());
 
     rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
     // 3. sorted or merge the out index

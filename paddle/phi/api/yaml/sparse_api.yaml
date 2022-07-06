@@ -7,14 +7,14 @@
     layout : x
   backward : add_grad
 
-- api : conv3d
+- api : conv3d_coo
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(out), Tensor(rulebook), Tensor(counter) 
   kernel :
-    func : sparse_conv3d{sparse_coo, dense -> sparse_coo, dense, dense}
+    func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
   intermediate: rulebook, counter
-  backward : conv3d_grad
+  backward : conv3d_coo_grad
 
 - api : coo_to_dense
   args : (Tensor x)

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-#include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 
 namespace phi {
 namespace sparse {

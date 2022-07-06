@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 
 #include "glog/logging.h"
 
@@ -29,18 +29,18 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-void Conv3dGPUKernel(const GPUContext& dev_ctx,
-                     const SparseCooTensor& x,
-                     const DenseTensor& kernel,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     const int groups,
-                     const bool subm,
-                     const std::string& key,
-                     SparseCooTensor* out,
-                     DenseTensor* rulebook,
-                     DenseTensor* counter) {
+void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
+                        const SparseCooTensor& x,
+                        const DenseTensor& kernel,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations,
+                        const std::vector<int>& strides,
+                        const int groups,
+                        const bool subm,
+                        const std::string& key,
+                        SparseCooTensor* out,
+                        DenseTensor* rulebook,
+                        DenseTensor* counter) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -205,42 +205,42 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
  * counter: return counter if key is not vailed else return nullptr
  **/
 template <typename T, typename Context>
-void Conv3dKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const DenseTensor& kernel,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const int groups,
-                  const bool subm,
-                  const std::string& key,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook,
-                  DenseTensor* counter) {
+void Conv3dCooKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const DenseTensor& kernel,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     const std::vector<int>& strides,
+                     const int groups,
+                     const bool subm,
+                     const std::string& key,
+                     SparseCooTensor* out,
+                     DenseTensor* rulebook,
+                     DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dGPUKernel", ([&] {
-        Conv3dGPUKernel<T, data_t>(dev_ctx,
-                                   x,
-                                   kernel,
-                                   paddings,
-                                   dilations,
-                                   strides,
-                                   groups,
-                                   subm,
-                                   key,
-                                   out,
-                                   rulebook,
-                                   counter);
+      x.non_zero_indices().dtype(), "Conv3dCooGPUKernel", ([&] {
+        Conv3dCooGPUKernel<T, data_t>(dev_ctx,
+                                      x,
+                                      kernel,
+                                      paddings,
+                                      dilations,
+                                      strides,
+                                      groups,
+                                      subm,
+                                      key,
+                                      out,
+                                      rulebook,
+                                      counter);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_conv3d,
+PD_REGISTER_KERNEL(conv3d_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::Conv3dKernel,
+                   phi::sparse::Conv3dCooKernel,
                    float,
                    double,
                    phi::dtype::float16) {

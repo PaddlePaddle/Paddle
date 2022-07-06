@@ -6,12 +6,12 @@
     func : add_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            add_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
 
-- backward_api : conv3d_grad
-  forward : conv3d (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor), Tensor(counter@DenseTensor)
+- backward_api : conv3d_coo_grad
+  forward : conv3d_coo (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor), Tensor(counter@DenseTensor)
   args : (Tensor x, Tensor kernel, Tensor out, Tensor rulebook, Tensor counter, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(x_grad), Tensor(kernel_grad)
   kernel :
-    func : sparse_conv3d_grad{sparse_coo, dense, sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
+    func : conv3d_coo_grad{sparse_coo, dense, sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_api : coo_to_dense_grad
   forward : coo_to_dense(Tensor x) -> Tensor(out)

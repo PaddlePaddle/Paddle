@@ -298,6 +298,7 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values, dtype='float32')
                     sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                         indices, values)
+                    sparse_x = paddle.incubate.sparse.coalesced(sparse_x)
                     indices_sorted = [[0, 1], [1, 0]]
                     values_sorted = [5.0, 1.0]
                     assert np.array_equal(indices_sorted,
@@ -310,6 +311,7 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values, dtype='float32')
                     sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                         indices, values)
+                    sparse_x = paddle.incubate.sparse.coalesced(sparse_x)
                     values_sorted = [[5.0, 5.0], [1.0, 1.0]]
                     assert np.array_equal(indices_sorted,
                                           sparse_x.indices().numpy())

@@ -107,7 +107,7 @@ void CoalescedKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sort,
+PD_REGISTER_KERNEL(coalesced,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::CoalescedKernel,

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
+#include "paddle/phi/kernels/sparse/cpu/conv.h"
 
 namespace phi {
 namespace sparse {
@@ -28,18 +28,18 @@ namespace sparse {
  * out: (N, D, H, W, OC)
  **/
 template <typename T, typename IntT = int>
-void Conv3dCPUKernel(const CPUContext& dev_ctx,
-                     const SparseCooTensor& x,
-                     const DenseTensor& kernel,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     const int groups,
-                     const bool subm,
-                     const std::string& key,
-                     SparseCooTensor* out,
-                     DenseTensor* rulebook,
-                     DenseTensor* counter) {
+void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
+                        const SparseCooTensor& x,
+                        const DenseTensor& kernel,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations,
+                        const std::vector<int>& strides,
+                        const int groups,
+                        const bool subm,
+                        const std::string& key,
+                        SparseCooTensor* out,
+                        DenseTensor* rulebook,
+                        DenseTensor* counter) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -178,32 +178,32 @@ void Conv3dCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Conv3dKernel(const Context& dev_ctx,
-                  const SparseCooTensor& x,
-                  const DenseTensor& kernel,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
-                  const std::vector<int>& strides,
-                  const int groups,
-                  const bool subm,
-                  const std::string& key,
-                  SparseCooTensor* out,
-                  DenseTensor* rulebook,
-                  DenseTensor* counter) {
+void Conv3dCooKernel(const Context& dev_ctx,
+                     const SparseCooTensor& x,
+                     const DenseTensor& kernel,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     const std::vector<int>& strides,
+                     const int groups,
+                     const bool subm,
+                     const std::string& key,
+                     SparseCooTensor* out,
+                     DenseTensor* rulebook,
+                     DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCPUKernel", ([&] {
-        Conv3dCPUKernel<T, data_t>(dev_ctx,
-                                   x,
-                                   kernel,
-                                   paddings,
-                                   dilations,
-                                   strides,
-                                   groups,
-                                   subm,
-                                   key,
-                                   out,
-                                   rulebook,
-                                   counter);
+      x.non_zero_indices().dtype(), "Conv3dCooCPUKernel", ([&] {
+        Conv3dCooCPUKernel<T, data_t>(dev_ctx,
+                                      x,
+                                      kernel,
+                                      paddings,
+                                      dilations,
+                                      strides,
+                                      groups,
+                                      subm,
+                                      key,
+                                      out,
+                                      rulebook,
+                                      counter);
       }));
 }
 
@@ -211,6 +211,6 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sparse_conv3d, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {
+    conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
