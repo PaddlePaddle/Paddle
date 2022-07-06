@@ -95,7 +95,5 @@ __all__ = [  # noqa
     "ParallelMode",
     "isend",
     "irecv",
-    "batch_isend_irecv",
-    "P2POp",
     "reduce_scatter",
 ]
