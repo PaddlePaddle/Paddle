@@ -17,7 +17,6 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.incubate.autograd import primapi
 
 import config
 import utils
@@ -37,7 +36,7 @@ import utils
      ('input_gradients_not_none', paddle.matmul,
       (np.random.rand(3, 3), np.random.rand(3, 3)),
       (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64')))
-class TestForwardGradients(unittest.TestCase):
+class TestForwardGrad(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -80,7 +79,7 @@ class TestForwardGradients(unittest.TestCase):
                     self.xs, self.v, stop_gradient=False)
                 ys = self.fun(*static_xs) if isinstance(
                     static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = primapi.forward_gradients(ys, static_xs, static_v)
+                ys_grad = primapi.forward_grad(ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -106,7 +105,7 @@ class TestForwardGradients(unittest.TestCase):
                     self.xs, self.v, stop_gradient=False)
                 ys = self.fun(*static_xs) if isinstance(
                     static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = primapi.forward_gradients(ys, static_xs, static_v)
+                ys_grad = primapi.forward_grad(ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -120,9 +119,75 @@ class TestForwardGradients(unittest.TestCase):
                                                             shape=[1]))
 
         with self.assertRaises(TypeError):
-            primapi.forward_gradients(paddle.static.data('targets', shape=[1]),
-                                      1)
+            primapi.forward_grad(paddle.static.data('targets', shape=[1]), 1)
         paddle.incubate.autograd.disable_prim()
+
+
+class TestGradients(unittest.TestCase):
+
+    def test_third_order(self):
+        enable_prim()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x2 = paddle.multiply(x, x)
+            x3 = paddle.multiply(x2, x)
+            x4 = paddle.multiply(x3, x)
+
+            grad1, = paddle.incubate.autograd.grad([x4], [x])
+            grad2, = paddle.incubate.autograd.grad([grad1], [x])
+            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+
+            prim2orig(main.block(0))
+
+        feed = {x.name: np.array([2.]).astype('float32')}
+        fetch_list = [grad3.name]
+        result = [np.array([48.])]
+
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup)
+        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+        np.allclose(outs, result)
+        disable_prim()
+
+    def test_fourth_order(self):
+        enable_prim()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x2 = paddle.multiply(x, x)
+            x3 = paddle.multiply(x2, x)
+            x4 = paddle.multiply(x3, x)
+            x5 = paddle.multiply(x4, x)
+            out = paddle.sqrt(x5 + x4)
+
+            grad1, = paddle.incubate.autograd.grad([out], [x])
+            grad2, = paddle.incubate.autograd.grad([grad1], [x])
+            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+            grad4, = paddle.incubate.autograd.grad([grad3], [x])
+
+            prim2orig(main.block(0))
+
+        feed = {
+            x.name: np.array([2.]).astype('float32'),
+        }
+        fetch_list = [grad4.name]
+        # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
+        result = [np.array([-0.27263762711])]
+
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup)
+        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+        np.allclose(outs, result)
+        disable_prim()
 
 
 if __name__ == '__main__':
