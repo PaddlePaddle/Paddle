@@ -428,6 +428,14 @@ class TensorRTEngine {
   Weight GetTrtWeight(const std::string& name,
                       const framework::Tensor& weight_tensor);
 
+  float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_[tensor];
+  }
+
+  bool DynamicRangeIsSet(nvinfer1::ITensor* tensor) {
+    return quant_dynamic_range_.count(tensor);
+  }
+
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
   // so we need to copy the weights from GPU to CPU in our op converter.
