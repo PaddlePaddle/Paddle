@@ -83,13 +83,13 @@ __global__ void search_kernel(Table* table,
   }
 }
 
-template <typename Table, typename FVAceessor>
+template <typename Table, typename FVAccessor>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals,
                                     size_t len,
                                     size_t pull_feature_value_size,
-                                    FVAceessor feature_value_accessor) {
+                                    FVAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   // return;
   if (i < len) {
@@ -99,7 +99,8 @@ __global__ void dy_mf_search_kernel(Table* table,
       uint64_t offset = i * pull_feature_value_size;
       float* cur = (float*)(vals + offset);
       float* input = it->second;
-      int mf_dim = int(input[feature_value_accessor.common_feature_value.MfDimIndex()]);
+      int mf_dim =
+          int(input[feature_value_accessor.common_feature_value.MfDimIndex()]);
 
       feature_value_accessor.FeatureValueFill(cur, input, mf_dim);
     }
@@ -200,17 +201,18 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
-template <typename StreamType>
+template <typename StreamType, typename FVAccessor>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
                                       char* d_vals,
                                       size_t len,
-                                      StreamType stream) {
+                                      StreamType stream,
+                                      FVAccessor& fv_accessor) {
   if (len == 0) {
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
   dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, d_keys, d_vals, len, pull_feature_value_size_, feature_value_accessor_);
+      container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
 }
 
 template <typename KeyType, typename ValType>
@@ -349,15 +351,19 @@ template class HashTable<long, long>;
 template class HashTable<long, unsigned long>;
 template class HashTable<long, unsigned int>;
 
-template void HashTable<unsigned long, float>::get<
-    cudaStream_t>(const unsigned long* d_keys,
-                  float* d_vals,
-                  size_t len,
-                  cudaStream_t stream);
+template void HashTable<unsigned long, float>::get<cudaStream_t>(
+    const unsigned long* d_keys,
+    float* d_vals,
+    size_t len,
+    cudaStream_t stream);
 
 template void
-HashTable<unsigned long, float*>::get<cudaStream_t>(
-    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t stream);
+HashTable<unsigned long, float*>::get<cudaStream_t, CommonFeatureValueAccessor>(
+    const unsigned long* d_keys,
+    char* d_vals,
+    size_t len,
+    cudaStream_t stream,
+    CommonFeatureValueAccessor& fv_accessor);
 
 template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys,
                                                       int* d_vals,
@@ -366,6 +372,13 @@ template void HashTable<long, int>::get<cudaStream_t>(const long* d_keys,
 
 template void HashTable<unsigned long, int>::get<cudaStream_t>(
     const unsigned long* d_keys, int* d_vals, size_t len, cudaStream_t stream);
+template void HashTable<unsigned long, unsigned long>::get<cudaStream_t>(
+    const unsigned long* d_keys,
+    unsigned long* d_vals,
+    size_t len,
+    cudaStream_t stream);
+template void HashTable<unsigned long, long>::get<cudaStream_t>(
+    const unsigned long* d_keys, long* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<long, unsigned long>::get<cudaStream_t>(
     const long* d_keys, unsigned long* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<long, long>::get<cudaStream_t>(const long* d_keys,
@@ -381,19 +394,19 @@ template void HashTable<unsigned long, long>::get<cudaStream_t>(
 //    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
 //    stream);
 
-template void HashTable<unsigned long, float>::insert<
-    cudaStream_t>(const unsigned long* d_keys,
-                  const float* d_vals,
-                  size_t len,
-                  cudaStream_t stream);
+template void HashTable<unsigned long, float>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    const float* d_vals,
+    size_t len,
+    cudaStream_t stream);
 
-template void HashTable<unsigned long, float*>::
-    insert<cudaStream_t>(const unsigned long* d_keys,
-                         size_t len,
-                         char* pool,
-                         size_t feature_value_size,
-                         size_t start_index,
-                         cudaStream_t stream);
+template void HashTable<unsigned long, float*>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    size_t len,
+    char* pool,
+    size_t feature_value_size,
+    size_t start_index,
+    cudaStream_t stream);
 
 template void HashTable<long, int>::insert<cudaStream_t>(const long* d_keys,
                                                          const int* d_vals,
@@ -427,19 +440,34 @@ template void HashTable<unsigned long, long>::insert<cudaStream_t>(
     size_t len,
     cudaStream_t stream);
 
-template void HashTable<unsigned long, float*>::
-    dump_to_cpu<cudaStream_t>(int devid, cudaStream_t stream);
+template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    const unsigned long* d_vals,
+    size_t len,
+    cudaStream_t stream);
+
+template void HashTable<unsigned long, float*>::dump_to_cpu<cudaStream_t>(
+    int devid, cudaStream_t stream);
 
 template void
-HashTable<unsigned long, float*>::update<SparseAdagradOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
-                  SparseAdagradOptimizer sgd,
-                  cudaStream_t stream);
+HashTable<unsigned long, float*>::update<SparseAdagradOptimizer, cudaStream_t>(
+    const unsigned long* d_keys,
+    const char* d_grads,
+    size_t len,
+    SparseAdagradOptimizer sgd,
+    cudaStream_t stream);
 template void
-HashTable<unsigned long, float*>::update<SparseAdamOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
-                  SparseAdamOptimizer sgd,
-                  cudaStream_t stream);
-template void
-HashTable<unsigned long, float*>::update<SparseAdamSharedOptimizer, cudaStream_t>(const unsigned long* d_keys, const char* d_grads, size_t len,
+HashTable<unsigned long, float*>::update<SparseAdamOptimizer, cudaStream_t>(
+    const unsigned long* d_keys,
+    const char* d_grads,
+    size_t len,
+    SparseAdamOptimizer sgd,
+    cudaStream_t stream);
+template void HashTable<unsigned long, float*>::update<
+    SparseAdamSharedOptimizer,
+    cudaStream_t>(const unsigned long* d_keys,
+                  const char* d_grads,
+                  size_t len,
                   SparseAdamSharedOptimizer sgd,
                   cudaStream_t stream);
 

@@ -128,26 +128,28 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals,
   }
 }
 
-template <typename KeyType, typename T, typename FVAceessor>
-__global__ void dy_mf_fill_shard_grads_kernel(KeyType* d_shard_keys,
-                                              KeyType* d_keys,
-                                              float* d_shard_grads,
-                                              float* d_grads,
-                                              T* idx,
-                                              size_t len,
-                                              size_t grad_value_size,
-                                              FVAceessor feature_value_accessor) {
+template <typename KeyType, typename T, typename FVAccessor>
+__global__ void dy_mf_fill_shard_grads_kernel(
+    KeyType* d_shard_keys,
+    KeyType* d_keys,
+    float* d_shard_grads,
+    float* d_grads,
+    T* idx,
+    size_t len,
+    size_t grad_value_size,
+    FVAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     d_shard_keys[i] = d_keys[idx[i]];
     float* cur = (float*)((char*)d_shard_grads + i * grad_value_size);
-    float* shard_val = (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
+    float* shard_val =
+        (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
 
     feature_value_accessor.PushValueFill(cur, shard_val);
   }
 }
 
-template <typename FVAceessor>
+template <typename FVAccessor>
 __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        const uint32_t* fea_num,
                                        const uint32_t* index,
@@ -156,38 +158,37 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
                                        int n,
                                        size_t grad_value_size,
                                        DynamicGradMerger& merger,
-                                       FVAceessor& feature_value_accessor) {
+                                       FVAccessor& feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     uint32_t start = offset[i];
     uint32_t num = fea_num[i];
     int ori_index = index[start];
     float* out = (float*)(output + i * grad_value_size);
-    float* in =
-        (float*)(input + size_t(ori_index) * grad_value_size);
+    float* in = (float*)(input + size_t(ori_index) * grad_value_size);
     merger_.update_one(out, in, feature_value_accessor);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      float& rhs =
-          *(float*)(input + size_t(ori_index) * grad_value_size);
+      float& rhs = *(float*)(input + size_t(ori_index) * grad_value_size);
       merger_.merge_one(out, rhs, feature_value_accessor);
     }
   }
 }
 
-template <typename T, typename FVAceessor>
+template <typename T, typename FVAccessor>
 __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals,
                                         float* d_vals,
                                         T* idx,
                                         size_t len,
                                         size_t val_size,
-                                        FVAceessor feature_value_accessor) {
+                                        FVAccessor feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     uint64_t new_offset = uint64_t(idx[i]) * val_size;
     float* cur = (float*)((char*)d_vals + new_offset);
     float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
-    int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
+    int mf_dim = int(
+        shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
 
     feature_value_accessor.FeatureValueFill(cur, shard_val, mf_dim);
   }
@@ -321,15 +322,20 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
                                                             debug_synchronous));
 }
 
-template <typename KeyType, typename T, typename StreamType>
-void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
-                                             KeyType* d_keys,
-                                             GradType* d_shard_grads,
-                                             GradType* d_grads,
-                                             T* idx,
-                                             long long len,
-                                             size_t grad_value_size,
-                                             const StreamType& stream) {
+template <typename KeyType,
+          typename T,
+          typename StreamType,
+          typename FVAccessor>
+void HeterCommKernel::dy_mf_fill_shard_grads(
+    KeyType* d_shard_keys,
+    KeyType* d_keys,
+    GradType* d_shard_grads,
+    GradType* d_grads,
+    T* idx,
+    long long len,
+    size_t grad_value_size,
+    const StreamType& stream,
+    CommonFeatureValueAccessor& feature_value_accessor) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
@@ -343,7 +349,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
       feature_value_accessor_);
 }
 
-template <typename StreamType>
+template <typename StreamType, typename FVAccessor>
 void HeterCommKernel::merge_gradient(const uint32_t* offset,
                                      const uint32_t* fea_num,
                                      const uint32_t* index,
@@ -352,23 +358,33 @@ void HeterCommKernel::merge_gradient(const uint32_t* offset,
                                      int n,
                                      size_t grad_value_size,
                                      DynamicGradMerger& merger_,
-                                     const StreamType& stream) {
+                                     const StreamType& stream,
+                                     FVAccessor& feature_value_accessor) {
   int grid_size = (n - 1) / block_size_ + 1;
   merge_gradients_kernel<<<grid_size, block_size_, 0, stream>>>(
-      offset, fea_num, index, input, output, n, grad_value_size, merger_, feature_value_accessor_);
+      offset,
+      fea_num,
+      index,
+      input,
+      output,
+      n,
+      grad_value_size,
+      merger_,
+      feature_value_accessor_);
 }
 
-template <typename T, typename StreamType>
+template <typename T, typename StreamType, typename FVAccessor>
 void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals,
                                        float* d_vals,
                                        T* idx,
                                        long long len,
                                        size_t val_size,
-                                       const StreamType& stream) {
+                                       const StreamType& stream,
+                                       FVAccessor& feature_value_accessor) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_vals, d_vals, idx, c_len, val_size, feature_value_accessor_);
+      d_shard_vals, d_vals, idx, c_len, val_size, feature_value_accessor);
 }
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
@@ -412,17 +428,15 @@ template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
     long long len,
     const cudaStream_t& stream);
 
-template void HeterCommKernel::fill_shard_grads<
-    unsigned long,
-    float, 
-    int,
-    cudaStream_t>(unsigned long* d_shard_keys,
-                  unsigned long* d_keys,
-                  float* d_shard_grads,
-                  float* d_grads,
-                  int* idx,
-                  long long len,
-                  const cudaStream_t& stream);
+template void
+HeterCommKernel::fill_shard_grads<unsigned long, float, int, cudaStream_t>(
+    unsigned long* d_shard_keys,
+    unsigned long* d_keys,
+    float* d_shard_grads,
+    float* d_grads,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
 
 template void
 HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
@@ -477,19 +491,23 @@ template void HeterCommKernel::reduce_by_key<
                   cudaStream_t stream,
                   bool debug_synchronous);
 
-template void HeterCommKernel::dy_mf_fill_shard_grads<
-    unsigned long,
-    int,
-    cudaStream_t>(unsigned long* d_shard_keys,
-                  unsigned long* d_keys,
-                  float* d_shard_grads,
-                  float* d_grads,
-                  int* idx,
-                  long long len,
-                  size_t grad_value_size,
-                  const cudaStream_t& stream);
+template void
+HeterCommKernel::dy_mf_fill_shard_grads<unsigned long,
+                                        int,
+                                        cudaStream_t,
+                                        CommonFeatureValueAccessor>(
+    unsigned long* d_shard_keys,
+    unsigned long* d_keys,
+    float* d_shard_grads,
+    float* d_grads,
+    int* idx,
+    long long len,
+    size_t grad_value_size,
+    const cudaStream_t& stream,
+    CommonFeatureValueAccessor& feature_value_accessor);
 
-template void HeterCommKernel::merge_gradient<cudaStream_t>(
+template void
+HeterCommKernel::merge_gradient<cudaStream_t, CommonFeatureValueAccessor>(
     const uint32_t* offset,
     const uint32_t* fea_num,
     const uint32_t* index,
@@ -498,16 +516,18 @@ template void HeterCommKernel::merge_gradient<cudaStream_t>(
     int n,
     size_t grad_value_size,
     DynamicGradMerger& merger_,
-    const cudaStream_t& stream);
+    const cudaStream_t& stream,
+    CommonFeatureValueAccessor& feature_value_accessor);
 
 template void HeterCommKernel::
-    dy_mf_fill_dvals<int, cudaStream_t>(
+    dy_mf_fill_dvals<int, cudaStream_t, CommonFeatureValueAccessor>(
         float* d_shard_vals,
         float* d_vals,
         int* idx,
         long long len,
         size_t val_size,
-        const cudaStream_t& stream);
+        const cudaStream_t& stream,
+        CommonFeatureValueAccessor& feature_value_accessor);
 #endif
 
 }  // namespace framework

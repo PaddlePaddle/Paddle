@@ -137,8 +137,12 @@ class HashTable {
            size_t len,
            StreamType stream);
 
-  template <typename StreamType>
-  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+  template <typename StreamType, typename FVAccessor>
+  void get(const KeyType* d_keys,
+           char* d_vals,
+           size_t len,
+           StreamType stream,
+           FVAccessor& fv_accessor);
 
   void show();
 
@@ -189,12 +193,12 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
-  void set_accessor(CommonFeatureValueAccessor& accessor) {
-   feature_value_accessor_ = accessor;
-  }
+  // void set_accessor(FVAccessor& accessor) {
+  //  feature_value_accessor_ = accessor;
+  // }
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
-  CommonFeatureValueAccessor feature_value_accessor_;
+  // FVAccessor feature_value_accessor_;
 
  private:
 #if defined(PADDLE_WITH_CUDA)

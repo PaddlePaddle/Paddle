@@ -46,11 +46,15 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
-template <typename KeyType, typename ValType, typename GradType>
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename FVAccessor>
 class HeterComm {
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
-  HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource, 
+  HeterComm(size_t capacity,
+            std::shared_ptr<HeterPsResource> resource,
             CommonFeatureValueAccessor& accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
@@ -67,11 +71,8 @@ class HeterComm {
                   GradType* d_grads,
                   size_t len,
                   int& uniq_len);  // NOLINT
-  void dynamic_merge_grad(int gpu_num,
-                          KeyType* d_keys,
-                          float* d_grads,
-                          size_t len,
-                          int& uniq_len);
+  void dynamic_merge_grad(
+      int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
@@ -152,8 +153,11 @@ class HeterComm {
     max_mf_dim_ = max_mf_dim;
   }
 
-  void set_accessor(CommonFeatureValueAccessor& accessor) {
-   feature_value_accessor_ = accessor;
+  void set_accessor(FVAccessor& accessor) {
+    feature_value_accessor_ = accessor;
+    //  for (auto& ptr_table: ptr_tables_) {
+    //    ptr_table->set_accessor(feature_value_accessor_);
+    //  }
   }
 #endif
 
@@ -288,8 +292,8 @@ class HeterComm {
                    char* src_val,
                    size_t val_size);
 
+  FVAccessor feature_value_accessor_;
 
-  CommonFeatureValueAccessor feature_value_accessor_;
  protected:
   using Table = HashTable<KeyType, ValType>;
   using PtrTable = HashTable<KeyType, float*>;

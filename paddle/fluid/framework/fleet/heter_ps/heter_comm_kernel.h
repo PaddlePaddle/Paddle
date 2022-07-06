@@ -41,15 +41,18 @@ struct DynamicGradMerger {
     return out;
   }
 
-  __device__ __forceinline__ void update_one(float* output, const float* input,
-                                            CommonFeatureValueAccessor& feature_value_accessor) {
+  __device__ __forceinline__ void update_one(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
     feature_value_accessor.PushValueFill(output, input);
   }
 
-  __device__ __forceinline__ void merge_one(float* output, const float* input,
-                                          CommonFeatureValueAccessor& feature_value_accessor) {
+  __device__ __forceinline__ void merge_one(
+      float* output,
+      const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
     feature_value_accessor.MergePushValue(output, input);
-  
   }
 };
 
@@ -58,7 +61,10 @@ class HeterCommKernel {
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
-  explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor& feature_value_accessor) : block_size_(block_size), feature_value_accessor_(feature_value_accessor) {}
+  // explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor&
+  // feature_value_accessor) : block_size_(block_size),
+  // feature_value_accessor_(feature_value_accessor) {}
+  // explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -139,7 +145,8 @@ class HeterCommKernel {
 
   template <typename KeyType,
             typename T,
-            typename StreamType>
+            typename StreamType,
+            typename FVAccessor>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                               KeyType* d_keys,
                               float* d_shard_grads,
@@ -147,9 +154,10 @@ class HeterCommKernel {
                               T* idx,
                               long long len,
                               size_t grad_value_size,
-                              const StreamType& stream);
+                              const StreamType& stream,
+                              FVAccessor& feature_value_accessor);
 
-  template <typename StreamType>
+  template <typename StreamType, typename FVAccessor>
   void merge_gradient(const uint32_t* offset,
                       const uint32_t* fea_num,
                       const uint32_t* index,
@@ -158,17 +166,19 @@ class HeterCommKernel {
                       int n,
                       size_t grad_value_size,
                       DynamicGradMerger& merger_,
-                      const StreamType& stream);
+                      const StreamType& stream,
+                      FVAccessor& feature_value_accessor);
 
-  template <typename T, typename StreamType>
+  template <typename T, typename StreamType, typename FVAccessor>
   void dy_mf_fill_dvals(float* d_shard_vals,
                         float* d_vals,
                         T* idx,
                         long long len,
                         size_t val_size,
-                        const StreamType& stream);
+                        const StreamType& stream,
+                        FVAccessor& feature_value_accessor);
 
-  CommonFeatureValueAccessor feature_value_accessor_;
+  // CommonFeatureValueAccessor feature_value_accessor_;
  private:
   int block_size_{256};
 };

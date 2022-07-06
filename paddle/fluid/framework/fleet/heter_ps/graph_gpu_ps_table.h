@@ -25,7 +25,8 @@
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
-class GpuPsGraphTable : public HeterComm<uint64_t, int64_t, int> {
+class GpuPsGraphTable
+    : public HeterComm<uint64_t, int64_t, int, CommonFeatureValueAccessor> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
       : HeterComm<uint64_t, int64_t, int>(1, resource) {
