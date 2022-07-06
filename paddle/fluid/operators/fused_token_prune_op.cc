@@ -26,7 +26,7 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Attn",
              "(Tensor)"
              "The input of fused_token_prune op, whose shape should be [bsz, "
-             "12, max_seq_len, max_seq_len] and dtype should be "
+             "num_head, max_seq_len, max_seq_len] and dtype should be "
              "float32/float64,"
              "Attn is attention scores of input sequences which will be used "
              "to sort another input tensor: X's indices so that "
@@ -36,12 +36,12 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(Tensor)"
              "The input of fused_token_prune op, whose shape should be [bsz, "
-             "max_seq_len, 768] and dtype should be float32/float64.");
+             "max_seq_len, c] and dtype should be float32/float64.");
 
     AddInput(
         "Mask",
         "(Tensor)"
-        "The input of fused_token_prune op, whose shape should be [bsz, 12, "
+        "The input of fused_token_prune op, whose shape should be [bsz, num_head, "
         "max_seq_len, max_seq_len] and dtype should be float32/float64."
         "Mask is corresponding to Attn's elemnts one by one. Elements of Attn "
         "will be set to zero if their corresponding mask is smaller than 0."
@@ -50,7 +50,7 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("NewMask",
              "(Tensor)"
              "The input of fused_token_prune op, whose shape should be [bsz, "
-             "12, slimmed_seq_len, slimmed_seq_len]."
+             "num_head, slimmed_seq_len, slimmed_seq_len]."
              "NewMask is just used to get slimmed_seq_len, so the value of "
              "this input is not important in this op.");
 
@@ -63,6 +63,21 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
         "last (max_seq_len - slimmed_seq_len)"
         "lines will be pruned. SlimmedX is the remainning part of sorted X. "
         "");
+
+    AddOutput(
+        "CLSInds",
+        "(Tensor)"
+        "The output of fused_token_prune op, whose shape should be  [bsz, "
+        "slimmed_seq_len]."
+        "");
+    
+    AddAttr<bool>("keep_first_token",
+                   "")
+        .SetDefault(true);
+
+    AddAttr<bool>("keep_order",
+                   "")
+        .SetDefault(false);
 
     AddComment(R"DOC(
         fused_token_prune op is used to optimize inference performance of ernie model.
@@ -85,6 +100,8 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("NewMask"), "Input", "NewMask",
                    "FusedTokenPrune");
     OP_INOUT_CHECK(ctx->HasOutput("SlimmedX"), "Output", "SlimmedX",
+                   "FusedTokenPrune");
+    OP_INOUT_CHECK(ctx->HasOutput("CLSInds"), "Output", "CLSInds",
                    "FusedTokenPrune");
 
     auto mask_dim = ctx->GetInputDim("Mask");
@@ -142,6 +159,7 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
     auto slim_seq_len = new_mask_dim[2];
 
     ctx->SetOutputDim("SlimmedX", {bsz, slim_seq_len, c});
+    ctx->SetOutputDim("CLSInds", {bsz, slim_seq_len});
   }
 };
 

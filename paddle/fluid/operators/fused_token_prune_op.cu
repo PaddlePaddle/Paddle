@@ -38,13 +38,30 @@ __global__ void FillIndex(int* indices, int num_raws, int num_cols) {
 }
 
 template <typename T>
-__global__ void SlicedArgsort(T* data, int* indices, int num_raws,
+__global__ void Argsort(T* data, int* indices, int num_raws,
+                              int num_cols) {
+  auto raw = blockIdx.x * blockDim.x + threadIdx.x;
+  if (raw >= num_raws) return;
+  thrust::sort_by_key(thrust::seq, data + raw * num_cols,
+                      data + (raw + 1) * num_cols, indices + raw * num_cols,
+                      thrust::greater<T>());
+}
+
+template <typename T>
+__global__ void ArgsortKeepFirst(T* data, int* indices, int num_raws,
                               int num_cols) {
   auto raw = blockIdx.x * blockDim.x + threadIdx.x;
   if (raw >= num_raws) return;
   thrust::sort_by_key(thrust::seq, data + raw * num_cols + 1,
                       data + (raw + 1) * num_cols, indices + raw * num_cols + 1,
                       thrust::greater<T>());
+}
+
+__global__ void Sort(int* indices, int num_raws, int num_cols) {
+  auto raw = blockIdx.x * blockDim.x + threadIdx.x;
+  if (raw >= num_raws) return;
+  thrust::sort(thrust::seq, indices + raw * num_cols,
+    indices + (raw + 1) * num_cols);
 }
 
 template <typename T>
@@ -66,11 +83,19 @@ template <typename T>
 class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    //Inouts
     const Tensor* attn = context.Input<Tensor>("Attn");
     const Tensor* x = context.Input<Tensor>("X");
     const Tensor* mask = context.Input<Tensor>("Mask");
     const Tensor* new_mask = context.Input<Tensor>("NewMask");
     Tensor* out_slimmed_x = context.Output<Tensor>("SlimmedX");
+    Tensor* slimmed_indices = context.Output<Tensor>("CLSInds");
+
+
+    //Attr
+    const bool keep_first_token = context.Attr<bool>("keep_first_token");
+    const bool keep_order = context.Attr<bool>("keep_order");
+
     auto* out_slimmed_x_data =
         out_slimmed_x->mutable_data<T>(context.GetPlace());
 
@@ -100,26 +125,39 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     auto* attn_accu_indices_data =
         attn_accu_indices.mutable_data<int>(context.GetPlace());
 
-    int grid_size = attn_dims[0], block_size = ComputeBlockSize(attn_dims[3]);
+    int grid_size = attn_dims[0], block_size = ComputeBlockSize(attn_dims[3]); //TODO: N matbe larger than 1024
     FillIndex<<<grid_size, block_size, 0,
                 context.cuda_device_context().stream()>>>(
         attn_accu_indices_data, attn_dims[0], attn_dims[3]);
 
-    SlicedArgsort<
+    if (keep_first_token) {
+      ArgsortKeepFirst<
         T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
-        attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+              attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+    } else {
+      Argsort<
+        T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
+              attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+    }
 
     auto new_mask_dims = new_mask->dims();
     int slimmed_x_len = new_mask_dims[2];
-    Tensor slimmed_indices =
+    auto slimmed_indices_tmp =
         phi::funcs::Slice<int>(context.cuda_device_context(), attn_accu_indices,
-                               {1}, {0}, {slimmed_x_len});
+                               {1} /*axes*/, {0}/*starts*/, {slimmed_x_len}/*ends*/);
 
+    framework::TensorCopy(slimmed_indices_tmp, context.GetPlace(), slimmed_indices);
+    
+    if (keep_order) {
+      Sort<<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
+        slimmed_indices->data<int>(), attn_dims[0], slimmed_x_len);
+    }
+    
     auto x_dims = x->dims();
     block_size = ComputeBlockSize(slimmed_x_len);
     TakeAlongAxis<T><<<grid_size, block_size, 0,
                        context.cuda_device_context().stream()>>>(
-        x->data<T>(), out_slimmed_x_data, slimmed_indices.data<int>(),
+        x->data<T>(), out_slimmed_x_data, slimmed_indices->data<int>(),
         attn_dims[0], attn_dims[3], slimmed_x_len, x_dims[2]);
   }
 };
