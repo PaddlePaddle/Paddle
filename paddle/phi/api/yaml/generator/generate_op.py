@@ -76,6 +76,8 @@ def main(api_yaml_path, backward_yaml_path, api_compat_yaml_path,
         api_args_map = yaml.safe_load(f)
     # replace args name for OpMaker
     for api_args in api_args_map:
+        if api_args['api'] not in forward_api_dict:
+            continue
         forward_api_item = forward_api_dict[api_args['api']]
         has_backward = True if forward_api_item['backward'] else False
         if has_backward:
