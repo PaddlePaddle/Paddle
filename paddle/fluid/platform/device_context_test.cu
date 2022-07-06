@@ -16,7 +16,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, Init) {
@@ -111,20 +110,4 @@ TEST(Device, DeviceContextPool) {
     auto dev_ctx = pool.Get(CUDAPlace(i));
     ASSERT_NE(dev_ctx, nullptr);
   }
-}
-
-TEST(Device, DeviceContextWithCUDAGraph) {
-  using paddle::platform::CPUPlace;
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::CUDAPlace;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::Place;
-
-  DeviceContextPool& pool = DeviceContextPool::Instance();
-  Place place = CUDAPlace(0);
-  auto dev_ctx = pool.Get(place);
-
-  paddle::platform::BeginCUDAGraphCapture(place, 1, 0);
-  CUDADeviceContext other_ctx(dev_ctx);
-  paddle.platform::EndCUDAGraphCapture();
 }

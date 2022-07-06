@@ -14,8 +14,6 @@
 
 #include "paddle/phi/core/device_context.h"
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
