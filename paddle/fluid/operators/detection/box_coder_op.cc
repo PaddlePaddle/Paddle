@@ -251,7 +251,6 @@ REGISTER_OPERATOR(
     ops::BoxCoderOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    box_coder,
-    ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(box_coder,
+                       ops::BoxCoderKernel<phi::CPUContext, float>,
+                       ops::BoxCoderKernel<phi::CPUContext, double>);

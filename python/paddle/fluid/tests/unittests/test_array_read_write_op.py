@@ -44,15 +44,15 @@ def _test_read_write(x):
     i = layers.increment(x=i)
     a2 = layers.array_read(array=arr, i=i)
 
-    mean_a0 = layers.mean(a0)
-    mean_a1 = layers.mean(a1)
-    mean_a2 = layers.mean(a2)
+    mean_a0 = paddle.mean(a0)
+    mean_a1 = paddle.mean(a1)
+    mean_a2 = paddle.mean(a2)
 
     a_sum = layers.sums(input=[mean_a0, mean_a1, mean_a2])
 
-    mean_x0 = layers.mean(x[0])
-    mean_x1 = layers.mean(x[1])
-    mean_x2 = layers.mean(x[2])
+    mean_x0 = paddle.mean(x[0])
+    mean_x1 = paddle.mean(x[1])
+    mean_x2 = paddle.mean(x[2])
 
     x_sum = layers.sums(input=[mean_x0, mean_x1, mean_x2])
 

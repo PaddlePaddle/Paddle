@@ -30,12 +30,18 @@ import numpy as np
 import paddle
 from paddle.fluid import unique_name
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid import core
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import assign
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'
 DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
+GET_ARGS_FUNC_PREFIX = 'get_args'
+SET_ARGS_FUNC_PREFIX = 'set_args'
+ARGS_NAME = '__args'
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -87,6 +93,69 @@ FullArgSpec = collections.namedtuple('FullArgSpec', [
 ])
 
 
+def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
+    """
+    This function creates a Tensor on the global block. The created Tensor
+    doesn't check the dtype and the shape of feed data because dygraph input
+    data can be various-length. This API is used in translating dygraph into
+    static graph.
+
+     Note: 
+        The default :code:`stop_gradient` attribute of the Tensor created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Tensor. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
+
+    Args:
+       name (str): The name/alias of the Tensor, see :ref:`api_guide_Name`
+           for more details.
+       shape (list|tuple): List|Tuple of integers declaring the shape. You can
+           set "None" at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as "None" 
+       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+           uint8. Default: float32
+       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+
+    Returns:
+        Tensor: The global Tensor that gives access to the data.
+    """
+    helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in six.moves.range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
+    return helper.create_global_variable(name=name,
+                                         shape=shape,
+                                         dtype=dtype,
+                                         type=core.VarDesc.VarType.LOD_TENSOR,
+                                         stop_gradient=True,
+                                         lod_level=lod_level,
+                                         is_data=True,
+                                         need_check_feed=False)
+
+
+def create_undefined_var_like(variable):
+    """ create a undefined var with the same shape and dtype like varaible.
+    """
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+    var = data_layer_not_check(unique_name.generate("undefined_var"),
+                               variable.shape, variable.dtype)
+    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    return var
+
+
+def create_undefined_variable():
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+    var = data_layer_not_check(unique_name.generate("undefined_var"), [1],
+                               "float64")
+    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    return var
+
+
 class UndefinedVar:
 
     def __init__(self, name):
@@ -95,6 +164,12 @@ class UndefinedVar:
     def check(self):
         raise UnboundLocalError(
             "local variable '{}' should be created before using it.")
+
+
+class Dygraph2StaticException(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
 
 
 def saw(x):
@@ -412,10 +487,16 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
         raise TypeError(
             'name_ids must be list or tuple or set, but received %s' %
             type(type(name_ids)))
-    gast_names = [
-        gast.Name(id=name_id, ctx=ctx, annotation=None, type_comment=None)
-        for name_id in name_ids
-    ]
+
+    def create_node_for_name(name):
+        if '.' not in name:
+            return gast.Name(id=name,
+                             ctx=ctx,
+                             annotation=None,
+                             type_comment=None)
+        return gast.parse(name).body[0].value
+
+    gast_names = [create_node_for_name(name_id) for name_id in name_ids]
     if len(gast_names) == 1 and not gen_tuple_if_single:
         name_node = gast_names[0]
     else:
@@ -588,7 +669,12 @@ def ast_to_source_code(ast_node):
             type(ast_node))
     if isinstance(ast_node, gast.AST):
         ast_node = gast.gast_to_ast(ast_node)
-    source_code = astor.to_source(ast_node)
+
+    # Do not wrap lines even if they are too long
+    def pretty_source(source):
+        return ''.join(source)
+
+    source_code = astor.to_source(ast_node, pretty_source=pretty_source)
     return source_code
 
 
@@ -840,6 +926,16 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
     def visit_Name(self, node):
         if node.id == self.target_name:
             return self.replace_node
+        return node
+
+    def visit_Nonlocal(self, node):
+        names = node.names
+
+        def replace(s):
+            if s == self.target_name: return self.replace_node.id
+            return s
+
+        node.names = list(map(replace, names))
         return node
 
 
@@ -1178,7 +1274,7 @@ class ForNodeVisitor(object):
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = _jst.convert_len({})'.format(
+        convert_len_node_source_str = '{} = _jst.Len({})'.format(
             self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
@@ -1527,3 +1623,299 @@ def slice_is_num(slice_node):
         return True
 
     return False
+
+
+class NameScope:
+
+    def __init__(self):
+        """ 
+            A NameScope is a object which manager all the variable names. 
+            only FunctionDef and Controlflow node will have a namescope property.
+
+            type can be "function" and "controlflow"
+
+            we don't analyze the read only variable because they don't affect the analysis.
+        """
+        self.globals = set()
+        self.nonlocals = set()
+        self.args = set()
+        self.father = None  # point to the nearest function name scope.
+        self.w_vars = set()  # all qualified + normal names been stored
+        self.created = set(
+        )  # useful for control flow compatibility. may be remove later
+
+    def set_father(self, father):
+        self.father = father
+
+    def existed_vars(self):
+        """ vars existing in current scope. 
+            they must not contain qualified names.
+        """
+        local_vars = self.w_vars - self.globals - self.nonlocals - self.args
+        return set(filter(lambda x: '.' not in x, local_vars))
+
+    def created_vars(self):
+        return self.created
+
+    def modified_vars(self):
+        # may be globals / non-locals / args / qualified names and created_vars
+        return self.w_vars
+
+    def control_flow_vars(self):
+        valid_names = self.w_vars
+        tmp = self.father.global_vars & valid_names,
+        return {"global": tmp, "nonlocal": self.w_vars - tmp}
+
+    def global_vars(self):
+        return self.globals
+
+    def merge_from(self, name_scope):
+        self.globals |= name_scope.globals
+        self.nonlocals |= name_scope.nonlocals
+        self.args |= name_scope.args
+        self.w_vars |= name_scope.w_vars
+
+
+class FunctionNameLivenessAnalysis(gast.NodeVisitor):
+    """ analyze the liveness of a function.
+
+        every variables stored in this scope will be collected,
+        in addition with global/nonlocal information.
+
+        1. global variable is stored in node.var_globals.
+        2. nonlocal variable is stored in node.var_nonlocals.
+        3. arguments is stored in node.var_args.
+
+        For example:
+
+        def func(*args, **kargs):
+            a = 12
+            global i,j
+            nonlocal x,y
+            print(a)
+            i = k
+            for m in range(10):
+                q = 12
+        
+        After this visitor we have: 
+        # node is the FunctionDef node with name: "func"
+        node.pd_scope = NameScope(
+            globals = ['i', 'j'],
+            nonlocals = ['x', 'y'],
+            args = ['args', 'kargs'], 
+            wr_vars = ['a', 'i', 'q', 'm']
+        )
+    """
+
+    def __init__(self, root_node):
+        self.scope_node_stack = []  # controlflow, functiondef node
+        self.visit(root_node)
+
+    def _reset_name_scope(self, node):
+        # always reset the node as empty namescope.
+        setattr(node, "pd_scope", NameScope())
+
+    def _get_name_scope(self, node):
+        if not hasattr(node, "pd_scope"):
+            setattr(node, "pd_scope", NameScope())
+        return node.pd_scope
+
+    def _current_name_scope(self):
+        return self._get_name_scope(self.scope_node_stack[-1])
+
+    def _father_name_scope(self):
+        if len(self.scope_node_stack) == 1: return None
+        return self._get_name_scope(self.scope_node_stack[-2])
+
+    def _nearest_function_scope(self):
+        if len(self.scope_node_stack) == 1: return None
+        for node in self.scope_node_stack[-2::-1]:
+            if isinstance(node, gast.FunctionDef):
+                return self._get_name_scope(node)
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            self._current_name_scope().w_vars.add(node.id)
+
+    def visit_FunctionDef(self, node):
+
+        def pre_func():
+            self._current_name_scope().args |= set(
+                self._get_argument_names(node))
+
+        def post_func():
+            """ NOTE: why we need merge w_vars here ? 
+                because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
+            """
+            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
+            from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
+            control_flow_function_def = [
+                WHILE_BODY_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX,
+                FOR_BODY_PREFIX, TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
+            ]
+
+            def is_control_flow_def_node():
+                for prefix in control_flow_function_def:
+                    if node.name.startswith(prefix): return True
+                return False
+
+            if self._father_name_scope() and is_control_flow_def_node():
+                self._father_name_scope().w_vars |= self._current_name_scope(
+                ).w_vars
+
+        self._visit_scope_node(node, pre_func, post_func)
+
+    def _visit_scope_node(self, node, pre_func, post_func):
+        """ scope node main visit logic.
+            pre_func and post_func is callbacks
+        """
+        self._reset_name_scope(node)
+        self.scope_node_stack.append(node)
+        self._current_name_scope().father = self._nearest_function_scope()
+        if pre_func: pre_func()
+        self.generic_visit(node)
+        if post_func: post_func()
+        self.scope_node_stack.pop()
+
+    def _visit_controlflow_node(self, node):
+
+        def post_func():
+            self._father_name_scope().merge_from(self._current_name_scope())
+            self._current_name_scope().created = self._nearest_function_scope(
+            ).existed_vars() - node.before_created
+
+        def pre_func():
+            setattr(node, "before_created",
+                    self._nearest_function_scope().existed_vars())
+
+        self._visit_scope_node(node, pre_func, post_func)
+
+    def visit_For(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_While(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_If(self, node):
+        self._visit_controlflow_node(node)
+
+    def visit_Global(self, node):
+        self._current_name_scope().globals |= set(node.names)
+
+    def visit_Nonlocal(self, node):
+        self._current_name_scope().nonlocals |= set(node.names)
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            name = ast_to_source_code(node).strip()
+            self._current_name_scope().w_vars.add(name)
+
+    def _get_argument_names(self, node):
+        """ get all arguments name in the functiondef node.
+            this node is local to the function and shouldn't 
+            be created.
+        """
+        assert isinstance(
+            node, gast.FunctionDef), "Input node is not function define node"
+        names = [a for a in node.args.args]
+        names.append(node.args.vararg)
+        names.append(node.args.kwarg)
+        names = [i.id for i in names if i is not None]
+        return names
+
+
+def create_get_args_node(names):
+    """
+    Create get_args function as follows:
+
+        def get_args_0():
+            nonlocal x, y
+            return x, y
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}():
+            return
+        """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return empty_node()
+    if not nonlocal_names:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+    template = """
+    def {func_name}():
+        {nonlocal_vars}
+        return {vars},
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
+        nonlocal_vars=nonlocal_vars,
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_set_args_node(names):
+    """
+    Create set_args function as follows:
+
+        def set_args_0(__args):
+            nonlocal x, y
+            x, y = __args
+    """
+
+    def empty_node():
+        func_def = """
+        def {func_name}({args}):
+            pass
+        """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+                   args=ARGS_NAME)
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    mapped = list(filter(lambda n: '.' not in n, names))
+    nonlocal_names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return empty_node()
+    if not nonlocal_names:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+    template = """
+    def {func_name}({args}):
+        {nonlocal_vars}
+        {vars}, = {args}
+    """
+    func_def = template.format(
+        func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
+        args=ARGS_NAME,
+        nonlocal_vars=nonlocal_vars,
+        vars=",".join(names))
+    return gast.parse(textwrap.dedent(func_def)).body[0]
+
+
+def create_nonlocal_stmt_nodes(names):
+    assert isinstance(names, (list, tuple))
+
+    mapped = list(filter(lambda n: '.' not in n, names))
+    names = sorted(
+        mapped,
+        key=mapped.index)  # to keep the order, we can't use set() to unique
+    if not names:
+        return []
+    func_code = "nonlocal {}".format(','.join(names))
+    return [gast.parse(func_code).body[0]]

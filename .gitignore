@@ -5,6 +5,7 @@ paddle/fluid/API_PR.spec
 paddle/fluid/eager/api/generated/*
 paddle/fluid/op_use_default_grad_maker_DEV.spec
 paddle/fluid/op_use_default_grad_maker_PR.spec
+paddle/fluid/operators/ops_extra_info.h
 paddle/phi/api/backward/backward_api.h
 paddle/phi/api/backward/sparse_bw_api.h
 paddle/phi/api/include/api.h
@@ -70,4 +71,4 @@ paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h
 # these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op.cc
 paddle/phi/ops/compat/generated_sig.cc
-python/paddle/utils/code_gen/parsed_apis/
+paddle/phi/api/yaml/parsed_apis/

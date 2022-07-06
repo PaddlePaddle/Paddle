@@ -35,7 +35,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/platform/variant.h"
+
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -327,6 +328,9 @@ struct Argument {
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
   DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
+
+  // mixed precision related
+  DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;
