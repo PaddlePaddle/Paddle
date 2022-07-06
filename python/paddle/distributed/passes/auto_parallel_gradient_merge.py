@@ -21,18 +21,11 @@ from paddle.framework import core
 from paddle.fluid import layers
 from paddle.fluid.framework import program_guard, device_guard
 from .pass_base import PassBase, PassType, register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from paddle.distributed.auto_parallel.utils import set_var_dist_attr, is_optimize_op, OpRole, OP_ROLE_KEY
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 
 world_process_group = get_world_process_group()
-
-
-def _is_the_optimizer_op(op):
-    OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    return OP_ROLE_KEY in op.attr_names and \
-            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
 
 def _remove_and_get_optimizer_op(main_program, dist_context):
@@ -43,9 +36,8 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
     temp_block = main_program._create_block()
     removed_op_idx = []
     optimize_ops_desc = []
-    skip_ops = ["increment", "elementwise_mod", "equal"]
     for idx, op in enumerate(main_block.ops):
-        if _is_the_optimizer_op(op) and op.type not in skip_ops:
+        if is_optimize_op(op):
             # append optimizer op to tmp block
             new_op_desc = temp_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
@@ -57,7 +49,8 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
                 dist_context.del_dist_op_for_program(op)
 
     for idx in removed_op_idx[::-1]:
-        main_block._remove_op(idx)
+        main_block._remove_op(idx, sync=False)
+    main_block._sync_with_cpp()
 
     return optimize_ops_desc
 
@@ -109,7 +102,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                             outputs={'Out': [step_var]},
                                             attrs={
                                                 'step': float(1.0),
-                                                'op_role': OpRole.Optimize
+                                                OP_ROLE_KEY: OpRole.Backward
                                             })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             increment_op, world_process_group.ranks, [-1], dist_context)
@@ -123,7 +116,8 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                                   attrs={
                                                       'axis': -1,
                                                       'use_mkldnn': False,
-                                                      'op_role': OpRole.Optimize
+                                                      OP_ROLE_KEY:
+                                                      OpRole.Backward
                                                   })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             elementwise_mod_op, world_process_group.ranks, [-1], dist_context)
@@ -134,7 +128,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                             'Y': zero_var
                                         },
                                         outputs={'Out': cond_var},
-                                        attrs={'op_role': OpRole.Optimize})
+                                        attrs={OP_ROLE_KEY: OpRole.Backward})
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             equal_op, world_process_group.ranks, [-1], dist_context)
 
@@ -143,7 +137,6 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
 
 def _append_gradient_merge_backward_op(
         main_program, startup_program, params_grads: List[Tuple[Any, Any]],
-        cond_var_name: str,
         dist_context) -> Tuple[List[Tuple[Any, Any]], Dict[str, Any]]:
     main_block = main_program.global_block()
     startup_block = startup_program.global_block()
@@ -201,7 +194,7 @@ def _append_gradient_merge_backward_op(
                                            attrs={
                                                'axis': -1,
                                                'use_mkldnn': False,
-                                               'op_role': OpRole.Optimize
+                                               'op_role': OpRole.Backward
                                            })
         new_params_to_grads.append([param, gradient_merge_var])
         grad_to_gradient_merge[grad.name] = gradient_merge_var.name
@@ -233,8 +226,7 @@ def _create_cond_block_and_update_optimizer(
                                         'bias': 0.0,
                                         'bias_after_scale': False
                                     })
-                new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
-                                      OpRole.Optimize)
+                new_grad.op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
         # append optimizer ops
         for op_desc in optimize_ops_desc:
@@ -277,24 +269,23 @@ def _create_cond_block_and_update_optimizer(
 
     layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
     cond_op = main_program.global_block().ops[-1]
-    cond_op._set_attr('op_role', OpRole.Optimize)
+    cond_op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
 
 def parse_program(main_program, startup_program, params_grads, k_steps, avg,
                   dist_context):
-    # 1 create gradient_merge_cond
-    cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
-
-    # 2 remove optimizer_op from main_program
+    # 1 remove optimizer_op from main_program
     optimize_ops_desc = _remove_and_get_optimizer_op(main_program, dist_context)
 
     # back to block 0
     main_program._rollback()
 
-    # 3 append gradient merge backward op to main_program
+    # 2 append gradient merge backward op to main_program
     new_params_to_grads, grad_to_gradient_merge = _append_gradient_merge_backward_op(
-        main_program, startup_program, params_grads, cond_var.name,
-        dist_context)
+        main_program, startup_program, params_grads, dist_context)
+
+    # 3 create gradient_merge_cond
+    cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
 
     # 4 create ConditionalBlock and append gradient merge optimizer ops
     _create_cond_block_and_update_optimizer(main_program, cond_var,
