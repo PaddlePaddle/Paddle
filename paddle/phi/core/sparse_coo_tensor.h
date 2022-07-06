@@ -156,6 +156,7 @@ class SparseCooTensor : public TensorBase,
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+  /// \brief query table according to key
   const std::pair<DenseTensor, std::vector<int>>* table(
       const std::string& key) const {
     const auto& iter = table_ptr_->find(key);
@@ -164,7 +165,8 @@ class SparseCooTensor : public TensorBase,
     }
     return &iter->second;
   }
-  // DenseTensor* mutable_rulebook() { return &rulebook_; }
+
+  /// \brief set table according to key
   void SetTable(const std::string& key,
                 const std::pair<DenseTensor, std::vector<int>>& table) {
     auto ret = table_ptr_->insert({key, table});
@@ -173,20 +175,20 @@ class SparseCooTensor : public TensorBase,
     }
   }
 
+  /// \brief get table_ptr_
   const std::shared_ptr<
       std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
   GetTablePtr() const {
     return table_ptr_;
   }
+
+  /// \brief set table_ptr_
   void SetTablePtr(
       const std::shared_ptr<
           std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
           table_ptr) {
     table_ptr_ = table_ptr;
   }
-
-  // const bool subm() const { return subm_; }
-  // void SetSubm(const bool subm) { subm_ = subm; }
 
  private:
   // save the indices of non zero elements in original dense tensor
@@ -198,11 +200,15 @@ class SparseCooTensor : public TensorBase,
   // save the number of non zero elements in each batch
   DDim dims_;
 
-  // for sparse conv
+  // for submanifold conv
+  // SubmConv will generate a rulebook and a counter, which can be
+  // reused by different SubmConv.
+  // refer to sparse/gpu/convolution_kernel.cu
   std::shared_ptr<
       std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>
       table_ptr_ = std::make_shared<
           std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>();
+
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */

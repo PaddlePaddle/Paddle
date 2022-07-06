@@ -71,11 +71,7 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemcpyAsync(sparse_offsets.data<int64_t>(),
                                      &h_sparse_offsets[0],
                                      sizeof(int64_t) * sparse_dim,
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyHostToDevice,
-#else
-                                     cudaMemcpyHostToDevice,
-#endif
+                                     gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
 
   DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
@@ -119,29 +115,6 @@ void SparseMaskKernel(const Context& dev_ctx,
       mask.non_zero_indices().dtype(), "SparseMaskGPUKernel", ([&] {
         SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
-}
-
-template <typename T, typename IntT, int VecSize>
-__global__ void SparseMaskCopyKernel(const IntT* x_indexs,
-                                     const IntT* mask_indexs,
-                                     const IntT* bound_out,
-                                     const T* x_values,
-                                     const int64_t n,
-                                     const int64_t stride,
-                                     T* out_values) {
-  CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
-    using LoadT = phi::AlignedVector<T, VecSize>;
-    using StoreT = phi::AlignedVector<T, VecSize>;
-    const IntT j = bound_out[i];
-    if (j >= 0 && j < n && mask_indexs[i] == x_indexs[j]) {
-      for (int k = 0; k < stride / VecSize; k++) {
-        // out_values[i * stride + k] = x_values[j * stride + k];
-        LoadT vec_x;
-        phi::Load<T, VecSize>(x_values + j * stride + k * VecSize, &vec_x);
-        phi::Store<T, VecSize>(vec_x, out_values + i * stride + k * VecSize);
-      }
-    }
-  }
 }
 
 template <typename IntT>
@@ -214,11 +187,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
                                      sparse_offsets.data(),
                                      sizeof(IntT) * sparse_dim,
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyHostToDevice,
-#else
-                                     cudaMemcpyHostToDevice,
-#endif
+                                     gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
 
   // 3. flatten x indices and mask indices
@@ -252,7 +221,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
     table_size *= x_dims[i];
   }
   DenseTensor table = phi::Empty<int>(dev_ctx, {table_size});
-  cudaMemsetAsync(
+  phi::backends::gpu::GpuMemsetAsync(
       table.data<int>(), 0, table_size * sizeof(int), dev_ctx.stream());
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.non_zero_elements().dims()[1];
@@ -308,7 +277,7 @@ void SparseMaskHelperKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_mask,
+PD_REGISTER_KERNEL(mask,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseMaskKernel,
@@ -323,7 +292,7 @@ PD_REGISTER_KERNEL(sparse_mask,
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(sparse_mask_helper,
+PD_REGISTER_KERNEL(mask_helper,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseMaskHelperKernel,

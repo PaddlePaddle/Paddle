@@ -121,7 +121,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             strides,
                                             1,
                                             subm,
-                                            "Conv3d_0",
+                                            "Conv3d",
                                             &rulebook,
                                             &counter);
 
@@ -152,7 +152,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                 strides,
                                 1,
                                 subm,
-                                "Conv3d_0");
+                                "Conv3d");
       f_verify(std::get<0>(grads).non_zero_elements().data<T>(), features_grad);
       f_verify(std::get<1>(grads).data<T>(), kernel_grad);
     }
@@ -209,7 +209,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             strides,
                                             1,
                                             subm,
-                                            "Conv3d_0",
+                                            "Conv3d",
                                             &d_rulebook,
                                             &d_counter);
   SparseCooTensor tmp_d_out = sparse::Coalesced<T>(dev_ctx_gpu, d_out);
@@ -258,7 +258,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                               strides,
                               1,
                               subm,
-                              "Conv3d_0");
+                              "Conv3d");
     DenseTensor d_features_grad = std::get<0>(grads).non_zero_elements();
     DenseTensor d_kernel_grad = std::get<1>(grads);
     DenseTensor h_features_grad =

@@ -562,11 +562,8 @@ int ProductRuleBook(const Context& dev_ctx,
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices =
         phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    DenseTensor out_values =
-        phi::Empty(dev_ctx,
-                   DenseTensorMeta(x.dtype(),
-                                   {x.nnz(), kernel_sizes[4]},
-                                   x.non_zero_elements().layout()));
+    DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[4]});
+
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
 
@@ -609,7 +606,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                           rulebook_ptr,
                                                           counter_ptr);
 
-    out->SetMember(out_indices, out_values, out_dims, true);
+    out->SetMember(out_indices, out_values, out_dims, false);
 
     thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
                            counter_ptr,
@@ -731,13 +728,11 @@ int ProductRuleBook(const Context& dev_ctx,
     dev_ctx.Wait();
 
     const int64_t sparse_dim = 4;
-    DenseTensorMeta indices_meta(
-        indices_dtype, {sparse_dim, out_nnz}, DataLayout::NCHW);
-    DenseTensorMeta values_meta(
-        x.dtype(), {out_nnz, kernel_sizes[4]}, x.non_zero_elements().layout());
-    phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
-    phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
-    out->SetMember(out_indices, out_values, out_dims, true);
+    phi::DenseTensor out_indices =
+        phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
+    phi::DenseTensor out_values =
+        phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[4]});
+    out->SetMember(out_indices, out_values, out_dims, false);
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
@@ -754,7 +749,6 @@ int ProductRuleBook(const Context& dev_ctx,
     unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
     int* unique_value_ptr = unique_value->data<int>();
 
-    // return rulebook_len;
     GroupIndexs<<<config.block_per_grid,
                   config.thread_per_block,
                   0,

@@ -70,18 +70,13 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  DenseTensorMeta counter_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensorMeta offsets_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
-  DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
-  DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
-  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
-  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
+  DenseTensor out_index;
+  DenseTensor unique_value;
 
   VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
-  int n = 0;
+  int rulebook_len = 0;
   const IntT* rulebook_ptr = nullptr;
   bool need_product_rulebook = true;
   if (subm && !key.empty()) {
@@ -93,7 +88,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
       memcpy(h_counter.data(), table->second.data(), kernel_size * sizeof(int));
       out->SetTablePtr(x.GetTablePtr());
 
-      n = rulebook.dims()[1];
+      rulebook_len = rulebook.dims()[1];
 
       DenseTensor out_indices =
           phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
@@ -113,24 +108,25 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
       offsets[kernel_size] = offset;
     }
   }
+
   if (need_product_rulebook) {
     DenseTensor tmp_rulebook;
-    n = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
-                                             x,
-                                             kernel_sizes,
-                                             subm_paddings,
-                                             dilations,
-                                             subm_strides,
-                                             out_dims,
-                                             subm,
-                                             &tmp_rulebook,
-                                             &counter_per_kernel,
-                                             &offsets_per_kernel,
-                                             &out_index,
-                                             &unique_value,
-                                             out,
-                                             &h_counter,
-                                             &offsets);
+    rulebook_len = ProductRuleBook<T, GPUContext, IntT>(dev_ctx,
+                                                        x,
+                                                        kernel_sizes,
+                                                        subm_paddings,
+                                                        dilations,
+                                                        subm_strides,
+                                                        out_dims,
+                                                        subm,
+                                                        &tmp_rulebook,
+                                                        &counter_per_kernel,
+                                                        &offsets_per_kernel,
+                                                        &out_index,
+                                                        &unique_value,
+                                                        out,
+                                                        &h_counter,
+                                                        &offsets);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
     out->SetTablePtr(x.GetTablePtr());
@@ -145,14 +141,10 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   }
 
   // 2. gather
-  DenseTensorMeta in_features_meta(
-      x.dtype(), {n, in_channels}, DataLayout::NCHW);
-  DenseTensorMeta out_features_meta(
-      x.dtype(), {n, out_channels}, DataLayout::NCHW);
   phi::DenseTensor in_features =
-      phi::Empty(dev_ctx, std::move(in_features_meta));
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
   phi::DenseTensor out_features =
-      phi::Empty(dev_ctx, std::move(out_features_meta));
+      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
   phi::funcs::SetConstant<GPUContext, T> set_zero;
@@ -161,7 +153,7 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   Gather<T, IntT>(dev_ctx,
                   x.non_zero_elements().data<T>(),
                   rulebook_ptr,
-                  n,
+                  rulebook_len,
                   in_channels,
                   in_features_ptr);
 
@@ -172,20 +164,25 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
   if (subm) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, 1);
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     unique_value.ResizeAndAllocate(
         {static_cast<int>(out->nnz() * kernel_size)});
-    out_index.ResizeAndAllocate({static_cast<int>(n)});
+    out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
     int* out_index_ptr = out_index.data<int>();
     int* unique_value_ptr = unique_value.data<int>();
     phi::backends::gpu::GpuMemsetAsync(
-        out_index_ptr, 0, sizeof(int) * n, dev_ctx.stream());
+        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
     GroupIndexs<<<config.block_per_grid,
                   config.thread_per_block,
                   0,
-                  dev_ctx.stream()>>>(
-        n, kernel_size, rulebook_ptr + n, out_index_ptr, unique_value_ptr);
+                  dev_ctx.stream()>>>(rulebook_len,
+                                      kernel_size,
+                                      rulebook_ptr + rulebook_len,
+                                      out_index_ptr,
+                                      unique_value_ptr);
   }
+
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
     if (h_counter[i] <= 0) {

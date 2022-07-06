@@ -69,9 +69,10 @@ __global__ void ScatterKernel(const T* input,
                            out + indices_i * channels + channels_i * VecSize);
   }
 }
+
 // scatter's index has been grouped in advance
-// index_counts record the count of every group
-// index_groups save the index of every group
+// index_counts record the count of each group
+// index_groups save the index of each group
 template <typename T, int VecSize>
 __global__ void ScatterKernelV2(const T* input,
                                 const int* index_counts,
