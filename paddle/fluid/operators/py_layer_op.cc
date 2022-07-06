@@ -207,23 +207,19 @@ REGISTER_OPERATOR(py_layer,
 
 REGISTER_OP_CPU_KERNEL(
     py_layer,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::float16>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::bfloat16>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, float>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::float16>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::bfloat16>,
+    ops::PyLayerOpKernel<phi::CPUContext, double>,
+    ops::PyLayerOpKernel<phi::CPUContext, int>,
+    ops::PyLayerOpKernel<phi::CPUContext, int64_t>,
 
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex<float>>,
-    ops::PyLayerOpKernel<paddle::platform::CPUDeviceContext,
-                         ::paddle::platform::complex<double>>);
+    ops::PyLayerOpKernel<phi::CPUContext, bool>,
+    ops::PyLayerOpKernel<phi::CPUContext, uint8_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, int16_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, int8_t>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::complex<float>>,
+    ops::PyLayerOpKernel<phi::CPUContext, ::paddle::platform::complex<double>>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     py_layer,

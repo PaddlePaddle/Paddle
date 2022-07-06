@@ -426,16 +426,26 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_sparse_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    if (!multi_mf_dim_) {
+      tables_[i]->set_sparse_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+    }
   }
 }
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_embedx_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    if (!multi_mf_dim_) {
+      tables_[i]->set_embedx_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+    }
   }
 }
 
@@ -1026,14 +1036,9 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
 
-  GradType* d_shard_grads_ptr;
-  if (!multi_mf_dim_) {
-    auto d_shard_grads = memory::Alloc(place, len * sizeof(GradType));
-    d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
-  } else {
-    auto d_shard_grads = memory::Alloc(place, len * grad_value_size);
-    d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
-  }
+  auto d_shard_grads = memory::Alloc(place, len * grad_value_size);
+  GradType* d_shard_grads_ptr =
+      reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
   int uniq_len = len;
   dynamic_merge_grad(dev_num, d_keys, d_grads, len, uniq_len);

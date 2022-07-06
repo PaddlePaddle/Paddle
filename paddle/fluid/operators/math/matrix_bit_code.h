@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #if defined(_WIN32)
@@ -208,7 +208,7 @@ class CustomCodeTable {
   const int64_t* ids_;
 };
 
-using CodeTable = boost::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
+using CodeTable = paddle::variant<SimpleCodeTable, CustomCodeTable<int64_t>>;
 
 template <typename T>
 class MatrixBitCodeFunctor {

@@ -13,26 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-
+#include "paddle/phi/backends/cpu/cpu_context.h"
 namespace phi {
 class DenseTensor;
 }  // namespace phi
-
-namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace math {
 
 template <typename T>
-class BeamSearchFunctor<platform::CPUDeviceContext, T> {
+class BeamSearchFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
+  void operator()(const phi::CPUContext &context,
                   const framework::LoDTensor *pre_ids,
                   const framework::LoDTensor *pre_scores,
                   const framework::LoDTensor *ids,
@@ -308,10 +301,10 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class BeamSearchFunctor<platform::CPUDeviceContext, int>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, int64_t>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, float>;
-template class BeamSearchFunctor<platform::CPUDeviceContext, double>;
+template class BeamSearchFunctor<phi::CPUContext, int>;
+template class BeamSearchFunctor<phi::CPUContext, int64_t>;
+template class BeamSearchFunctor<phi::CPUContext, float>;
+template class BeamSearchFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

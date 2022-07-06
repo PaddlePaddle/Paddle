@@ -17,9 +17,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/function_schema.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/base_function.h"
 
 namespace paddle {
 namespace jit {
@@ -29,17 +27,10 @@ class CompilationUnit {
   CompilationUnit() = default;
   ~CompilationUnit() {}
 
-  void AddExecutorFunction(const std::string &func_name,
-                           const std::shared_ptr<FunctionInfo> &info,
-                           const Name2VariableMap &params_dict,
-                           const phi::Place &place);
+  std::shared_ptr<BaseFunction> Function(const std::string &name) const;
 
-  void AddPEFunction(const std::string &func_name,
-                     const std::shared_ptr<FunctionInfo> &info,
-                     const Name2VariableMap &params_dict,
-                     const phi::Place &place);
-
-  std::shared_ptr<BaseFunction> GetFunction(const std::string &name) const;
+  void SetFunction(const std::string &name,
+                   const std::shared_ptr<BaseFunction> &function);
 
  private:
   std::unordered_map<std::string, std::shared_ptr<BaseFunction>> function_dict_;

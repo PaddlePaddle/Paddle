@@ -281,6 +281,7 @@ USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
 USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
 USE_PHI_FUNCTOR(BRelu)
 USE_PHI_FUNCTOR(ThresholdedRelu)
+USE_PHI_FUNCTOR(Relu6)
 USE_PHI_FUNCTOR(LeakyRelu)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 USE_PHI_FUNCTOR(HardShrink)
@@ -347,44 +348,6 @@ using ReluGradGradFunctor = phi::funcs::ReluGradGradFunctor<T>;
 
 template <typename T>
 using ReluCUDAFunctor = phi::funcs::ReluCUDAFunctor<T>;
-
-// relu6(x) = min(max(0, x), 6)
-template <typename T>
-struct Relu6Functor : public BaseActivationFunctor<T> {
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) =
-        x.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(threshold));
-  }
-};
-
-template <typename T>
-struct Relu6GradFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-  template <typename Device,
-            typename X,
-            typename Out,
-            typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
-                   .template cast<T>();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
 
 template <typename T>
 struct SoftReluFunctor : public BaseActivationFunctor<T> {
@@ -561,5 +524,4 @@ struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
 
 #define FOR_EACH_ACTIVATION_OP(__macro)                               \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor); \
-  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);  \
-  __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
+  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);

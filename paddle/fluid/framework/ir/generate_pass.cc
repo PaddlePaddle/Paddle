@@ -15,12 +15,13 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class element_visitor : public boost::static_visitor<Attribute> {
+class element_visitor {
  public:
   explicit element_visitor(int index) : index_(index) {}
 
@@ -39,14 +40,14 @@ class element_visitor : public boost::static_visitor<Attribute> {
     if (index >= 0 && static_cast<size_t>(index) < attr.size()) {
       return static_cast<ET>(attr[index]);
     }
-    return boost::blank();
+    return paddle::blank();
   }
 
  private:
   int index_;
 };
 
-class operation_visitor : public boost::static_visitor<Attribute> {
+class operation_visitor {
  public:
   explicit operation_visitor(const proto::PassDesc::OperationType& type)
       : type_(type) {}
@@ -98,14 +99,14 @@ Attribute GetVarAttrValue(const VarDesc* desc,
       return shape;
     }
   }
-  return boost::blank();
+  return paddle::blank();
 }
 
 Attribute GetOpAttrValue(const OpDesc* desc,
                          const proto::PassDesc::Attr& attr) {
   Attribute value = desc->GetAttr(attr.name());
   if (attr.has_element_index()) {
-    value = boost::apply_visitor(element_visitor(attr.element_index()), value);
+    value = paddle::visit(element_visitor(attr.element_index()), value);
   }
   return value;
 }
@@ -203,7 +204,7 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         Attribute attr = GetVarAttrValue(x->Var(), condition.attr());
         if (condition.has_operation()) {
           Attribute operation = GetAttrValue(condition.operation().value());
-          attr = boost::apply_visitor(
+          attr = paddle::visit(
               operation_visitor(condition.operation().type()), attr, operation);
         }
         switch (condition.type()) {
@@ -388,7 +389,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
               if (attr_map.has_operation()) {
                 Attribute operation =
                     GetAttrValue(attr_map.operation().value());
-                attr = boost::apply_visitor(
+                attr = paddle::visit(
                     operation_visitor(attr_map.operation().type()),
                     attr,
                     operation);

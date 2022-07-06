@@ -52,7 +52,6 @@ TEST(DEV_API, flatten) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx.Init();
 
   // 2. test API
   auto out = phi::Flatten<float>(dev_ctx, dense_x, start_axis, stop_axis);

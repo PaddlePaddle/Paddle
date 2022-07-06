@@ -52,6 +52,7 @@ std::string PaddlePassBuilder::DebugString() {
 }
 
 void PaddlePassBuilder::DeletePass(const std::string &pass_type) {
+  deleted_passes_.insert(pass_type);
   auto it = std::begin(passes_);
   while (it != std::end(passes_)) {
     if (*it == pass_type) {
@@ -148,6 +149,19 @@ const std::vector<std::string> kLiteSubgraphPasses({
     "lite_subgraph_pass",
 #endif
 });
+
+// TODO(inference): Most of the existing pass fusion operators do not
+// support fp16/bf16 precision, temporarily use low precision pass to prevent
+// running errors. After fusion operator supports low precision, delete this.
+const std::vector<std::string> kGpuLowerPrecisionPasses{
+    // "conv_bn_fuse_pass",
+    // "conv_eltwiseadd_bn_fuse_pass",
+};
+const std::vector<std::string> kTrtLowerPrecisionPasses{
+    // "conv_bn_fuse_pass",
+    // "conv_eltwiseadd_bn_fuse_pass",
+    "tensorrt_subgraph_pass",
+};
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({

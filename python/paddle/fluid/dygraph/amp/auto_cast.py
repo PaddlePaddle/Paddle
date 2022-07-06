@@ -173,6 +173,10 @@ def pure_fp16_initialize(models):
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm, paddle.nn.SyncBatchNorm)):
                 continue
+            if isinstance(layer, (paddle.incubate.nn.FusedFeedForward,
+                                  paddle.incubate.nn.FusedMultiHeadAttention)):
+                layer._amp_decorate(dtype='float16')
+                continue
             layer._to_impl(dtype='float16',
                            include_sublayers=False,
                            floating_only=True)
@@ -395,9 +399,10 @@ class StateDictHook(object):
         for key in state_dict:
             param = state_dict[key]
             with paddle.fluid.dygraph.guard():
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 @dygraph_only

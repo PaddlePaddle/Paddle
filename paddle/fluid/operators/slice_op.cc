@@ -201,7 +201,8 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto x_name = "Input";
     auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
-    auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
+    auto not_decrease =
+        paddle::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
       // The default type of out is LoDTensor.
       // However, if no axis is decreased and the type of input is not
@@ -465,31 +466,25 @@ REGISTER_OPERATOR(slice_grad,
 
 REGISTER_OP_CPU_KERNEL(
     slice,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>);
+    ops::SliceKernel<phi::CPUContext, bool>,
+    ops::SliceKernel<phi::CPUContext, int>,
+    ops::SliceKernel<phi::CPUContext, int64_t>,
+    ops::SliceKernel<phi::CPUContext, float>,
+    ops::SliceKernel<phi::CPUContext, double>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CPU_KERNEL(
     slice_grad,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
+    ops::SliceGradKernel<phi::CPUContext, bool>,
+    ops::SliceGradKernel<phi::CPUContext, int>,
+    ops::SliceGradKernel<phi::CPUContext, int64_t>,
+    ops::SliceGradKernel<phi::CPUContext, float>,
+    ops::SliceGradKernel<phi::CPUContext, double>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     slice,

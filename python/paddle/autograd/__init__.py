@@ -17,7 +17,13 @@ from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..framework import is_grad_enabled, set_grad_enabled  # noqa: F401
 from . import backward_mode  # noqa: F401
 from .backward_mode import backward  # noqa: F401
-from .py_layer import PyLayer, PyLayerContext, EagerPyLayer, EagerPyLayerContext  # noqa: F401
+from ..fluid.framework import _in_eager_mode_
+if _in_eager_mode_:
+    from .py_layer import EagerPyLayer as PyLayer  # noqa: F401
+    from .py_layer import EagerPyLayerContext as PyLayerContext  # noqa: F401
+else:
+    from .py_layer import LegacyPyLayer as PyLayer  # noqa: F401
+    from .py_layer import LegacyPyLayerContext as PyLayerContext  # noqa: F401
 from ..framework import set_grad_enabled, is_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from .functional import vjp, jvp, Jacobian, Hessian  # noqa: F401
