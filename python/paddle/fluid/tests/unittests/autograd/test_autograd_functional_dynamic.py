@@ -78,9 +78,9 @@ class TestAutogradFunctional(unittest.TestCase):
             xs = self.gen_inputs(inputs)
             if v is not None:
                 v = self.gen_inputs(v)
-                outputs, inputs_grad = paddle.autograd.vjp(func, xs, v)
+                outputs, inputs_grad = paddle.incubate.autograd.vjp(func, xs, v)
             else:
-                outputs, inputs_grad = paddle.autograd.vjp(func, xs)
+                outputs, inputs_grad = paddle.incubate.autograd.vjp(func, xs)
             return outputs, inputs_grad
 
         def grad_test():
@@ -116,14 +116,14 @@ class TestAutogradFunctional(unittest.TestCase):
             xs = self.gen_inputs(inputs)
             if v is not None:
                 v = self.gen_inputs(v)
-                outputs, outputs_grad = paddle.autograd.jvp(
+                outputs, outputs_grad = paddle.incubate.autograd.jvp(
                     func,
                     xs,
                     v,
                     create_graph=create_graph,
                     allow_unused=allow_unused)
             else:
-                outputs, outputs_grad = paddle.autograd.jvp(
+                outputs, outputs_grad = paddle.incubate.autograd.jvp(
                     func,
                     xs,
                     create_graph=create_graph,
@@ -233,8 +233,8 @@ class TestVJPException(unittest.TestCase):
 
     def func_vjp(self):
         with self.assertRaises(self.expected_exception):
-            paddle.autograd.vjp(self.fun, paddle.to_tensor(self.xs),
-                                paddle.to_tensor(self.v))
+            paddle.incubate.autograd.vjp(self.fun, paddle.to_tensor(self.xs),
+                                         paddle.to_tensor(self.v))
 
     def test_all_cases(self):
         with _test_eager_guard():
@@ -243,8 +243,10 @@ class TestVJPException(unittest.TestCase):
 
 
 def jac(grad_fn, f, inputs):
-    assert grad_fn in [paddle.autograd.vjp, paddle.autograd.jvp]
-    if grad_fn is paddle.autograd.jvp:
+    assert grad_fn in [
+        paddle.incubate.autograd.vjp, paddle.incubate.autograd.jvp
+    ]
+    if grad_fn is paddle.incubate.autograd.jvp:
         vs = [paddle.zeros_like(x) for x in inputs]
     else:
         outputs = f(*inputs)
@@ -265,7 +267,7 @@ def jac(grad_fn, f, inputs):
             JJ_cols.append(d_outs)
     # JJ is the fully unrolled jacobian
     JJ = paddle.stack(JJ_cols)
-    if grad_fn is paddle.autograd.vjp:
+    if grad_fn is paddle.incubate.autograd.vjp:
         JJ = JJ.t()
     return JJ
 
@@ -279,8 +281,8 @@ class TestJVP(TestAutogradFunctional):
         ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
-            forward_jac = jac(paddle.autograd.jvp, f, inputs)
-            reverse_jac = jac(paddle.autograd.vjp, f, inputs)
+            forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
+            reverse_jac = jac(paddle.incubate.autograd.vjp, f, inputs)
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o1(self):
@@ -289,8 +291,8 @@ class TestJVP(TestAutogradFunctional):
         ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
-            forward_jac = jac(paddle.autograd.jvp, f, inputs)
-            reverse_jac = jac(paddle.autograd.vjp, f, inputs)
+            forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
+            reverse_jac = jac(paddle.incubate.autograd.vjp, f, inputs)
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o2(self):
@@ -299,8 +301,8 @@ class TestJVP(TestAutogradFunctional):
         ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
-            forward_jac = jac(paddle.autograd.jvp, f, inputs)
-            reverse_jac = jac(paddle.autograd.vjp, f, inputs)
+            forward_jac = jac(paddle.incubate.autograd.jvp, f, inputs)
+            reverse_jac = jac(paddle.incubate.autograd.vjp, f, inputs)
             self.check_results(forward_jac, reverse_jac)
 
     def func_jvp_i2o2_omitting_v(self):
@@ -309,9 +311,9 @@ class TestJVP(TestAutogradFunctional):
         ]  # noqa
         for f, inputs in test_cases:
             inputs = self.gen_inputs(inputs)
-            results_omitting_v = paddle.autograd.jvp(f, inputs)
+            results_omitting_v = paddle.incubate.autograd.jvp(f, inputs)
             v = [paddle.ones_like(x) for x in inputs]
-            results_with_v = paddle.autograd.jvp(f, inputs, v)
+            results_with_v = paddle.incubate.autograd.jvp(f, inputs, v)
             self.check_results(results_omitting_v, results_with_v)
 
     def test_all_cases(self):
@@ -349,7 +351,7 @@ class TestJacobianNoBatch(unittest.TestCase):
     def func_jacobian(self):
         xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
             self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
-        self._actual = paddle.autograd.Jacobian(self.func, xs, False)
+        self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, False)
         self._expected = self._get_expected()
 
         Index = collections.namedtuple('Index', ('type', 'value'))
@@ -402,7 +404,7 @@ class TestJacobianBatchFirst(unittest.TestCase):
     def func_jacobian(self):
         xs = [paddle.to_tensor(x) for x in self.xs] if isinstance(
             self.xs, typing.Sequence) else paddle.to_tensor(self.xs)
-        self._actual = paddle.autograd.Jacobian(self.func, xs, True)
+        self._actual = paddle.incubate.autograd.Jacobian(self.func, xs, True)
         self._expected = self._get_expected()
 
         Index = collections.namedtuple('Index', ('type', 'value'))
@@ -470,7 +472,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
 
         self.x.stop_gradient = False
-        hessian = paddle.autograd.Hessian(func, self.x)
+        hessian = paddle.incubate.autograd.Hessian(func, self.x)
         np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
                                    self.rtol, self.atol)
 
@@ -484,7 +486,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.autograd.Hessian(func, [self.x, self.y])
+        hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
         np.testing.assert_allclose(hessian[:].numpy(),
                                    numerical_hessian,
                                    rtol=self.rtol,
@@ -500,7 +502,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.autograd.Hessian(func, [self.x, self.y])
+        hessian = paddle.incubate.autograd.Hessian(func, [self.x, self.y])
         np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
                                    self.rtol, self.atol)
 
@@ -514,7 +516,7 @@ class TestHessianNoBatch(unittest.TestCase):
             func, self.x, self.numerical_delta, self.np_dtype)
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
-        hessian = paddle.autograd.Hessian(func, self.x)
+        hessian = paddle.incubate.autograd.Hessian(func, self.x)
         assert hessian[:].stop_gradient == False
         np.testing.assert_allclose(hessian[:].numpy(), numerical_hessian,
                                    self.rtol, self.atol)
@@ -526,7 +528,7 @@ class TestHessianNoBatch(unittest.TestCase):
             return x * x
 
         with self.assertRaises(RuntimeError):
-            paddle.autograd.Hessian(func, paddle.ones([3]))
+            paddle.incubate.autograd.Hessian(func, paddle.ones([3]))
 
     def test_all_cases(self):
         with _test_eager_guard():
@@ -572,7 +574,7 @@ class TestHessianBatchFirst(unittest.TestCase):
         expected = utils._compute_numerical_batch_hessian(
             func, self.x, self.numerical_delta, self.np_dtype)
 
-        H = paddle.autograd.Hessian(func, self.x, is_batched=True)
+        H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)
         actual = utils._np_transpose_matrix_format(H[:].numpy(),
                                                    utils.MatrixFormat.BNM,
                                                    utils.MatrixFormat.NBM)
@@ -596,7 +598,8 @@ class TestHessianBatchFirst(unittest.TestCase):
 
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        H = paddle.autograd.Hessian(func, [self.x, self.y], is_batched=True)
+        H = paddle.incubate.autograd.Hessian(func, [self.x, self.y],
+                                             is_batched=True)
         actual = utils._np_transpose_matrix_format(H[:].numpy(),
                                                    utils.MatrixFormat.BNM,
                                                    utils.MatrixFormat.NBM)
@@ -620,8 +623,8 @@ class TestHessianBatchFirst(unittest.TestCase):
                                                      utils.MatrixFormat.NBM,
                                                      utils.MatrixFormat.BNM)
 
-        actual = paddle.autograd.Hessian(func, [self.x, self.y],
-                                         is_batched=True)[:]
+        actual = paddle.incubate.autograd.Hessian(func, [self.x, self.y],
+                                                  is_batched=True)[:]
 
         np.testing.assert_allclose(actual,
                                    expected,
@@ -638,7 +641,7 @@ class TestHessianBatchFirst(unittest.TestCase):
 
         x = self.x.clone()
         x.stop_gradient = True
-        H = paddle.autograd.Hessian(func, self.x, is_batched=True)[:]
+        H = paddle.incubate.autograd.Hessian(func, self.x, is_batched=True)[:]
         actual = utils._np_transpose_matrix_format(H[:].numpy(),
                                                    utils.MatrixFormat.BNM,
                                                    utils.MatrixFormat.NBM)
@@ -652,7 +655,9 @@ class TestHessianBatchFirst(unittest.TestCase):
             return (x * x)
 
         with self.assertRaises(RuntimeError):
-            paddle.autograd.Hessian(func, paddle.ones((3, 3)), is_batched=True)
+            paddle.incubate.autograd.Hessian(func,
+                                             paddle.ones((3, 3)),
+                                             is_batched=True)
 
     def test_all_cases(self):
         with _test_eager_guard():

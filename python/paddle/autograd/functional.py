@@ -72,7 +72,7 @@ def vjp(func, xs, v=None):
 
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if not prim_utils.prim_enabled():
+    if paddle.fluid._non_static_mode() or not prim_utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
@@ -133,12 +133,12 @@ def jvp(func, xs, v=None):
     _check_inputs(func, xs, v)
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if not prim_utils.prim_enabled():
+    if paddle.fluid._non_static_mode() or not prim_utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
 
-    if prim_utils.prim_enabled():
+    if not paddle.fluid._non_static_mode() and prim_utils.prim_enabled():
         return ys, primx.forward_grad(ys, xs, v)
     else:
         return ys, _double_backward_trick(ys, xs, v)
@@ -357,8 +357,7 @@ class _Jacobian(object):
     def __init__(self, func, xs):
         # Skip separating in prim mode temporarily, as detach and clone are not
         # primitive operators.
-        if not paddle.fluid._non_static_mode(
-        ) and paddle.incubate.autograd.prim_enabled():
+        if not paddle.fluid._non_static_mode() and prim_utils.prim_enabled():
             self._xs = xs
         else:
             self._xs = _separate(xs)

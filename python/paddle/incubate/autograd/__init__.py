@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.autograd.functional import Hessian, Jacobian, jvp, vjp
-from paddle.incubate.autograd.primapi import forward_grad, grad
-from paddle.incubate.autograd.primx import prim2orig
-from paddle.incubate.autograd.utils import (disable_prim, enable_prim,
-                                            prim_enabled)
+
+from .primapi import forward_grad, grad
+from .primx import prim2orig
+from .utils import disable_prim, enable_prim, prim_enabled
 
 __all__ = [  # noqa
     'vjp', 'jvp', 'Jacobian', 'Hessian', 'enable_prim', 'disable_prim',

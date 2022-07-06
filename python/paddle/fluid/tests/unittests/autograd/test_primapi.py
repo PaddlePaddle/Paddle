@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 import paddle
+from paddle.incubate.autograd import primapi
 
 import config
 import utils
@@ -54,7 +55,7 @@ class TestForwardGrad(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         paddle.disable_static()
 
-    def test_forward_gradients(self):
+    def test_forward_grad(self):
 
         def expected():
             paddle.incubate.autograd.disable_prim()
@@ -63,7 +64,8 @@ class TestForwardGrad(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
                     self.xs, self.v, stop_gradient=False)
-                _, ys_grad = paddle.autograd.jvp(self.fun, static_xs, static_v)
+                _, ys_grad = paddle.incubate.autograd.jvp(
+                    self.fun, static_xs, static_v)
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
@@ -79,7 +81,8 @@ class TestForwardGrad(unittest.TestCase):
                     self.xs, self.v, stop_gradient=False)
                 ys = self.fun(*static_xs) if isinstance(
                     static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = primapi.forward_grad(ys, static_xs, static_v)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -115,18 +118,25 @@ class TestForwardGrad(unittest.TestCase):
     def test_illegal_param(self):
         paddle.incubate.autograd.enable_prim()
         with self.assertRaises(TypeError):
-            primapi.forward_gradients(1, paddle.static.data('inputs',
-                                                            shape=[1]))
+            primapi.forward_grad(1, paddle.static.data('inputs', shape=[1]))
 
         with self.assertRaises(TypeError):
             primapi.forward_grad(paddle.static.data('targets', shape=[1]), 1)
         paddle.incubate.autograd.disable_prim()
 
 
-class TestGradients(unittest.TestCase):
+class TestGrad(unittest.TestCase):
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
 
     def test_third_order(self):
-        enable_prim()
+        paddle.incubate.autograd.enable_prim()
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
@@ -139,7 +149,7 @@ class TestGradients(unittest.TestCase):
             grad2, = paddle.incubate.autograd.grad([grad1], [x])
             grad3, = paddle.incubate.autograd.grad([grad2], [x])
 
-            prim2orig(main.block(0))
+            paddle.incubate.autograd.prim2orig(main.block(0))
 
         feed = {x.name: np.array([2.]).astype('float32')}
         fetch_list = [grad3.name]
@@ -152,10 +162,10 @@ class TestGradients(unittest.TestCase):
         exe.run(startup)
         outs = exe.run(main, feed=feed, fetch_list=fetch_list)
         np.allclose(outs, result)
-        disable_prim()
+        paddle.incubate.autograd.disable_prim()
 
     def test_fourth_order(self):
-        enable_prim()
+        paddle.incubate.autograd.enable_prim()
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
@@ -171,7 +181,7 @@ class TestGradients(unittest.TestCase):
             grad3, = paddle.incubate.autograd.grad([grad2], [x])
             grad4, = paddle.incubate.autograd.grad([grad3], [x])
 
-            prim2orig(main.block(0))
+            paddle.incubate.autograd.prim2orig(main.block(0))
 
         feed = {
             x.name: np.array([2.]).astype('float32'),
@@ -187,7 +197,7 @@ class TestGradients(unittest.TestCase):
         exe.run(startup)
         outs = exe.run(main, feed=feed, fetch_list=fetch_list)
         np.allclose(outs, result)
-        disable_prim()
+        paddle.incubate.autograd.disable_prim()
 
 
 if __name__ == '__main__':

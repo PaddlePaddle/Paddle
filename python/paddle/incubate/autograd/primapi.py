@@ -70,8 +70,8 @@ def forward_grad(outputs, inputs, grad_inputs=None):
                            'operators, use enable_prim to turn it on.')
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f'Expected targets is Tensor|Sequence[Tesnor], '
-                        f'but got {type(targets)}.')
+        raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
+                        f'but got {type(outputs)}.')
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
@@ -135,7 +135,7 @@ def grad(outputs, inputs, grad_outputs=None):
             paddle.disable_static()
     """
 
-    if not utils.prim_enabled():
+    if not prim_utils.prim_enabled():
         return backward.gradients(outputs, inputs, grad_outputs)
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
@@ -146,10 +146,10 @@ def grad(outputs, inputs, grad_outputs=None):
         raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
                         f'but got {type(inputs)}.')
 
-    ys, xs, ys_bar = as_tensors(outputs), as_tensors(inputs), as_tensors(
-        grad_outputs)
-    block = default_main_program().current_block()
-    if any((x is not None or x.block != block) for x in xs + ys):
+    ys, xs, ys_bar = tensor_utils.as_tensors(outputs), tensor_utils.as_tensors(
+        inputs), tensor_utils.as_tensors(grad_outputs)
+    block = framework.default_main_program().current_block()
+    if any((x is not None and x.block != block) for x in xs + ys):
         raise RuntimeError(
             'Variable in inputs and outputs should be None or in current block of main program'
         )
@@ -181,4 +181,4 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
-    return xs_bar[0] if isinstance(inputs, framework.Vairable) else xs_bar
+    return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
