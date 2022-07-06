@@ -563,7 +563,6 @@ class OpConverter {
                                            const std::string& name) {
     auto* var_v = scope.FindVar(name);
     auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     auto weight = engine_->GetTrtWeight(name, *var_t);
 
     // Now we have create weights, then we need create a itensor
