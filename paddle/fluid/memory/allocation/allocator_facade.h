@@ -106,8 +106,6 @@ class AllocatorFacade {
 #endif
 };
 
-bool IsCUDAGraphCapturing();
-
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
