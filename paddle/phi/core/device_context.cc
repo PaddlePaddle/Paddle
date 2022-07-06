@@ -64,6 +64,24 @@ struct DeviceContext::Impl {
     pinned_allocator_ = allocator;
   }
 
+#ifdef PADDLE_WITH_CUDA
+  void SetCUDAGraphAllocator(const Allocator* allocator) {
+    cuda_graph_allocator_ = allocator;
+  }
+
+  const Allocator& GetCUDAGraphAllocator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        cuda_graph_allocator_,
+        phi::errors::InvalidArgument("Required device_allocator_ shall not be "
+                                     "nullptr, but received nullptr."));
+    return *cuda_graph_allocator_;
+  }
+
+  bool IsCUDAGraphAllocatorValid() const {
+    return cuda_graph_allocator_ != nullptr;
+  }
+#endif
+
   const Allocator& GetAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         device_allocator_,
@@ -121,9 +139,11 @@ struct DeviceContext::Impl {
     bool must_cuda_graph = (tensor->numel() != 0) && !pinned;
     if (must_cuda_graph && paddle::platform::is_gpu_place(place) &&
         paddle::platform::CUDAGraph::IsThisThreadCapturing()) {
-      allocator = paddle::memory::allocation::AllocatorFacade::Instance()
-                      .GetAllocator(place)
-                      .get();
+      PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                              phi::errors::InvalidArgument(
+                                  "Required device_allocator_ shall not be "
+                                  "nullptr, but received nullptr."));
+      allocator = cuda_graph_allocator_;
     }
 #endif
     return tensor->AllocateFrom(
@@ -215,6 +235,9 @@ struct DeviceContext::Impl {
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
   const Allocator* pinned_allocator_{nullptr};
+#ifdef PADDLE_WITH_CUDA
+  const Allocator* cuda_graph_allocator_{nullptr};
+#endif
   Generator* device_generator_{nullptr};
   Generator* host_generator_{nullptr};
 };
@@ -228,6 +251,11 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetPinnedAllocator(&other.GetPinnedAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
+#ifdef PADDLE_WITH_CUDA
+  if (other.IsCUDAGraphAllocatorValid()) {
+    impl_->SetCUDAGraphAllocator(&other.GetCUDAGraphAllocator());
+  }
+#endif
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -253,6 +281,20 @@ void DeviceContext::SetHostAllocator(const Allocator* allocator) {
 const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
+
+#ifdef PADDLE_WITH_CUDA
+void DeviceContext::SetCUDAGraphAllocator(const Allocator* allocator) {
+  impl_->SetCUDAGraphAllocator(allocator);
+}
+
+const Allocator& DeviceContext::GetCUDAGraphAllocator() const {
+  return impl_->GetCUDAGraphAllocator();
+}
+
+bool DeviceContext::IsCUDAGraphAllocatorValid() const {
+  return impl_->IsCUDAGraphAllocatorValid();
+}
+#endif
 
 void DeviceContext::SetZeroAllocator(const Allocator* allocator) {
   impl_->SetZeroAllocator(allocator);

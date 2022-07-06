@@ -106,6 +106,14 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetPinnedAllocator() const;
 
+#ifdef PADDLE_WITH_CUDA
+  void SetCUDAGraphAllocator(const Allocator*);
+
+  const Allocator& GetCUDAGraphAllocator() const;
+
+  bool IsCUDAGraphAllocatorValid() const;
+#endif
+
   /**
    * @brief Allocate device memory for tensor.
    */
