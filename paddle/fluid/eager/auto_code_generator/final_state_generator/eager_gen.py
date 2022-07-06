@@ -545,9 +545,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         backward_forward_inputs_map = self.backward_forward_inputs_map
         backward_grad_inputs_map = self.backward_grad_inputs_map
         backward_attrs_list = self.backward_attrs_list
-        print(backward_forward_inputs_map)
-        print(backward_grad_inputs_map)
-        print(backward_attrs_list)
 
         # Check Order: TensorWrappers, GradTensors, Attributes
         max_fwd_input_position = -1
