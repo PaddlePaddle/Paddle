@@ -37,7 +37,8 @@ void MaxPoolCPUKernel(const CPUContext& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       SparseCooTensor* out,
-                      DenseTensor* rulebook) {
+                      DenseTensor* rulebook,
+                      DenseTensor* counter) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
@@ -71,7 +72,10 @@ void MaxPoolCPUKernel(const CPUContext& dev_ctx,
 
   int rulebook_len = rulebook->dims()[1];
   const IntT* rulebook_ptr = rulebook->data<IntT>();
-  const int* counter_ptr = counter_per_kernel.data();
+
+  counter->Resize({kernel_size});
+  int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
+  memcpy(counter_ptr, counter_per_kernel.data(), kernel_size * sizeof(int));
 
   std::vector<int> offsets(kernel_size + 1);
   phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
@@ -107,7 +111,8 @@ void MaxPoolKernel(const Context& dev_ctx,
                    const std::vector<int>& dilations,
                    const std::vector<int>& strides,
                    SparseCooTensor* out,
-                   DenseTensor* rulebook) {
+                   DenseTensor* rulebook,
+                   DenseTensor* counter) {
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolCPUKernel", ([&] {
         MaxPoolCPUKernel<T, data_t>(dev_ctx,
@@ -117,7 +122,8 @@ void MaxPoolKernel(const Context& dev_ctx,
                                     dilations,
                                     strides,
                                     out,
-                                    rulebook);
+                                    rulebook,
+                                    counter);
       }));
 }
 

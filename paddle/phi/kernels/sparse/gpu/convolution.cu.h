@@ -305,7 +305,7 @@ template <typename IntT>
 __global__ void GetOutIndexTable(const IntT* indices,
                                  const IntT non_zero_num,
                                  const Dims4D dims,
-                                 IntT* out_index_table) {
+                                 int* out_index_table) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
@@ -378,7 +378,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const Dims4D paddings,
                                           const Dims4D dilations,
                                           const Dims4D strides,
-                                          const T* out_index_table,
+                                          const int* out_index_table,
                                           T* rulebook,
                                           int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -545,11 +545,19 @@ int ProductRuleBook(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
+  const int rulebook_rows = 2;
+  const int rulebook_cols = kernel_size * non_zero_num;
+  DenseTensorMeta rulebook_meta(
+      indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
+
+  int64_t table_size = 1;
+  for (int i = 0; i < out_dims.size() - 1; i++) {
+    table_size *= out_dims[i];
+  }
+  DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
+  int* out_index_table_ptr = out_index_table.data<int>();
+
   if (subm) {
-    const int rulebook_rows = 2;
-    const int rulebook_cols = kernel_size * non_zero_num;
-    DenseTensorMeta rulebook_meta(
-        indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices =
@@ -562,12 +570,6 @@ int ProductRuleBook(const Context& dev_ctx,
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    int64_t table_size = 1;
-    for (int i = 0; i < out_dims.size() - 1; i++) {
-      table_size *= out_dims[i];
-    }
-    DenseTensor out_index_table = phi::Empty<IntT>(dev_ctx, {table_size});
-    IntT* out_index_table_ptr = out_index_table.data<IntT>();
     phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
 
@@ -648,10 +650,6 @@ int ProductRuleBook(const Context& dev_ctx,
     return rulebook_len;
 
   } else {
-    const int rulebook_rows = 2;
-    const int rulebook_cols = kernel_size * non_zero_num;
-    DenseTensorMeta rulebook_meta(
-        indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
     *rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = rulebook->data<IntT>();
     ProductRuleBookKernel<IntT><<<config.block_per_grid.x,
@@ -709,12 +707,6 @@ int ProductRuleBook(const Context& dev_ctx,
     int* out_index_ptr = out_index->data<int>();
     int* unique_key_ptr = unique_key.data<int>();
 
-    int64_t table_size = 1;
-    for (int i = 0; i < out_dims.size() - 1; i++) {
-      table_size *= out_dims[i];
-    }
-    DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
-    int* out_index_table_ptr = out_index_table.data<int>();
     phi::backends::gpu::GpuMemsetAsync(
         out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
     phi::backends::gpu::GpuMemsetAsync(

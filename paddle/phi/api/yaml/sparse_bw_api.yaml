@@ -93,11 +93,11 @@
     func : softmax_csr_grad{sparse_csr, sparse_csr -> sparse_csr}
 
 - backward_api : sparse_maxpool_grad
-  forward : sparse_maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook)
-  args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
+  forward : sparse_maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook), Tensor(counter)
+  args : (Tensor x, Tensor rulebook, Tensor counter, Tensor out, Tensor out_grad, int[] kernel_sizes)
   output : Tensor(x_grad)
   kernel :
-    func : sparse_maxpool_grad {sparse_coo, dense, sparse_coo, sparse_coo -> sparse_coo}
+    func : sparse_maxpool_grad {sparse_coo, dense, dense, sparse_coo, sparse_coo -> sparse_coo}
 
 - backward_api : sqrt_grad
   forward : sqrt(Tensor x) -> Tensor(out)
