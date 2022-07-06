@@ -417,7 +417,8 @@
 
 # auc
 - api : auc
-  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg, Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
+  args : (Tensor x, Tensor label, Tensor stat_pos, Tensor stat_neg,
+  Tensor ins_tag_weight, str curve, int num_thresholds, int slide_steps)
   output : Tensor(auc), Tensor(stat_pos_out), Tensor(stat_neg_out)
   infer_meta :
     func : AucInferMeta
