@@ -145,6 +145,15 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
 
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) override;
+
+  static void GroupStart();
+
+  static void GroupEnd();
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places,
@@ -168,8 +177,8 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
-                   int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void BroadcastUniqueNCCLID(std::vector<ncclUniqueId>& nccl_ids);  // NOLINT

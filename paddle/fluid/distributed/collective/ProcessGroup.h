@@ -169,6 +169,14 @@ class ProcessGroup {
         "ProcessGroup%s does not support Scatter", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,              // NOLINT
+      phi::DenseTensor&,              // NOLINT
+      const ReduceScatterOptions&) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support ReduceScatter", GetBackendName()));
+  }
+
  protected:
   const int rank_;
   const int size_;
