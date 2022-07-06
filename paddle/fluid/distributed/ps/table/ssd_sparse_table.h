@@ -33,26 +33,22 @@ class SSDSparseTable : public MemorySparseTable {
   // exchange data
   int32_t UpdateTable();
 
-  int32_t Pull(TableContext& context) override {
-    CHECK(context.value_type == Sparse);
-    float* pull_values = context.pull_context.values;
-    const PullSparseValue& pull_value = context.pull_context.pull_value;
-    return PullSparse(pull_values, pull_value.feasigns_, pull_value.numel_);
-  }
+  int32_t Pull(TableContext& context) override;
 
-  int32_t Push(TableContext& context) override {
-    const uint64_t* keys = context.push_context.keys;
-    const float* values = context.push_context.values;
-    size_t num = context.num;
-    return PushSparse(keys, values, num);
-  }
+  int32_t Push(TableContext& context) override;
 
-  virtual int32_t PullSparse(float* pull_values,
-                             const uint64_t* keys,
-                             size_t num);
-  virtual int32_t PushSparse(const uint64_t* keys,
-                             const float* values,
-                             size_t num);
+  int32_t PullSparse(float* pull_values,
+                     const uint64_t* keys,
+                     size_t num);
+  int32_t PullSparsePtr(char** pull_values,
+                        const uint64_t* keys,
+                        size_t num);
+  int32_t PushSparse(const uint64_t* keys,
+                     const float* values,
+                     size_t num);
+  int32_t PushSparse(const uint64_t* keys,
+                     const float** values,
+                     size_t num);
 
   int32_t Flush() override { return 0; }
   virtual int32_t Shrink(const std::string& param) override;
