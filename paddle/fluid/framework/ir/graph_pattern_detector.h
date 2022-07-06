@@ -406,10 +406,18 @@ struct KeyCounter {
     return x;
   }
 
+#ifdef PADDLE_WITH_TENSORRT
+  static int IncCounter(const std::string& key) { return dic_[key]++; }
+  static void CleanCounter() { dic_.clear(); }
+
+ private:
+  static thread_local std::unordered_map<std::string, size_t> dic_;
+#else
   int IncCounter(const std::string& key) { return dic_[key]++; }
 
  private:
   std::unordered_map<std::string, size_t> dic_;
+#endif
 };
 
 // Generate a unique PDNode's name with name_scope and id.
@@ -1079,7 +1087,7 @@ struct Elementwise : public PatternBase {
 
   PDNode* operator()(PDNode* x_var,
                      PDNode* y_var,
-                     const std::string elementwise_type);
+                     const std::string& elementwise_type);
 
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_x);
@@ -1094,7 +1102,7 @@ struct ElementwiseOp : public PatternBase {
   ElementwiseOp(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise") {}
 
-  PDNode* operator()(const std::string elementwise_type);
+  PDNode* operator()(const std::string& elementwise_type);
 
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
@@ -1110,7 +1118,7 @@ struct ResidualElementwise : public PatternBase {
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var,
                      PDNode* residual_var,
-                     const std::string elementwise_type,
+                     const std::string& elementwise_type,
                      bool as_x);
 
   PATTERN_DECL_NODE(operator_output);
@@ -1119,59 +1127,20 @@ struct ResidualElementwise : public PatternBase {
   PATTERN_DECL_NODE(elementwise_out);
 };
 
-// Transpose op
-// Forward pass for transpose.
-// transpose_out is a result of the operator.
-struct Transpose : public PatternBase {
-  Transpose(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "transpose2") {}
+// General struct for immutable ops:
+// reshape, transpose, slice, nearest-interp
+// Forward pass for no weights-op.
+// immutable_out is a result of the operator.
+struct Immutable : public PatternBase {
+  Immutable(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "immutable") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& immutable_type,
+                     const std::string& input_name);
   PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(transpose_in);
-  PATTERN_DECL_NODE(transpose_op);
-  PATTERN_DECL_NODE(transpose_out);
-};
-
-// Reshape op
-// Forward pass for reshape.
-// reshape_out is a result of the operator.
-struct Reshape : public PatternBase {
-  Reshape(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "reshape2") {}
-
-  PDNode* operator()();
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(reshape_in);
-  PATTERN_DECL_NODE(reshape_op);
-  PATTERN_DECL_NODE(reshape_out);
-};
-// Slice op
-// Forward pass for slice.
-// slice_out is a result of the operator.
-struct Slice : public PatternBase {
-  Slice(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "slice") {}
-
-  PDNode* operator()();
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(slice_in);
-  PATTERN_DECL_NODE(slice_op);
-  PATTERN_DECL_NODE(slice_out);
-};
-
-// Nearest Interp op
-// Forward pass for nearest_interp.
-// nearest_interp_out is a result of the operator.
-struct NearestInterp : public PatternBase {
-  NearestInterp(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "nearest_interp") {}
-
-  PDNode* operator()();
-  PATTERN_DECL_NODE(prev_op);
-  PATTERN_DECL_NODE(nearest_interp_in);
-  PATTERN_DECL_NODE(nearest_interp_op);
-  PATTERN_DECL_NODE(nearest_interp_out);
+  PATTERN_DECL_NODE(immutable_in);
+  PATTERN_DECL_NODE(immutable_op);
+  PATTERN_DECL_NODE(immutable_out);
 };
 
 // Matmul op

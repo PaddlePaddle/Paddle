@@ -22,9 +22,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "boost/blank.hpp"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/variant.h"
+
+#include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
 
@@ -42,7 +42,7 @@ class InferNoNeedBufferVarsFN;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
-using Attribute = paddle::variant<boost::blank,
+using Attribute = paddle::variant<paddle::blank,
                                   int,
                                   float,
                                   std::string,
@@ -59,7 +59,7 @@ using Attribute = paddle::variant<boost::blank,
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
-using NPUAttribute = paddle::variant<boost::blank,
+using NPUAttribute = paddle::variant<paddle::blank,
                                      int,
                                      float,
                                      std::string,

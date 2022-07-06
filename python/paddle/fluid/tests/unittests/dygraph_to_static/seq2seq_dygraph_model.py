@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid import layers
@@ -360,7 +361,7 @@ class BaseModel(fluid.dygraph.Layer):
         predicted_ids = []
         parent_ids = []
 
-        for step_idx in range(self.beam_max_step_num):
+        for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
             if fluid.layers.reduce_sum(1 - beam_finished).numpy()[0] == 0:
                 break
             step_input = self._merge_batch_beams(step_input)

@@ -112,12 +112,11 @@ void AppendRpns(LoDTensor* out, int64_t offset, Tensor* to_add) {
 }
 
 template <typename T>
-std::vector<Tensor> FilterStraddleAnchor(
-    const platform::CPUDeviceContext& context,
-    const Tensor* anchor,
-    const float rpn_straddle_thresh,
-    T im_height,
-    T im_width) {
+std::vector<Tensor> FilterStraddleAnchor(const phi::CPUContext& context,
+                                         const Tensor* anchor,
+                                         const float rpn_straddle_thresh,
+                                         T im_height,
+                                         T im_width) {
   std::vector<int> inds_inside;
   int anchor_num = anchor->dims()[0];
   auto* anchor_data = anchor->data<T>();
@@ -154,7 +153,7 @@ std::vector<Tensor> FilterStraddleAnchor(
 }
 
 template <typename T>
-Tensor FilterCrowdGt(const platform::CPUDeviceContext& context,
+Tensor FilterCrowdGt(const phi::CPUContext& context,
                      Tensor* gt_boxes,
                      Tensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
@@ -300,7 +299,7 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
 }
 
 template <typename T>
-std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
+std::vector<Tensor> SampleRpnFgBgGt(const phi::CPUContext& ctx,
                                     const Tensor& anchor_by_gt_overlap,
                                     const int rpn_batch_size_per_im,
                                     const float rpn_positive_overlap,
@@ -437,7 +436,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
     bbox_inside_weight->mutable_data<T>({max_num, 4}, place);
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     std::random_device rnd;
     std::minstd_rand engine;
@@ -857,11 +856,10 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-std::vector<Tensor> FilterCrowdGtBoxLabel(
-    const platform::CPUDeviceContext& context,
-    Tensor* gt_boxes,
-    Tensor* gt_labels,
-    Tensor* is_crowd) {
+std::vector<Tensor> FilterCrowdGtBoxLabel(const phi::CPUContext& context,
+                                          Tensor* gt_boxes,
+                                          Tensor* gt_labels,
+                                          Tensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
   std::vector<int> not_crowd_inds;
   auto* is_crowd_data = is_crowd->data<int>();
@@ -893,7 +891,7 @@ std::vector<Tensor> FilterCrowdGtBoxLabel(
 }
 
 template <typename T>
-std::vector<Tensor> GetAllFgBgGt(const platform::CPUDeviceContext& ctx,
+std::vector<Tensor> GetAllFgBgGt(const phi::CPUContext& ctx,
                                  const Tensor& anchor_by_gt_overlap,
                                  const Tensor& ncrowd_gt_labels,
                                  const float positive_overlap,
@@ -1044,7 +1042,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
     bbox_inside_weight->mutable_data<T>({max_num, 4}, place);
     fg_num->mutable_data<int>({batch_num, 1}, place);
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     std::random_device rnd;
     std::minstd_rand engine;

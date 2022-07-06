@@ -65,7 +65,7 @@ class AllocFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     alloc_float_status,

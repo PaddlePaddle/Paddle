@@ -477,7 +477,11 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
-    ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+    if (!multi_mf_dim_) {
+      tables_[i]->set_sparse_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_sparse_sgd(optimizer_config);
+    }
   }
 }
 
@@ -489,7 +493,11 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
-    ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+    if (!multi_mf_dim_) {
+      tables_[i]->set_embedx_sgd(optimizer_config);
+    } else {
+      ptr_tables_[i]->set_embedx_sgd(optimizer_config);
+    }
   }
 }
 

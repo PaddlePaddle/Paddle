@@ -90,14 +90,12 @@ REGISTER_OPERATOR(save,
 
 REGISTER_OP_CPU_KERNEL(
     save,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::bfloat16>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SaveOpKernel<phi::CPUContext, float>,
+    ops::SaveOpKernel<phi::CPUContext, double>,
+    ops::SaveOpKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::SaveOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveOpKernel<phi::CPUContext, int>,
+    ops::SaveOpKernel<phi::CPUContext, uint8_t>,
+    ops::SaveOpKernel<phi::CPUContext, int8_t>,
+    ops::SaveOpKernel<phi::CPUContext, int16_t>,
+    ops::SaveOpKernel<phi::CPUContext, int64_t>);

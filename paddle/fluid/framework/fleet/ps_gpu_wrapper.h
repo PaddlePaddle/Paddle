@@ -62,6 +62,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSLIB
 #include "downpour_accessor.h"  // NOLINT
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {

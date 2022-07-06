@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy
 import random
 import collections
+import paddle
 import paddle.fluid as fluid
 import unittest
 from decorator_helper import *
@@ -276,7 +277,7 @@ class TestSimpleMul(SeedFixedTestCase):
 
         out = rnn()
         out = fluid.layers.sequence_pool(out, pool_type='last')
-        loss = fluid.layers.mean(out)
+        loss = paddle.mean(out)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
@@ -357,7 +358,7 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
 
         out = rnn()
         last = fluid.layers.sequence_pool(input=out, pool_type='last')
-        loss = fluid.layers.mean(last)
+        loss = paddle.mean(last)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()

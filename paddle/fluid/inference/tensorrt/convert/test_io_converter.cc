@@ -62,7 +62,7 @@ void IOConverterTester(const platform::DeviceContext& ctx) {
 
 TEST(EngineIOConverterTester, DefaultCPU) {
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   IOConverterTester(ctx);
 }
 
