@@ -2029,6 +2029,9 @@ def isend(tensor, dst, group=None):
     Returns:
         A distributed task object.
 
+    Warning:    
+        This API only supports the dygraph mode.
+
     Examples:
         .. code-block:: python
 
@@ -2080,6 +2083,8 @@ def irecv(tensor, src=None, group=None):
     Returns:
          A distributed task object.
 
+    Warning:    
+        This API only supports the dygraph mode.
 
     Examples:
         .. code-block:: python
@@ -2193,6 +2198,9 @@ def batch_isend_irecv(p2p_op_list):
         A list of distributed tasks returned by calling the corresponding
         op in the op_list. 
 
+    Warning:    
+        This API only supports the dygraph mode.
+
     Examples:
         .. code-block:: python
 
@@ -2246,8 +2254,8 @@ def batch_isend_irecv(p2p_op_list):
         raise RuntimeError("Don't support static graph mode currently.")
 
 
-def reduce_scatter(output,
-                   input_list,
+def reduce_scatter(tensor,
+                   tensor_list,
                    op=ReduceOp.SUM,
                    group=None,
                    use_calc_stream=True):
@@ -2255,8 +2263,8 @@ def reduce_scatter(output,
     Reduces, then scatters a list of tensors to all processes in a group
 
     Args:
-        output (Tensor): Output tensor.
-        input_list (list[Tensor]): List of tensors to reduce and scatter.
+        tensor (Tensor): Output tensor.
+        tensor_list (list[Tensor]): List of tensors to reduce and scatter.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global 
             default group. Default: None.
@@ -2265,6 +2273,10 @@ def reduce_scatter(output,
     Returns:
         Async task handle, if use_calc_stream is set to False.
         None, if use_calc_stream or if not part of the group.
+    
+    Warning:    
+        This API only supports the dygraph mode.
+
 
     Examples:
         .. code-block:: python
@@ -2284,18 +2296,18 @@ def reduce_scatter(output,
                 t1 = paddle.to_tensor([4, 5])
                 t2 = paddle.to_tensor([6, 7])
 
-            input_list = [t1, t2]
+            tensor_list = [t1, t2]
 
-            output = paddle.empty(shape=[2], dtype=input_list[0].dtype)
-            dist.reduce_scatter(output, input_list)
+            output = paddle.empty(shape=[2], dtype=tensor_list[0].dtype)
+            dist.reduce_scatter(output, tensor_list)
 
             print(output)
             # [4, 6]     # Rank-0
             # [8, 10]     # Rank-1
 
     """
-    _check_single_tensor(output, "output")
-    _check_tensor_list(input_list, "input_list")
+    _check_single_tensor(tensor, "tensor")
+    _check_tensor_list(tensor_list, "tensor_list")
 
     if group is not None and not group.is_member():
         return
@@ -2304,8 +2316,8 @@ def reduce_scatter(output,
         op_type = _get_reduce_op(op, "reduce_scatter")
         group = _get_default_group() if group is None else group
 
-        temp = paddle.concat(input_list, axis=0)
-        task = group.process_group._reduce_scatter_base(output, temp, op_type)
+        temp = paddle.concat(tensor_list, axis=0)
+        task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
         if use_calc_stream:
             task.wait()
             return None
