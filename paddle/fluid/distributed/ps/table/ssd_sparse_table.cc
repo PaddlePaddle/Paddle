@@ -100,7 +100,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_size];
+                float data_buffer[value_size];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -110,7 +110,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                     // pull rocksdb
                     std::string tmp_string("");
                     if (_db->get(shard_id,
-                                 (char*)&key,
+                                 reinterpret_cast<char*>(&key),
                                  sizeof(uint64_t),
                                  tmp_string) > 0) {
                       ++missed_keys;
@@ -137,7 +137,9 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                       memcpy(const_cast<float*>(feature_value.data()),
                              data_buffer_ptr,
                              data_size * sizeof(float));
-                      _db->del_data(shard_id, (char*)&key, sizeof(uint64_t));
+                      _db->del_data(shard_id,
+                                    reinterpret_cast<char*>(&key),
+                                    sizeof(uint64_t));
                     }
                   } else {
                     data_size = itr.value().size();
@@ -199,7 +201,7 @@ int32_t SSDSparseTable::PullSparsePtr(char** pull_values,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_size];
+                float data_buffer[value_size];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -210,7 +212,7 @@ int32_t SSDSparseTable::PullSparsePtr(char** pull_values,
                     // pull rocksdb
                     std::string tmp_string("");
                     if (_db->get(shard_id,
-                                 (char*)&key,
+                                 reinterpret_cast<char*>(&key),
                                  sizeof(uint64_t),
                                  tmp_string) > 0) {
                       ++missed_keys;
@@ -219,9 +221,8 @@ int32_t SSDSparseTable::PullSparsePtr(char** pull_values,
                       float* data_ptr =
                           const_cast<float*>(feature_value.data());
                       _value_accesor->Create(&data_buffer_ptr, 1);
-                      memcpy(data_ptr,
-                              data_buffer_ptr,
-                              data_size * sizeof(float));
+                      memcpy(
+                          data_ptr, data_buffer_ptr, data_size * sizeof(float));
                       ret = &feature_value;
                     } else {
                       data_size = tmp_string.size() / sizeof(float);
@@ -234,14 +235,16 @@ int32_t SSDSparseTable::PullSparsePtr(char** pull_values,
                       memcpy(const_cast<float*>(feature_value.data()),
                              data_buffer_ptr,
                              data_size * sizeof(float));
-                      _db->del_data(shard_id, (char*)&key, sizeof(uint64_t));
+                      _db->del_data(shard_id,
+                                    reinterpret_cast<char*>(&key),
+                                    sizeof(uint64_t));
                       ret = &feature_value;
                     }
                   } else {
                     ret = itr.value_ptr();
                   }
                   int pull_data_idx = keys[i].second;
-                  pull_values[pull_data_idx] = (char*)ret;
+                  pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
                 }
                 return 0;
               });
@@ -287,7 +290,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                &task_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_col];
+                float data_buffer[value_col];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -316,7 +319,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                   if (value_size ==
                       value_col) {  // 已拓展到最大size, 则就地update
                     _value_accesor->Update(&value_data, &update_data, 1);
-                  } else {  // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
+                  } else {
+                    // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
                     memcpy(data_buffer_ptr,
                            value_data,
                            value_size * sizeof(float));
@@ -392,7 +396,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                &task_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
-                float data_buffer[value_col];
+                float data_buffer[value_col];  // NOLINT
                 float* data_buffer_ptr = data_buffer;
                 for (size_t i = 0; i < keys.size(); ++i) {
                   uint64_t key = keys[i].first;
@@ -417,9 +421,11 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                   float* value_data = const_cast<float*>(feature_value.data());
                   size_t value_size = feature_value.size();
 
-                  if (value_size == value_col) {  // 已拓展到最大size, 则就地update
+                  if (value_size ==
+                      value_col) {  // 已拓展到最大size, 则就地update
                     _value_accesor->Update(&value_data, &update_data, 1);
-                  } else {  // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
+                  } else {
+                    // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
                     memcpy(data_buffer_ptr,
                            value_data,
                            value_size * sizeof(float));
@@ -479,7 +485,7 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
     delete it;
     LOG(INFO) << "SSDSparseTable shrink success. shard:" << i << " delete MEM["
               << mem_count << "] SSD[" << ssd_count << "]";
-    //_db->flush(i);
+    // _db->flush(i);
   }
   return 0;
 }
