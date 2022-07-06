@@ -18,6 +18,8 @@ import typing
 import paddle
 from paddle.fluid import framework
 from paddle.autograd.utils import as_tensors
+from paddle.incubate.autograd import utils as prim_utils
+from paddle.incubate.autograd import primx
 
 
 def vjp(func, xs, v=None):
@@ -70,7 +72,8 @@ def vjp(func, xs, v=None):
 
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    xs, v = _separate(xs), _separate(v)
+    if not prim_utils.prim_enabled():
+        xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
 
@@ -130,10 +133,15 @@ def jvp(func, xs, v=None):
     _check_inputs(func, xs, v)
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    xs, v = _separate(xs), _separate(v)
+    if not prim_utils.prim_enabled():
+        xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
-    return ys, _double_backward_trick(ys, xs, v)
+
+    if prim_utils.prim_enabled():
+        return ys, primx.forward_grad(ys, xs, v)
+    else:
+        return ys, _double_backward_trick(ys, xs, v)
 
 
 def _double_backward_trick(ys, xs, v):
