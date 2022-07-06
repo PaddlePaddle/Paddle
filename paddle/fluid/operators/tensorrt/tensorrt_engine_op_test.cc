@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
+#include "paddle/phi/common/data_type.h"
 
 USE_NO_KERNEL_OP(tensorrt_engine);
 namespace paddle {
@@ -132,6 +133,8 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 4, 1, 1});
   engine_op_desc.SetAttr("max_input_shape", std::vector<int>{2, 4, 1, 1});
   engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 1, 1});
+  engine_op_desc.SetAttr("model_precision",
+                         static_cast<int>(phi::DataType::FLOAT32));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
