@@ -2408,7 +2408,7 @@ def copy_var_to_parent_block(var, layer_helper):
     return parent_block_var
 
 
-def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
+def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
@@ -2454,7 +2454,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
             true. The default value is ``None`` .
         false_fn(callable, optional): A callable to be performed if ``pred`` is
             false. The default value is ``None`` .
-        return_name_ids: A list of strings to represents the name of returned vars. useful to debug.
+        return_names: A list of strings to represents the name of returned vars. useful to debug.
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
@@ -2568,14 +2568,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
             "true_fn returns non-None while false_fn returns None")
 
     # Merge ture and false output if they are not None
-    if return_name_ids is None:
-        return_name_ids = ["no name"] * len(to_sequence(true_output))
+    if return_names is None:
+        return_names = ["no name"] * len(to_sequence(true_output))
     else:
         """ 
-        dy2static will set the return_name_ids and expand the return values to UndefinedVar.
+        dy2static will set the return_names and expand the return values to UndefinedVar.
         """
         true_output, false_output = expand_undefined_var(
-            true_output, false_output, return_name_ids)
+            true_output, false_output, return_names)
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output)
     if len(to_sequence(true_output)) != len(to_sequence(false_output)):
@@ -2585,7 +2585,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_name_ids=None):
                     len(to_sequence(false_output))))
     for true_out, false_out, return_name in zip(to_sequence(true_output),
                                                 to_sequence(false_output),
-                                                to_sequence(return_name_ids)):
+                                                to_sequence(return_names)):
         try:
             assert_same_structure(true_out, false_out, check_types=False)
         except ValueError as e:
