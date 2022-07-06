@@ -15,7 +15,11 @@
 #include "paddle/phi/core/device_context.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#endif
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
