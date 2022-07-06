@@ -25,36 +25,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-// template <typename KeyType, typename ValType, typename GradType, typename
-// FVAccessor>
-// HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
-//     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-//   VLOG(1) << "Construct new HeterComm";
-//   resource_ = resource;
-//   storage_.resize(resource_->total_device());
-//   multi_mf_dim_ = resource->multi_mf();
-//   load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
-//   VLOG(0) << "load_factor = " << load_factor_;
-//   for (int i = 0; i < resource_->total_device(); ++i) {
-// #if defined(PADDLE_WITH_CUDA)
-//     platform::CUDADeviceGuard guard(resource_->dev_id(i));
-//     allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
-//         8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
-// #endif
-//     if (!multi_mf_dim_) {
-//       auto table = new Table(capacity / load_factor_);
-//       tables_.push_back(table);
-//     } else {
-//       VLOG(0) << "Error:use HeterComm Construct with accessor";
-//       return;
-//     }
-//     if (multi_node_) {
-//       storage_[i].init(feanum_, resource_->dev_id(i));
-//     }
-//   }
-//   heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
-//   init_path();
-// }
 
 template <typename KeyType,
           typename ValType,
@@ -86,7 +56,6 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
       VLOG(0) << " HeterComm init, max feature_value_size:" << val_type_size
               << ", feature_value_push_size:" << grad_type_size;
       auto ptr_table = new PtrTable(capacity / load_factor_);
-      // ptr_table->set_accessor(feature_value_accessor_);
       ptr_table->set_feature_value_size(val_type_size, grad_type_size);
       ptr_tables_.push_back(ptr_table);
     }
@@ -94,8 +63,6 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
       storage_[i].init(feanum_, resource_->dev_id(i));
     }
   }
-  // heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_,
-  // feature_value_accessor_);
   heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
   init_path();
 }
@@ -161,7 +128,6 @@ template <typename KeyType,
           typename GradType,
           typename FVAccessor>
 template <typename DstPlace, typename SrcPlace, typename StreamType>
-<<<<<<< HEAD
 void HeterComm<KeyType, ValType, GradType, FVAccessor>::memory_copy(
     DstPlace dst_place,
     void* dst,

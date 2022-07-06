@@ -178,7 +178,6 @@ class HeterCommKernel {
                         const StreamType& stream,
                         FVAccessor& feature_value_accessor);
 
-  // CommonFeatureValueAccessor feature_value_accessor_;
  private:
   int block_size_{256};
 };
