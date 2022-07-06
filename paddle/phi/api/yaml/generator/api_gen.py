@@ -154,7 +154,7 @@ class ForwardAPI(BaseAPI):
                 0] == 'dense' else 'SetSelectedRowsKernelOutput'
             if return_type == 'std::vector<Tensor>':
                 assert self.outputs['out_size_expr'][0] is not None, \
-                     f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                     f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, kernel_backend, &api_output);"""
 
@@ -199,7 +199,7 @@ class ForwardAPI(BaseAPI):
 
                 if out_dtype_list[i] == 'std::vector<Tensor>':
                     assert self.outputs['out_size_expr'][i] is not None, \
-                        f"{api_name}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
                     output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, kernel_backend, {get_out_code});"""
 
@@ -313,7 +313,7 @@ def main():
     parser.add_argument('--api_yaml_path',
                         help='path to api yaml file',
                         nargs='+',
-                        default='python/paddle/utils/code_gen/api.yaml')
+                        default='paddle/phi/api/yaml/api.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

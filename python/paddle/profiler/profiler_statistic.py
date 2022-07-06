@@ -79,19 +79,14 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
-        self.is_terminal_operator_node = True
 
     def cal_statistic(self):
         for child in self.children_node:
             child.cal_statistic()
-            if child.is_terminal_operator_node == False:
-                self.is_terminal_operator_node = False
         for rt in self.runtime_node:
             rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         for child in self.children_node:
-            if child.type == TracerEventType.Operator:
-                self.is_terminal_operator_node = False
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= (child.end_ns - child.start_ns)
@@ -421,10 +416,11 @@ class EventSummary:
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
             for child in node.children_node:
-                if child.name not in self.operator_inners:
-                    self.operator_inners[
-                        child.name] = EventSummary.OperatorItem(child.name)
-                self.operator_inners[child.name].add_item(child)
+                if child.type != TracerEventType.Operator:
+                    if child.name not in self.operator_inners:
+                        self.operator_inners[
+                            child.name] = EventSummary.OperatorItem(child.name)
+                    self.operator_inners[child.name].add_item(child)
 
             for runtimenode in node.runtime_node:
                 for devicenode in runtimenode.device_node:
@@ -537,8 +533,6 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
-        if operator_node.is_terminal_operator_node == False:
-            return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)

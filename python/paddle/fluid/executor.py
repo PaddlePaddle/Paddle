@@ -411,6 +411,18 @@ def _is_enable_standalone_executor():
     return flag
 
 
+def _is_standalone_executor_enable_compiled_program():
+    """
+    Whether to use experimental executor `StandaloneExecutor` in CompiledProgram.
+    Convert Graph to Program.
+    """
+    flag = False
+    env_val = os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
+    if env_val in [1, '1', True, 'True', 'true']:
+        flag = True
+    return flag
+
+
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
     trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
@@ -1402,6 +1414,9 @@ class Executor(object):
             # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
+                if program._program is not None and _is_standalone_executor_enable_compiled_program(
+                ):
+                    return True
                 return False
                 # if program._is_data_parallel and len(
                 #         program._get_places(place, program._places)) == 1:
@@ -1438,6 +1453,12 @@ class Executor(object):
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    if isinstance(program, compiler.CompiledProgram):
+                        program._compile(scope, self.place)
+                        compiled_graph = program._graph
+                        ir_graph = framework.IrGraph(compiled_graph,
+                                                     for_test=True)
+                        inner_program = ir_graph.to_program()
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,

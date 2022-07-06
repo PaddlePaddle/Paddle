@@ -20,12 +20,6 @@ namespace paddle {
 namespace framework {
 class OpDesc;
 }  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {

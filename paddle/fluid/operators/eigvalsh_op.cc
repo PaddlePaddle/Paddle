@@ -151,24 +151,23 @@ REGISTER_OPERATOR(eigvalsh,
                   ops::EigvalshGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    eigvalsh,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext,
-                        float,
-                        paddle::platform::complex<float>>,
-    ops::EigvalshKernel<paddle::platform::CPUDeviceContext,
-                        double,
-                        paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(eigvalsh,
+                       ops::EigvalshKernel<phi::CPUContext, float, float>,
+                       ops::EigvalshKernel<phi::CPUContext, double, double>,
+                       ops::EigvalshKernel<phi::CPUContext,
+                                           float,
+                                           paddle::platform::complex<float>>,
+                       ops::EigvalshKernel<phi::CPUContext,
+                                           double,
+                                           paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     eigvalsh_grad,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext,
+    ops::EigvalshGradKernel<phi::CPUContext, float, float>,
+    ops::EigvalshGradKernel<phi::CPUContext, double, double>,
+    ops::EigvalshGradKernel<phi::CPUContext,
                             float,
                             paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext,
+    ops::EigvalshGradKernel<phi::CPUContext,
                             double,
                             paddle::platform::complex<double>>);

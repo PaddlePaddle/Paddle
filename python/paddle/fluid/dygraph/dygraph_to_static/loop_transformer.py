@@ -32,6 +32,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_un
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -566,7 +567,7 @@ class NameVisitor(gast.NodeVisitor):
         return loop_vars - removed_vars
 
 
-class LoopTransformer(gast.NodeTransformer):
+class LoopTransformer(BaseTransformer):
     """
     This class transforms python while/for statement into Static Graph Ast
     """

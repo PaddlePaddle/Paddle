@@ -15,18 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sample_prob.h"
 
 namespace paddle {
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
-namespace math {
-
-template class SampleWithProb<platform::CPUDeviceContext, float>;
-template class SampleWithProb<platform::CPUDeviceContext, double>;
-
-}  // namespace math
+namespace math {}  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -185,9 +185,8 @@ inline void MergeVars(const std::string &var_name,
     }
 
     // set output tensor to 0.
-    paddle::platform::CPUDeviceContext cpu_ctx;
-    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T>
-        constant_functor;
+    phi::CPUContext cpu_ctx;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant_functor;
     constant_functor(cpu_ctx, out_t, static_cast<T>(0));
     // sum all vars to out
     auto result = EigenVector<T>::Flatten(*out_t);
@@ -210,16 +209,13 @@ inline void MergeVars(const std::string &var_name,
     for (auto &var : vars) {
       inputs.push_back(&var->Get<phi::SelectedRows>());
     }
-    paddle::platform::CPUDeviceContext dev_ctx;
+    phi::CPUContext dev_ctx;
     if (merge_add) {
-      paddle::operators::math::scatter::
-          MergeAdd<paddle::platform::CPUDeviceContext, T>
-              merge_add;
+      paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
-      paddle::operators::math::scatter::
-          MergeAverage<paddle::platform::CPUDeviceContext, T>
-              merge_average;
+      paddle::operators::math::scatter::MergeAverage<phi::CPUContext, T>
+          merge_average;
       merge_average(dev_ctx, inputs, out_slr);
     }
 
