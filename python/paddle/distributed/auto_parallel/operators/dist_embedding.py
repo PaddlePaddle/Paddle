@@ -222,7 +222,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'W': [Weight_var]
             },
             outputs={'Out': [intermediate_var_0]},
-            attrs={"start_index": relative_idx})
+            attrs={
+                "start_index": relative_idx,
+                OP_ROLE_KEY: src_op.attr('op_role')
+            })
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -235,6 +238,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
@@ -432,7 +436,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(Ids_var.name)
         mesh_shape = process_mesh.topology
         batch_size_axis = var_dim_mapping[0]
-        if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+        if batch_size_axis > -1 and mesh_shape[
+                batch_size_axis] > 1 and ctx.gradient_scale:
             need_gradient_allreduce = True
 
             group_ranks = _get_comm_group(process_mesh.processes,

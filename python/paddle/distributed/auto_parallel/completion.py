@@ -1242,6 +1242,14 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert output_name in grad_var_to_var, "sum op's output '{}' has no corresponding var".format(
                         output_name)
+
+                    # input_var_name = grad_op.input_arg_names[0]
+                    # input_var = vars[input_var_name]
+                    # ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                    #     input_var)
+                    # ref_fwd_dims_mapping = ref_dist_attr.dims_mapping
+                    # ref_fwd_process_mesh = ref_dist_attr.process_mesh
+
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(

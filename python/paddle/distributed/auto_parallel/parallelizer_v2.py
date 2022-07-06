@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 from collections import defaultdict
 
@@ -54,30 +55,63 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
+            time1 = time.time()
+            print("**********_generate_backward")
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time1)
             # Apply pre optimization passes
+            time2 = time.time()
+            print("**********_apply_pre_optimization")
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
                                          serial_optimizer, params_grads)
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time2)
 
             # Do logical partition
+            time3 = time.time()
+            print("**********partition")
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads)
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time3)
+
             # Generate optimizer
+            time4 = time.time()
+            print("**********_generate_optimizer")
             self._generate_optimizer(dist_main_prog, dist_startup_prog,
                                      serial_optimizer, dist_params_grads)
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time4)
+
             # Do reshard process
             set_grad_var_shape(dist_main_prog, self._dist_context)
+            time5 = time.time()
+            print("**********Resharder")
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time5)
+
             # Apply post optimization passes
+            time6 = time.time()
+            print("**********_apply_post_optimization")
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
+            for process_mesh in self._dist_context.process_meshes:
+                print("--> processes:", process_mesh.processes)
+            print("--> time:", time.time() - time6)
         else:
             # Apply pre optimization passes
             self._apply_pre_optimization(serial_main_program,
@@ -122,6 +156,7 @@ class Parallelizer:
             return
         # apply amp pass
         if self._strategy.amp:
+            print("**********amp")
             config = copy.deepcopy(self._strategy.amp_configs)
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -140,6 +175,7 @@ class Parallelizer:
 
         # apply recompute pass
         if self._strategy.recompute:
+            print("**********recompute")
             config = copy.deepcopy(self._strategy.recompute_configs)
             config["dist_context"] = self._dist_context
             config["no_grad_set"] = None
@@ -164,7 +200,17 @@ class Parallelizer:
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
 
+        if self._strategy.pipeline:
+            print("**********pipeline")
+            acc_steps = self._strategy.pipeline_configs["accumulate_steps"]
+            self._strategy.gradient_merge = True
+            self._strategy.gradient_merge_configs = {
+                "k_steps": acc_steps,
+                "avg": True
+            }
+
         if self._strategy.gradient_merge:
+            print("**********gradient merge")
             config = copy.deepcopy(self._strategy.gradient_merge_configs)
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -173,3 +219,13 @@ class Parallelizer:
             auto_parallel_gradient_merge_pass.apply([main_program],
                                                     [startup_program],
                                                     self._pass_context)
+
+        if self._strategy.pipeline:
+            print("**********pipeline")
+            config = copy.deepcopy(self._strategy.pipeline_configs)
+            config["dist_context"] = self._dist_context
+            # config["params_grads"] = params_grads
+            auto_parallel_pipeline_pass = new_pass("auto_parallel_pipeline",
+                                                   config)
+            auto_parallel_pipeline_pass.apply([main_program], [startup_program],
+                                              self._pass_context)

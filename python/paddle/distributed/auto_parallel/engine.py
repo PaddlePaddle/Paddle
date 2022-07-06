@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 import logging
 from collections import defaultdict
@@ -115,7 +116,7 @@ class Engine:
         self._gradient_scale = gradient_scale
 
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
+        self._modes = ['train']  # , 'eval', 'predict'
         # Build forward program
         self._build()
 
@@ -272,17 +273,26 @@ class Engine:
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
 
+        print(self.main_program)
+
         usr_fetch = self._to_map_fetch(fetches)
         fetch_loss = self._inner_fetch(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
 
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
+            train_reader_cost = 0.0
+            train_run_cost = 0.0
+            reader_start = time.time()
             for step, _ in enumerate(train_dataloader):
+                train_reader_cost = time.time() - reader_start
+                train_start = time.time()
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_program_cache,
                                           return_numpy=return_numpy)
+                train_run_cost = time.time() - train_start
+                outs = [] if outs is None else outs
                 train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
@@ -293,7 +303,12 @@ class Engine:
                 for i, out in enumerate(user_outs):
                     train_logs["train_" +
                                fetch_map[user_fetch_list[i]]] = out[0]
+                train_logs["avg_reader_cost"] = train_reader_cost
+                train_logs[
+                    "avg_batch_cost"] = train_reader_cost + train_run_cost
+                train_logs["speed"] = 1. / (train_reader_cost + train_run_cost)
                 self._logger.info(train_logs)
+                reader_start = time.time()
 
     def evaluate(self,
                  eval_data,
@@ -402,11 +417,8 @@ class Engine:
                            batch_size,
                            epochs=1,
                            steps_per_epoch=None):
-        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
-        dist_context = self._dist_contexts[self.mode]
-        dist_main_block = dist_main_prog.global_block()
 
+        dist_main_block = self.main_program.global_block()
         # NOTE: Get feed_list from dist_program, then insert dataloader op
         # with sharded var shape. Because predict_program does not contain
         # labels var, so we will filter dataset's value with length of feed_list.
@@ -417,7 +429,7 @@ class Engine:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
         dp_world_size, dp_rank = self._get_data_parallel_info(
-            feed_list[0], dist_context)
+            feed_list[0], self.dist_context)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -428,7 +440,7 @@ class Engine:
 
         # insert read op at the end of program
         places = paddle.static.cuda_places()
-        with static.program_guard(dist_main_prog, dist_startup_prog):
+        with static.program_guard(self.main_program, self.startup_program):
             dataloader = NonIterableGeneratorLoader(
                 dataset,
                 feed_list,
@@ -439,21 +451,48 @@ class Engine:
                 data_parallel_world_size=dp_world_size,
                 data_parallel_rank=dp_rank)
 
+        # record the read ops' desc to insert to program of forward task_node
+        read_ops_desc = []
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
         for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
             new_op_desc = dist_main_block.desc._prepend_op()
             new_op_desc.copy_from(op.desc)
+            read_ops_desc.append(new_op_desc)
             new_op = Operator(dist_main_block,
                               new_op_desc,
                               type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
             dist_op = DistributedOperator(new_op)
-            dist_context.add_dist_op_for_program(dist_op)
+            self.dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
             dist_main_block._remove_op(new_op_size, sync=False)
         dist_main_block._sync_with_cpp()
+
+        # Insert read op to forward TaskNode if 1F1B pass is setted
+        if self.main_program._pipeline_opt:
+            assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
+            fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
+            fwd_task = fleet_opt["tasks"][1]
+            fwd_prog = fwd_task.get_program()
+            fwd_block = fwd_prog.global_block()
+
+            for var in feed_list:
+                if var.name not in fwd_block.vars:
+                    fwd_block._clone_variable(var)
+
+            for op_desc in read_ops_desc:
+                new_op_desc = fwd_block.desc._prepend_op()
+                new_op_desc.copy_from(op_desc)
+                new_op = Operator(fwd_block,
+                                  new_op_desc,
+                                  type=new_op_desc.type())
+                fwd_block.ops.insert(0, new_op)
+
+            fwd_block._sync_with_cpp()
+            fwd_task.set_program(fwd_prog)
+
         return dataloader
 
     def _validate_spec(self, specs):

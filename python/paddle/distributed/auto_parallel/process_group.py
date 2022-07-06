@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
+
 import paddle
 import paddle.fluid.core as core
 from ..collective import _get_global_env
@@ -41,9 +43,9 @@ def get_world_process_group():
 def new_process_group(ranks):
     global _g_process_group_map
     # A key constructed from ranks is used for avoiding duplication
-    new_key = ''.join(map(str, sorted(ranks)))
+    new_key = ''.join(map(str, ranks))
     for pg_id, pg in _g_process_group_map.items():
-        cur_key = ''.join(map(str, sorted(pg.ranks)))
+        cur_key = ''.join(map(str, pg.ranks))
         if pg_id != 0 and new_key == cur_key:
             return pg
     # If not matching the existing one, construt a new process group
@@ -68,7 +70,7 @@ class ProcessGroup:
         if group_id == 0 and get_process_group(0) is not None:
             assert group_id != 0, "Process group id 0 is reserved for all ranks."
         self._group_id = group_id
-        self._ranks = sorted(ranks)
+        self._ranks = ranks
         # Add the current ranks into group 0
         if group_id != 0:
             global _g_process_group_map
@@ -94,7 +96,7 @@ class ProcessGroup:
             assert self.is_instantiate() == False, \
                 "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
-        self._ranks = sorted(list(set(self.ranks)))
+        self._ranks = list(set(self.ranks))
 
     def local_rank(self, global_rank):
         if global_rank in self.ranks:
@@ -116,15 +118,21 @@ class ProcessGroup:
         if self.nranks >= 2:
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
+            print("***strategy.nranks:", strategy.nranks)
             strategy.local_rank = self.local_rank(global_rank)
+            print("***strategy.local_rank:", strategy.local_rank)
             strategy.trainer_endpoints = [
                 genv.trainer_endpoints[i] for i in self.ranks
             ]
+            print("***strategy.trainer_endpoints:", strategy.trainer_endpoints)
             strategy.current_endpoint = genv.current_endpoint
+            print("***strategy.current_endpoint:", strategy.current_endpoint)
             strategy.nrings = 1
+            print("***strategy.nrings:", strategy.nrings)
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
+                print("***place:", genv.device_id)
                 core.NCCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
             else:
@@ -132,13 +140,17 @@ class ProcessGroup:
 
         # TODO(shenliang03): This is a temporary solution to solve the problem of
         # hang caused by cross-creation of new_group
+        paddle.set_device('gpu:%d' % paddle.distributed.ParallelEnv().dev_id)
         tmp = paddle.to_tensor(
             [1], dtype="int32") if _non_static_mode() else fill_constant(
                 [0], dtype="int32", value="1")
-        paddle.distributed.all_reduce(tmp, use_calc_stream=True)
-        paddle.distributed.wait(tmp)
+        paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+        paddle.distributed.wait(tmp, group=self)
 
         self._is_instantiate = True
+
+    def is_member(self):
+        return True
 
     # def __eq__(self, other):
     #     if not isinstance(other, ProcessGroup):
@@ -158,5 +170,5 @@ class ProcessGroup:
 
 # Note that Process group 0 is reserved for representing all ranks.
 # At the beginning, group 0 is empty and new ranks will be added automatically.
-_g_process_group_map = {}
+_g_process_group_map = OrderedDict()
 _g_process_group_map[0] = ProcessGroup(0, [])

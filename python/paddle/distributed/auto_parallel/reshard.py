@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import time
 import copy
 from functools import reduce
 
@@ -77,18 +78,23 @@ class SendOpDesc:
         dst (int): The destination process to receive.
     """
 
-    def __init__(self, partition_index, dst):
+    def __init__(self, partition_index, src, dst):
+        self._src = src
         self._dst = dst
         self._partition_index = partition_index
         self._desc = "send"
 
     @property
-    def partition_index(self):
-        return self._partition_index
+    def src(self):
+        return self._src
 
     @property
     def dst(self):
         return self._dst
+
+    @property
+    def partition_index(self):
+        return self._partition_index
 
     @property
     def desc(self):
@@ -107,18 +113,23 @@ class RecvOpDesc:
         src (int): The source process to send.
     """
 
-    def __init__(self, partition_index, src):
+    def __init__(self, partition_index, src, dst):
         self._src = src
+        self._dst = dst
         self._partition_index = partition_index
         self._desc = "recv"
 
     @property
-    def partition_index(self):
-        return self._partition_index
-
-    @property
     def src(self):
         return self._src
+
+    @property
+    def dst(self):
+        return self._dst
+
+    @property
+    def partition_index(self):
+        return self._partition_index
 
     @property
     def desc(self):
@@ -192,30 +203,30 @@ class Inserter:
     """Insert op required in the reshard process."""
 
     @staticmethod
-    def insert_send_op(block, idx, tensor, dst, op_role):
+    def insert_send_op(block, idx, tensor, src, dst, op_role):
         """Insert send op into block at the given index."""
-        op_type = 'send_v2'
+        process_group = new_process_group([src, dst])
         block._insert_op(idx,
-                         type=op_type,
+                         type='send_v2',
                          inputs={'X': [tensor]},
                          attrs={
-                             'ring_id': 0,
-                             'peer': dst,
+                             'ring_id': process_group.id,
+                             'peer': process_group.ranks.index(dst),
                              'use_calc_stream': True,
                              'op_role': op_role
                          })
 
     @staticmethod
-    def insert_recv_op(block, idx, tensor, src, op_role):
+    def insert_recv_op(block, idx, tensor, src, dst, op_role):
         """Insert recv op into block at the given index."""
-        op_type = 'recv_v2'
+        process_group = new_process_group([src, dst])
         block._insert_op(idx,
-                         type=op_type,
+                         type='recv_v2',
                          inputs={'X': [tensor]},
                          outputs={'Out': [tensor]},
                          attrs={
-                             'ring_id': 0,
-                             'peer': src,
+                             'ring_id': process_group.id,
+                             'peer': process_group.ranks.index(src),
                              'out_shape': tensor.shape,
                              'dtype': tensor.dtype,
                              'use_calc_stream': True,
@@ -459,7 +470,9 @@ class Remover:
                         remove_op_idx.append(idx)
 
             for idx in remove_op_idx[::-1]:
-                block._remove_op(idx)
+                block._remove_op(idx, sync=False)
+
+            block._sync_with_cpp()
 
     @staticmethod
     def remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
@@ -508,7 +521,7 @@ class Remover:
                     idx += 1
 
             for var in remove_vars:
-                if block.vars[var].is_data:
+                if block.vars[var].is_data or "learning_rate" in var:
                     continue
                 block._remove_var(var)
 
@@ -545,6 +558,8 @@ class Remover:
         need_vars = set()
         for var_name in startup_output_vars:
             if var_name in main_input_vars:
+                need_vars.add(var_name)
+            if "learning_rate" in var_name:
                 need_vars.add(var_name)
 
         startup_ops = startup_block.ops
@@ -594,7 +609,9 @@ class Remover:
             if is_no_need_op:
                 remove_op_idx.append(idx)
         for idx in remove_op_idx[::-1]:
-            startup_block._remove_op(idx)
+            startup_block._remove_op(idx, sync=False)
+
+        startup_block._sync_with_cpp()
 
 
 class Resharder:
@@ -934,7 +951,7 @@ class Resharder:
                                         if process_mesh == op_process_mesh:
                                             is_reshard = True
                                             break
-                        else:
+                        elif not dist_tensor.serial_tensor.is_data:
                             is_reshard = True
         else:
             op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
@@ -1128,14 +1145,20 @@ class Resharder:
 
                         # append send and recv op desc
                         send_op_desc = SendOpDesc(source_partition_index,
+                                                  to_send_process,
                                                   target_process)
                         recv_op_desc = RecvOpDesc(source_partition_index,
-                                                  to_send_process)
+                                                  to_send_process,
+                                                  target_process)
                         op_desc_seq[to_send_process].append(send_op_desc)
                         op_desc_seq[target_process].append(recv_op_desc)
                         has_sent.append(source_partition_index)
                         Resharder.concat_partitions(partition_index_list,
                                                     source_partition_index)
+                        if int(dist_op.serial_op.attr('op_role')) == int(
+                                OpRole.Forward):
+                            self.dist_context.up_down_streams.add_pair_stream(
+                                to_send_process, target_process)
 
                 # append concat op desc
                 op_desc_seq[target_process].append(
@@ -1250,7 +1273,7 @@ class Resharder:
                     self.has_sent[var_name] = []
                 if op_desc.dst not in self.has_sent[var_name]:
                     Inserter.insert_send_op(block, idx, source_tensor,
-                                            op_desc.dst,
+                                            op_desc.src, op_desc.dst,
                                             reshard_op.attr('op_role'))
                     idx += 1
                     self.has_sent[var_name].append(op_desc.dst)
@@ -1269,7 +1292,7 @@ class Resharder:
                         dtype=source_tensor.dtype,
                         type=source_tensor.type)
                     Inserter.insert_recv_op(block, idx, recv_tensor,
-                                            op_desc.src,
+                                            op_desc.src, op_desc.dst,
                                             reshard_op.attr('op_role'))
                     tensor_list.append(recv_tensor)
                     idx += 1
@@ -1427,6 +1450,8 @@ class Resharder:
                         # skip lod_tensor_blocking_queue_0
                         if var_name == "lod_tensor_blocking_queue_0":
                             continue
+                        if "learning_rate" in var_name:
+                            continue
                         var = get_var_with_recursion(
                             var_name, block, self.auto_parallel_main_prog)
                         dist_tensor = self.dist_context.get_dist_tensor_for_program(
@@ -1473,11 +1498,11 @@ class Resharder:
                                     index]
                                 if self.rank_id == item:
                                     Inserter.insert_send_op(
-                                        block, idx + 1, var, recv_rank,
+                                        block, idx + 1, var, item, recv_rank,
                                         op.attr('op_role'))
                                 if self.rank_id == recv_rank:
                                     Inserter.insert_recv_op(
-                                        block, idx + 1, var, item,
+                                        block, idx + 1, var, item, recv_rank,
                                         op.attr('op_role'))
                             cur_op_count = len(block.ops)
                             idx_offset = idx_offset + cur_op_count - pre_op_count
@@ -1486,6 +1511,7 @@ class Resharder:
                 else:
                     idx += 1
 
+        time1 = time.time()
         # remove no need vars and ops in the main program
         Remover.remove_no_need_in_main(self.auto_parallel_main_prog,
                                        self.dist_context, self.rank_id,
@@ -1497,3 +1523,4 @@ class Resharder:
 
         # reset some variable when remove operation ended
         Resharder.while_block_info = {}
+        print("**********Remover:", time.time() - time1)

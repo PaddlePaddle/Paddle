@@ -21,45 +21,59 @@ from paddle.framework import core
 from paddle.fluid import layers
 from paddle.fluid.framework import program_guard, device_guard
 from .pass_base import PassBase, PassType, register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY
+from paddle.distributed.auto_parallel.utils import set_var_dist_attr, is_optimize_op, is_backward_op
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 
 world_process_group = get_world_process_group()
 
 
-def _is_the_optimizer_op(op):
-    OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-    return OP_ROLE_KEY in op.attr_names and \
-            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
-
-
-def _remove_and_get_optimizer_op(main_program, dist_context):
+def _remove_and_get_ops(main_program, dist_context):
     # 1 create tmp block
-    # 2 mv optimizer op from global program to tmp block
+    # 2.1 mv optimizer op from global program to tmp block
+    # 2.2 mv c_allreduce_sum&scale op from global program to tmp block
     # 3 del the op from dist_context
     main_block = main_program.global_block()
     temp_block = main_program._create_block()
     removed_op_idx = []
     optimize_ops_desc = []
-    skip_ops = ["increment", "elementwise_mod", "equal"]
+    allreduce_sum_desc = []
     for idx, op in enumerate(main_block.ops):
-        if _is_the_optimizer_op(op) and op.type not in skip_ops:
-            # append optimizer op to tmp block
+        # append optimizer op to tmp block
+        if is_optimize_op(op):
             new_op_desc = temp_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             optimize_ops_desc.append(new_op_desc)
             removed_op_idx.append(idx)
-
             # del op from dist_context
-            if dist_context:
-                dist_context.del_dist_op_for_program(op)
+            dist_context.del_dist_op_for_program(op)
+
+        # append allreduce&scale op to tmp block
+        if is_backward_op(op) and \
+            op.type == "c_allreduce_sum" and \
+            op.attr('use_model_parallel') is False:
+            assert (len(op.desc.output_arg_names()) == 1)
+            new_op_desc = temp_block.desc.append_op()
+            new_op_desc.copy_from(op.desc)
+            allreduce_sum_desc.append(new_op_desc)
+            removed_op_idx.append(idx)
+            dist_context.del_dist_op_for_program(op)
+
+            if dist_context.gradient_scale:
+                scale_op = main_block.ops[idx + 1]
+                assert scale_op.type == "scale"
+                scale_op_desc = temp_block.desc.append_op()
+                scale_op_desc.copy_from(scale_op.desc)
+                allreduce_sum_desc.append(scale_op_desc)
+                removed_op_idx.append(idx + 1)
+                dist_context.del_dist_op_for_program(scale_op)
 
     for idx in removed_op_idx[::-1]:
-        main_block._remove_op(idx)
+        main_block._remove_op(idx, sync=False)
+    main_block._sync_with_cpp()
 
-    return optimize_ops_desc
+    return optimize_ops_desc, allreduce_sum_desc
 
 
 def _remove_op_role_var(param, grad):
@@ -109,7 +123,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                             outputs={'Out': [step_var]},
                                             attrs={
                                                 'step': float(1.0),
-                                                'op_role': OpRole.Optimize
+                                                OP_ROLE_KEY: OpRole.Backward
                                             })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             increment_op, world_process_group.ranks, [-1], dist_context)
@@ -123,7 +137,8 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                                   attrs={
                                                       'axis': -1,
                                                       'use_mkldnn': False,
-                                                      'op_role': OpRole.Optimize
+                                                      OP_ROLE_KEY:
+                                                      OpRole.Backward
                                                   })
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             elementwise_mod_op, world_process_group.ranks, [-1], dist_context)
@@ -134,7 +149,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
                                             'Y': zero_var
                                         },
                                         outputs={'Out': cond_var},
-                                        attrs={'op_role': OpRole.Optimize})
+                                        attrs={OP_ROLE_KEY: OpRole.Backward})
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             equal_op, world_process_group.ranks, [-1], dist_context)
 
@@ -143,18 +158,16 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
 
 def _append_gradient_merge_backward_op(
         main_program, startup_program, params_grads: List[Tuple[Any, Any]],
-        cond_var_name: str,
         dist_context) -> Tuple[List[Tuple[Any, Any]], Dict[str, Any]]:
     main_block = main_program.global_block()
     startup_block = startup_program.global_block()
 
-    # step1: remove grad.op's op_role_var
-    for param, grad in params_grads:
-        assert (
-            param.type != core.VarDesc.VarType.SELECTED_ROWS
-        ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
-
-        _remove_op_role_var(param, grad)
+    # # step1: remove grad.op's op_role_var
+    # for param, grad in params_grads:
+    #     assert (
+    #         param.type != core.VarDesc.VarType.SELECTED_ROWS
+    #     ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+    #     _remove_op_role_var(param, grad)
 
     # {grad.name: gradient_merge_var.name} to rename opt inputs
     grad_to_gradient_merge = {}
@@ -201,7 +214,7 @@ def _append_gradient_merge_backward_op(
                                            attrs={
                                                'axis': -1,
                                                'use_mkldnn': False,
-                                               'op_role': OpRole.Optimize
+                                               OP_ROLE_KEY: OpRole.Backward
                                            })
         new_params_to_grads.append([param, gradient_merge_var])
         grad_to_gradient_merge[grad.name] = gradient_merge_var.name
@@ -210,10 +223,21 @@ def _append_gradient_merge_backward_op(
     return new_params_to_grads, grad_to_gradient_merge
 
 
+def _rename_arg_names(op_desc, var_name_dict):
+    for input_name in op_desc.input_arg_names():
+        if input_name in var_name_dict:
+            op_desc._rename_input(input_name, var_name_dict[input_name])
+
+    for output_name in op_desc.output_arg_names():
+        if output_name in var_name_dict:
+            op_desc._rename_output(output_name, var_name_dict[output_name])
+
+
 def _create_cond_block_and_update_optimizer(
-        main_program, cond_var, new_params_to_grads: List[Tuple[Any, Any]],
+        main_program, cond_var, params_grads: List[Tuple[Any, Any]],
+        new_params_to_grads: List[Tuple[Any, Any]],
         grad_to_gradient_merge: Dict[str, str], optimize_ops_desc: List[Any],
-        k_steps, avg):
+        allreduce_sum_desc: List[Any], k_steps, avg, dist_context):
 
     def true_apply_gradient():
         cur_block_idx = main_program.current_block_idx
@@ -222,6 +246,22 @@ def _create_cond_block_and_update_optimizer(
         # cur_block's forward_block & backward_block is itself
         cur_block._set_forward_block_idx(cur_block_idx)
         op_maker = core.op_proto_and_checker_maker
+
+        # record grads_name to insert c_allreduce_sum op
+        grads_name = [grad.name for _, grad in params_grads]
+        # append c_allreduce_sum ops and scale ops
+        for op_desc in allreduce_sum_desc:
+            outputs_name = op_desc.output_arg_names()
+            assert len(outputs_name) == 1
+            if outputs_name[0] in grads_name:
+                new_op_desc = cur_block.desc.append_op()
+                new_op_desc.copy_from(op_desc)
+                _rename_arg_names(new_op_desc, grad_to_gradient_merge)
+                new_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
+
+        main_program.global_block()._sync_with_cpp()
+        cur_block._sync_with_cpp()
+
         if avg:
             for param, new_grad in new_params_to_grads:
                 # grad /= k_steps
@@ -241,16 +281,8 @@ def _create_cond_block_and_update_optimizer(
             new_op_desc = cur_block.desc.append_op()
             new_op_desc.copy_from(op_desc)
 
-            #update input/output
-            for input_name in new_op_desc.input_arg_names():
-                if input_name in grad_to_gradient_merge:
-                    new_op_desc._rename_input(
-                        input_name, grad_to_gradient_merge[input_name])
-
-            for output_name in new_op_desc.output_arg_names():
-                if output_name in grad_to_gradient_merge:
-                    new_op_desc._rename_output(
-                        output_name, grad_to_gradient_merge[output_name])
+            # update input/output
+            _rename_arg_names(new_op_desc, grad_to_gradient_merge)
 
             # remove op_role_var
             if new_op_desc.has_attr(op_maker.kOpRoleVarAttrName()):
@@ -277,30 +309,32 @@ def _create_cond_block_and_update_optimizer(
 
     layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
     cond_op = main_program.global_block().ops[-1]
-    cond_op._set_attr('op_role', OpRole.Optimize)
+    cond_op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
 
 def parse_program(main_program, startup_program, params_grads, k_steps, avg,
                   dist_context):
-    # 1 create gradient_merge_cond
-    cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
-
-    # 2 remove optimizer_op from main_program
-    optimize_ops_desc = _remove_and_get_optimizer_op(main_program, dist_context)
+    # 1 remove optimizer_op, allreduce_sum_op and scale_op from main_program
+    optimize_ops_desc, allreduce_sum_desc = _remove_and_get_ops(
+        main_program, dist_context)
 
     # back to block 0
     main_program._rollback()
 
-    # 3 append gradient merge backward op to main_program
+    # 2 append gradient merge backward op to main_program
     new_params_to_grads, grad_to_gradient_merge = _append_gradient_merge_backward_op(
-        main_program, startup_program, params_grads, cond_var.name,
-        dist_context)
+        main_program, startup_program, params_grads, dist_context)
+
+    # 3 create gradient_merge_cond
+    cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
 
     # 4 create ConditionalBlock and append gradient merge optimizer ops
     _create_cond_block_and_update_optimizer(main_program, cond_var,
-                                            new_params_to_grads,
+                                            params_grads, new_params_to_grads,
                                             grad_to_gradient_merge,
-                                            optimize_ops_desc, k_steps, avg)
+                                            optimize_ops_desc,
+                                            allreduce_sum_desc, k_steps, avg,
+                                            dist_context)
 
 
 @register_pass("auto_parallel_gradient_merge_pass")
