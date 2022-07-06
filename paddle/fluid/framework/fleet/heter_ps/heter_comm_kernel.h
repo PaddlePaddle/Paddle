@@ -116,6 +116,17 @@ class HeterCommKernel {
   template <typename KeyT, typename ValueT>
   void merge_grad(KeyT* d_keys, ValueT* d_vals_in, int len, ValueT* d_vals_out);
 
+#if defined(PADDLE_WITH_XPU_KP)
+
+template <typename ValueT>
+void convert_feature_value_as_float(
+    ValueT* d_vals_in,
+    int len,
+    bool to_float);
+
+#endif
+
+
  private:
   int block_size_{256};
 };

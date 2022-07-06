@@ -676,9 +676,11 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(0) << "heter comm inl pull sparse all reduce start";
+    heter_comm_kernel_->convert_feature_value_as_float(d_shard_vals_ptr, h_fid_seq->size(), true);
     bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_vals_ptr,
         h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
+    heter_comm_kernel_->convert_feature_value_as_float(d_all_vals_ptr, h_fid_seq->size(), false);
     VLOG(0) << "heter comm inl pull sparse all reduce finish";
   } else {
     VLOG(0) << "heter comm inl pull unnecessary all reduce";
