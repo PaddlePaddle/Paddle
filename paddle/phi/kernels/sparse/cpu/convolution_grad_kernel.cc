@@ -52,24 +52,9 @@ void Conv3dGradCPUKernel(const CPUContext& dev_ctx,
   const int out_channels = kernel_dims[4];
 
   int rulebook_len = 0;
-  const IntT* rulebook_ptr = nullptr;
-  const int* counter_ptr = nullptr;
-  bool cache_in_table = false;
-  if (!key.empty()) {
-    const auto* table = out.table(key);
-    if (table != nullptr) {
-      cache_in_table = true;
-      const DenseTensor& tmp_rulebook = table->first;
-      rulebook_ptr = tmp_rulebook.data<IntT>();
-      rulebook_len = tmp_rulebook.dims()[1];
-      counter_ptr = table->second.data();
-    }
-  }
-  if (!cache_in_table) {
-    rulebook_ptr = rulebook.data<IntT>();
-    rulebook_len = rulebook.dims()[1];
-    counter_ptr = counter.data<int>();
-  }
+  const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
+      out, rulebook, key, &rulebook_len);
+  const int* counter_ptr = phi::funcs::sparse::GetCounterPtr(out, counter, key);
 
   DenseTensorMeta in_features_meta(
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);

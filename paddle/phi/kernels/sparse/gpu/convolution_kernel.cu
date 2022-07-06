@@ -72,8 +72,8 @@ void Conv3dGPUKernel(const GPUContext& dev_ctx,
   // 1. product rulebook
   DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
   DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
-  DenseTensor out_index;
-  DenseTensor unique_value;
+  DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
+  DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
 
   VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
   int rulebook_len = 0;

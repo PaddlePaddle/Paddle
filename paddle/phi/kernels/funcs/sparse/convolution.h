@@ -188,6 +188,35 @@ inline void PrefixSum(const T* counter, T* offsets, const int n) {
   offsets[n] = offset;
 }
 
+template <typename IntT>
+inline const IntT* GetRulebookPtr(const SparseCooTensor& coo,
+                                  const DenseTensor& rulebook,
+                                  const std::string& key,
+                                  int* rulebook_len) {
+  if (!key.empty()) {
+    const auto* table = coo.table(key);
+    if (table != nullptr) {
+      const DenseTensor& tmp_rulebook = table->first;
+      *rulebook_len = tmp_rulebook.dims()[1];
+      return tmp_rulebook.data<IntT>();
+    }
+  }
+  *rulebook_len = rulebook.dims()[1];
+  return rulebook.data<IntT>();
+}
+
+inline const int* GetCounterPtr(const SparseCooTensor& coo,
+                                const DenseTensor& counter,
+                                const std::string& key) {
+  if (!key.empty()) {
+    const auto* table = coo.table(key);
+    if (table != nullptr) {
+      return table->second.data();
+    }
+  }
+  return counter.data<int>();
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

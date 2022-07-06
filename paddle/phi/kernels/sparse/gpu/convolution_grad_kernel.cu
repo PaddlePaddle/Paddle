@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -59,44 +58,22 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
   const int out_channels = kernel_dims[4];
 
   int rulebook_len = 0;
-  const IntT* rulebook_ptr = nullptr;
-  const int* counter_ptr = nullptr;
-  bool cache_in_table = false;
-  if (!key.empty()) {
-    const auto* table = out.table(key);
-    if (table != nullptr) {
-      cache_in_table = true;
-      const DenseTensor& tmp_rulebook = table->first;
-      rulebook_ptr = tmp_rulebook.data<IntT>();
-      rulebook_len = tmp_rulebook.dims()[1];
-      counter_ptr = table->second.data();
-    }
-  }
-  if (!cache_in_table) {
-    rulebook_ptr = rulebook.data<IntT>();
-    rulebook_len = rulebook.dims()[1];
-    counter_ptr = counter.data<int>();
-  }
+  const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
+      out, rulebook, key, &rulebook_len);
+  const int* counter_ptr = phi::funcs::sparse::GetCounterPtr(out, counter, key);
 
-  DenseTensorMeta in_features_meta(
-      x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
-  DenseTensorMeta d_x_features_meta(
-      x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
-  DenseTensorMeta out_grad_features_meta(
-      x.dtype(), {rulebook_len, out_channels}, DataLayout::NCHW);
   phi::DenseTensor in_features =
-      phi::Empty(dev_ctx, std::move(in_features_meta));
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
   phi::DenseTensor d_x_features =
-      phi::Empty(dev_ctx, std::move(d_x_features_meta));
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
   phi::DenseTensor out_grad_features =
-      phi::Empty(dev_ctx, std::move(out_grad_features_meta));
+      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
 
   T* in_features_ptr = in_features.data<T>();
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
   *kernel_grad = phi::EmptyLike<T>(dev_ctx, kernel);
   T* d_kernel_ptr = kernel_grad->data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
   phi::backends::gpu::GpuMemsetAsync(
       d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
 
