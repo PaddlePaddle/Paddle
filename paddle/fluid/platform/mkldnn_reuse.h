@@ -1011,7 +1011,12 @@ class ActivationMKLDNNHandler
 static void AppendActivation(const framework::ExecutionContext& ctx,
                              dnnl::post_ops& post_ops,
                              float activation_scale = 1.0f) {
-  if (!ctx.HasAttr("fuse_activation")) return;
+  const auto invalid_attribute =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation").empty()
+          : true;
+  if (invalid_attribute) return;
+
   const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
   const auto fuse_alpha =
       ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
