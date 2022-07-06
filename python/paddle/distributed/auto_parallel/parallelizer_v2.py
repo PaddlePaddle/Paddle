@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 from collections import defaultdict
 
@@ -55,26 +56,37 @@ class Parallelizer:
         if self._mode == "train" and serial_optimizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
+            time0 = time.time()
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
+            print("======== _generate_backward:", time.time() - time0)
             # Apply pre optimization passes
+            time1 = time.time()
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
                                          serial_optimizer, params_grads)
+            print("======== _apply_pre_optimization:", time.time() - time1)
 
             # Do logical partition
+            time2 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads)
+            print("======== partition:", time.time() - time2)
+
             # Generate optimizer
+            time3 = time.time()
             self._generate_optimizer(dist_main_prog, dist_startup_prog,
                                      serial_optimizer, dist_params_grads)
+            print("======== _generate_optimizer:", time.time() - time3)
             # Do reshard process
+            time4 = time.time()
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
+            print("======== reshard:", time.time() - time4)
             # Apply post optimization passes
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
@@ -84,13 +96,19 @@ class Parallelizer:
             #                              serial_startup_program, None, None,
             #                              None)
             # Do logical partition
+            time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
+            print("======== partition:", time.time() - time0)
+
             # Do reshard process
+            time1 = time.time()
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
+            print("======== reshard:", time.time() - time0)
+
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)

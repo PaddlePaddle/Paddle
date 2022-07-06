@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import time
 import copy
 import numpy as np
 import paddle
@@ -82,16 +83,20 @@ class Partitioner(object):
         dist_op_context.rank_id = self._rank_id
 
         # partition startup program
+        time0 = time.time()
         if serial_startup_program == None:
             partitioned_startup_prog = None
         else:
             partitioned_startup_prog = self.partition_startup_program(
                 serial_main_program, serial_startup_program)
         dist_op_context.dst_startup_program = partitioned_startup_prog
+        print("!!!!!!!!! partition startup:", time.time() - time0)
 
         # partition main program
+        time1 = time.time()
         partitioned_main_prog, partitioned_params_grads = self.partition_main_program(
             serial_main_program, params_grads)
+        print("!!!!!!!!! partition startup:", time.time() - time1)
 
         return partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads
 

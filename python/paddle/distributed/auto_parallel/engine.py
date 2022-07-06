@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 import logging
 from collections import defaultdict
@@ -121,11 +122,15 @@ class Engine:
 
         # Do auto parallel process
         for mode in self._modes:
+            time0 = time.time()
             # Do the planning process
             self._plan(mode)
+            print("*************plan time:", time.time() - time0)
         for mode in self._modes:
+            time1 = time.time()
             # Do the parallel process
             self._parallel(mode, all_ranks)
+            print("*************parallel time:", time.time() - time1)
             # Init comm and startup program
             self._initialize(mode)
 
@@ -181,13 +186,18 @@ class Engine:
             self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
+        time0 = time.time()
         if self._planned_mode is None:
             self._planned_mode = mode
         else:
             self._init_dist_context(mode)
+        print("&&&&& _init_dist_context:", time.time() - time0)
 
+        time1 = time.time()
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
         self._planners[mode].plan()
+        print("&&&&& plan:", time.time() - time1)
+
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
