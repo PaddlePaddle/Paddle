@@ -195,8 +195,9 @@ def auc(input,
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
-        ins_tag_weight = tensor.fill_constant(
-            shape=[1, 1], dtype="float32", value=1.0)
+        ins_tag_weight = tensor.fill_constant(shape=[1, 1],
+                                              dtype="float32",
+                                              value=1.0)
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'auc')
     check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'auc')
     check_variable_and_dtype(ins_tag_weight, 'ins_tag_weight',
@@ -234,45 +235,43 @@ def auc(input,
                                                       force_cpu=False))
 
     # Batch AUC
-    helper.append_op(
-        type="auc",
-        inputs={
-            "Predict": [input],
-            "Label": [label],
-            "StatPos": [batch_stat_pos],
-            "StatNeg": [batch_stat_neg],
-            "InsTagWeight": [ins_tag_weight]
-        },
-        attrs={
-            "curve": curve,
-            "num_thresholds": num_thresholds,
-            "slide_steps": slide_steps
-        },
-        outputs={
-            "AUC": [batch_auc_out],
-            "StatPosOut": [batch_stat_pos],
-            "StatNegOut": [batch_stat_neg]
-        })
+    helper.append_op(type="auc",
+                     inputs={
+                         "Predict": [input],
+                         "Label": [label],
+                         "StatPos": [batch_stat_pos],
+                         "StatNeg": [batch_stat_neg],
+                         "InsTagWeight": [ins_tag_weight]
+                     },
+                     attrs={
+                         "curve": curve,
+                         "num_thresholds": num_thresholds,
+                         "slide_steps": slide_steps
+                     },
+                     outputs={
+                         "AUC": [batch_auc_out],
+                         "StatPosOut": [batch_stat_pos],
+                         "StatNegOut": [batch_stat_neg]
+                     })
     # Global AUC
-    helper.append_op(
-        type="auc",
-        inputs={
-            "Predict": [input],
-            "Label": [label],
-            "StatPos": [stat_pos],
-            "StatNeg": [stat_neg],
-            "InsTagWeight": [ins_tag_weight]
-        },
-        attrs={
-            "curve": curve,
-            "num_thresholds": num_thresholds,
-            "slide_steps": 0
-        },
-        outputs={
-            "AUC": [auc_out],
-            "StatPosOut": [stat_pos],
-            "StatNegOut": [stat_neg]
-        })
+    helper.append_op(type="auc",
+                     inputs={
+                         "Predict": [input],
+                         "Label": [label],
+                         "StatPos": [stat_pos],
+                         "StatNeg": [stat_neg],
+                         "InsTagWeight": [ins_tag_weight]
+                     },
+                     attrs={
+                         "curve": curve,
+                         "num_thresholds": num_thresholds,
+                         "slide_steps": 0
+                     },
+                     outputs={
+                         "AUC": [auc_out],
+                         "StatPosOut": [stat_pos],
+                         "StatNegOut": [stat_neg]
+                     })
     return auc_out, batch_auc_out, [
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg
     ]

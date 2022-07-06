@@ -96,10 +96,9 @@ REGISTER_OP_WITHOUT_GRADIENT(auc,
                              ops::AucOpMaker,
                              AucInferShapeFunctor);
 
-REGISTER_OP_VERSION(auc)
-    .AddCheckpoint(
-        R"ROC(
+REGISTER_OP_VERSION(auc).AddCheckpoint(
+    R"ROC(
       Upgrade auc, add a new input [InsTagWeight].
     )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "ValueTensor", "In order to support multi-tag task"));
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "ValueTensor", "In order to support multi-tag task"));
