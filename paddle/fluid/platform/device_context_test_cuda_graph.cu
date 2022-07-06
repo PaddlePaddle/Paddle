@@ -11,8 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <vector>
-
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 #include "glog/logging.h"
@@ -22,18 +20,19 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 TEST(Device, DeviceContextWithCUDAGraph) {
-  using paddle::platform::CPUPlace;
   using paddle::platform::CUDADeviceContext;
   using paddle::platform::CUDAPlace;
+  using paddle::platform::DeviceContext;
   using paddle::platform::DeviceContextPool;
   using paddle::platform::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
   Place place = CUDAPlace(0);
-  auto dev_ctx = pool.Get(place);
+  auto* dev_ctx = pool.Get(place);
 
   paddle::platform::BeginCUDAGraphCapture(
       place, cudaStreamCaptureMode::cudaStreamCaptureModeThreadLocal, 0);
-  CUDADeviceContext other_ctx(dev_ctx);
-  paddle.platform::EndCUDAGraphCapture();
+  ASSERT_EQ(dev_ctx->IsCUDAGraphAllocatorValid(), true);
+  dev_ctx->GetCUDAGraphAllocator();
+  paddle::platform::EndCUDAGraphCapture();
 }
