@@ -16,6 +16,7 @@ import os
 import sys
 import copy
 import shlex
+import pathlib
 import pickle
 import subprocess
 
@@ -173,7 +174,7 @@ class OptimizationTuner:
         algorithm_name = "_".join(sorted(selected_passes_set))
         self.algorithm = new_algorithm(algorithm_name, self._config)
 
-    def _apply_optimization(self, new_strategy, time=0):
+    def _apply_optimization(self, new_strategy):
 
         dist_context, pass_context, completer = self._get_new_context()
 
@@ -254,32 +255,29 @@ class OptimizationTuner:
     def _evaluate_trial(self, main_program, startup_program):
 
         if self._config.mode == "PROFILE":
-            """
-            use dict & python pickle
-            prepare ctx
-                manager and parse path
 
-                context need to rerun the trial in another process
-                main_program
-                startup_program
-                nccl comm 
-                    ring_id -- ranks 
-                    dist env 
-            launch task
-            """
-            print("=====tuner" * 8)
+            print("strat evaluating: {} .".format(
+                self.algorithm.get_trial_name()))
 
-            # parse path
+            # Make workspace
+            work_dir = os.path.join(self._config.log_dir,
+                                    self.algorithm.get_trial_name())
+            if not os.path.exists(work_dir):
+                if paddle.distributed.get_rank() == 0:
+                    pathlib.Path(work_dir).mkdir(parents=True, exist_ok=True)
+                else:
+                    while not os.path.exists(work_dir):
+                        pass
+
+            # Prepare Profile Context
             profile_ctx = {}
             dist_env = copy.deepcopy(paddle.distributed.ParallelEnv())
             rank = dist_env.rank
-            ctx_filename = self.algorithm.get_trial_name() + ".pfctx." + str(
-                rank)
-            ctx_path = os.path.join(self._config.log_dir, ctx_filename)
+            ctx_filename = "profile_ctx." + str(rank)
+            ctx_path = os.path.join(work_dir, ctx_filename)
             assert isinstance(rank, int)
-            self.device_id = dist_env.device_id
-            assert isinstance(self.device_id, int)
-            self.current_endpoint = dist_env.current_endpoint
+            device_id = dist_env.device_id
+            assert isinstance(device_id, int)
             profile_ctx['distributed_env'] = dist_env
             profile_ctx['group_map'] = parse_process_groups()
             profile_ctx["loss_var_name"] = self._dist_context.serial_loss.name
@@ -294,19 +292,12 @@ class OptimizationTuner:
             with open(ctx_path, 'wb') as f:
                 pickle.dump(profile_ctx, f, protocol=4)
 
-            # main_program_filename = "./" + self.algorithm.get_trial_name(
-            # ) + ".main_program_decs." + str(rank)
-            # main_binary_str = main_program.desc.serialize_to_string()
-            # with open(main_program_filename, "wb") as f:
-            #     f.write(main_binary_str)
+            if self._config.verbose:
+                debug_program(main_program, work_dir, "main_program")
+                debug_program(startup_program, work_dir, "startup_program")
+                #TODO dump cur pass config to file
 
-            # startup_program_filename = "./" + self.algorithm.get_trial_name(
-            # ) + ".startup_program_decs." + str(rank)
-            # startup_binary_str = startup_program.desc.serialize_to_string()
-            # with open(startup_program_filename, "wb") as f:
-            #     f.write(startup_binary_str)
-
-            # run profile
+            # Run profile
             if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
                 coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
             else:
@@ -315,30 +306,34 @@ class OptimizationTuner:
                 "--rank",
                 str(rank),
                 "--device_id",
-                str(self.device_id),
+                str(device_id),
                 "--ctx_filename",
                 ctx_path,
-                # "--main_program_filename",
-                # main_program_filename,
-                # "--startup_program_filename",
-                # startup_program_filename,
             ])
-            new_cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
-            new_cmd = [sys.executable, "-u"
-                       ] + coverage_args + shlex.split(new_cmd_args)
+            cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
+            cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
             # TODO if any rank hang or fail, kill all, otherwise
-            current_env = copy.copy(os.environ.copy())
-            proc_env = {
+            parent_env = copy.copy(os.environ.copy())
+            new_env = {
                 "FLAGS_USE_STANDALONE_EXECUTOR": "False",
             }
-            current_env.update(proc_env)
-            print(current_env)
-            print(new_cmd)
-            new_process = subprocess.Popen(new_cmd, env=current_env)
-            new_process.wait()
-            print("=====tuner" * 8)
-            # assert new_process.returncode == 0, "Porfile failed !"
-            print("Profile Successfully !")
+            new_env.update(parent_env)
+            print("executing cmd: {} .".format(" ".join(cmd)))
+            new_process = subprocess.Popen(cmd, env=new_env)
+
+            with open(os.path.join(work_dir, "stdout.log" + str(rank)),
+                      "wb") as out, open(
+                          os.path.join(work_dir, "stderr.log" + str(rank)),
+                          "wb") as err:
+                result = subprocess.Popen(cmd, stdout=out, stderr=err)
+                result.wait()
+                out.flush()
+                err.flush()
+                os.fsync(out)
+                os.fsync(err)
+
+            print("end evaluating: {} .".format(
+                self.algorithm.get_trial_name()))
 
         elif self._config.mode == "COSTMODEL":
             raise NotImplementedError(
@@ -352,8 +347,6 @@ class OptimizationTuner:
     def tune(self):
 
         # step1: collect model info which might
-        # be used to pruned the trial by some algorithm
-        # NOTE should be changed to dist program in future
         self.algorithm.collect_model_info(
             self._dist_context.serial_main_program,
             self._dist_context.serial_startup_program)
@@ -361,43 +354,25 @@ class OptimizationTuner:
         # step2: baseline trial
         new_strategy = self.algorithm.get_baseline_trial()
         new_main_program, new_startup_program = self._apply_optimization(
-            new_strategy, time=0)
+            new_strategy)
         last_trial_result = self._evaluate_trial(new_main_program,
                                                  new_startup_program)
-        if self._config.verbose:
-            debug_program(new_main_program,
-                          os.path.join(self._config.log_dir, "Programs"),
-                          "baseline_main")
-            debug_program(new_startup_program,
-                          os.path.join(self._config.log_dir, "Programs"),
-                          "baseline_startup")
 
-        # step2: while loop to find out best trial
-        time = 0
+        # step3: while loop to find out best trial
         while True:
 
             # TODO TrialStatus.STOPPED
             if self.algorithm.get_status() == "STOP":
                 break
 
-            print("loooooop : ", time)
             new_strategy = self.algorithm.get_next_trial()
             new_main_program, new_startup_program = self._apply_optimization(
                 new_strategy)
             last_trial_result = self._evaluate_trial(new_main_program,
                                                      new_startup_program)
 
-            if self._config.verbose:
-                debug_program(new_main_program,
-                              os.path.join(self._config.log_dir, "Programs"),
-                              "trial_{}_main".format(time))
-                debug_program(new_startup_program,
-                              os.path.join(self._config.log_dir, "Programs"),
-                              "trial_{}_startup".format(time))
-
             # TODO trial result class
             self.algorithm.update_statue(last_trial_result)
-            time += 1
 
-        # step3: summary the best config and return
+        # step4: summary the best config and return
         self.algorithm.summary()
