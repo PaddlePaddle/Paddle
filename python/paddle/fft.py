@@ -492,10 +492,11 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             axes are used, or all axes if `s` is also not specified.      
         norm (str): Indicates which direction to scale the `forward` or `backward` transform
             pair and what normalization factor to use. The parameter value must be one 
-            of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
-            the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies 
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are 
-            scaled by ``1/sqrt(n)``.
+            of "forward" or "backward" or "ortho". 
+            Default is "backward", meaning no normalization on the forward transforms and scaling by ``1/n`` on the `ifft`. 
+            "forward" instead applies the ``1/n`` factor on the forward tranform. 
+            For ``norm="ortho"``, both directions are scaled by ``1/sqrt(n)``.
+            Where `n` is the continuous multiplication of each element in `s`.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
