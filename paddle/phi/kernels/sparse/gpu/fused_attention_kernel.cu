@@ -127,15 +127,16 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
 }
 
 template <typename T, typename Context>
-void FusedAttentionCsrKernel(const Context& dev_ctx,
-                             const DenseTensor& query,
-                             const DenseTensor& key,
-                             const DenseTensor& value,
-                             const SparseCsrTensor& sparse_mask,
-                             const DenseTensor& key_padding_mask,
-                             const DenseTensor& attn_mask,
-                             DenseTensor* out,
-                             SparseCsrTensor* softmax) {
+void FusedAttentionCsrKernel(
+    const Context& dev_ctx,
+    const DenseTensor& query,
+    const DenseTensor& key,
+    const DenseTensor& value,
+    const SparseCsrTensor& sparse_mask,
+    const paddle::optional<DenseTensor>& key_padding_mask,
+    const paddle::optional<DenseTensor>& attn_mask,
+    DenseTensor* out,
+    SparseCsrTensor* softmax) {
 #if CUDA_VERSION >= 11070
   /* Check Shape */
   auto q_dim = query.dims();
@@ -183,34 +184,40 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("dense shape of 'sparse_mask' must be "
                                    "[batch_size*num_heads, seq_len, seq_len]"));
 
-  PADDLE_ENFORCE_EQ(
-      key_padding_mask.dims().size(),
-      2,
-      phi::errors::InvalidArgument(
-          "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
-  PADDLE_ENFORCE_EQ(
-      key_padding_mask.dims()[0],
-      q_dim[0],
-      phi::errors::InvalidArgument(
-          "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
-  PADDLE_ENFORCE_EQ(
-      key_padding_mask.dims()[1],
-      M,
-      phi::errors::InvalidArgument(
-          "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
+  const auto kp_mask_ptr = key_padding_mask.get_ptr();
+  if (kp_mask_ptr) {
+    PADDLE_ENFORCE_EQ(
+        kp_mask_ptr->dims().size(),
+        2,
+        phi::errors::InvalidArgument(
+            "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
+    PADDLE_ENFORCE_EQ(
+        kp_mask_ptr->dims()[0],
+        q_dim[0],
+        phi::errors::InvalidArgument(
+            "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
+    PADDLE_ENFORCE_EQ(
+        kp_mask_ptr->dims()[1],
+        M,
+        phi::errors::InvalidArgument(
+            "shape of 'key_padding_mask' must be [batch_size, seq_len]"));
+  }
 
-  PADDLE_ENFORCE_EQ(attn_mask.dims().size(),
-                    2,
-                    phi::errors::InvalidArgument(
-                        "shape of 'attn_mask' must be [seq_len, seq_len]"));
-  PADDLE_ENFORCE_EQ(attn_mask.dims()[0],
-                    M,
-                    phi::errors::InvalidArgument(
-                        "shape of 'attn_mask' must be [seq_len, seq_len]"));
-  PADDLE_ENFORCE_EQ(attn_mask.dims()[1],
-                    M,
-                    phi::errors::InvalidArgument(
-                        "shape of 'attn_mask' must be [seq_len, seq_len]"));
+  const auto attn_mask_ptr = attn_mask.get_ptr();
+  if (attn_mask_ptr) {
+    PADDLE_ENFORCE_EQ(attn_mask_ptr->dims().size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "shape of 'attn_mask' must be [seq_len, seq_len]"));
+    PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[0],
+                      M,
+                      phi::errors::InvalidArgument(
+                          "shape of 'attn_mask' must be [seq_len, seq_len]"));
+    PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[1],
+                      M,
+                      phi::errors::InvalidArgument(
+                          "shape of 'attn_mask' must be [seq_len, seq_len]"));
+  }
 
   /* Step1: SDD Matmul, reuse */
   SparseCsrTensor sdd_result;
@@ -244,8 +251,8 @@ void FusedAttentionCsrKernel(const Context& dev_ctx,
         sdd_result.non_zero_crows().data<int64_t>(),
         sdd_result.non_zero_cols().data<int64_t>(),
         sdd_result.non_zero_elements().data<T>(),
-        key_padding_mask.data<T>(),
-        attn_mask.data<T>(),
+        kp_mask_ptr ? kp_mask_ptr->data<T>() : nullptr,
+        attn_mask_ptr ? attn_mask_ptr->data<T>() : nullptr,
         softmax->mutable_non_zero_elements()->data<T>(),
         M,
         total_row_num,
