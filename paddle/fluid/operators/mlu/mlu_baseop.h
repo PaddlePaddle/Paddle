@@ -1694,8 +1694,8 @@ class MLUCnnl {
   static void NumTrue(const ExecutionContext& ctx,
                       const cnnlTensorDescriptor_t x_desc,
                       const void* x,
-                      Tensor index,
-                      uint32_t* num_true);
+                      const cnnlTensorDescriptor_t num_true_desc,
+                      void* num_true);
 
   static void Where(const ExecutionContext& ctx,
                     const cnnlTensorDescriptor_t x_desc,

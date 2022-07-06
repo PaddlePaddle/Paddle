@@ -4242,21 +4242,12 @@ MLURNNDesc::~MLURNNDesc() {
 /* static */ void MLUCnnl::NumTrue(const ExecutionContext& ctx,
                                    const cnnlTensorDescriptor_t x_desc,
                                    const void* x,
-                                   Tensor index,
-                                   uint32_t* num_true) {
+                                   const cnnlTensorDescriptor_t num_true_desc,
+                                   void* num_true) {
   cnnlHandle_t handle = GetHandleFromCTX(ctx);
 
-  size_t workspace_size = 0;
   PADDLE_ENFORCE_MLU_SUCCESS(
-      cnnlGetNumTrueWorkspaceSize(handle, x_desc, &workspace_size));
-
-  auto& dev_ctx = GetDevCtxFromCTX(ctx);
-  index = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
-      {static_cast<int64_t>(workspace_size)}, dev_ctx);
-  void* index_ptr = index.mutable_data(ctx.GetPlace());
-
-  PADDLE_ENFORCE_MLU_SUCCESS(cnnlNumTrue(
-      handle, x_desc, x, static_cast<uint32_t*>(index_ptr), num_true));
+      cnnlNumTrue_v2(handle, x_desc, x, num_true_desc, num_true));
 }
 
 /* static */ void MLUCnnl::Where(const ExecutionContext& ctx,
