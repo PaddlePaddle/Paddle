@@ -236,6 +236,13 @@ class TestCUDAGraph(unittest.TestCase):
             self.assertTrue(np.array_equal(actual_x, x.numpy()))
             self.assertTrue(np.array_equal(actual_y, y.numpy()))
 
+    def test_dev_ctx_alloc(self):
+        x = paddle.to_tensor([2], dtype='float32')
+        graph = CUDAGraph()
+        graph.capture_begin()
+        y = paddle.cast(x, dtype='float16')
+        graph.capture_end()
+
 
 if __name__ == "__main__":
     unittest.main()

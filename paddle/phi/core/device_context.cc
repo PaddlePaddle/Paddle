@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/device_context.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -111,6 +112,14 @@ struct DeviceContext::Impl {
     auto* allocator = tensor->numel() == 0
                           ? zero_allocator_
                           : (pinned ? pinned_allocator_ : device_allocator_);
+#ifdef PADDLE_WITH_CUDA
+    if (paddle::memory::allocation::IsCUDAGraphCapturing() &&
+        paddle::platform::is_gpu_place(place)) {
+      allocator = paddle::memory::allocation::AllocatorFacade::Instance()
+                      .GetAllocator(place)
+                      .get();
+    }
+#endif
     return tensor->AllocateFrom(
         const_cast<Allocator*>(allocator), dtype, requested_size);
   }

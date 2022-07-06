@@ -155,7 +155,7 @@ class CUDAGraphAllocator
 };
 #endif
 
-static bool IsCUDAGraphCapturing() {
+bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
   return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
 #else
