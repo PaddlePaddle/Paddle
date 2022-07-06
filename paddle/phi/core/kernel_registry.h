@@ -300,6 +300,8 @@ struct KernelRegistrar {
     Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(kernel_key, &kernel);
+    VLOG(6) << "register xpu phi kernel:" << kernel_name << " " << kernel_key
+            << " hhhhhhh";
     if (reg_type == RegType::INNER) {
       KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
     } else {
