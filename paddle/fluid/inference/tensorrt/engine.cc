@@ -537,6 +537,21 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     }
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
+  } else if (weight_tensor.dtype() == phi::DataType::INT64) {
+    framework::Tensor int64_tensor;
+    int64_tensor.clear();
+    paddle::framework::TensorCopySync(
+        weight_tensor, platform::CPUPlace(), &int64_tensor);
+    weight_map[name_with_suffix]->set_type(
+        paddle::experimental::DataType::INT32);
+    auto *int32_data =
+        weight_map[name_with_suffix]->mutable_data<int>(platform::CPUPlace());
+    auto *int64_data = int64_tensor.mutable_data<int64_t>(platform::CPUPlace());
+    for (int i = 0; i < weight_tensor.numel(); i++) {
+      int32_data[i] = int64_data[i];
+    }
+    weight.SetDataType(phi::DataType::FLOAT32);
+    weight.SetValues(int32_data);
   } else {
     paddle::framework::TensorCopySync(
         weight_tensor, cpu_place, weight_map[name_with_suffix].get());
