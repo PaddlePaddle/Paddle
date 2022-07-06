@@ -30,7 +30,6 @@ import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 import socket
-from parse_env import parse_env_file
 
 
 class TestCollectiveAPIRunnerBase(object):
@@ -178,7 +177,6 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
 
-        env0.update(parse_env_file(f"log/workerlog.{pi}"))
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             tr_cmd = "%s -u -m coverage run --branch -p %s"
         else:
