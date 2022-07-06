@@ -16,6 +16,7 @@ import multiprocessing
 import os
 import six
 import sys
+import warnings
 from .. import compat as cpt
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -372,6 +373,12 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = 1
             else:
                 self._exec_strategy.num_threads = len(places) * 2
+
+        if core.globals(
+        )["FLAGS_use_cinn"] and self._exec_strategy.num_threads != 1:
+            warnings.warn("At present, when CINN is turned on, each process can " \
+                  "only contain one thread, so reset the number of threads to 1 here.")
+            self._exec_strategy.num_threads = 1
 
         if self._build_strategy.num_trainers > 1:
             assert self._is_data_parallel, \
