@@ -134,3 +134,5 @@
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad) 
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
+    layout : softmax
+    data_type: query
