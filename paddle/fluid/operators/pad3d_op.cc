@@ -57,12 +57,14 @@ class Pad3dOp : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     framework::DataLayout::kNHWC);
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_,
+          tensor.place(),
+          framework::StringToDataLayout(data_format));
     }
 #endif
     return framework::OpKernelType(
