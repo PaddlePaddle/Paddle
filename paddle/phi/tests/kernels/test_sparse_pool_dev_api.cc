@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
@@ -60,7 +60,6 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
   const int out_channels = in_channels;

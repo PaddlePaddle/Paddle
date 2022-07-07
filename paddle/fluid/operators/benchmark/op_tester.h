@@ -55,8 +55,11 @@ class OpTester {
 
   template <typename T>
   void SetupTensor(framework::LoDTensor *input,
-                   const std::vector<int64_t> &shape, T lower, T upper,
-                   const std::string &initializer, const std::string &filename);
+                   const std::vector<int64_t> &shape,
+                   T lower,
+                   T upper,
+                   const std::string &initializer,
+                   const std::string &filename);
 
   void RunImpl();
 

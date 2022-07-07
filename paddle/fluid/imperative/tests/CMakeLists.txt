@@ -34,7 +34,7 @@ else()
       SRCS cncl_context_test.cc
       DEPS cncl_context)
   endif()
-endif(WIN32)
+endif()
 
 cc_test(
   test_gradient_accmulator

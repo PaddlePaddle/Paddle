@@ -189,10 +189,13 @@ class NotImpleKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(rnn, RnnInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(rnn,
+                            RnnInferShapeFunctor,
                             PD_INFER_META(phi::RnnInferMeta));
 
-REGISTER_OPERATOR(rnn, ops::RNNOp, ops::RNNOpMaker,
+REGISTER_OPERATOR(rnn,
+                  ops::RNNOp,
+                  ops::RNNOpMaker,
                   ops::RNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::RNNGradOpMaker<paddle::imperative::OpBase>,
                   RnnInferShapeFunctor);

@@ -23,6 +23,7 @@ import subprocess
 import traceback
 import functools
 import pickle
+import tempfile
 from contextlib import closing
 import paddle
 import paddle.fluid as fluid
@@ -99,6 +100,11 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def _find_free_port(self):
 
         def __free_port():
@@ -158,8 +164,12 @@ class TestDistBase(unittest.TestCase):
             tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
-        tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
+        path0 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr0_err_%d.log" % os.getpid())
+        path1 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr1_err_%d.log" % os.getpid())
+        tr0_pipe = open(path0, "w")
+        tr1_pipe = open(path1, "w")
         #print(tr0_cmd)
         tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
                                     stdout=subprocess.PIPE,
@@ -178,9 +188,9 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        with open("/tmp/tr0_err_%d.log" % os.getpid(), "r") as f:
+        with open(path0, "r") as f:
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
-        with open("/tmp/tr1_err_%d.log" % os.getpid(), "r") as f:
+        with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
         return pickle.loads(tr0_out), pickle.loads(
             tr1_out), tr0_proc.pid, tr1_proc.pid
@@ -198,26 +208,24 @@ class TestDistBase(unittest.TestCase):
             with_gloo = '0'
         else:
             with_gloo = '1'
-        required_envs = {
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_eager_delete_tensor_gb": "0.0",
-            "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "FLAGS_call_stack_level": "2",
-            "GLOG_v": "3",
+        required_envs = os.environ.copy()
+        additional_envs = {
             "NCCL_P2P_DISABLE": "1",
             "STATIC_MODE": static_mode,
             "PADDLE_WITH_GLOO": with_gloo,
             "BACKEND": backend,
             "PATH_ID": path_id
         }
+        required_envs.update(additional_envs)
         required_envs.update(need_envs)
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
+
+        if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
+            required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
+                'NVIDIA_TF32_OVERRIDE', '')
 
         if eager_mode:
             required_envs["FLAGS_enable_eager_mode"] = "%d" % 1

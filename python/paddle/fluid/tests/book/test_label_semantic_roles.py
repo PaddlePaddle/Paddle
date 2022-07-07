@@ -20,6 +20,7 @@ import numpy as np
 import os
 import time
 import unittest
+import tempfile
 
 import paddle
 import paddle.dataset.conll05 as conll05
@@ -159,7 +160,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
                                              param_attr=fluid.ParamAttr(
                                                  name='crfw',
                                                  learning_rate=mix_hidden_lr))
-    avg_cost = fluid.layers.mean(crf_cost)
+    avg_cost = paddle.mean(crf_cost)
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
@@ -354,11 +355,15 @@ def main(use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
+    temp_dir = tempfile.TemporaryDirectory()
     # Directory for saving the trained model
-    save_dirname = "label_semantic_roles.inference.model"
+    save_dirname = os.path.join(temp_dir.name,
+                                "label_semantic_roles.inference.model")
 
     train(use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
+
+    temp_dir.cleanup()
 
 
 class TestLabelSemanticRoles(unittest.TestCase):

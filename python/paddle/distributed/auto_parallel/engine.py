@@ -17,7 +17,7 @@ import logging
 from collections import defaultdict
 
 import paddle
-import paddle.distributed.auto_parallel as auto
+import paddle.utils as utils
 
 from paddle import fluid, static
 from paddle.io import Dataset
@@ -26,9 +26,9 @@ from paddle.static import InputSpec
 from paddle.fluid import core
 from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.executor import global_scope
+from paddle.fluid.executor import global_scope, _to_name_str
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Operator, Variable
+from paddle.fluid.framework import Operator
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
@@ -43,7 +43,7 @@ from .dist_saver import DistributedSaver
 from .dist_loader import NonIterableGeneratorLoader
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
-from .process_group import get_all_process_groups, get_world_process_group
+from .process_group import new_process_group, get_all_process_groups, get_world_process_group
 from .dist_context import DistributedContext, get_default_distributed_context
 
 
@@ -71,7 +71,6 @@ class Engine:
         self._saver = DistributedSaver()
         self._logger = get_logger(logging.INFO)
 
-        self._default_strategy = None
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
@@ -82,6 +81,7 @@ class Engine:
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
         self._feed_vars = {}
         self._fetch_vars = {}
+        self._planners = {}
 
     def prepare(self,
                 optimizer=None,
@@ -115,65 +115,63 @@ class Engine:
 
         self._planned_mode = None
         self._modes = ['train', 'eval', 'predict']
-        # Build forward program
-        self._build()
 
-        # Do auto parallel process
+        # Build program and do auto parallel process
+        for mode in self._modes:
+            # Build forward program
+            self._build(mode)
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
+        for mode in self._modes:
             # Do the parallel process
             self._parallel(mode, all_ranks)
             # Init comm and startup program
             self._initialize(mode)
 
-    def _build(self):
-        for mode in self._modes:
-            serial_main_prog = self._serial_main_progs.get(mode, None)
-            if serial_main_prog is not None:
-                return
+    def _build(self, mode):
 
-            losses = []
-            metrics = []
-            serial_main_prog = self._orig_main_prog.clone()
-            serial_startup_prog = self._orig_startup_prog.clone()
-            with static.program_guard(serial_main_prog, serial_startup_prog):
-                inputs_spec = self.inputs_spec
-                labels_spec = self.labels_spec if self.labels_spec else []
-                inputs = [s._create_feed_layer() for s in inputs_spec]
-                labels = [s._create_feed_layer() for s in labels_spec]
-                outputs = to_list(self.model(*inputs))
-                if mode != "predict" and self._loss:
-                    losses = to_list(self._loss(*(outputs + labels)))
+        serial_main_prog = self._serial_main_progs.get(mode, None)
+        if serial_main_prog is not None:
+            return
 
-                if mode != "predict":
-                    for metric in self._metrics:
-                        metrics.extend(
-                            to_list(metric.compute(*(outputs + labels))))
+        losses = []
+        metrics = []
+        serial_main_prog = self._orig_main_prog.clone()
+        serial_startup_prog = self._orig_startup_prog.clone()
+        with static.program_guard(serial_main_prog, serial_startup_prog), \
+            utils.unique_name.guard():
+            inputs_spec = self.inputs_spec
+            labels_spec = self.labels_spec if self.labels_spec else []
+            inputs = [s._create_feed_layer() for s in inputs_spec]
+            labels = [s._create_feed_layer() for s in labels_spec]
+            outputs = to_list(self.model(*inputs))
+            if mode != "predict" and self._loss:
+                losses = to_list(self._loss(*(outputs + labels)))
 
-            default_ctx = get_default_distributed_context()
-            if not default_ctx.has_annotation or self._default_strategy:
-                inputs = [self._set_data_parallel(var) for var in inputs]
-                labels = [self._set_data_parallel(var) for var in labels]
+            if mode != "predict":
+                for metric in self._metrics:
+                    metrics.extend(to_list(metric.compute(*(outputs + labels))))
 
-            # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
-            feed_vars = {"inputs": inputs, "labels": labels}
+        default_ctx = get_default_distributed_context()
+        if not default_ctx.has_annotation:
+            # We build the world process group because the data parallel
+            # needs all ranks by default.
+            new_process_group(list(range(self._nranks)))
+            default_ctx.data_parallel = True
 
-            # self._fetch_vars[mode] = {
-            #     "outputs": flatten(outputs),
-            #     "loss": losses,
-            #     "metrics": metrics
-            # }
-            fetch_vars = {
-                "outputs": flatten(outputs),
-                "loss": losses,
-                "metrics": metrics
-            }
+        feed_vars = {"inputs": inputs, "labels": labels}
 
-            self._dist_contexts[mode] = DistributedContext(
-                serial_main_prog, serial_startup_prog, self._optimizer, losses,
-                feed_vars, fetch_vars, self.cluster, self.strategy)
-            self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        fetch_vars = {
+            "outputs": flatten(outputs),
+            "loss": losses,
+            "metrics": metrics
+        }
+
+        self._dist_contexts[mode] = DistributedContext(
+            serial_main_prog, serial_startup_prog, self._optimizer, losses,
+            feed_vars, fetch_vars, self.cluster, self.strategy)
+        self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -181,14 +179,14 @@ class Engine:
         else:
             self._init_dist_context(mode)
 
-        self.planner = Planner(mode, self._dist_contexts[mode])
-        self.planner.plan()
+        self._planners[mode] = Planner(mode, self._dist_contexts[mode])
+        self._planners[mode].plan()
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
         # because we may use it to complete the annotation of the backwarkward and update.
-        parallelizer = Parallelizer(mode, self.planner.completer,
+        parallelizer = Parallelizer(mode, self._planners[mode].completer,
                                     self._dist_contexts[mode])
         if not all_ranks:
             parallelizer.parallel(self._cur_rank)
@@ -235,7 +233,6 @@ class Engine:
                     continue
                 process_group.instantiate()
 
-        # initialize
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
@@ -256,7 +253,7 @@ class Engine:
             train_data,
             batch_size=1,
             epochs=1,
-            fetch_list=None,
+            fetches=None,
             steps_per_epoch=None,
             use_program_cache=False,
             return_numpy=True):
@@ -267,134 +264,99 @@ class Engine:
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
-        self._usr_fetch_list = fetch_list
 
-        outputs = []
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
+        fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
+
         for epoch in range(epochs):
-            for step, data in enumerate(train_dataloader):
-                logs, outs = self._train_step(data, use_program_cache,
-                                              return_numpy)
-                outputs.append(outs)
-                train_logs = {
-                    "train_" + name: val
-                    for name, val in logs.items()
-                }
+            train_logs = {"epoch": epoch}
+            for step, _ in enumerate(train_dataloader):
+                outs = self._executor.run(self.main_program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_program_cache,
+                                          return_numpy=return_numpy)
+                train_logs["step"] = step
+                # inner fetches
+                if fetch_loss:
+                    train_logs["train_loss"] = outs[0][0]
+                # user fetches
+                user_outs = outs[len(fetch_loss):]
+                user_fetch_list = fetch_list[len(fetch_loss):]
+                for i, out in enumerate(user_outs):
+                    train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
                 self._logger.info(train_logs)
-        return outputs
 
     def evaluate(self,
                  eval_data,
                  batch_size=1,
-                 fetch_list=None,
+                 fetches=None,
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
-        self._usr_fetch_list = fetch_list
 
-        for step, data in enumerate(eval_dataloader):
-            eval_logs = dict()
-            logs, outs = self._eval_step(data, use_program_cache, return_numpy)
-            eval_logs["eval_loss"] = outs[0] if len(outs) > 0 else []
-            for metric in self._metrics:
-                results = metric.accumulate()
-                for i, res in enumerate(to_list(results)):
-                    eval_logs["eval_" + metric.name()[i]] = res
-            for name, val in logs.items():
-                eval_logs["eval_" + name] = val
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
+        fetch_metrics = self._validate_fetches(self.fetch_vars["metrics"])
+        inner_fetch = dict(fetch_loss, **fetch_metrics)
+        fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
+
+        for step, _ in enumerate(eval_dataloader):
+            eval_logs = {"step": step}
+            outs = self._executor.run(self.main_program,
+                                      fetch_list=fetch_list,
+                                      use_program_cache=use_program_cache,
+                                      return_numpy=return_numpy)
+            # inner fetches
+            if fetch_loss:
+                eval_logs["eval_loss"] = outs[0][0]
+            # Metric
+            if fetch_metrics:
+                metric_out = outs[len(fetch_loss):len(inner_fetch)]
+                for metric in self._metrics:
+                    metric.update(*metric_out)
+                    results = metric.accumulate()
+                    for i, res in enumerate(to_list(results)):
+                        eval_logs["eval_" + metric.name()[i]] = res
+            # usr fetches
+            usr_outs = outs[len(inner_fetch):]
+            usr_fetch_list = fetch_list[len(inner_fetch):]
+            for i, out in enumerate(usr_outs):
+                eval_logs["eval_" + fetch_map[usr_fetch_list[i]]] = out
+            # logger
             self._logger.info(eval_logs)
-        return eval_logs
 
     def predict(self,
                 test_data,
                 batch_size=1,
-                fetch_list=None,
+                fetches=None,
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
-        self._usr_fetch_list = fetch_list
+
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
+        fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
 
         outputs = []
-        for step, data in enumerate(test_dataloader):
-            logs, outs = self._predict_step(data, use_program_cache,
-                                            return_numpy)
-            outputs.append(outs)
-            predict_logs = {"pred_" + name: val for name, val in logs.items()}
+        for step, _ in enumerate(test_dataloader):
+            predict_logs = {"step": step}
+            outs = self._executor.run(self.main_program,
+                                      fetch_list=fetch_list,
+                                      use_program_cache=use_program_cache,
+                                      return_numpy=return_numpy)
+            outputs.append(outs[:len(fetch_outputs)])
+            for i, out in enumerate(outs):
+                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out
             self._logger.info(predict_logs)
+
         return outputs
-
-    def _train_step(self, data, use_program_cache=False, return_numpy=True):
-        logs = {}
-        fetch_vars = self._fetch_vars[self.mode]["loss"]
-        fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
-        fetch_list += usr_fetch_list
-
-        outs = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list,
-                                  use_program_cache=use_program_cache,
-                                  return_numpy=return_numpy)
-        for i, out in enumerate(outs):
-            logs[fetch_list[i]] = out
-        return logs, outs
-
-    def _eval_step(self, data, use_program_cache=False, return_numpy=True):
-        logs = {}
-        metrics = self._fetch_vars[self.mode]["metrics"]
-        losses = self._fetch_vars[self.mode]["loss"]
-        fetch_loss, usr_fetch_list = self._fetch_list(losses)
-        fetch_metrics, usr_fetch_list = self._fetch_list(metrics)
-        fetch_list = fetch_loss + fetch_metrics
-
-        outs = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list + usr_fetch_list,
-                                  use_program_cache=use_program_cache,
-                                  return_numpy=return_numpy)
-        usr_out = outs[len(fetch_list):]
-        for i, out in enumerate(usr_out):
-            logs[usr_fetch_list[i]] = out
-        outs = outs[:len(fetch_list)]
-        if not outs[len(fetch_loss):]:
-            return logs, outs[:len(fetch_loss)]
-        for metric in self._metrics:
-            metric.update(*outs[len(fetch_loss):])
-        return logs, outs[:len(fetch_loss)]
-
-    def _predict_step(self, data, use_program_cache=False, return_numpy=True):
-        logs = {}
-        fetch_vars = self._fetch_vars[self.mode]["outputs"]
-        fetch_list, usr_fetch_list = self._fetch_list(fetch_vars)
-        fetch_list += usr_fetch_list
-
-        outs = self._executor.run(self.main_program,
-                                  fetch_list=fetch_list,
-                                  use_program_cache=use_program_cache,
-                                  return_numpy=return_numpy)
-        for i, out in enumerate(outs):
-            logs[fetch_list[i]] = out
-        return logs, outs
-
-    def _fetch_list(self, fetch_vars):
-        fetch_list = []
-        for var in fetch_vars:
-            if var.name in self.main_program.global_block().vars:
-                fetch_list.append(var.name)
-        usr_fetch_list = []
-        if self._usr_fetch_list:
-            assert isinstance(self._usr_fetch_list,
-                              list), "'fetch_list' type should be list."
-            for var in self._usr_fetch_list:
-                if isinstance(var, str):
-                    if var in self.main_program.global_block().vars:
-                        usr_fetch_list.append(var)
-                elif isinstance(var, Variable):
-                    if var.name in self.main_program.global_block().vars:
-                        usr_fetch_list.append(var.name)
-        return fetch_list, usr_fetch_list
 
     def _create_dataloader(self,
                            dataset,
@@ -466,26 +428,35 @@ class Engine:
                         .format(i, spec))
         return specs
 
-    def _set_data_parallel(self, var):
-        if self._nranks == 1:
-            self._default_strategy = 'serial'
-            auto.shard_tensor(var,
-                              dist_attr={
-                                  "process_mesh": [0],
-                                  "dims_mapping":
-                                  [-1 for _ in range(len(var.shape))]
-                              })
-        else:
-            self._default_strategy = 'dp'
-            auto.shard_tensor(var,
-                              dist_attr={
-                                  "process_mesh":
-                                  list(range(self._nranks)),
-                                  "dims_mapping":
-                                  [0] + [-1 for _ in range(len(var.shape) - 1)]
-                              })
+    def _is_local_var(self, var):
+        var_name = _to_name_str(var)
+        return var_name in self.main_program.global_block().vars
 
-        return var
+    def _validate_fetches(self, fetches):
+        # 1. Check user-defined fetches type
+        # 2. Prepare fetches_dict like {user_defined_name: var_name}
+        if not fetches:
+            return {}
+        if isinstance(fetches, dict):
+            fetch_var_names = list(map(_to_name_str, fetches.values()))
+            fetches_dict = dict(zip(fetch_var_names, list(fetches.keys())))
+        elif isinstance(fetches, list):
+            fetch_var_names = list(map(_to_name_str, fetches))
+            fetches_dict = dict(zip(fetch_var_names, fetch_var_names))
+        else:
+            raise TypeError("'fetches' only support 'dict' and 'list', "
+                            "but got '{}'".format(str(type(fetches))))
+        return dict(
+            filter(lambda x: self._is_local_var(x[0]), fetches_dict.items()))
+
+    def _fetch_map(self, inner_fetch, usr_fetch):
+        # replace inner fetch name if usr set for it
+        for iname in inner_fetch:
+            if iname in usr_fetch:
+                inner_fetch[iname] = usr_fetch[iname]
+                usr_fetch.pop(iname)
+        fetches = dict(inner_fetch, **usr_fetch)
+        return list(fetches.keys()), fetches
 
     def _get_data_parallel_info(self, var, dist_context):
         # get data parallel world size and current data parallel rank
@@ -515,7 +486,8 @@ class Engine:
             mode = self.mode
 
         if training:
-            assert 'train' in self._serial_main_progs, "training model is not ready, please call `engine.prepare(mode='train')` first."
+            assert 'train' in self._serial_main_progs, \
+                "training model is not ready, please call `engine.prepare()` first."
             serial_program = self._serial_main_progs["train"]
             dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
             dist_context = self._dist_contexts["train"]
@@ -571,3 +543,7 @@ class Engine:
     @property
     def serial_startup_program(self):
         return self._serial_startup_progs[self.mode]
+
+    @property
+    def fetch_vars(self):
+        return self._fetch_vars[self.mode]

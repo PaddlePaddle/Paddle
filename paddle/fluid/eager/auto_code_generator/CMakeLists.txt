@@ -73,7 +73,7 @@ if(WIN32)
               ${eager_generator_path}
       DEPENDS mklml)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/libiomp5md.dll)
-  else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+  else()
     message("Copied openblas.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/openblas.dll

@@ -21,11 +21,14 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(adam, AdamInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adam,
+                            AdamInferMetaFunctor,
                             PD_INFER_META(phi::AdamInferMeta));
 
 REGISTER_OPERATOR(
-    adam, ops::AdamOp, ops::AdamOpMaker,
+    adam,
+    ops::AdamOp,
+    ops::AdamOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdamInferMetaFunctor);

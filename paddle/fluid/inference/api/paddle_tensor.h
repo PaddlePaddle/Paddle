@@ -110,7 +110,8 @@ class PD_INFER_DECL Tensor {
   /// \param place The place of data.
   /// \param layout The layout of data. Only NCHW is supported now.
   template <typename T>
-  void ShareExternalData(const T* data, const std::vector<int>& shape,
+  void ShareExternalData(const T* data,
+                         const std::vector<int>& shape,
                          PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
@@ -171,7 +172,9 @@ class PD_INFER_DECL Tensor {
   void SetName(const std::string& name);
 
   template <typename T>
-  void CopyToCpuImpl(T* data, void* stream = nullptr, CallbackFunc cb = nullptr,
+  void CopyToCpuImpl(T* data,
+                     void* stream = nullptr,
+                     CallbackFunc cb = nullptr,
                      void* cb_params = nullptr) const;
 
   std::string name_;
@@ -188,13 +191,15 @@ class PD_INFER_DECL Tensor {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   bool is_ort_tensor_{false};
   std::vector<int64_t> shape_;
-  std::vector<int8_t> buffer_;
+  std::weak_ptr<std::vector<int8_t>> buffer_;
   std::weak_ptr<Ort::IoBinding> binding_;
   int idx_{-1};
 
   void SetOrtMark(bool is_ort_tensor);
 
   void SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding);
+
+  void SetOrtBuffer(const std::shared_ptr<std::vector<int8_t>> buffer);
 
   template <typename T>
   void ORTCopyFromCpu(const T* data);

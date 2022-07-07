@@ -25,7 +25,8 @@ namespace paddle {
 namespace framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector() {
-  WorkQueueOptions options(/*name*/ "GarbageCollector", /*num_threads*/ 1,
+  WorkQueueOptions options(/*name*/ "GarbageCollector",
+                           /*num_threads*/ 1,
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
@@ -36,7 +37,8 @@ InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
-    Garbage garbage, platform::DeviceEvent* event,
+    Garbage garbage,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   if (!garbage) {
     return;
@@ -67,7 +69,8 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var) {
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
-    Variable* var, platform::DeviceEvent* event,
+    Variable* var,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;
@@ -87,7 +90,8 @@ void InterpreterCoreEventGarbageCollector::Add(
     Add(var->GetMutable<phi::SelectedRows>()
             ->mutable_value()
             ->MoveMemoryHolder(),
-        event, ctx);
+        event,
+        ctx);
     var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
@@ -106,7 +110,8 @@ void InterpreterCoreEventGarbageCollector::Add(
 }
 
 void InterpreterCoreEventGarbageCollector::Free(
-    GarbageQueue* garbages, platform::DeviceEvent* event,
+    GarbageQueue* garbages,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event
@@ -124,7 +129,8 @@ void InterpreterCoreEventGarbageCollector::Free(
 }
 
 void InterpreterCoreEventGarbageCollector::Free(
-    const Garbage& garbage, platform::DeviceEvent* event,
+    const Garbage& garbage,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event

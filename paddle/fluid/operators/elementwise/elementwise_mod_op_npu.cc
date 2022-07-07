@@ -48,8 +48,8 @@ class ElementwiseModNPUKernel : public framework::OpKernel<T> {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
     } else {
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
     }
     out->mutable_data<T>(ctx.GetPlace());
     const auto& runner =

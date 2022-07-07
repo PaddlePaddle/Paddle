@@ -34,11 +34,14 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
-static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
-                      const mluStream stream, const platform::CNCLComm *comm) {
+static void AllReduce(const framework::Tensor &src,
+                      framework::Tensor *dst,
+                      const mluStream stream,
+                      const platform::CNCLComm *comm) {
   const auto &place = src.place();
   PADDLE_ENFORCE_EQ(
-      platform::is_mlu_place(place), true,
+      platform::is_mlu_place(place),
+      true,
       platform::errors::Unimplemented(
           "Imperative mode does not support multi-CPU training yet."));
 
@@ -47,14 +50,19 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
   auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
   auto cncl_dtype =
       platform::ToCNCLDataType(framework::TransToProtoVarType(src.dtype()));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(src_ptr, dst_ptr, src.numel(),
-                                           cncl_dtype, cnclSum, comm->comm(),
+  PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(src_ptr,
+                                           dst_ptr,
+                                           src.numel(),
+                                           cncl_dtype,
+                                           cnclSum,
+                                           comm->comm(),
                                            stream));
 }
 
 void CNCLParallelContext::BcastCNCLId(
     std::vector<cnclCliqueId> &cncl_ids,  // NOLINT
-    int root, int server_fd) {
+    int root,
+    int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
     for (auto &ep : strategy_.trainer_endpoints_) {
@@ -64,8 +72,8 @@ void CNCLParallelContext::BcastCNCLId(
     }
     platform::SendBroadCastCommID(other_trainers, &cncl_ids);
   } else {
-    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
-                                  &cncl_ids);
+    platform::RecvBroadCastCommID(
+        server_fd, strategy_.current_endpoint_, &cncl_ids);
   }
 }
 
@@ -92,9 +100,11 @@ void CNCLParallelContext::Init() {
             << " local rank: " << strategy_.local_rank_ << " mlu id: " << mlu_id
             << " ring id: " << ring_id;
     // it will assign cncl_comm in MLUDeviceContext within ring_id
-    platform::CNCLCommContext::Instance().CreateComm(
-        &cncl_ids[ring_id], strategy_.nranks_, strategy_.local_rank_, mlu_id,
-        ring_id);
+    platform::CNCLCommContext::Instance().CreateComm(&cncl_ids[ring_id],
+                                                     strategy_.nranks_,
+                                                     strategy_.local_rank_,
+                                                     mlu_id,
+                                                     ring_id);
 
     compute_events_.emplace_back(
         platform::MluEventResourcePool::Instance().New(place_.device));
@@ -133,9 +143,11 @@ void CNCLParallelContext::InitWithRingID(int ring_id) {
 
 void CNCLParallelContext::AllReduceByStream(const framework::Variable &src,
                                             framework::Variable *dst,
-                                            int ring_id, bool use_calc_stream) {
+                                            int ring_id,
+                                            bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(
-      platform::is_mlu_place(place_), true,
+      platform::is_mlu_place(place_),
+      true,
       platform::errors::Unimplemented(
           "Dynamic graph mode does not support multi-CPU training yet."));
   auto *dev_ctx = static_cast<platform::MLUDeviceContext *>(
@@ -149,7 +161,9 @@ void CNCLParallelContext::AllReduceByStream(const framework::Variable &src,
       dst->Clear();
     }
     AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(), stream, comm);
+              dst->GetMutable<framework::LoDTensor>(),
+              stream,
+              comm);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
@@ -169,8 +183,8 @@ void CNCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   void *src_ptr = src_tensor->data();
   auto cncl_dtype = platform::ToCNCLDataType(
       framework::TransToProtoVarType(src_tensor->dtype()));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(src_ptr, src_tensor->numel(), cncl_dtype,
-                                       0, comm->comm(), stream));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(
+      src_ptr, src_tensor->numel(), cncl_dtype, 0, comm->comm(), stream));
 }
 
 paddle::platform::DeviceContext *CNCLParallelContext::GetDeviceContext(
@@ -183,13 +197,16 @@ paddle::platform::DeviceContext *CNCLParallelContext::GetDeviceContext(
 
 void CNCLParallelContext::WaitCompute(int ring_id) {
   PADDLE_ENFORCE_GE(
-      ring_id, 0,
+      ring_id,
+      0,
       platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, compute_events_.size(),
+  PADDLE_ENFORCE_LT(ring_id,
+                    compute_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < compute events size,"
                         "but got ring id = %d, compute events size = %d",
-                        ring_id, compute_events_.size()));
+                        ring_id,
+                        compute_events_.size()));
 
   auto compute_stream = static_cast<platform::MLUDeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))
@@ -205,13 +222,16 @@ void CNCLParallelContext::WaitCompute(int ring_id) {
 
 void CNCLParallelContext::WaitComm(int ring_id) {
   PADDLE_ENFORCE_GE(
-      ring_id, 0,
+      ring_id,
+      0,
       platform::errors::OutOfRange("ring id must >= 0, but got %d", ring_id));
-  PADDLE_ENFORCE_LT(ring_id, comm_events_.size(),
+  PADDLE_ENFORCE_LT(ring_id,
+                    comm_events_.size(),
                     platform::errors::OutOfRange(
                         "ring id must < comm events size,"
                         "but got ring id = %d, comm events size = %d",
-                        ring_id, comm_events_.size()));
+                        ring_id,
+                        comm_events_.size()));
 
   auto compute_stream = static_cast<platform::MLUDeviceContext *>(
                             platform::DeviceContextPool::Instance().Get(place_))

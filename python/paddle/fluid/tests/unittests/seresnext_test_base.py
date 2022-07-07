@@ -30,7 +30,7 @@ class TestResnetBase(TestParallelExecutorBase):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
-        func_1_first_loss, func_1_last_loss = self.check_network_convergence(
+        func_1_first_loss, func_1_last_loss, func_1_loss_area = self.check_network_convergence(
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
             iter=seresnext_net.iter(use_device),
@@ -39,7 +39,7 @@ class TestResnetBase(TestParallelExecutorBase):
             use_reduce=False,
             optimizer=seresnext_net.optimizer)
 
-        func_2_first_loss, func_2_last_loss = check_func(
+        func_2_first_loss, func_2_last_loss, func_2_loss_area = check_func(
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_device),
             iter=seresnext_net.iter(use_device),
@@ -52,6 +52,9 @@ class TestResnetBase(TestParallelExecutorBase):
             for loss in zip(func_1_last_loss, func_2_last_loss):
                 self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
         else:
+            np.testing.assert_allclose(func_1_loss_area,
+                                       func_2_loss_area,
+                                       rtol=delta2)
             self.assertAlmostEquals(np.mean(func_1_first_loss),
                                     func_2_first_loss[0],
                                     delta=1e-5)

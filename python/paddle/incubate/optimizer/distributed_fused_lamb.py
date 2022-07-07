@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
@@ -19,9 +20,67 @@ from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
 from paddle.distributed import get_rank, get_world_size
+from paddle.distributed.collective import new_group
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
+from paddle.fluid import core, unique_name
 import numpy as np
+
+
+def init_communicator(block, rank, ranks, ring_id):
+    eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
+    eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
+    cur_ep = eps[rank]
+    other_eps = [eps[r] for r in ranks if r != rank]
+
+    local_rank = ranks.index(rank)
+    comm_var_name = unique_name.generate('comm_id')
+    comm_id_var = block.create_var(name=comm_var_name,
+                                   persistable=True,
+                                   type=core.VarDesc.VarType.RAW)
+    block.append_op(type='c_gen_nccl_id',
+                    inputs={},
+                    outputs={'Out': comm_id_var},
+                    attrs={
+                        'rank': local_rank,
+                        'endpoint': cur_ep,
+                        'other_endpoints': other_eps,
+                        'ring_id': ring_id
+                    })
+    block.append_op(type='c_comm_init',
+                    inputs={'X': comm_id_var},
+                    outputs={},
+                    attrs={
+                        'nranks': len(ranks),
+                        'rank': local_rank,
+                        'ring_id': ring_id
+                    })
+    tmp_var = block.create_var(name=unique_name.generate('tmp'))
+    block.append_op(type='fill_constant',
+                    outputs={'Out': tmp_var},
+                    attrs={'value': 1})
+    block.append_op(type='c_allreduce_sum',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var},
+                    attrs={
+                        'ring_id': ring_id,
+                        'use_calc_stream': True
+                    })
+    block.append_op(type='c_sync_calc_stream',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var})
+    return ring_id
+
+
+def broadcast_parameters(block, parameters, ring_id):
+    for p in parameters:
+        block.append_op(type='c_broadcast',
+                        inputs={'X': p},
+                        outputs={'Out': p},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': True
+                        })
 
 
 class DistributedFusedLamb(Optimizer):
@@ -41,6 +100,7 @@ class DistributedFusedLamb(Optimizer):
                  use_master_param_norm=True,
                  gradient_accumulation_steps=1,
                  use_master_acc_grad=True,
+                 nproc_per_node=None,
                  name=None):
         assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
@@ -65,10 +125,10 @@ class DistributedFusedLamb(Optimizer):
         self._is_grad_scaled_by_nranks = is_grad_scaled_by_nranks
         self._exclude_from_weight_decay_fn = exclude_from_weight_decay_fn
         self._scale = None
-        self._ring_id = 0
         self._use_master_param_norm = use_master_param_norm
         self._gradient_accumulation_steps = gradient_accumulation_steps
         self._use_master_acc_grad = use_master_acc_grad
+        self._nproc_per_node = nproc_per_node
         assert self._gradient_accumulation_steps >= 1
 
         self.helper = LayerHelper('distributed_fused_lamb')
@@ -228,6 +288,30 @@ class DistributedFusedLamb(Optimizer):
 
         rank = get_rank()
         nranks = get_world_size()
+        if self._nproc_per_node is None:
+            nproc_per_node = nranks
+        else:
+            nproc_per_node = self._nproc_per_node
+        assert nranks % nproc_per_node == 0, "nranks should be exactly divided by nproc_per_node"
+
+        shard_inside_node = (nranks > nproc_per_node)
+        local_rank = rank % nproc_per_node
+        node_id = int(rank / nproc_per_node)
+        node_num = int(nranks / nproc_per_node)
+        ring_ids = []
+        startup_block = self.helper.startup_program.global_block()
+        if nranks > 1:
+            ring_id = init_communicator(startup_block, rank,
+                                        list(range(nranks)), 0)
+            ring_ids.append(ring_id)
+
+        if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
+            local_group_ranks = list(
+                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
+            ring_id = init_communicator(startup_block, rank, local_group_ranks,
+                                        1)
+            ring_ids.append(ring_id)
+
         scale = self._get_or_create_scale()
 
         params = [p for p, _ in params_grads]
@@ -238,7 +322,6 @@ class DistributedFusedLamb(Optimizer):
                 if self._exclude_from_weight_decay_fn(p):
                     apply_weight_decay[i] = 0
 
-        startup_block = self.helper.startup_program.global_block()
         for g in grads:
             startup_block.create_var(name=g.name,
                                      type=g.type,
@@ -246,46 +329,45 @@ class DistributedFusedLamb(Optimizer):
                                      persistable=g.persistable,
                                      shape=g.shape)
 
-        startup_block.append_op(type='distributed_fused_lamb_init',
-                                inputs={
-                                    'Param': params,
-                                    'Grad': grads,
-                                },
-                                outputs={
-                                    'FP32FusedParam': [fp32_fused_param],
-                                    'FP32FusedGrad': [fp32_fused_grad],
-                                    'FP16FusedParam': [fp16_fused_param],
-                                    'FP16FusedGrad': [fp16_fused_grad],
-                                    'Moment1': [moment1],
-                                    'Moment2': [moment2],
-                                    'Beta1Pow': [beta1pow],
-                                    'Beta2Pow': [beta2pow],
-                                    'GlobalScale': [scale],
-                                    'ParamInfo': [param_info],
-                                    'ParamOut':
-                                    params,
-                                    'MasterParamOut':
-                                    master_params,
-                                    'GradOut':
-                                    grads,
-                                    'FP32ShardFusedParamOffsets':
-                                    [fp32_partial_fused_offsets],
-                                    'FP16ShardFusedParamOffsets':
-                                    [fp16_partial_fused_offsets],
-                                    'FusedParamOffsets': [fused_offsets],
-                                    'ParamOrder': [param_order],
-                                    'Step': [step],
-                                },
-                                attrs={
-                                    'alignment': self._alignment,
-                                    'rank': rank,
-                                    'nranks': nranks,
-                                    'apply_weight_decay': apply_weight_decay,
-                                    'moment1': 0.0,
-                                    'moment2': 0.0,
-                                    'beta1': self._beta1,
-                                    'beta2': self._beta2,
-                                })
+        if nranks > 1:
+            broadcast_parameters(startup_block, params, ring_ids[0])
+
+        startup_block.append_op(
+            type='distributed_fused_lamb_init',
+            inputs={
+                'Param': params,
+                'Grad': grads,
+            },
+            outputs={
+                'FP32FusedParam': [fp32_fused_param],
+                'FP32FusedGrad': [fp32_fused_grad],
+                'FP16FusedParam': [fp16_fused_param],
+                'FP16FusedGrad': [fp16_fused_grad],
+                'Moment1': [moment1],
+                'Moment2': [moment2],
+                'Beta1Pow': [beta1pow],
+                'Beta2Pow': [beta2pow],
+                'GlobalScale': [scale],
+                'ParamInfo': [param_info],
+                'ParamOut': params,
+                'MasterParamOut': master_params,
+                'GradOut': grads,
+                'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
+                'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
+                'FusedParamOffsets': [fused_offsets],
+                'ParamOrder': [param_order],
+                'Step': [step],
+            },
+            attrs={
+                'alignment': self._alignment,
+                'rank': local_rank if shard_inside_node else rank,
+                'nranks': nproc_per_node if shard_inside_node else nranks,
+                'apply_weight_decay': apply_weight_decay,
+                'moment1': 0.0,
+                'moment2': 0.0,
+                'beta1': self._beta1,
+                'beta2': self._beta2,
+            })
 
         main_block = self.helper.main_program.global_block()
         self._create_global_learning_rate()
@@ -351,7 +433,8 @@ class DistributedFusedLamb(Optimizer):
                 'max_global_grad_norm': self._max_global_grad_norm,
                 'clip_after_allreduce': self._clip_after_allreduce,
                 'rank': rank,
-                'ring_id': self._ring_id,
+                'nranks': nranks,
+                'ring_id': ring_ids,
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,

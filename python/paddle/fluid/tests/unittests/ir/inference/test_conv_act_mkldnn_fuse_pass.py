@@ -170,28 +170,24 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 11. Generate legal attr of act
         act_op = None
-        self.passes = None
+        self.passes = ["conv_activation_mkldnn_fuse_pass"]
         if act_type == "relu6":
-            self.passes = ["conv_relu6_mkldnn_fuse_pass"]
             threshold = draw(st.floats(min_value=1.0, max_value=10.0))
             act_op = OpConfig("relu6",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               threshold=threshold)
-        if act_type == "leaky_relu":
-            self.passes = ["conv_leaky_relu_mkldnn_fuse_pass"]
+        elif act_type == "leaky_relu":
             alpha = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("leaky_relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
                               alpha=alpha)
-        if act_type == "relu":
-            self.passes = ["conv_relu_mkldnn_fuse_pass"]
+        elif act_type == "relu":
             act_op = OpConfig("relu",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]})
-        if act_type == "swish":
-            self.passes = ["conv_swish_mkldnn_fuse_pass"]
+        elif act_type == "swish":
             beta = draw(st.floats(min_value=0.1, max_value=1.0))
             act_op = OpConfig("swish",
                               inputs={"X": ["conv2d_out"]},

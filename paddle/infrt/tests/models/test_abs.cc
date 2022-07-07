@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
 #include <gtest/gtest.h>
 #include <llvm/Support/CommandLine.h>
 #include <mlir/Pass/PassManager.h>
@@ -50,7 +49,6 @@
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
-// clang-format on
 
 static llvm::cl::list<std::string> cl_shared_libs(  // NOLINT
     "shared_libs",

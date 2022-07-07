@@ -48,6 +48,7 @@ __all__ = [
     'program_guard',
     'name_scope',
     'ipu_shard_guard',
+    'set_ipu_shard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -74,7 +75,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode') == '1')
+_in_eager_mode_ = (os.environ.get('FLAGS_enable_eager_mode', '1') == '1')
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -83,6 +84,8 @@ _already_patch_eager_tensor = False
 _already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
+_enable_standalone_executor_ = (os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR',
+                                               None))
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -178,8 +181,7 @@ def _fallback_legacy_dygraph():
     need_fallback = False
     # Only enable eager on CPU/GPU
     is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu(
-    ) or core.is_compiled_with_rocm()
+    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -253,28 +255,39 @@ def _test_eager_guard(place=None):
             _enable_legacy_dygraph()
 
 
-global_ipu_index = None
-global_ipu_stage = None
+global_ipu_index = -1
+global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
-def ipu_shard_guard(index=None, stage=None):
+def _enable_standalone_executor(enable=True):
+    global _enable_standalone_executor_
+    original_ = _enable_standalone_executor_
+    _enable_standalone_executor_ = enable
+    try:
+        yield
+    finally:
+        _enable_standalone_executor_ = original_
+
+
+@signature_safe_contextmanager
+def ipu_shard_guard(index=-1, stage=-1):
     """
     Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
         index(int, optional): Specify which ipu the Tensor is computed on, (such as '0, 1, 2, 3').
-            The default value is None, which means the Op only run on IPU 0.
+            The default value is -1, which means the Op only run on IPU 0.
         stage(int, optional): Specify the computation order of the sharded model(such as '0, 1, 2, 3').
-            The sharded model will be computed from small to large. The default value is None, 
+            The sharded model will be computed from small to large. The default value is -1, 
             which means no pipelining computation order and run Ops in terms of graph.
     
     **Note**:
-    Only if the enable_manual_shard=True, the 'index' is able to be set not None. Please refer 
+    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` . 
-    Only if the enable_pipelining=True, the 'stage' is able to be set not None. Please refer 
+    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer 
     to :code:`paddle.static.IpuStrategy` .
     A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
     duplicated index.
@@ -310,6 +323,63 @@ def ipu_shard_guard(index=None, stage=None):
     finally:
         global_ipu_index = prev_ipu_index
         global_ipu_stage = prev_ipu_stage
+
+
+def set_ipu_shard(call_func, index=-1, stage=-1):
+    """
+    Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
+
+    Args:
+        call_func(Layer|function): Specify the call function to be wrapped.
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+            The default value is -1, which means the Op only run on IPU 0.
+        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+            The sharded model will be computed from small to large. The default value is -1, 
+            which means no pipelining computation order and run Ops in terms of graph.
+
+    Returns:
+        The wrapped call function.
+
+
+    Examples:
+        .. code-block:: python
+
+            # required: ipu
+
+            import paddle
+            paddle.enable_static()
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='float32')
+            relu = paddle.nn.ReLU()
+            relu = paddle.static.set_ipu_shard(relu, index=1, stage=1)
+            relu(a)
+    """
+
+    def decorate(func):
+
+        def wrapper(*args, **kwargs):
+            with ipu_shard_guard(index=index, stage=stage):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    from .dygraph.layers import Layer
+    if not isinstance(call_func, Layer):
+        if callable(call_func):
+            return decorate(call_func)
+        else:
+            raise TypeError(
+                "Unsupported type. Only accept paddle.nn.Layer or function.")
+
+    # patch paddle.nn.Layer
+    class BlockFn(type(call_func)):
+
+        def __call__(self, *args, **kwargs):
+            with ipu_shard_guard(index=index, stage=stage):
+                return super().__call__(*args, **kwargs)
+
+    BlockFn.__name__ = type(call_func).__name__
+    call_func.__class__ = BlockFn
+    return call_func
 
 
 def require_version(min_version, max_version=None):
@@ -517,7 +587,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.CUDAPlace(0)
+                _global_expected_place_ = core.CUDAPlace(_cuda_ids()[0])
             else:
                 warnings.warn(
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
@@ -529,7 +599,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.XPUPlace(0)
+                _global_expected_place_ = core.XPUPlace(_xpu_ids()[0])
             else:
                 warnings.warn(
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
@@ -541,7 +611,7 @@ def _current_expected_place():
             except Exception as e:
                 device_count = 0
             if device_count > 0:
-                _global_expected_place_ = core.MLUPlace(0)
+                _global_expected_place_ = core.MLUPlace(_mlu_ids()[0])
             else:
                 warnings.warn(
                     "You are using MLU version Paddle, but your MLU device is not set properly. CPU device will be used by default."
@@ -1110,7 +1180,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
         return core.VarDesc.VarType.INT64
-    elif dtype == np.bool:
+    elif dtype == np.bool_:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
         # since there is still no support for bfloat16 in NumPy,
@@ -2773,10 +2843,10 @@ class Operator(object):
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
-                if global_ipu_index is not None:
+                if global_ipu_index >= 0:
                     self._update_desc_attr(ipu_index_attr_name,
                                            global_ipu_index)
-                if global_ipu_stage is not None:
+                if global_ipu_stage >= 0:
                     self._update_desc_attr(ipu_stage_attr_name,
                                            global_ipu_stage)
 

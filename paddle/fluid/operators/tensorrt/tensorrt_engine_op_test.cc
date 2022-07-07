@@ -31,7 +31,8 @@ namespace paddle {
 namespace operators {
 
 namespace {
-void CreateCUDATensor(framework::Scope* scope, const std::string& name,
+void CreateCUDATensor(framework::Scope* scope,
+                      const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
@@ -149,7 +150,6 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   else
     CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 1, 1}));
   CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
-  CreateCUDATensor(&scope, "z", std::vector<int64_t>({2, 6}));
 
   CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
   CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));
@@ -183,9 +183,12 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
 
-  auto AddFCLayer = [&](const std::string& x_name, const std::string& y_name,
-                        const std::string& z_name, bool x_created,
-                        const shape_t& x_shape, const shape_t& y_shape,
+  auto AddFCLayer = [&](const std::string& x_name,
+                        const std::string& y_name,
+                        const std::string& z_name,
+                        bool x_created,
+                        const shape_t& x_shape,
+                        const shape_t& y_shape,
                         const shape_t& z_shape) {
     LOG(INFO) << "create fc op";
     auto* fc = block_desc.AppendOp();
@@ -196,13 +199,13 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 
     // Set inputs' variable shape in BlockDesc
     if (!x_created) {
-      AddTensorToBlockDesc(block_, x_name,
-                           std::vector<int64_t>({batch_size, input_dim, 1, 1}));
+      AddTensorToBlockDesc(
+          block_, x_name, std::vector<int64_t>({batch_size, input_dim, 1, 1}));
     }
-    AddTensorToBlockDesc(block_, y_name,
-                         std::vector<int64_t>({input_dim, output_dim}));
-    AddTensorToBlockDesc(block_, z_name,
-                         std::vector<int64_t>({batch_size, output_dim}));
+    AddTensorToBlockDesc(
+        block_, y_name, std::vector<int64_t>({input_dim, output_dim}));
+    AddTensorToBlockDesc(
+        block_, z_name, std::vector<int64_t>({batch_size, output_dim}));
 
     // Prepare variables.
     if (!x_created) {
@@ -216,13 +219,33 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   };
 
   // Test with 4 layer FC
-  AddFCLayer("x0", "y0", "z0", false, {batch_size, input_dim},
-             {input_dim, output_dim}, {batch_size, output_dim});
-  AddFCLayer("z0", "y1", "z1", true, {}, {output_dim, output_dim},
+  AddFCLayer("x0",
+             "y0",
+             "z0",
+             false,
+             {batch_size, input_dim},
+             {input_dim, output_dim},
              {batch_size, output_dim});
-  AddFCLayer("z1", "y2", "z2", true, {}, {output_dim, output_dim},
+  AddFCLayer("z0",
+             "y1",
+             "z1",
+             true,
+             {},
+             {output_dim, output_dim},
              {batch_size, output_dim});
-  AddFCLayer("z2", "y3", "z3", true, {}, {output_dim, output_dim},
+  AddFCLayer("z1",
+             "y2",
+             "z2",
+             true,
+             {},
+             {output_dim, output_dim},
+             {batch_size, output_dim});
+  AddFCLayer("z2",
+             "y3",
+             "z3",
+             true,
+             {},
+             {output_dim, output_dim},
              {batch_size, output_dim});
 
   LOG(INFO) << "create tensorrt desc";

@@ -67,7 +67,7 @@ function(register_unity_group TYPE)
   math(EXPR unity_group_index "${unity_group_index} + 1")
   set_property(GLOBAL PROPERTY ${UNITY_TARGET}_${TYPE}_group_index
                                ${unity_group_index})
-endfunction(register_unity_group)
+endfunction()
 
 # Combine the original source files used by `TARGET`, then use
 # `unity_target_${TYPE}_sources` to get the combined source files.
@@ -145,7 +145,7 @@ function(compose_unity_target_sources TARGET TYPE)
   set(unity_target_${TYPE}_sources
       ${unity_target_sources}
       PARENT_SCOPE)
-endfunction(compose_unity_target_sources)
+endfunction()
 
 # Write the unity files used by `UNITY_TARGET`.
 # Write dependent on whether the contents of the unity file have changed, which
@@ -179,4 +179,4 @@ function(finish_unity_target TYPE)
       endif()
     endforeach()
   endif()
-endfunction(finish_unity_target)
+endfunction()

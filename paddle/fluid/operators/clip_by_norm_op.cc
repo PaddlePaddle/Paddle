@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/clip_by_norm_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm, ops::ClipByNormOp,
+REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm,
+                             ops::ClipByNormOp,
                              ops::ClipByNormOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    clip_by_norm,
-    ops::ClipByNormKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(clip_by_norm,
+                       ops::ClipByNormKernel<phi::CPUContext, float>);

@@ -27,7 +27,7 @@ def compare(ref, res, atol, rtol):
     ref = np.array(ref).flatten()
     res = np.array(res).flatten()
 
-    tmp_ref = ref.astype(np.float)
+    tmp_ref = ref.astype(np.float64)
     tol = atol + rtol * abs(tmp_ref)
 
     diff = abs(res - ref)

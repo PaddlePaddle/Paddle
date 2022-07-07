@@ -38,7 +38,9 @@ class NPUReduceMeanOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    const auto& runner = NpuOpRunner("ReduceMeanD", {*input}, {*output},
+    const auto& runner = NpuOpRunner("ReduceMeanD",
+                                     {*input},
+                                     {*output},
                                      {{"axes", dims}, {"keep_dims", keep_dim}});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -75,7 +77,9 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
     }
 
     const auto& runner =
-        NpuOpRunner("FillV2D", {}, {*input_grad},
+        NpuOpRunner("FillV2D",
+                    {},
+                    {*input_grad},
                     {{"value", 1.0f / static_cast<float>(reduce_numel)},
                      {"dims", input_dims_vec}});
     auto stream =
@@ -93,12 +97,17 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
     tmp_output_grad.Resize(phi::make_ddim(tmp_output_dims_vec));
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    NpuElementWiseOpBroadcast<T>(dev_ctx, input_grad, &tmp_output_grad, 0,
+    NpuElementWiseOpBroadcast<T>(dev_ctx,
+                                 input_grad,
+                                 &tmp_output_grad,
+                                 0,
                                  &transformed_input_grad,
                                  &transformed_out_grad);
     const auto& runner2 =
-        NpuOpRunner("Mul", {transformed_input_grad, transformed_out_grad},
-                    {*input_grad}, {});
+        NpuOpRunner("Mul",
+                    {transformed_input_grad, transformed_out_grad},
+                    {*input_grad},
+                    {});
     runner2.Run(stream);
   }
 };

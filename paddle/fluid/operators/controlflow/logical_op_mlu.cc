@@ -38,8 +38,14 @@ class LogicalMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc out_desc(*out);
 
-    MLUCnnl::Logic(ctx, log_method, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                   GetBasePtr(y), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Logic(ctx,
+                   log_method,
+                   x_desc.get(),
+                   GetBasePtr(x),
+                   y_desc.get(),
+                   GetBasePtr(y),
+                   out_desc.get(),
+                   GetBasePtr(out));
   }
 };
 

@@ -235,7 +235,7 @@ class TestBoxCoderOpWithVariance(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
-            'variance': prior_box_var.astype(np.float).flatten(),
+            'variance': prior_box_var.astype(np.float64).flatten(),
             'axis': axis
         }
         self.outputs = {'OutputBox': output_box}

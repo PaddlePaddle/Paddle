@@ -23,12 +23,21 @@ using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
-__global__ void KeNearestNeighborInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+__global__ void KeNearestNeighborInterpFw(const T* in,
+                                          const size_t in_img_h,
+                                          const size_t in_img_w,
+                                          const size_t input_h,
+                                          const size_t input_w,
+                                          T* out,
+                                          const size_t out_img_h,
+                                          const size_t out_img_w,
+                                          const size_t output_h,
+                                          const size_t output_w,
+                                          const size_t num_channels,
+                                          const float ratio_h,
+                                          const float ratio_w,
+                                          const bool align_corners,
+                                          const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -67,12 +76,21 @@ __global__ void KeNearestNeighborInterpFw(
 }
 
 template <typename T>
-__global__ void KeNearestNeighborInterpBw(
-    T* in, const size_t in_img_h, const size_t in_img_w, const size_t input_h,
-    const size_t input_w, const T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+__global__ void KeNearestNeighborInterpBw(T* in,
+                                          const size_t in_img_h,
+                                          const size_t in_img_w,
+                                          const size_t input_h,
+                                          const size_t input_w,
+                                          const T* out,
+                                          const size_t out_img_h,
+                                          const size_t out_img_w,
+                                          const size_t output_h,
+                                          const size_t output_w,
+                                          const size_t num_channels,
+                                          const float ratio_h,
+                                          const float ratio_w,
+                                          const bool align_corners,
+                                          const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -114,12 +132,17 @@ __global__ void KeNearestNeighborInterpBw(
 }
 
 template <typename T>
-__global__ void KeLinearInterpFw(const T* in, const size_t in_img_w,
-                                 const size_t input_w, T* out,
-                                 const size_t out_img_w, const size_t output_h,
+__global__ void KeLinearInterpFw(const T* in,
+                                 const size_t in_img_w,
+                                 const size_t input_w,
+                                 T* out,
+                                 const size_t out_img_w,
+                                 const size_t output_h,
                                  const size_t output_w,
-                                 const size_t num_channels, const float ratio_w,
-                                 const bool align_corners, const int align_mode,
+                                 const size_t num_channels,
+                                 const float ratio_w,
+                                 const bool align_corners,
+                                 const int align_mode,
                                  const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -170,12 +193,17 @@ __global__ void KeLinearInterpFw(const T* in, const size_t in_img_w,
 }
 
 template <typename T>
-__global__ void KeLinearInterpBw(T* in, const size_t in_img_w,
-                                 const size_t input_w, const T* out,
-                                 const size_t out_img_w, const size_t output_h,
+__global__ void KeLinearInterpBw(T* in,
+                                 const size_t in_img_w,
+                                 const size_t input_w,
+                                 const T* out,
+                                 const size_t out_img_w,
+                                 const size_t output_h,
                                  const size_t output_w,
-                                 const size_t num_channels, const T ratio_w,
-                                 const bool align_corners, const int align_mode,
+                                 const size_t num_channels,
+                                 const T ratio_w,
+                                 const bool align_corners,
+                                 const int align_mode,
                                  const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -227,13 +255,22 @@ __global__ void KeLinearInterpBw(T* in, const size_t in_img_w,
 }
 
 template <typename T>
-__global__ void KeBilinearInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const int align_mode,
-    const DataLayout data_layout) {
+__global__ void KeBilinearInterpFw(const T* in,
+                                   const size_t in_img_h,
+                                   const size_t in_img_w,
+                                   const size_t input_h,
+                                   const size_t input_w,
+                                   T* out,
+                                   const size_t out_img_h,
+                                   const size_t out_img_w,
+                                   const size_t output_h,
+                                   const size_t output_w,
+                                   const size_t num_channels,
+                                   const float ratio_h,
+                                   const float ratio_w,
+                                   const bool align_corners,
+                                   const int align_mode,
+                                   const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -303,13 +340,22 @@ __global__ void KeBilinearInterpFw(
 }
 
 template <typename T>
-__global__ void KeBilinearInterpBw(
-    T* in, const size_t in_img_h, const size_t in_img_w, const size_t input_h,
-    const size_t input_w, const T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const T ratio_h, const T ratio_w,
-    const bool align_corners, const int align_mode,
-    const DataLayout data_layout) {
+__global__ void KeBilinearInterpBw(T* in,
+                                   const size_t in_img_h,
+                                   const size_t in_img_w,
+                                   const size_t input_h,
+                                   const size_t input_w,
+                                   const T* out,
+                                   const size_t out_img_h,
+                                   const size_t out_img_w,
+                                   const size_t output_h,
+                                   const size_t output_w,
+                                   const size_t num_channels,
+                                   const T ratio_h,
+                                   const T ratio_w,
+                                   const bool align_corners,
+                                   const int align_mode,
+                                   const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -383,14 +429,25 @@ __global__ void KeBilinearInterpBw(
 }
 
 template <typename T>
-__global__ void KeTrilinearInterpFw(
-    const T* in, const size_t in_img_d, const size_t in_img_h,
-    const size_t in_img_w, const size_t input_h, const size_t input_w, T* out,
-    const size_t out_img_d, const size_t out_img_h, const size_t out_img_w,
-    const size_t output_h, const size_t output_w, const size_t num_channels,
-    const float ratio_d, const float ratio_h, const float ratio_w,
-    const bool align_corners, const int align_mode,
-    const DataLayout data_layout) {
+__global__ void KeTrilinearInterpFw(const T* in,
+                                    const size_t in_img_d,
+                                    const size_t in_img_h,
+                                    const size_t in_img_w,
+                                    const size_t input_h,
+                                    const size_t input_w,
+                                    T* out,
+                                    const size_t out_img_d,
+                                    const size_t out_img_h,
+                                    const size_t out_img_w,
+                                    const size_t output_h,
+                                    const size_t output_w,
+                                    const size_t num_channels,
+                                    const float ratio_d,
+                                    const float ratio_h,
+                                    const float ratio_w,
+                                    const bool align_corners,
+                                    const int align_mode,
+                                    const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -495,13 +552,25 @@ __global__ void KeTrilinearInterpFw(
 }
 
 template <typename T>
-__global__ void KeTrilinearInterpBw(
-    T* in, const size_t in_img_d, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, const T* out,
-    const size_t out_img_d, const size_t out_img_h, const size_t out_img_w,
-    const size_t output_h, const size_t output_w, const size_t num_channels,
-    const T ratio_d, const T ratio_h, const T ratio_w, const bool align_corners,
-    const int align_mode, const DataLayout data_layout) {
+__global__ void KeTrilinearInterpBw(T* in,
+                                    const size_t in_img_d,
+                                    const size_t in_img_h,
+                                    const size_t in_img_w,
+                                    const size_t input_h,
+                                    const size_t input_w,
+                                    const T* out,
+                                    const size_t out_img_d,
+                                    const size_t out_img_h,
+                                    const size_t out_img_w,
+                                    const size_t output_h,
+                                    const size_t output_w,
+                                    const size_t num_channels,
+                                    const T ratio_d,
+                                    const T ratio_h,
+                                    const T ratio_w,
+                                    const bool align_corners,
+                                    const int align_mode,
+                                    const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -621,9 +690,8 @@ __global__ void KeTrilinearInterpBw(
 }
 
 template <typename T>
-__device__ __forceinline__ static T Kecubic_interp(const T x0, const T x1,
-                                                   const T x2, const T x3,
-                                                   T t) {
+__device__ __forceinline__ static T Kecubic_interp(
+    const T x0, const T x1, const T x2, const T x3, T t) {
   T coeffs[4];
   T a = -0.75;
   T x_1 = t;
@@ -636,12 +704,21 @@ __device__ __forceinline__ static T Kecubic_interp(const T x0, const T x1,
 }
 
 template <typename T>
-__global__ void KeBicubicInterpFw(
-    const T* in, const size_t in_img_h, const size_t in_img_w,
-    const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+__global__ void KeBicubicInterpFw(const T* in,
+                                  const size_t in_img_h,
+                                  const size_t in_img_w,
+                                  const size_t input_h,
+                                  const size_t input_w,
+                                  T* out,
+                                  const size_t out_img_h,
+                                  const size_t out_img_w,
+                                  const size_t output_h,
+                                  const size_t output_w,
+                                  const size_t num_channels,
+                                  const float ratio_h,
+                                  const float ratio_w,
+                                  const bool align_corners,
+                                  const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -703,13 +780,15 @@ __global__ void KeBicubicInterpFw(
         in_pos_3 = &in[out_id_h * input_w + channel_id * in_img_size +
                        access_y * in_img_w + access_x_3];
 
-        coefficients[k] = Kecubic_interp<T>(in_pos_0[0], in_pos_1[0],
-                                            in_pos_2[0], in_pos_3[0], x_t);
+        coefficients[k] = Kecubic_interp<T>(
+            in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
 
-      out[out_id_h * output_w + out_id_w] =
-          Kecubic_interp<T>(coefficients[0], coefficients[1], coefficients[2],
-                            coefficients[3], y_t);
+      out[out_id_h * output_w + out_id_w] = Kecubic_interp<T>(coefficients[0],
+                                                              coefficients[1],
+                                                              coefficients[2],
+                                                              coefficients[3],
+                                                              y_t);
 
     } else {
       for (int k = 0; k < 4; k++) {
@@ -737,24 +816,36 @@ __global__ void KeBicubicInterpFw(
             &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                 access_x_3 * num_channels + channel_id];
 
-        coefficients[k] = Kecubic_interp(in_pos_0[0], in_pos_1[0], in_pos_2[0],
-                                         in_pos_3[0], x_t);
+        coefficients[k] = Kecubic_interp(
+            in_pos_0[0], in_pos_1[0], in_pos_2[0], in_pos_3[0], x_t);
       }
 
       out[out_id_h * output_w + out_id_w] =
-          static_cast<T>(Kecubic_interp(coefficients[0], coefficients[1],
-                                        coefficients[2], coefficients[3], y_t));
+          static_cast<T>(Kecubic_interp(coefficients[0],
+                                        coefficients[1],
+                                        coefficients[2],
+                                        coefficients[3],
+                                        y_t));
     }
   }
 }
 
 template <typename T>
-__global__ void KeBicubicInterpBw(
-    T* in, const size_t in_img_h, const size_t in_img_w, const size_t input_h,
-    const size_t input_w, const T* out, const size_t out_img_h,
-    const size_t out_img_w, const size_t output_h, const size_t output_w,
-    const size_t num_channels, const float ratio_h, const float ratio_w,
-    const bool align_corners, const DataLayout data_layout) {
+__global__ void KeBicubicInterpBw(T* in,
+                                  const size_t in_img_h,
+                                  const size_t in_img_w,
+                                  const size_t input_h,
+                                  const size_t input_w,
+                                  const T* out,
+                                  const size_t out_img_h,
+                                  const size_t out_img_w,
+                                  const size_t output_h,
+                                  const size_t output_w,
+                                  const size_t num_channels,
+                                  const float ratio_h,
+                                  const float ratio_w,
+                                  const bool align_corners,
+                                  const DataLayout data_layout) {
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -822,7 +913,8 @@ __global__ void KeBicubicInterpBw(
 
 template <typename T>
 static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input, Tensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -861,7 +953,8 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[0];
     }
   }
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -892,16 +985,28 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("linear" == interp_method) {
-    KeLinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                          ctx.cuda_device_context().stream()>>>(
-        input_data, in_w, in_cw, output_data, out_w, n, out_cw, c, ratio_w,
-        align_corners, align_mode, data_layout);
+    KeLinearInterpFw<T><<<config.block_per_grid,
+                          config.thread_per_block,
+                          0,
+                          ctx.cuda_device_context().stream()>>>(input_data,
+                                                                in_w,
+                                                                in_cw,
+                                                                output_data,
+                                                                out_w,
+                                                                n,
+                                                                out_cw,
+                                                                c,
+                                                                ratio_w,
+                                                                align_corners,
+                                                                align_mode,
+                                                                data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input, Tensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -944,11 +1049,13 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[1];
     }
   }
-  PADDLE_ENFORCE_GT(out_h, 0,
+  PADDLE_ENFORCE_GT(out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -989,26 +1096,69 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpFw<T>
-        <<<config.block_per_grid, config.thread_per_block, 0,
-           ctx.cuda_device_context().stream()>>>(
-            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-            out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_data,
+                                                 in_h,
+                                                 in_w,
+                                                 n,
+                                                 in_chw,
+                                                 output_data,
+                                                 out_h,
+                                                 out_w,
+                                                 n,
+                                                 out_chw,
+                                                 c,
+                                                 ratio_h,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 data_layout);
   } else if ("bilinear" == interp_method) {
-    KeBilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                            ctx.cuda_device_context().stream()>>>(
-        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-        out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
+    KeBilinearInterpFw<T><<<config.block_per_grid,
+                            config.thread_per_block,
+                            0,
+                            ctx.cuda_device_context().stream()>>>(input_data,
+                                                                  in_h,
+                                                                  in_w,
+                                                                  n,
+                                                                  in_chw,
+                                                                  output_data,
+                                                                  out_h,
+                                                                  out_w,
+                                                                  n,
+                                                                  out_chw,
+                                                                  c,
+                                                                  ratio_h,
+                                                                  ratio_w,
+                                                                  align_corners,
+                                                                  align_mode,
+                                                                  data_layout);
   } else if ("bicubic" == interp_method) {
     KeBicubicInterpFw<T>
         <<<config.block_per_grid, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
-            out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+            input_data,
+            in_h,
+            in_w,
+            n,
+            in_chw,
+            output_data,
+            out_h,
+            out_w,
+            n,
+            out_chw,
+            c,
+            ratio_h,
+            ratio_w,
+            align_corners,
+            data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input, Tensor* output) {
+                                 const Tensor& input,
+                                 Tensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -1055,15 +1205,18 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
       out_w = size_data[2];
     }
   }
-  PADDLE_ENFORCE_GT(out_d, 0,
+  PADDLE_ENFORCE_GT(out_d,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_d in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_h, 0,
+  PADDLE_ENFORCE_GT(out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(out_w, 0,
+  PADDLE_ENFORCE_GT(out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -1108,17 +1261,36 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("trilinear" == interp_method) {
-    KeTrilinearInterpFw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                             ctx.cuda_device_context().stream()>>>(
-        input_data, in_d, in_h, in_w, n, in_cdhw, output_data, out_d, out_h,
-        out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
-        align_mode, data_layout);
+    KeTrilinearInterpFw<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_data,
+                                                 in_d,
+                                                 in_h,
+                                                 in_w,
+                                                 n,
+                                                 in_cdhw,
+                                                 output_data,
+                                                 out_d,
+                                                 out_h,
+                                                 out_w,
+                                                 n,
+                                                 out_cdhw,
+                                                 c,
+                                                 ratio_d,
+                                                 ratio_h,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 align_mode,
+                                                 data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
-                                 Tensor* input_grad, const Tensor output_grad) {
+                                 Tensor* input_grad,
+                                 const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
@@ -1187,16 +1359,29 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("linear" == interp_method) {
-    KeLinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                          ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_w, in_cw, output_grad_data, out_w, n, out_cw, c,
-        ratio_w, align_corners, align_mode, data_layout);
+    KeLinearInterpBw<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_grad_data,
+                                                 in_w,
+                                                 in_cw,
+                                                 output_grad_data,
+                                                 out_w,
+                                                 n,
+                                                 out_cw,
+                                                 c,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 align_mode,
+                                                 data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
-                                 Tensor* input_grad, const Tensor output_grad) {
+                                 Tensor* input_grad,
+                                 const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
@@ -1279,21 +1464,63 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpBw<T>
-        <<<config.block_per_grid, config.thread_per_block, 0,
-           ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_grad_data,
+                                                 in_h,
+                                                 in_w,
+                                                 n,
+                                                 in_chw,
+                                                 output_grad_data,
+                                                 out_h,
+                                                 out_w,
+                                                 n,
+                                                 out_chw,
+                                                 c,
+                                                 ratio_h,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 data_layout);
   } else if ("bilinear" == interp_method) {
-    KeBilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                            ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
-        n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
-        data_layout);
+    KeBilinearInterpBw<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_grad_data,
+                                                 in_h,
+                                                 in_w,
+                                                 n,
+                                                 in_chw,
+                                                 output_grad_data,
+                                                 out_h,
+                                                 out_w,
+                                                 n,
+                                                 out_chw,
+                                                 c,
+                                                 ratio_h,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 align_mode,
+                                                 data_layout);
   } else if ("bicubic" == interp_method) {
     KeBicubicInterpBw<T>
         <<<config.block_per_grid, 512, 0, ctx.cuda_device_context().stream()>>>(
-            input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h,
-            out_w, n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
+            input_grad_data,
+            in_h,
+            in_w,
+            n,
+            in_chw,
+            output_grad_data,
+            out_h,
+            out_w,
+            n,
+            out_chw,
+            c,
+            ratio_h,
+            ratio_w,
+            align_corners,
+            data_layout);
   }
 }
 
@@ -1390,11 +1617,29 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
 
   if ("trilinear" == interp_method) {
-    KeTrilinearInterpBw<T><<<config.block_per_grid, config.thread_per_block, 0,
-                             ctx.cuda_device_context().stream()>>>(
-        input_grad_data, in_d, in_h, in_w, n, in_cdhw, output_grad_data, out_d,
-        out_h, out_w, n, out_cdhw, c, ratio_d, ratio_h, ratio_w, align_corners,
-        align_mode, data_layout);
+    KeTrilinearInterpBw<T>
+        <<<config.block_per_grid,
+           config.thread_per_block,
+           0,
+           ctx.cuda_device_context().stream()>>>(input_grad_data,
+                                                 in_d,
+                                                 in_h,
+                                                 in_w,
+                                                 n,
+                                                 in_cdhw,
+                                                 output_grad_data,
+                                                 out_d,
+                                                 out_h,
+                                                 out_w,
+                                                 n,
+                                                 out_cdhw,
+                                                 c,
+                                                 ratio_d,
+                                                 ratio_h,
+                                                 ratio_w,
+                                                 align_corners,
+                                                 align_mode,
+                                                 data_layout);
   }
 }
 
@@ -1403,7 +1648,8 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
@@ -1424,7 +1670,8 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -1444,31 +1691,36 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(bilinear_interp, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(bilinear_interp,
+                        ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(bilinear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(nearest_interp, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(nearest_interp,
+                        ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(nearest_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(trilinear_interp, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(trilinear_interp,
+                        ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(trilinear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(linear_interp, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(linear_interp,
+                        ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(linear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(bicubic_interp, ops::InterpolateOpCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(bicubic_interp,
+                        ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(bicubic_interp_grad,

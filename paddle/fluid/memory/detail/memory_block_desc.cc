@@ -21,8 +21,12 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
-                        MemoryBlock* l, MemoryBlock* r)
+MemoryBlock::Desc::Desc(MemoryBlock::Type t,
+                        size_t i,
+                        size_t s,
+                        size_t ts,
+                        MemoryBlock* l,
+                        MemoryBlock* r)
     : type(t),
       index(i),
       size(s),

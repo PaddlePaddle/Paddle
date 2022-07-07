@@ -35,11 +35,11 @@ if(WIN32)
         ${CMAKE_COMMAND} -E copy_if_different
         "${PADDLE_SOURCE_DIR}/patches/cryptopp/CMakeLists.txt" "<SOURCE_DIR>/")
   endif()
-else(WIN32)
+else()
   set(CRYPTOPP_LIBRARIES
       "${CRYPTOPP_INSTALL_DIR}/lib/libcryptopp.a"
       CACHE FILEPATH "cryptopp library." FORCE)
-endif(WIN32)
+endif()
 
 if(APPLE AND WITH_ARM)
   set(CMAKE_CXX_FLAGS "-DCRYPTOPP_ARM_CRC32_AVAILABLE=0")

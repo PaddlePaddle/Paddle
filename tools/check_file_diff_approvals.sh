@@ -373,7 +373,7 @@ if [ "${CMAKE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (zhiqiu (Recommend), luotao1 or phlrain) approval to use these methods. "
-        check_approval 1 6888866 47554610 2002279
+        check_approval 1 zhiqiu luotao1 phlrain
     fi
 fi
 

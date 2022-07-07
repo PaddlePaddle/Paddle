@@ -24,14 +24,15 @@ class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "SoftmaxMaskFuseUpperTriangle");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "SoftmaxMaskFuseUpperTriangle");
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "SoftmaxMaskFuseUpperTriangle");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "SoftmaxMaskFuseUpperTriangle");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
+        x_dims.size(),
+        4,
         platform::errors::InvalidArgument("Input x must be in 4D dimension but "
                                           "received the dimension of X is %d",
                                           x_dims.size()));
@@ -65,7 +66,8 @@ class SoftmaxMaskFuseUpperTriangleOpGrad
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
                    framework::GradVarName("Out"),
                    "SoftmaxMaskFuseUpperTriangleGrad");
 
@@ -95,14 +97,14 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_softmax_mask_upper_triangle, ops::SoftmaxMaskFuseUpperTriangleOp,
+    fused_softmax_mask_upper_triangle,
+    ops::SoftmaxMaskFuseUpperTriangleOp,
     ops::SoftmaxMaskFuseUpperTriangleOpMaker,
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::framework::OpDesc>,
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
-REGISTER_OP_CPU_KERNEL(fused_softmax_mask_upper_triangle,
-                       ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
-                           paddle::platform::CPUDeviceContext, float>,
-                       ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
-                           paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    fused_softmax_mask_upper_triangle,
+    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, float>,
+    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, double>);
