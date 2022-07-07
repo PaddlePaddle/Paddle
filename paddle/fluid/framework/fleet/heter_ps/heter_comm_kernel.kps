@@ -663,6 +663,66 @@ template void HeterCommKernel::convert_feature_value_as_float<paddle::framework:
     int len,
     bool to_float);
 
+__global__ void convert_feature_push_value_kernel(
+    paddle::framework::FeaturePushValue * in_vals, int len, bool to_float = true) {
+    int cid = core_id();
+    int ncores = core_num();
+    if (cid >= ncores) {
+        return;
+    }
+    int thread_id = ncores * cluster_id() + cid;
+    int nthreads = ncores * cluster_num();
+
+    const int local_val_size = 100;
+    __local__ FeaturePushValue local_vals[local_val_size];
+
+    int len_per_thread = len / nthreads;
+    int remain = len % nthreads;
+    int begin_offset = 0;
+    int end_offset = 0;
+    if (thread_id < remain) {
+        begin_offset = thread_id * (len_per_thread + 1);
+        end_offset = begin_offset + len_per_thread + 1;
+    } else {
+        begin_offset = remain * (len_per_thread + 1) + (thread_id - remain) * len_per_thread;
+        end_offset = begin_offset + len_per_thread;
+    }
+
+    int read_len = 0;
+    for (int offset = begin_offset; offset < end_offset;) {
+        read_len =  (end_offset - offset) <= local_val_size ? (end_offset - offset) : local_val_size;
+        mfence();
+        GM2LM(in_vals + offset, local_vals, sizeof(FeaturePushValue) * read_len);
+        for (int i = 0; i < read_len; i++) {
+            if (to_float) {
+                float * slot = (float *)&(local_vals[i].slot);
+                *slot = static_cast<float>(local_vals[i].slot);
+            } else {
+                float * slot = (float *)&(local_vals[i].slot);
+                local_vals[i].slot = static_cast<int>(*slot);
+            }
+        }
+        LM2GM(local_vals, in_vals + offset, sizeof(FeaturePushValue) * read_len);
+
+        offset += read_len;
+    }
+}
+
+template <typename ValueT>
+void HeterCommKernel::convert_feature_push_value_as_float(
+    ValueT* d_vals_in,
+    int len,
+    bool to_float) {
+    xpu_kernel_debug_reset();
+    convert_feature_push_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
+    xpu_kernel_debug();
+}
+
+template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue>(
+    paddle::framework::FeaturePushValue* d_vals_in,
+    int len,
+    bool to_float);
+
 #endif
 
 }  // end namespace framework

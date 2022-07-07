@@ -124,8 +124,13 @@ void convert_feature_value_as_float(
     int len,
     bool to_float);
 
-#endif
+template <typename ValueT>
+void convert_feature_push_value_as_float(
+    ValueT* d_vals_in,
+    int len,
+    bool to_float);
 
+#endif
 
  private:
   int block_size_{256};

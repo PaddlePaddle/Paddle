@@ -990,9 +990,11 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(0) << "heter comm inl push sparse all reduce start";
+    heter_comm_kernel_->convert_feature_push_value_as_float(d_shard_grads_ptr, h_fid_seq->size(), true);
     bkcl_all_reduce(comm->comm(), d_shard_grads_ptr, d_all_grads_ptr,
         h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
+    heter_comm_kernel_->convert_feature_push_value_as_float(d_all_grads_ptr, h_fid_seq->size(), false);
     VLOG(0) << "heter comm inl push sparse all reduce finish";
   } else {
     VLOG(0) << "heter comm inl push sparse unnecessary all reduce";
