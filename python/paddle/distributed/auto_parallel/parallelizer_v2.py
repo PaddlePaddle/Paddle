@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import time
 from collections import defaultdict
 
 from paddle.fluid import program_guard
@@ -54,43 +55,66 @@ class Parallelizer:
         serial_optimizer = self._dist_context.serial_optimizer
         if self._mode == "train" and serial_optimizer:
             # Generate backward
+            time0 = time.time()
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(serial_main_program,
                                                    serial_startup_program,
                                                    serial_loss)
+            print("within parallel backward time: {}, mode {}".format(
+                time.time() - time0, self._mode))
             # Apply pre optimization passes
+            time0 = time.time()
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, serial_loss,
                                          serial_optimizer, params_grads)
-
+            print("within parallel apply_pre_optimization time: {}, mode {}".
+                  format(time.time() - time0, self._mode))
             # Do logical partition
+            time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads)
+            print("within parallel partitioner time: {}, mode {}".format(
+                time.time() - time0, self._mode))
             # Generate optimizer
+            time0 = time.time()
             self._generate_optimizer(dist_main_prog, dist_startup_prog,
                                      serial_optimizer, dist_params_grads)
+            print("within parallel optimizer time: {}, mode {}".format(
+                time.time() - time0, self._mode))
             # Do reshard process
+            time0 = time.time()
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
+            print("within parallel reshard time: {}, mode {}".format(
+                time.time() - time0, self._mode))
             # Apply post optimization passes
+            time0 = time.time()
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
+            print("within parallel apply_post_optimization time: {}, mode {}".
+                  format(time.time() - time0, self._mode))
         else:
             # Apply pre optimization passes
             # self._apply_pre_optimization(serial_main_program,
             #                              serial_startup_program, None, None,
             #                              None)
             # Do logical partition
+            time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
+            print("within parallel partitioner time: {}, mode {}".format(
+                time.time() - time0, self._mode))
+            time0 = time.time()
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
+            print("within parallel reshard time: {}, mode {}".format(
+                time.time() - time0, self._mode))
         # Clone program for test
         if self._mode != 'train':
             dist_main_prog = dist_main_prog.clone(for_test=True)

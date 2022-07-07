@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import time
 import logging
 from collections import defaultdict
 
@@ -117,15 +118,22 @@ class Engine:
 
         self._planned_mode = None
         self._modes = ['train', 'eval', 'predict']
+        time0 = time.time()
         self._build()
+        print("build time: {}, mode {}".format(time.time() - time0, "ALL"))
 
         # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
+            time0 = time.time()
             self._plan(mode)
+            print("plan time: {}, mode {}".format(time.time() - time0, mode))
         for mode in self._modes:
             # Do the parallel process
+            time0 = time.time()
             self._parallel(mode, all_ranks)
+            print("parallel time: {}, mode {}".format(time.time() - time0,
+                                                      mode))
             # Init comm and startup program
             self._initialize(mode)
 
@@ -181,13 +189,19 @@ class Engine:
             self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
+        time0 = time.time()
         if self._planned_mode is None:
             self._planned_mode = mode
         else:
             self._init_dist_context(mode)
+        print("within plan init_dist_context time: {}, mode {}".format(
+            time.time() - time0, mode))
 
+        time0 = time.time()
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
         self._planners[mode].plan()
+        print("within plan plan() time: {}, mode {}".format(
+            time.time() - time0, mode))
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -267,6 +281,12 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        print("=======" * 8 + "statistics in fit" + "=======" * 8)
+        from paddle.fluid.framework import get_sync_with_cpp_statistics
+        count, time = get_sync_with_cpp_statistics()
+        print("count: {}, time:{}".format(count, time))
+        print("=======" * 8 + "statistics in fit" + "=======" * 8)
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
