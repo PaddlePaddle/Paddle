@@ -711,8 +711,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 
         for (size_t k = left; k < right; k++) {
           void* val = mem_pool->mem_address(k);
-          // float* ptr_val = device_dim_ptrs[k]->data();
-          // size_t dim = device_dim_ptrs[k]->size();
+      // float* ptr_val = device_dim_ptrs[k]->data();
+      // size_t dim = device_dim_ptrs[k]->size();
 #ifdef PADDLE_WITH_PSLIB
           val->delta_score =
               ptr_val[paddle::ps::DownpourCtrDymfAccessor::
@@ -750,7 +750,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_PSCORE
         // VLOG(5) << "cpu build " << k
         //         << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
-        //         << " |: " << cpu_table_accessor_->ParseToString(ptr_val, dim);
+        //         << " |: " << cpu_table_accessor_->ParseToString(ptr_val,
+        //         dim);
         accessor_wrapper_ptr->BuildFill(
             val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
         VLOG(5) << "build " << k << " : "
@@ -994,7 +995,8 @@ void PSGPUWrapper::EndPass() {
         // float* cpu_val = downpour_value->data();
         // VLOG(5) << "dump to cpu " << index << "  gpu_value: "
         //         << accessor_wrapper_ptr->ParseToString(gpu_val,
-        //              int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) / sizeof(float)))
+        //              int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) /
+        //              sizeof(float)))
         //         << " \t cpu_value:"
         //         << cpu_table_accessor_->ParseToString(cpu_val,
         //                                               downpour_value->size());

@@ -134,7 +134,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
           paddle::distributed::PSClientFactory::Create(ps_param));
       worker_ptr_->Configure(ps_param, dense_pull_regions, ps_env_, index);
 #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
-      VLOG(0) << "FleetWrapper::InitWorker  InitializeGPUServer"; 
+      VLOG(3) << "FleetWrapper::InitWorker InitializeGPUServer";
       auto* accessor = worker_ptr_->GetTableAccessor(0);
       auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
       ps_gpu_wrapper->InitializeGPUServer(ps_param);

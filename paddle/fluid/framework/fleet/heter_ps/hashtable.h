@@ -193,7 +193,6 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
-
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
  private:
