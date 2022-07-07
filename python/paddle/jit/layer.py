@@ -16,20 +16,20 @@
 from paddle.fluid.core import Load
 
 
-class Layer():
+class Layer(object):
 
     def __init__(self):
         self.cpp_layer = None
         # {name: Function}
-        self.funciton_map = {}
+        self.functions = {}
 
     def load(self, load_path, place):
         self.cpp_layer = Load(load_path, place)
         function_dict = self.cpp_layer.function_dict()
 
         for name, function in function_dict.items():
-            self.funciton_map[name] = Function(function)
-            setattr(self, name, self.funciton_map[name].__call__)
+            self.functions[name] = Function(function)
+            setattr(self, name, self.functions[name])
 
 
 class Function():

@@ -32,7 +32,7 @@ using Variable = paddle::framework::Variable;
 
 void BindJit(pybind11::module *m) {
   py::class_<jit::Layer>(*m, "Layer", R"DOC(Layer Class.)DOC")
-      .def("function_dict", &jit::Layer::FunctionDict);
+      .def("function_dict", &jit::Layer::FunctionMap);
 
   py::class_<jit::ExecutorFunction, std::shared_ptr<jit::ExecutorFunction>>(
       *m, "ExectorFunction", R"DOC(ExectorFunction Class.)DOC")

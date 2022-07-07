@@ -97,9 +97,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
-#include "paddle/fluid/jit/executor_function.h"
-#include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"

@@ -52,7 +52,7 @@ class Layer {
 
   std::vector<std::string> FunctionNames() const;
 
-  const FunctionMap& FunctionDict() const;
+  const Name2FunctionMap& FunctionMap() const;
 
  private:
   // internal::Object obj_;
