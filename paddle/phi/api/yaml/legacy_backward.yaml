@@ -133,6 +133,17 @@
     func : asinh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : assign_double_grad
+  forward : assign_grad (Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  backward: assign_triple_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
 - backward_api : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -141,6 +152,7 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
+  backward: assign_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_api : assign_out__grad
@@ -152,6 +164,16 @@
   kernel :
     func : assign
   inplace : (out_grad -> x_grad)
+
+- backward_api : assign_triple_grad
+  forward : assign_double_grad (Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_api : atan_grad
   forward : atan (Tensor x) -> Tensor(out)
@@ -1823,6 +1845,16 @@
     func : sinh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : slice_double_grad
+  forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
+  args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_input_grad]
+  kernel :
+    func : slice
+
 - backward_api : slice_grad
   forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
   args : (Tensor input, Tensor out_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1832,6 +1864,7 @@
     param : [input]
   kernel :
     func : slice_grad
+  backward : slice_double_grad
   no_need_buffer : input
 
 - backward_api : soft_shrink_grad
