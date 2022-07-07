@@ -845,7 +845,7 @@ def distribute_fpn_proposals(fpn_rois,
                              rois_num=None,
                              name=None):
     r"""
-        In Feature Pyramid Networks  (FPN) models, it is needed to distribute 
+        In Feature Pyramid Networks (FPN) models, it is needed to distribute 
     all proposals into different FPN level, with respect to scale of the proposals, 
     the referring scale and the referring level. Besides, to restore the order of 
     proposals, we return an array which indicates the original index of rois 
@@ -866,10 +866,10 @@ def distribute_fpn_proposals(fpn_rois,
         refer_level (int): The referring level of FPN layer with specified scale.
         refer_scale (int): The referring scale of FPN layer with specified level.
         pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of 
-            `img_size` will be 1. 'False' by default.
+            image shape will be 1. 'False' by default.
         rois_num (Tensor, optional): 1-D Tensor contains the number of RoIs in each image. 
             The shape is [B] and data type is int32. B is the number of images.
-            If rois_num not None,  it will return a list of 1-D Tensor. Each element 
+            If rois_num not None, it will return a list of 1-D Tensor. Each element 
             is the output RoIs' number of each image on the corresponding level
             and the shape is [B]. None by default.
         name (str, optional): For detailed information, please refer 
@@ -891,12 +891,15 @@ def distribute_fpn_proposals(fpn_rois,
             import paddle
 
             fpn_rois = paddle.rand((10, 4))
-            multi_rois, restore_ind = paddle.vision.ops.distribute_fpn_proposals(
+            rois_num = paddle.to_tensor([3, 1, 4, 2], dtype=paddle.int32)
+
+            multi_rois, restore_ind, rois_num_per_level = paddle.vision.ops.distribute_fpn_proposals(
                 fpn_rois=fpn_rois,
                 min_level=2,
                 max_level=5,
                 refer_level=4,
-                refer_scale=224)
+                refer_scale=224,
+                rois_num=rois_num)
     """
     num_lvl = max_level - min_level + 1
 
