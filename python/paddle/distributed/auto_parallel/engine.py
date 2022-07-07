@@ -82,6 +82,7 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._planned_mode = None
 
     def prepare(self,
                 optimizer=None,
@@ -113,7 +114,6 @@ class Engine:
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
 
-        self._planned_mode = None
         self._modes = ['train', 'eval', 'predict']
 
         # Build program and do auto parallel process

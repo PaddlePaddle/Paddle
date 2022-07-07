@@ -1136,6 +1136,10 @@ class Resharder:
                         has_sent.append(source_partition_index)
                         Resharder.concat_partitions(partition_index_list,
                                                     source_partition_index)
+                        if int(dist_op.serial_op.attr('op_role')) == int(
+                                OpRole.Forward):
+                            self.dist_context._pp_info.add_pair_stream(
+                                to_send_process, target_process)
 
                 # append concat op desc
                 op_desc_seq[target_process].append(

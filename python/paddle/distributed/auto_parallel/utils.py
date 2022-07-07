@@ -1058,14 +1058,14 @@ def set_grad_var_shape(program, dist_context):
                 "dropout_grad", "tanh_grad", "slice", "assign",
                 "matmul_v2_triple_grad", "elementwise_add_triple_grad",
                 "fill_constant", "sqrt_grad",
-                "fused_softmax_mask_upper_triangle_grad"
+                "fused_softmax_mask_upper_triangle_grad", "relu_grad"
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
                 "softmax", "cross_entropy2", "dropout", "tanh",
                 ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
                 "elementwise_add_grad_grad", "shape", "sqrt",
-                "fused_softmax_mask_upper_triangle"
+                "fused_softmax_mask_upper_triangle", "relu"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:

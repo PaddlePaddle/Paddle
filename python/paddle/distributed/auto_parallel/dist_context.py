@@ -18,6 +18,7 @@ import paddle.fluid
 from paddle.fluid import framework
 from paddle.fluid.framework import get_flags, set_flags
 from paddle.fluid import core
+from paddle.fluid.layers.utils import flatten
 from paddle.distributed.passes import PassContext
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
@@ -124,6 +125,10 @@ class DistributedContext:
 
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
+
+        # record pp info: the number of pp stages, the pp index of cur rank
+        # and the upstream&downstream of cur rank
+        self._pp_info = PipelineInfo()
 
     @property
     def serial_main_program(self):
@@ -839,6 +844,8 @@ class DistributedContext:
                     assert False, "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
                         dist_op.serial_op.type, dist_op.serial_op.desc.id(),
                         dist_op.serial_op.desc.original_id(), dist_op.dist_attr)
+                self._pp_info.add_processes(
+                    dist_op.dist_attr.process_mesh.processes)
         return True
 
     def __deepcopy__(self, memo):
@@ -1005,3 +1012,83 @@ class BlockState(object):
             self.nblock += 1
 
         assert self.nblock == len(program.blocks)
+
+
+class PipelineInfo:
+
+    def __init__(self):
+        self._ups = dict()
+        self._downs = dict()
+        self._processes = list()
+        self._pp_processes = list()
+
+    def add_up_stream(self, rank, up_stream):
+        ups = self._ups.get(rank, None)
+        if not ups:
+            self._ups[rank] = [up_stream]
+        elif up_stream != -1:
+            ups = list(filter(lambda a: a != -1, ups))
+            ups.append(up_stream)
+            self._ups[rank] = ups
+
+    def add_down_stream(self, rank, down_stream):
+        downs = self._downs.get(rank, None)
+        if not downs:
+            self._downs[rank] = [down_stream]
+        elif down_stream != -1:
+            downs = list(filter(lambda a: a != -1, downs))
+            downs.append(down_stream)
+            self._downs[rank] = downs
+
+    def add_pair_stream(self, up, down):
+        self.add_up_stream(up, -1)
+        self.add_up_stream(down, up)
+        self.add_down_stream(up, down)
+        self.add_down_stream(down, -1)
+        print(up, "'s upstream is ", self.ups(up))
+        print(down, "'s upstream is ", self.ups(down))
+        print(up, "'s downstream is ", self.downs(up))
+        print(down, "'s downstream is ", self.downs(down))
+
+    def ups(self, rank):
+        ups = self._ups.get(rank, None)
+        if not ups: return None
+        return list(set(ups))
+
+    def downs(self, rank):
+        downs = self._downs.get(rank, None)
+        if not downs: return None
+        return list(set(downs))
+
+    def add_processes(self, processes):
+        self._processes.append(tuple(processes))
+
+    def de_duplicate(self, temp_list):
+        temp = list(set(temp_list))
+        temp.sort(key=temp_list.index)
+        return temp
+
+    def pp_stages(self):
+        processes_list = self.de_duplicate(self._processes)
+        ranks = self.de_duplicate(flatten(processes_list))
+
+        processes = sorted(processes_list, key=lambda p: len(p))
+        pp_processes = list()
+        for rank in ranks:
+            process_list = list(filter(lambda p: rank in p, processes))
+            pp_processes.append(tuple(process_list[0]))
+        self._pp_processes = self.de_duplicate(pp_processes)
+        return len(self._pp_processes)
+
+    def pp_index(self, rank):
+        if not self._pp_processes:
+            self.pp_stages()
+
+        pp_idx = None
+        for idx, process in enumerate(self._pp_processes):
+            if rank in process:
+                pp_idx = idx
+                break
+        assert pp_idx is not None, \
+            "rank {} not in pipepine stages' processes.".format(str(rank))
+        return pp_idx
