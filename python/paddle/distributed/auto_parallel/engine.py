@@ -126,18 +126,8 @@ class Engine:
         for mode in self._modes:
             # Do the parallel process
             self._parallel(mode, all_ranks)
-            # Init startup program
+            # Init comm and startup program
             self._initialize(mode)
-
-        # Init comm
-        if self._nranks > 1:
-            # Traverse different rank programs and traverse each op of them,
-            # instantiate communication by process_mapping.
-            all_process_groups = get_all_process_groups()
-            for process_group in all_process_groups:
-                if self._cur_rank not in process_group.ranks:
-                    continue
-                process_group.instantiate()
 
     def _build(self, mode):
 
@@ -234,7 +224,15 @@ class Engine:
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
 
-        # initialize with startup program
+        if self._nranks > 1:
+            # Traverse different rank programs and traverse each op of them,
+            # instantiate communication by process_mapping.
+            all_process_groups = get_all_process_groups()
+            for process_group in all_process_groups:
+                if self._cur_rank not in process_group.ranks:
+                    continue
+                process_group.instantiate()
+
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
@@ -286,8 +284,7 @@ class Engine:
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
-                    train_logs["train_" +
-                               fetch_map[user_fetch_list[i]]] = out[0]
+                    train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
                 self._logger.info(train_logs)
 
     def evaluate(self,
@@ -325,9 +322,9 @@ class Engine:
                     for i, res in enumerate(to_list(results)):
                         eval_logs["eval_" + metric.name()[i]] = res
             # usr fetches
-            usr_out = outs[len(inner_fetch):]
+            usr_outs = outs[len(inner_fetch):]
             usr_fetch_list = fetch_list[len(inner_fetch):]
-            for i, out in enumerate(usr_out):
+            for i, out in enumerate(usr_outs):
                 eval_logs["eval_" + fetch_map[usr_fetch_list[i]]] = out
             # logger
             self._logger.info(eval_logs)
@@ -356,7 +353,7 @@ class Engine:
                                       return_numpy=return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
-                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out[0]
+                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out
             self._logger.info(predict_logs)
 
         return outputs
