@@ -14,14 +14,27 @@
 
 #include "paddle/phi/kernels/dist_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dist_kernel_impl.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/p_norm_kernel.h"
 
-#ifdef PADDLE_WITH_HIP
-// Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
-// do not support double in HIPCC platform (Eigen3 to be fixed)
-PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float) {}
-#else
+namespace phi {
+
+template <typename T, typename Context>
+void DistKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                float p,
+                DenseTensor* out) {
+  auto t = Subtract<T, Context>(dev_ctx, x, y);
+  PNormKernel<T, Context>(dev_ctx, t, p, -1, 1e-12, false, true, out);
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(dist, CPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
 #endif
