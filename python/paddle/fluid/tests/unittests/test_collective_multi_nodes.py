@@ -61,7 +61,7 @@ class TestDistBase(unittest.TestCase):
         self._port_set = set()
         self._ps_endpoints = ""
         for i in range(self._trainers):
-            self._ps_endpoints += f"{self._ips[i//len(self._ips)]}:{6010+i%8},"
+            self._ps_endpoints += f"{self._ips[i//(self._trainers // len(self._ips))]}:{6010+i%8},"
         self._ps_endpoints = self._ps_endpoints[:-1]
         self._python_interp = sys.executable
         self.temp_dir = tempfile.TemporaryDirectory()

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [[ $MULTINODE_DIST_TEST == "true" ]]; then
+echo start multinode dist test
+else
+exit 0
+fi
+
 unset https_proxy http_proxy
 export FLAGS_rpc_disable_reuse_port=1
 
-export MPIRUN="" # MPIRUN="mpirun"
+export MPIRUN=${EXE_MPIRUN:-""} # MPIRUN="mpirun"
 
 name=${TEST_TARGET_NAME}
 TEST_TIMEOUT=${TEST_TIMEOUT}

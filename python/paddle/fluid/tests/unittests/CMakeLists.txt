@@ -8,6 +8,15 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(
+  GLOB MULTINODE_DIST_TEST_OPS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_multinode_*.py")
+string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
+foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+  message("multi  node test: " ${TEST_OP})
+endforeach()
+
+file(
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
@@ -90,7 +99,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
-list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
 list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
@@ -136,6 +144,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
 list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
+list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -695,7 +704,14 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+# remove new dist tests from test_ops
+foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+  message("remove " ${TEST_OP} " from test_ops")
+  list(REMOVE_ITEM TEST_OPS ${TEST_OP})
+endforeach()
+
 foreach(TEST_OP ${TEST_OPS})
+  message("add test op: " ${TEST_OP})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
@@ -958,6 +974,21 @@ if(WITH_DISTRIBUTE)
                         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
 
+    # add new dist test
+    if(WITH_GPU AND WITH_DISTRIBUTE)
+      foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+        bash_test_modules(
+          ${TEST_OP}
+          START_BASH
+          multinode_dist_test.sh
+          LABELS
+          "RUN_TYPE=EXCLUSIVE"
+          ENVS
+          "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+      endforeach()
+
+    endif()
+
     # port range (20000, 23000) is reserved for dist-ops
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
@@ -974,16 +1005,6 @@ if(WITH_DISTRIBUTE)
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
     endforeach()
-    bash_test_modules(
-      test_dygraph_hybrid_dp
-      START_BASH
-      multinode_dist_test.sh
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=${dist_ut_port}"
-      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    math(EXPR dist_ut_port "${dist_ut_port}+20")
     # solve it later.
     bash_test_modules(
       test_fleet_launch_ps
