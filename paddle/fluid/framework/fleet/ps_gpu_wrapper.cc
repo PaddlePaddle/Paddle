@@ -651,7 +651,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   auto build_dymf_mem_pool = [this, &gpu_task, &accessor_wrapper_ptr](int i,
                                                                       int j) {
     this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
-    // this->HeterPs_->set_accessor(feature_value_accessor_);
     int mf_dim = this->index_dim_vec_[j];
     VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim
             << " feature_value_size:"
@@ -705,6 +704,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
     size_t len = device_dim_keys.size();
     CHECK(len == device_dim_ptrs.size());
+    // this->mem_pools_[i * this->multi_mf_dim_ + j] =
+    //    new MemoryPool(len, feature_value_size);
     auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
 
     // ============ add for multi-thread ================
@@ -724,8 +725,9 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     }
     // ============ add for multi-thread ================
 
-#ifdef PADDLE_WITH_PSLIB
     for (size_t k = left; k < right; k++) {
+#ifdef PADDLE_WITH_PSLIB
+      float* val = (float*)(mem_pool->mem_address(k));
       float* ptr_val = device_dim_ptrs[k]->data();
       size_t dim = device_dim_ptrs[k]->size();
       val->delta_score =
@@ -757,24 +759,13 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           val->mf[x] = 0;
         }
       }
-    }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-    for (size_t k = left; k < right; k++) {
-      void* val = mem_pool->mem_address(k);
-      // VLOG(5) << "cpu build " << k
-      //         << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
-      //         << " |: " << cpu_table_accessor_->ParseToString(ptr_val,
-      //         dim);
+      float* val = (float*)(mem_pool->mem_address(k));
       accessor_wrapper_ptr->BuildFill(
           val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
-      VLOG(5) << "build " << k << " : "
-              << accessor_wrapper_ptr->ParseToString(
-                     (float*)(val),
-                     int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) /
-                         sizeof(float)));
-    }
 #endif
+    }
   };
 
   threads.resize(device_num * multi_mf_dim_);
@@ -925,9 +916,9 @@ void PSGPUWrapper::EndPass() {
           std::max(keysize_max, current_task_->device_dim_keys_[i][j].size());
     }
   }
+  int thread_num = 8;
   auto accessor_wrapper_ptr =
       GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
-  int thread_num = 8;
   auto dump_pool_to_cpu_func = [this, thread_num, &accessor_wrapper_ptr](
                                    int i, int j, int z) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
@@ -954,7 +945,6 @@ void PSGPUWrapper::EndPass() {
     VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
             << " key_len :" << len
             << " feature_value_size:" << feature_value_size;
-
     char* test_build_values = (char*)malloc(feature_value_size * real_len);
     uint64_t offset = left * feature_value_size;
     cudaMemcpy(test_build_values,
@@ -989,7 +979,6 @@ void PSGPUWrapper::EndPass() {
                   embed_g2sum_index()] = gpu_val->lr_g2sum;
       cpu_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::
                   slot_index()] = gpu_val->slot;
-
       if (gpu_val->mf_size > 0) {
         for (int x = 0; x < gpu_val->mf_dim + 1; x++) {
           cpu_val[x + 8] = gpu_val->mf[x];
@@ -1030,7 +1019,7 @@ void PSGPUWrapper::EndPass() {
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
   VLOG(1) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
-}  // namespace framework
+}
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const int table_id,
