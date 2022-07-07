@@ -612,12 +612,10 @@ void FleetWrapper::PushSparseFromTensorAsync(
             // in
             // ctr_accessor.h
             push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-            push_values.back()[1] = (static_cast<int>(i) >= show_size
-                                         ? 1
-                                         : static_cast<float>(show_tensor[i]));
-            push_values.back()[2] = (static_cast<int>(i) >= clk_size
-                                         ? 0
-                                         : static_cast<float>(clk_tensor[i]));
+            push_values.back()[1] =
+                (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+            push_values.back()[2] =
+                (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
             float* data = push_values.back().data() + 3;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           }
@@ -641,12 +639,10 @@ void FleetWrapper::PushSparseFromTensorAsync(
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
           push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] = (static_cast<int>(i) >= show_size
-                                       ? 1
-                                       : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] = (static_cast<int>(i) >= clk_size
-                                       ? 0
-                                       : static_cast<float>(clk_tensor[i]));
+          push_values.back()[1] =
+              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          push_values.back()[2] =
+              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
           float* data = push_values.back().data() + 3;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         }

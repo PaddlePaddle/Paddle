@@ -29,7 +29,8 @@ class GpuPsGraphTable
     : public HeterComm<uint64_t, int64_t, int, CommonFeatureValueAccessor> {
  public:
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware)
-      : HeterComm<uint64_t, int64_t, int>(1, resource) {
+      : HeterComm<uint64_t, int64_t, int, CommonFeatureValueAccessor>(
+            1, resource) {
     load_factor_ = 0.25;
     rw_lock.reset(new pthread_rwlock_t());
     gpu_num = resource_->total_device();

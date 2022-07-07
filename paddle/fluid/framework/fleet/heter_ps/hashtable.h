@@ -156,7 +156,7 @@ class HashTable {
 
   template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys,
-              const GradType* d_grads,
+              const float* d_grads,
               size_t len,
               Sgd sgd,
               StreamType stream);

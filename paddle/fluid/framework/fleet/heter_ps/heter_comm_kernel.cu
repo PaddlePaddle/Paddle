@@ -166,11 +166,11 @@ __global__ void merge_gradients_kernel(const uint32_t* offset,
     int ori_index = index[start];
     float* out = (float*)(output + i * grad_value_size);
     float* in = (float*)(input + size_t(ori_index) * grad_value_size);
-    merger_.update_one(out, in, feature_value_accessor);
+    merger.update_one(out, in, feature_value_accessor);
     for (int j = 1; j < num; ++j) {
       ori_index = index[start + j];
-      float& rhs = *(float*)(input + size_t(ori_index) * grad_value_size);
-      merger_.merge_one(out, rhs, feature_value_accessor);
+      in = (float*)(input + size_t(ori_index) * grad_value_size);
+      merger.merge_one(out, in, feature_value_accessor);
     }
   }
 }
@@ -329,13 +329,13 @@ template <typename KeyType,
 void HeterCommKernel::dy_mf_fill_shard_grads(
     KeyType* d_shard_keys,
     KeyType* d_keys,
-    GradType* d_shard_grads,
-    GradType* d_grads,
+    float* d_shard_grads,
+    float* d_grads,
     T* idx,
     long long len,
     size_t grad_value_size,
     const StreamType& stream,
-    CommonFeatureValueAccessor& feature_value_accessor) {
+    FVAccessor& feature_value_accessor) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
   dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
@@ -346,7 +346,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(
       idx,
       c_len,
       grad_value_size,
-      feature_value_accessor_);
+      feature_value_accessor);
 }
 
 template <typename StreamType, typename FVAccessor>
@@ -370,7 +370,7 @@ void HeterCommKernel::merge_gradient(const uint32_t* offset,
       n,
       grad_value_size,
       merger_,
-      feature_value_accessor_);
+      feature_value_accessor);
 }
 
 template <typename T, typename StreamType, typename FVAccessor>

@@ -41,17 +41,15 @@ struct DynamicGradMerger {
     return out;
   }
 
+  template <typename FVAccessor>
   __device__ __forceinline__ void update_one(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& feature_value_accessor) {
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
     feature_value_accessor.PushValueFill(output, input);
   }
 
+  template <typename FVAccessor>
   __device__ __forceinline__ void merge_one(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& feature_value_accessor) {
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
     feature_value_accessor.MergePushValue(output, input);
   }
 };
@@ -60,11 +58,6 @@ class HeterCommKernel {
  public:
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
-
-  // explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor&
-  // feature_value_accessor) : block_size_(block_size),
-  // feature_value_accessor_(feature_value_accessor) {}
-  // explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);

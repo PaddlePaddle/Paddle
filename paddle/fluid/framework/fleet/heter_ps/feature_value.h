@@ -343,10 +343,9 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
   }
 
   // dump_to_cpu阶段从gpu_val赋值给cpu_val
-  __host__ __device__ void DumpFill(
-      float* gpu_val,
-      paddle::distributed::ValueAccessor* cpu_table_accessor,
-      int mf_dim) {
+  __host__ void DumpFill(float* gpu_val,
+                         paddle::distributed::ValueAccessor* cpu_table_accessor,
+                         int mf_dim) {
 #ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
@@ -382,8 +381,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
       for (int x = 0;
            x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
            x++) {
-        cpu_val[cpu_table_accessor->common_feature_value.EmbedxG2SumIndex() +
-                x] = gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
+        cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x] =
+            gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
       }
     }
 #endif

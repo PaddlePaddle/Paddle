@@ -376,8 +376,7 @@ template void HashTable<unsigned long, unsigned long>::get<cudaStream_t>(
     unsigned long* d_vals,
     size_t len,
     cudaStream_t stream);
-template void HashTable<unsigned long, long>::get<cudaStream_t>(
-    const unsigned long* d_keys, long* d_vals, size_t len, cudaStream_t stream);
+
 template void HashTable<long, unsigned long>::get<cudaStream_t>(
     const long* d_keys, unsigned long* d_vals, size_t len, cudaStream_t stream);
 template void HashTable<long, long>::get<cudaStream_t>(const long* d_keys,
@@ -469,16 +468,6 @@ template void HashTable<unsigned long, float*>::update<
                   size_t len,
                   SparseAdamSharedOptimizer sgd,
                   cudaStream_t stream);
-
-template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
-    update<Optimizer<paddle::framework::FeatureValue,
-                     paddle::framework::FeaturePushValue>,
-           cudaStream_t>(const unsigned long* d_keys,
-                         const char* d_grads,
-                         size_t len,
-                         Optimizer<paddle::framework::FeatureValue,
-                                   paddle::framework::FeaturePushValue> sgd,
-                         cudaStream_t stream);
 
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<

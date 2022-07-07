@@ -53,9 +53,6 @@ template <typename KeyType,
 class HeterComm {
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
-  HeterComm(size_t capacity,
-            std::shared_ptr<HeterPsResource> resource,
-            CommonFeatureValueAccessor& accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;

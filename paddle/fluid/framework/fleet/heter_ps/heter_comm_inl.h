@@ -16,7 +16,6 @@ limitations under the License. */
 #include <queue>
 
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_XPU_KP
@@ -1137,76 +1136,74 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
                                              grad_value_size,
                                              stream,
                                              feature_value_accessor_);
-}
 
-sync_stream(stream);
+  sync_stream(stream);
 
-auto dst_place = platform::CPUPlace();
-auto src_place = place;
-memory_copy(dst_place,
-            h_left,
-            src_place,
-            d_left_ptr,
-            total_device * sizeof(int),
-            stream);
-memory_copy(dst_place,
-            h_right,
-            src_place,
-            d_right_ptr,
-            total_device * sizeof(int),
-            stream);
+  auto dst_place = platform::CPUPlace();
+  auto src_place = place;
+  memory_copy(dst_place,
+              h_left,
+              src_place,
+              d_left_ptr,
+              total_device * sizeof(int),
+              stream);
+  memory_copy(dst_place,
+              h_right,
+              src_place,
+              d_right_ptr,
+              total_device * sizeof(int),
+              stream);
 
-for (int i = 0; i < total_device; ++i) {
-  int shard_len = h_right[i] - h_left[i] + 1;
-  if (h_left[i] == -1 || h_right[i] == -1) {
-    continue;
+  for (int i = 0; i < total_device; ++i) {
+    int shard_len = h_right[i] - h_left[i] + 1;
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    create_storage(
+        dev_num, i, shard_len * sizeof(KeyType), shard_len * grad_value_size);
   }
-  create_storage(
-      dev_num, i, shard_len * sizeof(KeyType), shard_len * grad_value_size);
-}
 
-walk_to_dest(dev_num,
-             total_device,
-             h_left,
-             h_right,
-             d_shard_keys_ptr,
-             reinterpret_cast<char*>(d_shard_grads_ptr),
-             grad_value_size);
-}
+  walk_to_dest(dev_num,
+               total_device,
+               h_left,
+               h_right,
+               d_shard_keys_ptr,
+               reinterpret_cast<char*>(d_shard_grads_ptr),
+               grad_value_size);
 
-for (int i = 0; i < total_device; ++i) {
-  if (h_left[i] == -1 || h_right[i] == -1) {
-    continue;
+  for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    auto& node = path_[dev_num][i].nodes_.back();
+    sync_stream(node.in_stream);
+
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    ptr_tables_[i]->rwlock_->WRLock();
+    ptr_tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
+                           node.val_storage,
+                           h_right[i] - h_left[i] + 1,
+                           sgd,
+                           resource_->remote_stream(i, dev_num));
   }
-  auto& node = path_[dev_num][i].nodes_.back();
-  sync_stream(node.in_stream);
 
-  AnyDeviceGuard guard(resource_->dev_id(i));
-  ptr_tables_[i]->rwlock_->WRLock();
-  ptr_tables_[i]->update(reinterpret_cast<KeyType*>(node.key_storage),
-                         node.val_storage,
-                         h_right[i] - h_left[i] + 1,
-                         sgd,
-                         resource_->remote_stream(i, dev_num));
-}
-
-for (int i = 0; i < total_device; ++i) {
-  sync_stream(resource_->remote_stream(i, dev_num));
-  if (h_left[i] != -1) {
-    if (!multi_mf_dim_) {
-      tables_[i]->rwlock_->UNLock();
-    } else {
-      ptr_tables_[i]->rwlock_->UNLock();
+  for (int i = 0; i < total_device; ++i) {
+    sync_stream(resource_->remote_stream(i, dev_num));
+    if (h_left[i] != -1) {
+      if (!multi_mf_dim_) {
+        tables_[i]->rwlock_->UNLock();
+      } else {
+        ptr_tables_[i]->rwlock_->UNLock();
+      }
     }
   }
-}
 
-for (int i = 0; i < total_device; ++i) {
-  if (h_left[i] == -1 || h_right[i] == -1) {
-    continue;
+  for (int i = 0; i < total_device; ++i) {
+    if (h_left[i] == -1 || h_right[i] == -1) {
+      continue;
+    }
+    destroy_storage(dev_num, i);
   }
-  destroy_storage(dev_num, i);
-}
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
