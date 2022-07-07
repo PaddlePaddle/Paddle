@@ -28,6 +28,10 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from .dist_default import DistributedDefaultImpl0
+from ..cost import FillConstantBatchSizeLikeOpCost
+from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_costs_from_descs
+from ..cost import AllreduceSumOpCost
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):
@@ -46,6 +50,63 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         super(DistributedFillConstantBatchSizeLikeImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
+
+    def calc_cost(self, op_role, dist_op, ctx, cluster):
+        cost = None
+        if int(op_role) == int(OpRole.Backward):
+            cost = self.calc_bwd_cost(dist_op, ctx, cluster)
+        else:
+            cost = self.calc_fwd_cost(dist_op, ctx, cluster)
+        assert cost is not None
+        return cost
+
+    def calc_fwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            FillConstantBatchSizeLikeOpCost, ctx, processes, desc_mapping,
+            cluster)
+
+        res_cost = [cost_mapping]
+        return res_cost
+
+    def calc_bwd_cost(self, dist_op, ctx, cluster):
+        # calc comp op cost
+        res = []
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        dist_attr = dist_op.dist_attr
+        process_mesh = dist_attr.process_mesh
+        processes = process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_desc_mapping(
+            FillConstantBatchSizeLikeGradOpCost, ctx, processes, desc_mapping,
+            cluster)
+        res.append(cost_mapping)
+
+        backward_op = dist_op.serial_op
+        main_block = backward_op.block
+        need_gradient_allreduce = False
+        vars = main_block.vars
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and is_parameter_related(
+                        varname, main_block):
+                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        parallel_axis = batch_size_axis
+                        attrs = {"use_calc_stream": True}
+                        var_names = [varname + "@GRAD"]
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+        return res
 
     def is_input_compatible(self, dist_op):
 
