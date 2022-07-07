@@ -131,13 +131,23 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
         attn_accu_indices_data, attn_dims[0], attn_dims[3]);
 
     if (keep_first_token) {
-      ArgsortKeepFirst<
-        T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
-              attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+      // ArgsortKeepFirst<
+      //   T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
+      //         attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+      for (int raw = 0; raw < attn_dims[0]; ++raw) {
+        thrust::sort_by_key(thrust::device, attn_accu_data + raw * attn_dims[3] + 1,
+          attn_accu_data + (raw + 1) * attn_dims[3], attn_accu_indices_data + raw * attn_dims[3] + 1,
+          thrust::greater<T>());
+      }
     } else {
-      Argsort<
-        T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
-              attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+      // Argsort<
+      //   T><<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
+      //         attn_accu_data, attn_accu_indices_data, attn_dims[0], attn_dims[3]);
+      for (int raw = 0; raw < attn_dims[0]; ++raw) {
+        thrust::sort_by_key(thrust::device, attn_accu_data + raw * attn_dims[3] ,
+          attn_accu_data + (raw + 1) * attn_dims[3], attn_accu_indices_data + raw * attn_dims[3],
+          thrust::greater<T>());
+      }
     }
 
     auto new_mask_dims = new_mask->dims();
@@ -149,8 +159,12 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopy(slimmed_indices_tmp, context.GetPlace(), slimmed_indices);
     
     if (keep_order) {
-      Sort<<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
-        slimmed_indices->data<int>(), attn_dims[0], slimmed_x_len);
+      // Sort<<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
+      //   slimmed_indices->data<int>(), attn_dims[0], slimmed_x_len);
+      for (int raw = 0; raw < attn_dims[0]; ++raw) {
+        thrust::sort(thrust::device, slimmed_indices->data<int>() + raw * slimmed_x_len ,
+        slimmed_indices->data<int>() + (raw + 1) * slimmed_x_len);
+      }
     }
     
     auto x_dims = x->dims();
