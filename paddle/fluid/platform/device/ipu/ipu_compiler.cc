@@ -535,7 +535,9 @@ void Compiler::LowerOptimizer(const Scope* scope) {
       resources_->loss_var = resources_->tensors[loss_var];
       resources_->with_lr_sched =
           BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
-      if (op_desc->HasAttr("lr_var")) {
+      if (ipu_strategy_->is_dynamic) {
+        resources_->lr = ipu_strategy_->lr;
+      } else if (op_desc->HasAttr("lr_var")) {
         auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
         resources_->lr_var = lr_var;
         resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
