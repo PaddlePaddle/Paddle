@@ -43,7 +43,8 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
-  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:" << common_feature_value.embed_sgd_dim
+  VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
+          << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim
           << "  embedx_sgd_dim:" << common_feature_value.embedx_sgd_dim;
   InitAccessorInfo();
@@ -182,9 +183,10 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.ClickIndex()] = 0;
     value[common_feature_value.SlotIndex()] = -1;
     value[common_feature_value.MfDimIndex()] = -1;
-    _embed_sgd_rule->InitValue(value + common_feature_value.EmbedWIndex(),
-                               value + common_feature_value.EmbedG2SumIndex(),
-                               false); // adam embed init not zero, adagrad embed init zero
+    _embed_sgd_rule->InitValue(
+        value + common_feature_value.EmbedWIndex(),
+        value + common_feature_value.EmbedG2SumIndex(),
+        false);  // adam embed init not zero, adagrad embed init zero
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);

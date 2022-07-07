@@ -252,8 +252,8 @@ void SparseAdamSGDRule::InitValueWork(float* value,
   *(sgd + Beta2PowIndex()) = _beta2_decay_rate;
 }
 
-void SparseSharedAdamSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& param,
-                                   size_t emb_dim) {
+void SparseSharedAdamSGDRule::LoadConfig(
+    const SparseCommonSGDRuleParameter& param, size_t emb_dim) {
   _embedding_dim = emb_dim;
   auto adam_param = param.adam();
   learning_rate_ = adam_param.learning_rate();
@@ -273,8 +273,10 @@ void SparseSharedAdamSGDRule::LoadConfig(const SparseCommonSGDRuleParameter& par
   }
 }
 
-void SparseSharedAdamSGDRule::UpdateValueWork(float* w, float* sgd, const float* grad,
-                                        float scale) {
+void SparseSharedAdamSGDRule::UpdateValueWork(float* w,
+                                              float* sgd,
+                                              const float* grad,
+                                              float scale) {
   float* gsum = sgd + GSumIndex();
   float* g2sum = sgd + G2SumIndex();
   float* beta1_pow = sgd + Beta1PowIndex();
@@ -292,7 +294,8 @@ void SparseSharedAdamSGDRule::UpdateValueWork(float* w, float* sgd, const float*
   double sum_g2sum = 0.0;
   for (int i = 0; i < _embedding_dim; i++) {
     // Calculation
-    double new_gsum = _beta1_decay_rate * gsum_ + (1 - _beta1_decay_rate) * g[i];
+    double new_gsum =
+        _beta1_decay_rate * gsum_ + (1 - _beta1_decay_rate) * g[i];
     double new_g2sum =
         _beta2_decay_rate * g2sum_ + (1 - _beta2_decay_rate) * g[i] * g[i];
     w[i] = w[i] - lr * (new_gsum / (sqrt(new_g2sum) + _ada_epsilon));
@@ -307,8 +310,9 @@ void SparseSharedAdamSGDRule::UpdateValueWork(float* w, float* sgd, const float*
   (*beta2_pow) *= _beta2_decay_rate;
 }
 
-void SparseSharedAdamSGDRule::InitValueWork(float* value, float* sgd,
-                                      bool zero_init) {
+void SparseSharedAdamSGDRule::InitValueWork(float* value,
+                                            float* sgd,
+                                            bool zero_init) {
   for (int i = 0; i < _embedding_dim; ++i) {
     if (zero_init) {
       value[i] = 0.0;

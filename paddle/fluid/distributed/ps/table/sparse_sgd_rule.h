@@ -149,7 +149,9 @@ class SparseSharedAdamSGDRule : public SparseValueSGDRule {
  public:
   virtual void LoadConfig(const SparseCommonSGDRuleParameter& param,
                           size_t emb_dim);
-  virtual void UpdateValueWork(float* w, float* sgd, const float* push_value,
+  virtual void UpdateValueWork(float* w,
+                               float* sgd,
+                               const float* push_value,
                                float scale);
   virtual void InitValueWork(float* value, float* sgd, bool zero_init);
   virtual size_t Dim() { return 4; }
