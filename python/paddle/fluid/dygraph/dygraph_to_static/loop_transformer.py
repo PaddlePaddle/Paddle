@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
@@ -483,10 +484,10 @@ class LoopTransformer(BaseTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
         ForLoopTuplePreTransformer(self.wrapper_root).transform()
-        self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
     def visit(self, node):
@@ -536,8 +537,8 @@ class LoopTransformer(BaseTransformer):
             return [node]
         init_stmts, cond_stmt, body_stmts = stmts_tuple
         # 2. get original loop vars
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need
@@ -631,8 +632,8 @@ class LoopTransformer(BaseTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
-            node)
+        loop_var_names, create_var_names = node.pd_scope.modified_vars(
+        ), node.pd_scope.created_vars()
         new_stmts = []
 
         # create non-local statement for body and cond.

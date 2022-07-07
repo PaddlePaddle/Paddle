@@ -108,7 +108,6 @@ def select_input(inputs, mask):
 def select_input_with_buildin_type(inputs, mask):
     from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
     from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_var_like
-    support_ret_buildin_type = (bool, float, six.integer_types)
     false_var, true_var = inputs
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -1182,12 +1181,16 @@ class While(object):
             })
 
 
+support_ret_buildin_type = (bool, float, six.integer_types)
+
+
 def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
     """
     if not isinstance(input, (Variable, core.VarBase)):
-        if isinstance(output, Variable):
+        if isinstance(output, Variable) and isinstance(
+                input, support_ret_buildin_type):
             assign(input, output)
         else:
             output = input
