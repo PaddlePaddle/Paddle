@@ -107,10 +107,29 @@ class PADDLE_API DeviceContext {
   const Allocator& GetPinnedAllocator() const;
 
 #ifdef PADDLE_WITH_CUDA
+  /**
+   * @brief Set the CUDA graph Allocator object.
+   *
+   * @param allocator
+   */
   void SetCUDAGraphAllocator(const Allocator*);
 
+  /**
+   * @brief Get the const CUDA graph Allocator object.
+   *
+   * @return Allocator
+   */
   const Allocator& GetCUDAGraphAllocator() const;
 
+  /**
+   * @brief Test whether the CUDA graph allocator is valid
+   *
+   * This method should be called before calling GetCUDAGraphAllocator().
+   * Other unit can calls GetCUDAGraphAllocator() method,
+   * only when this method returns True!
+   *
+   * @return true if cuda_graph_allocator_ is valid, false otherwise
+   */
   bool IsCUDAGraphAllocatorValid() const;
 #endif
 

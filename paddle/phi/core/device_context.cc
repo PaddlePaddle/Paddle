@@ -64,14 +64,16 @@ struct DeviceContext::Impl {
 
 #ifdef PADDLE_WITH_CUDA
   void SetCUDAGraphAllocator(const Allocator* allocator) {
+    // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
+    // validation of the allocator here
     cuda_graph_allocator_ = allocator;
   }
 
   const Allocator& GetCUDAGraphAllocator() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        cuda_graph_allocator_,
-        phi::errors::InvalidArgument("Required device_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                            phi::errors::InvalidArgument(
+                                "Required cuda_graph_allocator_ shall not be "
+                                "nullptr, but received nullptr."));
     return *cuda_graph_allocator_;
   }
 
@@ -134,12 +136,12 @@ struct DeviceContext::Impl {
                           ? zero_allocator_
                           : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
-    bool must_cuda_graph = (tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph && paddle::platform::is_gpu_place(place) &&
+    bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    if (must_cuda_graph_allocator && paddle::platform::is_gpu_place(place) &&
         paddle::platform::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               phi::errors::InvalidArgument(
-                                  "Required device_allocator_ shall not be "
+                                  "Required cuda_graph_allocator_ shall not be "
                                   "nullptr, but received nullptr."));
       allocator = cuda_graph_allocator_;
     }

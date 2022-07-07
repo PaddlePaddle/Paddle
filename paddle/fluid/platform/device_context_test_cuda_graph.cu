@@ -35,4 +35,5 @@ TEST(Device, DeviceContextWithCUDAGraph) {
   ASSERT_EQ(dev_ctx->IsCUDAGraphAllocatorValid(), true);
   dev_ctx->GetCUDAGraphAllocator();
   paddle::platform::EndCUDAGraphCapture();
+  ASSERT_EQ(dev_ctx->IsCUDAGraphAllocatorValid(), false);
 }
