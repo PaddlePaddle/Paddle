@@ -1045,10 +1045,10 @@ class PipelineInfo:
         self.add_up_stream(down, up)
         self.add_down_stream(up, down)
         self.add_down_stream(down, -1)
-        print(up, "'s upstream is ", self.ups(up))
-        print(down, "'s upstream is ", self.ups(down))
-        print(up, "'s downstream is ", self.downs(up))
-        print(down, "'s downstream is ", self.downs(down))
+        # print(up, "'s upstream is ", self.ups(up))
+        # print(down, "'s upstream is ", self.ups(down))
+        # print(up, "'s downstream is ", self.downs(up))
+        # print(down, "'s downstream is ", self.downs(down))
 
     def ups(self, rank):
         ups = self._ups.get(rank, None)

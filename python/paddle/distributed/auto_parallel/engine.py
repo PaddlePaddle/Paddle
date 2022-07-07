@@ -83,6 +83,10 @@ class Engine:
         self._fetch_vars = {}
         self._planners = {}
         self._planned_mode = None
+        self._gradient_scale = True
+        self._optimizer = None
+        self._loss = None
+        self._metrics = []
 
     def prepare(self,
                 optimizer=None,

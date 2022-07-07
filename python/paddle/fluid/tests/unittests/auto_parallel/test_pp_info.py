@@ -24,6 +24,7 @@ import paddle.distributed.auto_parallel as auto
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.distributed.auto_parallel.engine import Engine
+from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
@@ -70,28 +71,41 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         out = auto.shard_op(self.linear0, dist_attr={"process_mesh":
                                                      PP_MESH_0})(input)[0]
-        # auto.shard_tensor(input, dist_attr={"process_mesh": PP_MESH_0, "dims_mapping": [0, -1]})
+        auto.shard_tensor(input,
+                          dist_attr={
+                              "process_mesh": PP_MESH_0,
+                              "dims_mapping": [0, -1]
+                          })
         out = F.gelu(out, approximate=True)
 
         out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
                                                      PP_MESH_1})(out)[0]
-        # auto.shard_tensor(out, dist_attr={"process_mesh": PP_MESH_1, "dims_mapping": [0, -1]})
+        auto.shard_tensor(out,
+                          dist_attr={
+                              "process_mesh": PP_MESH_1,
+                              "dims_mapping": [0, -1]
+                          })
         out = F.gelu(out, approximate=True)
 
         out = auto.shard_op(self.linear2, dist_attr={"process_mesh":
                                                      PP_MESH_2})(out)[0]
-        # auto.shard_tensor(out, dist_attr={"process_mesh": PP_MESH_2, "dims_mapping": [0, -1]})
+        auto.shard_tensor(out,
+                          dist_attr={
+                              "process_mesh": PP_MESH_2,
+                              "dims_mapping": [0, -1]
+                          })
         out = F.gelu(out, approximate=True)
 
         out = auto.shard_op(self.linear3, dist_attr={"process_mesh":
                                                      PP_MESH_3})(out)[0]
-        # auto.shard_tensor(out, dist_attr={"process_mesh": PP_MESH_3, "dims_mapping": [0, -1]})
+        auto.shard_tensor(out,
+                          dist_attr={
+                              "process_mesh": PP_MESH_3,
+                              "dims_mapping": [0, -1]
+                          })
         out = F.gelu(out, approximate=True)
 
-        out = auto.shard_op(self.dropout,
-                            dist_attr={"process_mesh":
-                                       global_process_mesh})(out)[0]
-        # out = self.dropout(out)
+        out = self.dropout(out)
         out = self.linear4(out)
         return out
 
@@ -113,20 +127,30 @@ class TestPPInfo(unittest.TestCase):
                         strategy=None)
 
         all_ranks = list(range(8))
-        engine._optimizer = None
-        engine._gradient_scale = True
         engine._build('predict')
         engine._plan('predict')
         engine._parallel('predict', all_ranks=all_ranks)
 
         engine.mode = 'predict'
         assert engine.dist_context._pp_info.pp_stages() == 4
+
+        pp_stage_idx = []
         for rank in all_ranks:
-            print(engine.dist_context._pp_info.pp_index(rank))
+            pp_idx = engine.dist_context._pp_info.pp_index(rank)
+            pp_stage_idx.append(pp_idx)
+        assert pp_stage_idx == [3, 3, 2, 2, 1, 1, 0, 0]
 
         for rank in all_ranks:
-            print(engine.dist_context._pp_info.ups(rank))
-            print(engine.dist_context._pp_info.downs(rank))
+            ups = engine.dist_context._pp_info.ups(rank)
+            downs = engine.dist_context._pp_info.downs(rank)
+            assert len(ups) == 1
+            assert len(downs) == 1
+            up = ups[0]
+            down = downs[0]
+            ref_up = -1 if rank + 2 > 7 else rank + 2
+            ref_down = -1 if rank - 2 < 0 else rank - 2
+            assert up == ref_up
+            assert down == ref_down
 
 
 if __name__ == "__main__":
