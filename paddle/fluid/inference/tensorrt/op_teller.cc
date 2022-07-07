@@ -1310,7 +1310,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
       if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "Static shape in trt not support x is a 1D tensor in elementwise op.";
+        VLOG(3) << "Static shape in trt not support x is a 1D tensor in "
+                   "elementwise op.";
         return false;
       }
       if (x_var_desc->Persistable()) {
@@ -1948,7 +1949,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
 
-      if (op_type == "conv3d_transpose") {
+      // conv2d_transpose, conv3d_transpose, depthwise_conv2d_transpose
+      if (op_type.Find("d_transpose") > 0) {
         // trt doen't support output_padding,
         // output_padding is set when stride > 1
         if (desc.HasAttr("output_padding")) {
@@ -1960,7 +1962,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
             if (max_padding > 0) return false;
           }
         }
+      }
 
+      if (op_type == "conv3d_transpose") {
         if (!desc.HasAttr("dilations")) {
           return false;
         } else {
