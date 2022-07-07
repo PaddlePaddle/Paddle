@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-
 #pragma once
 
-OP_DECL(popart_nllloss_v2, aiGraphcoreOpset.nllloss, SIG_ARG(INT32,popart::ReductionType,reduction) OPT_ARG(INT32,ignoreIndex) ARG(BOOL,inputIsLogProbability) ) // NOLINT
-OP_DECL(popart_identity_loss, aiGraphcoreOpset.identityloss, SIG_ARG(INT32,popart::ReductionType,reduction) ) // NOLINT
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-// clang-format on
+namespace phi {
+
+template <typename T, typename Context>
+void IdentityLossGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& out_grad,
+                            const int reduction,
+                            DenseTensor* x_grad);
+
+}  // namespace phi
