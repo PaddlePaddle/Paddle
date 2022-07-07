@@ -47,7 +47,7 @@ class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
         from common import init_parallel_env
         import paddle
         from paddle.distributed import fleet
-        hcg = init_parallel_env("DP4-MP1-PP1-SH1-O1", 2)
+        hcg = init_parallel_env("DP2-MP1-PP1-SH1-O1", 2)
         import numpy as np
         dp_group = hcg.get_data_parallel_group()
         print("dp rank:", dp_group.rank)

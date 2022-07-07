@@ -27,7 +27,7 @@ import os
 class TestDYgraphDPMode(TestDistBase):
 
     def setUp(self):
-        self._trainers = 4
+        self._trainers = 2
         self._init_env()
 
     def test_col_parallel_linear(self):
