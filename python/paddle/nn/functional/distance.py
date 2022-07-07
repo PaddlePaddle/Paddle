@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from .. import Layer
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from paddle import _C_ops
