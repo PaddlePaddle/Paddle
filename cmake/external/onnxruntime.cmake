@@ -138,14 +138,11 @@ add_dependencies(onnxruntime ${ONNXRUNTIME_PROJECT})
 function(copy_onnx TARGET_NAME)
   # If error of Exitcode0xc000007b happened when a .exe running, copy onnxruntime.dll
   # to the .exe folder.
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(TARGET ${TARGET_NAME})
     add_custom_command(
-      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll
+      TARGET ${TARGET_NAME}
+      POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB}
-              ${CMAKE_CURRENT_BINARY_DIR}
-      DEPENDS onnxruntime)
-    add_custom_target(copy_onnx_${TARGET_NAME} ALL
-                      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
-    add_dependencies(${TARGET_NAME} copy_onnx_${TARGET_NAME})
+              ${CMAKE_CURRENT_BINARY_DIR} DEPENDS onnxruntime)
   endif()
 endfunction()
