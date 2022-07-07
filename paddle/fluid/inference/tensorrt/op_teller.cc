@@ -1309,8 +1309,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() == 1 && y_shape.size() == 1) {
-        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
+      if (!with_dynamic_shape && x_shape.size() == 1) {
+        VLOG(3) << "Static shape in trt not support x is a 1D tensor in elementwise op.";
         return false;
       }
       if (x_var_desc->Persistable()) {
