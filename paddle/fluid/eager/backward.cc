@@ -252,19 +252,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffer_iter->second);
 
-    // no_grad_vars
-    if (!no_grad_vars.empty() && is_general_grad) {
-      auto iter =
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->find(node);
-      if (iter !=
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->end()) {
-        VLOG(6) << "Change the input buffer[slot][rank] by Zeros";
-        auto rank_info = (iter->second)->OutRankInfo();
-        node_input_buffer->SetBufferSlotRankZeros(rank_info.first,
-                                                  rank_info.second);
-      }
-    }
-
     // Check input
     EnforceGradNodeHasInput(node);
 
@@ -311,7 +298,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with the same rank(i, j)
         auto next_node_shared = edge.GetMutableGradNode();
-        VLOG(3) << "Found pending node: " << next_node_shared->name();
+        VLOG(3) << "Found pending node: " << next_node_shared->name() << ": "
+                << next_node_shared.get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -361,6 +349,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         // Update queue
         node_in_degree_map[next_node]--;
+        VLOG(6) << next_node->name()
+                << " ref_cnt is: " << node_in_degree_map[next_node];
 
         PADDLE_ENFORCE(
             node_in_degree_map[next_node] >= 0,

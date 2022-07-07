@@ -36,7 +36,8 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* loss = ctx.Output<Tensor>("Loss");
     auto* backprop = ctx.Output<Tensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
-    PADDLE_ENFORCE_EQ(soft_label, false,
+    PADDLE_ENFORCE_EQ(soft_label,
+                      false,
                       platform::errors::Unimplemented(
                           "soft_label=True is not supported in "
                           "the npu kernel of softmax_with_cross_entropy."));
@@ -47,12 +48,14 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     const int d = phi::funcs::SizeFromAxis(axis, logits->dims());
 
     PADDLE_ENFORCE_EQ(
-        labels->numel(), n,
+        labels->numel(),
+        n,
         platform::errors::Unimplemented(
             "The size of labels should be equal to phi::funcs::SizeToAxis of "
             "logits,"
             "but got size of labels is %d and phi::funcs::SizeToAxis is %d.",
-            labels->numel(), n));
+            labels->numel(),
+            n));
 
     loss->mutable_data<T>(ctx.GetPlace());
     backprop->mutable_data<T>(ctx.GetPlace());
@@ -78,9 +81,10 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     runner_softmax.Run(stream);
 
     // SparseSoftmaxCrossEntropyWithLogits
-    const auto& runner_s =
-        NpuOpRunner("SparseSoftmaxCrossEntropyWithLogits",
-                    {logits_2d, labels_1d}, {loss_1d, backprop_2d}, {});
+    const auto& runner_s = NpuOpRunner("SparseSoftmaxCrossEntropyWithLogits",
+                                       {logits_2d, labels_1d},
+                                       {loss_1d, backprop_2d},
+                                       {});
     runner_s.Run(stream);
   }
 };
@@ -129,9 +133,10 @@ REGISTER_OP_NPU_KERNEL(
                                           float>,
     ops::SoftmaxWithCrossEntropyNPUKernel<paddle::platform::NPUDeviceContext,
                                           paddle::platform::float16>);
-REGISTER_OP_NPU_KERNEL(
-    softmax_with_cross_entropy_grad,
-    ops::SoftmaxWithCrossEntropyGradNPUKernel<
-        paddle::platform::NPUDeviceContext, float>,
-    ops::SoftmaxWithCrossEntropyGradNPUKernel<
-        paddle::platform::NPUDeviceContext, paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(softmax_with_cross_entropy_grad,
+                       ops::SoftmaxWithCrossEntropyGradNPUKernel<
+                           paddle::platform::NPUDeviceContext,
+                           float>,
+                       ops::SoftmaxWithCrossEntropyGradNPUKernel<
+                           paddle::platform::NPUDeviceContext,
+                           paddle::platform::float16>);

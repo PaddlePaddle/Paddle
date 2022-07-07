@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only
 
 
@@ -55,7 +55,7 @@ def softmax(x, axis=-1, name=None):
     sparse softmax activation, x must be SparseCsrTensor or SparseCooTensor.
 
     Note:
-        Only supported axis=-1 for SparseCsrTensor, which is faster when read data 
+        Only support axis=-1 for SparseCsrTensor, which is faster when read data 
         by row (axis=-1).
 
     From the point of view of dense matrix, for each row :math:`i` and each column :math:`j` 

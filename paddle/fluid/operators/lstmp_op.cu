@@ -16,7 +16,8 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    lstmp, ops::LSTMPKernel<paddle::platform::CUDADeviceContext, float>,
+    lstmp,
+    ops::LSTMPKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LSTMPKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     lstmp_grad,

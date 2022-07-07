@@ -34,9 +34,15 @@ class WhereMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc y_desc(*Y);
     MLUCnnlTensorDesc condition_desc(*condition);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::Select(context, condition_desc.get(), GetBasePtr(condition),
-                    x_desc.get(), GetBasePtr(X), y_desc.get(), GetBasePtr(Y),
-                    out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Select(context,
+                    condition_desc.get(),
+                    GetBasePtr(condition),
+                    x_desc.get(),
+                    GetBasePtr(X),
+                    y_desc.get(),
+                    GetBasePtr(Y),
+                    out_desc.get(),
+                    GetBasePtr(out));
   }
 };
 
@@ -46,6 +52,7 @@ class WhereMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    where, ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    where,
+    ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, int>);
 #endif

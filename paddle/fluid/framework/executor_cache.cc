@@ -46,6 +46,10 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 1;
       break;
     }
+    case platform::DeviceType::IPU: {
+      execution_strategy.num_threads_ = 1;
+      break;
+    }
     default:
       PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
                                                  device_type));
@@ -75,7 +79,8 @@ void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
  *   2. it is an input var used in backward_op
  */
 void ParseSafeEagerDeletionSkipVars(
-    const ProgramDesc &program, int64_t forward_op_nums,
+    const ProgramDesc &program,
+    int64_t forward_op_nums,
     const std::vector<std::string> &output_var_names,
     std::vector<std::string> *skip_eager_delete_vars) {
   auto all_ops = program.Block(0).AllOps();
@@ -139,8 +144,11 @@ ExecutorInfoCache &ExecutorInfoCache::Instance() {
 }
 
 static PEAndGraphPair CreateExecutorInfo(
-    const ProgramDesc &program_desc, const platform::Place &place,
-    int64_t start_op_index, int64_t end_op_index, framework::Scope *scope,
+    const ProgramDesc &program_desc,
+    const platform::Place &place,
+    int64_t start_op_index,
+    int64_t end_op_index,
+    framework::Scope *scope,
     const details::BuildStrategy &build_strategy) {
   auto execution_strategy = details::GetExecutionStrategy(place);
   auto graph = std::make_shared<framework::ir::Graph>(
@@ -158,15 +166,17 @@ PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc &program_desc,
                                           framework::Scope *scope) {
   details::BuildStrategy build_strategy;
   build_strategy.fix_op_run_order_ = true;
-  auto pe_and_graph = CreateExecutorInfo(program_desc, place, start_op_index,
-                                         end_op_index, scope, build_strategy);
+  auto pe_and_graph = CreateExecutorInfo(
+      program_desc, place, start_op_index, end_op_index, scope, build_strategy);
   return pe_and_graph;
 }
 
 CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
                                    const platform::Place &place,
-                                   int64_t start_op_index, int64_t end_op_index,
-                                   bool is_grad, int64_t program_id,
+                                   int64_t start_op_index,
+                                   int64_t end_op_index,
+                                   bool is_grad,
+                                   int64_t program_id,
                                    framework::Scope *scope) {
   auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
 
@@ -182,8 +192,12 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     auto &build_strategy = cached_exe_info.GetBuildStrategy(program_id);
 
     // 2. Construct Graph and ParallelExecutor.
-    auto pe_and_graph = CreateExecutorInfo(program_desc, place, start_op_index,
-                                           end_op_index, scope, build_strategy);
+    auto pe_and_graph = CreateExecutorInfo(program_desc,
+                                           place,
+                                           start_op_index,
+                                           end_op_index,
+                                           scope,
+                                           build_strategy);
 
     // 3. Insert value into cached map.
     auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);

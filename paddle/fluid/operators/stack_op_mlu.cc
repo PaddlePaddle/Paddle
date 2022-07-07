@@ -32,7 +32,8 @@ class StackMLUKernel : public framework::OpKernel<T> {
     int num = static_cast<int>(x.size());
 
     PADDLE_ENFORCE_GT(
-        num, 0,
+        num,
+        0,
         platform::errors::InvalidArgument("number of input Tensor <= 0"));
 
     std::vector<MLUCnnlTensorDesc> x_descs;
@@ -42,8 +43,8 @@ class StackMLUKernel : public framework::OpKernel<T> {
       if (x[i]->dims().size() != 0) {
         std::vector<int64_t> in_dims = phi::vectorize(x[i]->dims());
         in_dims.insert(in_dims.begin() + axis, 1);
-        x_descs.emplace_back(MLUCnnlTensorDesc(in_dims.size(), in_dims.data(),
-                                               ToCnnlDataType<T>()));
+        x_descs.emplace_back(MLUCnnlTensorDesc(
+            in_dims.size(), in_dims.data(), ToCnnlDataType<T>()));
       } else {
         int input_dims = 1;
         x_descs.emplace_back(
@@ -55,8 +56,13 @@ class StackMLUKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc y_desc(*y);
-    MLUCnnl::Concat(ctx, num, axis, x_raw_descs.data(), x_ptrs.data(),
-                    y_desc.get(), GetBasePtr(y));
+    MLUCnnl::Concat(ctx,
+                    num,
+                    axis,
+                    x_raw_descs.data(),
+                    x_ptrs.data(),
+                    y_desc.get(),
+                    GetBasePtr(y));
   }
 };
 
@@ -64,7 +70,8 @@ class StackMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_MLU_KERNEL(
-    stack, paddle::operators::StackMLUKernel<int64_t>,
+    stack,
+    paddle::operators::StackMLUKernel<int64_t>,
     paddle::operators::StackMLUKernel<int>,
     paddle::operators::StackMLUKernel<float>,
     paddle::operators::StackMLUKernel<paddle::platform::float16>);

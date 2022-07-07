@@ -23,7 +23,6 @@ from paddle.distributed.fleet.utils import recompute
 import random
 
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_fc_block(block_idx, input_size, is_last=False):
@@ -181,34 +180,15 @@ class TestPyLayer(unittest.TestCase):
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
     def test_fc_net_with_dropout(self):
-        with _test_eager_guard():
-            self.test_base_case()
         self.test_base_case()
 
-    def test_fc_net_without_restore_rng(self):
-        with _test_eager_guard():
-            loss_ref, param_ref, grad_ref = run_model(
-                recompute_block=[2],
-                recompute_kwargs={"preserve_rng_state": False},
-                enable_autocast=True)
-
     def test_fc_net_with_amp(self):
-        with _test_eager_guard():
-            self.test_base_case(enable_autocast=True)
         self.test_base_case(enable_autocast=True)
 
     def test_fc_net_with_fp16(self):
-        with _test_eager_guard():
-            self.test_base_case(enable_autocast=True, pure_fp16=True)
         self.test_base_case(enable_autocast=True, pure_fp16=True)
 
     def test_recompute_kwargs(self):
-        with _test_eager_guard():
-            paddle.set_device("gpu")
-            kwargs = {"is_test": False}
-            with self.assertRaises(ValueError):
-                loss_ref, param_ref, grad_ref = run_model(
-                    recompute_block=[2], recompute_kwargs=kwargs)
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
         with self.assertRaises(ValueError):
@@ -216,11 +196,6 @@ class TestPyLayer(unittest.TestCase):
                                                       recompute_kwargs=kwargs)
 
     def test_recompute_cpu_rng(self):
-        with _test_eager_guard():
-            paddle.set_device("cpu")
-            with self.assertRaises(RuntimeError):
-                loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])
-
         paddle.set_device("cpu")
         with self.assertRaises(RuntimeError):
             loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])

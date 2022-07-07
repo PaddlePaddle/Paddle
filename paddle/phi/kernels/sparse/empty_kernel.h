@@ -14,10 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
 namespace sparse {
+
+template <typename T, typename Context>
+void EmptyLikeCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        SparseCooTensor* out);
 
 template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,

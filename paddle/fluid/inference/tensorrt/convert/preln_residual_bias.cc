@@ -23,7 +23,8 @@ using half = paddle::platform::float16;
 class PrelnResidualBiasOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fused preln_residual_bias op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
@@ -67,13 +68,23 @@ class PrelnResidualBiasOpConverter : public OpConverter {
       for (int i = 0; i < bias_size; i++) {
         half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
       }
-      plugin = new plugin::PrelnResidualBiasPluginDynamic(
-          bias, scale, half_ele_bias_data, bias_size, scale_size, ele_bias_size,
-          epsilon, with_fp16);
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
+                                                          scale,
+                                                          half_ele_bias_data,
+                                                          bias_size,
+                                                          scale_size,
+                                                          ele_bias_size,
+                                                          epsilon,
+                                                          with_fp16);
     } else {
-      plugin = new plugin::PrelnResidualBiasPluginDynamic(
-          bias, scale, ele_bias, bias_size, scale_size, ele_bias_size, epsilon,
-          with_fp16);
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
+                                                          scale,
+                                                          ele_bias,
+                                                          bias_size,
+                                                          scale_size,
+                                                          ele_bias_size,
+                                                          epsilon,
+                                                          with_fp16);
     }
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
@@ -83,8 +94,8 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(layer, "preln_residual_bias", output_names,
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "preln_residual_bias", output_names, test_mode);
   }
 };
 

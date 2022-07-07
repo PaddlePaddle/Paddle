@@ -106,6 +106,12 @@ class Edge {
     }
   }
 
+  void Clear() {
+    grad_node_.reset();
+    in_slot_id_ = 0;
+    in_rank_ = 0;
+  }
+
  private:
   size_t in_slot_id_;
   size_t in_rank_;

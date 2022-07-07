@@ -53,7 +53,8 @@ class ProcessGroup {
  public:
   class Task {
    public:
-    Task(int rank, const std::vector<phi::DenseTensor>& inputTensors,
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputTensors,
          CommType opType = CommType::UNKNOWN);
 
     virtual ~Task();
@@ -68,7 +69,9 @@ class ProcessGroup {
     bool is_completed_ = false;
   };
 
-  explicit ProcessGroup(int rank, int size, const platform::Place& place,
+  explicit ProcessGroup(int rank,
+                        int size,
+                        const platform::Place& place,
                         int gid);
   virtual ~ProcessGroup() {}
 
@@ -113,7 +116,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
-                                                           int, int,
+                                                           int,
+                                                           int,
                                                            int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support send", GetBackendName()));

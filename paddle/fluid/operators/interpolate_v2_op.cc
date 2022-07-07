@@ -32,7 +32,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE_EQ("linear", interp_method,
+  PADDLE_ENFORCE_EQ("linear",
+                    interp_method,
                     platform::errors::InvalidArgument(
                         "Interpolation method can only be \"linear\" when"
                         "Input(X) dimension is 3, but got method = %s .",
@@ -40,17 +41,20 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
   for (int i = 0; i < dim_x.size(); ++i) {
-    PADDLE_ENFORCE_NE(dim_x[i], 0,
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
                       platform::errors::InvalidArgument(
                           "The shape of input(x) should be larged "
                           "than 0, bug received shape[%d] is %d ",
-                          i, dim_x[i]));
+                          i,
+                          dim_x[i]));
   }
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 1,
+        inputs_name.size(),
+        1,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'size of Op(interpolate) must be 1. "
             "Attr(out_shape)'s length must be 1 for 3-D input tensor, but got "
@@ -72,12 +76,14 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got dimension = %d .",
             scale_tensor.size()));
     PADDLE_ENFORCE_EQ(
-        scale_tensor[0], 1,
+        scale_tensor[0],
+        1,
         platform::errors::InvalidArgument(
             "Scale's shape must be 1, but got shape = %d .", scale_tensor[0]));
     out_w = -1;
@@ -87,7 +93,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
       float scale_w = -1;
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0, true,
+          scale_w > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_w in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
@@ -108,12 +115,14 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
-        out_size_dim[0], 1,
+        out_size_dim[0],
+        1,
         platform::errors::InvalidArgument(
             "OutSize's 0-th dimension's value must be 1, but got value = %d .",
             out_size_dim[0]));
@@ -145,18 +154,21 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       ctx->Attrs().Get<std::string>("data_layout"));
 
   for (int i = 0; i < dim_x.size(); ++i) {
-    PADDLE_ENFORCE_NE(dim_x[i], 0,
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
                       platform::errors::InvalidArgument(
                           "The shape of input(x) should be larged "
                           "than 0, bug received shape[%d] is %d ",
-                          i, dim_x[i]));
+                          i,
+                          dim_x[i]));
   }
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 2,
+        inputs_name.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'size of Op(interpolate) must be 2. "
             "Attr(out_shape)'s length must be 2 for 4-D input "
@@ -179,11 +191,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got dimension = %d .",
             scale_tensor.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor[0] == 2 || scale_tensor[0] == 1, true,
+    PADDLE_ENFORCE_EQ(scale_tensor[0] == 2 || scale_tensor[0] == 1,
+                      true,
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 2 or 1, but got shape = %d .",
                           scale_tensor[0]));
@@ -197,13 +211,15 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0, true,
+          scale_w > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_w in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
               scale_w));
       PADDLE_ENFORCE_EQ(
-          scale_h > 0, true,
+          scale_h > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_h in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
@@ -229,12 +245,14 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimension = %d .",
             out_size_dim.size()));
     PADDLE_ENFORCE_EQ(
-        out_size_dim[0], 2,
+        out_size_dim[0],
+        2,
         platform::errors::InvalidArgument(
             "OutSize's dim[0] must be 2, but got dimention = %d .",
             out_size_dim[0]));
@@ -265,18 +283,21 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       ctx->Attrs().Get<std::string>("data_layout"));
 
   for (int i = 0; i < dim_x.size(); ++i) {
-    PADDLE_ENFORCE_NE(dim_x[i], 0,
+    PADDLE_ENFORCE_NE(dim_x[i],
+                      0,
                       platform::errors::InvalidArgument(
                           "The shape of input(x) should be larged "
                           "than 0, bug received shape[%d] is %d ",
-                          i, dim_x[i]));
+                          i,
+                          dim_x[i]));
   }
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
     PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 3,
+        inputs_name.size(),
+        3,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'s size of Op(interpolate) must be 3. "
             "Attr(out_shape)'s length must be 3 for 5-D input "
@@ -300,11 +321,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
-        scale_tensor.size(), 1,
+        scale_tensor.size(),
+        1,
         platform::errors::InvalidArgument(
             "Scale's dimension size must be 1, but got size = %d .",
             scale_tensor.size()));
-    PADDLE_ENFORCE_EQ(scale_tensor[0] == 3 || scale_tensor[0] == 1, true,
+    PADDLE_ENFORCE_EQ(scale_tensor[0] == 3 || scale_tensor[0] == 1,
+                      true,
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 3 or 1, but got shape = %d .",
                           scale_tensor[0]));
@@ -321,19 +344,22 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
       scale_h = scale[1];
       scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
-          scale_w > 0, true,
+          scale_w > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_w in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
               scale_w));
       PADDLE_ENFORCE_EQ(
-          scale_h > 0, true,
+          scale_h > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_h in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
               scale_h));
       PADDLE_ENFORCE_EQ(
-          scale_d > 0, true,
+          scale_d > 0,
+          true,
           platform::errors::InvalidArgument(
               "The scale_d in Attr(scale) of Operator(interpolate) "
               "should be greater than 0, but received value is %d.",
@@ -364,11 +390,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(
-        out_size_dim.size(), 1,
+        out_size_dim.size(),
+        1,
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got size is %d.",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 3,
+    PADDLE_ENFORCE_EQ(out_size_dim[0],
+                      3,
                       platform::errors::InvalidArgument(
                           "OutSize's dim[0] must be 3, but got size is %d.",
                           out_size_dim[0]));
@@ -434,7 +462,8 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -446,16 +475,16 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
       // Some models may have intentionally set "AnyLayout" for pool
       // op. Treat this as NCHW (default data_format value)
       if (dl != framework::DataLayout::kAnyLayout) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(), dl);
+        return framework::OpKernelType(
+            expected_kernel_type.data_type_, tensor.place(), dl);
       }
     }
 #endif
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -668,8 +697,10 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InterpolateGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "InterpolateGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "InterpolateGrad");
 
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -685,13 +716,14 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -730,50 +762,64 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateV2GradNoNeedBufferVarsInferer,
 // compatible with interp_op, so a new one is added in paddle2.0
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(bilinear_interp_v2, BilinearInterpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(bilinear_interp_v2,
+                            BilinearInterpInferShapeFunctor,
                             PD_INFER_META(phi::InterpolateInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(nearest_interp_v2, NearestInterpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(nearest_interp_v2,
+                            NearestInterpInferShapeFunctor,
                             PD_INFER_META(phi::InterpolateInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(trilinear_interp_v2,
                             TrilinearInterpInferShapeFunctor,
                             PD_INFER_META(phi::InterpolateInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(bicubic_interp_v2, BicubicInterpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(bicubic_interp_v2,
+                            BicubicInterpInferShapeFunctor,
                             PD_INFER_META(phi::InterpolateInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(linear_interp_v2, LinearInterpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(linear_interp_v2,
+                            LinearInterpInferShapeFunctor,
                             PD_INFER_META(phi::InterpolateInferMeta));
 
-REGISTER_OPERATOR(bilinear_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(bilinear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
                   BilinearInterpInferShapeFunctor);
-REGISTER_OPERATOR(bilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
+REGISTER_OPERATOR(bilinear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(nearest_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(nearest_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
                   NearestInterpInferShapeFunctor);
-REGISTER_OPERATOR(nearest_interp_v2_grad, ops::InterpolateV2OpGrad,
+REGISTER_OPERATOR(nearest_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(trilinear_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(trilinear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
                   TrilinearInterpInferShapeFunctor);
-REGISTER_OPERATOR(trilinear_interp_v2_grad, ops::InterpolateV2OpGrad,
+REGISTER_OPERATOR(trilinear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(bicubic_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(bicubic_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
                   BicubicInterpInferShapeFunctor);
-REGISTER_OPERATOR(bicubic_interp_v2_grad, ops::InterpolateV2OpGrad,
+REGISTER_OPERATOR(bicubic_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(linear_interp_v2, ops::InterpolateV2Op,
+REGISTER_OPERATOR(linear_interp_v2,
+                  ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,
                   ops::InterpolateV2GradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateV2GradMaker<paddle::imperative::OpBase>,
                   LinearInterpInferShapeFunctor);
-REGISTER_OPERATOR(linear_interp_v2_grad, ops::InterpolateV2OpGrad,
+REGISTER_OPERATOR(linear_interp_v2_grad,
+                  ops::InterpolateV2OpGrad,
                   ops::InterpolateV2GradNoNeedBufferVarsInferer);

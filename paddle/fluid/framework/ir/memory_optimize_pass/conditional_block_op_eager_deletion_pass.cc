@@ -28,7 +28,8 @@ class ConditionalOpEagerDeletionPass : public Pass {
 
     // Find all conditional_op and conditional_grad_op
     std::unordered_map<
-        size_t, std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
+        size_t,
+        std::pair<std::vector<OpVariant>, std::vector<OpVariant>>>
         target_ops;
     for (auto *op : all_ops) {
       auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
@@ -47,7 +48,8 @@ class ConditionalOpEagerDeletionPass : public Pass {
     // forward graph, some necessaray variable in step_scope of controlflow_op
     // should be kept for backward graph.
     if (graph->IsConstructedByPartialProgram()) {
-      PADDLE_ENFORCE_LE(target_ops.size(), 1,
+      PADDLE_ENFORCE_LE(target_ops.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Unsupported multi devices if graph is constructed "
                             "with partial program."));

@@ -77,6 +77,7 @@ class SplitNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(split, ops::SplitNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(split,
+                       ops::SplitNPUKernel<float>,
                        ops::SplitNPUKernel<int>,
                        ops::SplitNPUKernel<plat::float16>);

@@ -67,9 +67,11 @@ class GeneralGrad {
                                     "stop_gradient=True.",
                                     msg,
                                     i));
+
         if (is_no_grad_vars) {
           (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-        } else {  // normal input
+        } else {
+          // normal input
           (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
         }
       }
@@ -401,15 +403,34 @@ class GeneralGrad {
         for (size_t j = 0; j < meta[i].size(); j++) {
           Edge& edge = meta[i][j].GetMutableEdge();
           std::shared_ptr<GradNodeBase> next_node = edge.GetMutableGradNode();
+
           if (!next_node) continue;
+
+          if (no_grad_var_nodes_inputmeta_map_.count(next_node.get()) &&
+              (no_grad_var_nodes_inputmeta_map_[next_node.get()]
+                   ->OutRankInfo() == edge.GetEdgeRankInfo())) {
+            VLOG(3) << "Get no grad edge from grad_node: " << node->name()
+                    << " : " << node << " to:" << next_node->name() << ", "
+                    << next_node.get() << " with output rank info: "
+                    << edge.GetEdgeRankInfo().first << ", "
+                    << edge.GetEdgeRankInfo().second;
+            // Stop no grad var's preceding node
+            meta[i][i].SetStopGradient(true);
+            edge.Clear();
+            continue;
+          }
 
           if (IsInputTargetNodes(node)) {
             if (meta.size() != 1 && !IsNeededNodes(next_node.get()) &&
                 IsNeededNodes(node) && !IsEnddingNodes(node)) {
-              VLOG(6) << "Clear meta[" << i << "][" << j
-                      << "] for node: " << node->name() << " (addr: " << node
-                      << ")";
-              meta[i].clear();
+              VLOG(3) << "Get stop edge from grad_node: " << node->name()
+                      << " : " << node << " to:" << next_node->name() << ", "
+                      << next_node.get() << " with output rank info: "
+                      << edge.GetEdgeRankInfo().first << ", "
+                      << edge.GetEdgeRankInfo().second;
+              meta[i][i].SetStopGradient(true);
+              edge.Clear();
+              continue;
             }
           }
           // Update BFS queue
@@ -568,6 +589,7 @@ class GeneralGrad {
       const std::unordered_map<GradNodeBase*,
                                std::unique_ptr<GradTensorHolder>>&
           node_input_buffers_dict) {
+    // Copy Backward Graph
     CopyBackwardGraph(orig_queue);
     // Get no_grad_vars's GradNodes and InputMeta Info
     GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);

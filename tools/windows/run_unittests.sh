@@ -79,14 +79,111 @@ disable_wingpu11_test="^test_autograd_functional_dynamic$|\
 
 
 # /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
-disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
+disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_dynamic_shape_ernie$|\
 ^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
 ^lite_resnet50_test$|\
 ^test_trt_dynamic_shape_transformer_prune$|\
 ^lite_mul_model_test$|\
 ^trt_split_converter_test$|\
-^paddle_infer_api_copy_tensor_tester$"
+^paddle_infer_api_copy_tensor_tester$|\
+^test_trt_deformable_conv$|\
+^test_imperative_triple_grad$|\
+^test_full_name_usage$|\
+^test_trt_convert_unary$|\
+^test_eigh_op$|\
+^test_fc_op$|\
+^test_stack_op$|\
+^trt_split_converter_test$|\
+^paddle_infer_api_copy_tensor_tester$|\
+^test_var_base$|\
+^test_einsum_v2$|\
+^test_tensor_scalar_type_promotion_static$|\
+^test_matrix_power_op$|\
+^test_deformable_conv_v1_op$|\
+^test_where_index$|\
+^test_custom_grad_input$|\
+^test_conv3d_transpose_op$|\
+^test_conv_elementwise_add_act_fuse_pass$|\
+^test_conv_eltwiseadd_bn_fuse_pass$|\
+^test_custom_relu_op_setup$|\
+^test_conv3d_transpose_part2_op$|\
+^test_deform_conv2d$|\
+^test_matmul_op$|\
+^test_basic_api_transformation$|\
+^test_deformable_conv_op$|\
+^test_variable$|\
+^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
+^test_mkldnn_conv_hard_swish_fuse_pass$|\
+^test_conv_act_mkldnn_fuse_pass$|\
+^test_matmul_scale_fuse_pass$|\
+^test_addmm_op$|\
+^test_inverse_op$|\
+^test_set_value_op$|\
+^test_fused_multihead_matmul_op$|\
+^test_cudnn_bn_add_relu$|\
+^test_cond$|\
+^test_conv_bn_fuse_pass$|\
+^test_graph_khop_sampler$|\
+^test_gru_rnn_op$|\
+^test_masked_select_op$|\
+^test_ir_fc_fuse_pass$|\
+^test_fc_elementwise_layernorm_fuse_pass$|\
+^test_linalg_pinv_op$|\
+^test_math_op_patch_var_base$|\
+^test_slice$|\
+^test_conv_elementwise_add_fuse_pass$|\
+^test_executor_and_mul$|\
+^test_analyzer_int8_resnet50$|\
+^test_analyzer_int8_mobilenetv1$|\
+^test_trt_conv_pass$|\
+^test_roll_op$|\
+^test_lcm$|\
+^test_elementwise_floordiv_op$|\
+^test_autograd_functional_dynamic$|\
+^test_corr$|\
+^test_trt_convert_deformable_conv$|\
+^test_conv_elementwise_add2_act_fuse_pass$|\
+^test_tensor_scalar_type_promotion_dynamic$|\
+^test_model$|\
+^test_py_reader_combination$|\
+^test_trt_convert_flatten$|\
+^test_py_reader_push_pop$|\
+^test_parallel_executor_feed_persistable_var$|\
+^test_parallel_executor_inference_feed_partial_data$|\
+^test_parallel_ssa_graph_inference_feed_partial_data$|\
+^test_reader_reset$|\
+^test_parallel_executor_seresnext_base_gpu$|\
+^test_py_reader_pin_memory$|\
+^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
+^test_multiprocess_dataloader_iterable_dataset_static$|\
+^test_add_reader_dependency$|\
+^test_compat$|\
+^test_decoupled_py_reader$|\
+^test_generator_dataloader$|\
+^test_py_reader_using_executor$|\
+^test_imperative_static_runner_while$|\
+^test_dataloader_keep_order$|\
+^test_dataloader_unkeep_order$|\
+^test_sync_batch_norm_op$|\
+^test_fuse_bn_act_pass$|\
+^test_fuse_bn_add_act_pass$|\
+^test_decoupled_py_reader_data_check$|\
+^test_parallel_dygraph_sync_batch_norm$|\
+^test_dataloader_early_reset$|\
+^test_fleet_base_single$|\
+^test_sequence_pool$|\
+^test_simplify_with_basic_ops_pass_autoscan$|\
+^test_trt_activation_pass$|\
+^test_trt_convert_hard_swish$|\
+^test_trt_convert_leaky_relu$|\
+^test_trt_convert_multihead_matmul$|\
+^test_trt_convert_prelu$|\
+^test_trt_fc_fuse_quant_dequant_pass$|\
+^test_unsqueeze2_eltwise_fuse_pass$|\
+^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
+^test_parallel_executor_seresnext_with_reduce_gpu$|\
+^test_api_impl$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -247,6 +344,11 @@ function run_unittest_gpu() {
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
     echo "************************************************************************"
     export CUDA_VISIBLE_DEVICES=0
+
+    if nvcc --version | grep 11.2; then
+        disable_wingpu_test=${disable_win_inference_test}
+    fi
+
     tmpfile=$tmp_dir/$RANDOM
     (ctest -R "$test_case" -E "$disable_ut_quickly|$disable_wingpu_test|$disable_win_trt_test|$long_time_test" -LE "${nightly_label}" --output-on-failure -C Release -j $parallel_job | tee $tmpfile ) &
     wait;
@@ -335,22 +437,22 @@ set +e
 
 export FLAGS_call_stack_level=2
 
-if nvcc --version | grep 11.2; then
-    echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
-    export CUDA_VISIBLE_DEVICES=0
-    tmpfile=$tmp_dir/$RANDOM
-    inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
-    (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
-    wait;
-    collect_failed_tests
-    set -e
-    rm -f $tmp_dir/*
-    if [[ "$failed_test_lists" != "" ]]; then
-        unittests_retry
-        show_ut_retry_result
-    fi
-    exit 0;
-fi
+# if nvcc --version | grep 11.2; then
+#     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
+#     export CUDA_VISIBLE_DEVICES=0
+#     tmpfile=$tmp_dir/$RANDOM
+#     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
+#     (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+#     wait;
+#     collect_failed_tests
+#     set -e
+#     rm -f $tmp_dir/*
+#     if [[ "$failed_test_lists" != "" ]]; then
+#         unittests_retry
+#         show_ut_retry_result
+#     fi
+#     exit 0;
+# fi
 
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 

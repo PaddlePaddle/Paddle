@@ -51,16 +51,26 @@ class ArgsortMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc values_output_desc(*output);
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
-    MLUCnnl::TopK(ctx, k, axis, descending, sorted, input_desc.get(),
-                  GetBasePtr(input), values_output_desc.get(),
-                  GetBasePtr(output), indices_int32_desc.get(),
+    MLUCnnl::TopK(ctx,
+                  k,
+                  axis,
+                  descending,
+                  sorted,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  values_output_desc.get(),
+                  GetBasePtr(output),
+                  indices_int32_desc.get(),
                   GetBasePtr(&indices_int32));
 
     // cast indices type to int64
     MLUCnnlTensorDesc cast_output_desc(*indices);
     cnnlCastDataType_t cast_type = GetCastDataType(VT::INT32, VT::INT64);
-    MLUCnnl::Cast(ctx, cast_type, indices_int32_desc.get(),
-                  GetBasePtr(&indices_int32), cast_output_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  indices_int32_desc.get(),
+                  GetBasePtr(&indices_int32),
+                  cast_output_desc.get(),
                   GetBasePtr(indices));
   }
 };
@@ -82,9 +92,14 @@ class ArgsortGradMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc indices_desc(*indices);
     MLUCnnlTensorDesc dx_desc(*dx);
-    MLUCnnl::ScatterFunctor(ctx, dx_desc.get(), GetBasePtr(dx), dout_desc.get(),
-                            GetBasePtr(dout), indices_desc.get(),
-                            GetBasePtr(indices), axis);
+    MLUCnnl::ScatterFunctor(ctx,
+                            dx_desc.get(),
+                            GetBasePtr(dx),
+                            dout_desc.get(),
+                            GetBasePtr(dout),
+                            indices_desc.get(),
+                            GetBasePtr(indices),
+                            axis);
   }
 };
 

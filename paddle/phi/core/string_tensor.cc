@@ -179,7 +179,7 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();

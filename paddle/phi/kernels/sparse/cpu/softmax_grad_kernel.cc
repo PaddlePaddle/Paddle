@@ -38,11 +38,17 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
                         "SparseCsrTensor only support axis=-1 for softmax, "
                         "which is faster when reading data by row (axis=-1)"));
   EmptyLikeCsrKernel<T, Context>(dev_ctx, dout, dx);
-
   auto out_dim = out.dims();
-  int rows = 1;
-  for (int i = 0; i < out_dim.size() - 1; ++i) {
-    rows *= out_dim[i];
+  auto out_rank = out_dim.size();
+
+  int batch_size = 1;
+  int row_number = 1;
+  for (int i = 0; i < out_rank - 1; ++i) {
+    if (i < out_rank - 2) {
+      batch_size *= out_dim[i];
+    } else if (i == out_rank - 2) {
+      row_number = out_dim[i];
+    }
   }
 
   const DenseTensor& out_crows = out.non_zero_crows();
@@ -50,7 +56,6 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   const DenseTensor& dout_values = dout.non_zero_elements();
   DenseTensor* dx_values = dx->mutable_non_zero_elements();
 
-  int row_first = 0;
   int row_nnz = 0;
   const T* out_data = out_values.data<T>();
   const T* dout_data = dout_values.data<T>();
@@ -60,20 +65,24 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   PD_VISIT_INTEGRAL_TYPES(
       out.non_zero_crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
         const data_t* out_crows_data = out_crows.data<data_t>();
-        for (int i = 0; i < rows; ++i) {
-          row_first = static_cast<int>(out_crows_data[i]);
-          row_nnz = static_cast<int>(out_crows_data[i + 1] - out_crows_data[i]);
+        for (int i = 0; i < batch_size; ++i) {
+          for (int j = 0; j < row_number; ++j) {
+            int crow_idx = i * (row_number + 1) + j;
+            row_nnz = static_cast<int>(out_crows_data[crow_idx + 1] -
+                                       out_crows_data[crow_idx]);
 
-          out_data = out_data + row_first;
-          dout_data = dout_data + row_first;
-          dx_data = dx_data + row_first;
+            T sum = 0;
+            phi::funcs::vec_mul_reduce<T, plt::avx>(
+                row_nnz, dout_data, out_data, &sum);
+            phi::funcs::vec_add_bias<T, plt::avx>(
+                row_nnz, static_cast<T>(-1) * sum, dout_data, dx_data);
+            phi::funcs::vec_mul<T, plt::avx>(
+                row_nnz, dx_data, out_data, dx_data);
 
-          T sum = 0;
-          phi::funcs::vec_mul_reduce<T, plt::avx>(
-              row_nnz, dout_data, out_data, &sum);
-          phi::funcs::vec_add_bias<T, plt::avx>(
-              row_nnz, static_cast<T>(-1) * sum, dout_data, dx_data);
-          phi::funcs::vec_mul<T, plt::avx>(row_nnz, dx_data, out_data, dx_data);
+            out_data = out_data + row_nnz;
+            dout_data = dout_data + row_nnz;
+            dx_data = dx_data + row_nnz;
+          }
         }
       }));
 }

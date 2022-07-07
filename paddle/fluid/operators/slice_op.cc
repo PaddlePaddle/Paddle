@@ -38,7 +38,8 @@ class SliceOp : public framework::OperatorWithKernel {
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      PADDLE_ENFORCE_EQ(axes.size(), 1,
+      PADDLE_ENFORCE_EQ(axes.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The size of axes must be 1 when the Input of "
                             "SliceOp is LoDTensorArray, "
@@ -60,7 +61,8 @@ class SliceOp : public framework::OperatorWithKernel {
 
     // Case 2: input is a tensor.
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_LT(in_dims.size(), 7,
+    PADDLE_ENFORCE_LT(in_dims.size(),
+                      7,
                       platform::errors::InvalidArgument(
                           "The rank of input should be less than 7."));
     framework::DDim out_dims(in_dims);
@@ -81,26 +83,30 @@ class SliceOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInputs("StartsTensorList")) {
       starts_size = ctx->Inputs("StartsTensorList").size();
-      PADDLE_ENFORCE_GT(starts_size, 0,
+      PADDLE_ENFORCE_GT(starts_size,
+                        0,
                         platform::errors::InvalidArgument(
                             "StartsTensorList size can't be zero"));
     }
     if (ctx->HasInputs("EndsTensorList")) {
       ends_size = ctx->Inputs("EndsTensorList").size();
-      PADDLE_ENFORCE_GT(ends_size, 0,
+      PADDLE_ENFORCE_GT(ends_size,
+                        0,
                         platform::errors::InvalidArgument(
                             "EndsTensorList size can't be zero"));
     }
 
     if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
-          starts_size, axes.size(),
+          starts_size,
+          axes.size(),
           platform::errors::InvalidArgument(
               "The size of starts must be equal to the size of axes."));
     }
     if (!ctx->HasInput("EndsTensor")) {
       PADDLE_ENFORCE_EQ(
-          ends_size, axes.size(),
+          ends_size,
+          axes.size(),
           platform::errors::InvalidArgument(
               "The size of ends must be equal to the size of axes."));
     }
@@ -109,14 +115,14 @@ class SliceOp : public framework::OperatorWithKernel {
         axis = std::max(0, axis + in_dims.size());
       }
     }
-    phi::funcs::CheckAndUpdateSliceAttrs<int>(in_dims, axes, &starts, &ends,
-                                              nullptr, &infer_flags);
+    phi::funcs::CheckAndUpdateSliceAttrs<int>(
+        in_dims, axes, &starts, &ends, nullptr, &infer_flags);
 
-    auto slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                    nullptr, &infer_flags);
+    auto slice_dims = phi::funcs::GetSliceDims<int>(
+        in_dims, axes, starts, ends, nullptr, &infer_flags);
     if (ctx->IsRuntime()) {
-      out_dims = phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis,
-                                                   &infer_flags);
+      out_dims = phi::funcs::GetDecreasedDims<int>(
+          slice_dims, decrease_axis, &infer_flags);
     } else {
       out_dims =
           phi::funcs::GetDecreasedDims<int>(slice_dims, decrease_axis, nullptr);
@@ -135,7 +141,8 @@ class SliceOp : public framework::OperatorWithKernel {
     if (in_var->IsType<framework::LoDTensor>()) {
       auto &in_tensor = in_var->Get<framework::LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          in_tensor.IsInitialized(), true,
+          in_tensor.IsInitialized(),
+          true,
           platform::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
@@ -156,9 +163,11 @@ class SliceOp : public framework::OperatorWithKernel {
         // created, so in that scenario a fallback is needed
         auto tmp_md = dnnl::memory::desc(
             phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
-            dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
+            dnnl::memory::data_type::f32,
+            ctx.Input<Tensor>("Input")->format());
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-          return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+          return framework::OpKernelType(input_data_type,
+                                         ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
       }
@@ -172,7 +181,8 @@ class SliceOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;
@@ -180,8 +190,8 @@ class SliceOp : public framework::OperatorWithKernel {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -191,7 +201,8 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto x_name = "Input";
     auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
-    auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
+    auto not_decrease =
+        paddle::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
       // The default type of out is LoDTensor.
       // However, if no axis is decreased and the type of input is not
@@ -302,9 +313,11 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
+        ctx->HasInput("Input"),
+        true,
         platform::errors::InvalidArgument("Input should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) should not be null"));
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
@@ -339,7 +352,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
           dnnl::memory::data_type::f32,
           ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
       if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+        return framework::OpKernelType(input_data_type,
+                                       ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
@@ -348,7 +362,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;
@@ -356,8 +371,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -436,44 +451,44 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
+REGISTER_OPERATOR(slice,
+                  ops::SliceOp,
+                  ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpVarTypeInference);
-REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+REGISTER_OPERATOR(slice_grad,
+                  ops::SliceOpGrad,
                   ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInferer,
                   ops::SliceOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
-    slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>,
-    ops::SliceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>);
+    slice,
+    ops::SliceKernel<phi::CPUContext, bool>,
+    ops::SliceKernel<phi::CPUContext, int>,
+    ops::SliceKernel<phi::CPUContext, int64_t>,
+    ops::SliceKernel<phi::CPUContext, float>,
+    ops::SliceKernel<phi::CPUContext, double>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceKernel<phi::CPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CPU_KERNEL(
-    slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>,
-    ops::SliceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::bfloat16>);
+    slice_grad,
+    ops::SliceGradKernel<phi::CPUContext, bool>,
+    ops::SliceGradKernel<phi::CPUContext, int>,
+    ops::SliceGradKernel<phi::CPUContext, int64_t>,
+    ops::SliceGradKernel<phi::CPUContext, float>,
+    ops::SliceGradKernel<phi::CPUContext, double>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SliceGradKernel<phi::CPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
-    slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, bool>,
+    slice,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
@@ -488,7 +503,8 @@ REGISTER_OP_CUDA_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    slice_grad, ops::SliceGradKernel<paddle::platform::CUDADeviceContext, bool>,
+    slice_grad,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,

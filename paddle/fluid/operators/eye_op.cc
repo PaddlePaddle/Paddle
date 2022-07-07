@@ -67,11 +67,15 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(eye, EyeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(eye,
+                            EyeInferShapeFunctor,
                             PD_INFER_META(phi::EyeInferMeta));
 
 REGISTER_OPERATOR(
-    eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
+    eye,
+    ops::EyeOp,
+    ops::EyeOpMaker,
+    ops::EyeOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     EyeInferShapeFunctor);

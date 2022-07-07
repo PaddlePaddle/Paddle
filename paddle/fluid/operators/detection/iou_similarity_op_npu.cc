@@ -188,5 +188,6 @@ class IouSimilarityNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(iou_similarity, ops::IouSimilarityNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(iou_similarity,
+                       ops::IouSimilarityNPUKernel<float>,
                        ops::IouSimilarityNPUKernel<plat::float16>);

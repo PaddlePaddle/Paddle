@@ -27,7 +27,8 @@ namespace math {
 
 template <typename DeviceContext, typename T>
 void compute_solve_eigen(const DeviceContext& context,
-                         const framework::Tensor& a, const framework::Tensor& b,
+                         const framework::Tensor& a,
+                         const framework::Tensor& b,
                          framework::Tensor* out) {
   using Matrix =
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
@@ -60,12 +61,14 @@ void compute_solve_eigen(const DeviceContext& context,
       lu.compute(a_mat);
       const T min_abs_pivot = lu.matrixLU().diagonal().cwiseAbs().minCoeff();
       PADDLE_ENFORCE_GT(
-          min_abs_pivot, static_cast<T>(0),
+          min_abs_pivot,
+          static_cast<T>(0),
           platform::errors::InvalidArgument("Input is not invertible."));
       out_mat.noalias() = lu.solve(b_mat);
     }
   } else {
-    PADDLE_ENFORCE_EQ(a_batch_size, b_batch_size,
+    PADDLE_ENFORCE_EQ(a_batch_size,
+                      b_batch_size,
                       platform::errors::InvalidArgument(
                           "All input tensors must have the same rank."));
   }
@@ -73,8 +76,12 @@ void compute_solve_eigen(const DeviceContext& context,
 
 // only used for complex input
 template <typename T>
-void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
-                       int rhs_cols, int batch) {
+void SolveLinearSystem(T* matrix_data,
+                       T* rhs_data,
+                       T* out_data,
+                       int order,
+                       int rhs_cols,
+                       int batch) {
   using Treal = typename Eigen::NumTraits<T>::Real;
 
   // cast paddle::complex into std::complex
@@ -85,8 +92,10 @@ void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
   std::complex<Treal>* out_data_ =
       reinterpret_cast<std::complex<Treal>*>(out_data);
 
-  using Matrix = Eigen::Matrix<std::complex<Treal>, Eigen::Dynamic,
-                               Eigen::Dynamic, Eigen::RowMajor>;
+  using Matrix = Eigen::Matrix<std::complex<Treal>,
+                               Eigen::Dynamic,
+                               Eigen::Dynamic,
+                               Eigen::RowMajor>;
   using InputMatrixMap = Eigen::Map<Matrix>;
   using OutputMatrixMap = Eigen::Map<Matrix>;
 
@@ -103,7 +112,8 @@ void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
 
     const Treal min_abs_piv =
         lu_decomposition.matrixLU().diagonal().cwiseAbs().minCoeff();
-    PADDLE_ENFORCE_GT(min_abs_piv, Treal(0),
+    PADDLE_ENFORCE_GT(min_abs_piv,
+                      Treal(0),
                       platform::errors::InvalidArgument(
                           "Something's wrong with SolveLinearSystem. "));
 
@@ -114,8 +124,10 @@ void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
 template <typename DeviceContext, typename T>
 class MatrixSolveFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& a,
-                  const framework::Tensor& b, framework::Tensor* out);
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
+                  framework::Tensor* out);
 };
 
 }  // namespace math

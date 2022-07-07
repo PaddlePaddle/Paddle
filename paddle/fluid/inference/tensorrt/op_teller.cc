@@ -110,6 +110,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -213,6 +214,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -1215,14 +1217,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }
@@ -1254,6 +1251,28 @@ bool OpTeller::Tell(const framework::ir::Node* node,
               return false;
             }
           }
+        }
+      }
+      // not support following four inputs for slice in paddle-trt
+      auto slice_inputs = desc.Inputs();  // its size == 5
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
+        if (desc.Input("StartsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
+        if (desc.Input("EndsTensor").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
+        if (desc.Input("StartsTensorList").size()) {
+          return false;
+        }
+      }
+      if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
+        if (desc.Input("EndsTensorList").size()) {
+          return false;
         }
       }
     }
@@ -2026,6 +2045,25 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 #endif
+
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

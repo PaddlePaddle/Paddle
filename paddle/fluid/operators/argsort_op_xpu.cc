@@ -22,25 +22,35 @@ namespace operators {
 const int XPU_SORT_MAX_SIZE = 16384;
 
 template <typename T, typename TID>
-static inline void xpu_argsort(xpu::Context* ctx, const T* input_data,
-                               T* output_data, TID* indices_data, int m, int n,
+static inline void xpu_argsort(xpu::Context* ctx,
+                               const T* input_data,
+                               T* output_data,
+                               TID* indices_data,
+                               int m,
+                               int n,
                                bool descending) {
   int ret =
       xpu::sort(ctx, input_data, output_data, indices_data, m, n, descending);
   PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
+      ret,
+      XPU_SUCCESS,
       platform::errors::External("XPU sort kernel return wrong value[%d %s].",
-                                 ret, XPUAPIErrorMsg[ret]));
+                                 ret,
+                                 XPUAPIErrorMsg[ret]));
 }
 
 template <typename T>
-static inline void xpu_transpose(xpu::Context* ctx, const T* x, T* y,
+static inline void xpu_transpose(xpu::Context* ctx,
+                                 const T* x,
+                                 T* y,
                                  const std::vector<int>& xshape,
                                  const std::vector<int>& permute) {
   int ret = xpu::transpose(ctx, x, y, xshape, permute);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+  PADDLE_ENFORCE_EQ(ret,
+                    XPU_SUCCESS,
                     platform::errors::External(
-                        "XPU transpose kernel return wrong value[%d %s]", ret,
+                        "XPU transpose kernel return wrong value[%d %s]",
+                        ret,
                         XPUAPIErrorMsg[ret]));
 }
 
@@ -48,49 +58,65 @@ template <typename TX, typename TY>
 static inline void xpu_cast(xpu::Context* ctx, const TX* x, TY* y, int len) {
   int ret = xpu::cast_v2(ctx, x, y, len);
   PADDLE_ENFORCE_EQ(
-      ret, XPU_SUCCESS,
+      ret,
+      XPU_SUCCESS,
       platform::errors::External("XPU cast kernel return wrong value[%d %s]",
-                                 ret, XPUAPIErrorMsg[ret]));
+                                 ret,
+                                 XPUAPIErrorMsg[ret]));
 }
 
-template <typename T, bool VALUE_NEED_CAST = false,
+template <typename T,
+          bool VALUE_NEED_CAST = false,
           bool INDEX_NEED_CAST = false>
 struct XPUArgsort {
-  void operator()(xpu::Context* ctx, const T* input_data, T* output_data,
-                  int64_t* indices_data, const std::vector<int>& data_shape,
-                  const std::vector<int>& permute, bool descending) {
+  void operator()(xpu::Context* ctx,
+                  const T* input_data,
+                  T* output_data,
+                  int64_t* indices_data,
+                  const std::vector<int>& data_shape,
+                  const std::vector<int>& permute,
+                  bool descending) {
     xpu::ctx_guard RAII_GUARD(ctx);
     int m = data_shape[0] * data_shape[2];
     int n = data_shape[1];
     int len = data_shape[0] * data_shape[1] * data_shape[2];
-    std::vector<int> trans_data_shape{data_shape[0], data_shape[2],
-                                      data_shape[1]};
+    std::vector<int> trans_data_shape{
+        data_shape[0], data_shape[2], data_shape[1]};
 
     T* input_data_trans = RAII_GUARD.alloc_l3_or_gm<T>(len);
     T* output_data_trans = RAII_GUARD.alloc_l3_or_gm<T>(len);
     int64_t* indices_data_trans = RAII_GUARD.alloc_l3_or_gm<int64_t>(len);
 
     xpu_transpose(ctx, input_data, input_data_trans, data_shape, permute);
-    xpu_argsort(ctx, input_data_trans, output_data_trans, indices_data_trans, m,
-                n, descending);
-    xpu_transpose(ctx, output_data_trans, output_data, trans_data_shape,
-                  permute);
-    xpu_transpose(ctx, indices_data_trans, indices_data, trans_data_shape,
-                  permute);
+    xpu_argsort(ctx,
+                input_data_trans,
+                output_data_trans,
+                indices_data_trans,
+                m,
+                n,
+                descending);
+    xpu_transpose(
+        ctx, output_data_trans, output_data, trans_data_shape, permute);
+    xpu_transpose(
+        ctx, indices_data_trans, indices_data, trans_data_shape, permute);
   }
 };
 
 template <typename T>
 struct XPUArgsort<T, false, true> {
-  void operator()(xpu::Context* ctx, const T* input_data, T* output_data,
-                  int64_t* indices_data, const std::vector<int>& data_shape,
-                  const std::vector<int>& permute, bool descending) {
+  void operator()(xpu::Context* ctx,
+                  const T* input_data,
+                  T* output_data,
+                  int64_t* indices_data,
+                  const std::vector<int>& data_shape,
+                  const std::vector<int>& permute,
+                  bool descending) {
     xpu::ctx_guard RAII_GUARD(ctx);
     int m = data_shape[0] * data_shape[2];
     int n = data_shape[1];
     int len = data_shape[0] * data_shape[1] * data_shape[2];
-    std::vector<int> trans_data_shape{data_shape[0], data_shape[2],
-                                      data_shape[1]};
+    std::vector<int> trans_data_shape{
+        data_shape[0], data_shape[2], data_shape[1]};
 
     T* input_data_trans = RAII_GUARD.alloc_l3_or_gm<T>(len);
     T* output_data_trans = RAII_GUARD.alloc_l3_or_gm<T>(len);
@@ -98,28 +124,36 @@ struct XPUArgsort<T, false, true> {
     int64_t* cast_data_int64 = RAII_GUARD.alloc_l3_or_gm<int64_t>(len);
 
     xpu_transpose(ctx, input_data, input_data_trans, data_shape, permute);
-    xpu_argsort(ctx, input_data_trans, output_data_trans, indices_data_trans, m,
-                n, descending);
-    xpu_transpose(ctx, output_data_trans, output_data, trans_data_shape,
-                  permute);
+    xpu_argsort(ctx,
+                input_data_trans,
+                output_data_trans,
+                indices_data_trans,
+                m,
+                n,
+                descending);
+    xpu_transpose(
+        ctx, output_data_trans, output_data, trans_data_shape, permute);
     xpu_cast(ctx, indices_data_trans, cast_data_int64, len);
-    xpu_transpose(ctx, cast_data_int64, indices_data, trans_data_shape,
-                  permute);
+    xpu_transpose(
+        ctx, cast_data_int64, indices_data, trans_data_shape, permute);
   }
 };
 
 template <>
 struct XPUArgsort<int64_t, true, true> {
-  void operator()(xpu::Context* ctx, const int64_t* input_data,
-                  int64_t* output_data, int64_t* indices_data,
+  void operator()(xpu::Context* ctx,
+                  const int64_t* input_data,
+                  int64_t* output_data,
+                  int64_t* indices_data,
                   const std::vector<int>& data_shape,
-                  const std::vector<int>& permute, bool descending) {
+                  const std::vector<int>& permute,
+                  bool descending) {
     xpu::ctx_guard RAII_GUARD(ctx);
     int m = data_shape[0] * data_shape[2];
     int n = data_shape[1];
     int len = data_shape[0] * data_shape[1] * data_shape[2];
-    std::vector<int> trans_data_shape{data_shape[0], data_shape[2],
-                                      data_shape[1]};
+    std::vector<int> trans_data_shape{
+        data_shape[0], data_shape[2], data_shape[1]};
 
     int* input_data_trans = RAII_GUARD.alloc_l3_or_gm<int>(len);
     int* output_data_trans = RAII_GUARD.alloc_l3_or_gm<int>(len);
@@ -129,14 +163,19 @@ struct XPUArgsort<int64_t, true, true> {
 
     xpu_cast(ctx, input_data, cast_data_int, len);
     xpu_transpose(ctx, cast_data_int, input_data_trans, data_shape, permute);
-    xpu_argsort(ctx, input_data_trans, output_data_trans, indices_data_trans, m,
-                n, descending);
+    xpu_argsort(ctx,
+                input_data_trans,
+                output_data_trans,
+                indices_data_trans,
+                m,
+                n,
+                descending);
 
     xpu_cast(ctx, output_data_trans, cast_data_int64, len);
     xpu_transpose(ctx, cast_data_int64, output_data, trans_data_shape, permute);
     xpu_cast(ctx, indices_data_trans, cast_data_int64, len);
-    xpu_transpose(ctx, cast_data_int64, indices_data, trans_data_shape,
-                  permute);
+    xpu_transpose(
+        ctx, cast_data_int64, indices_data, trans_data_shape, permute);
   }
 };
 
@@ -155,10 +194,12 @@ class ArgsortXPUKernel : public framework::OpKernel<T> {
     int n = in_dims[axis];
 
     PADDLE_ENFORCE_LT(
-        n, XPU_SORT_MAX_SIZE,
+        n,
+        XPU_SORT_MAX_SIZE,
         platform::errors::InvalidArgument(
             "The axis dimension of Input should less than %d, but got %d.",
-            XPU_SORT_MAX_SIZE, in_dims[axis]));
+            XPU_SORT_MAX_SIZE,
+            in_dims[axis]));
 
     auto input_data = input->data<T>();
     auto output_data = output->mutable_data<T>(ctx.GetPlace());
@@ -178,17 +219,29 @@ class ArgsortXPUKernel : public framework::OpKernel<T> {
     std::vector<int> data_shape{len_before, n, len_after};
 
     if (int64_need_cast) {
-      XPUArgsort<T, true, true>()(dev_ctx.x_context(), input_data, output_data,
-                                  indices_data, data_shape, permute_vec,
+      XPUArgsort<T, true, true>()(dev_ctx.x_context(),
+                                  input_data,
+                                  output_data,
+                                  indices_data,
+                                  data_shape,
+                                  permute_vec,
                                   descending);
     } else if (index_need_cast) {
-      XPUArgsort<T, false, true>()(dev_ctx.x_context(), input_data, output_data,
-                                   indices_data, data_shape, permute_vec,
+      XPUArgsort<T, false, true>()(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   indices_data,
+                                   data_shape,
+                                   permute_vec,
                                    descending);
     } else {
-      XPUArgsort<T, false, false>()(dev_ctx.x_context(), input_data,
-                                    output_data, indices_data, data_shape,
-                                    permute_vec, descending);
+      XPUArgsort<T, false, false>()(dev_ctx.x_context(),
+                                    input_data,
+                                    output_data,
+                                    indices_data,
+                                    data_shape,
+                                    permute_vec,
+                                    descending);
     }
   }
 };
@@ -199,7 +252,8 @@ class ArgsortXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(argsort, ops::ArgsortXPUKernel<float>,
+REGISTER_OP_XPU_KERNEL(argsort,
+                       ops::ArgsortXPUKernel<float>,
                        ops::ArgsortXPUKernel<int>,
                        ops::ArgsortXPUKernel<int64_t>);
 

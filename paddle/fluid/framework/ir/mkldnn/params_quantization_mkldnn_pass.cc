@@ -70,7 +70,9 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
 }
 
 template <typename T>
-void QuantizeConvInput(Scope* scope, ir::Graph* g, ir::Node* conv_op,
+void QuantizeConvInput(Scope* scope,
+                       ir::Graph* g,
+                       ir::Node* conv_op,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
   const auto scales =
@@ -153,8 +155,8 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
       return;
     }
 
-    QuantizeConvInput<int8_t>(scope, g, conv_op, conv_filter->Name(),
-                              "Scale_weights");
+    QuantizeConvInput<int8_t>(
+        scope, g, conv_op, conv_filter->Name(), "Scale_weights");
 
     if (HasBias(conv_op)) {
       QuantizeConvInput<int32_t>(

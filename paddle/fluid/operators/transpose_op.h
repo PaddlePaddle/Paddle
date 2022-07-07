@@ -26,8 +26,10 @@ namespace operators {
 enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
 
 template <typename DeviceContext, typename T>
-inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
-                         const framework::Tensor& in, framework::Tensor* out,
+inline void TransCompute(const int dim,
+                         const DeviceContext& dev_ctx,
+                         const framework::Tensor& in,
+                         framework::Tensor* out,
                          const std::vector<int>& axis) {
   switch (dim) {
     case 1:
@@ -77,13 +79,16 @@ constexpr int kShareCol = kTileSize + 1;
 template <typename T>
 class DimsSimplifier {
  public:
-  explicit DimsSimplifier(const int sm_count, const int rank,
+  explicit DimsSimplifier(const int sm_count,
+                          const int rank,
                           const std::vector<int32_t>& perm,
-                          const std::vector<size_t>& dims, const T* src, T* dst)
+                          const std::vector<size_t>& dims,
+                          const T* src,
+                          T* dst)
       : perm_(rank), dims_(rank) {
     SimplifyPermAndDims(rank, dims, perm);
-    count_ = std::accumulate(dims.begin(), dims.end(), size_t{1},
-                             std::multiplies<size_t>());
+    count_ = std::accumulate(
+        dims.begin(), dims.end(), size_t{1}, std::multiplies<size_t>());
     if (rank_ > 1) {
       vec_size_ = GetPermVecSize(sm_count, src, dst);
       perm_.resize(rank_);

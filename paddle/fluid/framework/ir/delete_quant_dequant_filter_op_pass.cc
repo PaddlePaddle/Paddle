@@ -104,14 +104,16 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     auto var_map = any_op2_desc->Inputs();
     std::string arg_name = "";
     for (auto& name_m : var_map) {
-      if (std::find(name_m.second.begin(), name_m.second.end(),
+      if (std::find(name_m.second.begin(),
+                    name_m.second.end(),
                     quant_dequant_op_out_name) != name_m.second.end()) {
         arg_name = name_m.first;
         break;
       }
     }
     PADDLE_ENFORCE_GT(
-        arg_name.size(), 0,
+        arg_name.size(),
+        0,
         platform::errors::InvalidArgument("can not find the input %s.",
                                           quant_dequant_op_out_name));
     // any_op2_desc->SetAttr("enable_int8", true);
@@ -132,7 +134,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
       int quant_axis =
           BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("quant_axis"));
-      PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+      PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
+                        true,
                         platform::errors::InvalidArgument(
                             "'quant_axis' should be 0 or 1, but "
                             "the received is %d",
@@ -185,7 +188,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
       for (int i = 0; i < channel; i++) {
-        PADDLE_ENFORCE_NE(weight_scale[i], 0,
+        PADDLE_ENFORCE_NE(weight_scale[i],
+                          0,
                           platform::errors::InvalidArgument(
                               "Weight scale should be nonzero, but get zero."));
         weight_scale[i] = weight_scale[i] / range;
@@ -197,7 +201,8 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
         abs_max_weight =
             std::max(abs_max_weight, std::abs(quantized_weight_data[j]));
       }
-      PADDLE_ENFORCE_NE(abs_max_weight, 0,
+      PADDLE_ENFORCE_NE(abs_max_weight,
+                        0,
                         platform::errors::InvalidArgument(
                             "Weight scale should be nonzero, but get zero"));
       weight_scale.push_back(abs_max_weight / range);
