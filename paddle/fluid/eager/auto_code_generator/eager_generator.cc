@@ -51,8 +51,10 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
-static std::unordered_set<std::string> black_ops_list = {
-    "run_program", "fused_gate_attention", "fused_feedforward"};
+static std::unordered_set<std::string> black_ops_list = {"run_program",
+                                                         "fused_gate_attention",
+                                                         "fused_feedforward",
+                                                         "fused_attention"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
