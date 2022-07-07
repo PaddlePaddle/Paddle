@@ -22,7 +22,7 @@ from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, l
 from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
 from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
 from collections import OrderedDict
-from paddle.autograd.utils import as_tensors
+from paddle.incubate.autograd.utils import as_tensors
 
 
 def topo_path(xs, ys, block=None):

@@ -14,10 +14,8 @@
 
 import typing
 
-import paddle.autograd.utils as tensor_utils
-import paddle.incubate.autograd.utils as prim_utils
 from paddle.fluid import backward, framework
-from paddle.incubate.autograd import primx
+from paddle.incubate.autograd import primx, utils
 
 
 @framework.static_only
@@ -65,7 +63,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
-    if not prim_utils.prim_enabled():
+    if not utils.prim_enabled():
         raise RuntimeError('forward_grad must be running on primitive'
                            'operators, use enable_prim to turn it on.')
 
@@ -77,8 +75,8 @@ def forward_grad(outputs, inputs, grad_inputs=None):
         raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
                         f'but got {type(inputs)}.')
 
-    ys, xs, xs_dot = tensor_utils.as_tensors(outputs), tensor_utils.as_tensors(
-        inputs), tensor_utils.as_tensors(grad_inputs)
+    ys, xs, xs_dot = utils.as_tensors(outputs), utils.as_tensors(
+        inputs), utils.as_tensors(grad_inputs)
 
     block = framework.default_main_program().current_block()
     if any(x.block != block for x in xs + ys):
@@ -135,7 +133,7 @@ def grad(outputs, inputs, grad_outputs=None):
             paddle.disable_static()
     """
 
-    if not prim_utils.prim_enabled():
+    if not utils.prim_enabled():
         return backward.gradients(outputs, inputs, grad_outputs)
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
@@ -146,8 +144,8 @@ def grad(outputs, inputs, grad_outputs=None):
         raise TypeError(f'Expected inputs is Tensor|Sequence[Tesnor], '
                         f'but got {type(inputs)}.')
 
-    ys, xs, ys_bar = tensor_utils.as_tensors(outputs), tensor_utils.as_tensors(
-        inputs), tensor_utils.as_tensors(grad_outputs)
+    ys, xs, ys_bar = utils.as_tensors(outputs), utils.as_tensors(
+        inputs), utils.as_tensors(grad_outputs)
     block = framework.default_main_program().current_block()
     if any((x is not None and x.block != block) for x in xs + ys):
         raise RuntimeError(

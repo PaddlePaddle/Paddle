@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.nn.functional as F
-from paddle.autograd.utils import as_tensors
+from paddle.incubate.autograd.utils import as_tensors
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 import config

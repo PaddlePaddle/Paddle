@@ -17,9 +17,7 @@ import typing
 
 import paddle
 from paddle.fluid import framework
-from paddle.autograd.utils import as_tensors
-from paddle.incubate.autograd import utils as prim_utils
-from paddle.incubate.autograd import primx
+from paddle.incubate.autograd import primx, utils
 
 
 def vjp(func, xs, v=None):
@@ -72,7 +70,7 @@ def vjp(func, xs, v=None):
 
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not prim_utils.prim_enabled():
+    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
@@ -133,12 +131,12 @@ def jvp(func, xs, v=None):
     _check_inputs(func, xs, v)
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not prim_utils.prim_enabled():
+    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
 
-    if not paddle.fluid._non_static_mode() and prim_utils.prim_enabled():
+    if not paddle.fluid._non_static_mode() and utils.prim_enabled():
         return ys, primx.forward_grad(ys, xs, v)
     else:
         return ys, _double_backward_trick(ys, xs, v)
@@ -357,13 +355,13 @@ class _Jacobian(object):
     def __init__(self, func, xs):
         # Skip separating in prim mode temporarily, as detach and clone are not
         # primitive operators.
-        if not paddle.fluid._non_static_mode() and prim_utils.prim_enabled():
+        if not paddle.fluid._non_static_mode() and utils.prim_enabled():
             self._xs = xs
         else:
             self._xs = _separate(xs)
-        self._ys = func(*as_tensors(self._xs))
-        self._flatten_xs = self._flatten(as_tensors(self._xs))
-        self._flatten_ys = self._flatten(as_tensors(self._ys))
+        self._ys = func(*utils.as_tensors(self._xs))
+        self._flatten_xs = self._flatten(utils.as_tensors(self._xs))
+        self._flatten_ys = self._flatten(utils.as_tensors(self._ys))
         self._cache = {}
 
     @property
@@ -467,7 +465,8 @@ class _JacobianBatchLast(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((-1, x.shape[-1])) for x in as_tensors(xs)), 0)
+            tuple(x.reshape((-1, x.shape[-1])) for x in utils.as_tensors(xs)),
+            0)
 
     def _evaluate(self, row):
         return self._flatten(_grad(self._flatten_ys[row, :], self._xs))
@@ -493,7 +492,7 @@ class _JacobianBatchFirst(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((x.shape[0], -1)) for x in as_tensors(xs)), 1)
+            tuple(x.reshape((x.shape[0], -1)) for x in utils.as_tensors(xs)), 1)
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
@@ -691,7 +690,7 @@ def _check_v_shape(v, refs):
     if v is None:
         return
 
-    v, refs = as_tensors(v), as_tensors(refs)
+    v, refs = utils.as_tensors(v), utils.as_tensors(refs)
     if len(refs) != len(v):
         raise RuntimeError(f"The argument v is a tuple of invalid length:"
                            f"should be {len(refs)} but got {len(v)}.")
