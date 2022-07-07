@@ -86,10 +86,9 @@ REGISTER_OPERATOR(eigvals,
                   ops::EigvalsOp,
                   ops::EigvalsOpMaker,
                   ops::EigvalsOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(eigvals,
-                       ops::EigvalsKernel<plat::CPUDeviceContext, float>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext, double>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext,
-                                          paddle::platform::complex<float>>,
-                       ops::EigvalsKernel<plat::CPUDeviceContext,
-                                          paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
+    eigvals,
+    ops::EigvalsKernel<phi::CPUContext, float>,
+    ops::EigvalsKernel<phi::CPUContext, double>,
+    ops::EigvalsKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::EigvalsKernel<phi::CPUContext, paddle::platform::complex<double>>);

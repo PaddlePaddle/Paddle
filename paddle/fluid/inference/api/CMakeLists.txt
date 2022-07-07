@@ -99,6 +99,12 @@ cc_test(
   SRCS api_tester.cc
   DEPS paddle_inference_api)
 
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_paddle_inference_api)
+endif()
+
 if(WITH_TESTING)
   if(NOT APPLE AND NOT WIN32)
     if(WITH_GPU)

@@ -21,6 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_node
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 __all__ = ['BreakContinueTransformer']
 
@@ -28,7 +29,7 @@ BREAK_NAME_PREFIX = '__break'
 CONTINUE_NAME_PREFIX = '__continue'
 
 
-class ForToWhileTransformer(gast.NodeTransformer):
+class ForToWhileTransformer(BaseTransformer):
     """
     Transform python for loop into while loop and add condition node in the
     loop test

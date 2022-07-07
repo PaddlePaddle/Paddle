@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

@@ -81,7 +81,6 @@ TEST(ElementwiseAdd, launcher_registry) {
 
   ::phi::CPUContext context;
   context.SetAllocator(alloc);
-  context.Init();
 
   host_context::KernelFrameBuilder kernel_frame_builder;
   kernel_frame_builder.AddArgument(new host_context::Value(std::move(context)));

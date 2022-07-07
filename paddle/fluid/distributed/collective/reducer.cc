@@ -251,7 +251,7 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+    auto *default_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     ConcatTensorsWithType(
         *default_ctx, dense_tensors_, &dense_contents_, dtype_);
@@ -274,7 +274,7 @@ void EagerGroup::SplitTensors(const platform::Place &place) {
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+    auto *default_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     SplitTensorsWithType(
         *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
@@ -891,7 +891,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(inner_place_)) {
-    dev_ctx = static_cast<platform::CPUDeviceContext *>(
+    dev_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(inner_place_));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

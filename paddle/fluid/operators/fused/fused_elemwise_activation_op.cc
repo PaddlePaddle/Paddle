@@ -463,17 +463,13 @@ REGISTER_OPERATOR(fused_elemwise_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);
 
 // for memory optimization, we register the fused_elemwise_add_activation OP
 REGISTER_OPERATOR(
@@ -488,14 +484,10 @@ REGISTER_OPERATOR(fused_elemwise_add_activation_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::CPUContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_add_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                           double>);
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::CPUContext, double>);

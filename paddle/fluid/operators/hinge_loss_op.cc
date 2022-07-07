@@ -150,12 +150,10 @@ REGISTER_OPERATOR(hinge_loss,
                   ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    hinge_loss,
-    ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    hinge_loss_grad,
-    ops::HingeLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(hinge_loss,
+                       ops::HingeLossKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(hinge_loss_grad,
+                       ops::HingeLossGradKernel<phi::CPUContext, float>);
 
 REGISTER_OP_CUDA_KERNEL(
     hinge_loss,
