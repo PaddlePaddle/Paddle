@@ -223,7 +223,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
     VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
     MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
-#ifdef PADDLE_WITH_XPU_KP 
+#ifdef PADDLE_WITH_XPU_KP
     auto data_readers = dataset_->GetReaders();
     CHECK(data_readers.size() > 0);
     auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
@@ -257,7 +257,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     };
 
 #ifdef PADDLE_WITH_XPU_KP
-    this->thread_keys_[0][0].insert(0); // add 0 for padding feasign 
+    this->thread_keys_[0][0].insert(0); // add 0 for padding feasign
 #endif
 
     for (int i = 0; i < thread_keys_thread_num_; i++) {
@@ -786,7 +786,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_XPU_KP
   // build cachemanager
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  auto data_readers = dataset_->GetReaders(); 
+  auto data_readers = dataset_->GetReaders();
   CHECK(data_readers.size() > 0);
   int batch_size = data_readers[0]->GetDefaultBatchSize();
   VLOG(0) << "BuildGPUTask: batchsize:" << batch_size
@@ -806,7 +806,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
   auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
   auto & used_slots = data_readers[0]->GetUseSlotAlias();
-  CHECK(slot_is_dense.size() == used_slots.size()) 
+  CHECK(slot_is_dense.size() == used_slots.size())
     << "slot_is_dense size:" << slot_is_dense.size()
     << ", used_slots size:" << used_slots.size();
   std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
@@ -815,8 +815,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     auto & feasigns = it->uint64_feasigns_;
     for (unsigned int j = 0; j < feasigns.size(); j++) {
       auto slot_idx = feasigns[j].slot();
-      CHECK(slot_idx < slot_is_dense.size()) 
-          << "error slot_idx:" << slot_idx 
+      CHECK(slot_idx < slot_is_dense.size())
+          << "error slot_idx:" << slot_idx
           << ", used_slots size:" << used_slots.size();
       if (!slot_is_dense[slot_idx]) { // slot with lod info
         feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
@@ -942,6 +942,13 @@ void PSGPUWrapper::build_task() {
   current_task_ = gpu_task;
 }
 
+void PSGPUWrapper::dump_cache_array() {
+  int num = heter_devices_.size();
+  for (int i = 0; i < num; i++) {
+      HeterPs_->show_one_table(i);
+  }
+}
+
 void PSGPUWrapper::BeginPass() {
   platform::Timer timer;
   timer.Start();
@@ -987,7 +994,7 @@ void PSGPUWrapper::EndPass() {
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
 void PSGPUWrapper::build_batch_fid_seq(
   std::vector<std::deque<Record> *> & all_chan_recs, const std::vector<bool> & slot_is_dense) {
-  VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called"; 
+  VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called";
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
   cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense);
   if (FLAGS_dump_cache_manager) {

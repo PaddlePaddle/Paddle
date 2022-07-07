@@ -104,7 +104,7 @@ class PSGPUWrapper {
   }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs, 
+  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs,
                           const std::vector<bool> & slot_is_dense);
 #endif
 
@@ -150,6 +150,7 @@ class PSGPUWrapper {
   void start_build_thread();
   void pre_build_thread();
   void build_task();
+  void dump_cache_array();
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
@@ -287,18 +288,13 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
-    for (size_t i = 0; i < heter_devices_.size(); i++) {
-#ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
-#elif defined(PADDLE_WITH_XPU_KP)
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-#endif
-      this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                         learning_rate, initial_g2sum, initial_range);
-      this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-                         mf_initial_g2sum, mf_initial_range, mf_min_bound,
-                         mf_max_bound);
-    }
+
+    this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
+                        learning_rate, initial_g2sum, initial_range);
+
+    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
+                        mf_initial_g2sum, mf_initial_range, mf_min_bound,
+                        mf_max_bound);
   }
 
   void SetDate(int year, int month, int day) {

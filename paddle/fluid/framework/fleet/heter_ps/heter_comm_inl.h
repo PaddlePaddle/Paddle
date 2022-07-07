@@ -365,16 +365,18 @@ int HeterComm<KeyType, ValType, GradType>::get_index_by_devid(int devid) {
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_sparse_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->set_sparse_sgd(optimizer_config);
   }
 }
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
-  for (auto& table : tables_) {
-    table->set_embedx_sgd(optimizer_config);
+  for (int i = 0; i < resource_->total_device(); ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
+    tables_[i]->set_embedx_sgd(optimizer_config);
   }
 }
 
