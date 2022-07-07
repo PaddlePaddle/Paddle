@@ -194,7 +194,7 @@ def _append_gradient_merge_backward_op(
                                            attrs={
                                                'axis': -1,
                                                'use_mkldnn': False,
-                                               'op_role': OpRole.Backward
+                                               OP_ROLE_KEY: OpRole.Backward
                                            })
         new_params_to_grads.append([param, gradient_merge_var])
         grad_to_gradient_merge[grad.name] = gradient_merge_var.name
@@ -264,8 +264,7 @@ def _create_cond_block_and_update_optimizer(
                                  dtype=new_grad.dtype,
                                  value=0.0,
                                  out=new_grad)
-            new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
-                                  op_maker.OpRole.Optimize)
+            new_grad.op._set_attr(OP_ROLE_KEY, op_maker.OpRole.Optimize)
 
     layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
     cond_op = main_program.global_block().ops[-1]
