@@ -12,9 +12,6 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_multinode_*.py")
 string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
-foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
-  message("multi  node test: " ${TEST_OP})
-endforeach()
 
 file(
   GLOB DIST_TEST_OPS
@@ -87,6 +84,11 @@ list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
 list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
+
+foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
+  list(APPEND MIXED_DIST_TEST_OPS ${TEST_OP})
+endforeach()
+
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
@@ -704,14 +706,7 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-# remove new dist tests from test_ops
-foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
-  message("remove " ${TEST_OP} " from test_ops")
-  list(REMOVE_ITEM TEST_OPS ${TEST_OP})
-endforeach()
-
 foreach(TEST_OP ${TEST_OPS})
-  message("add test op: " ${TEST_OP})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
