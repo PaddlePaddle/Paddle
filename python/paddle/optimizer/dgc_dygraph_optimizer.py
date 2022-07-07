@@ -58,19 +58,6 @@ def dgc_data_parallel(model,
     return model, dgc_optimizer
 
 
-ParallelStrategy = core.ParallelStrategy
-ParallelEnv = paddle.fluid.dygraph.ParallelEnv
-
-
-def _build_default_parallel_strategy():
-    strategy = ParallelStrategy()
-    strategy.nranks = ParallelEnv().nranks
-    strategy.local_rank = ParallelEnv().local_rank
-    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-    strategy.current_endpoint = ParallelEnv().current_endpoint
-    return strategy
-
-
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(params, group=None, src_rank=0):
@@ -100,7 +87,6 @@ class DGCMomentumOptimizer(Optimizer):
                  rampup_step=1,
                  sparsity=[0.999],
                  use_nesterov=False,
-                 strategy=None,
                  weight_decay=None,
                  grad_clip=None,
                  group=None,
@@ -171,15 +157,6 @@ class DGCMomentumOptimizer(Optimizer):
             weight_decay)
 
         self.new_group = paddle.distributed.new_group(ranks)
-
-        # NOTE: The ParallelStrategy here is not strictly a strategy.
-        # It just stores some environment variables, which can be constructed by
-        # ParallelEnv. Here it is set as an optional argument.
-        # This parameter is not removed because of compatibility with 1.x writing.
-        if strategy is not None:
-            self._strategy = strategy
-        else:
-            self._strategy = _build_default_parallel_strategy()
 
         # dgc config
         self._rampup_begin_step = self._add_cpu_var("rampup_begin_step",
@@ -352,7 +329,6 @@ class DGCMomentumOptimizer(Optimizer):
                 attrs={
                     "max_norm": max_norm,
                     "rampup_begin_step": float(self._rampup_begin_step[0]),
-                    "nranks": self.new_group.nranks
                 },
                 outputs={"Out": out})
         return out

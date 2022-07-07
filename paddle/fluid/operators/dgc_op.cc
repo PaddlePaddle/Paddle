@@ -108,6 +108,12 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The type of regularization, {0:None, 1:L1Decay, 2:L2Decay")
         .SetDefault(0);
 
+    AddAttr<bool>("do_allreduce",
+                  "(bool, false)"
+                  "add this flag to reuse the dgc op in dygraph. when current "
+                  "step < rampup_begin_step, do do_allreduce in dygraph.")
+        .SetDefault(false);
+
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
 

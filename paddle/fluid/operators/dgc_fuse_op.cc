@@ -115,6 +115,12 @@ class DGCFuseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "whether use dgc.")
         .SetDefault(false);
 
+    AddAttr<bool>("do_allreduce",
+                  "(bool, false)"
+                  "add this flag to reuse the dgc op in dygraph. when current "
+                  "step < rampup_begin_step, do do_allreduce in dygraph.")
+        .SetDefault(true);
+
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887
     DGC reduce the communication bandwidth by sending only the important gradients (sparse update):\
