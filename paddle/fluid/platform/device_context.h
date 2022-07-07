@@ -542,11 +542,11 @@ class CUDADeviceContext : public phi::GPUContext {
   void Wait() const override;
 
   /*! \brief  Return eigen device in the device context. */
-  Eigen::GpuDevice* eigen_device() const;
+  Eigen::GpuDevice* eigen_device() const override;
 
   /*! \brief  Call cublas function safely. */
   inline void CublasCall(
-      const std::function<void(blasHandle_t)>& callback) const {
+      const std::function<void(blasHandle_t)>& callback) const override {
     if (!thread_ctx_.count(this)) {
       phi::GPUContext::CublasCall(callback);
       return;
@@ -557,7 +557,7 @@ class CUDADeviceContext : public phi::GPUContext {
 #ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
-      const std::function<void(phi::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const override {
     if (!thread_ctx_.count(this)) {
       phi::GPUContext::CusparseCall(callback);
       return;
@@ -569,7 +569,7 @@ class CUDADeviceContext : public phi::GPUContext {
   /*! \brief  Call cublas function with Tensor Core safely. If
       Tensor Core is not available, use DEFAULT_MATH instead. */
   inline void TensorCoreCublasCallIfAvailable(
-      const std::function<void(blasHandle_t)>& callback) const {
+      const std::function<void(blasHandle_t)>& callback) const override {
     if (!thread_ctx_.count(this)) {
       phi::GPUContext::TensorCoreCublasCallIfAvailable(callback);
       return;
@@ -579,22 +579,22 @@ class CUDADeviceContext : public phi::GPUContext {
 
 /*! \brief  Return cudnn  handle in the device context. */
 #ifdef PADDLE_WITH_HIP
-  miopenHandle_t cudnn_handle() const;
+  miopenHandle_t cudnn_handle() const override;
 #else
-  cudnnHandle_t cudnn_handle() const;
+  cudnnHandle_t cudnn_handle() const override;
 #endif
 
 /*! \brief  Return cublas handle in the device context. */
 #ifdef PADDLE_WITH_HIP
-  rocblas_handle cublas_handle() const;
+  rocblas_handle cublas_handle() const override;
 #else
-  cublasHandle_t cublas_handle() const;
-  cublasLtHandle_t cublaslt_handle() const;
-  cusparseHandle_t cusparse_handle() const;
+  cublasHandle_t cublas_handle() const override;
+  // cublasLtHandle_t cublaslt_handle() const override;
+  cusparseHandle_t cusparse_handle() const override;
 #endif
 
 #ifndef PADDLE_WITH_HIP
-  cusolverDnHandle_t cusolver_dn_handle() const;
+  cusolverDnHandle_t cusolver_dn_handle() const override;
 #endif
 
   /*! \brief  Return a cudnn workspace handle to call multiple cudnn
@@ -604,16 +604,16 @@ class CUDADeviceContext : public phi::GPUContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  phi::DnnWorkspaceHandle cudnn_workspace_handle() const;
+  phi::DnnWorkspaceHandle cudnn_workspace_handle() const override;
 
   /*! \brief  Return cuda stream in the device context. */
-  gpuStream_t stream() const;
+  gpuStream_t stream() const override;
 
-  void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const;
+  void RecordEvent(gpuEvent_t ev, const std::function<void()>& callback) const override;
 
-  void AddStreamCallback(const std::function<void()>& callback) const;
+  void AddStreamCallback(const std::function<void()>& callback) const override;
 
-  void WaitStreamCallback() const;
+  void WaitStreamCallback() const override;
 
   void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
