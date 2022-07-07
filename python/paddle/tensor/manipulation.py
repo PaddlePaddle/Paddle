@@ -2005,7 +2005,14 @@ def squeeze_(x, axis=None, name=None):
     elif isinstance(axis, tuple):
         axis = list(axis)
 
-    out, _ = _C_ops.squeeze2_(x, 'axes', axis)
+    axes = axis
+    if in_dygraph_mode():
+        return _C_ops.final_state_squeeze(x, axes)
+    if _in_legacy_dygraph():
+        out, _ = _C_ops.squeeze2(x, 'axes', axes)
+        return out
+
+    out, _ = _C_ops.squeeze2_(x, 'axes', axes)
     return out
 
 
