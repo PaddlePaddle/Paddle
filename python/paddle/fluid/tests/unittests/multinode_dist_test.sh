@@ -14,12 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ $MULTINODE_DIST_TEST == "true" ]]; then
-echo start multinode dist test
-else
-exit 0
-fi
-
 unset https_proxy http_proxy
 export FLAGS_rpc_disable_reuse_port=1
 

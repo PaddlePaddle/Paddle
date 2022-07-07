@@ -970,7 +970,7 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # add new dist test
-    if(WITH_GPU AND WITH_DISTRIBUTE)
+    if(WITH_DISTRIBUTE AND WITH_MULTINODE_TESTING)
       foreach(TEST_OP ${MULTINODE_DIST_TEST_OPS})
         bash_test_modules(
           ${TEST_OP}
