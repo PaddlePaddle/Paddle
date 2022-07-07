@@ -394,6 +394,16 @@ PreparedOp PrepareImpl(
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
+#ifdef PADDLE_WITH_IPU
+  if (kernel_iter == kernels.end() &&
+      paddle::platform::is_ipu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
 #ifdef PADDLE_WITH_MLU
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_mlu_place(expected_kernel_key.place_)) {
