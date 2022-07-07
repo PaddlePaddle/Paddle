@@ -761,7 +761,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-      float* val = (float*)(mem_pool->mem_address(k));
+      void* val = mem_pool->mem_address(k);
       accessor_wrapper_ptr->BuildFill(
           val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
 #endif
@@ -1130,7 +1130,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 
     pull_gpups_timer.Pause();
 
-#endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
@@ -1290,3 +1289,4 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif
