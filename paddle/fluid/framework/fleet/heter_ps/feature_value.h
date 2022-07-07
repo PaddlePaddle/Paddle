@@ -44,8 +44,13 @@ struct FeatureValue {
     out << "show:" << val.show << " clk:" << val.clk << " slot:" << val.slot
         << " lr:" << val.lr << " mf_size:" << val.mf_size << " mf:";
     for (int i = 0; i < MF_DIM + 1; ++i) {
-      out << " " << val.mf[i];
+      if (i == 0) {
+        out << val.mf[i];
+      } else {
+        out << "," << val.mf[i];
+      }
     }
+    out << " cpu_ptr:" << val.cpu_ptr;
     return out;
   }
 };

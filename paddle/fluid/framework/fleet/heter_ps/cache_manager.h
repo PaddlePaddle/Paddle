@@ -48,6 +48,7 @@ class CacheManager {
   void clear_sign2fids();
   void build_sign2fids(const FeatureKey* d_keys, size_t len);
   uint32_t query_sign2fid(const FeatureKey & key);
+  uint32_t get_max_fid();
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   void build_batch_fid_seq(

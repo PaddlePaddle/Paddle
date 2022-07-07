@@ -120,6 +120,21 @@ uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
   return sign2fid_[key];
 }
 
+uint32_t CacheManager::get_max_fid() {
+  uint32_t max_id = 0;
+  for (int i = 0; i < worker_num_; i++) {
+    uint32_t curr_cnt = *(dev_feasign_cnts_[i]);
+    if (curr_cnt == 0) {
+      continue;
+    }
+    uint32_t fid = i + (curr_cnt - 1) * worker_num_;
+    if (fid > max_id) {
+      max_id = fid;
+    }
+  }
+  return max_id;
+}
+
 void CacheManager::dump_to_file() {
   sleep(1);
   auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -232,7 +247,7 @@ void CacheManager::build_batch_fid_seq(
   for (auto group_bfid_ptr : n_batch_bfidseq) {
     PADDLE_ENFORCE_NOT_NULL(group_bfid_ptr, 
         platform::errors::NotFound("batch fid sequence has nullptr item"));
-    VLOG(0) << "group size: " << group_bfid_ptr->size();
+    VLOG(3) << "group size: " << group_bfid_ptr->size();
   }
   // write n_batch_bfidseq to channel
   fid_seq_channel_ = paddle::framework::MakeChannel<std::shared_ptr<std::vector<uint32_t>>>();
