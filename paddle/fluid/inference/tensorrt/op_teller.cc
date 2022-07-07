@@ -1992,8 +1992,22 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
 
+       // conv2d_transpose, conv3d_transpose, depthwise_conv2d_transpose
+       if (op_type.find("d_transpose") > 0) {
+         // trt doen't support output_padding,
+         // output_padding is set when stride > 1
+         if (desc.HasAttr("output_padding")) {
+           const std::vector<int> output_padding =
+               BOOST_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+           if (output_padding.size() > 0) {
+             int max_padding =
+                 *std::max_element(output_padding.begin(), output_padding.end());
+             if (max_padding > 0) return false;
+           }
+         }
+       }
+
       if (op_type == "conv3d_transpose") {
-        return false;
         if (!desc.HasAttr("dilations")) {
           return false;
         } else {
