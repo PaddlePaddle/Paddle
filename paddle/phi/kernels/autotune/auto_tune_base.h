@@ -153,19 +153,14 @@ template <typename T, typename KernelType>
 class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
  public:
   static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
+    static std::once_flag transpose_init_flag_;
     static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
-    std::call_once(init_flag_, [&] {
+    std::call_once(transpose_init_flag_, [&] {
       instance_.reset(new AutoTuneBase<T, KernelType>(kernel));
     });
     return instance_.get();
   }
-
- private:
-  static std::once_flag init_flag_;
 };
-
-template <typename T, typename KernelType>
-std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
 
 template <typename T, typename RetureType, typename... Args>
 static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
