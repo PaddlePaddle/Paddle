@@ -1388,6 +1388,7 @@ void OperatorWithKernel::InitOpCache(const Scope& scope,
   impl_ =
       new CacheImpl(new phi::KernelContext(),
                     new RuntimeInferShapeContext(*this, *runtime_ctx_.get()));
+  RunImpl(scope, place, runtime_ctx_.get());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDADeviceContext* ctx = static_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
@@ -1406,6 +1407,9 @@ void OperatorWithKernel::InitOpCache(const Scope& scope,
 }
 
 bool OperatorWithKernel::cacheEnabled() const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (cudaGraphEnabled()) return true;
+#endif
   return (run_phi_kernel_ && !need_prepare_data_ && !need_prepare_phi_data_ &&
           impl_ != nullptr);
 }
@@ -1437,7 +1441,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
-  if (!enable_cache_runtime_context_) {
+  if (!enable_cache_runtime_context_ || true) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
@@ -1446,9 +1450,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       InitOpCache(scope, place);
     } else {
       if (cacheEnabled()) {
-#if defined(paddle_with_cuda) || defined(paddle_with_hip)
-        if (!cudaGraphEnabled()) {
-          if (updateInputsShapesDimCache()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (cudaGraphEnabled()) {
+          if (impl_->updateInputsShapesDimCache()) {
             // execute the cuda graph directly
             platform::CUDADeviceContext* ctx =
                 static_cast<platform::CUDADeviceContext*>(
@@ -1466,7 +1470,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           if (!all_kernels_must_compute_runtime_shape_)
             this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
           (*pt_kernel_)(impl_->getKernelContext());
-#if defined(paddle_with_cuda) || defined(paddle_with_hip)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         }
 #endif
       } else {
