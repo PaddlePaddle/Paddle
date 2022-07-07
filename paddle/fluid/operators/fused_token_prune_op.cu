@@ -28,17 +28,17 @@ struct AttnMaskFunctor {
   }
 };
 
-__global__ void FillIndex(int* indices, int num_raws, int num_cols) {
+__global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= num_raws * num_cols) return;
 
   int col = tid % num_cols;
 
-  indices[tid] = col;
+  indices[tid] = (int64_t)col;
 }
 
 template <typename T>
-__global__ void Argsort(T* data, int* indices, int num_raws,
+__global__ void Argsort(T* data, int64_t* indices, int num_raws,
                               int num_cols) {
   auto raw = blockIdx.x * blockDim.x + threadIdx.x;
   if (raw >= num_raws) return;
@@ -48,7 +48,7 @@ __global__ void Argsort(T* data, int* indices, int num_raws,
 }
 
 template <typename T>
-__global__ void ArgsortKeepFirst(T* data, int* indices, int num_raws,
+__global__ void ArgsortKeepFirst(T* data, int64_t* indices, int num_raws,
                               int num_cols) {
   auto raw = blockIdx.x * blockDim.x + threadIdx.x;
   if (raw >= num_raws) return;
@@ -57,7 +57,7 @@ __global__ void ArgsortKeepFirst(T* data, int* indices, int num_raws,
                       thrust::greater<T>());
 }
 
-__global__ void Sort(int* indices, int num_raws, int num_cols) {
+__global__ void Sort(int64_t* indices, int num_raws, int num_cols) {
   auto raw = blockIdx.x * blockDim.x + threadIdx.x;
   if (raw >= num_raws) return;
   thrust::sort(thrust::seq, indices + raw * num_cols,
@@ -65,7 +65,7 @@ __global__ void Sort(int* indices, int num_raws, int num_cols) {
 }
 
 template <typename T>
-__global__ void TakeAlongAxis(const T* src, T* dst, int* indices, int num_raws,
+__global__ void TakeAlongAxis(const T* src, T* dst, int64_t* indices, int num_raws,
                               int src_num_cols, int dst_num_cols,
                               int num_elements) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -75,7 +75,7 @@ __global__ void TakeAlongAxis(const T* src, T* dst, int* indices, int num_raws,
   int col = tid % dst_num_cols;
   for (int i = 0; i < num_elements; ++i) {
     dst[tid * num_elements + i] =
-        *(src + (raw * src_num_cols + indices[tid]) * num_elements + i);
+        *(src + (raw * src_num_cols + (int)indices[tid]) * num_elements + i);
   }
 }
 
@@ -123,7 +123,7 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     Tensor attn_accu_indices;
     attn_accu_indices.Resize(attn_accu.dims());
     auto* attn_accu_indices_data =
-        attn_accu_indices.mutable_data<int>(context.GetPlace());
+        attn_accu_indices.mutable_data<int64_t>(context.GetPlace());
 
     int grid_size = attn_dims[0], block_size = ComputeBlockSize(attn_dims[3]); //TODO: N matbe larger than 1024
     FillIndex<<<grid_size, block_size, 0,
@@ -153,7 +153,7 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     auto new_mask_dims = new_mask->dims();
     int slimmed_x_len = new_mask_dims[2];
     auto slimmed_indices_tmp =
-        phi::funcs::Slice<int>(context.cuda_device_context(), attn_accu_indices,
+        phi::funcs::Slice<int64_t>(context.cuda_device_context(), attn_accu_indices,
                                {1} /*axes*/, {0}/*starts*/, {slimmed_x_len}/*ends*/);
 
     framework::TensorCopy(slimmed_indices_tmp, context.GetPlace(), slimmed_indices);
@@ -162,8 +162,8 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
       // Sort<<<grid_size, 1, 0, context.cuda_device_context().stream()>>>(
       //   slimmed_indices->data<int>(), attn_dims[0], slimmed_x_len);
       for (int raw = 0; raw < attn_dims[0]; ++raw) {
-        thrust::sort(thrust::device, slimmed_indices->data<int>() + raw * slimmed_x_len ,
-        slimmed_indices->data<int>() + (raw + 1) * slimmed_x_len);
+        thrust::sort(thrust::device, slimmed_indices->data<int64_t>() + raw * slimmed_x_len ,
+        slimmed_indices->data<int64_t>() + (raw + 1) * slimmed_x_len);
       }
     }
     
@@ -171,7 +171,7 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     block_size = ComputeBlockSize(slimmed_x_len);
     TakeAlongAxis<T><<<grid_size, block_size, 0,
                        context.cuda_device_context().stream()>>>(
-        x->data<T>(), out_slimmed_x_data, slimmed_indices->data<int>(),
+        x->data<T>(), out_slimmed_x_data, slimmed_indices->data<int64_t>(),
         attn_dims[0], attn_dims[3], slimmed_x_len, x_dims[2]);
   }
 };
