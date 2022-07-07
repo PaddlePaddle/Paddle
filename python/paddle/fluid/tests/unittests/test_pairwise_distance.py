@@ -23,8 +23,7 @@ import unittest
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
 
     distance = np.linalg.norm(x - y + epsilon, ord=p, axis=-1, keepdims=keepdim)
-    # Paddle currently has not supported for 0-d Tensors
-    # so even if keep_dim is False,
+    # Paddle currently has not supported for 0-d Tensors,so even if keep_dim is False,
     # and neither x nor y is batched, a Tensor of shape (1, ) is returned
     if distance.ndim == 0:
         distance = np.expand_dims(distance, axis=0)
@@ -124,9 +123,9 @@ def test_legacy_dygraph(place,
                         epsilon=1e-6,
                         keepdim=False,
                         functional=False):
+    paddle.fluid.framework._enable_legacy_dygraph()
     x = paddle.to_tensor(x_np)
     y = paddle.to_tensor(y_np)
-    paddle._enable_legacy_dygraph()
     if functional:
         legacy_distance = call_pairwise_distance_functional(x=x,
                                                             y=y,
@@ -140,7 +139,7 @@ def test_legacy_dygraph(place,
                                                        epsilon=epsilon,
                                                        keepdim=keepdim)
     legacy_ret = legacy_distance.numpy()
-    paddle._disable_legacy_dygraph()
+    paddle.fluid.framework._disable_legacy_dygraph()
     return legacy_ret
 
 
