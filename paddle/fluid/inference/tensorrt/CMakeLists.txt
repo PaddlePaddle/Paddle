@@ -24,5 +24,12 @@ nv_test(
   test_tensorrt_engine
   SRCS test_engine.cc test_dynamic_engine.cc
   DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_tensorrt_engine)
+endif()
+
 add_subdirectory(plugin)
 add_subdirectory(convert)
