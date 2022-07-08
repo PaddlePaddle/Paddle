@@ -517,11 +517,9 @@ XPUOpMap& get_kl2_ops() {
 
       // Fused op
       {"resnet_basic_block_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
