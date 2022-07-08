@@ -69,8 +69,11 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
-  std::vector<int> counter_per_kernel(kernel_size, 0);
-  std::vector<int> offsets(kernel_size + 1);
+  DenseTensor h_counter, h_offsets;
+  h_counter.Resize({kernel_size});
+  h_offsets.Resize({kernel_size + 1});
+  int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
+  int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
 
   // DenseTensor* rulebook = nullptr;
   const IntT* rulebook_ptr = nullptr;
@@ -83,8 +86,8 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
         key,
         out_dims,
         out,
-        &counter_per_kernel,
-        &offsets,
+        h_counter_ptr,
+        h_offsets_ptr,
         &n,
         &need_product_rulebook);
   }
@@ -99,24 +102,17 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
                                          out_dims,
                                          subm,
                                          &tmp_rulebook,
-                                         &counter_per_kernel);
+                                         h_counter_ptr);
 
     UpdateRulebookAndOutIndex<T, CPUContext, IntT>(
         dev_ctx, x, kernel_size, out_channels, out_dims, &tmp_rulebook, out);
     n = tmp_rulebook.dims()[1];
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
-    phi::funcs::sparse::SaveToTable(dev_ctx,
-                                    x,
-                                    key,
-                                    tmp_rulebook,
-                                    counter_per_kernel,
-                                    out,
-                                    rulebook,
-                                    counter);
+    phi::funcs::sparse::SaveToTable(
+        dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
   // int n = rulebook->dims()[1];
-  const int* counter_ptr = counter_per_kernel.data();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -140,24 +136,24 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
   int offset = 0;
   for (int i = 0; i < kernel_size; i++) {
-    offsets[i] = offset;
-    offset += counter_ptr[i];
+    h_offsets_ptr[i] = offset;
+    offset += h_counter_ptr[i];
   }
-  offsets[kernel_size] = offset;
+  h_offsets_ptr[kernel_size] = offset;
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (counter_ptr[i] <= 0) {
+    if (h_counter_ptr[i] <= 0) {
       continue;
     }
 
     // call gemm: (n, in_channels) * (in_channels, out_channels)
-    const int M = counter_ptr[i];
+    const int M = h_counter_ptr[i];
     const int K = in_channels;   // in_channels
     const int N = out_channels;  // out_channels
-    T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
+    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-    T* tmp_out_ptr = out_features_ptr + offsets[i] * out_channels;
+    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
     blas.GEMM(CblasNoTrans,
               CblasNoTrans,
               M,

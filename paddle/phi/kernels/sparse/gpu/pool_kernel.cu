@@ -90,8 +90,8 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
                                                           &out_index,
                                                           &unique_value,
                                                           out,
-                                                          &h_counter,
-                                                          &offsets);
+                                                          h_counter.data(),
+                                                          offsets.data());
 
   const IntT* rulebook_ptr = rulebook->data<IntT>();
 

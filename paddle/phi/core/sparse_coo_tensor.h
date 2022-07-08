@@ -157,37 +157,45 @@ class SparseCooTensor : public TensorBase,
   int32_t dense_dim() const;
 
   /// \brief query table according to key
-  const std::pair<DenseTensor, std::vector<int>>* table(
+  const std::pair<DenseTensor, DenseTensor>* IndicesPairs(
       const std::string& key) const {
-    const auto& iter = table_ptr_->find(key);
-    if (iter == table_ptr_->end()) {
+    if (indices_dict_ == nullptr) {
+      return nullptr;
+    }
+    const auto& iter = indices_dict_->find(key);
+    if (iter == indices_dict_->end()) {
       return nullptr;
     }
     return &iter->second;
   }
 
-  /// \brief set table according to key
-  void SetTable(const std::string& key,
-                const std::pair<DenseTensor, std::vector<int>>& table) {
-    auto ret = table_ptr_->insert({key, table});
+  /// \brief save (key, indices_pairs)
+  void SaveIndicesPairs(
+      const std::string& key,
+      const std::pair<DenseTensor, DenseTensor>& indices_pairs) {
+    if (indices_dict_ == nullptr) {
+      indices_dict_ = std::make_shared<
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>();
+    }
+    auto ret = indices_dict_->insert({key, indices_pairs});
     if (ret.second == false) {
-      ret.first->second = table;
+      ret.first->second = indices_pairs;
     }
   }
 
-  /// \brief get table_ptr_
+  /// \brief get indices_dict_
   const std::shared_ptr<
-      std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
-  GetTablePtr() const {
-    return table_ptr_;
+      std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+  GetIndicesDict() const {
+    return indices_dict_;
   }
 
-  /// \brief set table_ptr_
-  void SetTablePtr(
+  /// \brief set indices_dict_
+  void SetIndicesDict(
       const std::shared_ptr<
-          std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>&
-          table_ptr) {
-    table_ptr_ = table_ptr;
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+          indices_dict) {
+    indices_dict_ = indices_dict;
   }
 
  private:
@@ -203,11 +211,9 @@ class SparseCooTensor : public TensorBase,
   // for submanifold conv
   // SubmConv will generate a rulebook and a counter, which can be
   // reused by different SubmConv.
-  // refer to sparse/gpu/convolution_kernel.cu
-  std::shared_ptr<
-      std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>
-      table_ptr_ = std::make_shared<
-          std::map<std::string, std::pair<DenseTensor, std::vector<int>>>>();
+  // refer to sparse/gpu/convolution_kernel.cu.
+  std::shared_ptr<std::map<std::string, std::pair<DenseTensor, DenseTensor>>>
+      indices_dict_ = nullptr;
 
   /* --------------------------- */
   /*   example: non zero element is scalar */

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 #include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/pool_kernel.h"
 
@@ -160,7 +160,7 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
                                              strides,
                                              &d_rulebook,
                                              &d_counter);
-  SparseCooTensor tmp_d_out = sparse::Coalesced<T>(dev_ctx_gpu, d_out);
+  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());

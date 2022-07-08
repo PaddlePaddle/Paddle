@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/coalesced_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -27,9 +27,9 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-void CoalescedGPUKernel(const GPUContext& dev_ctx,
-                        const SparseCooTensor& x,
-                        SparseCooTensor* out) {
+void CoalesceGPUKernel(const GPUContext& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCooTensor* out) {
   const DenseTensor& x_indices = x.non_zero_indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -172,21 +172,21 @@ void CoalescedGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void CoalescedKernel(const Context& dev_ctx,
-                     const SparseCooTensor& x,
-                     SparseCooTensor* out) {
+void CoalesceKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "CoalescedGPUKernel", ([&] {
-        CoalescedGPUKernel<T, data_t>(dev_ctx, x, out);
+      x.non_zero_indices().dtype(), "CoalesceGPUKernel", ([&] {
+        CoalesceGPUKernel<T, data_t>(dev_ctx, x, out);
       }));
 }
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(coalesced,
+PD_REGISTER_KERNEL(coalesce,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CoalescedKernel,
+                   phi::sparse::CoalesceKernel,
                    float,
                    double,
                    phi::dtype::float16,

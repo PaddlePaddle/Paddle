@@ -53,7 +53,7 @@ class TestSparseConv(unittest.TestCase):
                 groups=1,
                 data_format="NDHWC")
             out.backward(out)
-            out = paddle.incubate.sparse.coalesced(out)
+            out = paddle.incubate.sparse.coalesce(out)
             assert np.array_equal(correct_out_values, out.values().numpy())
 
     def test_subm_conv3d(self):

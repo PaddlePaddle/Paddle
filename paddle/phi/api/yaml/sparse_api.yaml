@@ -132,11 +132,11 @@
     layout : x
   backward : values_grad
 
-- api: coalesced
+- api: coalesce
   args : (Tensor x)
   output : Tensor(out)
   kernel :
-    func: coalesced{sparse_coo -> sparse_coo}
+    func: coalesce{sparse_coo -> sparse_coo}
     layout : x
 
 - api: full_like
