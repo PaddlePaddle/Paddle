@@ -199,6 +199,44 @@ class TestGrad(unittest.TestCase):
         np.allclose(outs, result)
         paddle.incubate.autograd.disable_prim()
 
+    def test_disable_prim(self):
+
+        def actual(x: np.array):
+            paddle.incubate.autograd.disable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                var_x = paddle.static.data('x', shape=x.shape, dtype=x.dtype)
+                var_x.stop_gradient = False
+                y = paddle.tanh(var_x)
+                y_grad = paddle.incubate.autograd.grad(y, var_x)
+                y_second_grad = paddle.incubate.autograd.grad(y_grad, var_x)
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            return exe.run(main,
+                           feed={'x': x},
+                           fetch_list=[y_grad, y_second_grad])
+
+        def expect(x: np.array):
+            paddle.incubate.autograd.disable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                var_x = paddle.static.data('x', shape=x.shape, dtype=x.dtype)
+                var_x.stop_gradient = False
+                y = paddle.tanh(var_x)
+                y_grad = paddle.static.gradients(y, var_x)
+                y_second_grad = paddle.static.gradients(y_grad, var_x)
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            return exe.run(main,
+                           feed={'x': x},
+                           fetch_list=[y_grad, y_second_grad])
+
+        x = np.random.randn(100, 200)
+        for i, j in zip(actual(x), expect(x)):
+            np.testing.assert_allclose(i, j)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,7 @@ import typing
 
 import paddle
 from paddle.fluid import framework
-from paddle.incubate.autograd import primx, utils
+from paddle.incubate.autograd import primapi, utils
 
 
 def vjp(func, xs, v=None):
@@ -137,7 +137,7 @@ def jvp(func, xs, v=None):
     _check_v_shape(v, xs)
 
     if not paddle.fluid._non_static_mode() and utils.prim_enabled():
-        return ys, primx.forward_grad(ys, xs, v)
+        return ys, primapi.forward_grad(ys, xs, v)
     else:
         return ys, _double_backward_trick(ys, xs, v)
 
@@ -443,33 +443,6 @@ class _JacobianNoBatch(_Jacobian):
             self._flatten_ys[row_index],
             self._xs,
         ))
-
-
-class _JacobianBatchLast(_Jacobian):
-    """Compute Jacobian matrix with batch at last axis.
-    Suppose the mapping is :math:`f: R^{M,B} \to R^{N,B}`, the output shape is 
-    ``(N, M, B)`` .
-    """
-
-    def __init__(self, func, xs):
-        super(_JacobianBatchLast, self).__init__(func, xs)
-
-    @property
-    def shape(self):
-        return (self._flatten_ys.shape[0], self._flatten_xs.shape[0],
-                self._flatten_xs.shape[1])
-
-    @property
-    def _lazy_axis(self):
-        return 0
-
-    def _flatten(self, xs):
-        return paddle.concat(
-            tuple(x.reshape((-1, x.shape[-1])) for x in utils.as_tensors(xs)),
-            0)
-
-    def _evaluate(self, row):
-        return self._flatten(_grad(self._flatten_ys[row, :], self._xs))
 
 
 class _JacobianBatchFirst(_Jacobian):
