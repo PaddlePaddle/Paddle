@@ -835,6 +835,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogsigmoidOP, stype)
 
 
+
 class XPUTestRelu6OP(XPUOpTestWrapper):
 
     def __init__(self):
@@ -848,7 +849,7 @@ class XPUTestRelu6OP(XPUOpTestWrapper):
 
             x = np.random.uniform(-1, 10, [17, 12,12]).astype(self.dtype)
             x[np.abs(x) < 0.005] = 0.02
-            out = ref_relu6(x)
+            out = np.minimum(np.maximum(x, 0.0), 6.0)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}
@@ -858,14 +859,6 @@ class XPUTestRelu6OP(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('relu6')
 for stype in support_types:
     create_test_class(globals(), XPUTestRelu6OP, stype)
-
-
-def ref_relu6(x, threshold=6.0):
-    out = np.copy(x)
-    out[np.abs(x - threshold) < 0.005] = threshold + 0.02
-    out = np.minimum(np.maximum(x, 0), threshold)
-    return out
-
 
 class XPUTestSiluOP(XPUOpTestWrapper):
 
