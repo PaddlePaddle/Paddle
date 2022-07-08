@@ -113,7 +113,6 @@ TEST(DEV_API, sparse_elementwise_coo_kernel_double) {
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetAllocator(paddle::platform::CPUPlace())
             .get());
-    dev_ctx_cpu.Init();
 
     auto coo_x = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
     auto coo_y = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);
@@ -159,7 +158,6 @@ TEST(DEV_API, sparse_elementwise_csr_kernel_float) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   auto csr_x = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
   auto csr_y = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_y);
@@ -357,7 +355,6 @@ TEST(DEV_API, sparse_elementwise_csr_grad_kernel_float) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   auto csr_x = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
   auto csr_y = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_y);
@@ -404,7 +401,6 @@ TEST(DEV_API, sparse_elementwise_coo_grad_kernel_double) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   auto csr_x = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_x, sparse_dim);
   auto csr_y = sparse::DenseToSparseCoo<T>(dev_ctx_cpu, dense_y, sparse_dim);

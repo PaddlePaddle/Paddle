@@ -60,7 +60,7 @@ void serialize_params(std::string* str,
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
 #endif
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(

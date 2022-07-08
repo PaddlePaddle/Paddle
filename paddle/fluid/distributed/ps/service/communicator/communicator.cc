@@ -353,11 +353,12 @@ void Communicator::RpcRecvSparse(const std::string &varname,
 
   bool training = true;
 
-  auto status = _worker_ptr->PullSparseParam((float **)push_g_vec.data(),
-                                             table_id,  // NOLINT
-                                             sparse_push_keys.data(),
-                                             sparse_push_keys.size(),
-                                             training);
+  auto status =
+      _worker_ptr->PullSparseParam(static_cast<float **>(push_g_vec.data()),
+                                   table_id,
+                                   sparse_push_keys.data(),
+                                   sparse_push_keys.size(),
+                                   training);
   status.wait();
   return;
 }
@@ -1184,12 +1185,12 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto &t_latest = var_latest->Get<framework::LoDTensor>();
     auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
 
-    paddle::platform::CPUDeviceContext cpu_ctx;
+    phi::CPUContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
     blas.VSUB(t_latest.numel(),
               t_latest.data<float>(),
               t_timestamp->data<float>(),
@@ -1218,7 +1219,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
   // 2.1 pserver - old => delta; 2.2 latest + old => latest 2.3 old => pserver
-  paddle::platform::CPUDeviceContext cpu_ctx;
+  phi::CPUContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
     auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -1233,7 +1234,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
     blas.VSUB(t_latest->numel(),
               t_pserver.data<float>(),
               t_old->data<float>(),
@@ -1334,7 +1335,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
   auto dims1 = t_latest.dims()[1];
-  paddle::platform::CPUDeviceContext cpu_ctx;
+  phi::CPUContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<phi::SelectedRows>();
@@ -1345,7 +1346,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   t_delta->set_rows(sparse_ids);
   t_delta->set_height(t_latest.dims()[0]);
 
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
   std::vector<float *> push_g_vec;
@@ -1419,8 +1420,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname,
   std::vector<float> v_delta;
   v_delta.resize(numel);
 
-  paddle::platform::CPUDeviceContext cpu_ctx;
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  phi::CPUContext cpu_ctx;
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
     VLOG(5) << "DEBUG GeoCommunicator::RecvSparse recv sparse key" << keys[j]

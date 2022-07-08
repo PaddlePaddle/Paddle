@@ -69,7 +69,7 @@ struct TestGatherOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
     }
   }

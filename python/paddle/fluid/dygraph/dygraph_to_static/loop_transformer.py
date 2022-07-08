@@ -30,8 +30,9 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_node, create_get_args_node, create_set_args_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -90,101 +91,6 @@ def create_while_nodes(condition_name, body_name, loop_var_names, getter_name,
 
     ret = [while_node]
     return ret
-
-
-class NameScope:
-
-    def __init__(self):
-        """ we don't analyze the read only variable
-            because they keep the same in control flow.
-        """
-        self.globals = set()
-        self.nonlocals = set()
-        self.args = set()
-        # all vars been stored,
-        # may be globals or non-locals
-        self.w_vars = set()
-
-    def created_vars(self):
-        return self.w_vars - self.globals - self.nonlocals - self.args
-
-    def write_vars(self):
-        return self.w_vars
-
-    def global_vars(self):
-        return self.globals
-
-
-class FunctionNameLivenessAnalysis(gast.NodeVisitor):
-    """ analyze the liveness of a function.
-
-        every variables stored in this scope will be collected,
-        in addition with global/nonlocal information.
-
-        1. global variable is stored in node.var_globals.
-        2. nonlocal variable is stored in node.var_nonlocals.
-        3. arguments is stored in node.var_args.
-
-        For example:
-
-        def func(*args, **kargs):
-            a = 12
-            global i,j
-            nonlocal x,y
-            print(a)
-            i = k
-            for m in range(10):
-                q = 12
-        
-        After this visitor we have: 
-        # node is the FunctionDef node with name: "func"
-        node.pd_scope = NameScope(
-            globals = ['i', 'j'],
-            nonlocals = ['x', 'y'],
-            args = ['args', 'kargs'], 
-            wr_vars = ['a', 'i', 'q', 'm']
-        )
-    """
-
-    def __init__(self, root_node):
-        self.funcdef_stack = []
-        self.visit(root_node)
-
-    def _current_funcdef_scope(self):
-        return self.funcdef_stack[-1].pd_scope
-
-    def visit_Name(self, node):
-        self.generic_visit(node)
-        write_context = (gast.Store, gast.AugStore, gast.Del)
-        if isinstance(node.ctx, write_context):
-            self._current_funcdef_scope().w_vars.add(node.id)
-
-    def visit_FunctionDef(self, node):
-        setattr(node, 'pd_scope', NameScope())
-        self.funcdef_stack.append(node)
-        self._current_funcdef_scope().args |= set(
-            self._get_argument_names(node))
-        self.generic_visit(node)
-        self.funcdef_stack.pop()
-
-    def visit_Global(self, node):
-        self._current_funcdef_scope().globals |= set(node.names)
-
-    def visit_Nonlocal(self, node):
-        self._current_funcdef_scope().nonlocals |= set(node.names)
-
-    def _get_argument_names(self, node):
-        """ get all arguments name in the functiondef node.
-            this node is local to the function and shouldn't 
-            be created.
-        """
-        assert isinstance(
-            node, gast.FunctionDef), "Input node is not function define node"
-        names = [a for a in node.args.args]
-        names.append(node.args.vararg)
-        names.append(node.args.kwarg)
-        names = [i.id for i in names if i is not None]
-        return names
 
 
 class NameVisitor(gast.NodeVisitor):
@@ -566,7 +472,7 @@ class NameVisitor(gast.NodeVisitor):
         return loop_vars - removed_vars
 
 
-class LoopTransformer(gast.NodeTransformer):
+class LoopTransformer(BaseTransformer):
     """
     This class transforms python while/for statement into Static Graph Ast
     """
@@ -664,7 +570,7 @@ class LoopTransformer(gast.NodeTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # 4. append init statements
         new_stmts.extend(init_stmts)
@@ -736,7 +642,7 @@ class LoopTransformer(gast.NodeTransformer):
         if ARGS_NAME in nonlocal_names:
             nonlocal_names.remove(ARGS_NAME)
 
-        nonlocal_stmt_node = [create_nonlocal_stmt_node(nonlocal_names)]
+        nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
         # Python can create variable in loop and use it out of loop, E.g.
         #
