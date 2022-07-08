@@ -236,8 +236,12 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
     }
 
     // vertical block sum
-    merge_block_vertical(
-        x_sum, x_square_sum, smem_sum, smem_square_sum, &x_sum, &x_square_sum);
+    merge_block_vertical<T>(x_sum,
+                            x_square_sum,
+                            &smem_sum[0],
+                            &smem_square_sum[0],
+                            &x_sum,
+                            &x_square_sum);
 
     if (gridDim.y > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -272,12 +276,12 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
         }
 
         // vertical block sum
-        merge_block_vertical(x_sum,
-                             x_square_sum,
-                             smem_sum,
-                             smem_square_sum,
-                             &x_sum,
-                             &x_square_sum);
+        merge_block_vertical<T>(x_sum,
+                                x_square_sum,
+                                &smem_sum[0],
+                                &smem_square_sum[0],
+                                &x_sum,
+                                &x_square_sum);
 
         // final compute
         if (threadIdx.y == 0) {
@@ -400,8 +404,12 @@ static __global__ void BNForwardTraining2DCompStat(
     }
 
     // horizonal block sum
-    merge_block_horizonal(
-        x_sum, x_square_sum, smem_sum, smem_square_sum, &x_sum, &x_square_sum);
+    merge_block_horizonal<T>(x_sum,
+                             x_square_sum,
+                             &smem_sum[0],
+                             &smem_square_sum[0],
+                             &x_sum,
+                             &x_square_sum);
 
     if (gridDim.x > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -436,12 +444,12 @@ static __global__ void BNForwardTraining2DCompStat(
         }
 
         // horizonal block sum
-        merge_block_horizonal(x_sum,
-                              x_square_sum,
-                              smem_sum,
-                              smem_square_sum,
-                              &x_sum,
-                              &x_square_sum);
+        merge_block_horizonal<T>(x_sum,
+                                 x_square_sum,
+                                 &smem_sum[0],
+                                 &smem_square_sum[0],
+                                 &x_sum,
+                                 &x_square_sum);
 
         // final compute
         if (threadIdx.x == 0) {
