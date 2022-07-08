@@ -25,6 +25,7 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
 from .framework import convert_np_dtype_to_dtype_
+
 from . import core
 from . import unique_name
 from . import compiler
@@ -397,17 +398,26 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-
     from ..distributed.fleet import fleet
-    if fleet._role_maker is not None:
-        warnings.warn("do not use standalone executor in fleet by default")
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
-    else:
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+    # use standalone_executor by default if not distributed
+    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
+        framework._enable_standalone_executor_ = 1
 
-    if env_val in [1, '1', True, 'True', 'true']:
+    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
         flag = True
 
+    return flag
+
+
+def _is_standalone_executor_enable_compiled_program():
+    """
+    Whether to use experimental executor `StandaloneExecutor` in CompiledProgram.
+    Convert Graph to Program.
+    """
+    flag = False
+    env_val = os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
+    if env_val in [1, '1', True, 'True', 'true']:
+        flag = True
     return flag
 
 
@@ -557,10 +567,7 @@ class _StandaloneExecutor(object):
             return tensors
 
     def _create_new_executor(self):
-        # NOTE: It's a trick to set empty start_up program.
-        startup_program = Program()
-        new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, self._scope)
+        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
 
         return new_exe
 
@@ -1402,6 +1409,9 @@ class Executor(object):
             # print("compiled is : {}".format(compiled))
             # NOTE(zhiqiu): do not support compiled program now
             if compiled:
+                if program._program is not None and _is_standalone_executor_enable_compiled_program(
+                ):
+                    return True
                 return False
                 # if program._is_data_parallel and len(
                 #         program._get_places(place, program._places)) == 1:
@@ -1438,6 +1448,12 @@ class Executor(object):
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    if isinstance(program, compiler.CompiledProgram):
+                        program._compile(scope, self.place)
+                        compiled_graph = program._graph
+                        ir_graph = framework.IrGraph(compiled_graph,
+                                                     for_test=True)
+                        inner_program = ir_graph.to_program()
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,

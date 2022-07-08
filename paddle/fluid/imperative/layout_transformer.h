@@ -374,8 +374,9 @@ class ArgmaxOpTransformer
     bool keep_dims = BOOST_GET_CONST(bool, (*attrs)["keepdims"]);
     if (keep_dims) {
       if (var_layout != DataLayout::UNDEFINED) {
-        std::vector<int> perm_nhwc = {0, 2, 3, 1};
-        std::vector<int> perm_nchw = {0, 3, 1, 2};
+        std::vector<int> perm_nhwc = {0, 3, 1, 2};
+        std::vector<int> perm_nchw = {0, 2, 3, 1};
+
         auto perm = var_layout == DataLayout::NHWC ? perm_nhwc : perm_nchw;
         switch (AttrTypeID((*attrs)["axis"])) {
           case paddle::framework::proto::AttrType::INT: {

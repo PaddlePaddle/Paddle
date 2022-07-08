@@ -20,7 +20,7 @@ import textwrap
 from paddle.utils import gast
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, data_layer_not_check
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
 
 __all__ = [
     'create_bool_as_type',
@@ -62,9 +62,10 @@ def to_static_variable(x):
         return paddle.full(shape=[1], dtype='float64', fill_value=x)
     if isinstance(x, six.integer_types):
         return paddle.full(shape=[1], dtype='int64', fill_value=x)
-    if isinstance(x, UndefinedVar):
-        return data_layer_not_check(unique_name.generator("loop_undefined_var"),
-                                    [-1])
+    if isinstance(x, UndefinedVar) or x is None:
+        """ for early return case, we need a variable to represent None, current we use data_layer_not_check.
+        """
+        return create_undefined_variable()
     return x
 
 
@@ -76,3 +77,12 @@ def create_bool_as_type(x, value=True):
         return paddle.full(shape=[1], fill_value=value, dtype="bool")
     else:
         return value
+
+
+def create_bool_node(name, value):
+    '''
+    Create a assign stmt for name = value .
+    '''
+    assert isinstance(value, bool)
+    node = "{} = {}".format(name, value)
+    return gast.parse(node).body[0]

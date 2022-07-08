@@ -31,7 +31,7 @@ using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
-struct LRNFunctor<platform::CPUDeviceContext, T> {
+struct LRNFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input,
                   framework::Tensor* out,
@@ -46,9 +46,9 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> transpose;
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
     Tensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
@@ -116,11 +116,11 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
-template struct LRNFunctor<platform::CPUDeviceContext, float>;
-template struct LRNFunctor<platform::CPUDeviceContext, double>;
+template struct LRNFunctor<phi::CPUContext, float>;
+template struct LRNFunctor<phi::CPUContext, double>;
 
 template <typename T>
-struct LRNGradFunctor<platform::CPUDeviceContext, T> {
+struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& x,
                   const framework::Tensor& out,
@@ -183,8 +183,8 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
-template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
-template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
+template struct LRNGradFunctor<phi::CPUContext, float>;
+template struct LRNGradFunctor<phi::CPUContext, double>;
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -435,7 +435,5 @@ REGISTER_OPERATOR(lrn,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    lrn_grad, ops::LRNGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);

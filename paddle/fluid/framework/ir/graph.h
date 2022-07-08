@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/utils/any.h"
 
 DECLARE_bool(convert_all_blocks);

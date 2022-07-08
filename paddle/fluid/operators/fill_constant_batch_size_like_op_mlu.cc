@@ -68,10 +68,10 @@ class FillConstantBatchSizeLikeOpMLUKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<phi::CPUContext, T> functor;
       out->mutable_data(platform::CPUPlace(),
                         framework::TransToPhiDataType(data_type));
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+      functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx),
               out,
               static_cast<T>(value));
     } else {

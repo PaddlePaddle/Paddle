@@ -94,8 +94,8 @@ struct CastDataType {
     auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
     if (platform::is_cpu_place(in_.place())) {
-      platform::Transform<platform::CPUDeviceContext> trans;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      platform::Transform<phi::CPUContext> trans;
+      auto* context = static_cast<const phi::CPUContext*>(ctx_);
       trans(*context,
             in_begin,
             in_end,

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
@@ -59,7 +59,7 @@ class Linear(fluid.dygraph.Layer):
     @declarative
     def forward(self, x):
         pre = self.fc(x)
-        loss = fluid.layers.mean(pre)
+        loss = paddle.mean(pre)
         return pre, loss
 
 
