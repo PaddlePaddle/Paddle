@@ -258,24 +258,25 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
 class ResNetBasicBlockOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    //  has_shortcut = True:         X           else:       X
-    //                             /                       /
-    //                           |       |               |       |
-    //                         CONV1     |             CONV1     |
-    //                           |       |               |       |
-    //                          BN1      |              BN1      |
-    //                           |       |               |       |
-    //                         RELU1     |             RELU1     |
-    //                           |       |               |       |
-    //                         CONV2   CONV3           CONV2     |
-    //                           |       |               |       |
-    //                          BN2     BN3             BN2      |
-    //                           \       /               \       /
-    //                              ADD                     ADD
-    //                               |                       |
-    //                              RELU                    RELU
-    //                               |                       |
-    //                               Y                       Y
+    //  has_shortcut = True:       else:
+    //          X                         X
+    //        /                         /
+    //      |       |                 |       |
+    //    CONV1     |               CONV1     |
+    //      |       |                 |       |
+    //     BN1      |                BN1      |
+    //      |       |                 |       |
+    //    RELU1     |               RELU1     |
+    //      |       |                 |       |
+    //    CONV2   CONV3             CONV2     |
+    //      |       |                 |       |
+    //     BN2     BN3               BN2      |
+    //      \       /                 \       /
+    //         ADD                       ADD
+    //          |                         |
+    //         RELU                      RELU
+    //          |                         |
+    //          Y                         Y
     AddInput("X", "Input tensor of conv 1");
     AddInput("Filter1", "Filter tensor of conv 1");
     AddInput("Scale1", "Scale tensor of bn 1");
