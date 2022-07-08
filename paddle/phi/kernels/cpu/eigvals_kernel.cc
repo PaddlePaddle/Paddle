@@ -75,8 +75,8 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
 
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
-  auto* w_data =
-      w.mutable_data<T>(phi::make_ddim({n_dim << 1}), ctx.GetPlace());
+  w.Resize(make_ddim({n_dim << 1}));
+  T* w_data = ctx.template HostAlloc<T>(&w);
 
   int64_t work_mem = work->memory_size();
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
@@ -200,7 +200,7 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
 
 template <typename T, typename Context>
 void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  out->mutable_data<PaddleCType<T>>(ctx.GetPlace());
+  ctx.template HostAlloc<PaddleCType<T>>(out);
 
   std::vector<DenseTensor> x_matrices;
   SpiltBatchSquareMatrix(x, /*->*/ &x_matrices);
@@ -232,10 +232,12 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
   DenseTensor work, rwork;
 
-  work.mutable_data<T>(make_ddim({lwork}), ctx.GetPlace());
+  work.Resize(make_ddim({lwork}));
+  ctx.template HostAlloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
-    rwork.mutable_data<dtype::Real<T>>(make_ddim({n_dim << 1}), ctx.GetPlace());
+    rwork.Resize(make_ddim({n_dim << 1}));
+    ctx.template HostAlloc<dtype::Real<T>>(&rwork);
   }
 
   for (int64_t i = 0; i < n_batch; ++i) {

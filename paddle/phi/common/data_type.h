@@ -209,7 +209,7 @@ inline bool IsComplexType(const DataType& type) {
   return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
 }
 
-inline DataType ToComplexType(DataType type) {
+inline DataType ToComplexType(const DataType& type) {
   switch (type) {
     case DataType::FLOAT32:
       return DataType::COMPLEX64;
@@ -217,8 +217,8 @@ inline DataType ToComplexType(DataType type) {
       return DataType::COMPLEX128;
     default:
       PADDLE_THROW(errors::Unimplemented(
-          "Unknown real value data type (%s), now only support float32 and "
-          "float64.",
+          "Can not transform data type (%s) to complex type, now only support "
+          "float32 and float64 real value.",
           type));
   }
 }
