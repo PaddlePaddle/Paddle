@@ -79,7 +79,7 @@ class MKLDNNContextThreadLocals {
   }
 };
 
-class PADDLE_API MKLDNNContext : public CPUContext {
+class MKLDNNContext : public CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
@@ -107,7 +107,7 @@ class PADDLE_API MKLDNNContext : public CPUContext {
       std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
   using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
 
-  explicit MKLDNNContext(CPUPlace place);
+  explicit MKLDNNContext(const Place& place);
   ~MKLDNNContext();
   /* \brief  Get the active engine */
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }

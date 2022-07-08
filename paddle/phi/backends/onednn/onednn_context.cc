@@ -291,7 +291,7 @@ struct MKLDNNContext::Impl {
   unsigned int block_next_cache_clearing_ = 0;
 };
 
-MKLDNNContext::MKLDNNContext(CPUPlace place)
+MKLDNNContext::MKLDNNContext(const Place& place)
     : CPUContext(place), impl_(std::make_unique<Impl>()) {}
 
 MKLDNNContext::~MKLDNNContext() = default;
