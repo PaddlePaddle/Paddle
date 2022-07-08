@@ -90,6 +90,16 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     T decay = static_cast<T>(ctx.Attr<float>("decay"));
     T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
 
+    bool centered = ctx.Attr<bool>("centered");
+    if (centered) {
+      VLOG(0) << "'centered' is not supported in RMSProp XPU version. use "
+                 "XPU_BLACK_LIST to disable this op.";
+      // TODO(houj04): when XDNN api supports 'center', add input of
+      // mean_grad_input and output of mean_grad_output. auto *mean_grad_input =
+      // ctx.Input<Tensor>("MeanGrad"); auto *mean_grad_output =
+      // ctx.Output<Tensor>("MeanGradOut");
+    }
+
     // outputs
     auto& param_out = GET_DATA_SAFELY(
         ctx.Output<LoDTensor>("ParamOut"), "Output", "ParamOut", "Rmsprop");
@@ -101,18 +111,9 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
                                          "Rmsprop");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    ///// rmsprop优化算法
-    ///
-    /// ms_out[i] = rho * ms[i] + (1 - rho) * (g[i] * g[i]);
-    ///
-    /// mom_out[i] = momentum * mom[i] + lr *
-    /// (g[i] / ((float)sqrt(ms_out[i] + epsilon)));
-    ///
-    /// p_out[i] = p[i] - mom_out[i];
-    /// DLL_EXPORT int rmsprop(Context* ctx, const float* p,
-    /// const float* ms, const float* g, const float* mom,
-    /// float epsilon, float rho, float momentum, float lr,
-    /// float *ms_out, float *mom_out, float *p_out, int n)
+    // int rmsprop(Context* ctx, const T* g, const T* p, const float* ms, const
+    // float* mom, T* p_out, float* ms_out, float* mom_out, float epsilon, float
+    // rho, float momentum, float lr, int n);
     int r = xpu::rmsprop(dev_ctx.x_context(),
                          grad.template data<T>(),
                          param.template data<T>(),
