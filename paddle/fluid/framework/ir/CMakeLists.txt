@@ -240,6 +240,7 @@ if(WITH_IPU)
   pass_library(infer_shape_pass base DIR ipu)
   pass_library(delete_scale_op_pass base DIR ipu)
   pass_library(avg_shard_pass base DIR ipu)
+  pass_library(inference_dtype_transfer_pass base DIR ipu)
 endif()
 
 cc_library(
@@ -472,6 +473,13 @@ if(WITH_MKLDNN)
     test_compute_propagate_scales_mkldnn_pass
     SRCS mkldnn/compute_propagate_scales_mkldnn_pass_tester.cc
     DEPS compute_propagate_scales_mkldnn_pass naive_executor)
+
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_compute_propagate_scales_mkldnn_pass)
+  endif()
+
   cc_test(
     test_cpu_quantize_placement_pass
     SRCS mkldnn/cpu_quantize_placement_pass_tester.cc

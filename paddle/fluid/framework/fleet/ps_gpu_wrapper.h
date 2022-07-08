@@ -323,26 +323,19 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
-    for (size_t i = 0; i < heter_devices_.size(); i++) {
-#ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
-#elif defined(PADDLE_WITH_XPU_KP)
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-#endif
-      this->SetSparseSGD(nonclk_coeff,
-                         clk_coeff,
-                         min_bound,
-                         max_bound,
-                         learning_rate,
-                         initial_g2sum,
-                         initial_range);
-      this->SetEmbedxSGD(mf_create_thresholds,
-                         mf_learning_rate,
-                         mf_initial_g2sum,
-                         mf_initial_range,
-                         mf_min_bound,
-                         mf_max_bound);
-    }
+    this->SetSparseSGD(nonclk_coeff,
+                       clk_coeff,
+                       min_bound,
+                       max_bound,
+                       learning_rate,
+                       initial_g2sum,
+                       initial_range);
+    this->SetEmbedxSGD(mf_create_thresholds,
+                       mf_learning_rate,
+                       mf_initial_g2sum,
+                       mf_initial_range,
+                       mf_min_bound,
+                       mf_max_bound);
   }
 
   void SetDate(int year, int month, int day) {

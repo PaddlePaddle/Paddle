@@ -134,7 +134,6 @@ constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
-using CPUDeviceContext = phi::CPUContext;
 
 template <typename Place>
 struct DefaultDeviceContextType;

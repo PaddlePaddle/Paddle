@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid.core as core
 import numpy
 import paddle.fluid.layers as layers
@@ -191,7 +192,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
             array = lod_tensor_to_array(x, table)
             result = array_to_lod_tensor(array, table)
 
-            mean = layers.mean(result)
+            mean = paddle.mean(result)
 
             append_backward(mean)
 

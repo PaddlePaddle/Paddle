@@ -75,8 +75,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
     float scale_x = ctx.Attr<float>("Scale_x");
@@ -95,6 +95,12 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                                              scale_y,
                                              scale_o,
                                              get_post_ops(ctx));
+
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+    }
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -158,6 +164,13 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    // oneDNN's binary is optimized for broadcasting y into x, so in other case
+    // we have to swap tensors to achieve optimal performance
+    if (x->numel() < y->numel()) {
+      std::swap(x, y);
+      std::swap(dx, dy);
+    }
 
     int axis = ctx.Attr<int>("axis");
 

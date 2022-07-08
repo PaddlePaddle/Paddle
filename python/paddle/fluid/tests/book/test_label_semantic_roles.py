@@ -160,7 +160,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
                                              param_attr=fluid.ParamAttr(
                                                  name='crfw',
                                                  learning_rate=mix_hidden_lr))
-    avg_cost = fluid.layers.mean(crf_cost)
+    avg_cost = paddle.mean(crf_cost)
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN

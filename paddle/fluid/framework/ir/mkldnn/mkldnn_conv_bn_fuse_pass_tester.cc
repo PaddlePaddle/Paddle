@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <boost/logic/tribool.hpp>
 #include <random>
 #include <string>
 #include <unordered_set>
+#include "paddle/utils/tribool.h"
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -52,12 +52,12 @@ class MKLDNNConvBatchNormPassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d_transpose") {

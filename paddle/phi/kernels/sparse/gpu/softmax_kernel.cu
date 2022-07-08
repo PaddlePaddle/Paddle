@@ -52,8 +52,9 @@ __global__ void SoftmaxGpuKernel(const IntT* x_crows,
     int idx = non_zero_idx + i * warpSize;
     if (idx >= row_nnz) break;
 
-    if (max_val < x_values[row_first + idx]) {
-      max_val = x_values[row_first + idx];
+    T val = x_values[row_first + idx];
+    if (val > max_val) {
+      max_val = val;
     }
   }
   T row_max_val = phi::funcs::warpReduceMax<T>(max_val, 0xFFFFFFFF);
