@@ -414,11 +414,12 @@ def _is_standalone_executor_enable_compiled_program():
     Whether to use experimental executor `StandaloneExecutor` in CompiledProgram.
     Convert Graph to Program.
     """
-    flag = False
-    env_val = os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
-    if env_val in [1, '1', True, 'True', 'true']:
-        flag = True
-    return flag
+    # flag = False
+    # env_val = os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
+    # if env_val in [1, '1', True, 'True', 'true']:
+    #     flag = True
+    # return flag
+    return True
 
 
 def _prepare_fleet_executor():
