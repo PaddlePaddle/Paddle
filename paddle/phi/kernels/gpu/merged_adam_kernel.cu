@@ -1,0 +1,233 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/phi/kernels/merged_adam_kernel.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+namespace phi {
+
+template <typename T, typename MT>
+__global__ void AdamKernelREG(MT beta1,
+                              MT beta2,
+                              MT epsilon,
+                              MT beta1_pow_,
+                              MT beta2_pow_,
+                              const MT* moment1,
+                              MT* moment1_out,
+                              const MT* moment2,
+                              MT* moment2_out,
+                              const MT* lr_,
+                              const T* grad,
+                              const T* param,
+                              T* param_out,
+                              const MT* master_param,
+                              MT* master_param_out,
+                              int ndim) {
+  MT lr = *lr_;
+  MT beta1_pow = beta1_pow_;
+  MT beta2_pow = beta2_pow_;
+
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  for (; id < ndim; id += gridDim.x * blockDim.x) {
+    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+    MT g = static_cast<MT>(grad[id]);
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
+    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
+
+    moment1_out[id] = mom1;
+    moment2_out[id] = mom2;
+    param_out[id] = static_cast<T>(p);
+    if (master_param_out) {
+      master_param_out[id] = p;
+    }
+  }
+}
+
+template <typename T, typename MT>
+__global__ void AdamKernelMEM(MT beta1,
+                              MT beta2,
+                              MT epsilon,
+                              const MT* beta1_pow_,
+                              const MT* beta2_pow_,
+                              const MT* moment1,
+                              MT* moment1_out,
+                              const MT* moment2,
+                              MT* moment2_out,
+                              const MT* lr_,
+                              const T* grad,
+                              const T* param,
+                              T* param_out,
+                              const MT* master_param,
+                              MT* master_param_out,
+                              int ndim) {
+  MT lr = *lr_;
+  MT beta1_pow = *beta1_pow_;
+  MT beta2_pow = *beta2_pow_;
+
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  for (; id < ndim; id += gridDim.x * blockDim.x) {
+    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+    MT g = static_cast<MT>(grad[id]);
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
+    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
+
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
+
+    moment1_out[id] = mom1;
+    moment2_out[id] = mom2;
+    param_out[id] = static_cast<T>(p);
+    if (master_param_out) {
+      master_param_out[id] = p;
+    }
+  }
+}
+
+template <typename T>
+__global__ void UpdateBetaPow(T beta1,
+                              T beta2,
+                              const T* beta1_pow_,
+                              const T* beta2_pow_,
+                              T* beta1_pow_out,
+                              T* beta2_pow_out) {
+  *beta1_pow_out = beta1 * beta1_pow_[0];
+  *beta2_pow_out = beta2 * beta2_pow_[0];
+}
+
+template <typename T, typename Context>
+void MergedAdamKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& moment1,
+    const std::vector<const DenseTensor*>& moment2,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> moment1_out,
+    std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
+    std::vector<DenseTensor*> master_param_out) {
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  MPDType beta1_ = beta1.to<MPDType>();
+  MPDType beta2_ = beta2.to<MPDType>();
+  MPDType epsilon_ = epsilon.to<MPDType>();
+
+  size_t param_num = param.size();
+
+  for (size_t idx = 0; idx < param_num; idx++) {
+    const MPDType* master_in_data =
+        multi_precision ? master_param.get()[idx]->data<MPDType>() : nullptr;
+    MPDType* master_out_data =
+        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out[idx])
+                        : nullptr;
+
+    // update param and moment
+    int threads = 512;
+    int blocks = (param[idx]->numel() + threads - 1) / threads;
+
+    if (beta1_pow[idx]->place() == CPUPlace() &&
+        beta2_pow[idx]->place() == CPUPlace()) {
+      // Compute with betapow in REG
+      AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          *beta1_pow[idx]->data<MPDType>(),
+          *beta2_pow[idx]->data<MPDType>(),
+          moment1[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+          moment2[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+          learning_rate[idx]->data<MPDType>(),
+          grad[idx]->data<T>(),
+          param[idx]->data<T>(),
+          dev_ctx.template Alloc<T>(param_out[idx]),
+          master_in_data,
+          master_out_data,
+          param[idx]->numel());
+      if (!use_global_beta_pow) {
+        // Cpu update
+        dev_ctx.template HostAlloc<MPDType>(beta1_pow_out[idx])[0] =
+            beta1_ * beta1_pow[idx]->data<MPDType>()[0];
+        dev_ctx.template HostAlloc<MPDType>(beta2_pow_out[idx])[0] =
+            beta2_ * beta2_pow[idx]->data<MPDType>()[0];
+      }
+    } else {
+      AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          beta1_pow[idx]->data<MPDType>(),
+          beta2_pow[idx]->data<MPDType>(),
+          moment1[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+          moment2[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+          learning_rate[idx]->data<MPDType>(),
+          grad[idx]->data<T>(),
+          param[idx]->data<T>(),
+          dev_ctx.template Alloc<T>(param_out[idx]),
+          master_in_data,
+          master_out_data,
+          param[idx]->numel());
+      if (!use_global_beta_pow) {
+        // Update with gpu
+        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            beta1_pow[idx]->data<MPDType>(),
+            beta2_pow[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(beta1_pow_out[idx]),
+            dev_ctx.template Alloc<MPDType>(beta2_pow_out[idx]));
+      }
+    }
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(merged_adam,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MergedAdamKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  // Skip beta1_pow, beta2_pow data transform
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+}
