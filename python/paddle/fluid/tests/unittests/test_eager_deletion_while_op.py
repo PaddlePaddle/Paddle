@@ -133,7 +133,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         tmp = layers.unsqueeze(sum_result, axes=[0])
         tmp = layers.expand(tmp, expand_times=[10, 1])
         fc = layers.fc(tmp, size=256)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)

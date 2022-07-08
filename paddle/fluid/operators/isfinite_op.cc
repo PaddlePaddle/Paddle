@@ -122,64 +122,35 @@ namespace ops = paddle::operators;
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)        \
-  REGISTER_OP_CPU_KERNEL(                                     \
-      op_type,                                                \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, \
-                          int,                                \
-                          ops::functor>,                      \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, \
-                          int64_t,                            \
-                          ops::functor>,                      \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, \
-                          float,                              \
-                          ops::functor>,                      \
-      ops::OverflowKernel<paddle::platform::CPUDeviceContext, \
-                          double,                             \
-                          ops::functor>);
+#define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)             \
+  REGISTER_OP_CPU_KERNEL(                                          \
+      op_type,                                                     \
+      ops::OverflowKernel<phi::CPUContext, int, ops::functor>,     \
+      ops::OverflowKernel<phi::CPUContext, int64_t, ops::functor>, \
+      ops::OverflowKernel<phi::CPUContext, float, ops::functor>,   \
+      ops::OverflowKernel<phi::CPUContext, double, ops::functor>);
 
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");
 REGISTER_OP_MAKER(isfinite, "isfinite(X)");
 
-REGISTER_OP_CPU_KERNEL(isinf,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int,
-                                           ops::InfinityFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t,
-                                           ops::InfinityFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           float,
-                                           ops::InfinityFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           double,
-                                           ops::InfinityFunctor>);
+REGISTER_OP_CPU_KERNEL(
+    isinf,
+    ops::OverflowKernel<phi::CPUContext, int, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::InfinityFunctor>);
 
-REGISTER_OP_CPU_KERNEL(isnan,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int,
-                                           ops::NANFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t,
-                                           ops::NANFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           float,
-                                           ops::NANFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           double,
-                                           ops::NANFunctor>);
+REGISTER_OP_CPU_KERNEL(
+    isnan,
+    ops::OverflowKernel<phi::CPUContext, int, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::NANFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::NANFunctor>);
 
-REGISTER_OP_CPU_KERNEL(isfinite,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int,
-                                           ops::IsfiniteFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t,
-                                           ops::IsfiniteFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           float,
-                                           ops::IsfiniteFunctor>,
-                       ops::OverflowKernel<paddle::platform::CPUDeviceContext,
-                                           double,
-                                           ops::IsfiniteFunctor>);
+REGISTER_OP_CPU_KERNEL(
+    isfinite,
+    ops::OverflowKernel<phi::CPUContext, int, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, int64_t, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, float, ops::IsfiniteFunctor>,
+    ops::OverflowKernel<phi::CPUContext, double, ops::IsfiniteFunctor>);

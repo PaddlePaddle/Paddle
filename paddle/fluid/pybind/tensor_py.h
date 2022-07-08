@@ -676,7 +676,7 @@ void SetUVATensorFromPyArray(
 template <typename T, size_t D>
 void _sliceCompute(const framework::Tensor *in,
                    framework::Tensor *out,
-                   const platform::CPUDeviceContext &ctx,
+                   const phi::CPUContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
@@ -711,7 +711,7 @@ void _sliceCompute(const framework::Tensor *in,
 template <typename T>
 void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
                     paddle::framework::Tensor *out,
-                    const platform::CPUDeviceContext &ctx,
+                    const phi::CPUContext &ctx,
                     int64_t axis) {
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
@@ -729,8 +729,7 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<platform::CPUDeviceContext, T>
-        concat_functor;
+    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }
@@ -817,7 +816,7 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 template <typename T>
 void _sliceDapper(const framework::Tensor *in,
                   framework::Tensor *out,
-                  const platform::CPUDeviceContext &ctx,
+                  const phi::CPUContext &ctx,
                   const std::vector<int> &axes,
                   const std::vector<int> &starts,
                   int size) {
@@ -858,7 +857,7 @@ void _sliceDapper(const framework::Tensor *in,
 
 template <typename T>
 inline framework::Tensor *_sliceWrapper(const framework::Tensor &self,
-                                        const platform::CPUDeviceContext &ctx,
+                                        const phi::CPUContext &ctx,
                                         py::object obj,
                                         int dim,
                                         int64_t start,
@@ -876,7 +875,7 @@ template <typename T>
 inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
                                           py::object obj,
                                           int dim) {
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
   int64_t start, stop, step, slicelength;
   _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {

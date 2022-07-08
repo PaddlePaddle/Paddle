@@ -328,14 +328,12 @@ REGISTER_OPERATOR(unpool,
                   ops::UnpoolOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    unpool,
-    ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnpoolKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    unpool_grad,
-    ops::UnpoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UnpoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(unpool,
+                       ops::UnpoolKernel<phi::CPUContext, float>,
+                       ops::UnpoolKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(unpool_grad,
+                       ops::UnpoolGradKernel<phi::CPUContext, float>,
+                       ops::UnpoolGradKernel<phi::CPUContext, double>);
 
 REGISTER_OPERATOR(unpool3d,
                   ops::Unpool3dOp,
@@ -344,11 +342,9 @@ REGISTER_OPERATOR(unpool3d,
                   ops::Unpool3dOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(unpool3d_grad, ops::Unpool3dOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    unpool3d,
-    ops::Unpool3dKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Unpool3dKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    unpool3d_grad,
-    ops::Unpool3dGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::Unpool3dGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(unpool3d,
+                       ops::Unpool3dKernel<phi::CPUContext, float>,
+                       ops::Unpool3dKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(unpool3d_grad,
+                       ops::Unpool3dGradKernel<phi::CPUContext, float>,
+                       ops::Unpool3dGradKernel<phi::CPUContext, double>);

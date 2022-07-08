@@ -214,7 +214,8 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
-struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
+struct TensorSetConstantWithPlace
+    : public std::unary_function<paddle::platform::Place, void> {
   TensorSetConstantWithPlace(const paddle::platform::DeviceContext& context,
                              paddle::framework::Tensor* tensor,
                              float value)
@@ -257,8 +258,8 @@ template struct RowwiseMean<phi::CPUContext, float>;
 template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
-struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {
-  void operator()(paddle::platform::CPUDeviceContext* ctx,
+struct ElementwiseAddTo<phi::CPUContext, T> {
+  void operator()(phi::CPUContext* ctx,
                   const paddle::framework::Tensor& src,
                   paddle::framework::Tensor* dst) {
     auto in = paddle::framework::EigenVector<T>::Flatten(src);
@@ -268,14 +269,12 @@ struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
-                                 phi::dtype::float16>;
-template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
-                                 phi::dtype::bfloat16>;
+template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::float16>;
+template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::bfloat16>;
 
 template <typename T>
-struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const paddle::platform::CPUDeviceContext& context,
+struct RowwiseAdd<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
                   const paddle::framework::Tensor& input,
                   const paddle::framework::Tensor& vector,
                   paddle::framework::Tensor* output) {
@@ -312,8 +311,8 @@ struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template struct RowwiseAdd<paddle::platform::CPUDeviceContext, float>;
-template struct RowwiseAdd<paddle::platform::CPUDeviceContext, double>;
+template struct RowwiseAdd<phi::CPUContext, float>;
+template struct RowwiseAdd<phi::CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -150,7 +150,6 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   else
     CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 1, 1}));
   CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
-  CreateCUDATensor(&scope, "z", std::vector<int64_t>({2, 6}));
 
   CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
   CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));

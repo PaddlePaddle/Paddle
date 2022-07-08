@@ -81,7 +81,7 @@ void make_fake_model(std::string* model, std::string* param) {
   ctx.PartialInitWithAllocator();
 #else
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 #endif
   // Prepare variables.
   std::vector<std::string> repetitive_params{"x", "y"};

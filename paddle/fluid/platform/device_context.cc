@@ -123,6 +123,8 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::CUDA;
   } else if (platform::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
+  } else if (platform::is_ipu_place(place)) {
+    return platform::DeviceType::IPU;
   } else if (platform::is_mlu_place(place)) {
     return platform::DeviceType::MLU;
   } else {
@@ -261,7 +263,7 @@ void EmplaceDeviceContexts(
           p,
           disable_setting_default_stream_for_allocator);
 #else
-      EmplaceDeviceContext<CPUDeviceContext>(
+      EmplaceDeviceContext<phi::CPUContext>(
           place_to_device_context,
           p,
           disable_setting_default_stream_for_allocator);
@@ -751,7 +753,7 @@ const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), p_blobmap_() {
+    : phi::CPUContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());

@@ -50,6 +50,10 @@ class Layer {
   void SetFunction(const std::string& name,
                    const std::shared_ptr<BaseFunction>& function);
 
+  std::vector<std::string> FunctionNames() const;
+
+  const Name2FunctionMap& FunctionMap() const;
+
  private:
   // internal::Object obj_;
   Name2VariableMap params_dict_;
