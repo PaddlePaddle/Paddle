@@ -1451,8 +1451,7 @@ class Executor(object):
                     if isinstance(program, compiler.CompiledProgram):
                         program._compile(scope, self.place)
                         compiled_graph = program._graph
-                        ir_graph = framework.IrGraph(compiled_graph,
-                                                     for_test=True)
+                        ir_graph = framework.IrGraph(compiled_graph)
                         inner_program = ir_graph.to_program()
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
