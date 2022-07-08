@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace dtype {
@@ -203,6 +204,25 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
+
+inline bool IsComplexType(const DataType& type) {
+  return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
+}
+
+inline DataType ToComplexType(DataType type) {
+  switch (type) {
+    case DataType::FLOAT32:
+      return DataType::COMPLEX64;
+    case DataType::FLOAT64:
+      return DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(errors::Unimplemented(
+          "Unknown real value data type (%s), now only support float32 and "
+          "float64.",
+          type));
+  }
+}
+
 }  // namespace phi
 
 namespace paddle {
