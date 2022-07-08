@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/dist_grad_kernel.h"
 
+#include <tuple>
 #include <vector>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,8 +25,9 @@
 
 namespace phi {
 
-std::vector<int64_t> GetReduceDims(const DDim& src_dim, const DDim& dst_dim) {
-  std::vector<int64_t> reduce_dims;
+std::pair<std::vector<int64_t>, std::vector<int64_t>> GetReduceDims(
+    const DDim& src_dim, const DDim& dst_dim) {
+  std::vector<int64_t> reduce_dims, new_dims;
   auto pre_dims = src_dim.size() - dst_dim.size();
   for (auto i = 0; i < pre_dims; ++i) {
     reduce_dims.push_back(i);
@@ -34,9 +36,11 @@ std::vector<int64_t> GetReduceDims(const DDim& src_dim, const DDim& dst_dim) {
   for (auto i = pre_dims; i < src_dim.size(); ++i) {
     if (dst_dim[i - pre_dims] == 1 && src_dim[i] != 1) {
       reduce_dims.push_back(i);
+    } else {
+      new_dims.push_back(dst_dim[i - pre_dims]);
     }
   }
-  return reduce_dims;
+  return {reduce_dims, new_dims};
 }
 
 template <typename T, typename Context>
@@ -56,18 +60,23 @@ void DistGradKernel(const Context& dev_ctx,
   PNormGradKernel<T, Context>(
       dev_ctx, t, out, out_grad, p, -1, 1e-12, false, true, &x_grad_tmp);
   ScaleKernel<T, Context>(dev_ctx, x_grad_tmp, -1.0, 0.0, false, &y_grad_tmp);
-  // do reduce
-  auto reduce_dims_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
-  if (!reduce_dims_x.empty()) {
+  // do reduce, the implemetation of cpu SumKernel has bug, it changes
+  // the dims of output iternally, so we Resize x/y_grad twice.
+  auto res_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
+  if (!std::get<0>(res_x).empty()) {
+    x_grad->Resize(phi::make_ddim(std::get<1>(res_x)));
     SumKernel<T, Context>(
-        dev_ctx, x_grad_tmp, reduce_dims_x, x.dtype(), false, x_grad);
+        dev_ctx, x_grad_tmp, std::get<0>(res_x), x.dtype(), false, x_grad);
+    x_grad->Resize(x.dims());
   } else {
     x_grad->ShareBufferWith(x_grad_tmp);
   }
-  auto reduce_dims_y = GetReduceDims(y_grad_tmp.dims(), y.dims());
-  if (!reduce_dims_y.empty()) {
+  auto res_y = GetReduceDims(y_grad_tmp.dims(), y.dims());
+  if (!std::get<0>(res_y).empty()) {
+    y_grad->Resize(phi::make_ddim(std::get<1>(res_y)));
     SumKernel<T, Context>(
-        dev_ctx, y_grad_tmp, reduce_dims_y, y.dtype(), false, y_grad);
+        dev_ctx, y_grad_tmp, std::get<0>(res_y), y.dtype(), false, y_grad);
+    y_grad->Resize(y.dims());
   } else {
     y_grad->ShareBufferWith(y_grad_tmp);
   }
