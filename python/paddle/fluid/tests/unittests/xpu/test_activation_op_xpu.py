@@ -854,7 +854,6 @@ class XPUTestRelu6OP(XPUOpTestWrapper):
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
-        
 
 support_types = get_xpu_op_support_types('relu6')
 for stype in support_types:
