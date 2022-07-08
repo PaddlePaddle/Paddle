@@ -415,7 +415,7 @@ class GeneralGrad {
                     << edge.GetEdgeRankInfo().first << ", "
                     << edge.GetEdgeRankInfo().second;
             // Stop no grad var's preceding node
-            meta[i][i].SetStopGradient(true);
+            meta[i][j].SetStopGradient(true);
             edge.Clear();
             continue;
           }
@@ -428,7 +428,7 @@ class GeneralGrad {
                       << next_node.get() << " with output rank info: "
                       << edge.GetEdgeRankInfo().first << ", "
                       << edge.GetEdgeRankInfo().second;
-              meta[i][i].SetStopGradient(true);
+              meta[i][j].SetStopGradient(true);
               edge.Clear();
               continue;
             }
