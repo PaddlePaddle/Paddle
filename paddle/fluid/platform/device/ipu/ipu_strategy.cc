@@ -101,6 +101,10 @@ IpuStrategy::IpuStrategy() {
   ADD_STRING_OPTION(onnx_dump_path);
   ADD_STRING_OPTION(weight_decay_mode);
 
+  // dy2static support
+  ADD_DOUBLE_OPTION(lr);
+  ADD_BOOL_OPTION(is_dynamic);
+
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
 #undef ADD_UINT64_OPTION
