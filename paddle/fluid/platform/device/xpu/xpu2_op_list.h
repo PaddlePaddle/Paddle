@@ -505,6 +505,14 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
+      // Fused op
+      {"resnet_basic_block_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"resnet_basic_block",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
