@@ -23,7 +23,7 @@ __all__ = []
 
 def pairwise_distance(x, y, p=2., epsilon=1e-6, keepdim=False, name=None):
     r"""
-    This operator computes the pairwise distance between two vectors. The
+    It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
     .. math::
@@ -31,17 +31,27 @@ def pairwise_distance(x, y, p=2., epsilon=1e-6, keepdim=False, name=None):
         \Vert x \Vert _p = \left( \sum_{i=1}^n \vert x_i \vert ^ p \right) ^ {1/p}.
 
     Parameters:
-        x (Tensor):The input is N-D Tensor , the data type of input is float16 or float32 or float64.
-        y (Tensor):The input is N-D Tensor , the data type of input is float16 or float32 or float64.
-        p (float): The order of norm. The default value is 2.
-        epsilon (float, optional): Add small value to avoid division by zero,
-            default value is 1e-6.
+        x (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
+            is batch size, :math:`D` is the dimension of vector. Available dtype is
+            float32, float64.
+        y (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
+            is batch size, :math:`D` is the dimension of vector. Available dtype is
+            float32, float64.
+        p (float, optional): The order of norm. Default: :math:`2.0`.
+        epsilon (float, optional): Add small value to avoid division by zero.
+            Default: :math:`1e-6`.
         keepdim (bool, optional): Whether to reserve the reduced dimension
             in the output Tensor. The result tensor is one dimension less than
-            the result of ``'x-y'`` unless :attr:`keepdim` is True, default
-            value is False.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+            the result of ``|x-y|`` unless :attr:`keepdim` is True. Default: False.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`.
+            Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the dtype is same as input tensor.
+        - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
+            depending on whether the input has data shaped as :math:`[N, D]`.
+        - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
+            depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python

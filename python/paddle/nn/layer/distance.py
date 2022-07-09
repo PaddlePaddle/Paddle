@@ -20,7 +20,7 @@ __all__ = []
 
 class PairwiseDistance(Layer):
     r"""
-    This operator computes the pairwise distance between two vectors. The
+    It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
     .. math::
@@ -28,22 +28,24 @@ class PairwiseDistance(Layer):
         \Vert x \Vert _p = \left( \sum_{i=1}^n \vert x_i \vert ^ p \right) ^ {1/p}.
 
     Parameters:
-        p (float): The order of norm. The default value is 2.
-        epsilon (float, optional): Add small value to avoid division by zero,
-            default value is 1e-6.
+        p (float, optional): The order of norm. Default: :math:`2.0`.
+        epsilon (float, optional): Add small value to avoid division by zero.
+            Default: :math:`1e-6`.
         keepdim (bool, optional): Whether to reserve the reduced dimension
             in the output Tensor. The result tensor is one dimension less than
-            the result of ``'x-y'`` unless :attr:`keepdim` is True, default
-            value is False.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+            the result of ``|x-y|`` unless :attr:`keepdim` is True. Default: False.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`.
+            Generally, no setting is required. Default: None.
 
     Shape:
-        x: :math:`[N, D]` where `D` is the dimension of vector, available dtype
-            is float32, float64.
-        y: :math:`[N, D]`, y have the same shape and dtype as x.
-        out: :math:`[N]`. If :attr:`keepdim` is ``True``, the out shape is :math:`[N, 1]`.
-            The same dtype as input tensor.
+        x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
+            is the dimension of the data. Available data type is float32, float64.
+        y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
+        output: The same dtype as input tensor.
+            - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
+                depending on whether the input has data shaped as :math:`[N, D]`.
+            - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
+                depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python
