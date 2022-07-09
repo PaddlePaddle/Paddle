@@ -13,26 +13,117 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
+#include <cstddef>
+#include <string>
+#include <unordered_set>
 
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+namespace {
+
+bool IsFloat(framework::proto::VarType::Type t) {
+  if (t == framework::proto::VarType::FP16 ||
+      t == framework::proto::VarType::FP32 ||
+      t == framework::proto::VarType::FP64 ||
+      t == framework::proto::VarType::BF16)
+    return true;
+  return false;
+}
+
+// if in mixed model precision, we should make all tensorrt_engine's output
+// floats dtype to float32 dtype.
+void OutputProcess(framework::ir::Graph *graph,
+                   const std::unordered_set<framework::ir::Node *> &trt_outputs,
+                   phi::Backend backend,
+                   phi::DataType precision,
+                   const std::unordered_set<std::string> &blacklist) {
+  framework::BlockDesc *block_desc{nullptr};
+  int suffix = 0;
+  std::unordered_map<framework::ir::Node *, framework::ir::Node *>
+      var_to_cast_op_map;
+
+  framework::proto::VarType::Type to_type;
+  if (precision == phi::DataType::FLOAT16) {
+    to_type = framework::proto::VarType::FP16;
+  } else if (precision == phi::DataType::BFLOAT16) {
+    to_type = framework::proto::VarType::BF16;
+  } else if (precision == phi::DataType::FLOAT32) {
+    return;
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "mixed_precision currently not supported dtype %d, we now only support "
+        "fp16 and bf16.",
+        static_cast<int>(precision)));
+  }
+
+  for (auto *op_node : framework::ir::TopologySortOperations(*graph)) {
+    if (!op_node->IsOp()) continue;
+    auto op_type = op_node->Op()->Type();
+    if (op_type == "feed") block_desc = op_node->Op()->Block();
+    if (op_type != "tensorrt_engine") continue;
+    for (auto *var_node : op_node->outputs) {
+      if (!trt_outputs.count(var_node)) continue;
+      if (!var_node->Var()->Persistable() &&
+          IsFloat(var_node->Var()->GetDataType()) &&
+          var_node->Var()->GetDataType() != framework::proto::VarType::FP32) {
+        for (auto *next_op : var_node->outputs) {
+          // if next_op support mixed_precision, we need to add cast op.
+          if (OpSupportPrecision(
+                  phi::TransToPhiKernelName(next_op->Op()->Type()),
+                  backend,
+                  precision,
+                  blacklist)) {
+            AddCastOp(graph,
+                      var_node,
+                      next_op,
+                      framework::proto::VarType::FP32,
+                      to_type,
+                      &suffix,
+                      block_desc,
+                      &var_to_cast_op_map);
+            var_node->Var()->SetDataType(framework::proto::VarType::FP32);
+          }
+        }
+      }
+    }
+  }
+}
+
+}  // namespace
 
 using framework::ir::Node;
 
 void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
+
+  auto model_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision"));
+  if (model_precision == phi::DataType::BFLOAT16) {
+    LOG(WARNING)
+        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+    return;
+  }
+
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   bool no_calib_int8 = enable_int8 && !(use_calib_mode);
@@ -181,14 +272,24 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
+  auto model_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision"));
+  auto mixed_black_list =
+      Get<std::unordered_set<std::string>>("mixed_black_list");
+
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
   std::map<std::string, int> origin_name_output_dims;
+  std::unordered_set<Node *> trt_outputs;
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
     output_names_with_id.insert(x->Name() + std::to_string(x->id()));
     origin_name_output_dims[x->Name()] = x->Var()->GetShape().size();
+    trt_outputs.insert(x);
   }
+
+  OutputProcess(
+      graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list);
 
   std::unordered_map<std::string, std::string> output_name_map;
   std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
@@ -285,6 +386,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
+  op_desc->SetAttr("model_precision", Get<int>("model_precision"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -404,7 +506,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
-                  disable_trt_plugin_fp16);
+                  disable_trt_plugin_fp16,
+                  static_cast<phi::DataType>(Get<int>("model_precision")));
   trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
   trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetTransformerPosid(

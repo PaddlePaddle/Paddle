@@ -56,6 +56,8 @@ class ExecutorFunction : public BaseFunction {
     return res;
   }
 
+  const std::shared_ptr<FunctionInfo> &Info() const { return info_; }
+
  private:
   std::shared_ptr<FunctionInfo> info_;
   framework::Scope scope_;

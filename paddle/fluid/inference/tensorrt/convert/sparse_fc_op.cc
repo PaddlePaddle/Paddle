@@ -154,7 +154,10 @@ class SparseFcOpConverter : public OpConverter {
       }
       engine_->SetTensorDynamicRange(X, in_scale);
     }
-    weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
+    weight_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(op_desc.Input(w_name).front(), *Y_t)
+            .get()
+            .values));
 
     PADDLE_ENFORCE_EQ(
         Y_t->dims().size(),
@@ -321,7 +324,10 @@ class SparseFcOpConverter : public OpConverter {
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
-      bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
+      bias_data = weight_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *b_t)
+              .get()
+              .values));
       bias_num = b_t->numel();
     }
     // Running the TRT Static Shape mode: x_num_col_dims-1
