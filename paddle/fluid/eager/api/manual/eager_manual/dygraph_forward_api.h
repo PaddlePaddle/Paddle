@@ -16,6 +16,9 @@
 
 #include "paddle/phi/api/include/tensor.h"
 
+paddle::experimental::Tensor add_n_final_state_dygraph_function(
+    const std::vector<paddle::experimental::Tensor>& x);
+
 paddle::experimental::Tensor conv2d_final_state_dygraph_function(
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
