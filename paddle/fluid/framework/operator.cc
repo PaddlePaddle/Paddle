@@ -1722,14 +1722,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-      if (platform::is_cpu_place(expected_kernel_key.place_) &&
-          SupportsMKLDNN(expected_kernel_key.data_type_)) {
-        auto& dev_ctx = ctx.device_context();
-        expected_kernel_key.place_ = dev_ctx.GetPlace();
-        expected_kernel_key.library_type_ = LibraryType::kMKLDNN;
-      }
-#endif
       if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
