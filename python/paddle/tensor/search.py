@@ -996,7 +996,20 @@ def bucketize(x,
               out_int32=False,
               right=False,
               name=None):
+    """
+    Computes the interval index of each element in `x` based on the `sorted_sequence`.
 
+    Args:
+        x(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
+        sorted_sequence(Tensor): An input 1-D tensor with type int32, int64, float32, float64.
+        out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
+        right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `x`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
+                               The default value is False and it shows the lower bounds.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor（the same sizes of the `x`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
+    """
     assert x.shape[0] == 1, "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
     out = searchsorted(sorted_sequence, x, out_int32, right, name)
 
