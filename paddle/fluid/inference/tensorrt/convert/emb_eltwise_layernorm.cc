@@ -10,8 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/convert/utils.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -73,27 +76,39 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     // input_embs[0]: word_embedding
     // input_embs[1]: pos_embedding
     // input_embs[2]: sent_embedding
-    std::vector<float*> input_embs;
+    std::vector<nvinfer1::Weights> input_embs;
     std::vector<int> emb_sizes;
 
     // get the presistable var's data
-    auto get_persistable_data = [&](const std::string& var_name,
-                                    framework::DDim* dims) -> float* {
+    auto GetWeight = [&](const std::string& var_name,
+                         framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
-      (*dims) = temp_tensor->dims();
+      *dim = temp_tensor->dims();
+      auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
+      return weight;
+    };
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
-      return temp_data;
+    auto GetFp32Weight = [&](const std::string& var_name,
+                             framework::DDim* dim) -> TensorRTEngine::Weight {
+      auto* temp_var = scope.FindVar(var_name);
+      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      *dim = temp_tensor->dims();
+      auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
+      return weight;
     };
 
     int hidden = 0;
     for (int i = 0; i < input_num; i++) {
       framework::DDim emb_dims;
-      float* emb_data = get_persistable_data(emb_names[i], &emb_dims);
-      int64_t emb_size = phi::product(emb_dims);
-      input_embs.push_back(emb_data);
-      emb_sizes.push_back(emb_size);
+      TensorRTEngine::Weight weight;
+      if (flag_varseqlen) {
+        weight = GetWeight(emb_names[i], &emb_dims);
+      } else {
+        weight = GetFp32Weight(emb_names[i], &emb_dims);
+      }
+      input_embs.push_back(weight.get());
+      emb_sizes.push_back(weight.get().count);
       PADDLE_ENFORCE_EQ(
           emb_dims.size(),
           2,
@@ -103,11 +118,15 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     }
 
     framework::DDim bias_dims, scale_dims;
+    TensorRTEngine::Weight bias_weight, scale_weight;
+    if (flag_varseqlen) {
+      bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
+      scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
+    } else {
+      bias_weight = GetFp32Weight(op_desc.Input("Bias").front(), &bias_dims);
+      scale_weight = GetFp32Weight(op_desc.Input("Scale").front(), &scale_dims);
+    }
 
-    auto* bias =
-        get_persistable_data(op_desc.Input("Bias").front(), &bias_dims);
-    auto* scale =
-        get_persistable_data(op_desc.Input("Scale").front(), &scale_dims);
     int64_t bias_size = phi::product(bias_dims);
     int64_t scale_size = phi::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
@@ -134,24 +153,24 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
               "But Precision::KFloat32 is setted."));
       const std::vector<nvinfer1::PluginField> fields{
           {"bert_embeddings_layernorm_beta",
-           bias,
-           nvinfer1::PluginFieldType::kFLOAT32,
+           bias_weight.get().values,
+           GetPluginFieldType(bias_weight.get().type),
            static_cast<int32_t>(bias_size)},
           {"bert_embeddings_layernorm_gamma",
-           scale,
-           nvinfer1::PluginFieldType::kFLOAT32,
+           scale_weight.get().values,
+           GetPluginFieldType(scale_weight.get().type),
            static_cast<int32_t>(scale_size)},
           {"bert_embeddings_word_embeddings",
-           input_embs[0],
-           nvinfer1::PluginFieldType::kFLOAT32,
+           input_embs[0].values,
+           GetPluginFieldType(input_embs[0].type),
            static_cast<int32_t>(emb_sizes[0])},
           {"bert_embeddings_token_type_embeddings",
-           input_embs[2],
-           nvinfer1::PluginFieldType::kFLOAT32,
+           input_embs[2].values,
+           GetPluginFieldType(input_embs[2].type),
            static_cast<int32_t>(emb_sizes[2])},
           {"bert_embeddings_position_embeddings",
-           input_embs[1],
-           nvinfer1::PluginFieldType::kFLOAT32,
+           input_embs[1].values,
+           GetPluginFieldType(input_embs[1].type),
            static_cast<int32_t>(emb_sizes[1])},
           {"output_fp16", &output_fp16, nvinfer1::PluginFieldType::kINT32, 1},
       };
@@ -235,15 +254,23 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
-      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(input_embs,
-                                                            bias,
-                                                            scale,
-                                                            emb_sizes,
-                                                            bias_size,
-                                                            scale_size,
-                                                            hidden,
-                                                            eps,
-                                                            with_fp16);
+      std::vector<float*> input_embs_data;
+      for (size_t i = 0; i < input_embs.size(); ++i) {
+        input_embs_data.push_back(const_cast<float*>(
+            static_cast<const float*>(input_embs[i].values)));
+      }
+      plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
+          input_embs_data,
+          const_cast<float*>(
+              static_cast<const float*>(bias_weight.get().values)),
+          const_cast<float*>(
+              static_cast<const float*>(scale_weight.get().values)),
+          emb_sizes,
+          bias_size,
+          scale_size,
+          hidden,
+          eps,
+          with_fp16);
       layer = engine_->AddDynamicPlugin(input_ids.data(), input_num, plugin);
       auto output_name = op_desc.Output("Out")[0];
       RreplenishLayerAndOutput(
