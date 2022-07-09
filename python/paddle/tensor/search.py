@@ -1009,6 +1009,26 @@ def bucketize(x,
 
     Returns:
         Tensor（the same sizes of the `x`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[0, 8, 4, 16], [-1, 2, 8, 4]], dtype='int32')
+            sorted_sequence = paddle.to_tensor([2, 4, 8, 16], dtype='int32')
+            out1 = paddle.bucketize(x, sorted_sequence)
+            print(out1)
+            # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [[0, 2, 1, 3],
+            #        [0, 0, 2, 1]])
+            out2 = paddle.bucketize(sorted_sequence, values, right=True)
+            print(out2)
+            # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        [[0, 3, 2, 4],
+            #        [0, 1, 3, 2]])
+
     """
     assert x.shape[0] == 1, "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
     out = searchsorted(sorted_sequence, x, out_int32, right, name)
