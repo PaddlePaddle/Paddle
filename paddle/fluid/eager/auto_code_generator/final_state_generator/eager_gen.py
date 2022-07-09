@@ -40,8 +40,10 @@ from codegen_utils import AssertMessage, GetIndent
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
 inplace_check_blacklist = set(["assign_out_"])
-# # --- Black Ops list that's NO NEED to apply backward code generation
-black_ops_list = ["conv2d", "conv2d_grad", "conv2d_grad_grad", "add_n"]
+
+# Black Ops list that's NO NEED to apply forward and backward code generation,
+# for example, "conv2d" in black_ops_list, means that conv2d, conv2d_grad and conv2d_grad_grad NO NEED to apply code generation
+black_ops_list = ["conv2d", "add_n"]
 
 
 ###########
@@ -1637,7 +1639,6 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         if 'backward' not in forward_api_contents.keys(): return None
 
         backward_api_name = forward_api_contents['backward']
-        if backward_api_name in black_ops_list: return None
         assert backward_api_name in grad_api_dict.keys(), AssertMessage(
             backward_api_name, grad_api_dict.keys())
         backward_api_contents = grad_api_dict[backward_api_name]
@@ -1655,7 +1656,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             backward_api_contents = self.GetBackwardAPIContents(
                 forward_api_contents)
             if backward_api_contents is None: continue
-            if forward_api_contents['api'] in black_ops_list: continue
+
             # Generate Dygraph Forward Function
             function_generator = DygraphForwardFunctionGenerator(
                 forward_api_contents, backward_api_contents, namespace)
