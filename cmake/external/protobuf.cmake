@@ -251,6 +251,11 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     set(PROTOBUF_TAG 9f75c5aa851cd877fb0d93ccc31b8567a6706546)
   endif()
+
+  if (UNIX)
+    set(PROTOBUF_PATCH_COMMAND sh ${PADDLE_SOURCE_DIR}/patches/protobuf/java_file_patch.sh ${PROTOBUF_SOURCE_DIR})
+  endif ()
+
   if(WITH_ARM_BRPC)
     set(ARM_PROTOBUF_URL
         "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/arm_protobuf.tar.gz"
@@ -292,6 +297,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       PREFIX ${PROTOBUF_PREFIX_DIR}
       UPDATE_COMMAND ""
       DEPENDS zlib
+      PATCH_COMMAND   ${PROTOBUF_PATCH_COMMAND}
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
         -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_SKIP_RPATH=ON

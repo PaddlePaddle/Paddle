@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <unordered_map>
 
 namespace paddle {

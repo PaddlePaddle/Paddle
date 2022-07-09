@@ -157,6 +157,11 @@ if(NOT WIN32)
       -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
       ${fsanitize})
 
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.2)
+    set(COMMON_FLAGS ${COMMON_FLAGS}
+            -Wno-error)
+  endif ()
+
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
                      -Wno-non-virtual-dtor # Warnings in Popart
