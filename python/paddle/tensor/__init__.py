@@ -249,7 +249,7 @@ from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
 from .search import searchsorted  # noqa: F401
-from .search import bucketize
+from .search import bucketize # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
