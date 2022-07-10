@@ -291,6 +291,7 @@ from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
 from .tensor.search import searchsorted  # noqa: F401
+from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -442,6 +443,7 @@ __all__ = [  # noqa
     'flops',
     'sort',
     'searchsorted',
+    'bucketize',
     'split',
     'logical_and',
     'full_like',
