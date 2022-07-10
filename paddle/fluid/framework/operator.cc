@@ -1222,7 +1222,6 @@ struct OperatorWithKernel::CacheImpl {
 
   void runCudaGraph(gpuStream_t stream) {
     cudaGraphLaunch(graph_instance_, stream);
-    cudaStreamSynchronize(stream);
   }
 
  private:
