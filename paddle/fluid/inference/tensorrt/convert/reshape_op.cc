@@ -36,14 +36,6 @@ class ReshapeOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-
-
-    std::cout << input->getDimensions().d[0]<< std::endl;
-    std::cout << input->getDimensions().d[1] << std::endl;
-    std::cout << input->getDimensions().d[2] << std::endl;
-    std::cout << input->getDimensions().d[3] << std::endl;
-    std::cout << "okok" << std::endl;
-
     std::vector<int> shape =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
@@ -60,12 +52,11 @@ class ReshapeOpConverter : public OpConverter {
                  op_desc.Input("Shape").size() > 0) {
         real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
       } else {
-
-      // reshape_dim.nbDims = nbDims_num;
-      // for (int i = 0; i < nbDims_num; ++i) {
-      //   reshape_dim.d[i] = shape[i];
-      // }
-//std::cout << "哈哈哈" << std::endl;
+        // reshape_dim.nbDims = nbDims_num;
+        // for (int i = 0; i < nbDims_num; ++i) {
+        //   reshape_dim.d[i] = shape[i];
+        // }
+        // std::cout << "哈哈哈" << std::endl;
         std::vector<int> shape =
             BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
         auto* input_shape_tensor = Shape(input);
