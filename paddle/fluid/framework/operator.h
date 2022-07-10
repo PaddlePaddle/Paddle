@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -646,14 +646,6 @@ class OperatorWithKernel : public OperatorBase {
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
   void ChooseKernel(const ExecutionContext& ctx) const;
-  /**
-   * Transfer data place for phi kernel
-   * Is this really needed?
-   */
-  Scope* PreparePhiData(const Scope& scope,
-                        const phi::Kernel& pt_kernel,
-                        const phi::KernelSignature& pt_kernel_signature,
-                        RuntimeContext* ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
                              platform::DeviceContext* dev_ctx,

@@ -95,20 +95,18 @@ REGISTER_OPERATOR(fill_any_grad,
 
 REGISTER_OP_CPU_KERNEL(
     fill_any,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::float16>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FillAnyKernel<phi::CPUContext, float>,
+    ops::FillAnyKernel<phi::CPUContext, double>,
+    ops::FillAnyKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyKernel<phi::CPUContext, int>,
+    ops::FillAnyKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyKernel<phi::CPUContext, bool>);
 
 REGISTER_OP_CPU_KERNEL(
     fill_any_grad,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FillAnyGradKernel<phi::CPUContext, float>,
+    ops::FillAnyGradKernel<phi::CPUContext, double>,
+    ops::FillAnyGradKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyGradKernel<phi::CPUContext, int>,
+    ops::FillAnyGradKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyGradKernel<phi::CPUContext, bool>);

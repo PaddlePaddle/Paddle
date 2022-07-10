@@ -275,7 +275,6 @@ class TestTensorShapeBasic(unittest.TestCase):
         self.expected_slice_op_num = 0
 
     def _compute_op_num(self, program):
-        print(program)
         self.op_num = sum([len(block.ops) for block in program.blocks])
         self.shape_op_num = 0
         self.slice_op_num = 0

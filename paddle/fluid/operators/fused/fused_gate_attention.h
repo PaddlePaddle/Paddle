@@ -622,11 +622,10 @@ class FMHAGateRef {
                                   Tensor* q_transpose_out,
                                   Tensor* k_transpose_out,
                                   Tensor* v_transpose_out) {
-    int ndims = 5;
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, q_out, perm, q_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, k_out, perm, k_transpose_out);
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, v_out, perm, v_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, q_out, perm, q_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, k_out, perm, k_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, v_out, perm, v_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(const Tensor& q_transpose_out_grad,
@@ -635,48 +634,41 @@ class FMHAGateRef {
                                    Tensor* q_out_grad,
                                    Tensor* k_out_grad,
                                    Tensor* v_out_grad) {
-    int ndims = 5;
     std::vector<int> perm = {0, 1, 3, 2, 4};
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, q_transpose_out_grad, perm, q_out_grad);
+        dev_ctx_, q_transpose_out_grad, perm, q_out_grad);
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, k_transpose_out_grad, perm, k_out_grad);
+        dev_ctx_, k_transpose_out_grad, perm, k_out_grad);
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, v_transpose_out_grad, perm, v_out_grad);
+        dev_ctx_, v_transpose_out_grad, perm, v_out_grad);
   }
 
   // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
   //         [3, batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
   void ComputeQKVTransposeForward(const Tensor& qkv_out,
                                   Tensor* qkv_transpose_out) {
-    int ndims = 6;
     std::vector<int> perm = {3, 0, 1, 4, 2, 5};
-    TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, qkv_out, perm, qkv_transpose_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, qkv_out, perm, qkv_transpose_out);
   }
 
   void ComputeQKVTransposeBackward(const Tensor& qkv_transpose_out_grad,
                                    Tensor* qkv_out_grad) {
-    int ndims = 6;
     std::vector<int> perm = {1, 2, 4, 0, 3, 5};
     TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, qkv_transpose_out_grad, perm, qkv_out_grad);
+        dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
   }
 
   // [batch_size, seq_len_m, num_head, seq_len_r, c] ->
   //         [batch_size, seq_len_m, seq_len_r, num_head, c]
   void ComputeQKTVTransposeForward(const Tensor& qktv_out, Tensor* fmha_out) {
-    int ndims = 5;
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qktv_out, perm, fmha_out);
+    TransposeGPUKernelDriver<T>(dev_ctx_, qktv_out, perm, fmha_out);
   }
 
   void ComputeQKTVTransposeBackward(const Tensor& fmha_out_grad,
                                     Tensor* qktv_out_grad) {
-    int ndims = 5;
     std::vector<int> perm = {0, 1, 3, 2, 4};
-    TransposeGPUKernelDriver<T>(
-        dev_ctx_, ndims, fmha_out_grad, perm, qktv_out_grad);
+    TransposeGPUKernelDriver<T>(dev_ctx_, fmha_out_grad, perm, qktv_out_grad);
   }
 
   // qk_out = qk_out + nonbatched_bias + src_mask

@@ -51,7 +51,10 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
-static std::unordered_set<std::string> black_ops_list = {"run_program"};
+static std::unordered_set<std::string> black_ops_list = {"run_program",
+                                                         "fused_gate_attention",
+                                                         "fused_feedforward",
+                                                         "fused_attention"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -2972,7 +2975,10 @@ static std::string GenerateDygraphHFileIncludes() {
       "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
-      "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
+      "#include \"paddle/fluid/framework/op_registry.h\"\n"
+      "#include "
+      "\"paddle/fluid/eager/api/manual/fluid_manual/"
+      "dygraph_forward_api.h\"\n\n";
 
   dygraph_forward_api_includes_str +=
       "extern std::unordered_map<std::string, std::vector<std::string>> "
@@ -3021,7 +3027,10 @@ static void GenerateNodeHFile(const std::string& node_h_path,
       "#pragma once\n"
       "#include \"paddle/fluid/eager/tensor_wrapper.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
-      "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
+      "#include \"paddle/fluid/eager/grad_node_info.h\"\n"
+      "#include "
+      "\"paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h\"\n\n";
+
   std::ofstream node_h_stream(node_h_path, std::ios::out);
   node_h_stream << node_h_include_str;
   node_h_stream << grad_node_str;

@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
-#include <boost/logic/tribool.hpp>
 #include <unordered_set>
+#include "paddle/utils/tribool.h"
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -44,12 +44,12 @@ class MKLDNNInplacePassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -102,7 +102,7 @@ class MKLDNNInplacePassTest {
           "conv1",
           std::vector<std::string>({"a", "weights", "bias"}),
           std::vector<std::string>({"f"}),
-          boost::indeterminate);
+          paddle::indeterminate);
     SetOp(&prog,
           "relu",
           "relu1",

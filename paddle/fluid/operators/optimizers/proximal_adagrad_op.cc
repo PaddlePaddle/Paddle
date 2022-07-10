@@ -134,6 +134,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(proximal_adagrad,
                              ops::ProximalAdagradOp,
                              ops::ProximalAdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    proximal_adagrad,
-    ops::ProximalAdagradOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(proximal_adagrad,
+                       ops::ProximalAdagradOpKernel<phi::CPUContext, float>);

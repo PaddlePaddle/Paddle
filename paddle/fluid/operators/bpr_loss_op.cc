@@ -176,7 +176,7 @@ class BprLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
+using CPUCtx = phi::CPUContext;
 
 REGISTER_OPERATOR(bpr_loss,
                   ops::BprLossOp,

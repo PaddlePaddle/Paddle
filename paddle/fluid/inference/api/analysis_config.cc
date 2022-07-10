@@ -256,6 +256,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
+  // Mixed related.
+  CP_MEMBER(mixed_black_list_);
+
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
   CP_MEMBER(use_tensorrt_);
@@ -871,6 +874,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
 
+  for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1188,4 +1192,10 @@ bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
 bool AnalysisConfig::trt_allow_build_at_runtime() {
   return trt_allow_build_at_runtime_;
 }
+
+void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+    const std::unordered_set<std::string> &black_list) {
+  mixed_black_list_ = black_list;
+}
+
 }  // namespace paddle

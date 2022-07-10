@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 from quant_dequant_test import QuantDequantTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -54,7 +55,7 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -152,7 +153,7 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2
@@ -245,7 +246,7 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
                 cout = fluid.layers.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
             loss = fluid.layers.cross_entropy(input=result, label=label_shape)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             return avg_loss, result
 
         self.main_program.random_seed = 2

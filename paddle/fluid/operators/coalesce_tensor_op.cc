@@ -511,11 +511,10 @@ REGISTER_OPERATOR(coalesce_tensor,
                   paddle::operators::CoalesceTensorOpMaker);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(coalesce_tensor,
+                       ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
+                       ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
+                       ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
@@ -550,20 +549,18 @@ REGISTER_OP_XPU_KERNEL(
 #if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_NPU_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
+    ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
+    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
+    ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
 #endif
 
 #if defined(PADDLE_WITH_MLU)
 REGISTER_OP_MLU_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
+    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
+    ops::CoalesceTensorOpKernel<phi::CPUContext, float>);
 #endif
 
 REGISTER_OP_VERSION(coalesce_tensor)

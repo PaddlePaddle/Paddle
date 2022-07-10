@@ -1739,9 +1739,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
       phi::KernelContext pt_kernel_context;
-      // Do data transform before building KernelContext
-      // TODO(zhiqiu): support TransferInplaceVarsBack
-      PreparePhiData(exec_scope, *pt_kernel_, *kernel_signature_, runtime_ctx);
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
@@ -2121,15 +2118,15 @@ Scope* OperatorWithKernel::PrepareData(
     }
   }
 
-  for (auto& var_name_item : Inputs()) {
-    bool should_skip_input =
-        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
-
-    std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
-
-    for (size_t i = 0; i < var_name_item.second.size(); ++i) {
-      auto& var_name = var_name_item.second[i];
-      auto* var = input_vars[i];
+  const auto& name_map = Inputs();
+  auto prepare_input_data = [&](const std::string& in_name,
+                                std::vector<Variable*>* in_vars,
+                                const phi::TensorArgDef* in_def,
+                                bool should_skip_input) -> void {
+    auto& name_vec = name_map.at(in_name);
+    for (size_t i = 0; i < in_vars->size(); ++i) {
+      const auto& var_name = name_vec[i];
+      auto* var = in_vars->at(i);
 
       // Only tensor can be tranfer to another device.
       if (var == nullptr || !VarIsTensor(*var)) {
@@ -2160,17 +2157,17 @@ Scope* OperatorWithKernel::PrepareData(
             new_scope = &scope.NewScope();
           }
           auto* trans_var = new_scope->Var(var_name);
-          input_vars[i] = trans_var;
+          in_vars->at(i) = trans_var;
           auto out = trans_var->GetMutable<LoDTensor>();
           out->Resize(tensor_in->dims());
           platform::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::kNHWC);
           VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
                      "but kNHWC layout"
-                  << var_name_item.first << " in Operator " << type_;
+                  << in_name << " in Operator " << type_;
         } else {
-          VLOG(7) << "Skip scanning input " << var_name_item.first
-                  << " in Operator " << type_;
+          VLOG(7) << "Skip scanning input " << in_name << " in Operator "
+                  << type_;
         }
 #endif
         continue;
@@ -2180,15 +2177,46 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      auto kernel_type_for_var = GetKernelTypeForVar(
-          var_name_item.first, *tensor_in, expected_kernel_key);
+      auto kernel_type_for_var =
+          GetKernelTypeForVar(in_name, *tensor_in, expected_kernel_key);
+      bool need_trans_dtype =
+          kernel_type_for_var.data_type_ != expected_kernel_key.data_type_;
+      bool need_trans_layout = NeedTransformLayout(
+          kernel_type_for_var.data_layout_, expected_kernel_key.data_layout_);
+      if (!need_trans_dtype && !need_trans_layout) {
+        if (!run_phi_kernel_ &&
+            platform::places_are_same_class(kernel_type_for_var.place_,
+                                            expected_kernel_key.place_)) {
+          continue;
+        }
+      }
 
-      if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-        continue;
+      std::unique_ptr<OpKernelType> new_expected_kernel_key = nullptr;
+      if (run_phi_kernel_ && in_def->backend != phi::Backend::ALL_BACKEND) {
+        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+        if ((in_def->backend != tensor_backend &&
+             (in_def->backend != phi::Backend::GPUDNN ||
+              tensor_backend != phi::Backend::GPU)) ||
+            tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+          new_expected_kernel_key = std::make_unique<OpKernelType>(
+              expected_kernel_key.data_type_,
+              phi::TransToPhiPlace(in_def->backend),
+              expected_kernel_key.data_layout_,
+              expected_kernel_key.library_type_,
+              expected_kernel_key.customized_type_value_);
+        }
+      }
+
+      if (!need_trans_dtype && !need_trans_layout) {
+        if (run_phi_kernel_ && new_expected_kernel_key == nullptr) {
+          continue;
+        }
       }
 
       VLOG(3) << "Transform Variable " << var_name << " from "
-              << kernel_type_for_var << " to " << expected_kernel_key;
+              << kernel_type_for_var << " to "
+              << (new_expected_kernel_key ? *new_expected_kernel_key
+                                          : expected_kernel_key);
 
       // In the inference scenerio, the scopes will be reused across the
       // batches, so the `new_scope` here will result in GPU memroy explosion
@@ -2208,13 +2236,22 @@ Scope* OperatorWithKernel::PrepareData(
       // not do transfer scope caching, and cpu inference performance is not
       // impacted by test.
       enable_cache_transfer_scope_ = false;
-      if (!run_by_executor_ &&
-          (platform::is_gpu_place(kernel_type_for_var.place_) ||
-           platform::is_gpu_place(expected_kernel_key.place_))) {
-        new_scope = TryCreateTransferScope(
-            kernel_type_for_var, expected_kernel_key, &scope);
-        enable_cache_transfer_scope_ = true;
+      if (!run_by_executor_) {
+        if (new_expected_kernel_key) {
+          if ((platform::is_gpu_place(kernel_type_for_var.place_) ||
+               platform::is_gpu_place(new_expected_kernel_key->place_))) {
+            new_scope = TryCreateTransferScope(
+                kernel_type_for_var, *new_expected_kernel_key, &scope);
+            enable_cache_transfer_scope_ = true;
+          }
+        } else if ((platform::is_gpu_place(kernel_type_for_var.place_) ||
+                    platform::is_gpu_place(expected_kernel_key.place_))) {
+          new_scope = TryCreateTransferScope(
+              kernel_type_for_var, expected_kernel_key, &scope);
+          enable_cache_transfer_scope_ = true;
+        }
       }
+
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
@@ -2231,7 +2268,7 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Create new var with the same name in transfer scopes
       auto* trans_var = new_scope->Var(var_name);
-      input_vars[i] = trans_var;
+      in_vars->at(i) = trans_var;
 
       // Find if inplace exists between input and output
       // If inplace exists, set the new created var to inplaced output, and
@@ -2239,7 +2276,7 @@ Scope* OperatorWithKernel::PrepareData(
       for (auto& pair : Outputs()) {
         for (size_t j = 0; j < pair.second.size(); ++j) {
           if (pair.second[j] == var_name) {
-            VLOG(4) << "Found inplace between input(" << var_name_item.first
+            VLOG(4) << "Found inplace between input(" << in_name
                     << ") and output(" << pair.first
                     << "), the variable name is " << var_name;
             ctx->outputs[pair.first][j] = trans_var;
@@ -2250,8 +2287,46 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Do transfer
       Tensor out;
-      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      TransformData(new_expected_kernel_key ? *new_expected_kernel_key
+                                            : expected_kernel_key,
+                    kernel_type_for_var,
+                    *tensor_in,
+                    &out);
       SetTensorToVariable(*var, out, trans_var);
+    }
+  };
+
+  if (run_phi_kernel_) {
+    const auto& input_names = kernel_signature_->input_names;
+    const auto& input_defs = pt_kernel_->args_def().input_defs();
+    PADDLE_ENFORCE_EQ(input_names.size(),
+                      input_defs.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of inputs_args names (%d) must be equal to "
+                          "the size of kernel input_defs (%d).",
+                          input_names.size(),
+                          input_defs.size()));
+    for (size_t i = 0; i < input_defs.size(); ++i) {
+      const auto& input_defs = pt_kernel_->args_def().input_defs();
+      auto& in_def = input_defs.at(i);
+      std::string input_name = input_names[i];
+      auto iter = ctx->inputs.find(input_name);
+      if (iter == ctx->inputs.end()) {
+        continue;
+      }
+      auto& ins_vector = iter->second;
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(input_name) > 0;
+      prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
+    }
+  } else {
+    for (auto& var_name_item : Inputs()) {
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
+
+      std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+      prepare_input_data(
+          var_name_item.first, &input_vars, nullptr, should_skip_input);
     }
   }
 
@@ -2493,107 +2568,6 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     }
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
-}
-
-Scope* OperatorWithKernel::PreparePhiData(
-    const Scope& scope,
-    const phi::Kernel& pt_kernel,
-    const phi::KernelSignature& pt_kernel_signature,
-    RuntimeContext* ctx) const {
-  const auto& input_names = pt_kernel_signature.input_names;
-  auto input_defs = pt_kernel.args_def().input_defs();
-  PADDLE_ENFORCE_EQ(input_names.size(),
-                    input_defs.size(),
-                    platform::errors::InvalidArgument(
-                        "The size of inputs_args names (%d) must be equal to "
-                        "the size of kernel input_defs (%d).",
-                        input_names.size(),
-                        input_defs.size()));
-  Scope* new_scope = nullptr;
-  auto& name_map = Inputs();
-  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
-  if (info_) {
-    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
-    // Some op may not register NoNeedBufferVarsInferer
-    if (no_buffer_inferer) {
-      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
-      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
-    }
-  }
-
-  for (size_t i = 0; i < input_defs.size(); ++i) {
-    auto& in_def = input_defs.at(i);
-    if (ctx->inputs.find(input_names[i]) == ctx->inputs.end()) {
-      continue;
-    }
-    auto& ins_vector = ctx->inputs.at(input_names[i]);
-    auto& name_vec = name_map.at(input_names[i]);
-    bool should_skip_input =
-        no_buffer_ins && no_buffer_ins->count(input_names[i]) > 0;
-
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-      // Only tensor can be tranfer to another device.
-      auto* var = ins_vector[offset];
-      if (var == nullptr || !VarIsTensor(*var)) {
-        continue;
-      }
-      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-
-      // When no_buffer_ins then checking of Tensor::holder_ is
-      // not a thread safe. And for infershape scenario checks
-      // to be omitted are not really needed
-      if (should_skip_input == true) {
-        // TODO(YuanRisheng) : There need to supplement MKLDNN code later
-        continue;
-      }
-
-      if (!tensor_in->IsInitialized()) {
-        continue;
-      }
-
-      if (in_def.backend == phi::Backend::ALL_BACKEND) {
-        continue;
-      }
-
-      auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
-      if (in_def.backend == tensor_backend ||
-          (in_def.backend == phi::Backend::GPUDNN &&
-           tensor_backend == phi::Backend::GPU)) {
-        continue;
-      }
-
-      auto expected_place = phi::TransToPhiPlace(in_def.backend);
-      VLOG(3) << "phi Transform Variable " << input_names[i] << " from "
-              << tensor_in->place() << " to " << expected_place;
-
-      if (!new_scope) {
-        new_scope = &scope.NewScope();
-      }
-      // For inference, if a gpu model has an op which could only run on CPU,
-      // each result of different input will be the same with the first one.
-      // The reason is that if a gpu tensor is the input of a cpu kernel,
-      // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
-      // to trigger `new RuntimeContext()` in RunImpl().
-      if (enable_cache_runtime_context_) {
-        pre_scope_ = nullptr;
-      }
-
-      // Create new var with the same name in transfer scopes
-      auto* trans_var = new_scope->Var(name_vec[offset]);
-      ins_vector[offset] = trans_var;
-
-      // Do transfer
-      Tensor out;
-      framework::TensorCopySync(*tensor_in, expected_place, &out);
-      SetTensorToVariable(*var, out, trans_var);
-
-      need_prepare_phi_data_ = true;
-    }
-  }
-
-  return new_scope;
 }
 
 void OperatorWithKernel::BuildPhiKernelContext(

@@ -3306,9 +3306,10 @@ function check_coverage_build() {
 
     rm -f build_size
     curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
-    curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
+    #curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/coverage_build_size
+    #pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
     dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-    pr_coverage_build_size=`cat coverage_build_size|sed 's#G##g'`
+    pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
 
@@ -3340,7 +3341,6 @@ function main() {
         build_pr_and_develop
         ;;
       build_dev_test)
-        #build_develop
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         get_build_time_file
         ;;
@@ -3455,6 +3455,7 @@ function main() {
         check_diff_file_for_coverage
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
+        check_coverage_build
         ;;
       gpu_cicheck_coverage)
         parallel_test
@@ -3529,8 +3530,9 @@ function main() {
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        
-        #parallel_test
+        ;;
+      test_cicheck_py37)
+        run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cpu_cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
