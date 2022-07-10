@@ -1,69 +1,69 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
+// #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+// #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+// namespace paddle {
+// namespace inference {
+// namespace tensorrt {
 
-class FusedTokenPruneOpConverter : public OpConverter {
- public:
-  void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    framework::OpDesc op_desc(op, nullptr);
-    nvinfer1::ILayer* layer = nullptr;
+// class FusedTokenPruneOpConverter : public OpConverter {
+//  public:
+//   void operator()(const framework::proto::OpDesc& op,
+//                   const framework::Scope& scope, bool test_mode) override {
+//     framework::OpDesc op_desc(op, nullptr);
+//     nvinfer1::ILayer* layer = nullptr;
 
-    auto* Attn = engine_->GetITensor(op_desc.Input("Attn").front());
-    auto* X = engine_->GetITensor(op_desc.Input("X").front());
-    auto* Mask = engine_->GetITensor(op_desc.Input("Mask").front());
-    auto* NewMask = engine_->GetITensor(op_desc.Input("NewMask").front());
+//     auto* Attn = engine_->GetITensor(op_desc.Input("Attn").front());
+//     auto* X = engine_->GetITensor(op_desc.Input("X").front());
+//     auto* Mask = engine_->GetITensor(op_desc.Input("Mask").front());
+//     auto* NewMask = engine_->GetITensor(op_desc.Input("NewMask").front());
 
-    std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
+//     std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
 
-    auto output_name = op_desc.Output("SlimmedX")[0];
-    if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+//     auto output_name = op_desc.Output("SlimmedX")[0];
+//     if (engine_->with_dynamic_shape()) {
+// #if IS_TRT_VERSION_GE(6000)
+//       bool with_fp16 =
+//           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-      if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
-        with_fp16 = true;
-      }
-      plugin::FusedTokenPrunePluginDynamic* plugin =
-          new plugin::FusedTokenPrunePluginDynamic(with_fp16);
-      layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
-    } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the Ernie(Bert) model in static shape mode, which "
-          "is not supported for the time being.\n"
-          "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
-          "the shape information to run the dynamic shape mode."));
-    }
-    RreplenishLayerAndOutput(layer, "fused_token_prune", {output_name},
-                             test_mode);
-  }
-};
+//       if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+//         with_fp16 = true;
+//       }
+//       plugin::FusedTokenPrunePluginDynamic* plugin =
+//           new plugin::FusedTokenPrunePluginDynamic(with_fp16);
+//       layer = engine_->AddDynamicPlugin(itensors.data(), 4, plugin);
+// #else
+//       PADDLE_THROW(platform::errors::Fatal(
+//           "You are running the TRT Dynamic Shape mode, need to confirm that "
+//           "your TRT version is no less than 6.0"));
+// #endif
+//     } else {
+//       PADDLE_THROW(platform::errors::Fatal(
+//           "You are running the Ernie(Bert) model in static shape mode, which "
+//           "is not supported for the time being.\n"
+//           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
+//           "the shape information to run the dynamic shape mode."));
+//     }
+//     RreplenishLayerAndOutput(layer, "fused_token_prune", {output_name},
+//                              test_mode);
+//   }
+// };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+// }  // namespace tensorrt
+// }  // namespace inference
+// }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(fused_token_prune, FusedTokenPruneOpConverter);
+// REGISTER_TRT_OP_CONVERTER(fused_token_prune, FusedTokenPruneOpConverter);
