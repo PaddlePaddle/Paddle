@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.nn.functional as F
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,30 +32,36 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
-    # popart unsupport fp16 cumsum
-    @property
-    def fp16_enabled(self):
-        return False
-
     def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16)}
+        x = np.random.uniform(size=[3, 4, 2, 2])
+        target = np.random.uniform(size=[3, 4, 2, 2])
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "target": target.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "target": target.astype(np.float16)
+        }
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {}
+        self.attrs = {
+            'reduction': 'mean',
+        }
 
     @IPUOpTest.static_graph
-    def build_model(self):
+    def build_model(self, on_ipu):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+        target = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='float32')
+        out = F.binary_cross_entropy(x, target, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -63,7 +70,7 @@ class TestBase(IPUOpTest):
     def test(self):
         for m in IPUOpTest.ExecutionMode:
             if not self.skip_mode(m):
-                self.build_model()
+                self.build_model(self.is_ipu_mode(m))
                 self.run_model(m)
         self.check()
 
@@ -71,49 +78,23 @@ class TestBase(IPUOpTest):
 class TestCase1(TestBase):
 
     def set_op_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": False}
+        self.attrs = {
+            'reduction': 'sum',
+        }
 
 
 class TestCase2(TestBase):
 
     def set_op_attrs(self):
-        self.attrs = {"exclusive": False, "reverse": True}
+        self.attrs = {
+            'reduction': 'none',
+        }
 
-
-class TestCase3(TestBase):
-
-    def set_op_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": True}
-
-
-class TestCase4(TestBase):
-
-    def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.int32)}
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="int32")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
-        self.fetch_list = [out.name]
-
-
-class TestCase5(TestBase):
-
-    def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.int64)}
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="int64")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
-        self.fetch_list = [out.name]
+    def set_atol(self):
+        self.atol = 1e-10
+        self.rtol = 1e-6
+        self.atol_fp16 = 5e-2
+        self.rtol_fp16 = 2e-2
 
 
 if __name__ == "__main__":

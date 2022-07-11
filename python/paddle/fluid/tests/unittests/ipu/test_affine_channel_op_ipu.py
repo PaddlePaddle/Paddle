@@ -31,30 +31,35 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
-    # popart unsupport fp16 cumsum
     @property
     def fp16_enabled(self):
         return False
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16)}
+        data = np.random.uniform(size=[1, 3, 32, 32])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
+        self.attrs['data_layout'] = 'NCHW'
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="float32")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+        data = paddle.static.data(name=self.feed_list[0],
+                                  shape=self.feed_shape[0],
+                                  dtype='float32')
+        input_scale = paddle.fluid.layers.create_parameter(
+            shape=[self.feed_shape[0][1]], dtype="float32")
+        input_bias = paddle.fluid.layers.create_parameter(
+            shape=[self.feed_shape[0][1]], dtype="float32")
+        out = paddle.fluid.layers.affine_channel(data,
+                                                 scale=input_scale,
+                                                 bias=input_bias)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -70,50 +75,23 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
-    def set_op_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": False}
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 4, 64, 64])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
 
 
-class TestCase2(TestBase):
-
-    def set_op_attrs(self):
-        self.attrs = {"exclusive": False, "reverse": True}
-
-
-class TestCase3(TestBase):
+@unittest.skip("Only support NCHW")
+class TestNHWC(TestBase):
 
     def set_op_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": True}
-
-
-class TestCase4(TestBase):
+        self.attrs = {}
+        self.attrs['data_layout'] = 'NHWC'
 
     def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.int32)}
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="int32")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
-        self.fetch_list = [out.name]
-
-
-class TestCase5(TestBase):
-
-    def set_data_feed(self):
-        x = np.random.uniform(size=[1, 128])
-        self.feed_fp32 = {"x": x.astype(np.int64)}
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="int64")
-        out = paddle.fluid.layers.cumsum(x, **self.attrs)
-        self.fetch_list = [out.name]
+        data = np.random.uniform(size=[2, 64, 64, 3])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
 
 
 if __name__ == "__main__":
