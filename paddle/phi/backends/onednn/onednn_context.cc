@@ -15,6 +15,7 @@
 #include "paddle/phi/backends/onednn/onednn_context.h"
 
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/device_context.h"
