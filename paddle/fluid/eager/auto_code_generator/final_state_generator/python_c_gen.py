@@ -158,15 +158,15 @@ static PyMethodDef EagerFinalStateMethods[] = {{
     {}
 }};
 
-void BindFinalStateEagerOpFunctions(pybind11::module *module) {
-  if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {
+void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
+  if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
     PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
-  }
+  }}
 
-  if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {
+  if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
     PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
-  }
-}
+  }}
+}}
 
 }} // namespace pybind
 }} // namespace paddle
