@@ -14,7 +14,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_context.h"
 
-#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/place.h"
 
 #include "paddle/fluid/framework/expect.h"
@@ -22,7 +21,7 @@
 
 namespace phi {
 
-MKLDNNContextThreadLocals::Body::Body()
+OneDNNContextThreadLocals::Body::Body()
     : cur_engine(dnnl::engine::kind::cpu, 0), cur_stream(cur_engine) {
   cur_mkldnn_session_id = kMKLDNNSessionID_Default;
   cur_input_shape_str = "";
@@ -37,40 +36,40 @@ MKLDNNContextThreadLocals::Body::Body()
 // and other is to start inference
 // TODO(jczaja): Ideally it would be good to clear only part of cache
 // related to thread that is to be terminated
-MKLDNNContextThreadLocals::Body::~Body() {
+OneDNNContextThreadLocals::Body::~Body() {
   auto cpu_place = phi::CPUPlace();
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  MKLDNNContext* dev_ctx = static_cast<MKLDNNContext*>(pool.Get(cpu_place));
+  OneDNNContext* dev_ctx = static_cast<OneDNNContext*>(pool.Get(cpu_place));
   dev_ctx->ResetBlobMap(exec_ptr_);
 }
 
-void MKLDNNContextThreadLocals::Body::set_cur_mkldnn_session_id(size_t sid) {
+void OneDNNContextThreadLocals::Body::set_cur_mkldnn_session_id(size_t sid) {
   cur_mkldnn_session_id = sid;
 }
-size_t MKLDNNContextThreadLocals::Body::get_cur_mkldnn_session_id(void) {
+size_t OneDNNContextThreadLocals::Body::get_cur_mkldnn_session_id(void) {
   return cur_mkldnn_session_id;
 }
 
-void MKLDNNContextThreadLocals::Body::set_cur_input_shape_str(
+void OneDNNContextThreadLocals::Body::set_cur_input_shape_str(
     std::string input_shape_str) {
   cur_input_shape_str = input_shape_str;
 }
-void MKLDNNContextThreadLocals::Body::set_cur_input_shape_cache_capacity(
+void OneDNNContextThreadLocals::Body::set_cur_input_shape_cache_capacity(
     int input_shape_cache_capacity) {
   cur_input_shape_cache_capacity = input_shape_cache_capacity;
 }
 
-void MKLDNNContextThreadLocals::Body::set_cur_paddle_data_layout(
+void OneDNNContextThreadLocals::Body::set_cur_paddle_data_layout(
     DataLayout dl) {
   cur_paddle_data_layout = dl;
 }
 
-DataLayout MKLDNNContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
+DataLayout OneDNNContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNContextThreadLocals::Body::log_lib_version(void) {
+void OneDNNContextThreadLocals::Body::log_lib_version(void) {
   if (!said_once) {
     said_once = true;
     auto dv = dnnl::version();
@@ -79,7 +78,7 @@ void MKLDNNContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
-struct MKLDNNContext::Impl {
+struct OneDNNContext::Impl {
   Impl() : p_blobmap_() {
     p_blobmap_.reset(new BlobMap());
     p_exec_items_.reset(new ExecShape());
@@ -89,7 +88,7 @@ struct MKLDNNContext::Impl {
   ~Impl() {}
 
   void ResetBlobMap(void* ptr) {
-    VLOG(4) << MKLDNNContext::tls().get_curr_exec() << " " << ptr;
+    VLOG(4) << OneDNNContext::tls().get_curr_exec() << " " << ptr;
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
     if (block_next_cache_clearing_ == 0) {
       VLOG(3) << "Clearing DNNL cache.";
@@ -111,7 +110,7 @@ struct MKLDNNContext::Impl {
       }
       // Reset paddle layout to NCHW
       VLOG(3) << "Resetting Paddle data layout to NCHW.";
-      MKLDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNCHW);
+      OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNCHW);
     } else {
       --block_next_cache_clearing_;
       VLOG(3) << "Prevented Clearing DNNL cache. Updated "
@@ -134,15 +133,15 @@ struct MKLDNNContext::Impl {
     // and for this executor's items add the one defined with arguments
     auto key_it =
         p_exec_items_
-            ->insert(std::make_pair(MKLDNNContext::tls().cur_input_shape_str,
+            ->insert(std::make_pair(OneDNNContext::tls().cur_input_shape_str,
                                     std::make_shared<ExecMap>()))
             .first;
-    (*key_it->second)[MKLDNNContext::tls().get_curr_exec()].push_back(
+    (*key_it->second)[OneDNNContext::tls().get_curr_exec()].push_back(
         std::make_pair(pblob, it));
 
     VLOG(3) << "LinkEntryWithExecutor, shapes: " << p_exec_items_->size()
             << " curr exec size: "
-            << (*key_it->second)[MKLDNNContext::tls().get_curr_exec()].size()
+            << (*key_it->second)[OneDNNContext::tls().get_curr_exec()].size()
             << "\n";
   }
 
@@ -161,11 +160,11 @@ struct MKLDNNContext::Impl {
   size_t GetShapeBlobSize() const {
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
     BlobMap* pMap = p_blobmap_.get();
-    auto map_it = pMap->find(MKLDNNContext::tls().cur_mkldnn_session_id);
+    auto map_it = pMap->find(OneDNNContext::tls().cur_mkldnn_session_id);
     if (map_it == pMap->end()) {
       PADDLE_THROW(phi::errors::NotFound(
-          "MKLDNNContext don't find cur_mkldnn_session_id: %d.",
-          MKLDNNContext::tls().cur_mkldnn_session_id));
+          "OneDNNContext don't find cur_mkldnn_session_id: %d.",
+          OneDNNContext::tls().cur_mkldnn_session_id));
     }
     return map_it->second->size();
   }
@@ -175,7 +174,7 @@ struct MKLDNNContext::Impl {
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = MKLDNNContext::tls().get_cur_mkldnn_session_id();
+    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
@@ -192,24 +191,24 @@ struct MKLDNNContext::Impl {
     }
 
     // Find KeyBlob for current input shape
-    auto key_it = sBlob->find(MKLDNNContext::tls().cur_input_shape_str);
+    auto key_it = sBlob->find(OneDNNContext::tls().cur_input_shape_str);
 
     if (key_it == sBlob->end()) {
       // In cache clearing mode, cur_input_shape_cache_capacity defines
       // max pblob capacity
       if ((static_cast<size_t>(sid) ==
-           MKLDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing) &&
+           OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing) &&
           sBlob->size() &&
           (sBlob->size() >=
            static_cast<size_t>(
-               MKLDNNContext::tls().cur_input_shape_cache_capacity))) {
+               OneDNNContext::tls().cur_input_shape_cache_capacity))) {
         VLOG(2) << "sid=" << sid
                 << ", remove all blobs of shape: " << sBlob->begin()->first;
         sBlob->erase(sBlob->begin()->first);
         RemoveShapeEntriesWithExecutor();
       }
       pBlob = std::make_shared<KeyBlob>();
-      (*sBlob)[MKLDNNContext::tls().cur_input_shape_str] = pBlob;
+      (*sBlob)[OneDNNContext::tls().cur_input_shape_str] = pBlob;
     } else {
       pBlob = key_it->second;
     }
@@ -240,12 +239,12 @@ struct MKLDNNContext::Impl {
     return num_entries;
   }
 
-  MKLDNNContext::BlobPtr_t<void> GetBlob(const std::string& name) const {
+  OneDNNContext::BlobPtr_t<void> GetBlob(const std::string& name) const {
     BlobMap* pMap = p_blobmap_.get();
     BlobPtr_t<ShapeBlob> sBlob = nullptr;
     BlobPtr_t<KeyBlob> pBlob = nullptr;
 
-    int sid = MKLDNNContext::tls().get_cur_mkldnn_session_id();
+    int sid = OneDNNContext::tls().get_cur_mkldnn_session_id();
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
@@ -261,9 +260,9 @@ struct MKLDNNContext::Impl {
     sBlob = map_it->second;
 
     // Find KeyBlob for current input shape secondly
-    auto sBlob_it = sBlob->find(MKLDNNContext::tls().cur_input_shape_str);
+    auto sBlob_it = sBlob->find(OneDNNContext::tls().cur_input_shape_str);
     if (unlikely(sBlob_it == sBlob->end())) {
-      VLOG(2) << "GetBlob: sid=" << MKLDNNContext::tls().cur_input_shape_str
+      VLOG(2) << "GetBlob: sid=" << OneDNNContext::tls().cur_input_shape_str
               << ", miss input_shape_str\n";
       return nullptr;
     }
@@ -291,31 +290,31 @@ struct MKLDNNContext::Impl {
   unsigned int block_next_cache_clearing_ = 0;
 };
 
-MKLDNNContext::MKLDNNContext(const Place& place)
+OneDNNContext::OneDNNContext(const Place& place)
     : CPUContext(place), impl_(std::make_unique<Impl>()) {}
 
-MKLDNNContext::~MKLDNNContext() = default;
+OneDNNContext::~OneDNNContext() = default;
 
-void MKLDNNContext::ResetBlobMap(void* ptr) { impl_->ResetBlobMap(ptr); }
+void OneDNNContext::ResetBlobMap(void* ptr) { impl_->ResetBlobMap(ptr); }
 
-void MKLDNNContext::BlockNextCacheClearing() {
+void OneDNNContext::BlockNextCacheClearing() {
   impl_->BlockNextCacheClearing();
 }
 
-size_t MKLDNNContext::GetShapeBlobSize() const {
+size_t OneDNNContext::GetShapeBlobSize() const {
   return impl_->GetShapeBlobSize();
 }
 
-void MKLDNNContext::SetBlob(const std::string& name,
+void OneDNNContext::SetBlob(const std::string& name,
                             BlobPtr_t<void> data) const {
   impl_->SetBlob(name, data);
 }
 
-unsigned int MKLDNNContext::GetCachedObjectsNumber(void) const {
+unsigned int OneDNNContext::GetCachedObjectsNumber(void) const {
   return impl_->GetCachedObjectsNumber();
 }
 
-MKLDNNContext::BlobPtr_t<void> MKLDNNContext::GetBlob(
+OneDNNContext::BlobPtr_t<void> OneDNNContext::GetBlob(
     const std::string& name) const {
   return impl_->GetBlob(name);
 }

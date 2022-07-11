@@ -717,8 +717,8 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDeviceContextThreadLocals = phi::MKLDNNContextThreadLocals;
-using MKLDNNDeviceContext = phi::MKLDNNContext;
+using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
+using MKLDNNDeviceContext = phi::OneDNNContext;
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

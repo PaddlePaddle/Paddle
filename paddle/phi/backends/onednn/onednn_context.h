@@ -23,10 +23,10 @@ limitations under the License. */
 
 namespace phi {
 
-class MKLDNNContextThreadLocals {
+class OneDNNContextThreadLocals {
   // default mkldnn session id
 
-  typedef MKLDNNContextThreadLocals self;
+  typedef OneDNNContextThreadLocals self;
   struct Body {
     bool said_once = false;
     size_t cur_mkldnn_session_id;
@@ -65,8 +65,8 @@ class MKLDNNContextThreadLocals {
     void set_curr_exec(void* exec_ptr) { exec_ptr_ = exec_ptr; }
     void* get_curr_exec(void) const { return exec_ptr_; }
   };
-  MKLDNNContextThreadLocals() = default;
-  MKLDNNContextThreadLocals(const MKLDNNContextThreadLocals& c) = delete;
+  OneDNNContextThreadLocals() = default;
+  OneDNNContextThreadLocals(const OneDNNContextThreadLocals& c) = delete;
 
  public:
   // default mkldnn session id
@@ -79,7 +79,7 @@ class MKLDNNContextThreadLocals {
   }
 };
 
-class MKLDNNContext : public CPUContext {
+class OneDNNContext : public CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
@@ -107,8 +107,8 @@ class MKLDNNContext : public CPUContext {
       std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
   using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
 
-  explicit MKLDNNContext(const Place& place);
-  ~MKLDNNContext();
+  explicit OneDNNContext(const Place& place);
+  ~OneDNNContext();
   /* \brief  Get the active engine */
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
@@ -130,8 +130,8 @@ class MKLDNNContext : public CPUContext {
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
 
-  static auto tls() -> decltype(MKLDNNContextThreadLocals::fetch()) {
-    return MKLDNNContextThreadLocals::fetch();
+  static auto tls() -> decltype(OneDNNContextThreadLocals::fetch()) {
+    return OneDNNContextThreadLocals::fetch();
   }
 
  private:

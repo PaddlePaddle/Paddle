@@ -259,7 +259,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(MKLDNNContext);
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(OneDNNContext);
 #endif
   /* Input Helpers */
 

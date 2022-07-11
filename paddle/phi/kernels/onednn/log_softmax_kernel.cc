@@ -54,7 +54,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
   auto logsoftmax_p = handler.AcquireForwardPrimitive();
 
-  auto& astream = MKLDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   logsoftmax_p->execute(
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
