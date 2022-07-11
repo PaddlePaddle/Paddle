@@ -144,6 +144,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/pybind/eager_final_state_custom_python_api.h"
