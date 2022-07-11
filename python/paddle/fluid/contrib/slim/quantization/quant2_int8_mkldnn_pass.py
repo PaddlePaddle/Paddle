@@ -158,7 +158,7 @@ class Quant2Int8MkldnnPass(object):
                 is_quantized_op = True
                 for var_node in op_node.inputs:
                     for front_op_node in var_node.inputs:
-                        if "quantize_dequantize" not in front_op_node.name():
+                        if "quantize" not in front_op_node.name():
                             is_quantized_op = False
                 if not is_quantized_op:
                     op_node.op()._set_attr("skip_quant", True)
@@ -432,14 +432,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_transpose_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_concat_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_leaky_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_swish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_hard_swish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_mish_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_hard_sigmoid_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_activation_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
@@ -669,4 +662,5 @@ class Quant2Int8MkldnnPass(object):
              self._get_data_layout(graph)])
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
         graph = self._apply_pass(graph, 'int8_scale_calculation_mkldnn_pass')
+        graph = self._apply_pass(graph, 'params_quantization_mkldnn_pass')
         return graph

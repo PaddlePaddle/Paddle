@@ -162,6 +162,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 kwargs = dict(kwargs)
                 kwargs.pop('clip_after_allreduce', None)
                 kwargs.pop('alignment', None)
+                kwargs.pop('use_master_acc_grad', None)
                 base_clip = grad_clip if grad_clip is not None else IdentityGradClip(
                 )
                 kwargs['grad_clip'] = GradClipDecorator(base_clip,
@@ -271,6 +272,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
             distutils.util.strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True')))
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
         gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
+        use_master_acc_grad = bool(int(os.getenv('USE_MASTER_ACC_GRAD', '1')))
         print('clip_after_allreduce = {}, max_global_norm = {}'.format(
             clip_after_allreduce, max_global_norm))
         return {
@@ -281,9 +283,14 @@ class TestDistributedFusedLamb(unittest.TestCase):
             'grad_clip':
             paddle.nn.ClipGradByGlobalNorm(max_global_norm)
             if max_global_norm > 0 else None,
+            'use_master_acc_grad':
+            use_master_acc_grad,
         }
 
-    def run_main(self, use_fp16, use_master_param_norm=True):
+    def run_main(self,
+                 use_fp16,
+                 use_master_param_norm=True,
+                 use_master_acc_grad=True):
         if not paddle.is_compiled_with_cuda():
             return
 
@@ -308,7 +315,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         if use_fp16:
             atol = 8e-4 if use_master_param_norm else 1e-3
         else:
-            atol = 1e-7
+            atol = 1.5e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
             msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(

@@ -59,14 +59,14 @@ function(copy TARGET)
         POST_BUILD
         COMMAND ${PYTHON_EXECUTABLE} ${COPY_SCRIPT_DIR}/copyfile.py
                 ${native_src} ${native_dst})
-    else(WIN32) #not windows
+    else() #not windows
       add_custom_command(
         TARGET ${TARGET}
         POST_BUILD
         COMMAND mkdir -p "${dst}"
         COMMAND cp -r "${src}" "${dst}"
         COMMENT "copying ${src} -> ${dst}")
-    endif(WIN32) # not windows
+    endif() # not windows
   endforeach()
 endfunction()
 
@@ -106,6 +106,14 @@ function(copy_part_of_thrid_party TARGET DST)
       copy(
         ${TARGET}
         SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+        DSTS ${dst_dir} ${dst_dir})
+    endif()
+
+    if(WITH_SPARSELT)
+      set(dst_dir "${DST}/third_party/install/cusparselt")
+      copy(
+        ${TARGET}
+        SRCS ${CUSPARSELT_INC_DIR} ${CUSPARSELT_LIB_DIR}
         DSTS ${dst_dir} ${dst_dir})
     endif()
   endif()
@@ -257,7 +265,7 @@ if(WIN32)
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-else(WIN32)
+else()
   set(paddle_inference_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_inference.*)
   copy(
@@ -265,7 +273,7 @@ else(WIN32)
     SRCS ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-endif(WIN32)
+endif()
 
 copy(
   inference_lib_dist
@@ -342,11 +350,11 @@ set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
   set(paddle_inference_c_lib
       $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c.*)
-else(WIN32)
+else()
   set(paddle_inference_c_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
   )
-endif(WIN32)
+endif()
 
 copy(
   inference_lib_dist
@@ -428,7 +436,7 @@ set(module "platform")
 set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
-endif(WITH_GPU)
+endif()
 
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(

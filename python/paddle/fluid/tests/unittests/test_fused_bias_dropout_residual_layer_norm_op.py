@@ -26,7 +26,9 @@ from paddle import tensor
 from paddle.fluid import layers
 import unittest
 from op_test import OpTest
-from paddle.fluid.framework import default_main_program
+from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
+
+_enable_legacy_dygraph()
 
 default_main_program().random_seed = 42
 

@@ -27,6 +27,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle import _C_ops
 
 import sys
+import tempfile
 
 sys.path.append("./tokenizer")
 from tokenizer.bert_tokenizer import BertTokenizer
@@ -157,10 +158,14 @@ class Predictor(object):
 class TestBertTokenizerOp(unittest.TestCase):
 
     def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
         self.bert_tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
-        self.save_path = os.path.join(DATA_HOME, "fast_tokenizer")
+        self.save_path = os.path.join(self.temp_dir.name, "fast_tokenizer")
         self.param_path = os.path.join(self.save_path, "model.pdparams")
         self.inference_path = os.path.join(self.save_path, "inference")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def init_data(self):
         self.faster_tokenizer = FasterTokenizer(self.bert_tokenizer.vocab)

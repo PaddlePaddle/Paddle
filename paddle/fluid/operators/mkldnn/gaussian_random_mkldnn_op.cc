@@ -56,5 +56,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(gaussian_random, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(gaussian_random,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::GaussianMKLDNNKernel<float>);

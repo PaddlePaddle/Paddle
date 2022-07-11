@@ -62,7 +62,7 @@ def simple_depthwise_net(use_feed):
         hidden = fluid.layers.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -91,7 +91,7 @@ class TestMNIST(TestParallelExecutorBase):
         if only_forward:
             _optimizer = None
 
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,
@@ -101,7 +101,7 @@ class TestMNIST(TestParallelExecutorBase):
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
             optimizer=_optimizer)
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,

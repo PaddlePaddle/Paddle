@@ -84,8 +84,10 @@ struct IsMatchedBaseTypeImpl<T, kPos, false> {
 
 template <typename T, int kPos>
 static inline constexpr bool IsMatchedBaseType() {
-  return IsMatchedBaseTypeImpl<
-      T, kPos, (kPos >= 0 && kPos < kOpRegistryClassNumber)>::kValue;
+  return IsMatchedBaseTypeImpl<T,
+                               kPos,
+                               (kPos >= 0 &&
+                                kPos < kOpRegistryClassNumber)>::kValue;
 }
 
 template <typename T, int kStart, int kEnd, bool kIsEnd, bool kIsMatched>
@@ -103,7 +105,10 @@ struct OpInfoFillTypeGetterImpl<T, kStart, kEnd, true, false> {
 template <typename T, int kStart, int kEnd>
 struct OpInfoFillTypeGetterImpl<T, kStart, kEnd, false, false> {
   static constexpr OpInfoFillType kType =
-      OpInfoFillTypeGetterImpl<T, kStart + 1, kEnd, kStart + 1 == kEnd,
+      OpInfoFillTypeGetterImpl<T,
+                               kStart + 1,
+                               kEnd,
+                               kStart + 1 == kEnd,
                                IsMatchedBaseType<T, kStart + 1>()>::kType;
 };
 
@@ -115,7 +120,9 @@ struct OpInfoFillTypeGetterImpl<T, kStart, kEnd, false, true> {
 
 template <typename T>
 using OpInfoFillTypeGetter =
-    OpInfoFillTypeGetterImpl<T, 0, kOpRegistryClassNumber,
+    OpInfoFillTypeGetterImpl<T,
+                             0,
+                             kOpRegistryClassNumber,
                              kOpRegistryClassNumber == 0,
                              IsMatchedBaseType<T, 0>()>;
 
@@ -157,10 +164,12 @@ class OperatorRegistrarRecursive<I, true, ARGS...> {
 template <typename T>
 struct OpInfoFiller<T, kOperator> {
   void operator()(const char* op_type, OpInfo* info) const {
-    PADDLE_ENFORCE_EQ(info->creator_, nullptr,
+    PADDLE_ENFORCE_EQ(info->creator_,
+                      nullptr,
                       platform::errors::AlreadyExists(
                           "OpCreator of %s has been registered", op_type));
-    info->creator_ = [](const std::string& type, const VariableNameMap& inputs,
+    info->creator_ = [](const std::string& type,
+                        const VariableNameMap& inputs,
                         const VariableNameMap& outputs,
                         const AttributeMap& attrs) {
       return new T(type, inputs, outputs, attrs);
@@ -168,14 +177,16 @@ struct OpInfoFiller<T, kOperator> {
 
     if (std::is_base_of<OperatorWithKernel, T>::value) {
       PADDLE_ENFORCE_EQ(
-          info->infer_shape_, nullptr,
+          info->infer_shape_,
+          nullptr,
           platform::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
       OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
           std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
-      PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
-                                      "%s should have kernels", op_type));
+      PADDLE_ENFORCE_NOT_NULL(
+          op,
+          platform::errors::InvalidArgument("%s should have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {
         op->InferShape(ctx);
       };
@@ -186,10 +197,12 @@ struct OpInfoFiller<T, kOperator> {
 template <typename T>
 struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
-    PADDLE_ENFORCE_EQ(info->proto_, nullptr,
+    PADDLE_ENFORCE_EQ(info->proto_,
+                      nullptr,
                       platform::errors::AlreadyExists(
                           "OpProto of %s has been registered.", op_type));
-    PADDLE_ENFORCE_EQ(info->checker_, nullptr,
+    PADDLE_ENFORCE_EQ(info->checker_,
+                      nullptr,
                       platform::errors::AlreadyExists(
                           "OpAttrChecker of %s has been registered.", op_type));
     info->proto_ = new proto::OpProto;
@@ -198,10 +211,12 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
     PADDLE_ENFORCE_EQ(
-        info->proto_->IsInitialized(), true,
+        info->proto_->IsInitialized(),
+        true,
         platform::errors::PreconditionNotMet(
             "Fail to initialize %s's OpProto, because %s is not initialized.",
-            op_type, info->proto_->InitializationErrorString()));
+            op_type,
+            info->proto_->InitializationErrorString()));
   }
 };
 
@@ -209,7 +224,8 @@ template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
-        info->grad_op_maker_, nullptr,
+        info->grad_op_maker_,
+        nullptr,
         platform::errors::AlreadyExists(
             "GradOpDescMaker of %s has been registered", op_type));
 
@@ -240,7 +256,8 @@ template <typename T>
 struct OpInfoFiller<T, kGradOpBaseMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
-        info->dygraph_grad_op_maker_, nullptr,
+        info->dygraph_grad_op_maker_,
+        nullptr,
         platform::errors::AlreadyExists(
             "GradOpBaseMaker of %s has been registered", op_type));
 
@@ -262,7 +279,8 @@ template <typename T>
 struct OpInfoFiller<T, kVarTypeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
-        info->infer_var_type_, nullptr,
+        info->infer_var_type_,
+        nullptr,
         platform::errors::AlreadyExists(
             "VarTypeInference of %s has been registered", op_type));
     info->infer_var_type_ = [](InferVarTypeContext* context) {
@@ -288,7 +306,8 @@ template <typename T>
 struct OpInfoFiller<T, kInplaceOpInference> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
-        info->infer_inplace_, nullptr,
+        info->infer_inplace_,
+        nullptr,
         platform::errors::AlreadyExists(
             "InplaceOpInference of %s has been registered", op_type));
     info->infer_inplace_ = [](bool use_cuda) {
@@ -302,7 +321,8 @@ template <typename T>
 struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(
-        info->infer_no_need_buffer_vars_, nullptr,
+        info->infer_no_need_buffer_vars_,
+        nullptr,
         platform::errors::AlreadyExists(
             "NoNeedBufferVarsInference of %s has been registered", op_type));
     info->infer_no_need_buffer_vars_.Reset(std::make_shared<T>());

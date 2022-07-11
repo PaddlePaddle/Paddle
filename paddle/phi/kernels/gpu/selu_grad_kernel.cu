@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/selu_grad_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/selu_grad_kernel_impl.h"
-#include "paddle/phi/kernels/selu_grad_kernel.h"
 
 PD_REGISTER_KERNEL(
     selu_grad, GPU, ALL_LAYOUT, phi::SeluGradKernel, float, double) {}

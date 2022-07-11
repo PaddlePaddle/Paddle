@@ -38,7 +38,8 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
-    new_profiler)
+    new_profiler
+    jit_layer)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -91,7 +92,7 @@ if(NOT WIN32)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
   endif()
-endif(NOT WIN32)
+endif()
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
@@ -121,11 +122,16 @@ set(PYBIND_SRCS
     io.cc
     generator_py.cc
     communication.cc
-    cuda_streams_py.cc)
+    cuda_streams_py.cc
+    jit.cc)
+
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
+endif()
 
 if(NOT ON_INFER)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
-  if(WITH_NCCL)
+  if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
@@ -153,12 +159,12 @@ if(WITH_GLOO)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
   set(PYBIND_DEPS ${PYBIND_DEPS} imperative_gloo_context)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif(WITH_GLOO)
+endif()
 
 if(WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
-endif(WITH_CRYPTO)
+endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
@@ -169,7 +175,7 @@ if(WITH_PSLIB)
   endif()
   set_source_files_properties(
     heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-endif(WITH_PSLIB)
+endif()
 if(WITH_PSCORE)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
@@ -223,15 +229,15 @@ if(WITH_PYTHON)
 
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
-  endif(WITH_XPU_BKCL)
+  endif()
 
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
-  endif(WITH_ASCEND_CL)
+  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
-  endif(WITH_CNCL)
+  endif()
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
@@ -316,7 +322,7 @@ if(WITH_PYTHON)
         DEPENDS mklml)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
-    else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+    else()
       add_custom_command(
         OUTPUT ${op_impl_path}/openblas.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_impl_path}
@@ -370,23 +376,16 @@ if(WITH_PYTHON)
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
         DEPENDS ${EAGER_OP_IMPL_DEPS})
     endif()
-  else(WIN32)
+  else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      if(APPLE)
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
-      else()
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
-      endif()
+      set(PADDLE2ONNX_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${PADDLE2ONNX_LIB_NAME})
+      set(ONNXRUNTIME_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${ONNXRUNTIME_LIB_NAME})
 
       add_custom_command(
         OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
@@ -446,7 +445,7 @@ if(WITH_PYTHON)
         DEPENDS ${EAGER_OP_IMPL_DEPS}
         VERBATIM)
     endif()
-  endif(WIN32)
+  endif()
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_op_function_generator_cmd ALL
@@ -491,11 +490,11 @@ if(WITH_PYTHON)
   cc_library(
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
-  endif(NOT APPLE AND NOT WIN32)
+  endif()
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
@@ -504,4 +503,4 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
   add_dependencies(paddle_pybind op_function_generator_cmd)
-endif(WITH_PYTHON)
+endif()

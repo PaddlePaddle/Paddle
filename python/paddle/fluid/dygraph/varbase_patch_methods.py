@@ -804,6 +804,7 @@ def monkey_patch_varbase():
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
+            self._unset_fake_empty()
         else:
             raise TypeError(
                 "_set_grad_ivar is only supported for Parameter Tensor")
@@ -1038,8 +1039,11 @@ def monkey_patch_varbase():
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                if numpy_dtype == 'uint16':
+                    numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
-                return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                return prefix + numpy_dtype
             else:
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)

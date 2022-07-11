@@ -30,9 +30,13 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 struct ChannelDequantizeFunctorV2 {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
-                  const framework::Tensor** scales, const int scale_num,
-                  T max_range, const int quant_axis, framework::Tensor* out);
+  void operator()(const DeviceContext& dev_ctx,
+                  const framework::Tensor* in,
+                  const framework::Tensor** scales,
+                  const int scale_num,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
@@ -45,6 +49,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Y");
     out->mutable_data<T>(context.GetPlace());
     int bit_length = context.Attr<int>("bit_length");
+    int round_type = context.Attr<int>("round_type");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
     bool is_test = context.Attr<bool>("is_test");
@@ -54,25 +59,25 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
       if (!is_test) {
         auto* out_scale = context.Output<framework::Tensor>("OutScale");
         T* out_s = out_scale->mutable_data<T>(context.GetPlace());
-        FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(),
-                                              in->numel(), out_s);
-        ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *out_scale,
-                                                    bin_cnt, out);
+        FindAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx, in->data<T>(), in->numel(), out_s);
+        ClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
       } else {
-        ClipAndFakeQuantFunctor<DeviceContext, T>()(dev_ctx, *in, *in_scale,
-                                                    bin_cnt, out);
+        ClipAndFakeQuantFunctor<DeviceContext, T>()(
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
       }
     } else {
       if (!is_test) {
         auto* out_scale = context.Output<framework::Tensor>("OutScale");
         T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
-        FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, quant_axis,
-                                                     out_scale_data);
+        FindChannelAbsMaxFunctor<DeviceContext, T>()(
+            dev_ctx, *in, quant_axis, out_scale_data);
         ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
+            dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
       } else {
         ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *in_scale, bin_cnt, quant_axis, out);
+            dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
       }
     }
   }
@@ -88,7 +93,8 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
     auto in_tmp = phi::Cast<T>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *in, experimental::CppTypeToDataType<D>::Type());
+        *in,
+        experimental::CppTypeToDataType<D>::Type());
 
     auto* scale = context.Input<framework::Tensor>("Scale");
     auto* out = context.Output<framework::Tensor>("Y");
@@ -98,16 +104,18 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
 
     if (quant_axis < 0) {
       float max_range = (std::pow(2, bit_length - 1) - 1);
-      DequantizeFunctor<DeviceContext, D>()(dev_ctx, &in_tmp, scale,
-                                            static_cast<D>(max_range), out);
+      DequantizeFunctor<DeviceContext, D>()(
+          dev_ctx, &in_tmp, scale, static_cast<D>(max_range), out);
     } else {
       PADDLE_ENFORCE_EQ(
-          scale->numel(), in_tmp.dims()[quant_axis],
+          scale->numel(),
+          in_tmp.dims()[quant_axis],
           platform::errors::PreconditionNotMet(
               "The number of first scale values must be the same with "
               "quant_axis dimension value of Input(X) when the `scale` has "
               "only one element, but %ld != %ld here.",
-              scale->numel(), in_tmp.dims()[quant_axis]));
+              scale->numel(),
+              in_tmp.dims()[quant_axis]));
       int max_range = (std::pow(2, bit_length - 1) - 1);
 
       ChannelDequantizeFunctorV2<DeviceContext, D>()(

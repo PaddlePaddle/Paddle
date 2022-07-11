@@ -53,7 +53,8 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(
-        subgraph.count(input_node), true,
+        subgraph.count(input_node),
+        true,
         platform::errors::NotFound(
             "Input act node(%s) not found in QuantDequantFuse pass.",
             input_node->name()));
@@ -66,12 +67,14 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     std::string input_scale_var_name =
         quant_dequant_op->Op()->Input("InScale").front();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument(
-                   "Scope in DeleteQuantDequantOpPass should not be null."));
+        scope,
+        platform::errors::InvalidArgument(
+            "Scope in DeleteQuantDequantOpPass should not be null."));
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
@@ -86,6 +89,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
       std::string quantized_op_type = op_desc->Type();
       op_desc->SetAttr("Input_scale", input_scale);
       op_desc->SetAttr("bit_length", bit_length);
+      op_desc->SetAttr("enable_int8", true);
       op_desc->RenameInput(quant_dequant_output_name, input_name);
       op_desc->Flush();
       IR_NODE_LINK_TO(input, quantized_node);
@@ -93,8 +97,10 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph,
-                         {quant_dequant_op_inscale, quant_dequant_op,
-                          quant_dequant_op_outscale, quant_dequant_op_out});
+                         {quant_dequant_op_inscale,
+                          quant_dequant_op,
+                          quant_dequant_op_outscale,
+                          quant_dequant_op_out});
     found_count++;
   };
   gpd(graph, handler);

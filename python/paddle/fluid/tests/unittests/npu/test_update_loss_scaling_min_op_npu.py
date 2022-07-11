@@ -37,7 +37,7 @@ class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
 
         self.init()
         fluid.core.globals()['FLAGS_min_loss_scaling'] = 1639
-        found_inf = np.array([True], dtype=np.bool)
+        found_inf = np.array([True], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
         i = np.random.randint(0, 1024, 1)
         j = np.random.randint(0, 1024, 1)

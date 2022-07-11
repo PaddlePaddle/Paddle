@@ -16,8 +16,8 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -54,6 +54,7 @@ PD_REGISTER_KERNEL(flatten,
                    ALL_LAYOUT,
                    phi::FlattenKernel,
                    float,
+                   phi::dtype::bfloat16,
                    double,
                    uint8_t,
                    int8_t,
@@ -66,6 +67,7 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
                    ALL_LAYOUT,
                    phi::FlattenWithXShape,
                    float,
+                   phi::dtype::bfloat16,
                    double,
                    uint8_t,
                    int8_t,
@@ -80,6 +82,7 @@ PD_REGISTER_KERNEL(flatten,
                    phi::FlattenKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double,
                    uint8_t,
                    int8_t,
@@ -93,6 +96,7 @@ PD_REGISTER_KERNEL(flatten_with_xshape,
                    phi::FlattenWithXShape,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double,
                    uint8_t,
                    int8_t,

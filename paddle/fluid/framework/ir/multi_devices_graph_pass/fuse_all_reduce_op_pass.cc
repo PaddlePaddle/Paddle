@@ -64,12 +64,14 @@ class FuseAllReduceOpPass : public ir::Pass {
     }
 
     PADDLE_ENFORCE_EQ(
-        all_reduce_ops.size(), grads.size(),
+        all_reduce_ops.size(),
+        grads.size(),
         platform::errors::Unimplemented(
             "The number of all_reduce OpHandle(%d) is not equal to the "
             "number of grads(%d). Maybe some gradients are sparse type, "
             "it is not supported currently.",
-            all_reduce_ops.size(), grads.size()));
+            all_reduce_ops.size(),
+            grads.size()));
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
@@ -78,12 +80,14 @@ class FuseAllReduceOpPass : public ir::Pass {
         "Find all_reduce operators: %d. To make the speed faster, some "
         "all_reduce ops are fused during training, after fusion, "
         "the number of all_reduce ops is %d.",
-        all_reduce_ops.size(), group_params_grads.size());
+        all_reduce_ops.size(),
+        group_params_grads.size());
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();
       PADDLE_ENFORCE_GT(
-          group_size, static_cast<size_t>(0),
+          group_size,
+          static_cast<size_t>(0),
           platform::errors::InvalidArgument(
               "Parameter and Parameter@grad in one group, must not be empty."));
       std::vector<ir::Node *> group_all_reduce_ops;
@@ -92,20 +96,29 @@ class FuseAllReduceOpPass : public ir::Pass {
         group_all_reduce_ops.emplace_back(all_reduce_ops.at(p_g.second));
       }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, multi_nccl_ctxs, &result);
+      InsertFusedAllReduce(places,
+                           local_scopes,
+                           group_size,
+                           group_all_reduce_ops,
+                           multi_nccl_ctxs,
+                           &result);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-      InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, multi_bkcl_ctxs, &result);
+      InsertFusedAllReduce(places,
+                           local_scopes,
+                           group_size,
+                           group_all_reduce_ops,
+                           multi_bkcl_ctxs,
+                           &result);
 #else
-      InsertFusedAllReduce(places, local_scopes, group_size,
-                           group_all_reduce_ops, &result);
+      InsertFusedAllReduce(
+          places, local_scopes, group_size, group_all_reduce_ops, &result);
 #endif
     }
   }
 
   std::unordered_map<std::string, Node *> GetAllReduceOps(
-      const Graph &result, const std::vector<platform::Place> &places,
+      const Graph &result,
+      const std::vector<platform::Place> &places,
       const std::unordered_set<std::string> &grads) const {
     size_t num_place = places.size();
     std::unordered_map<std::string, Node *> all_reduce_ops;
@@ -113,7 +126,8 @@ class FuseAllReduceOpPass : public ir::Pass {
     for (auto &node : result.Nodes()) {
       if (node->IsOp()) {
         PADDLE_ENFORCE_EQ(
-            node->IsWrappedBy<details::OpHandleBase>(), true,
+            node->IsWrappedBy<details::OpHandleBase>(),
+            true,
             platform::errors::InvalidArgument(
                 "Op Node(%s) should Wrapped by OpHandleBase.", node->Name()));
         auto *all_reduce_op_handle = dynamic_cast<details::AllReduceOpHandle *>(
@@ -121,29 +135,35 @@ class FuseAllReduceOpPass : public ir::Pass {
         if (all_reduce_op_handle) {
 #if defined(PADDLE_WITH_DGC)
           PADDLE_ENFORCE_NE(
-              all_reduce_op_handle->Name(), "sparse_all_reduce",
+              all_reduce_op_handle->Name(),
+              "sparse_all_reduce",
               platform::errors::InvalidArgument(
                   "DGC doesn't support fuse for now, if you want to use DGC "
                   "you need set strategy.fuse_all_reduce_ops = False."));
 #endif
           auto inputs = details::DynamicCast<details::VarHandle>(
               all_reduce_op_handle->Inputs());
-          PADDLE_ENFORCE_EQ(inputs.size(), num_place,
+          PADDLE_ENFORCE_EQ(inputs.size(),
+                            num_place,
                             platform::errors::InvalidArgument(
                                 "The input size(%d) of all reduce op must "
                                 "equal to place cnt(%d)!",
-                                inputs.size(), num_place));
+                                inputs.size(),
+                                num_place));
           // The inputs' name should be the same.
           auto &grad_name = inputs[0]->name();
           for (size_t i = 1; i < inputs.size(); ++i) {
             PADDLE_ENFORCE_EQ(
-                inputs[i]->name(), grad_name,
+                inputs[i]->name(),
+                grad_name,
                 platform::errors::InvalidArgument(
                     "The input name should be the same.diff name: %s %s.",
-                    inputs[i]->name(), grad_name));
+                    inputs[i]->name(),
+                    grad_name));
           }
           PADDLE_ENFORCE_NE(
-              grads.count(grad_name), static_cast<size_t>(0),
+              grads.count(grad_name),
+              static_cast<size_t>(0),
               platform::errors::InvalidArgument(
                   "Parameter@grad(%s) must in grad set.", grad_name));
           all_reduce_ops.emplace(grad_name, node);
@@ -175,19 +195,22 @@ class FuseAllReduceOpPass : public ir::Pass {
               grad_merge_all_reduce_op_handle->GradMergeCondName();
 
           PADDLE_ENFORCE_EQ(
-              grad_merge_cond_name, this_grad_merge_cond_name,
+              grad_merge_cond_name,
+              this_grad_merge_cond_name,
               platform::errors::InvalidArgument(
                   "grad_merge_cond_name is not same in different all_reduce, "
                   "prev_grad_merge_cond_name is %s, this_grad_merge_cond_name "
                   "is %s",
-                  grad_merge_cond_name, this_grad_merge_cond_name));
+                  grad_merge_cond_name,
+                  this_grad_merge_cond_name));
         } else {
           is_grad_merge = true;
           grad_merge_cond_name =
               grad_merge_all_reduce_op_handle->GradMergeCondName();
         }
       } else {
-        PADDLE_ENFORCE_EQ(is_grad_merge, false,
+        PADDLE_ENFORCE_EQ(is_grad_merge,
+                          false,
                           platform::errors::InvalidArgument(
                               "if use grad_merge, all of allreduce must be "
                               "grad_merge_allreduce"));
@@ -199,18 +222,21 @@ class FuseAllReduceOpPass : public ir::Pass {
     std::vector<details::VarHandleBase *> outputs;
     for (auto &op : all_reduce_ops) {
       auto &op_handle = op->Wrapper<details::OpHandleBase>();
-      inputs.insert(inputs.end(), op_handle.Inputs().begin(),
-                    op_handle.Inputs().end());
+      inputs.insert(
+          inputs.end(), op_handle.Inputs().begin(), op_handle.Inputs().end());
       // Remove output
-      for_each(op_handle.Inputs().begin(), op_handle.Inputs().end(),
+      for_each(op_handle.Inputs().begin(),
+               op_handle.Inputs().end(),
                [&op_handle](details::VarHandleBase *var_handle) {
                  var_handle->RemoveOutput(&op_handle, op_handle.Node());
                });
 
-      outputs.insert(outputs.end(), op_handle.Outputs().begin(),
+      outputs.insert(outputs.end(),
+                     op_handle.Outputs().begin(),
                      op_handle.Outputs().end());
       // Remove Input
-      for_each(op_handle.Outputs().begin(), op_handle.Outputs().end(),
+      for_each(op_handle.Outputs().begin(),
+               op_handle.Outputs().end(),
                [](details::VarHandleBase *var_handle) {
                  var_handle->ClearGeneratedOp();
                });
@@ -219,16 +245,33 @@ class FuseAllReduceOpPass : public ir::Pass {
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, is_grad_merge, grad_merge_cond_name,
-                           multi_nccl_ctxs, result);
+    CreateFusedAllReduceOp(inputs,
+                           outputs,
+                           num_of_all_reduce,
+                           places,
+                           local_scopes,
+                           is_grad_merge,
+                           grad_merge_cond_name,
+                           multi_nccl_ctxs,
+                           result);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-    CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, is_grad_merge, grad_merge_cond_name,
-                           multi_bkcl_ctxs, result);
+    CreateFusedAllReduceOp(inputs,
+                           outputs,
+                           num_of_all_reduce,
+                           places,
+                           local_scopes,
+                           is_grad_merge,
+                           grad_merge_cond_name,
+                           multi_bkcl_ctxs,
+                           result);
 #else
-    CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
-                           local_scopes, is_grad_merge, grad_merge_cond_name,
+    CreateFusedAllReduceOp(inputs,
+                           outputs,
+                           num_of_all_reduce,
+                           places,
+                           local_scopes,
+                           is_grad_merge,
+                           grad_merge_cond_name,
                            result);
 #endif
   }
@@ -239,7 +282,8 @@ class FuseAllReduceOpPass : public ir::Pass {
       const std::vector<details::VarHandleBase *> &outputs,
       const size_t num_of_all_reduce,
       const std::vector<platform::Place> &places,
-      const std::vector<Scope *> &local_scopes, bool is_grad_merge,
+      const std::vector<Scope *> &local_scopes,
+      bool is_grad_merge,
       const std::string &grad_merge_cond_name,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       const platform::NCCLCommunicator *multi_nccl_ctxs,
@@ -253,36 +297,53 @@ class FuseAllReduceOpPass : public ir::Pass {
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
+          local_scopes,
+          places,
+          num_of_all_reduce,
+          grad_merge_cond_name,
           multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce, grad_merge_cond_name,
+          local_scopes,
+          places,
+          num_of_all_reduce,
+          grad_merge_cond_name,
           multi_bkcl_ctxs);
 #else
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce, grad_merge_cond_name);
+          local_scopes,
+          places,
+          num_of_all_reduce,
+          grad_merge_cond_name);
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
+          local_scopes,
+          places,
+          num_of_all_reduce,
+          multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce, multi_bkcl_ctxs);
+          local_scopes,
+          places,
+          num_of_all_reduce,
+          multi_bkcl_ctxs);
 #else
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
-          local_scopes, places, num_of_all_reduce);
+          local_scopes,
+          places,
+          num_of_all_reduce);
 #endif
     }
 

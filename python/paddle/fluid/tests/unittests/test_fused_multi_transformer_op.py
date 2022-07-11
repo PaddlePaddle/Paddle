@@ -164,7 +164,7 @@ class TestFusedMultiTransformerOp(OpTest):
                     self.attn_mask = (self.attn_mask - 1.0) * 1e4
                 else:
                     self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
-            elif self.attn_mask_type == np.bool:
+            elif self.attn_mask_type == np.bool_:
                 if self.has_cache_kv and not self.gen_cache_kv:
                     self.attn_mask[:, :, :, -2] = 0
                 else:
@@ -395,7 +395,7 @@ class TestFusedMultiTransformerOp(OpTest):
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
-        if attn_mask is not None and self.attn_mask_type != np.bool:
+        if attn_mask is not None and self.attn_mask_type != np.bool_:
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
         qkv_weights, qkv_biases = [], []

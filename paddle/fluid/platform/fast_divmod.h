@@ -59,8 +59,8 @@ struct FastDivMod {
     return result;
   }
 
-  int32_t divisor;
   int32_t shift_val;
+  uint32_t divisor;
   uint32_t multiplier;
 };
 

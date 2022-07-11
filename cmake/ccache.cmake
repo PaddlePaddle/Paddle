@@ -13,7 +13,7 @@ if(NOT WIN32)
             ${cache_directory})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PATH})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE_PATH})
-  endif(CCACHE_PATH)
+  endif()
 elseif("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   # (Note:zhouwei25) Only Ninja Generator can support sccache now
   find_program(SCCACHE_PATH sccache)
@@ -30,5 +30,5 @@ elseif("${CMAKE_GENERATOR}" STREQUAL "Ninja")
     # (Note:zhouwei25) sccache for cuda compiler has bug so that it can't be hit
     # refer to https://github.com/mozilla/sccache/issues/1017, so we fix it
     set(CMAKE_CUDA_COMPILER_LAUNCHER ${SCCACHE_PATH})
-  endif(SCCACHE_PATH)
+  endif()
 endif()

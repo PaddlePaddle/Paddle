@@ -49,7 +49,8 @@ void PD_run() {
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
   float* data = new float[batch * channel * height * width];
-  PD_PaddleBufReset(buf, static_cast<void*>(data),
+  PD_PaddleBufReset(buf,
+                    static_cast<void*>(data),
                     sizeof(float) * (batch * channel * height * width));
 
   char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};
@@ -71,12 +72,14 @@ void PD_run() {
   PD_DeletePaddleTensor(input);
   int size;
   const int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
-  PADDLE_ENFORCE_EQ(size, 2,
+  PADDLE_ENFORCE_EQ(size,
+                    2,
                     paddle::platform::errors::InvalidArgument(
                         "The Output shape's size is NOT match."));
   std::vector<int> ref_outshape_size({9, 6});
   for (int i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_EQ(out_shape[i], ref_outshape_size[i],
+    PADDLE_ENFORCE_EQ(out_shape[i],
+                      ref_outshape_size[i],
                       paddle::platform::errors::InvalidArgument(
                           "The Output shape's size is NOT match."));
   }
@@ -117,8 +120,11 @@ void buffer_run() {
   std::string prog_str = read_file(prog_file);
   std::string params_str = read_file(params_file);
 
-  PD_SetModelBuffer(config, prog_str.c_str(), prog_str.size(),
-                    params_str.c_str(), params_str.size());
+  PD_SetModelBuffer(config,
+                    prog_str.c_str(),
+                    prog_str.size(),
+                    params_str.c_str(),
+                    params_str.size());
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
   CHECK(PD_ModelFromMemory(config)) << "NO";
@@ -133,7 +139,8 @@ void buffer_run() {
   int shape[4] = {batch, channel, height, width};
   int shape_size = 4;
   float* data = new float[batch * channel * height * width];
-  PD_PaddleBufReset(buf, static_cast<void*>(data),
+  PD_PaddleBufReset(buf,
+                    static_cast<void*>(data),
                     sizeof(float) * (batch * channel * height * width));
 
   char name[6] = {'i', 'm', 'a', 'g', 'e', '\0'};

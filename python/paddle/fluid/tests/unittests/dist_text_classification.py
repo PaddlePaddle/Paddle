@@ -137,7 +137,7 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
         # Train program
         predict = conv_net(data, dict_dim)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=predict, label=label)
         inference_program = fluid.default_main_program().clone()
 

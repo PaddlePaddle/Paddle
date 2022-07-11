@@ -69,6 +69,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         if trainer_id == 0 and not paddle.is_compiled_with_npu():
             wait_server_ready(other_trainers)
 
+        if build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy._NoReduce:
+            return
+
         if core.is_compiled_with_cuda():
             comm_id_var = startup_program.global_block().create_var(
                 name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)

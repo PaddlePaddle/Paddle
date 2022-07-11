@@ -22,6 +22,7 @@ import time
 import unittest
 import copy
 import logging
+import tempfile
 
 import paddle.nn as nn
 import paddle
@@ -73,10 +74,6 @@ class TestImperativePTQ(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        cls.root_path = os.path.join(os.getcwd(), "imperative_ptq_" + timestamp)
-        cls.save_path = os.path.join(cls.root_path, "model")
-
         cls.download_path = 'dygraph_int8/download'
         cls.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
                                               cls.download_path)
@@ -88,14 +85,6 @@ class TestImperativePTQ(unittest.TestCase):
         np.random.seed(seed)
         paddle.static.default_main_program().random_seed = seed
         paddle.static.default_startup_program().random_seed = seed
-
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            pass
-            # shutil.rmtree(cls.root_path)
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(cls.root_path, str(e)))
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -217,32 +206,34 @@ class TestImperativePTQ(unittest.TestCase):
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
-        self.ptq.save_quantized_model(model=quant_model,
-                                      path=self.save_path,
-                                      input_spec=input_spec)
-        print('Quantized model saved in {%s}' % self.save_path)
+        with tempfile.TemporaryDirectory(prefix="imperative_ptq_") as tmpdir:
+            save_path = os.path.join(tmpdir, "model")
+            self.ptq.save_quantized_model(model=quant_model,
+                                          path=save_path,
+                                          input_spec=input_spec)
+            print('Quantized model saved in {%s}' % save_path)
 
-        after_acc_top1 = self.model_test(quant_model, self.batch_num,
-                                         self.batch_size)
+            after_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                             self.batch_size)
 
-        paddle.enable_static()
-        infer_acc_top1 = self.program_test(self.save_path, self.batch_num,
-                                           self.batch_size)
-        paddle.disable_static()
+            paddle.enable_static()
+            infer_acc_top1 = self.program_test(save_path, self.batch_num,
+                                               self.batch_size)
+            paddle.disable_static()
 
-        # Check
-        print('Before converted acc_top1: %s' % before_acc_top1)
-        print('After converted acc_top1: %s' % after_acc_top1)
-        print('Infer acc_top1: %s' % infer_acc_top1)
+            # Check
+            print('Before converted acc_top1: %s' % before_acc_top1)
+            print('After converted acc_top1: %s' % after_acc_top1)
+            print('Infer acc_top1: %s' % infer_acc_top1)
 
-        self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
-                        msg="The test acc {%f} is less than {%f}." %
-                        (after_acc_top1, self.eval_acc_top1))
-        self.assertTrue(infer_acc_top1 >= after_acc_top1,
-                        msg='The acc is lower after converting model.')
+            self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
+                            msg="The test acc {%f} is less than {%f}." %
+                            (after_acc_top1, self.eval_acc_top1))
+            self.assertTrue(infer_acc_top1 >= after_acc_top1,
+                            msg='The acc is lower after converting model.')
 
-        end_time = time.time()
-        print("total time: %ss \n" % (end_time - start_time))
+            end_time = time.time()
+            print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
         with _test_eager_guard():
@@ -278,36 +269,38 @@ class TestImperativePTQfuse(TestImperativePTQ):
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
-        self.ptq.save_quantized_model(model=quant_model,
-                                      path=self.save_path,
-                                      input_spec=input_spec)
-        print('Quantized model saved in {%s}' % self.save_path)
+        with tempfile.TemporaryDirectory(prefix="imperative_ptq_") as tmpdir:
+            save_path = os.path.join(tmpdir, "model")
+            self.ptq.save_quantized_model(model=quant_model,
+                                          path=save_path,
+                                          input_spec=input_spec)
+            print('Quantized model saved in {%s}' % save_path)
 
-        after_acc_top1 = self.model_test(quant_model, self.batch_num,
-                                         self.batch_size)
+            after_acc_top1 = self.model_test(quant_model, self.batch_num,
+                                             self.batch_size)
 
-        paddle.enable_static()
-        infer_acc_top1 = self.program_test(self.save_path, self.batch_num,
-                                           self.batch_size)
-        paddle.disable_static()
+            paddle.enable_static()
+            infer_acc_top1 = self.program_test(save_path, self.batch_num,
+                                               self.batch_size)
+            paddle.disable_static()
 
-        # Check
-        print('Before converted acc_top1: %s' % before_acc_top1)
-        print('After converted acc_top1: %s' % after_acc_top1)
-        print('Infer acc_top1: %s' % infer_acc_top1)
+            # Check
+            print('Before converted acc_top1: %s' % before_acc_top1)
+            print('After converted acc_top1: %s' % after_acc_top1)
+            print('Infer acc_top1: %s' % infer_acc_top1)
 
-        #Check whether the quant_model is correct after converting.
-        #The acc of quantized model should be higher than 0.95.
-        self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
-                        msg="The test acc {%f} is less than {%f}." %
-                        (after_acc_top1, self.eval_acc_top1))
-        #Check the saved infer_model.The acc of infer model
-        #should not be lower than the one of dygraph model.
-        self.assertTrue(infer_acc_top1 >= after_acc_top1,
-                        msg='The acc is lower after converting model.')
+            #Check whether the quant_model is correct after converting.
+            #The acc of quantized model should be higher than 0.95.
+            self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
+                            msg="The test acc {%f} is less than {%f}." %
+                            (after_acc_top1, self.eval_acc_top1))
+            #Check the saved infer_model.The acc of infer model
+            #should not be lower than the one of dygraph model.
+            self.assertTrue(infer_acc_top1 >= after_acc_top1,
+                            msg='The acc is lower after converting model.')
 
-        end_time = time.time()
-        print("total time: %ss \n" % (end_time - start_time))
+            end_time = time.time()
+            print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
         with _test_eager_guard():
@@ -345,7 +338,7 @@ class TestImperativePTQKL(TestImperativePTQ):
 
         self.batch_num = 10
         self.batch_size = 10
-        self.eval_acc_top1 = 1.0
+        self.eval_acc_top1 = 0.98
 
         conv2d_1_wt_thresholds = [
             0.18116560578346252, 0.17079241573810577, 0.1702047884464264,

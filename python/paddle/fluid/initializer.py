@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -676,20 +676,21 @@ class MSRAInitializer(Initializer):
 
     .. math::
 
-        x = \sqrt{\\frac{6.0}{fan\_in}}
+        x = gain \times \sqrt{\frac{3}{fan\_in}}
 
     In case of Normal distribution, the mean is 0 and the standard deviation
     is
 
     .. math::
 
-        \sqrt{\\frac{2.0}{fan\_in}}
+        \frac{gain}{\sqrt{{fan\_in}}}
 
     Args:
-        uniform (bool): whether to use uniform or normal distribution
-        fan_in (float32|None): fan_in for MSRAInitializer. If None, it is\
-        inferred from the variable. default is None.
-        seed (int32): random seed
+        uniform (bool, optional): whether to use uniform or normal distribution
+        fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. default is None.
+        seed (int32, optional): random seed.
+        negative_slope (float, optional): negative_slope (only used with leaky_relu). default is 0.0.
+        nonlinearity(str, optional): the non-linear function. default is relu.
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -706,7 +707,12 @@ class MSRAInitializer(Initializer):
 
     """
 
-    def __init__(self, uniform=True, fan_in=None, seed=0):
+    def __init__(self,
+                 uniform=True,
+                 fan_in=None,
+                 seed=0,
+                 negative_slope=0,
+                 nonlinearity='relu'):
         """Constructor for MSRAInitializer
         """
         assert uniform is not None
@@ -715,6 +721,8 @@ class MSRAInitializer(Initializer):
         self._uniform = uniform
         self._fan_in = fan_in
         self._seed = seed
+        self._negative_slope = negative_slope
+        self._nonlinearity = nonlinearity
 
     def __call__(self, var, block=None):
         """Initialize the input tensor with MSRA initialization.
@@ -755,13 +763,16 @@ class MSRAInitializer(Initializer):
 
         if framework._non_static_mode():
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
+
                 out_var = _C_ops.uniform_random('shape', out_var.shape, 'min',
                                                 -limit, 'max', limit, 'seed',
                                                 self._seed, 'dtype',
                                                 int(out_dtype))
             else:
-                std = math.sqrt(2.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
                 if in_dygraph_mode():
                     place = _current_expected_place()
                     out_var = _C_ops.final_state_gaussian_random(
@@ -783,7 +794,8 @@ class MSRAInitializer(Initializer):
             return None
         else:
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                limit = gain * math.sqrt(3.0 / float(fan_in))
                 op = block.append_op(type="uniform_random",
                                      inputs={},
                                      outputs={"Out": out_var},
@@ -797,7 +809,8 @@ class MSRAInitializer(Initializer):
                                      stop_gradient=True)
 
             else:
-                std = math.sqrt(2.0 / float(fan_in))
+                gain = calculate_gain(self._nonlinearity, self._negative_slope)
+                std = gain / math.sqrt(float(fan_in))
                 op = block.append_op(type="gaussian_random",
                                      outputs={"Out": out_var},
                                      attrs={
@@ -1164,10 +1177,11 @@ def calculate_gain(nonlinearity, param=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
             gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))
+            initializer = paddle.nn.initializer.Orthogonal(gain)
 
     """
     if param is None:

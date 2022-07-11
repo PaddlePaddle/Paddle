@@ -20,8 +20,8 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace tune = phi::autotune;
@@ -74,7 +74,7 @@ float Algo(const phi::GPUContext& ctx,
 }
 
 TEST(AutoTune, sum) {
-  int64_t N = 1 << 22;
+  int64_t N = 1 << 20;
   size_t blocks = 512;
   size_t threads = 256;
   size_t size = sizeof(float) * N;
@@ -119,36 +119,17 @@ TEST(AutoTune, sum) {
 
   // 1. Test call_back.
   VLOG(3) << ">>> [CallBack]: Test case.";
-  auto callback1 = tune::MakeCallback(Algo<4>);
-  auto callback2 = tune::MakeCallback(Algo<2>);
-  auto callback3 = tune::MakeCallback(Algo<1>);
+  auto callback1 = tune::MakeCallback<float>(Algo<4>);
+  auto callback2 = tune::MakeCallback<float>(Algo<2>);
+  auto callback3 = tune::MakeCallback<float>(Algo<1>);
   std::vector<decltype(callback1)> callbacks{callback1, callback2, callback3};
   for (int i = 0; i < callbacks.size(); ++i) {
     dev_ctx->Wait();
     phi::GpuTimer timer;
     timer.Start(0);
-    callbacks[i].Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
+    callbacks[i].Run(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
     timer.Stop(0);
     VLOG(3) << "kernel[" << i << "]: time cost is " << timer.ElapsedTime();
   }
-
-  // 2. Test call_back tune.
-  VLOG(3) << ">>> [AutoTune]: Test case.";
-  auto tuner = tune::MakeAutoTuner(Algo<4>);
-  tuner.AddCallBack(tune::MakeCallback(Algo<2>));
-  tuner.AddCallBack(tune::MakeCallback(Algo<1>));
-
-  /* The 1st ctx works for ctx.Wait(),
-     the 2nd is just the param of call_back. */
-  auto best_call_back = tuner.PickBestKernel(
-      *dev_ctx, *dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-
-  dev_ctx->Wait();
-  phi::GpuTimer timer;
-  timer.Start(0);
-  best_call_back.Call(*dev_ctx, *d_in1.get(), d_in2.get(), N, threads, blocks);
-  timer.Stop(0);
-  VLOG(3) << "Best CallBackKernel time cost is " << timer.ElapsedTime();
 #endif
 }

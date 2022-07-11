@@ -68,6 +68,10 @@ size_t ConvKey(const std::vector<int64_t>& x_dims,
                const std::vector<int>& dilations,
                phi::DataType dtype);
 
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    phi::DataType dtype);
+
 template <typename AlgorithmT>
 class AlgorithmsCache {
  public:
@@ -134,7 +138,8 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
-  kAlgorithmCount = 4
+  kTranspose = 4,
+  kAlgorithmCount = 5
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -164,6 +169,8 @@ class AutoTuneCache {
   AlgorithmsCacheMap& GetConvBackwardFilter() {
     return Get(AlgorithmType::kConvBackwardFilter);
   }
+
+  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
     for (auto& v : auto_tune_map_) {

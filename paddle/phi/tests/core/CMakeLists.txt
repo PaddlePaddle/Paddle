@@ -11,7 +11,7 @@ cc_test(test_type_info SRCS test_type_info.cc)
 cc_test(
   test_kernel_factory
   SRCS test_kernel_factory.cc
-  DEPS kernel_factory scale_kernel)
+  DEPS kernel_factory phi)
 cc_test(
   test_sparse_coo_tensor
   SRCS test_sparse_coo_tensor.cc
@@ -24,10 +24,6 @@ cc_test(
   test_op_utils
   SRCS test_op_utils.cc
   DEPS op_compat_infos)
-cc_test(
-  test_phi_device_context
-  SRCS test_device_context.cc
-  DEPS phi_context cpu_context)
 cc_test(
   test_meta_fn_utils
   SRCS test_meta_fn_utils.cc
@@ -58,7 +54,7 @@ if(WITH_TESTING AND TEST selected_rows_test)
 endif()
 if(NOT WIN32)
   cc_test(test_rw_lock SRCS test_rw_lock.cc)
-endif(NOT WIN32)
+endif()
 cc_test(
   test_string_tensor
   SRCS test_string_tensor.cc

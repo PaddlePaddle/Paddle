@@ -53,7 +53,8 @@ class LU_UnpackOp : public framework::OperatorWithKernel {
 
     auto x_dims = context->GetInputDim("X");
     int x_rank = x_dims.size();
-    PADDLE_ENFORCE_GE(x_rank, 2,
+    PADDLE_ENFORCE_GE(x_rank,
+                      2,
                       platform::errors::InvalidArgument(
                           "the rank of input must greater than 2"));
 
@@ -131,10 +132,10 @@ class LU_UnpackGradOpVarTypeInference : public framework::VarTypeInference {
     auto var_type = ctx->GetInputType("X", 0);
     auto data_type = ctx->GetInputDataType("X", 0);
 
-    ctx->SetOutputType(framework::GradVarName("X"), var_type,
-                       framework::ALL_ELEMENTS);
-    ctx->SetOutputDataType(framework::GradVarName("X"), data_type,
-                           framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        framework::GradVarName("X"), var_type, framework::ALL_ELEMENTS);
+    ctx->SetOutputDataType(
+        framework::GradVarName("X"), data_type, framework::ALL_ELEMENTS);
   }
 };
 
@@ -144,10 +145,14 @@ class LU_UnpackGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lu_unpack");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("L")), "Input",
-                   "L@GRAD", "lu_unpack");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("U")), "Input",
-                   "U@GRAD", "lu_unpack");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("L")),
+                   "Input",
+                   "L@GRAD",
+                   "lu_unpack");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("U")),
+                   "Input",
+                   "U@GRAD",
+                   "lu_unpack");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -170,16 +175,19 @@ class LU_UnpackGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(lu_unpack, ops::LU_UnpackOp, ops::LU_UnpackOpMaker,
+REGISTER_OPERATOR(lu_unpack,
+                  ops::LU_UnpackOp,
+                  ops::LU_UnpackOpMaker,
                   ops::LU_UnpackOpVarTypeInference,
                   ops::LU_UnpackOpGradMaker<paddle::framework::OpDesc>,
                   ops::LU_UnpackOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(lu_unpack_grad, ops::LU_UnpackGradOp,
+REGISTER_OPERATOR(lu_unpack_grad,
+                  ops::LU_UnpackGradOp,
                   ops::LU_UnpackGradOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lu_unpack,
-                       ops::LU_UnpackKernel<plat::CPUDeviceContext, float>,
-                       ops::LU_UnpackKernel<plat::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    lu_unpack_grad, ops::LU_UnpackGradKernel<plat::CPUDeviceContext, float>,
-    ops::LU_UnpackGradKernel<plat::CPUDeviceContext, double>);
+                       ops::LU_UnpackKernel<phi::CPUContext, float>,
+                       ops::LU_UnpackKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(lu_unpack_grad,
+                       ops::LU_UnpackGradKernel<phi::CPUContext, float>,
+                       ops::LU_UnpackGradKernel<phi::CPUContext, double>);

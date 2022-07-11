@@ -62,7 +62,8 @@ class MKLDNNActivationGradKernel
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
                      dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                    true,
                     paddle::platform::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use CPUPlace"));
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
@@ -73,8 +74,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   bool is_inplaced = x->IsSharedBufferWith(*out);
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), x);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), x);
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
@@ -104,8 +105,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), x, dout);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), x, dout);
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
@@ -132,8 +133,8 @@ void eltwise_grad_use_out(const framework::ExecutionContext &ctx,
   const auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  platform::ActivationMKLDNNHandler<T> handler(algorithm, ctx, mkldnn_engine,
-                                               ctx.GetPlace(), out, dout);
+  platform::ActivationMKLDNNHandler<T> handler(
+      algorithm, ctx, mkldnn_engine, ctx.GetPlace(), out, dout);
 
   auto dst_memory_p = handler.AcquireBackwardSrcMemory(out);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(dout);
@@ -269,15 +270,18 @@ using MishMKLDNNGradFunctor =
 
 template <typename T>
 using SigmoidMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
+    T,
+    dnnl::algorithm::eltwise_logistic_use_dst_for_bwd>;
 
 template <typename T>
 using TanhMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
+    T,
+    dnnl::algorithm::eltwise_tanh_use_dst_for_bwd>;
 
 template <typename T>
 using SqrtMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
+    T,
+    dnnl::algorithm::eltwise_sqrt_use_dst_for_bwd>;
 
 template <typename T>
 using AbsMKLDNNGradFunctor =
@@ -285,11 +289,13 @@ using AbsMKLDNNGradFunctor =
 
 template <typename T>
 using EluMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
+    T,
+    dnnl::algorithm::eltwise_elu_use_dst_for_bwd>;
 
 template <typename T>
 using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
-    T, dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
+    T,
+    dnnl::algorithm::eltwise_exp_use_dst_for_bwd>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -298,17 +304,23 @@ namespace ops = paddle::operators;
 
 #define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor)    \
   REGISTER_OP_KERNEL(                                                         \
-      act_type, MKLDNN, ::paddle::platform::CPUPlace,                         \
+      act_type,                                                               \
+      MKLDNN,                                                                 \
+      ::paddle::platform::CPUPlace,                                           \
       ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
       ops::MKLDNNActivationKernel<ops::functor<paddle::platform::bfloat16>>); \
   REGISTER_OP_KERNEL(                                                         \
-      act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,                  \
+      act_type##_grad,                                                        \
+      MKLDNN,                                                                 \
+      ::paddle::platform::CPUPlace,                                           \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>,              \
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 #define REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(act_type, functor) \
-  REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,  \
+  REGISTER_OP_KERNEL(act_type,                                        \
+                     MKLDNN,                                          \
+                     ::paddle::platform::CPUPlace,                    \
                      ops::MKLDNNActivationKernel<ops::functor<float>>);
 
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
@@ -333,7 +345,9 @@ REGISTER_ACTIVATION_MKLDNN_KERNEL_FWD_ONLY(round, RoundMKLDNNFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
-    softplus, MKLDNN, paddle::platform::CPUPlace,
+    softplus,
+    MKLDNN,
+    paddle::platform::CPUPlace,
     ops::MKLDNNActivationKernel<ops::SoftplusMKLDNNFunctor<float>>,
     ops::MKLDNNActivationKernel<
         ops::SoftplusMKLDNNFunctor<paddle::platform::bfloat16>>);

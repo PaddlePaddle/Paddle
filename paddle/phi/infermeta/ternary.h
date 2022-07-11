@@ -69,6 +69,16 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaTensor* dst_count);
 
+void GroupNormInferMeta(const MetaTensor& x,
+                        const MetaTensor& scale,
+                        const MetaTensor& bias,
+                        float epsilon,
+                        int groups,
+                        const std::string& data_layout,
+                        MetaTensor* y,
+                        MetaTensor* mean,
+                        MetaTensor* variance);
+
 void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
                         const MetaTensor& bias,

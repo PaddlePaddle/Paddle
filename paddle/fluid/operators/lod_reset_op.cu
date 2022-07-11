@@ -17,7 +17,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    lod_reset, ops::LoDResetKernel<paddle::platform::CUDADeviceContext, float>,
+    lod_reset,
+    ops::LoDResetKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int64_t>);

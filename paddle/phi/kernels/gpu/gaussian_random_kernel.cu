@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gaussian_random_kernel.h"
+
 #include <thrust/random.h>
 
 #include "paddle/fluid/framework/generator.h"
@@ -21,7 +23,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
-#include "paddle/phi/kernels/gaussian_random_kernel.h"
 
 namespace phi {
 

@@ -37,5 +37,4 @@ PD_REGISTER_KERNEL(max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float) {}
 #else
 PD_REGISTER_KERNEL(
     max_raw, KPS, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
-
 #endif

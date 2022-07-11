@@ -72,6 +72,10 @@ void* GetCUFFTDsoHandle() { return phi::dynload::GetCUFFTDsoHandle(); }
 
 void* GetMKLRTDsoHandle() { return phi::dynload::GetMKLRTDsoHandle(); }
 
+void* GetCusparseLtDsoHandle() {
+  return phi::dynload::GetCusparseLtDsoHandle();
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

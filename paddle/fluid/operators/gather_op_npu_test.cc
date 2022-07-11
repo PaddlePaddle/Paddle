@@ -36,7 +36,8 @@ USE_OP_ITSELF(gather_grad);
 USE_OP_DEVICE_KERNEL(gather_grad, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
@@ -95,7 +96,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 }
 
 template <typename T>
-void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
+void CompareGrad(f::Scope* scope,
+                 const p::DeviceContext& ctx,
                  std::string op_type) {
   // init
   auto index = scope->Var("Index");
@@ -127,8 +129,10 @@ void CompareGrad(f::Scope* scope, const p::DeviceContext& ctx,
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
-      {{"X@GRAD", {"DX"}}}, attrs);
+      op_type,
+      {{"X", {"X"}}, {"Index", {"Index"}}, {"Out@GRAD", {"DOut"}}},
+      {{"X@GRAD", {"DX"}}},
+      attrs);
 
   auto place = ctx.GetPlace();
   op->Run(*scope, place);

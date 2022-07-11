@@ -145,6 +145,17 @@ void DropoutInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaTensor* mask);
 
+void DropoutNdInferMeta(const MetaTensor& x,
+                        const MetaTensor& seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const std::vector<int>& axis,
+                        MetaTensor* out,
+                        MetaTensor* mask);
+
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out);

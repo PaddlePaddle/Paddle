@@ -17,6 +17,7 @@ import unittest
 import random
 import numpy as np
 import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -52,7 +53,7 @@ def conv_net(img, label):
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
@@ -166,15 +167,19 @@ class TestQuantizationScalePass(unittest.TestCase):
                     marked_nodes.add(op)
             test_graph.draw('.', 'quant_scale' + dev_name, marked_nodes)
 
-        with open('quant_scale_model' + dev_name + '.txt', 'w') as f:
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(
+            tempdir.name, 'quant_scale_model' + dev_name + '.txt')
+        save_path = os.path.join(tempdir.name, 'quant_scale_model' + dev_name)
+        with open(mapping_table_path, 'w') as f:
             f.write(str(server_program))
 
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model('quant_scale_model' + dev_name,
-                                          ['image', 'label'], [loss],
+            fluid.io.save_inference_model(save_path, ['image', 'label'], [loss],
                                           exe,
                                           server_program,
                                           clip_extra=True)
+        tempdir.cleanup()
 
     def test_quant_scale_cuda(self):
         if fluid.core.is_compiled_with_cuda():

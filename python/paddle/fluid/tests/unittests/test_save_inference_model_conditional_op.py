@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import unittest
 import numpy as np
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -93,54 +94,60 @@ class TestConditionalOp(unittest.TestCase):
                                        paddle.static.InputSpec(
                                            shape=[1, 3, 8, 8], dtype='float32')
                                    ])
-        paddle.jit.save(net, './while_net')
+        root_path = tempfile.TemporaryDirectory()
+        model_file = os.path.join(root_path.name, "while_net")
+        paddle.jit.save(net, model_file)
 
         right_pdmodel = set([
             "uniform_random", "shape", "slice", "not_equal", "while",
             "elementwise_add"
         ])
         paddle.enable_static()
-        pdmodel = getModelOp("while_net.pdmodel")
-        #print(len(right_pdmodel.difference(pdmodel)))
+        pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(
             len(right_pdmodel.difference(pdmodel)) == 0,
             "The while op is pruned by mistake.")
+        root_path.cleanup()
 
     def test_for_op(self):
         paddle.disable_static()
         net = ForNet()
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')])
-        paddle.jit.save(net, './for_net')
+        root_path = tempfile.TemporaryDirectory()
+        model_file = os.path.join(root_path.name, "for_net")
+        paddle.jit.save(net, model_file)
 
         right_pdmodel = set([
             "randint", "fill_constant", "cast", "less_than", "while",
             "elementwise_add"
         ])
         paddle.enable_static()
-        pdmodel = getModelOp("for_net.pdmodel")
-        #print(len(right_pdmodel.difference(pdmodel)))
+        pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(
             len(right_pdmodel.difference(pdmodel)) == 0,
             "The for op is pruned by mistake.")
+        root_path.cleanup()
 
     def test_if_op(self):
         paddle.disable_static()
         net = IfElseNet()
         net = paddle.jit.to_static(
             net, input_spec=[paddle.static.InputSpec(shape=[1], dtype='int32')])
-        paddle.jit.save(net, './if_net')
+        root_path = tempfile.TemporaryDirectory()
+        model_file = os.path.join(root_path.name, "if_net")
+        paddle.jit.save(net, model_file)
 
         right_pdmodel = set([
             "assign_value", "greater_than", "cast", "conditional_block",
             "logical_not", "select_input"
         ])
         paddle.enable_static()
-        pdmodel = getModelOp("if_net.pdmodel")
-        #print(len(right_pdmodel.difference(pdmodel)))
+        pdmodel = getModelOp(model_file + ".pdmodel")
         self.assertTrue(
             len(right_pdmodel.difference(pdmodel)) == 0,
             "The if op is pruned by mistake.")
+        root_path.cleanup()
 
 
 if __name__ == '__main__':

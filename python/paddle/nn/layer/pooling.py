@@ -619,42 +619,32 @@ class MaxPool3D(Layer):
 class AdaptiveAvgPool1D(Layer):
     r"""
 
-    This operation applies a 1D adaptive average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_mask parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
+    A 1D adaptive average pooling over an input signal composed
+    of several input planes, based on :attr:`output_size`.
+    Input and output are in NCL format, where N is batch
+    size, C is the number of channels and L is the length of the feature.
+    The shape of output will be :math:`[N, C, output\_size]`.
 
-    For average adaptive pool1d:
+    The formulation for average adaptive pool1d is
 
     ..  math::
 
-        lstart &= floor(i * L_{in} / L_{out})
+        lstart &= \lfloor i * L_{in} / L_{out}\rfloor,
 
-        lend &= ceil((i + 1) * L_{in} / L_{out})
+        lend &= \lceil(i + 1) * L_{in} / L_{out}\rceil,
 
-        Output(i) &= \frac{ \sum Input[lstart:lend]}{lend - lstart}
+        Output(i) &= \frac{\sum Input[lstart:lend]}{lend - lstart}.
 
     Parameters:
-        output_size(int): The target output size. It must be an integer.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
-            Usually name is no need to set and None by default.
+        output_size(int): The target output size. Its data type must be int.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A callable object of AdaptiveAvgPool1D.
-
-    Raises:
-        ValueError: 'output_size' should be an integer.
-
-    Shape:
-        - x(Tensor): 3-D tensor. The input tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-          The data type can be float32, float64.
-        - output(Tensor): 3-D tensor. The output tensor of adaptive avg pool1d operator, which is a 3-D tensor.
-          The data type is same as input x.
+        A callable object for computing 1D adaptive average pooling.
 
     Examples:
         .. code-block:: python
-
+            :name: AdaptiveAvgPool1D-example
             # average adaptive pool1d
             # suppose input data in shape of [N, C, L], `output_size` is m or [m],
             # output shape is [N, C, m], adaptive pool divide L dimension

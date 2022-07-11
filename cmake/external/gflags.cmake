@@ -25,13 +25,13 @@ if(WIN32)
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib"
       CACHE FILEPATH "GFLAGS_LIBRARIES" FORCE)
-else(WIN32)
+else()
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/libgflags.a"
       CACHE FILEPATH "GFLAGS_LIBRARIES" FORCE)
   set(BUILD_COMMAND $(MAKE) --silent)
   set(INSTALL_COMMAND $(MAKE) install)
-endif(WIN32)
+endif()
 
 include_directories(${GFLAGS_INCLUDE_DIR})
 
@@ -101,5 +101,5 @@ if(WIN32)
   check_include_file_cxx("shlwapi.h" HAVE_SHLWAPI)
   if(HAVE_SHLWAPI)
     set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
-  endif(HAVE_SHLWAPI)
-endif(WIN32)
+  endif()
+endif()

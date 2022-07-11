@@ -71,7 +71,8 @@ class AllocatorFacade {
                                           size_t size,
                                           const phi::Stream& stream);
 
-  AllocationPtr Alloc(const platform::Place& place, size_t size,
+  AllocationPtr Alloc(const platform::Place& place,
+                      size_t size,
                       const phi::Stream& stream);
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,

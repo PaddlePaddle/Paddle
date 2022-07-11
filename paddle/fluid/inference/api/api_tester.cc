@@ -46,7 +46,9 @@ class DemoPredictor : public PaddlePredictor {
     return false;
   }
 
-  std::unique_ptr<PaddlePredictor> Clone() override { return nullptr; }
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override {
+    return nullptr;
+  }
 
   ~DemoPredictor() override {}
 };
