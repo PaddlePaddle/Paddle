@@ -23,7 +23,7 @@ class ClientSelector(object):
 
     def __init__(self, clients_info):
         self.clients_info = clients_info
-        self.fl_strategy = {0: "WAIT"}
+        self.fl_strategy = {0: "WAIT", 1: "JOIN"}
 
     def algorithm_1(self):
         pass
