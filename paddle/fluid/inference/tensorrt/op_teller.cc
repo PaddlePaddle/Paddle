@@ -347,17 +347,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         X_name = desc.Input("Input")[0];
       }
       auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* x_var_desc = block->FindVar(X_name);
-      // Can't get feed op's TensorDesc
-      if (op_type != "feed" && x_var_desc) {
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) return false;
+      if (block) {
+        auto* x_var_desc = block->FindVar(X_name);
+        // Can't get feed op's TensorDesc
+        if (op_type != "feed" && x_var_desc) {
+          const auto x_shape = x_var_desc->GetShape();
+          if (x_shape.size() == 1) return false;
+        }
       }
     }
 
