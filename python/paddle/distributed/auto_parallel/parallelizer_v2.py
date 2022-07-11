@@ -17,8 +17,10 @@ import time
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import _non_static_mode
 from paddle.distributed.passes import new_pass
 from paddle.distributed.utils import get_logger
 
@@ -141,9 +143,14 @@ class Parallelizer:
 
     def _generate_optimizer(self, main_program, startup_program, optimizer,
                             params_grads):
+        if self._dist_context._dygraph_mode:
+            paddle.disable_static()
+            optimizer = copy.deepcopy(optimizer)
+            paddle.enable_static()
+        else:
+            optimizer = copy.deepcopy(optimizer)
         with program_guard(main_program, startup_program):
-            optimizer_ops = copy.deepcopy(optimizer).apply_gradients(
-                params_grads)
+            optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 

@@ -402,6 +402,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         dp_group = new_process_group(group_ranks)
 
     if need_gradient_allreduce and is_parameter_related(Y_var.name, main_block):
+        added_ops = []
         Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
         allreduce_op = main_block.append_op(type='c_allreduce_sum',
                                             inputs={'X': [Y_Grad_var]},
@@ -411,18 +412,24 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                                 'use_calc_stream': True,
                                                 OP_ROLE_KEY: OpRole.Backward
                                             })
-        scale_op = main_block.append_op(type='scale',
-                                        inputs={'X': Y_Grad_var},
-                                        outputs={'Out': Y_Grad_var},
-                                        attrs={
-                                            'scale': 1.0 / dp_degree,
-                                            OP_ROLE_KEY: OpRole.Backward
-                                        })
+        added_ops.append(allreduce_op)
+
+        if ctx.gradient_scale:
+            scale_op = main_block.append_op(type='scale',
+                                            inputs={'X': Y_Grad_var},
+                                            outputs={'Out': Y_Grad_var},
+                                            attrs={
+                                                'scale': 1.0 / dp_degree,
+                                                OP_ROLE_KEY: OpRole.Backward
+                                            })
+            added_ops.append(scale_op)
+
+        main_block._sync_with_cpp()
 
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
             Y_Grad_var).dims_mapping
         process_mesh = dist_attr.process_mesh
-        for op in [allreduce_op, scale_op]:
+        for op in added_ops:
             op_attr = OperatorDistributedAttribute()
             op_attr.process_mesh = process_mesh
             op_attr.set_output_dims_mapping(Y_Grad_var.name, dims_mapping)
@@ -612,6 +619,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if intermediate_var_0.shape != ref_shape_x:
             intermediate_var_0.desc.set_shape(ref_shape_x)
@@ -624,6 +632,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             'transpose_X': False,
             'transpose_Y': False,
             'alpha': 1,
+            OP_ROLE_KEY: src_op('op_role')
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
         matmul_op = main_block.append_op(type='matmul',
@@ -809,6 +818,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             'transpose_X': False,
             'transpose_Y': False,
             'alpha': 1,
+            OP_ROLE_KEY: src_op.attr('op_role')
         }
         inputs = {'X': X_var, 'Y': Weight_var}
 
@@ -848,7 +858,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
-                'use_model_parallel': True
+                'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
@@ -1132,6 +1143,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role'),
             })
         if intermediate_var_0.shape != ref_shape_x:
             intermediate_var_0.desc.set_shape(ref_shape_x)
@@ -1140,7 +1152,11 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                                  ['float16', 'float32', 'float64'], 'linear')
         check_dtype(intermediate_var_0.dtype, 'dtype',
                     ['float16', 'float32', 'float64'], 'linear')
-        attrs = {'trans_x': False, 'trans_y': False}
+        attrs = {
+            'trans_x': False,
+            'trans_y': False,
+            OP_ROLE_KEY: src_op.attr('op_role')
+        }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
         matmul_v2_op = main_block.append_op(type='matmul_v2',
                                             inputs=inputs,
@@ -1317,7 +1333,11 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                                  'linear')
         check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'linear')
-        attrs = {'trans_x': False, 'trans_y': False}
+        attrs = {
+            'trans_x': False,
+            'trans_y': False,
+            OP_ROLE_KEY: src_op.attr('op_role')
+        }
         inputs = {'X': X_var, 'Y': Weight_var}
 
         # infer out var shape with op dist attr
@@ -1356,7 +1376,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
-                'use_model_parallel': True
+                'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
@@ -1641,6 +1662,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if intermediate_var_0.shape != ref_shape_x:
             intermediate_var_0.desc.set_shape(ref_shape_x)
@@ -1652,7 +1674,8 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
+            "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
+            OP_ROLE_KEY: src_op.attr('op_role')
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
         mul_op = main_block.append_op(type='mul',
@@ -1833,7 +1856,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
+            "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
+            OP_ROLE_KEY: src_op.attr('op_role')
         }
         inputs = {'X': X_var, 'Y': Weight_var}
 
@@ -1873,7 +1897,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
-                'use_model_parallel': True
+                'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)

@@ -222,7 +222,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'W': [Weight_var]
             },
             outputs={'Out': [intermediate_var_0]},
-            attrs={"start_index": relative_idx})
+            attrs={
+                "start_index": relative_idx,
+                OP_ROLE_KEY: src_op.attr('op_role')
+            })
         if intermediate_var_0.shape != ref_shape:
             intermediate_var_0.desc.set_shape(ref_shape)
 
@@ -235,6 +238,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                OP_ROLE_KEY: src_op.attr('op_role')
             })
         if Out_var.shape != ref_shape:
             Out_var.desc.set_shape(ref_shape)
@@ -439,6 +443,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dp_group = new_process_group(group_ranks)
 
         if need_gradient_allreduce:
+            added_ops = []
             W_Grad_var = main_block.var(kwargs['W@GRAD'][0])
             allreduce_op = main_block.append_op(type='c_allreduce_sum',
                                                 inputs={'X': [W_Grad_var]},
@@ -448,18 +453,24 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                                     'use_calc_stream': True,
                                                     OP_ROLE_KEY: OpRole.Backward
                                                 })
-            scale_op = main_block.append_op(type='scale',
-                                            inputs={'X': W_Grad_var},
-                                            outputs={'Out': W_Grad_var},
-                                            attrs={
-                                                'scale': 1.0 / dp_degree,
-                                                OP_ROLE_KEY: OpRole.Backward
-                                            })
+            added_ops.append(allreduce_op)
+
+            if ctx.gradient_scale:
+                scale_op = main_block.append_op(type='scale',
+                                                inputs={'X': W_Grad_var},
+                                                outputs={'Out': W_Grad_var},
+                                                attrs={
+                                                    'scale': 1.0 / dp_degree,
+                                                    OP_ROLE_KEY: OpRole.Backward
+                                                })
+                added_ops.append(scale_op)
+
+            main_block._sync_with_cpp()
 
             dims_mapping = ctx.get_tensor_dist_attr_for_program(
                 W_Grad_var).dims_mapping
             process_mesh = dist_attr.process_mesh
-            for op in [allreduce_op, scale_op]:
+            for op in added_ops:
                 op_attr = OperatorDistributedAttribute()
                 op_attr.process_mesh = process_mesh
                 op_attr.set_output_dims_mapping(W_Grad_var.name, dims_mapping)

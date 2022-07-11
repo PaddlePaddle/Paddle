@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
@@ -21,7 +23,7 @@ from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
 
 
 def convert_while_loop(cond, body, getter, setter):
@@ -41,11 +43,9 @@ def convert_while_loop(cond, body, getter, setter):
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while(cond, body, getter, setter)
+        _run_paddle_while(cond, body, getter, setter)
     else:
-        loop_vars = _run_py_while(cond, body, getter, setter)
-
-    return loop_vars
+        _run_py_while(cond, body, getter, setter)
 
 
 def _run_paddle_while(cond, body, getter, setter):
@@ -61,10 +61,13 @@ def _run_paddle_while(cond, body, getter, setter):
 
 
 def _run_py_while(cond, body, getter, setter):
-    loop_vars = getter()
-    while cond():
-        loop_vars = body()
-    return loop_vars
+    while True:
+        pred = cond()
+        if isinstance(pred, Variable):
+            raise Dygraph2StaticException(
+                "python while pred change from bool to variable.")
+        if not pred: break
+        body()
 
 
 def convert_logical_and(x_func, y_func):
@@ -231,17 +234,32 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
 
     def new_true_fn():
         set_args(init_args)
-        outs = true_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'if_body')
-        return outs
+        ret = true_fn()
+        # IfExpr will return a non-None return value, so we just return ret.
+        # We assume normal return has no return value.
+        if ret is None: return get_args()
+        else: return ret
 
     def new_false_fn():
         set_args(init_args)
-        outs = false_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'else_body')
-        return outs
+        ret = false_fn()
+        if ret is None: return get_args()
+        else: return ret
 
-    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    try:
+        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn, None,
+                                      return_name_ids)
+    except Exception as e:
+        if re.search("Unsupported return type of true_fn and false_fn in cond",
+                     str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different return type. TODO: add link to modifty. {}"
+                .format(str(e)))
+        if re.search("Incompatible return values of", str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different number of return value. TODO: add link to modifty. {}"
+                .format(str(e)))
+        raise e
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
 
 
@@ -251,8 +269,7 @@ def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
     Evaluate python original branch function if-else.
     """
     py_outs = true_fn() if pred else false_fn()
-    py_outs = _remove_no_value_return_var(py_outs)
-    return _recover_args_state(py_outs, get_args, set_args, return_name_ids)
+    return py_outs
 
 
 def _remove_no_value_return_var(out):
@@ -317,9 +334,10 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = (outs, )
+        final_outs = (outs, ) if not isinstance(outs,
+                                                (list, tuple)) else tuple(outs)
     else:
-        outs = (outs, ) if num_outs == 1 else outs
+        outs = (outs, ) if num_outs == 1 else tuple(outs)
         final_outs = outs + init_args[num_outs:]
 
     set_args(final_outs)

@@ -303,7 +303,8 @@ class TestMatmulBaseGenerator(XPUOpTest):
 
         X = np.random.random(shape_X).astype(self.dtype)
         Y = np.random.random(shape_Y).astype(self.dtype)
-        Out = reference_matmul(X, Y, transpose_X, transpose_Y)
+        Out = reference_matmul(X, Y, transpose_X,
+                               transpose_Y).astype(self.dtype)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {'transpose_X': transpose_X, 'transpose_Y': transpose_Y}
         self.outputs = {'Out': Out}

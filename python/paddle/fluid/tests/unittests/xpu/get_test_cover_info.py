@@ -84,7 +84,9 @@ type_dict_str_to_numpy = {
 
 xpu_test_op_white_list = []
 xpu_test_device_type_white_list = ['xpu1_float64']
-xpu_test_op_type_white_list = ['dropout_float16', 'dropout_grad_float16']
+xpu_test_op_type_white_list = [
+    'dropout_float16', 'dropout_grad_float16', 'matmul_v2_float16'
+]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
