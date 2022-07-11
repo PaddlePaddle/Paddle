@@ -380,7 +380,7 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
     for comm_cost in comm_cost_list:
         group_ranks = comm_cost.group_ranks
         dp_degree = len(group_ranks)
-        scale_cost_mapping = {}
+        scale_costs = {}
         op_type = "scale"
         for rank in group_ranks:
             desc = {}
