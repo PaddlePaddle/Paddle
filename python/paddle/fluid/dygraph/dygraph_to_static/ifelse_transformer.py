@@ -335,6 +335,7 @@ def transform_if_else(node, root):
         return True
 
     nonlocal_names = list(filter(remove_if, nonlocal_names))
+    return_name_ids = nonlocal_names
 
     nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 
