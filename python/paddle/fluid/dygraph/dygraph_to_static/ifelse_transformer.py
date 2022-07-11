@@ -34,7 +34,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_un
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX, FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -325,6 +325,7 @@ def transform_if_else(node, root):
     # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
     filter_names = [
         ARGS_NAME, FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX,
+        FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX,
         FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX,
         FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX
     ]

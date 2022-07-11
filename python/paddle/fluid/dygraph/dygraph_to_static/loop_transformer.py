@@ -538,6 +538,7 @@ class LoopTransformer(BaseTransformer):
         # 2. get original loop vars
         loop_var_names, create_var_names = node.pd_scope.modified_vars(
         ), node.pd_scope.created_vars()
+        # TODO: Remove the bunch of code?  We have the unique format `for A in B:`
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need

@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2S
 def indexable(x, code=None):
     if isinstance(x, Variable): return x
     if hasattr(x, '__len__') and hasattr(x, '__getitem__'): return x
-    if hasattr(x, '__iter__') and hasattr(x, '__next__'):
+    if hasattr(x, '__iter__'):
         return [i for i in x]
     else:
         raise RuntimeError("X can't be convert into indexable.")
@@ -60,7 +60,7 @@ def _unpack_by_structure_paddle(target, structure):
     return ret
 
 
-def convert_while_loop(cond, body, loop_vars):
+def convert_while_loop(cond, body, getter, setter):
     """
     A function representation of a Python ``while`` statement.
 
