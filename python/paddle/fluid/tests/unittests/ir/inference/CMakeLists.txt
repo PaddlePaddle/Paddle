@@ -216,7 +216,5 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
                          PROPERTIES TIMEOUT 60)
-    set_tests_properties(test_mkldnn_matmul_activation_fuse_pass
-                         PROPERTIES TIMEOUT 300)
   endif()
 endif()
