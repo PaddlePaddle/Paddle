@@ -27,30 +27,37 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_data_feed()
+        self.set_feed()
         self.set_feed_attr()
         self.set_op_attrs()
 
-    def set_data_feed(self):
-        data = np.random.uniform(size=[2, 3, 1])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
+    def set_feed(self):
+        data = np.random.uniform(size=[3, 2, 2])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {'fill_value': 0.3, 'dtype': 'float32'}
+        self.attrs = {}
+        self.attrs['axis'] = [0, 1]
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
-                               dtype='float32')
-        x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
-        self.fetch_list = [out.name]
+                               dtype=self.feed_dtype[0])
+        x = paddle.flip(x, **self.attrs)
+        self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
         self.run_op_test(exec_mode)
@@ -65,27 +72,18 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
-    def set_op_attrs(self):
-        self.attrs = {'fill_value': 3, 'dtype': 'int32'}
+    def set_feed(self):
+        data = np.random.randint(0, 10, size=[3, 2, 2])
+        self.feed_fp32 = {'x': data.astype(np.int32)}
+        self.feed_fp16 = {'x': data.astype(np.int32)}
 
 
-class TestError(TestBase):
+class TestCase2(TestBase):
 
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.fluid.data('x', [-1, 3, 13], 'float32')
-        x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
-        self.fetch_list = [out.name]
-
-    def test(self):
-        self.build_model()
-
-        def test_error():
-            self.run_op_test(IPUOpTest.ExecutionMode.IPU_FP32)
-
-        self.assertRaisesRegex(Exception, "Please check tensor shape setting",
-                               test_error)
+    def set_feed(self):
+        data = np.random.randint(0, 2, size=[4, 3, 2, 2])
+        self.feed_fp32 = {'x': data.astype(np.bool)}
+        self.feed_fp16 = {'x': data.astype(np.bool)}
 
 
 if __name__ == "__main__":
