@@ -160,7 +160,7 @@ static void UniqueConsecutiveDim(const Context& context,
   DenseTensor in_trans;
   DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
-  context.template Alloc<InT>(in_trans);
+  context.template Alloc<InT>(&in_trans);
   paddle::operators::TransCompute<Context, InT>(
       in.dims().size(), context, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
@@ -175,7 +175,7 @@ static void UniqueConsecutiveDim(const Context& context,
   // sort tensor according to indices
   DenseTensor input_sorted;
   input_sorted.Resize(in_trans_dims);
-  context.template Alloc<InT>(input_sorted);
+  context.template Alloc<InT>(&input_sorted);
   InT* input_sorted_data = input_sorted.data<InT>();
   for (size_t i = 0; i < sorted_indices_vec.size(); ++i) {
     memcpy(input_sorted_data + i * col,
@@ -202,7 +202,7 @@ static void UniqueConsecutiveDim(const Context& context,
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
   out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
-  context.template Alloc<InT>(out_trans);
+  context.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(phi::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(out);

@@ -21,7 +21,7 @@ KernelSignature UniqueConsecutiveOpArgumentMapping(
   return KernelSignature("unique_consecutive",
                          {"X"},
                          {"return_inverse", "return_counts", "axis", "dtype"},
-                         {"Out", "Index", "Counts"})
+                         {"Out", "Index", "Counts"});
 }
 
 }  // namespace phi
