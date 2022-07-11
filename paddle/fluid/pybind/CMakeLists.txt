@@ -113,6 +113,7 @@ set(PYBIND_SRCS
     metrics_py.cc
     data_set_py.cc
     imperative.cc
+    op_function.cc
     ir.cc
     bind_cost_model.cc
     bind_fleet_executor.cc
@@ -122,6 +123,12 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc)
+
+execute_process(
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/generate_file_structures.py"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/")
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
@@ -257,10 +264,10 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
+  set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function.cc)
   set(tmp_impl_file ${impl_file}.tmp)
   set(eager_impl_file
-      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_impl.h)
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
@@ -461,8 +468,14 @@ if(WITH_PYTHON)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(
       paddle_eager
-      SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc
-           eager_utils.cc eager_py_layer.cc
+      SRCS eager.cc
+           eager_functions.cc
+           eager_method.cc
+           eager_properties.cc
+           eager_utils.cc
+           eager_py_layer.cc
+           eager_op_function.cc
+           eager_final_state_op_function.cc
       DEPS eager_api
            autograd_meta
            backward

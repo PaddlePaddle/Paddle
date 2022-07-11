@@ -506,12 +506,14 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
                                    "\"paddle/fluid/platform/profiler.h\"",
+                                   "\"pybind11/numpy.h\"",
+                                   "\"pybind11/pybind11.h\"",
                                    "\"pybind11/detail/common.h\"",
+                                   "\"paddle/fluid/pybind/eager_utils.h\"",
+                                   "\"paddle/fluid/pybind/op_function.h\"",
                                    "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
-
-  out << "#pragma once\n\n";
 
   for (auto& header : headers) {
     out << "#include  " + header + "\n";

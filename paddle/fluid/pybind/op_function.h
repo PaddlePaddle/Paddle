@@ -257,8 +257,7 @@ PyObject* MakeReturnPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
+void BindOpFunctions(pybind11::module* module);
+
 }  // namespace pybind
 }  // namespace paddle
-
-// This include must be the last line
-#include "paddle/fluid/pybind/op_function_impl.h"
