@@ -913,11 +913,8 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     indices.stop_gradient = True
     return values, indices
 
-def bucketize(x,
-              sorted_sequence,
-              out_int32=False,
-              right=False,
-              name=None):
+
+def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
     """
     This API is used to find the index of the corresponding 1D tensor `sorted_sequence` in the innermost dimension based on the given `x`.
 
@@ -963,11 +960,14 @@ def bucketize(x,
             
     """
     check_variable_and_dtype(sorted_sequence, 'SortedSequence',
-                            ['float32', 'float64', 'int32', 'int64'],
-                            'paddle.searchsorted')
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.searchsorted')
     if sorted_sequence.dim() != 1:
-        raise ValueError(f"boundaries tensor must be 1 dimension, but got dim {sorted_sequence.dim()}")
+        raise ValueError(
+            f"boundaries tensor must be 1 dimension, but got dim {sorted_sequence.dim()}"
+        )
     return searchsorted(sorted_sequence, x, out_int32, right, name)
+
 
 def searchsorted(sorted_sequence,
                  values,

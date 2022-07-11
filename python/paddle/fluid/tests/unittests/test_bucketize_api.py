@@ -41,19 +41,17 @@ class TestBucketizeAPI(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 sorted_sequence = paddle.static.data(
-                        'SortedSequence',
-                        shape=self.sorted_sequence.shape,
-                        dtype="float64")
-                x = paddle.static.data('x',
-                                        shape=self.x.shape,
-                                        dtype="float64")
+                    'SortedSequence',
+                    shape=self.sorted_sequence.shape,
+                    dtype="float64")
+                x = paddle.static.data('x', shape=self.x.shape, dtype="float64")
                 out = paddle.bucketize(x, sorted_sequence)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'SortedSequence': self.sorted_sequence,
                     'x': self.x
                 },
-                                fetch_list=out)
+                              fetch_list=out)
                 out_ref = np.searchsorted(self.sorted_sequence, self.x)
                 self.assertTrue(np.allclose(out_ref, res))
 
@@ -68,8 +66,8 @@ class TestBucketizeAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.bucketize(x, sorted_sequence, right=True)
             out_ref = np.searchsorted(self.sorted_sequence,
-                                        self.x,
-                                        side='right')
+                                      self.x,
+                                      side='right')
             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
             paddle.enable_static()
 
@@ -86,11 +84,9 @@ class TestBucketizeAPI(unittest.TestCase):
     def test_bucketize_dims_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             sorted_sequence = paddle.static.data('SortedSequence',
-                                                    shape=[2, 2],
-                                                    dtype="float64")
-            x = paddle.static.data('x',
-                                        shape=[2, 5],
-                                        dtype="float64")
+                                                 shape=[2, 2],
+                                                 dtype="float64")
+            x = paddle.static.data('x', shape=[2, 5], dtype="float64")
             self.assertRaises(ValueError, paddle.bucketize, x, sorted_sequence)
 
 
