@@ -33,6 +33,10 @@ namespace framework {
 
 #if defined(PADDLE_WITH_XPU_KP)
 
+static inline __device__ void mfence_lm() {
+    __asm__("mfence {lm}\n\t");
+}
+
 struct XPUCustomGradMerger {
   template <typename T>
   __device__ T operator()(const T& a, const T& b) const {
@@ -627,7 +631,6 @@ __global__ void convert_feature_value_kernel(
     int read_len = 0;
     for (int offset = begin_offset; offset < end_offset;) {
         read_len =  (end_offset - offset) <= local_val_size ? (end_offset - offset) : local_val_size;
-        mfence();
         GM2LM(in_vals + offset, local_vals, sizeof(FeatureValue) * read_len);
         for (int i = 0; i < read_len; i++) {
             if (to_float) {
@@ -642,6 +645,7 @@ __global__ void convert_feature_value_kernel(
                 local_vals[i].mf_size = static_cast<int>(*mf_size);
             }
         }
+        mfence_lm();
         LM2GM(local_vals, in_vals + offset, sizeof(FeatureValue) * read_len);
 
         offset += read_len;
@@ -691,7 +695,6 @@ __global__ void convert_feature_push_value_kernel(
     int read_len = 0;
     for (int offset = begin_offset; offset < end_offset;) {
         read_len =  (end_offset - offset) <= local_val_size ? (end_offset - offset) : local_val_size;
-        mfence();
         GM2LM(in_vals + offset, local_vals, sizeof(FeaturePushValue) * read_len);
         for (int i = 0; i < read_len; i++) {
             if (to_float) {
@@ -702,6 +705,7 @@ __global__ void convert_feature_push_value_kernel(
                 local_vals[i].slot = static_cast<int>(*slot);
             }
         }
+        mfence_lm();
         LM2GM(local_vals, in_vals + offset, sizeof(FeaturePushValue) * read_len);
 
         offset += read_len;
