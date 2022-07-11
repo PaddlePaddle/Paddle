@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import time
 import logging
 from collections import defaultdict
 
@@ -85,6 +84,11 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
 
     def prepare(self,
                 optimizer=None,
@@ -100,6 +104,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -115,27 +120,23 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
-        time0 = time.time()
-        self._build()
-        print("build time: {}, mode {}".format(time.time() - time0, "ALL"))
+        self._prepare_single_mode("train")
 
+    def _prepare_single_mode(self, mode):
+        self._modes = [mode]
+        self._build()
         # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
-            time0 = time.time()
             self._plan(mode)
-            print("plan time: {}, mode {}".format(time.time() - time0, mode))
         for mode in self._modes:
             # Do the parallel process
-            time0 = time.time()
-            self._parallel(mode, all_ranks)
-            print("parallel time: {}, mode {}".format(time.time() - time0,
-                                                      mode))
+            self._parallel(mode, self._all_ranks)
+
             # Init comm and startup program
             self._initialize(mode)
+            self._mode_init_states[mode] = True
 
     def _build(self):
         for mode in self._modes:
@@ -189,19 +190,13 @@ class Engine:
             self._dist_contexts[mode].gradient_scale = self._gradient_scale
 
     def _plan(self, mode):
-        time0 = time.time()
         if self._planned_mode is None:
             self._planned_mode = mode
         else:
             self._init_dist_context(mode)
-        print("within plan init_dist_context time: {}, mode {}".format(
-            time.time() - time0, mode))
 
-        time0 = time.time()
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
         self._planners[mode].plan()
-        print("within plan plan() time: {}, mode {}".format(
-            time.time() - time0, mode))
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -282,11 +277,11 @@ class Engine:
         # TODO: callbacks
         # TODO: evaluate after training
 
-        print("=======" * 8 + "statistics in fit" + "=======" * 8)
-        from paddle.fluid.framework import get_sync_with_cpp_statistics
-        count, time = get_sync_with_cpp_statistics()
-        print("count: {}, time:{}".format(count, time))
-        print("=======" * 8 + "statistics in fit" + "=======" * 8)
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
@@ -323,6 +318,9 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
@@ -365,6 +363,9 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
