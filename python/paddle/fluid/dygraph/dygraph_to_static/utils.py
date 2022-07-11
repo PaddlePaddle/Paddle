@@ -1783,8 +1783,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
         def post_func():
             self._father_name_scope().merge_from(self._current_name_scope())
+            self._nearest_function_scope().merge_from(
+                self._current_name_scope())
             self._current_name_scope().created = self._nearest_function_scope(
             ).existed_vars() - node.before_created
+            # gather created vars into father and used in CreateUndefinedVarTransform
+            self._nearest_function_scope().created |= self._current_name_scope(
+            ).created
 
         def pre_func():
             setattr(node, "before_created",

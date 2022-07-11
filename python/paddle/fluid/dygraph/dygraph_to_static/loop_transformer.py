@@ -558,10 +558,8 @@ class LoopTransformer(BaseTransformer):
         #     y += x
         # print(x) # x = 10
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_undefined_var(name))
+        # We don't need to create static variable for them, because
+        # we do this in CreateUndefinedVarTransformer
 
         # create non-local statement for body and cond.
         nonlocal_names = list(loop_var_names | create_var_names)
@@ -642,10 +640,8 @@ class LoopTransformer(BaseTransformer):
         #     y = x
         # z = y
         #
-        # We need to create static variable for those variables
-        for name in create_var_names:
-            if "." not in name:
-                new_stmts.append(create_undefined_var(name))
+        # We don't need to create static variable for those variables, because
+        # we do this in CreateUndefinedVarTransformer
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
