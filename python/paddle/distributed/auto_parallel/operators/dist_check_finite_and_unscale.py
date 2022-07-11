@@ -137,7 +137,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                         attrs={
                                             "in_dtype": inf_var.dtype,
                                             "out_dtype": inf_var_int32.dtype,
-                                            OP_ROLE_KEY: OpRole.Backward
+                                            OP_ROLE_KEY: OpRole.Optimize
                                         })
         allreduce_op = main_block.append_op(type='c_allreduce_max',
                                             inputs={'X': inf_var_int32},
@@ -145,7 +145,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                             attrs={
                                                 'ring_id': group.id,
                                                 'use_calc_stream': True,
-                                                OP_ROLE_KEY: OpRole.Backward
+                                                OP_ROLE_KEY: OpRole.Optimize
                                             })
         cast_op2 = main_block.append_op(type='cast',
                                         inputs={'X': inf_var_int32},
@@ -153,7 +153,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                         attrs={
                                             "in_dtype": inf_var_int32.dtype,
                                             "out_dtype": inf_var.dtype,
-                                            OP_ROLE_KEY: OpRole.Backward
+                                            OP_ROLE_KEY: OpRole.Optimize
                                         })
         main_block._sync_with_cpp()
 

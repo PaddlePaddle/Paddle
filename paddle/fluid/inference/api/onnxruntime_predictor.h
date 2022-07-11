@@ -202,6 +202,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
+  std::map<std::string, std::shared_ptr<std::vector<int8_t>>> input_buffers_;
   int predictor_id_;
 
 // Some more detailed tests, they are made the friends of the predictor, so that

@@ -71,23 +71,29 @@ class SliceSelectPrimOpShapeInference : public framework::InferShapeBase {
     auto ends = ctx->Attrs().Get<std::vector<int64_t>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int64_t>>("strides");
     PADDLE_ENFORCE_EQ(
-        starts.size(), axis.size(),
+        starts.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of starts attribute and axis attribute should be same, "
             "but get %d and %d",
-            starts.size(), axis.size()));
+            starts.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axis.size(),
+        ends.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of ends attribute and axis attribute should be same, "
             "but get %d and %d",
-            ends.size(), axis.size()));
+            ends.size(),
+            axis.size()));
     PADDLE_ENFORCE_EQ(
-        strides.size(), axis.size(),
+        strides.size(),
+        axis.size(),
         platform::errors::InvalidArgument(
             "Number of strides attribute and axis attribute should be same, "
             "but get %d and %d",
-            strides.size(), axis.size()));
+            strides.size(),
+            axis.size()));
     for (size_t i = 0; i < axis.size(); ++i) {
       x_shape[axis[i]] = (ends[i] - starts[i] + strides[i] - 1) / strides[i];
     }
@@ -109,7 +115,8 @@ class SliceSelectPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(slice_select_p, paddle::operators::SliceSelectPrimOp,
+REGISTER_OPERATOR(slice_select_p,
+                  paddle::operators::SliceSelectPrimOp,
                   paddle::operators::SliceSelectPrimOpMaker,
                   paddle::operators::SliceSelectPrimOpShapeInference,
                   paddle::operators::SliceSelectPrimOpVarTypeInference);

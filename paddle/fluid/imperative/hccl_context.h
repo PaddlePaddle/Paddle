@@ -39,7 +39,8 @@ class HCCLParallelContext : public ParallelContext {
 
   ~HCCLParallelContext() override = default;
 
-  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids, int root,  // NOLINT
+  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,
+                   int root,  // NOLINT
                    int server_fd);
 
   void Init() override;
@@ -47,7 +48,8 @@ class HCCLParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
 
   void Broadcast(framework::Variable* src, int ring_id) override;

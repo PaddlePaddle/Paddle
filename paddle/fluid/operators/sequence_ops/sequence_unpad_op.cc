@@ -26,38 +26,45 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "Input(X) of SequenceUnpadOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Length"), true,
+        ctx->HasInput("Length"),
+        true,
         platform::errors::NotFound(
             "Input(Length) of SequenceUnpadOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound(
             "Output(Out) of SequenceUnpadOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(X) can't be less than 2. But the "
                           "rank we received is %d",
                           x_dims.size()));
 
     auto len_dims = ctx->GetInputDim("Length");
-    PADDLE_ENFORCE_EQ(len_dims.size(), 1,
+    PADDLE_ENFORCE_EQ(len_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The rank of SequenceUnpadOp Input(Length) should "
                           "be 1. But the rank we received is %d",
                           len_dims.size()));
     PADDLE_ENFORCE_EQ(
-        len_dims[0], x_dims[0],
+        len_dims[0],
+        x_dims[0],
         platform::errors::InvalidArgument(
             "The 1st dimension of SequenceUnpadOp Input(X) and Input(Length)"
             "should be same. But the 1st dimension of "
             "Input(X) is %d, Input(Length) is %d",
-            x_dims[0], len_dims[0]));
+            x_dims[0],
+            len_dims[0]));
 
     int64_t out_dim_0 = -1;
     if (ctx->IsRuntime()) {
@@ -132,11 +139,13 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound(
             "Input(X) of SequenceUnpadGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of SequenceUnpadGradOp should not be null."));
 
@@ -177,22 +186,22 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceUnpadGradOpNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
+REGISTER_OPERATOR(sequence_unpad,
+                  ops::SequenceUnpadOp,
                   ops::SequenceUnpadOpMaker,
                   ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
+REGISTER_OPERATOR(sequence_unpad_grad,
+                  ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_unpad,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_unpad,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, float>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, double>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int>,
+                       ops::SequenceUnpadOpKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_unpad_grad,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceUnpadGradOpKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, float>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, double>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int>,
+    ops::SequenceUnpadGradOpKernel<phi::CPUContext, int64_t>);

@@ -34,9 +34,14 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
  private:
   void ExecuteMatMulGrad(const ExecutionContext& ctx,
                          const MKLDNNDeviceContext& dev_ctx,
-                         const dnnl::engine& engine, Tensor* x, bool trans_x,
-                         bool is_fold_init_dims_x, Tensor* y, bool trans_y,
-                         bool is_fold_init_dims_y, Tensor* out) const;
+                         const dnnl::engine& engine,
+                         Tensor* x,
+                         bool trans_x,
+                         bool is_fold_init_dims_x,
+                         Tensor* y,
+                         bool trans_y,
+                         bool is_fold_init_dims_y,
+                         Tensor* out) const;
   void RunKernel(const ExecutionContext& ctx) const;
 };
 }  // namespace operators

@@ -80,24 +80,30 @@ class BertTokenizer {
 
   void Tokenize(const string& text, vector<int64_t>* split_tokens) const;
   void BuildInputsWithSpecialTokens(
-      vector<int64_t>* res, const vector<int64_t>& token_ids_0,
+      vector<int64_t>* res,
+      const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
   void CreateTokenTypeIdsFromSequences(
-      vector<int64_t>* token_type_ids, const vector<int64_t>& token_ids_0,
+      vector<int64_t>* token_type_ids,
+      const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
-  void TruncateSequence(vector<int64_t>* ids, vector<int64_t>* pair_ids,
+  void TruncateSequence(vector<int64_t>* ids,
+                        vector<int64_t>* pair_ids,
                         const size_t num_tokens_to_remove = 0,
                         const size_t stride = 0) const;
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
   int Encode(unordered_map<string, vector<int64_t>>* encoded_inputs,
-             const string& text, const string& text_pair = "",
-             bool is_split_into_words = false, const size_t max_seq_len = 0,
+             const string& text,
+             const string& text_pair = "",
+             bool is_split_into_words = false,
+             const size_t max_seq_len = 0,
              bool pad_to_max_seq_len = false) const;
   void BatchEncode(
       vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
       const vector<string>& batch_text,
       const vector<string>& batch_text_pair = vector<string>(),
-      bool is_split_into_words = false, const size_t max_seq_len = 0,
+      bool is_split_into_words = false,
+      const size_t max_seq_len = 0,
       bool pad_to_max_seq_len = false) const;
 
   int64_t GetPadTokenID() const;
@@ -147,12 +153,18 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs(
         batch_size);
     if (text_pair) {
-      tokenizer.BatchEncode(&batch_encode_inputs, *text, *text_pair,
-                            is_split_into_words, max_seq_len,
+      tokenizer.BatchEncode(&batch_encode_inputs,
+                            *text,
+                            *text_pair,
+                            is_split_into_words,
+                            max_seq_len,
                             pad_to_max_seq_len);
     } else {
-      tokenizer.BatchEncode(&batch_encode_inputs, *text, vector<string>(),
-                            is_split_into_words, max_seq_len,
+      tokenizer.BatchEncode(&batch_encode_inputs,
+                            *text,
+                            vector<string>(),
+                            is_split_into_words,
+                            max_seq_len,
                             pad_to_max_seq_len);
     }
 
@@ -178,12 +190,16 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
       const size_t& seq_len = encoder_input_ids.size();
       // Copy the memory
       std::memcpy(input_ids_data + i * batch_max_seq_len,
-                  encoder_input_ids.data(), seq_len * sizeof(T));
-      std::memcpy(seg_ids_data + i * batch_max_seq_len, encoder_seg_ids.data(),
+                  encoder_input_ids.data(),
+                  seq_len * sizeof(T));
+      std::memcpy(seg_ids_data + i * batch_max_seq_len,
+                  encoder_seg_ids.data(),
                   seq_len * sizeof(T));
       std::memset(input_ids_data + i * batch_max_seq_len + seq_len,
-                  pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
-      std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id,
+                  pad_token_id,
+                  (batch_max_seq_len - seq_len) * sizeof(T));
+      std::memset(seg_ids_data + i * batch_max_seq_len + seq_len,
+                  pad_token_id,
                   (batch_max_seq_len - seq_len) * sizeof(T));
     }
   }

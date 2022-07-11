@@ -52,7 +52,14 @@ class GeneralGrad {
         AutogradMeta* auto_grad_meta =
             EagerUtils::unsafe_autograd_meta(inputs[i]);
         auto* target_node = auto_grad_meta->GetMutableGradNode().get();
-
+        VLOG(8) << "Get no grad vars' grad_node: " << target_node->name()
+                << ", " << target_node << " with output rank info: "
+                << auto_grad_meta->OutRankInfo().first << ", "
+                << auto_grad_meta->OutRankInfo().second;
+        if (is_no_grad_vars) {
+          (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
+          continue;
+        }
         if (orig_to_copied_node_mapping_.count(target_node)) {
           target_node = orig_to_copied_node_mapping_[target_node].get();
         } else {
@@ -65,12 +72,10 @@ class GeneralGrad {
                                 paddle::platform::errors::Fatal(
                                     "There is no grad op for %s:[%d] or it's"
                                     "stop_gradient=True.",
-                                    msg, i));
-        if (is_no_grad_vars) {
-          (no_grad_var_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-        } else {  // normal input
-          (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
-        }
+                                    msg,
+                                    i));
+        // normal input
+        (input_target_nodes_inputmeta_map_)[target_node] = auto_grad_meta;
       }
     }
   }
@@ -254,7 +259,8 @@ class GeneralGrad {
 
   std::vector<paddle::experimental::Tensor> GetResults(
       const std::vector<paddle::experimental::Tensor>& inputs,
-      bool allow_unused, bool create_graph) {
+      bool allow_unused,
+      bool create_graph) {
     VLOG(6) << "Running in GetResults";
     if (inputs.empty()) return {};
 
@@ -282,7 +288,8 @@ class GeneralGrad {
         tensor_auto_grad_meta->SetStopGradient(!create_graph);
         results.emplace_back(iter->second);
       } else {
-        PADDLE_ENFORCE_EQ(allow_unused, true,
+        PADDLE_ENFORCE_EQ(allow_unused,
+                          true,
                           paddle::platform::errors::InvalidArgument(
                               "The %d-th input does not appear in the backward "
                               "graph. Please check the input tensor or set "
@@ -302,8 +309,6 @@ class GeneralGrad {
       const std::unordered_map<GradNodeBase*,
                                std::unique_ptr<GradTensorHolder>>&
           node_input_buffers_dict) {
-    // Get no_grad_vars's GradNodes and InputMeta Info
-    GetTargetNodesInfo(no_grad_vars, true /* is_no_grad_vars */);
     // Get inputs's GradNodes and InputMeta Info
     GetTargetNodesInfo(inputs, false /* is_no_grad_vars */);
     // Purify potentialstartup_ops, remove those nodes that are the same as
@@ -399,6 +404,21 @@ class GeneralGrad {
 
           std::shared_ptr<GradNodeBase> orig_next_node =
               orig_edge.GetMutableGradNode();
+
+          if (no_grad_var_nodes_inputmeta_map_.count(orig_next_node.get()) &&
+              (no_grad_var_nodes_inputmeta_map_[orig_next_node.get()]
+                   ->OutRankInfo() == orig_edge.GetEdgeRankInfo())) {
+            VLOG(3) << "Get no grad edge from grad_node: " << orig_node->name()
+                    << " : " << orig_node << " to:" << orig_next_node->name()
+                    << ", " << orig_next_node.get()
+                    << " with output rank info: "
+                    << orig_edge.GetEdgeRankInfo().first << ", "
+                    << orig_edge.GetEdgeRankInfo().second;
+            // Stop no grad var's preceding node
+            copied_node->MutableOutputMeta()[i][j].SetStopGradient(true);
+            copied_edge.Clear();
+            continue;
+          }
           if (!orig_next_node) continue;
 
           // Copy Next Node
@@ -503,7 +523,8 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 void EnforceGradNodeHasInput(GradNodeBase* node) {
   VLOG(6) << "Running in EnforceGradNodeHasInput";
   PADDLE_ENFORCE_NE(
-      node->IsTensorWrappersCleared(), true,
+      node->IsTensorWrappersCleared(),
+      true,
       paddle::platform::errors::Fatal(
           "The TensorWrappers of %s do not exist. This may be because:\n"
           "You calculate backward twice for the same subgraph without "
@@ -519,10 +540,13 @@ void DuplicateCheck(const std::vector<paddle::experimental::Tensor>& inputs,
   for (auto in : inputs) {
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(in);
     PADDLE_ENFORCE_EQ(
-        visisted_ins.count(auto_grad_meta), 0,
+        visisted_ins.count(auto_grad_meta),
+        0,
         paddle::platform::errors::AlreadyExists(
-            "%s contain duplicate tensor %s, please check %s carefully.", msg,
-            in.name(), msg));
+            "%s contain duplicate tensor %s, please check %s carefully.",
+            msg,
+            in.name(),
+            msg));
     visisted_ins.insert(auto_grad_meta);
   }
 }
@@ -532,7 +556,8 @@ GeneralGrad* GeneralGrad::general_grad_ = new GeneralGrad();
 std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // output
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
-    bool retain_graph, bool create_graph = false,
+    bool retain_graph,
+    bool create_graph = false,
     const std::vector<paddle::experimental::Tensor>& inputs = {},
     bool allow_unused = false,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
@@ -630,6 +655,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
 
   if (is_general_grad) {
+    // Get no_grad_vars's GradNodes and InputMeta Info
+    GeneralGrad::Instance().GetTargetNodesInfo(no_grad_vars,
+                                               true /* is_no_grad_vars */);
     // Copy Backward Graph
     GeneralGrad::Instance().ReconstructBackwardGraph(orig_queue);
   }
@@ -641,8 +669,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
   if (is_general_grad) {
     // Prepare several vital preprocess for GeneralGrad
-    GeneralGrad::Instance().PreparedForGeneralGrad(inputs, no_grad_vars, &queue,
-                                                   node_input_buffers_dict);
+    GeneralGrad::Instance().PreparedForGeneralGrad(
+        inputs, no_grad_vars, &queue, node_input_buffers_dict);
   }
 
   VLOG(6) << " startup_ops' size is :" << queue.size();
@@ -661,7 +689,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
-        paddle::platform::TracerEventType::Operator, 1);
+        paddle::platform::TracerEventType::Operator,
+        1);
 
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
       queue.pop_front();
@@ -672,7 +701,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // Run node: This is where Hook happens
     auto node_input_buffer_iter = node_input_buffers_dict.find(node);
     PADDLE_ENFORCE_NE(
-        node_input_buffer_iter, node_input_buffers_dict.end(),
+        node_input_buffer_iter,
+        node_input_buffers_dict.end(),
         paddle::platform::errors::Fatal(
             "Unable to find next node in the GradTensorHolder \n"
             "Trying to run Node without configuring its GradTensorHolder."));
@@ -686,19 +716,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                                                          node);
     }
 
-    // no_grad_vars
-    if (!no_grad_vars.empty() && is_general_grad) {
-      auto iter =
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->find(node);
-      if (iter !=
-          GeneralGrad::Instance().GetNoGradVarNodesInputMetaMap()->end()) {
-        VLOG(6) << "Change the input buffer[slot][rank] by Zeros";
-        auto rank_info = (iter->second)->OutRankInfo();
-        node_input_buffer->SetBufferSlotRankZeros(rank_info.first,
-                                                  rank_info.second);
-      }
-    }
-
     // Check input
     EnforceGradNodeHasInput(node);
 
@@ -706,8 +723,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     // Run Pre Backward Node and get outputs
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>
-        grad_output_tensors = (*node)(node_input_buffer->Buffers(),
-                                      create_graph, is_general_grad);
+        grad_output_tensors = (*node)(
+            node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     // retain_grad or not
     if (!retain_graph) {
@@ -727,7 +744,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                        "Number of edges should be either empty ( for leaf node "
                        ") or the same as number of output grad tensors, but we "
                        "got edges size is: %d, grad_output size is: %d",
-                       metas.size(), grad_output_tensors.size()));
+                       metas.size(),
+                       grad_output_tensors.size()));
 
     for (size_t i = 0; i < metas.size(); i++) {
       for (size_t j = 0; j < metas[i].size(); j++) {
@@ -739,7 +757,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with the same rank(i, j)
         auto next_node_shared = edge.GetMutableGradNode();
-        VLOG(3) << "Found pending node: " << next_node_shared->name();
+        VLOG(3) << "Found pending node: " << next_node_shared->name() << ": "
+                << next_node_shared.get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -749,7 +768,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         }
 
         PADDLE_ENFORCE_LT(
-            j, grad_output_tensors[i].size(),
+            j,
+            grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
                 "Rank of grad_output_tensors should be less than "
                 "grad_output_tensors[i].size(), which is: %d. This error may "
@@ -781,12 +801,15 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
 
-        node_input_buffers_dict[next_node]->add(
-            edge_rank.first, edge_rank.second, grad_output_tensor,
-            create_graph);
+        node_input_buffers_dict[next_node]->add(edge_rank.first,
+                                                edge_rank.second,
+                                                grad_output_tensor,
+                                                create_graph);
 
         // Update queue
         node_in_degree_map[next_node]--;
+        VLOG(6) << next_node->name()
+                << " ref_cnt is: " << node_in_degree_map[next_node];
 
         PADDLE_ENFORCE(
             node_in_degree_map[next_node] >= 0,
@@ -837,14 +860,22 @@ std::vector<paddle::experimental::Tensor> Grad(
     const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
     const std::vector<paddle::experimental::Tensor>& inputs,
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
-    bool retain_graph, bool create_graph, bool only_inputs, bool allow_unused,
+    bool retain_graph,
+    bool create_graph,
+    bool only_inputs,
+    bool allow_unused,
     const std::vector<paddle::experimental::Tensor>& no_grad_vars) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
   DuplicateCheck(tensors, false /* is_input */);
 
-  return RunBackward(tensors, grad_tensors, retain_graph, create_graph, inputs,
-                     allow_unused, no_grad_vars);
+  return RunBackward(tensors,
+                     grad_tensors,
+                     retain_graph,
+                     create_graph,
+                     inputs,
+                     allow_unused,
+                     no_grad_vars);
 }
 }  // namespace egr

@@ -40,6 +40,7 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
   compute_capability_ = GetMLUComputeCapability(place_.device);
   driver_version_ = GetMLUDriverVersion(place_.device);
   runtime_version_ = GetMLURuntimeVersion(place_.device);
+  cnnl_version_ = GetMLUCnnlVersion(place_.device);
 
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: " << place_.device
                           << ", MLU Compute Capability: "
@@ -50,7 +51,10 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
                           << driver_version_ % 100 << ", Runtime API Version: "
                           << runtime_version_ / 10000 << "."
                           << (runtime_version_ / 100) % 100 << "."
-                          << runtime_version_ % 100;
+                          << runtime_version_ % 100
+                          << ", Cnnl API Version: " << cnnl_version_ / 10000
+                          << "." << (cnnl_version_ / 100) % 100 << "."
+                          << cnnl_version_ % 100;
 
   default_ctx_.reset(new MLUContext(place_));
 }

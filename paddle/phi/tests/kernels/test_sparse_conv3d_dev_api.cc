@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
@@ -75,7 +75,6 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];

@@ -52,14 +52,15 @@ void AddFetchListToBlockDesc(framework::proto::BlockDesc* block,
   *var = *desc.Proto();
 }
 
-void serialize_params(std::string* str, framework::Scope* scope,
+void serialize_params(std::string* str,
+                      framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
 #else
-  platform::CPUDeviceContext ctx;
+  phi::CPUContext ctx;
 #endif
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -84,7 +85,8 @@ void RandomizeTensor(framework::LoDTensor* tensor,
                      const platform::Place& place) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
-  PADDLE_ENFORCE_GT(num_elements, 0,
+  PADDLE_ENFORCE_GT(num_elements,
+                    0,
                     platform::errors::InvalidArgument(
                         "The input tensor dimension of the randomized tensor "
                         "function should be greater than zero."));
@@ -98,8 +100,10 @@ void RandomizeTensor(framework::LoDTensor* tensor,
   paddle::framework::TensorCopySync(temp_tensor, place, tensor);
 }
 
-void CreateTensor(framework::Scope* scope, const std::string& name,
-                  const std::vector<int64_t>& shape, bool in_cuda = true) {
+void CreateTensor(framework::Scope* scope,
+                  const std::string& name,
+                  const std::vector<int64_t>& shape,
+                  bool in_cuda = true) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   auto dims = phi::make_ddim(shape);

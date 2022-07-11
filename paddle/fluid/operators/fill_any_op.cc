@@ -48,8 +48,10 @@ class FillAnyGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "mul");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "mul");
     auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -80,29 +82,31 @@ DECLARE_INPLACE_OP_INFERER(FillAnyGradInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fill_any, ops::FillAnyOp, ops::FillAnyOpMaker,
+REGISTER_OPERATOR(fill_any,
+                  ops::FillAnyOp,
+                  ops::FillAnyOpMaker,
                   ops::FillAnyGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillAnyGradOpMaker<paddle::imperative::OpBase>,
                   ops::FillAnyOpInplaceInferer);
 
-REGISTER_OPERATOR(fill_any_grad, ops::FillAnyGradOp,
+REGISTER_OPERATOR(fill_any_grad,
+                  ops::FillAnyGradOp,
                   ops::FillAnyGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    fill_any, ops::FillAnyKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::float16>,
-    ops::FillAnyKernel<paddle::platform::CPUDeviceContext, bool>);
+    fill_any,
+    ops::FillAnyKernel<phi::CPUContext, float>,
+    ops::FillAnyKernel<phi::CPUContext, double>,
+    ops::FillAnyKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyKernel<phi::CPUContext, int>,
+    ops::FillAnyKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyKernel<phi::CPUContext, bool>);
 
 REGISTER_OP_CPU_KERNEL(
     fill_any_grad,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyGradKernel<paddle::platform::CPUDeviceContext, bool>);
+    ops::FillAnyGradKernel<phi::CPUContext, float>,
+    ops::FillAnyGradKernel<phi::CPUContext, double>,
+    ops::FillAnyGradKernel<phi::CPUContext, int64_t>,
+    ops::FillAnyGradKernel<phi::CPUContext, int>,
+    ops::FillAnyGradKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::FillAnyGradKernel<phi::CPUContext, bool>);

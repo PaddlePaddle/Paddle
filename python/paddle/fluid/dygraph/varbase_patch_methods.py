@@ -1039,8 +1039,11 @@ def monkey_patch_varbase():
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                if numpy_dtype == 'uint16':
+                    numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
-                return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                return prefix + numpy_dtype
             else:
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)

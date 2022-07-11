@@ -54,23 +54,33 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     const size_t col = inputdims[inputdims.size() - 1];
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
-    int ret = xpu::sorted_topk<T>(dev_ctx.x_context(), input->data<T>(),
-                                  output_data, indices_int_data, row, col, k);
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+    int ret = xpu::sorted_topk<T>(dev_ctx.x_context(),
+                                  input->data<T>(),
+                                  output_data,
+                                  indices_int_data,
+                                  row,
+                                  col,
+                                  k);
+    PADDLE_ENFORCE_EQ(ret,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "XPU API return wrong value[%d] in call kernel name "
                           "[%s], please check "
                           "where Baidu Kunlun Card is properly installed.",
-                          ret, "sorted_topk"));
+                          ret,
+                          "sorted_topk"));
     ret = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
                                          (const int32_t*)indices_int_data,
-                                         indices_data, indices->numel());
-    PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                                         indices_data,
+                                         indices->numel());
+    PADDLE_ENFORCE_EQ(ret,
+                      XPU_SUCCESS,
                       platform::errors::External(
                           "XPU API return wrong value[%d] in call kernel name "
                           "[%s], please check "
                           "where Baidu Kunlun Card is properly installed.",
-                          ret, "cast_v2"));
+                          ret,
+                          "cast_v2"));
   }
 };
 

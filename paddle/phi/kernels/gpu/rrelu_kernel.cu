@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/rrelu_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/rrelu_kernel.h"
 
 namespace phi {
 

@@ -45,8 +45,8 @@ struct XPUContext::Impl {
         }
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
-          VLOG(3) << "xpu place " << place_.GetDeviceId() << " set l3 size "
-                  << l3_size;
+          VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+                  << " set l3 size " << l3_size;
         }
         break;
       }

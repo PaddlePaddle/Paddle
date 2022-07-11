@@ -22,12 +22,16 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("GateIdx"), "Input", "GateIdx",
-                   "prun_gate_by_capacity");
-    OP_INOUT_CHECK(ctx->HasInput("ExpertCount"), "Input", "ExpertCount",
+    OP_INOUT_CHECK(
+        ctx->HasInput("GateIdx"), "Input", "GateIdx", "prun_gate_by_capacity");
+    OP_INOUT_CHECK(ctx->HasInput("ExpertCount"),
+                   "Input",
+                   "ExpertCount",
                    "prun_gate_by_capacity");
 
-    OP_INOUT_CHECK(ctx->HasOutput("NewGateIdx"), "Output", "NewGateIdx",
+    OP_INOUT_CHECK(ctx->HasOutput("NewGateIdx"),
+                   "Output",
+                   "NewGateIdx",
                    "prun_gate_by_capacity");
     // OP_INOUT_CHECK(ctx->HasOutput("ExpertCountOut"), "Output",
     // "ExpertCountOut",
@@ -44,13 +48,16 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE_EQ(
-        expert_count_num_ele, n_expert * n_worker,
+        expert_count_num_ele,
+        n_expert * n_worker,
         platform::errors::Unavailable(
             "The number of elements for expert_count is ( %ld ) incorrect. "
             "Because the number of expert_count must equal the "
             "product of n_worker ( %ld ) and n_expert ( %ld ). "
             "Please input appropriate expert_count again!",
-            expert_count_num_ele, n_worker, n_expert));
+            expert_count_num_ele,
+            n_worker,
+            n_expert));
 
     auto gate_idx_in_dims = ctx->GetInputDim("GateIdx");
     // auto expert_count_in_dims = ctx->GetInputDim("ExpertCount");
@@ -66,10 +73,12 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     auto expert_count_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "ExpertCount");
     PADDLE_ENFORCE_EQ(
-        gate_idx_data_type, expert_count_data_type,
+        gate_idx_data_type,
+        expert_count_data_type,
         platform::errors::InvalidArgument(
             "The dtype of the gate_idx and expert_count should be same"));
-    PADDLE_ENFORCE_EQ(gate_idx_data_type, framework::proto::VarType::INT64,
+    PADDLE_ENFORCE_EQ(gate_idx_data_type,
+                      framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the gate_idx and expert_count should "
                           "be same as int64"));
@@ -113,11 +122,11 @@ This operator is used to prune gate by capacity(CUDA).
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity, ops::PruneGateByCapacityOp,
+REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity,
+                             ops::PruneGateByCapacityOp,
                              ops::PruneGateByCapacityOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCPUKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PruneGateByCapacityCPUKernel<paddle::platform::CPUDeviceContext,
-                                      int64_t>);
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int>,
+    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int64_t>);

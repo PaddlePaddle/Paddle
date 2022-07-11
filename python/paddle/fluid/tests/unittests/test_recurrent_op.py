@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
@@ -134,7 +135,7 @@ class RecurrentOpTest1(unittest.TestCase):
         self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -262,7 +263,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -364,7 +365,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -446,7 +447,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
             self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -553,7 +554,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
         with fluid.program_guard(self.main_program, self.startup_program):
             rnn_out = self.create_rnn_op()
-            self.output = layers.mean(rnn_out)
+            self.output = paddle.mean(rnn_out)
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],
@@ -637,7 +638,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.output = layers.mean(self.create_rnn_op())
+            self.output = paddle.mean(self.create_rnn_op())
 
     def create_rnn_op(self):
         x = layers.data(shape=[self.sent_len, self.batch_size, self.input_dim],

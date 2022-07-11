@@ -72,8 +72,10 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
     if (min_tensor) {
       Tensor min_data;
       framework::TensorCopy(
-          *min_tensor, platform::CPUPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &min_data);
+          *min_tensor,
+          platform::CPUPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &min_data);
       ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
       min_val = static_cast<float>(min_data.data<T>()[0]);
     }
@@ -82,8 +84,10 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
     if (max_tensor) {
       Tensor max_data;
       framework::TensorCopy(
-          *max_tensor, platform::CPUPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &max_data);
+          *max_tensor,
+          platform::CPUPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &max_data);
       ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
       max_val = static_cast<float>(max_data.data<T>()[0]);
     }
@@ -92,7 +96,9 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     const auto& runner =
-        NpuOpRunner("HardtanhGrad", {*x, *dout}, {*dx},
+        NpuOpRunner("HardtanhGrad",
+                    {*x, *dout},
+                    {*dx},
                     {{"min_val", min_val}, {"max_val", max_val}});
     runner.Run(stream);
   }
@@ -105,9 +111,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    clip, ops::ClipNPUKernel<plat::NPUDeviceContext, float>,
+    clip,
+    ops::ClipNPUKernel<plat::NPUDeviceContext, float>,
     ops::ClipNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    clip_grad, ops::ClipGradNPUKernel<plat::NPUDeviceContext, float>,
+    clip_grad,
+    ops::ClipGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::ClipGradNPUKernel<plat::NPUDeviceContext, plat::float16>);

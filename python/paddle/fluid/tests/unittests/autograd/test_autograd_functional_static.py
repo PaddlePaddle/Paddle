@@ -23,7 +23,6 @@ import config
 import utils
 from utils import (_compute_numerical_batch_jacobian,
                    _compute_numerical_jacobian)
-from paddle.autograd.functional import _as_tensors
 
 paddle.enable_static()
 
@@ -58,7 +57,7 @@ class TestVJP(unittest.TestCase):
         sp = paddle.static.Program()
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            feed, static_xs, static_v = gen_static_data_and_feed(
+            feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v, stop_gradient=self.stop_gradient)
             ys, xs_grads = paddle.autograd.vjp(self.fun, static_xs, static_v)
         exe.run(sp)
@@ -69,7 +68,7 @@ class TestVJP(unittest.TestCase):
         sp = paddle.static.Program()
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            feed, static_xs, static_v = gen_static_data_and_feed(
+            feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v, False)
             ys = self.fun(*static_xs) if isinstance(
                 static_xs, typing.Sequence) else self.fun(static_xs)
@@ -102,7 +101,7 @@ class TestVJPException(unittest.TestCase):
         sp = paddle.static.Program()
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            feed, static_xs, static_v = gen_static_data_and_feed(
+            feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v)
             ys, xs_grads = paddle.autograd.vjp(self.fun, static_xs, static_v)
         self.exe.run(sp)
@@ -111,37 +110,6 @@ class TestVJPException(unittest.TestCase):
     def test_vjp(self):
         with self.assertRaises(self.expected_exception):
             self._vjp()
-
-
-def gen_static_data_and_feed(xs, v, stop_gradient=True):
-    feed = {}
-    if isinstance(xs, typing.Sequence):
-        static_xs = []
-        for i, x in enumerate(xs):
-            x = paddle.static.data(f"x{i}", x.shape, x.dtype)
-            x.stop_gradient = stop_gradient
-            static_xs.append(x)
-        feed.update({f'x{idx}': value for idx, value in enumerate(xs)})
-    else:
-        static_xs = paddle.static.data('x', xs.shape, xs.dtype)
-        static_xs.stop_gradient = stop_gradient
-        feed.update({'x': xs})
-
-    if isinstance(v, typing.Sequence):
-        static_v = []
-        for i, e in enumerate(v):
-            e = paddle.static.data(f'v{idx}', v.shape, v.dtype)
-            e.stop_gradient = stop_gradient
-            static_v.append(e)
-        feed.update({f'v{idx}': value for idx, value in v})
-    elif v is not None:
-        static_v = paddle.static.data('v', v.shape, v.dtype)
-        static_v.stop_gradient = stop_gradient
-        feed.update({'v': v})
-    else:
-        static_v = v
-
-    return feed, static_xs, static_v
 
 
 def approx_jacobian(f, xs, dtype, eps=1e-5, batch=False):

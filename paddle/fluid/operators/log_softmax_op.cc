@@ -36,7 +36,8 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
@@ -83,8 +84,10 @@ class LogSoftmaxGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "log_softmax_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@grad", "log_softmax_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@grad",
+                   "log_softmax_grad");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputDim("Out"),
         ctx->GetInputDim(framework::GradVarName("Out")),
@@ -123,9 +126,12 @@ class LogSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(log_softmax, LogSoftmaxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(log_softmax,
+                            LogSoftmaxInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMetaCheckAxis));
-REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
+REGISTER_OPERATOR(log_softmax,
+                  ops::LogSoftmaxOp,
+                  ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxOpInferVarType,
                   ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>,

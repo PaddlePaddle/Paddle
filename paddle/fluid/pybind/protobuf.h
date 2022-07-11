@@ -22,7 +22,6 @@ typedef SSIZE_T ssize_t;
 #include <fstream>
 #include <vector>
 
-#include "paddle/fluid/platform/variant.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"

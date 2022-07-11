@@ -31,8 +31,10 @@ class SizeNPUKernel : public framework::OpKernel<T> {
         cpu_tensor.mutable_data<int64_t>(out->dims(), platform::CPUPlace());
     cpu_data[0] = x->numel();
     paddle::framework::TensorCopy(
-        cpu_tensor, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), out);
+        cpu_tensor,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        out);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };
@@ -43,7 +45,8 @@ class SizeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    size, ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    size,
+    ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>,

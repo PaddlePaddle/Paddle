@@ -91,7 +91,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
 TEST(Dropout, CPUDense) {
   f::Scope scope;
   p::CPUPlace place;
-  p::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   Compare(scope, ctx);
 }
 

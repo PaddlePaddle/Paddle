@@ -283,6 +283,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
+            logger.info("find free ports:{}".format(free_ports))
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:

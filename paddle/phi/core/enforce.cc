@@ -14,37 +14,34 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-#include <boost/variant.hpp>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-// <boost/variant.hpp> is not suitable to be placed in the header file,
-// it will introduce a large number of unnecessary includes, and these type
-// declarations that depend on boost are also not suitable for the phi header
-// file. Do some repeated forward declarations here to avoid
-// <boost/variant.hpp> spreading to a large number of phi kernel files
+#include "paddle/utils/blank.h"
+#include "paddle/utils/variant.h"
+
 namespace egr {
 class EagerVariable;
 }
 namespace paddle {
 namespace framework {
 class BlockDesc;
-using Attribute = boost::variant<boost::blank,
-                                 int,
-                                 float,
-                                 std::string,
-                                 std::vector<int>,
-                                 std::vector<float>,
-                                 std::vector<std::string>,
-                                 bool,
-                                 std::vector<bool>,
-                                 BlockDesc*,
-                                 int64_t,
-                                 std::vector<BlockDesc*>,
-                                 std::vector<int64_t>,
-                                 std::vector<double>>;
+using Attribute = paddle::variant<paddle::blank,
+                                  int,
+                                  float,
+                                  std::string,
+                                  std::vector<int>,
+                                  std::vector<float>,
+                                  std::vector<std::string>,
+                                  bool,
+                                  std::vector<bool>,
+                                  BlockDesc*,
+                                  int64_t,
+                                  std::vector<BlockDesc*>,
+                                  std::vector<int64_t>,
+                                  std::vector<double>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

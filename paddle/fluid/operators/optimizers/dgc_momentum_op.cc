@@ -25,16 +25,19 @@ class DGCMomentumOp : public MomentumOp {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
+    OP_INOUT_CHECK(ctx->HasInput("current_step"),
+                   "Input",
+                   "current_step",
                    "DGCMomentumOp");
     OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCMomentumOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Grad_out"), "Output", "Grad_out",
-                   "DGCMomentumOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Grad_out"), "Output", "Grad_out", "DGCMomentumOp");
     return MomentumOp::InferShape(ctx);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "current_step" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -67,9 +70,9 @@ class DGCMomentumOpMaker : public MomentumOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum, ops::DGCMomentumOp,
+REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum,
+                             ops::DGCMomentumOp,
                              ops::DGCMomentumOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    dgc_momentum,
-    ops::DGCMomentumKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(dgc_momentum,
+                       ops::DGCMomentumKernel<phi::CPUContext, float>);

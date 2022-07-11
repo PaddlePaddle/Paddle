@@ -86,8 +86,10 @@ struct PSHost {
     rank = std::stoi(endpoint_info[2]);
   }
 
-  void StringSplit(const std::string &str, char sep,
-                   std::vector<std::string> *pieces, bool ignore_null = true) {
+  void StringSplit(const std::string &str,
+                   char sep,
+                   std::vector<std::string> *pieces,
+                   bool ignore_null = true) {
     pieces->clear();
     if (str.empty()) {
       if (!ignore_null) {
@@ -131,13 +133,15 @@ class PSEnvironment {
 
   virtual uint64_t GetLocalHostSign() { return 0; }
   virtual std::vector<PSHost> GetPsServers() const { return _ps_server_list; }
-  virtual int32_t RegistePsServer(const std::string &ip, uint32_t port,
+  virtual int32_t RegistePsServer(const std::string &ip,
+                                  uint32_t port,
                                   int32_t rank) {
     return RegistePsHost(ip, port, rank, _ps_server_list, _ps_server_sign_set);
   }
 
   virtual std::vector<PSHost> GetPsClients() const { return _ps_client_list; }
-  virtual int32_t RegistePsClient(const std::string &ip, uint32_t port,
+  virtual int32_t RegistePsClient(const std::string &ip,
+                                  uint32_t port,
                                   int32_t rank) {
     return RegistePsHost(ip, port, rank, _ps_client_list, _ps_client_sign_set);
   }
@@ -145,10 +149,11 @@ class PSEnvironment {
   virtual std::vector<PSHost> GetCoordinators() const {
     return _coordinator_list;
   }
-  virtual int32_t RegisteCoordinatorClient(const std::string &ip, uint32_t port,
+  virtual int32_t RegisteCoordinatorClient(const std::string &ip,
+                                           uint32_t port,
                                            int32_t rank) {
-    return RegistePsHost(ip, port, rank, _coordinator_list,
-                         _coordinator_sign_set);
+    return RegistePsHost(
+        ip, port, rank, _coordinator_list, _coordinator_sign_set);
   }
 
   virtual std::vector<uint64_t> GetClientInfo() {
@@ -177,7 +182,9 @@ class PSEnvironment {
  protected:
   //注册一个host //  NOLINT
   virtual int32_t RegistePsHost(
-      const std::string &ip, uint32_t port, int32_t rank,
+      const std::string &ip,
+      uint32_t port,
+      int32_t rank,
       std::vector<PSHost> &host_list,            // NOLINT
       std::unordered_set<uint64_t> &sign_set) {  // NOLINT
     PSHost host;
@@ -222,7 +229,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_server_list.begin(), _ps_server_list.end(),
+        _ps_server_list.begin(),
+        _ps_server_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -240,7 +248,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_server_list.begin(), _ps_server_list.end(),
+        _ps_server_list.begin(),
+        _ps_server_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -257,7 +266,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_client_list.begin(), _ps_client_list.end(),
+        _ps_client_list.begin(),
+        _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     return 0;
   }
@@ -275,7 +285,8 @@ class PaddlePSEnvironment : public PSEnvironment {
       }
     }
     std::sort(
-        _ps_client_list.begin(), _ps_client_list.end(),
+        _ps_client_list.begin(),
+        _ps_client_list.end(),
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     VLOG(1) << "env.set_ps_clients done\n";
     return 0;

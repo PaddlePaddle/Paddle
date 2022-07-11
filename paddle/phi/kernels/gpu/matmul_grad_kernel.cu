@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/matmul_grad_kernel.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
-#include "paddle/phi/kernels/matmul_grad_kernel.h"
 
 PD_REGISTER_KERNEL(matmul_grad,
                    GPU,

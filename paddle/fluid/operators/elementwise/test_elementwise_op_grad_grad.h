@@ -110,7 +110,8 @@ class TestElementwiseOpGradGrad {
     op->Run(scope_, place_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
     framework::LoDTensor cpu_out;
-    PADDLE_ENFORCE_EQ(scope_.kids().empty(), true,
+    PADDLE_ENFORCE_EQ(scope_.kids().empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The scope can not have the child scopes,"
                           "please check your code."));
@@ -129,7 +130,9 @@ class TestElementwiseOpGradGrad {
       size_t numel = static_cast<size_t>(phi::product(dims_));
 #ifdef PADDLE_WITH_HIP
       auto is_equal = std::equal(
-          out_ptr, out_ptr + numel, expected_outs_[out_name].data(),
+          out_ptr,
+          out_ptr + numel,
+          expected_outs_[out_name].data(),
           [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
 #else
       auto is_equal =

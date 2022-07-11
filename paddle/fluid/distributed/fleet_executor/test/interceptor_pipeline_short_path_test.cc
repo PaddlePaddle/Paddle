@@ -27,7 +27,8 @@ namespace distributed {
 
 int64_t GetBuffSize(
     const std::map<std::pair<TaskNode*, TaskNode*>, int64_t> buffs,
-    TaskNode* from, TaskNode* to) {
+    TaskNode* from,
+    TaskNode* to) {
   if (buffs.find({from, to}) != buffs.end()) {
     return buffs.at({from, to});
   }

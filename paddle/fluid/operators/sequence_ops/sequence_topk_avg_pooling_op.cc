@@ -26,26 +26,28 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasInput("ROW"), "Input", "ROW",
-                   "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasInput("COLUMN"), "Input", "COLUMN",
-                   "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "SequenceTopkAvgPooling");
-    OP_INOUT_CHECK(ctx->HasOutput("pos"), "Output", "pos",
-                   "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ROW"), "Input", "ROW", "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(
+        ctx->HasInput("COLUMN"), "Input", "COLUMN", "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "SequenceTopkAvgPooling");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("pos"), "Output", "pos", "SequenceTopkAvgPooling");
 
     auto attr = ctx->Attrs();
     auto channel_num = attr.Get<int>("channel_num");
     PADDLE_ENFORCE_GT(
-        channel_num, 0,
+        channel_num,
+        0,
         platform::errors::InvalidArgument(
             "Expected channel_num > 0, but received %d.", channel_num));
 
     auto topks = attr.Get<std::vector<int>>("topks");
     auto num_k = topks.size();
     PADDLE_ENFORCE_GT(
-        num_k, 0,
+        num_k,
+        0,
         platform::errors::InvalidArgument(
             "Expected topks.size() > 0, but received %zu.", num_k));
 
@@ -86,10 +88,12 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SequenceTopkAvgPoolingGrad");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "SequenceTopkAvgPoolingGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "SequenceTopkAvgPoolingGrad");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
@@ -126,15 +130,16 @@ class SequenceTopkAvgPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sequence_topk_avg_pooling, ops::SequenceTopkAvgPoolingOp,
+    sequence_topk_avg_pooling,
+    ops::SequenceTopkAvgPoolingOp,
     ops::SequenceTopkAvgPoolingOpMaker,
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>,
     ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
-REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling,
-                       ops::SequenceTopkAvgPoolingKernel<
-                           paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling_grad,
-                       ops::SequenceTopkAvgPoolingGradKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_topk_avg_pooling,
+    ops::SequenceTopkAvgPoolingKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    sequence_topk_avg_pooling_grad,
+    ops::SequenceTopkAvgPoolingGradKernel<phi::CPUContext, float>);
