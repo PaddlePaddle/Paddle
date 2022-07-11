@@ -671,9 +671,16 @@ def fused_multi_transformer(x,
                             ffn1_biases,
                             ffn2_weights,
                             ffn2_biases,
+                            pre_ffn_ln_scales=None,
+                            pre_ffn_ln_biases=None,
+                            post_ffn_ln_scales=None,
+                            post_ffn_ln_biases=None,
                             pre_layer_norm=True,
+                            layer_norm_type="pre_layer_norm",
                             epsilon=1e-05,
                             cache_kvs=None,
+                            caches_idx=None,
+                            caches_idx_len=None,
                             time_step=None,
                             attn_mask=None,
                             dropout_rate=0.0,
@@ -823,13 +830,18 @@ def fused_multi_transformer(x,
         )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
+    if not isinstance(attn_mask, (list, tuple)):
+        attn_mask = [attn_mask]
+
     if _non_static_mode():
         cache_kv_out, final_out = _C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
-            ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
-            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'is_test', not training,
+            ffn_ln_biases, pre_ffn_ln_scales, pre_ffn_ln_biases,
+            post_ffn_ln_scales, post_ffn_ln_biases, ffn1_weights, ffn1_biases,
+            ffn2_weights, ffn2_biases, cache_kvs, 'pre_layer_norm',
+            pre_layer_norm, 'layer_norm_type', layer_norm_type, 'epsilon',
+            epsilon, 'dropout_rate', dropout_rate, 'is_test', not training,
             'dropout_implementation', mode, 'act_method', activation,
             'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
         if cache_kvs is not None:
@@ -870,10 +882,19 @@ def fused_multi_transformer(x,
         inputs['FFN2Weight'] = ffn2_weights
         if ffn2_biases is not None:
             inputs['FFN2Bias'] = ffn2_biases
+        if caches_idx is not None:
+            inputs['AttnIdx'] = caches_idx
+        if caches_idx_len is not None:
+            inputs["AttnIdxLen"] = caches_idx_len
 
+        inputs['PreffnLnScale'] = pre_ffn_ln_scales
+        inputs['PreffnLnBias'] = pre_ffn_ln_biases
+        inputs['PostffnLnScale'] = post_ffn_ln_scales
+        inputs['PostffnLnBias'] = post_ffn_ln_biases
         # set attrs
         attrs = {
             'pre_layer_norm': pre_layer_norm,
+            'layer_norm_type': layer_norm_type,
             'epsilon': epsilon,
             'dropout_rate': dropout_rate,
             'is_test': not training,

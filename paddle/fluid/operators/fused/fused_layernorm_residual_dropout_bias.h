@@ -437,7 +437,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     U *__restrict__ mean_out_ptr,
     U *__restrict__ var_out_ptr,
     T *__restrict__ residual_out_ptr,
-    T *__restrict__ y_ptr) {
+    T *__restrict__ y_ptr,
+    const bool post_residual = false) {
   __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
@@ -521,8 +522,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         for (int jt = 0; jt < VecSize; jt++) {
           // dropout(x) + residual
           x[it][jt] = (x[it][jt] + bias[it][jt]) *
-                          static_cast<T>(mask_vec[it][jt]) * factor +
-                      residual[it][jt];
+                      static_cast<T>(mask_vec[it][jt]) * factor;
+          if (!post_residual) {
+            x[it][jt] += residual[it][jt];
+          }
+
           xf[it * VecSize + jt] = U(x[it][jt]);
         }
       }
@@ -532,8 +536,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 #pragma unroll
         for (int jt = 0; jt < VecSize; jt++) {
           // dropout(x) + residual
-          x[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor +
-                      residual[it][jt];
+          x[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
+          if (!post_residual) {
+            x[it][jt] += residual[it][jt];
+          }
+
           xf[it * VecSize + jt] = U(x[it][jt]);
         }
       }
@@ -638,6 +645,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         U tmp = rsigma * (static_cast<U>(xf[it * VecSize + jt]) - mu_local);
         x[it][jt] = static_cast<T>(static_cast<U>(gamma[it][jt]) * tmp +
                                    static_cast<U>(beta[it][jt]));
+        if (post_residual) {
+          x[it][jt] += residual[it][jt];
+        }
       }
     }
 
@@ -688,7 +698,8 @@ void LaunchLayernormResidualDropoutBias(
     T *layernorm_dst,
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
-    const platform::CUDADeviceContext &ctx) {
+    const platform::CUDADeviceContext &ctx,
+    const bool post_residual = false) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     auto cuda_place = ctx.GetPlace();
@@ -759,7 +770,8 @@ void LaunchLayernormResidualDropoutBias(
                                                           mean,                \
                                                           var,                 \
                                                           dst,                 \
-                                                          layernorm_dst);      \
+                                                          layernorm_dst,       \
+                                                          post_residual);      \
   } break
 
 #define LAUNCH_FUSED_FAST_LN_KERNEL       \

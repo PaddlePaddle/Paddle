@@ -133,6 +133,13 @@ class TestFusedMultiTransformerOp(OpTest):
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
 
+        ### spares index
+        self.attn_idx = None
+        self.attn_len = 0
+
+        ### layer norm type
+        self.layer_norm_type = None
+
     def generate_input_data(self):
         self.query = np.random.rand(self.batch_size, self.query_length,
                                     self.embed_dim).astype(self.x_type)

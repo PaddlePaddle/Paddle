@@ -172,10 +172,12 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
       const std::string &var_name,
       const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "TimeStep") {
+    if (var_name == "TimeStep" || var_name == "AttnIdx" ||
+        var_name == "AttnIdxLen") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
+
     return framework::OpKernelType(
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
@@ -203,7 +205,8 @@ class FusedMultiTransformerOpOpMaker
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
-        .AsDispensable();
+        .AsDispensable()
+        .AsDuplicable();
     AddInput("OutLinearW", "The out_linear weight tensor.").AsDuplicable();
     AddInput("OutLinearBias", "The out_linear bias tensor.")
         .AsDispensable()
@@ -212,6 +215,22 @@ class FusedMultiTransformerOpOpMaker
     AddInput("FFNLnScale", "The layer_norm scale of FusedFeedForward op")
         .AsDuplicable();
     AddInput("FFNLnBias", "The layer_norm bias of FusedFeedForward op")
+        .AsDuplicable();
+    AddInput("PreffnLnScale",
+             "Scale is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
+        .AsDuplicable();
+    AddInput("PreffnLnBias",
+             "Bias is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
+        .AsDuplicable();
+    AddInput("PostffnLnScale",
+             "Scale is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
+        .AsDuplicable();
+    AddInput("PostffnLnBias",
+             "Bias is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
         .AsDuplicable();
     AddInput("FFN1Weight", "The linear1 weight of FusedFeedForward op")
         .AsDuplicable();
@@ -223,7 +242,12 @@ class FusedMultiTransformerOpOpMaker
     AddInput("FFN2Bias", "The linear2 bias input of FusedFeedForward op")
         .AsDispensable()
         .AsDuplicable();
-
+    AddInput("AttnIdx", "The linear2 bias input of FusedFeedForward op")
+        .AsDispensable()
+        .AsDuplicable();
+    AddInput("AttnIdxLen", "The linear2 bias input of FusedFeedForward op")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("CacheKVOut", "The updated cache KV. Inplace with CacheKV")
         .AsDispensable()
         .AsDuplicable();
@@ -234,6 +258,12 @@ class FusedMultiTransformerOpOpMaker
                   "else, uses post_layer_norm architecuture. "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<std::string>(
+        "layer_norm_type",
+        "if true, the attention op uses pre_layer_norm architecure, "
+        "else, uses post_layer_norm architecuture. "
+        "[default true].")
+        .SetDefault("");
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)

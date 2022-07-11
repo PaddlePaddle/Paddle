@@ -1078,6 +1078,7 @@ class FusedMultiTransformer(Layer):
                  dropout_rate=0.0,
                  activation="gelu",
                  normalize_before=True,
+                 layer_norm_type="pre_layer_norm",
                  ln_scale_attrs=None,
                  ln_bias_attrs=None,
                  qkv_weight_attrs=None,
@@ -1090,6 +1091,10 @@ class FusedMultiTransformer(Layer):
                  ffn1_bias_attrs=None,
                  ffn2_weight_attrs=None,
                  ffn2_bias_attrs=None,
+                 pre_ffn_ln_scale_attrs=None,
+                 pre_ffn_ln_bias_attrs=None,
+                 post_ffn_ln_scale_attrs=None,
+                 post_ffn_ln_bias_attrs=None,
                  epsilon=1e-5,
                  num_layers=-1,
                  nranks=1,
@@ -1107,6 +1112,7 @@ class FusedMultiTransformer(Layer):
             format(dim_feedforward))
 
         self.normalize_before = normalize_before
+        self.layer_norm_type = layer_norm_type
         self._dtype = self._helper.get_default_dtype()
         self._epsilon = epsilon
         self._trans_qkvw = trans_qkvw
@@ -1134,6 +1140,8 @@ class FusedMultiTransformer(Layer):
         self.qkv_weights, self.qkv_biases = [], []
         self.linear_weights, self.linear_biases = [], []
         self.ffn_ln_scales, self.ffn_ln_biases = [], []
+        self.pre_ffn_ln_scales, self.pre_ffn_ln_biases = [], []
+        self.post_ffn_ln_scales, self.post_ffn_ln_biases = [], []
         self.ffn1_weights, self.ffn1_biases = [], []
         self.ffn2_weights, self.ffn2_biases = [], []
 
@@ -1157,6 +1165,37 @@ class FusedMultiTransformer(Layer):
             ffn1_bias_attr = get_attr(ffn1_bias_attrs, i)
             ffn2_weight_attr = get_attr(ffn2_weight_attrs, i)
             ffn2_bias_attr = get_attr(ffn2_bias_attrs, i)
+
+            if pre_ffn_ln_scale_attrs is not None:
+                pre_ffn_ln_scale_attr = get_attr(pre_ffn_ln_scale_attrs, i)
+                pre_ffn_ln_scale = self.create_parameter(
+                    shape=[embed_dim],
+                    attr=pre_ffn_ln_scale_attr,
+                    is_bias=False,
+                    default_initializer=Constant(1.0))
+                self.pre_ffn_ln_scales.append(pre_ffn_ln_scale)
+
+            if pre_ffn_ln_bias_attrs is not None:
+                pre_ffn_ln_bias_attr = get_attr(pre_ffn_ln_bias_attrs, i)
+                pre_ffn_ln_bias = self.create_parameter(
+                    shape=[embed_dim], attr=pre_ffn_ln_bias_attr, is_bias=True)
+                self.pre_ffn_ln_biases.append(pre_ffn_ln_bias)
+
+            if post_ffn_ln_scale_attrs is not None:
+                post_ffn_ln_scale_attr = get_attr(post_ffn_ln_scale_attrs, i)
+                post_ffn_ln_scale = self.create_parameter(
+                    shape=[embed_dim],
+                    attr=post_ffn_ln_scale_attr,
+                    is_bias=False,
+                    default_initializer=Constant(1.0))
+                self.post_ffn_ln_scales.append(post_ffn_ln_scale)
+
+            # if post_ffn_ln_bias_attrs is not None:
+            post_ffn_ln_bias_attr = get_attr(post_ffn_ln_bias_attrs, i)
+            post_ffn_ln_bias = self.create_parameter(shape=[embed_dim],
+                                                     attr=post_ffn_ln_bias_attr,
+                                                     is_bias=True)
+            self.post_ffn_ln_biases.append(post_ffn_ln_bias)
 
             ln_scale = self.create_parameter(
                 attr=ln_scale_attr,
@@ -1242,7 +1281,13 @@ class FusedMultiTransformer(Layer):
         self.activation = activation
         self.name = name
 
-    def forward(self, src, attn_mask=None, caches=None, time_step=None):
+    def forward(self,
+                src,
+                attn_mask=None,
+                caches=None,
+                time_step=None,
+                caches_idx=None,
+                caches_idx_len=None):
         """
         Applies multi transformer layers on the input.
 
@@ -1289,9 +1334,16 @@ class FusedMultiTransformer(Layer):
             self.ffn1_biases,
             self.ffn2_weights,
             self.ffn2_biases,
+            self.pre_ffn_ln_scales,
+            self.pre_ffn_ln_biases,
+            self.post_ffn_ln_scales,
+            self.post_ffn_ln_biases,
             pre_layer_norm=self.normalize_before,
+            layer_norm_type=self.layer_norm_type,
             epsilon=self._epsilon,
             cache_kvs=caches,
+            caches_idx=caches_idx,
+            caches_idx_len=caches_idx_len,
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,

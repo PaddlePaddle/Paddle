@@ -360,7 +360,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
                                     MaskType* mask,
                                     T* out,
                                     LayerNormParamType<T>* mean,
-                                    LayerNormParamType<T>* variance) {
+                                    LayerNormParamType<T>* variance,
+                                    const bool post_residual = false) {
     using U = LayerNormParamType<T>;
     int vec_size = MAX_CACHE_BYTES / sizeof(T);
     if (this->cols_ % vec_size != 0) {
@@ -388,7 +389,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
         out,
         mean,
         variance,
-        ctx);
+        ctx,
+        post_residual);
   }
 
   template <typename P = LayerNormParamType<T>, bool is_same_type = false>
