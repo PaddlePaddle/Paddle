@@ -54,6 +54,10 @@ void Copy(const Context& dev_ctx,
   } else if (paddle::platform::is_xpu_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (paddle::platform::is_custom_place(dst_place)) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
   }
 
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
@@ -217,6 +221,29 @@ void Copy(const Context& dev_ctx,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
+           paddle::platform::is_cpu_place(dst_place)) {
+    auto stream =
+        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx).stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
+             paddle::platform::is_custom_place(dst_place)) {
+    auto stream =
+        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx).stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
+             paddle::platform::is_custom_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    auto stream =
+        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx).stream();
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
 }
 
 template <typename Context>
@@ -359,4 +386,11 @@ template void Copy(const XPUContext& dev_ctx,
                    DenseTensor* dst);
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template void Copy(const CustomContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+#endif
 }  // namespace phi
