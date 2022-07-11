@@ -24,6 +24,8 @@
 #include <functional>
 #include <regex>
 
+#include "glog/logging.h"
+
 namespace phi {
 
 void Device::CreateStream(stream::Stream* stream,
