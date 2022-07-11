@@ -16,6 +16,8 @@
 
 #include <string>
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+
 #if !defined(_WIN32)
 #include <dlfcn.h>  // dladdr
 #include <sys/time.h>
