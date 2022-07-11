@@ -257,21 +257,14 @@ void set_download_command(const std::string& x) {
   customized_download_cmd_internal() = x;
 }
 
-<<<<<<< HEAD
 std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                      const std::string& converter,
                                      bool read_data) {
-=======
-std::shared_ptr<FILE> hdfs_open_read(std::string path,
-                                     int* err_no,
-                                     const std::string& converter) {
->>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
   if (download_cmd() != "") {  // use customized download command
     path = string::format_string(
         "%s \"%s\"", download_cmd().c_str(), path.c_str());
   } else {
     if (fs_end_with_internal(path, ".gz")) {
-<<<<<<< HEAD
       if (read_data) {
         path = string::format_string(
             "%s -text \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
@@ -287,13 +280,6 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path,
         path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
                                      path.c_str());
       }
-=======
-      path = string::format_string(
-          "%s -text \"%s\"", hdfs_command().c_str(), path.c_str());
-    } else {
-      path = string::format_string(
-          "%s -cat \"%s\"", hdfs_command().c_str(), path.c_str());
->>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
     }
   }
 
@@ -409,15 +395,9 @@ int fs_select_internal(const std::string& path) {
   return 0;
 }
 
-<<<<<<< HEAD
 std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
                                    const std::string& converter,
                                    bool read_data) {
-=======
-std::shared_ptr<FILE> fs_open_read(const std::string& path,
-                                   int* err_no,
-                                   const std::string& converter) {
->>>>>>> ca9339eb1abd9ccab3c22c8d8f00a4afb1bd572b
   switch (fs_select_internal(path)) {
     case 0:
       return localfs_open_read(path, converter);
