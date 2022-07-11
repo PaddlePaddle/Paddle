@@ -59,7 +59,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_prob(Variable): Local sum of predicted ctr
         local_q(Variable): Local sum of q value
 
-    Examples:
+    Examples 1:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -67,9 +67,23 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             paddle.enable_static()
             data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
             label = fluid.layers.data(name="label", shape=[-1, 1], dtype="int32")
-            ins_tag_weight = fluid.layers.data(name="ins_tag_weight", shape=[-1, 1], dtype="float32")
             predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
-            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
+            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict, label=label)
+    Examples 2:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="int32")
+            filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
+            predict = fluid.layers.sigmoid(fluid.layers.fc(input=data, size=1))
+            ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            label_after_filter, _ = fluid.layers.filter_by_instag(label, ins_tag, filter_tag, False)
+            predict_after_filter, ins_tag_weight = fluid.layers.filter_by_instag(predict, ins_tag, filter_tag, False)
+            auc_out = fluid.contrib.layers.ctr_metric_bundle(input=predict_after_filter, label=label_after_filter, ins_tag_weight=ins_tag_weight)
+
     """
     if ins_tag_weight is None:
         ins_tag_weight = tensor.fill_constant(shape=[1, 1],
