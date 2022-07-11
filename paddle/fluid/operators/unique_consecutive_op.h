@@ -247,41 +247,6 @@ struct UniqueConsecutiveDimFunctor {
         ctx_, in_, out_, return_inverse_, return_counts_, axis_);
   }
 };
-template <typename DeviceContext, typename T>
-class UniqueConsecutiveKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
-    auto data_type = static_cast<framework::proto::VarType::Type>(
-        context.Attr<int>("dtype"));
-    if (data_type == framework::proto::VarType::INT32) {
-      PADDLE_ENFORCE_LE(
-          x->numel(),
-          INT_MAX,
-          platform::errors::InvalidArgument(
-              "The number of elements in Input(X) should be less than or "
-              "equal to INT_MAX, but received num is %d. Please set `dtype` to "
-              "int64.",
-              x->numel()));
-    }
-    std::vector<int> axis_vec = context.Attr<std::vector<int>>("axis");
-    bool return_inverse = context.Attr<bool>("return_inverse");
-    bool return_counts = context.Attr<bool>("return_counts");
 
-    if (axis_vec.empty()) {
-      framework::VisitDataTypeTiny(
-          data_type,
-          UniqueConsecutiveFlattendTensorFunctor<DeviceContext, T>(
-              context, *x, out, return_inverse, return_counts));
-    } else {
-      int axis = axis_vec[0];
-      framework::VisitDataTypeTiny(
-          data_type,
-          UniqueConsecutiveDimFunctor<DeviceContext, T>(
-              context, *x, out, axis, return_inverse, return_counts));
-    }
-  }
-};
 }  // namespace operators
 }  // namespace paddle

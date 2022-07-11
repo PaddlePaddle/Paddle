@@ -25,8 +25,8 @@
 
 namespace phi {
 
-template <typename T>
-void UniqueConsecutiveKernel(const phi::GPUContext& dev_ctx,
+template <typename T, typename Context>
+void UniqueConsecutiveKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              bool return_inverse,
                              bool return_counts,
@@ -51,22 +51,31 @@ void UniqueConsecutiveKernel(const phi::GPUContext& dev_ctx,
   if (axis.empty()) {
     paddle::framework::VisitDataTypeTiny(
         data_type,
-        UniqueConsecutiveFlattenedCUDAFunctor<phi::GPUContext, T>(
+        UniqueConsecutiveFlattenedCUDAFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     // 'axis' is required.
     int valid_axis = axis[0];
     paddle::framework::VisitDataTypeTiny(
         data_type,
-        UniqueConsecutiveDimsCUDAFunctor<phi::GPUContext, T>(dev_ctx,
-                                                             x,
-                                                             out,
-                                                             valid_axis,
-                                                             return_inverse,
-                                                             return_counts,
-                                                             index,
-                                                             counts));
+        UniqueConsecutiveDimsCUDAFunctor<Context, T>(dev_ctx,
+                                                     x,
+                                                     out,
+                                                     valid_axis,
+                                                     return_inverse,
+                                                     return_counts,
+                                                     index,
+                                                     counts));
   }
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(unique_consecutive,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UniqueConsecutiveKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t) {}

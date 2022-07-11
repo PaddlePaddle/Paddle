@@ -118,11 +118,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(unique_consecutive,
                              ops::UniqueConsecutiveOp,
                              ops::UniqueConsecutiveOpMaker);
-REGISTER_OP_CPU_KERNEL(unique_consecutive,
-                       ops::UniqueConsecutiveKernel<phi::CPUContext, float>,
-                       ops::UniqueConsecutiveKernel<phi::CPUContext, double>,
-                       ops::UniqueConsecutiveKernel<phi::CPUContext, int32_t>,
-                       ops::UniqueConsecutiveKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_VERSION(unique_consecutive)
     .AddCheckpoint(
         R"ROC(
