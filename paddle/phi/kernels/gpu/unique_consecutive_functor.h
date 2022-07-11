@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/tensor_util.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
@@ -51,7 +52,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
                                                  DenseTensor* counts) {
   // 0. Preparation
   DenseTensor in_hat;
-  paddle::framework::TensorCopy(in, context.GetPlace(), &in_hat);
+  phi::Copy(in, context.GetPlace(), &in_hat);
   auto in_data_hat = context.template Alloc<InT>(&in_hat);
 
   DenseTensor sorted_indices;
@@ -65,7 +66,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
   auto range_data_ptr = context.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
-  paddle::framework::TensorCopy(in_hat, context.GetPlace(), out);
+  phi::Copy(in_hat, context.GetPlace(), out);
   int num_out;
   auto out_data = context.template Alloc<InT>(out);
   num_out =
