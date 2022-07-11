@@ -320,7 +320,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   if (!multi_mf_dim_) {
     for (int i = 0; i < thread_keys_shard_num_; i++) {
-      VLOG(0) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
+      VLOG(3) << "GpuPs shard: " << i << " key len: " << local_keys[i].size();
       local_ptr[i].resize(local_keys[i].size());
     }
   } else {
@@ -833,7 +833,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       fids[j] = cache_manager->query_sign2fid(feasigns[j]);
     }
   }
-  VLOG(0) << "BuildGPUTask: exit PADDLE_WITH_XPU_KP";
 #endif //PADDLE_WITH_XPU_KP
   auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
     VLOG(3) << "building table: " << i;

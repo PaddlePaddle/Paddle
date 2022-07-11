@@ -112,7 +112,7 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   for (auto & thd : threads) {
     thd.join();
   }
-  VLOG(0) << "build_sign2fids: exit";
+  VLOG(3) << "build_sign2fids: exit";
 }
 
 uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
@@ -207,7 +207,7 @@ void CacheManager::build_batch_fid_seq(
   std::vector<std::thread> threads(thread_num_);
   for (int i = 0; i < thread_num_; ++i) { 
     threads[i] = std::thread([&, i, this]() {
-      VLOG(0) << "build_batch_fid_seq: in thread-" << i;
+      VLOG(3) << "build_batch_fid_seq: in thread-" << i;
       int my_group = 0;
       for (int batch_first = i * batch_sz; batch_first < size; batch_first += thread_num_ * batch_sz) { 
         int current_batch_sz = std::min(batch_sz, size - batch_first);

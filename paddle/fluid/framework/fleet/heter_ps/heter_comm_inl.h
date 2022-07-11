@@ -48,7 +48,8 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     table->set_xpu_id(dev_id);
     table->set_xpu_idx(dev_idx);
     table->set_xpu_num(resource_->total_device());
-    VLOG(0) << "init heter xpu table(id|idx|dev_num):" << dev_id << "|" << dev_idx << "|" << resource_->total_device();
+    VLOG(3) << "init heter xpu table(id|idx|dev_num):" 
+            << dev_id << "|" << dev_idx << "|" << resource_->total_device();
 #endif
     tables_.push_back(table);
     if (multi_node_) {
@@ -68,7 +69,7 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
   int total_device = resource_->total_device();
   path_.resize(total_device);
   if (!topo_aware_) {
-    VLOG(0) << "init path without topo aware";
+    VLOG(3) << "init path without topo aware";
     for (int i = 0; i < total_device; ++i) {
       path_[i].resize(total_device);
       for (int j = 0; j < total_device; ++j) {
@@ -83,7 +84,7 @@ void HeterComm<KeyType, ValType, GradType>::init_path() {
       }
     }
   } else {
-    VLOG(0) << "init path with topo aware";
+    VLOG(3) << "init path with topo aware";
     for (int i = 0; i < total_device; ++i) {
       path_[i].resize(total_device);
       for (int j = 0; j < total_device; ++j) {
@@ -616,45 +617,45 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   typedef uint32_t FidType;
   auto cpu_place = platform::CPUPlace();
 
-  cache_mgr_ -> prepare_current_batch_fid_seq();
-  VLOG(0) << "heter comm inl pull sparse prepare_current_batch_fid_seq success";
+  cache_mgr_->prepare_current_batch_fid_seq();
+  VLOG(3) << "heter comm inl pull sparse prepare_current_batch_fid_seq success";
 
   // d_keys memcpy to cpu h_keys
   std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
-  VLOG(0) << "heter comm inl pull sparse malloc h_keys on cpu";
+  VLOG(3) << "heter comm inl pull sparse malloc h_keys on cpu";
 
   memory_copy(cpu_place, &h_keys[0], place, d_keys, len * sizeof(KeyType), stream);
-  VLOG(0) << "heter comm inl pull sparse memory copy " << len << " d_keys to h_keys";
+  VLOG(3) << "heter comm inl pull sparse memory copy " << len << " d_keys to h_keys";
 
   // cachemanager convert h_keys to h_bfids
   std::unique_ptr<int[]> h_bfids(new BfidType[len]);
-  VLOG(0) << "heter comm inl pull sparse malloc h_bfids on cpu";
+  VLOG(3) << "heter comm inl pull sparse malloc h_bfids on cpu";
 
   cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
-  VLOG(0) << "heter comm inl pull sparse convert fid2bfid";
+  VLOG(3) << "heter comm inl pull sparse convert fid2bfid";
 
   // h_bfids memcpy to d_bfids
   auto d_bfids = memory::Alloc(place, len * sizeof(BfidType));
-  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
+  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
   BfidType* d_bfids_ptr = reinterpret_cast<BfidType*>(d_bfids->ptr());
 
   memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0], len * sizeof(BfidType), stream);
-  VLOG(0) << "heter comm inl pull sparse memory copy d_bfids from cpu to xpu";
+  VLOG(3) << "heter comm inl pull sparse memory copy d_bfids from cpu to xpu";
 
   // cachemanager get fid_seq
-  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
-  VLOG(0) << "heter comm inl pull sparse batch fid seq " << h_fid_seq->size();
+  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_->get_current_batch_fid_seq();
+  VLOG(3) << "heter comm inl pull sparse batch fid seq " << h_fid_seq->size();
 
   // h_fid_seq memcpy to d_fid_seq
-  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(FidType));
-  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_fids " << h_fid_seq -> size() * sizeof(FidType);
+  auto d_fid_seq = memory::Alloc(place, h_fid_seq->size() * sizeof(FidType));
+  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_fids " << h_fid_seq->size() * sizeof(FidType);
 
   FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
-  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
-  VLOG(0) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
+  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq->size() * sizeof(FidType), stream);
+  VLOG(3) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
   // alloc d_shard_vals
   auto d_shard_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
-  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
+  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
   xpu_wait(stream);
   reset_xpu_memory(place, d_shard_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
@@ -665,33 +666,33 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                        reinterpret_cast<ValType*>(d_shard_vals_ptr),
                        h_fid_seq->size(),
                        stream);
-  VLOG(0) << "heter comm inl pull sparse fill d_shard_val by table->get";
+  VLOG(3) << "heter comm inl pull sparse fill d_shard_val by table->get";
   xpu_wait(stream);
   // allreduce
   auto d_all_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
-  VLOG(0) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
+  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
   ValType* d_all_vals_ptr = reinterpret_cast<ValType*>(d_all_vals->ptr());
   reset_xpu_memory(place, d_all_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
   xpu_wait();
 
-  VLOG(0) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
+  VLOG(3) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
-    VLOG(0) << "heter comm inl pull sparse all reduce start";
+    VLOG(3) << "heter comm inl pull sparse all reduce start";
     heter_comm_kernel_->convert_feature_value_as_float(d_shard_vals_ptr, h_fid_seq->size(), true);
     bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_vals_ptr,
-        h_fid_seq -> size() * sizeof(ValType) / sizeof(float),
+        h_fid_seq->size() * sizeof(ValType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     heter_comm_kernel_->convert_feature_value_as_float(d_all_vals_ptr, h_fid_seq->size(), false);
-    VLOG(0) << "heter comm inl pull sparse all reduce finish";
+    VLOG(3) << "heter comm inl pull sparse all reduce finish";
   } else {
-    VLOG(0) << "heter comm inl pull unnecessary all reduce";
+    VLOG(3) << "heter comm inl pull unnecessary all reduce";
     d_all_vals_ptr = d_shard_vals_ptr;
   }
   xpu_wait(stream);
   // fill to d_val
   heter_comm_kernel_->fill_dvals_with_bfid(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
-  VLOG(0) << "heter comm inl pull sparse fill d_all_vals to d_vals";
+  VLOG(3) << "heter comm inl pull sparse fill d_all_vals to d_vals";
   xpu_wait(stream);
 
 #else
@@ -939,74 +940,74 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 
   // d_keys memcpy to cpu h_keys
   std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
-  VLOG(0) << "heter comm inl push sparse malloc h_keys on cpu";
+  VLOG(3) << "heter comm inl push sparse malloc h_keys on cpu";
   memory_copy(cpu_place, &h_keys[0], place, d_keys, len * sizeof(KeyType), stream);
-  VLOG(0) << "heter comm inl push sparse memory copy d_keys to h_keys " << len;
+  VLOG(3) << "heter comm inl push sparse memory copy d_keys to h_keys " << len;
 
   // cachemanager convert h_keys to h_bfids
   std::unique_ptr<int[]> h_bfids(new BfidType[len]);
-  VLOG(0) << "heter comm inl push sparse malloc h_bfids on cpu";
+  VLOG(3) << "heter comm inl push sparse malloc h_bfids on cpu";
 
   cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
-  VLOG(0) << "heter comm inl push sparse convert fid2bfid";
+  VLOG(3) << "heter comm inl push sparse convert fid2bfid";
 
   // h_bfids memcpy to d_bfids
   auto d_bfids = memory::Alloc(place, len * sizeof(BfidType));
-  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
+  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
   BfidType* d_bfids_ptr = reinterpret_cast<BfidType*>(d_bfids->ptr());
 
   memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0], len * sizeof(BfidType), stream);
-  VLOG(0) << "heter comm inl push sparse memory copy d_bfids from cpu to xpu";
+  VLOG(3) << "heter comm inl push sparse memory copy d_bfids from cpu to xpu";
 
   // cachemanager get fid_seq
   std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
-  VLOG(0) << "heter comm inl push sparse batch fid seq " << h_fid_seq->size();
+  VLOG(3) << "heter comm inl push sparse batch fid seq " << h_fid_seq->size();
 
   // h_fid_seq memcpy to d_fid_seq
   auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(FidType));
-  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_fids " << h_fid_seq -> size() * sizeof(FidType);
+  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_fids " << h_fid_seq -> size() * sizeof(FidType);
 
   FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
   memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
-  VLOG(0) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
+  VLOG(3) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
   xpu_wait(stream);
   // merge grad
   int d_fgrad_len = h_fid_seq->size() * sizeof(GradType);
   auto d_shard_grads = memory::Alloc(place, d_fgrad_len);
-  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(GradType);
+  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(GradType);
   GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
 
-  VLOG(0) << "heter comm inl push sparse start merge grad";
+  VLOG(3) << "heter comm inl push sparse start merge grad";
   reset_xpu_memory(place, d_shard_grads_ptr, d_fgrad_len, 0);
   xpu_wait(stream);
   heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_shard_grads_ptr);
-  VLOG(0) << "heter comm inl push sparse finish merge grad";
+  VLOG(3) << "heter comm inl push sparse finish merge grad";
   xpu_wait();
   // allreduce
   auto d_all_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
-  VLOG(0) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
+  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
   GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
   reset_xpu_memory(place, d_all_grads_ptr, h_fid_seq->size() * sizeof(GradType), 0);
 
-  VLOG(0) << "heter comm inl push sparse use " << resource_->total_device() << " device";
+  VLOG(3) << "heter comm inl push sparse use " << resource_->total_device() << " device";
   if (resource_->total_device() > 1) {
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
-    VLOG(0) << "heter comm inl push sparse all reduce start";
+    VLOG(3) << "heter comm inl push sparse all reduce start";
     heter_comm_kernel_->convert_feature_push_value_as_float(d_shard_grads_ptr, h_fid_seq->size(), true);
     bkcl_all_reduce(comm->comm(), d_shard_grads_ptr, d_all_grads_ptr,
         h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     heter_comm_kernel_->convert_feature_push_value_as_float(d_all_grads_ptr, h_fid_seq->size(), false);
-    VLOG(0) << "heter comm inl push sparse all reduce finish";
+    VLOG(3) << "heter comm inl push sparse all reduce finish";
   } else {
-    VLOG(0) << "heter comm inl push sparse unnecessary all reduce";
+    VLOG(3) << "heter comm inl push sparse unnecessary all reduce";
     d_all_grads_ptr = d_shard_grads_ptr;
   }
   xpu_wait(stream);
 
   // update
   tables_[dev_num]->update(place, d_fid_seq_ptr, d_all_grads_ptr, h_fid_seq -> size(), stream);
-  VLOG(0) << "heter comm inl push sparse update finish";
+  VLOG(3) << "heter comm inl push sparse update finish";
   xpu_wait(stream);
 
 #else
