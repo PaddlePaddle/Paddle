@@ -24,6 +24,7 @@ write result
 import os
 import argparse
 import pickle
+import json
 import time
 import numpy as np
 
@@ -150,9 +151,9 @@ def profiler():
 
     main_program_desc_str = profile_ctx['main_program_decs']
     main_program = Program.parse_from_string(main_program_desc_str)
-    print("=========main_program" * 8)
-    print(main_program)
-    print("=========main_program" * 8)
+    # print("=========main_program" * 8)
+    # print(main_program)
+    # print("=========main_program" * 8)
     # with open(args.main_program_filename, "rb") as f:
     #     main_program_desc_str = f.read()
     #     main_program = Program.parse_from_string(main_program_desc_str)
@@ -163,9 +164,9 @@ def profiler():
 
     startup_program_decs_str = profile_ctx['startup_program_decs']
     startup_program = Program.parse_from_string(startup_program_decs_str)
-    print("=========startup_program" * 8)
-    print(startup_program)
-    print("=========startup_program" * 8)
+    # print("=========startup_program" * 8)
+    # print(startup_program)
+    # print("=========startup_program" * 8)
     # with open(args.startup_program_filename, "rb") as f:
     #     startup_program_desc_str = f.read()
     #     startup_program = Program.parse_from_string(startup_program_desc_str)
@@ -214,8 +215,16 @@ def profiler():
         print("step: %d, loss_print: %f" % (eval_step, loss[0]))
         eval_step += 1
 
-    print("profile avg speed : {} step / s.".format(
-        (args.profile_end_step - args.profile_start_step) / duration))
+    avg_tput = 1.0 * (args.profile_end_step -
+                      args.profile_start_step) / duration
+    result_dict = {"throughtput": avg_tput}
+    result_path = profile_ctx["result_filename"]
+
+    if paddle.distributed.get_rank() == 0:
+        with open(result_path, 'w') as fp:
+            json.dump(result_dict, fp)
+
+    print("profile avg speed : {} step / s.".format((avg_tput)))
 
 
 if __name__ == "__main__":

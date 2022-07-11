@@ -52,7 +52,8 @@ class TuningConfig(object):
         self._profile_start_step = None
         self._profile_end_step = None
         self._log_dir = None
-        self._max_trial = None
+        self._max_num_trial = None
+        self._early_stop = None
         self._verbose = None
 
         self._initialize(user_config)
@@ -78,8 +79,12 @@ class TuningConfig(object):
         return self._tuning_passes_name
 
     @property
-    def max_trial(self):
-        return self._max_trial
+    def max_num_trial(self):
+        return self._max_num_trial
+
+    @property
+    def early_stop(self):
+        return self._early_stop
 
     @property
     def verbose(self):
@@ -98,7 +103,9 @@ class TuningConfig(object):
 
         self._profile_end_step = user_config.get("profile_end_step", 30)
 
-        self._max_trial = user_config.get("max_trial", 20)
+        self._max_num_trial = user_config.get("max_num_trial", 50)
+
+        self._early_stop = user_config.get("early_stop", None)
 
         self._verbose = user_config.get("verbose", False)
 

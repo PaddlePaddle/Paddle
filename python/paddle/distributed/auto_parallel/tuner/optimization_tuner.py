@@ -18,7 +18,9 @@ import copy
 import shlex
 import pathlib
 import pickle
+import json
 import subprocess
+import traceback
 
 import paddle
 from paddle.fluid import program_guard
@@ -77,6 +79,17 @@ def infer_batch_size(main_program, inputs_spec):
     input_varname = inputs_spec[0].name
     input_var = main_program.global_block().var(input_varname)
     return input_var.shape[0]
+
+
+def get_metric(results):
+    assert isinstance(
+        results,
+        dict), "results should be type of dictionary, but got {}.".format(
+            type(results))
+    if 'throughtput' in results and isinstance(results['throughtput'], float):
+        return float(results['throughtput'])
+    else:
+        return -1.0
 
 
 class OptimizationTuner:
@@ -288,6 +301,8 @@ class OptimizationTuner:
             profile_ctx[
                 "startup_program_decs"] = startup_program.desc.serialize_to_string(
                 )
+            result_path = os.path.join(work_dir, "result.json")
+            profile_ctx["result_filename"] = result_path
 
             with open(ctx_path, 'wb') as f:
                 pickle.dump(profile_ctx, f, protocol=4)
@@ -332,8 +347,14 @@ class OptimizationTuner:
                 os.fsync(out)
                 os.fsync(err)
 
+            # load results
+            with open(result_path, 'r') as fp:
+                results = json.load(fp)
+
             print("end evaluating: {} .".format(
                 self.algorithm.get_trial_name()))
+
+            return results
 
         elif self._config.mode == "COSTMODEL":
             raise NotImplementedError(
@@ -342,8 +363,6 @@ class OptimizationTuner:
             raise NotImplementedError("invalid evaluation mode: {}".format(
                 self._config.mode))
 
-        return 0
-
     def tune(self):
 
         # step1: collect model info which might
@@ -351,28 +370,41 @@ class OptimizationTuner:
             self._dist_context.serial_main_program,
             self._dist_context.serial_startup_program)
 
-        # step2: baseline trial
-        new_strategy = self.algorithm.get_baseline_trial()
-        new_main_program, new_startup_program = self._apply_optimization(
-            new_strategy)
-        last_trial_result = self._evaluate_trial(new_main_program,
-                                                 new_startup_program)
+        # step2: main while loop
+        i = 0
+        best_i = 0
+        best_metric = None
+        try:
+            while i < self._config.max_num_trial:
 
-        # step3: while loop to find out best trial
-        while True:
+                # TODO TrialStatus.STOPPED
+                if self.algorithm.status() == "STOP":
+                    break
 
-            # TODO TrialStatus.STOPPED
-            if self.algorithm.get_status() == "STOP":
-                break
+                new_strategy = self.algorithm.next_trial()
+                new_main_program, new_startup_program = self._apply_optimization(
+                    new_strategy)
+                last_results = self._evaluate_trial(new_main_program,
+                                                    new_startup_program)
 
-            new_strategy = self.algorithm.get_next_trial()
-            new_main_program, new_startup_program = self._apply_optimization(
-                new_strategy)
-            last_trial_result = self._evaluate_trial(new_main_program,
-                                                     new_startup_program)
+                if best_metric == None or get_metric(
+                        last_results) < best_metric:
+                    best_metric = get_metric(last_results)
+                    best_i = i
 
-            # TODO trial result class
-            self.algorithm.update_statue(last_trial_result)
+                # TODO trial result class
+                self.algorithm.update(last_results)
 
-        # step4: summary the best config and return
+                i += 1
+                if self._config.early_stop and self._config.early_stop <= i - best_i:
+                    print(
+                        "Early stop the Tuning since there is no better trial found within [{}] trials"
+                        .format(self._config.early_stop))
+                    break
+        except:
+            print("Tuner got Error: {}".format(sys.exc_info()[0]))
+            print(sys.exc_info()[1])
+            traceback.print_tb(sys.exc_info()[2])
+
+        # step3: summary the best config and return
         self.algorithm.summary()

@@ -33,35 +33,25 @@ class AlgorithmBase(ABC):
     def __init__(self, config):
         self._config = config
         self._trial_count = 0
-        if self._config.max_trial:
-            self._max_trial = self._config.max_trial
+        if self._config.max_num_trial:
+            self._max_num_trial = self._config.max_num_trial
         else:
-            self._max_trial = float("inf")
+            self._max_num_trial = float("inf")
 
     def collect_model_info(self, main_prog, startup_prog):
         """
         Collect the model static info (from programs) that could be used to pruning candidate trials and saving tuning time.
-        For instance, model info like memory size of model state and memory size of activation could be 
+        For instance, model info like number of model parameters and activation memory could be 
         used to prune candidated trial and decide the next trial.
         """
         pass
 
     @abstractmethod
-    def get_baseline_trial(self):
-        """
-        Return the trial with the loosest configurations to run the model base on the selected optimization passes. 
-        If the baseline trial fails, it means there is NO available configuration that could run the model given the current selected optimization passes.
-        For instance, it would be the configuration that save the Most memory. And if it fails, any other configurations would also fail with OOM.
-        it is supported to be first trial and used to prune the trials and saving tuning time.
-        """
+    def next_trial(self):
         pass
 
     @abstractmethod
-    def get_next_trial(self):
-        pass
-
-    @abstractmethod
-    def update_statue(self, result):
+    def update(self, result):
         pass
 
     @abstractmethod
@@ -97,30 +87,18 @@ class ShardingStageAlgorithm(AlgorithmBase):
         stage_range = self._config.sharding_configs.get("stage_range", None)
         if stage_range:
             assert set(stage_range).issubset(set([0, 1, 2, 3]))
-            if self._max_stage in stage_range:
-                stage_range.remove(self._max_stage)
             stage_range.sort()
         else:
-            stage_range = [0, 1, 2]
+            stage_range = [0, 1, 2, 3]
         self.stage_range = stage_range[:]
-        self._max_trial = min(self._max_trial, len(self.stage_range))
+        self._max_num_trial = min(self._max_num_trial, len(self.stage_range))
 
-    def get_baseline_trial(self):
+    def next_trial(self):
 
-        new_strategy = copy.deepcopy(self._config.dist_strategy)
-        config_dict = new_strategy.sharding_configs
-        config_dict["stage"] = self._max_stage
-        new_strategy.sharding_configs = config_dict
-        self._trial_count += 1
-
-        return new_strategy
-
-    def get_next_trial(self):
-
-        if self._trial_count <= self._max_trial:
+        if self._trial_count < self._max_num_trial:
             new_strategy = copy.deepcopy(self._config.dist_strategy)
             config_dict = new_strategy.sharding_configs
-            config_dict["stage"] = self.stage_range[self._trial_count - 1]
+            config_dict["stage"] = self.stage_range[self._trial_count]
             new_strategy.sharding_configs = config_dict
             self._trial_count += 1
             return new_strategy
@@ -131,13 +109,17 @@ class ShardingStageAlgorithm(AlgorithmBase):
     def get_trial_name(self):
         return "Sharing_stage_{}_trial".format(self._trial_count)
 
-    def get_status(self):
-        if self._trial_count >= 0 and self._trial_count <= self._max_trial:
+    def status(self):
+        if self._trial_count >= 0 and self._trial_count < self._max_num_trial:
             return "RUNNING"
         else:
             return "STOP"
 
-    def update_statue(self, result):
+    def update(self, result):
+        """
+        Update the algorthim with the result of last trial. Using this information is used to 
+        pruning the search space of the future trial.
+        """
         pass
 
     def summary(self):
