@@ -129,7 +129,7 @@ static ForwardIt UniqueConsecutiveDimImpl(
   while (++first != last) {
     int64_t idx_first = std::distance(begin, first);
     int64_t idx_result = std::distance(begin, result);
-    if (!paddle::operators::Equal<InT>(*result, *first)) {
+    if (!phi::funcs::Equal<InT>(*result, *first)) {
       if (++result != first) {
         *result = std::move(*first);
       }
