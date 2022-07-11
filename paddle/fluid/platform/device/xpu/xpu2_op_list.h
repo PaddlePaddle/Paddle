@@ -317,6 +317,8 @@ XPUOpMap& get_kl2_ops() {
       {"one_hot_v2",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+      {"p_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"p_norm_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"pool2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
