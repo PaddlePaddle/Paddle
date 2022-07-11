@@ -29,8 +29,7 @@ else()
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/libgflags.a"
       CACHE FILEPATH "GFLAGS_LIBRARIES" FORCE)
-  set(BUILD_COMMAND $(MAKE) --silent)
-  set(INSTALL_COMMAND $(MAKE) install)
+  set(INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install)
 endif()
 
 include_directories(${GFLAGS_INCLUDE_DIR})
