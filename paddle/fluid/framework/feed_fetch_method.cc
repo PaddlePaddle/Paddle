@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 
-#include <boost/variant.hpp>
 #include <string>
 
 #include "glog/logging.h"

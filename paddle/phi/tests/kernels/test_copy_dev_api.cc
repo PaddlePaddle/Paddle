@@ -65,7 +65,6 @@ TEST(DEV_API, copy) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx.Init();
   phi::Copy(
       dev_ctx, *(dense_src.get()), phi::CPUPlace(), false, dense_dst.get());
 

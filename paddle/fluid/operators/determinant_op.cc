@@ -179,12 +179,10 @@ REGISTER_OPERATOR(slogdeterminant,
 REGISTER_OPERATOR(slogdeterminant_grad,
                   ops::SlogDeterminantGradOp)  // reuse det grad op
 
-REGISTER_OP_CPU_KERNEL(
-    slogdeterminant,
-    ops::SlogDeterminantKernel<plat::CPUDeviceContext, float>,
-    ops::SlogDeterminantKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(slogdeterminant,
+                       ops::SlogDeterminantKernel<phi::CPUContext, float>,
+                       ops::SlogDeterminantKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    slogdeterminant_grad,
-    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, float>,
-    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(slogdeterminant_grad,
+                       ops::SlogDeterminantGradKernel<phi::CPUContext, float>,
+                       ops::SlogDeterminantGradKernel<phi::CPUContext, double>);

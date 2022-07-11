@@ -213,7 +213,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(const std::vector<std::string>&);
   // TODO(chenweihang): support other attribute type if needed.
   // Why not support other attribute type here?
-  // - boost::blank, std::vector<bool> and std::vector<double>
+  // - paddle::blank, std::vector<bool> and std::vector<double>
   //   are not used in op
   // - BlockDesc* and std::vector<BlockDesc*> are used in framework
 

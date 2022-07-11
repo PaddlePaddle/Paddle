@@ -134,7 +134,7 @@ void PressTestSendRecv(
   int64_t data_size = vars_len;
   VLOG(0) << "float num: " << data_size;
   float* data_ptr = new float[data_size];
-  file.read((char*)data_ptr, 9437184);
+  file.read(static_cast<char*>(data_ptr), 9437184);
   VLOG(0) << "send data is: " << data_ptr[0] << ", " << data_ptr[1];
   std::vector<std::string> var_names{"34"};
   int loopCnt = 10000;
@@ -169,7 +169,7 @@ void PressTestSendRecv(
   delete[] values;
 
   std::ofstream recv("/recv_20_34", std::ios::out | std::ios::binary);
-  recv.write((char*)values, data_size);
+  recv.write(static_cast<char*>(values, data_size));
   recv.close();
   t.join();
 }
@@ -177,7 +177,7 @@ void PressTestSendRecv(
 void TestScopeSendRecv(
     std::shared_ptr<distributed::HeterClient> heter_client_ptr_) {
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   framework::Executor exe(place);
   std::shared_ptr<framework::Scope> send_scope_ptr =
       std::make_shared<framework::Scope>();

@@ -114,9 +114,7 @@ class LUKernel : public framework::OpKernel<T> {
                           "lu without pivoting is not implemented on the CPU, "
                           "but got pivots=False"));
 
-    math::DeviceIndependenceTensorOperations<paddle::platform::CPUDeviceContext,
-                                             T>
-        helper(ctx);
+    math::DeviceIndependenceTensorOperations<phi::CPUContext, T> helper(ctx);
     *out = helper.Transpose(*xin);
 
     auto outdims = out->dims();
@@ -235,5 +233,5 @@ REGISTER_OPERATOR(lu_grad,
 
 REGISTER_OP_CPU_KERNEL(lu, ops::LUKernel<float>, ops::LUKernel<double>);
 REGISTER_OP_CPU_KERNEL(lu_grad,
-                       ops::LUGradKernel<plat::CPUDeviceContext, float>,
-                       ops::LUGradKernel<plat::CPUDeviceContext, double>);
+                       ops::LUGradKernel<phi::CPUContext, float>,
+                       ops::LUGradKernel<phi::CPUContext, double>);

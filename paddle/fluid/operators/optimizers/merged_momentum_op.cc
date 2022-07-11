@@ -104,7 +104,6 @@ REGISTER_OP_WITHOUT_GRADIENT(merged_momentum,
                              ops::MergedMomentumOp,
                              ops::MergedMomentumOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    merged_momentum,
-    ops::MergedMomentumOpKernel<plat::CPUDeviceContext, float>,
-    ops::MergedMomentumOpKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(merged_momentum,
+                       ops::MergedMomentumOpKernel<phi::CPUContext, float>,
+                       ops::MergedMomentumOpKernel<phi::CPUContext, double>);

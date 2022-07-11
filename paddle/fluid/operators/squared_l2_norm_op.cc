@@ -96,11 +96,9 @@ REGISTER_OPERATOR(squared_l2_norm,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
                   ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
-REGISTER_OP_CPU_KERNEL(
-    squared_l2_norm,
-    ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    squared_l2_norm_grad,
-    ops::SquaredL2NormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SquaredL2NormGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(squared_l2_norm,
+                       ops::SquaredL2NormKernel<phi::CPUContext, float>,
+                       ops::SquaredL2NormKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(squared_l2_norm_grad,
+                       ops::SquaredL2NormGradKernel<phi::CPUContext, float>,
+                       ops::SquaredL2NormGradKernel<phi::CPUContext, double>);

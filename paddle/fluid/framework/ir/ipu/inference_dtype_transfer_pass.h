@@ -12,10 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/dist_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dist_kernel_impl.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
-PD_REGISTER_KERNEL(dist, CPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+namespace paddle {
+namespace framework {
+namespace ir {
+
+class InferenceDtypeTransferPass : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

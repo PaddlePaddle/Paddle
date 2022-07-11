@@ -12,15 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/dist_grad_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dist_grad_kernel_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(dist_grad, GPU, ALL_LAYOUT, phi::DistGradKernel, float) {}
-#else
-PD_REGISTER_KERNEL(
-    dist_grad, GPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
-#endif
+namespace phi {
+namespace sparse {
+
+template <typename T, typename Context>
+void FusedAttentionCsrKernel(
+    const Context& dev_ctx,
+    const DenseTensor& query,
+    const DenseTensor& key,
+    const DenseTensor& value,
+    const SparseCsrTensor& sparse_mask,
+    const paddle::optional<DenseTensor>& key_padding_mask,
+    const paddle::optional<DenseTensor>& attn_mask,
+    DenseTensor* out,
+    SparseCsrTensor* softmax);
+
+}  // namespace sparse
+}  // namespace phi

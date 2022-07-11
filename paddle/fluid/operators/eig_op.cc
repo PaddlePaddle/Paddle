@@ -164,19 +164,15 @@ REGISTER_OPERATOR(eig,
 
 REGISTER_OPERATOR(eig_grad, ops::EigGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    eig,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, float, complex64>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, double, complex128>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex64, complex64>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex128, complex128>);
+REGISTER_OP_CPU_KERNEL(eig,
+                       ops::EigKernel<phi::CPUContext, float, complex64>,
+                       ops::EigKernel<phi::CPUContext, double, complex128>,
+                       ops::EigKernel<phi::CPUContext, complex64, complex64>,
+                       ops::EigKernel<phi::CPUContext, complex128, complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     eig_grad,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, float, complex64>,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, double, complex128>,
-    ops::
-        EigGradKernel<paddle::platform::CPUDeviceContext, complex64, complex64>,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext,
-                       complex128,
-                       complex128>);
+    ops::EigGradKernel<phi::CPUContext, float, complex64>,
+    ops::EigGradKernel<phi::CPUContext, double, complex128>,
+    ops::EigGradKernel<phi::CPUContext, complex64, complex64>,
+    ops::EigGradKernel<phi::CPUContext, complex128, complex128>);

@@ -124,7 +124,6 @@ REGISTER_OPERATOR(qr,
 
 REGISTER_OPERATOR(qr_grad, ops::QrGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    qr_grad,
-    ops::QrGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::QrGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(qr_grad,
+                       ops::QrGradKernel<phi::CPUContext, float>,
+                       ops::QrGradKernel<phi::CPUContext, double>);

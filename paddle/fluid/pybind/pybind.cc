@@ -90,6 +90,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/fluid/pybind/jit.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -563,6 +564,7 @@ PYBIND11_MODULE(core_noavx, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();
@@ -2089,7 +2091,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CPUPlace& place)
                       -> paddle::platform::DeviceContext* {
-    auto* context = new paddle::platform::CPUDeviceContext();
+    auto* context = new phi::CPUContext();
     context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
         .GetAllocator(place)
@@ -3057,54 +3059,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &,
-                    const ProgramDesc &,
-                    const ProgramDesc &,
-                    Scope *>())
-      .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict,
-              std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               framework::LoDTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             paddle::framework::FetchList ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
-             }
-             return py::cast(std::move(ret));
-           })
-      .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, framework::LoDTensor>
-                  &input_dict,
-              std::vector<std::string> fetch_names) {
-             std::vector<framework::LoDTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(item.second);
-             }
-
-             paddle::framework::FetchList ret;
-             {
-               pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, feed_tensors, fetch_names);
-             }
-             return py::cast(std::move(ret));
-           })
+      .def(py::init<const platform::Place &, const ProgramDesc &>())
       .def("run",
            [](StandaloneExecutor &self,
               Scope *scope,

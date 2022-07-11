@@ -150,7 +150,7 @@ void RunHeterServerOp(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   LOG(INFO) << "before GetHeterListenAndServProgram";
   GetHeterListenAndServProgram(&program, endpoint);
@@ -211,7 +211,7 @@ TEST(HETER_LISTEN_AND_SERV, CPU) {
 
   framework::Scope* scope = (*micro_scope)[0];
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 
   // create var on local scope
   int64_t rows_numel = 10;
