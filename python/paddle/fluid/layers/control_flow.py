@@ -1299,8 +1299,14 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             output_vars = body(*loop_vars)
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
+        try:
+            loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
+            assert_same_structure(output_vars, loop_vars, check_types=False)
+        except ValueError as e:
+            raise ValueError(
+                "body in while_loop should return the same arity "
+                "(length and structure) as loop_vars: {0}".format(e))
         now_cond = cond(*output_vars)
-        loop_vars = _deal_with_undefined_var(output_vars, loop_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
@@ -1308,6 +1314,8 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
 def _deal_with_undefined_var(output_vars, loop_vars):
     """ Deal with undefined var cases, We create undefined variable based on the results of body().
+        In Dy2Static, we use undefined var to represent the var created in control flow. This function
+        expand the loop_vars and replace original loop_vars.
         1. UndefinedVar = Variable      # create a variable
         2. UndefinedVar = None          # create a undefined var with RETURN_NO_VALUE_MAGIC_NUM
         3. UndefinedVar = List(int)     # create a list of variable
@@ -1323,8 +1331,9 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         if isinstance(o_var, (tuple, list)):
             return [create_undefined_variable() for i in range(len(o_var))]
 
-    assert len(output_vars) == len(
-        loop_vars), "The length of loop_vars should be the same."
+    if len(output_vars) != len(loop_vars):
+        raise ValueError("The length of loop_vars should be the same.")
+
     results = []
     for o_var, l_var in zip(output_vars, loop_vars):
         if isinstance(l_var, UndefinedVar) or l_var is None:
