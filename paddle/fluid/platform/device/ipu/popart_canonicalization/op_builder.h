@@ -67,6 +67,12 @@ Node *CreateCast(Graph *graph,
                  const std::vector<Node *> &outputs,
                  const VarType::Type otype);
 
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction);
+
 Node *CreateGemm(Graph *graph,
                  Node *node,
                  const std::vector<Node *> &inputs,
