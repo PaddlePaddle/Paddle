@@ -29,6 +29,8 @@ from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import _test_eager_guard
 
+paddle.enable_static()
+
 
 class TestWhereOp(OpTest):
 
@@ -396,5 +398,4 @@ class TestWhereOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
