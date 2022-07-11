@@ -42,6 +42,8 @@ DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
 ARGS_NAME = '__args'
+# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
+ORIGI_INFO = "Original information of source code for ast node."
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -541,35 +543,6 @@ def create_assign_node(name, node):
     targets = generate_name_node(name, ctx=gast.Store())
     assign_node = gast.Assign(targets=[targets], value=node)
     return targets, assign_node
-
-
-class RenameTransformer(gast.NodeTransformer):
-
-    def __init__(self, node):
-        assert isinstance(
-            node, gast.AST), "RenameTransformer only accepts gast.AST as input"
-        self.root = node
-        self.old_name = ""
-        self.new_name = ""
-
-    def rename(self, old_name, new_name):
-        self.old_name = old_name
-        self.new_name = new_name
-        self.visit(self.root)
-
-    def visit_Name(self, node):
-        self.generic_visit(node)
-        if node.id == self.old_name:
-            node.id = self.new_name
-        return node
-
-    def visit_Attribute(self, node):
-        self.generic_visit(node)
-        attr_full_name = get_attribute_full_name(node)
-        if attr_full_name == self.old_name:
-            new_name_node = gast.parse(self.new_name).body[0].value
-            return new_name_node
-        return node
 
 
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):

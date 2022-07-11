@@ -87,6 +87,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
     pass->Set("model_precision", new int(argument->model_precision()));
+    pass->Set(
+        "mixed_black_list",
+        new std::unordered_set<std::string>(argument->mixed_black_list()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
