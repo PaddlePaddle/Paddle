@@ -83,6 +83,7 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._dygraph_mode = False
 
     def prepare(self,
                 optimizer=None,
