@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,14 +91,17 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
 
     bool centered = ctx.Attr<bool>("centered");
-    if (centered) {
-      VLOG(0) << "'centered' is not supported in RMSProp XPU version. use "
-                 "XPU_BLACK_LIST to disable this op.";
-      // TODO(houj04): when XDNN api supports 'center', add input of
-      // mean_grad_input and output of mean_grad_output. auto *mean_grad_input =
-      // ctx.Input<Tensor>("MeanGrad"); auto *mean_grad_output =
-      // ctx.Output<Tensor>("MeanGradOut");
-    }
+    PADDLE_ENFORCE_EQ(centered,
+                      false,
+                      platform::errors::Unimplemented(
+                          "centered=True is not supported in the xpu kernel of "
+                          "rmsprop. use XPU_BLACK_LIST to disable this op."));
+    /*
+      TODO(houj04): when XDNN api supports 'center', add input of
+      mean_grad_input and output of mean_grad_output. auto *mean_grad_input =
+      ctx.Input<Tensor>("MeanGrad"); auto *mean_grad_output =
+      ctx.Output<Tensor>("MeanGradOut");
+      */
 
     // outputs
     auto& param_out = GET_DATA_SAFELY(
