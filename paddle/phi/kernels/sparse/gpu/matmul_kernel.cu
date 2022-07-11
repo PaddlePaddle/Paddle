@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/matmul_kernel.h"
+
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -21,10 +23,10 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
-#include "paddle/phi/kernels/sparse/matmul_kernel.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -58,7 +60,7 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(xdim_vec[i],
                       ydim_vec[i],
                       phi::errors::InvalidArgument(
-                          "x.dim[%d] and x.dim[%d] must match.", i, i));
+                          "x.dim[%d] and x.dim[%d] must be eaqul.", i, i));
   }
 
   PADDLE_ENFORCE_GE(
@@ -74,16 +76,16 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
   MetaTensor meta_out(out);
   meta_out.set_dims(phi::make_ddim(out_dim_vec));
-  meta_out.set_dtype(x.non_zero_elements().dtype());
+  meta_out.set_dtype(y.dtype());
 
   dev_ctx.template Alloc<T>(out);
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
-  sparse_blas.DSDMM(
+  sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
   PADDLE_THROW(
-      phi::errors::Unimplemented(" forward of 'sparse.mm' use cusparseSpMM, "
+      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
                                  "which is supported from CUDA 11.0"));
 #endif
 }
@@ -158,32 +160,16 @@ void CsrMaskedMatmulKernel(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, mask_dim[-1] must be eaqual to y_dim[-1]."));
 
-  // InferMeta of SparseCsrTensor 'out'
-  out->set_dims(mask.dims());
-
-  phi::Copy(dev_ctx,
-            mask.non_zero_crows(),
-            dev_ctx.GetPlace(),
-            false,
-            out->mutable_non_zero_crows());
-  phi::Copy(dev_ctx,
-            mask.non_zero_cols(),
-            dev_ctx.GetPlace(),
-            false,
-            out->mutable_non_zero_cols());
-
-  DenseTensor* values = out->mutable_non_zero_elements();
-  values->Resize(mask.non_zero_elements().dims());
-  dev_ctx.template Alloc<T>(values);
+  // InferMeta of SparseCsrTensor 'out', CreateLikeInferMeta
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, mask, out);
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented(" forward of 'sparse.masked_mm' use "
-                                 "cusparseSDDMM, which is supported from "
-                                 "CUDA 11.3"));
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "forward of 'sparse.masked_matmul' use cusparseSDDMM, which is supported "
+      "from CUDA 11.3"));
 #endif
 }
 

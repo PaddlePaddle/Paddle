@@ -69,7 +69,8 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         in_tensor->place());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
@@ -79,8 +80,8 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         var_name == "StridesTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -173,7 +174,8 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
                                    ctx.GetPlace());
   }
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
@@ -183,8 +185,8 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
         var_name == "StridesTensorList") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -227,18 +229,24 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(strided_slice, StridedSliceInferShape,
+DECLARE_INFER_SHAPE_FUNCTOR(strided_slice,
+                            StridedSliceInferShape,
                             PD_INFER_META(phi::StridedSliceRawInferMeta));
 
-REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
+REGISTER_OPERATOR(strided_slice,
+                  ops::StridedSliceOp,
+                  ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>,
-                  ops::StridedSliceOpVarTypeInference, StridedSliceInferShape);
+                  ops::StridedSliceOpVarTypeInference,
+                  StridedSliceInferShape);
 
-DECLARE_INFER_SHAPE_FUNCTOR(strided_slice_grad, StridedSliceGradInferShape,
+DECLARE_INFER_SHAPE_FUNCTOR(strided_slice_grad,
+                            StridedSliceGradInferShape,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 
-REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
+REGISTER_OPERATOR(strided_slice_grad,
+                  ops::StridedSliceOpGrad,
                   ops::StridedSliceOpGradNoNeedBufferVarsInferer,
                   ops::StridedSliceGradOpVarTypeInference,
                   StridedSliceGradInferShape);

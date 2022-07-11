@@ -24,7 +24,7 @@ PaddlePaddle security team attaches great importance to the security of the fram
 
 ### Reporting vulnerabilities
 
-We encourage responsible disclosure of security issues to PaddlePaddle and please email reports about any security issues you find to security@paddlepaddle.org.
+We encourage responsible disclosure of security issues to PaddlePaddle and please email reports about any security issues you find to paddle-security@baidu.com.
 
 
 

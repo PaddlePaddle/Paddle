@@ -27,8 +27,10 @@ namespace gen {
 
 class LSTMJitCode : public VActFunc {
  public:
-  explicit LSTMJitCode(bool compute_c1h1, const lstm_attr_t& attr,
-                       size_t code_size, void* code_ptr = nullptr)
+  explicit LSTMJitCode(bool compute_c1h1,
+                       const lstm_attr_t& attr,
+                       size_t code_size,
+                       void* code_ptr = nullptr)
       : VActFunc(code_size, code_ptr),
         num_(attr.d),
         compute_c1h1_(compute_c1h1),
@@ -101,12 +103,13 @@ class LSTMJitCode : public VActFunc {
   reg64_t param1{abi_param1};
 };
 
-#define DECLARE_LSTM_JITCODE(name, compute_c1h1)                      \
-  class name##JitCode : public LSTMJitCode {                          \
-   public:                                                            \
-    explicit name##JitCode(const lstm_attr_t& attr, size_t code_size, \
-                           void* code_ptr = nullptr)                  \
-        : LSTMJitCode(compute_c1h1, attr, code_size, code_ptr) {}     \
+#define DECLARE_LSTM_JITCODE(name, compute_c1h1)                  \
+  class name##JitCode : public LSTMJitCode {                      \
+   public:                                                        \
+    explicit name##JitCode(const lstm_attr_t& attr,               \
+                           size_t code_size,                      \
+                           void* code_ptr = nullptr)              \
+        : LSTMJitCode(compute_c1h1, attr, code_size, code_ptr) {} \
   };
 
 DECLARE_LSTM_JITCODE(LSTMCtHt, false);

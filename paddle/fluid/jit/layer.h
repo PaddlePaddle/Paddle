@@ -13,46 +13,52 @@
 // limitations under the License.
 
 #pragma once
-#include <map>
-#include <memory>
+
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/jit/ast.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/common/place.h"
+
 #include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/exector_function.h"
-#include "paddle/fluid/jit/object.h"
-#include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/function_schema.h"
 
 namespace paddle {
 namespace jit {
 using Variable = paddle::framework::Variable;
-using VariableNameMap = std::map<std::string, Variable>;
-using DenseTensor = phi::DenseTensor;
+using Name2VariableMap = std::unordered_map<std::string, Variable>;
 
 class Layer {
  public:
   // TODO(dev): Make vector<string>, num_slot as in argument
   // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
   // {}
-  Layer(
-      const std::vector<std::string>& func_names,
-      const std::vector<framework::ProgramDesc>& program_descs,
-      const std::vector<std::vector<std::string>>& param_names_for_each_program,
-      const VariableNameMap& params_dict);
+  Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
+        const Name2VariableMap& params_dict,
+        const phi::Place& place);
 
-  // TODO(dev): make it as const function
-  std::shared_ptr<BaseFunction> GetFunction(const std::string& name);
+  std::shared_ptr<BaseFunction> Function(const std::string& name) const;
 
-  std::vector<Variable> forward(const VariableNameMap& inputs);
+  Variable Attribute(const std::string& name) const;
+
+  std::vector<Variable> forward(const std::vector<Variable>& inputs);
+
+  void to(const phi::Place& place);
+
+  void SetFunction(const std::string& name,
+                   const std::shared_ptr<BaseFunction>& function);
+
+  std::vector<std::string> FunctionNames() const;
+
+  const Name2FunctionMap& FunctionMap() const;
 
  private:
   // internal::Object obj_;
-  // std::vector<framework::ProgramDesc> all_program_desc_;
-  // std::vector<std::vector<std::string>> param_name_for_each_program_;
-  // std::vector<Variable> all_param_;
-  std::map<std::string, std::shared_ptr<BaseFunction>> function_dict;
+  Name2VariableMap params_dict_;
+  Name2VariableMap attrs_dict_;
+  CompilationUnit unit_;
 };
 
 }  // namespace jit

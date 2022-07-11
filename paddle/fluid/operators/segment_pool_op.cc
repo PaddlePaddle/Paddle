@@ -80,25 +80,33 @@ class SegmentPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SegmentPoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SegmentPoolGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentPoolGrad");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
+    PADDLE_ENFORCE_EQ(og_dims.size(),
+                      x_dims.size(),
                       platform::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
-                          og_dims.size(), og_dims));
+                          og_dims.size(),
+                          og_dims));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          og_dims[i], x_dims[i],
+          og_dims[i],
+          x_dims[i],
           platform::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
               "input shape [%s].",
-              og_dims.size(), og_dims, x_dims.size(), x_dims));
+              og_dims.size(),
+              og_dims,
+              x_dims.size(),
+              x_dims));
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
@@ -138,10 +146,13 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(segment_pool, SegmentPoolInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(segment_pool,
+                            SegmentPoolInferShapeFunctor,
                             PD_INFER_META(phi::SegmentPoolInferMeta));
 
-REGISTER_OPERATOR(segment_pool, ops::SegmentPoolOp, ops::SegmentPoolOpMaker,
+REGISTER_OPERATOR(segment_pool,
+                  ops::SegmentPoolOp,
+                  ops::SegmentPoolOpMaker,
                   ops::SegmentPoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SegmentPoolGradOpMaker<paddle::imperative::OpBase>,
                   SegmentPoolInferShapeFunctor);

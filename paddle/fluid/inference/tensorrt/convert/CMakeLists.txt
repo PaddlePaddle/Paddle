@@ -60,7 +60,9 @@ list(
   preln_skip_layernorm.cc
   roll_op.cc
   transformer_input_convert_op.cc
+  cast_op.cc
   remove_padding_op.cc
+  equal_op.cc
   recover_padding_op.cc
   preln_residual_bias.cc
   c_allreduce_op.cc
@@ -83,3 +85,9 @@ nv_test(
   SRCS test_op_converter.cc
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_op_converter)
+endif()

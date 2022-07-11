@@ -35,7 +35,8 @@ namespace tensorrt {
 class RoiAlignOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid roi align op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -63,9 +64,12 @@ class RoiAlignOpConverter : public OpConverter {
     std::vector<nvinfer1::ITensor*> inputs{input_tensor, rois_tensor};
     nvinfer1::ILayer* layer = nullptr;
 
-    auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(
-        data_type_, pooled_height, pooled_width, spatial_scale, sampling_ratio,
-        aligned);
+    auto* roi_align_plugin = new plugin::RoiAlignPluginDynamic(data_type_,
+                                                               pooled_height,
+                                                               pooled_width,
+                                                               spatial_scale,
+                                                               sampling_ratio,
+                                                               aligned);
     auto roi_align_layer = engine_->network()->addPluginV2(
         inputs.data(), inputs.size(), *roi_align_plugin);
     layer = roi_align_layer;

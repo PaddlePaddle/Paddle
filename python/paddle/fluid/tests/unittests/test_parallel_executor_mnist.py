@@ -38,7 +38,7 @@ def simple_fc_net(use_feed):
                 value=1.0)))
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -61,7 +61,7 @@ def fc_with_batchnorm(use_feed):
         prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     with fluid.name_scope("loss"):
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
     return loss
 
 
@@ -91,7 +91,7 @@ class TestMNIST(TestParallelExecutorBase):
 
         img, label = init_data()
 
-        all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
+        all_reduce_first_loss, all_reduce_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,
@@ -100,7 +100,7 @@ class TestMNIST(TestParallelExecutorBase):
             use_device=use_device,
             use_reduce=False)
 
-        reduce_first_loss, reduce_last_loss = self.check_network_convergence(
+        reduce_first_loss, reduce_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,
@@ -153,7 +153,7 @@ class TestMNIST(TestParallelExecutorBase):
 
         img, label = init_data()
 
-        single_first_loss, single_last_loss = self.check_network_convergence(
+        single_first_loss, single_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={
                 "image": img,
@@ -161,7 +161,7 @@ class TestMNIST(TestParallelExecutorBase):
             },
             use_device=use_device,
             use_parallel_executor=False)
-        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
+        parallel_first_loss, parallel_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={
                 "image": img,

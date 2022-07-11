@@ -36,7 +36,8 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   // TODO(lujun): The override here is just to bypass transform
   //  in operator impl, which is not elegant enough.
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place());
@@ -86,8 +87,8 @@ to a file on disk.
 class SaveCombineOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Y", framework::proto::VarType::RAW,
-                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        "Y", framework::proto::VarType::RAW, framework::ALL_ELEMENTS);
   }
 };
 
@@ -96,14 +97,15 @@ class SaveCombineOpInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
-                  ops::SaveCombineOpProtoMaker, ops::SaveCombineOpInferVarType);
+REGISTER_OPERATOR(save_combine,
+                  ops::SaveCombineOp,
+                  ops::SaveCombineOpProtoMaker,
+                  ops::SaveCombineOpInferVarType);
 
 REGISTER_OP_CPU_KERNEL(
     save_combine,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SaveCombineOpKernel<phi::CPUContext, float>,
+    ops::SaveCombineOpKernel<phi::CPUContext, double>,
+    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);

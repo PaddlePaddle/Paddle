@@ -37,8 +37,8 @@ class AXPYHandler {
  public:
   AXPYHandler(const dnnl::engine mkldnn_engine, int n, float alpha) {
     platform::MKLDNNDeviceContext::tls().log_lib_version();
-    auto md = dnnl::memory::desc({n}, plat::MKLDNNGetDataType<T>(),
-                                 dnnl::memory::format_tag::x);
+    auto md = dnnl::memory::desc(
+        {n}, plat::MKLDNNGetDataType<T>(), dnnl::memory::format_tag::x);
     src_mem_ = dnnl::memory(md, mkldnn_engine, DNNL_MEMORY_NONE);
     dst_mem_ = dnnl::memory(md, mkldnn_engine, DNNL_MEMORY_NONE);
     dnnl::primitive_attr reorder_attr;
@@ -104,8 +104,8 @@ OneDNNAXPYHandler<T>::Impl::Impl(int64_t n, T alpha) : n_{n}, alpha_{alpha} {
   auto *dev_ctx =
       dynamic_cast<plat::MKLDNNDeviceContext *>(pool.Get(cpu_place));
   auto &cpu_engine = dev_ctx->GetEngine();
-  handler_ = std::make_unique<AXPYHandler<T>>(cpu_engine, n,
-                                              static_cast<float>(alpha));
+  handler_ = std::make_unique<AXPYHandler<T>>(
+      cpu_engine, n, static_cast<float>(alpha));
 }
 
 template <typename T>

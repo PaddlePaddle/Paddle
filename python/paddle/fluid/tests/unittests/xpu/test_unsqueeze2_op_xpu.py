@@ -39,6 +39,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -68,7 +69,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             elif self.dtype == np.bool_:
                 return
@@ -117,6 +118,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_dtype()
             self.init_test_case()
@@ -145,7 +147,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return
@@ -191,6 +193,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def setUp(self):
             self.op_type = "unsqueeze2"
+            self.__class__.op_type = "unsqueeze2"
             self.use_mkldnn = False
             self.init_test_case()
             self.init_dtype()
@@ -214,7 +217,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return

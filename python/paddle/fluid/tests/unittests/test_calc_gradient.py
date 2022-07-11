@@ -31,7 +31,7 @@ class TestCalcGradient(unittest.TestCase):
             x = layers.create_parameter(dtype="float32", shape=[5, 10])
             y = layers.create_parameter(dtype="float32", shape=[10, 8])
             mul_out = layers.mul(x=x, y=y)
-            mean_out = layers.mean(mul_out)
+            mean_out = paddle.mean(mul_out)
             a = calc_gradient(mean_out, mul_out)
             b = calc_gradient(mean_out, x)
         place = fluid.CPUPlace()

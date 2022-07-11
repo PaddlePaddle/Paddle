@@ -913,7 +913,7 @@ class Optimizer(object):
             program = loss.block.program
             assert len(loss.shape) == 1 and loss.shape[0] == 1, \
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
-                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                "Maybe that you should call paddle.mean to process the current loss.".format(
                     loss.shape)
             parameter_list = parameter_list if parameter_list \
                 else self._parameter_list
@@ -1370,8 +1370,8 @@ class SGDOptimizer(Optimizer):
 
         lr = self._create_param_lr(param_and_grad)
         if in_dygraph_mode():
-            _C_ops.final_state_sgd(param_and_grad[0], lr, param_and_grad[1],
-                                   master_weight, find_master)
+            _C_ops.final_state_sgd_(param_and_grad[0], lr, param_and_grad[1],
+                                    master_weight, find_master)
             return None
         if _in_legacy_dygraph():
             _C_ops.sgd(param_and_grad[0], lr, param_and_grad[1], master_weight,
@@ -6834,7 +6834,7 @@ class LookaheadOptimizer(object):
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
             loss = fluid.layers.cross_entropy(input=y, label=label)
-            loss = fluid.layers.mean(x=loss)
+            loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
                                                 alpha=0.5,

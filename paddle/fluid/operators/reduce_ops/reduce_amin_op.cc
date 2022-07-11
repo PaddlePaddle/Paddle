@@ -17,20 +17,14 @@
 REGISTER_REDUCE_OP(reduce_amin);
 REGISTER_OP_CPU_KERNEL(
     reduce_amin,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
-                      ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, double,
-                      ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::MinFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
-                      ops::MinFunctor>);
+    ops::ReduceKernel<phi::CPUContext, float, ops::MinFunctor>,
+    ops::ReduceKernel<phi::CPUContext, double, ops::MinFunctor>,
+    ops::ReduceKernel<phi::CPUContext, int, ops::MinFunctor>,
+    ops::ReduceKernel<phi::CPUContext, int64_t, ops::MinFunctor>);
 REGISTER_OP_CPU_KERNEL(
     reduce_amin_grad,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, float,
-                          ops::AMaxOrAMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,
-                          ops::AMaxOrAMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,
-                          ops::AMaxOrAMinGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
-                          ops::AMaxOrAMinGradFunctor>);
+    ops::ReduceGradKernel<phi::CPUContext, float, ops::AMaxOrAMinGradFunctor>,
+    ops::ReduceGradKernel<phi::CPUContext, double, ops::AMaxOrAMinGradFunctor>,
+    ops::ReduceGradKernel<phi::CPUContext, int, ops::AMaxOrAMinGradFunctor>,
+    ops::
+        ReduceGradKernel<phi::CPUContext, int64_t, ops::AMaxOrAMinGradFunctor>);

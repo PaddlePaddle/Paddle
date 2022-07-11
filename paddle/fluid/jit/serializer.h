@@ -14,24 +14,15 @@
 
 #pragma once
 
-#include <dirent.h>
-
-#include <algorithm>
-#include <fstream>
-#include <set>
 #include <string>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
+
 #include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace jit {
-static const char PDMODEL_SUFFIX[] = ".pdmodel";
-static const char PDPARAMS_SUFFIX[] = ".pdiparams";
-
 // Export Layer into local disk
 class Serializer {
  public:
@@ -48,18 +39,16 @@ class Serializer {
 
 class Deserializer {
  public:
-  Layer operator()(const std::string& dir_path);
+  Layer operator()(const std::string& dir_path, const phi::Place& place);
 
  private:
-  bool IsPersistable(framework::VarDesc* desc_ptr);
+  void ReadTensorData(const std::string& file_name,
+                      const std::set<std::string>& var_name,
+                      const phi::Place& place,
+                      Name2VariableMap* params_dict) const;
 
-  bool EndsWith(const std::string& str, const std::string& suffix);
-
-  const std::vector<std::pair<std::string, std::string>>
-  GetPdmodelFileNamePrefix(const std::string& path);
-
-  VariableNameMap ReadTensorData(const std::string& file_name,
-                                 const std::set<std::string>& var_name) const;
+  void ReadAttributeData(const std::string& file_path,
+                         Name2VariableMap* attrs_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
   // void ReadByteCode(const std::string& file_name) const;
@@ -69,7 +58,8 @@ class Deserializer {
 
 void Export(const Layer& layer, const std::string& file_path);
 
-Layer Load(const std::string& file_path);
+// path should be like 'dirname/file_prefix'
+Layer Load(const std::string& path, const phi::Place& place);
 
 }  // namespace jit
 }  // namespace paddle

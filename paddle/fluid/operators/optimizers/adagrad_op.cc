@@ -75,7 +75,10 @@ for numerical stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adagrad, AdagradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adagrad,
+                            AdagradInferShapeFunctor,
                             PD_INFER_META(phi::AdagradInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker,
+REGISTER_OP_WITHOUT_GRADIENT(adagrad,
+                             ops::AdagradOp,
+                             ops::AdagradOpMaker,
                              AdagradInferShapeFunctor);

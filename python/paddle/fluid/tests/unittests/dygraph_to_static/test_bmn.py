@@ -590,7 +590,7 @@ def val_bmn(model, args):
 
         loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
             pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, args)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         loss_data += [
             avg_loss.numpy()[0],
@@ -665,7 +665,7 @@ class TestTrain(unittest.TestCase):
                     loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
                         pred_bm, pred_start, pred_end, gt_iou_map, gt_start,
                         gt_end, args)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
 
                     avg_loss.backward()
                     adam.minimize(avg_loss)

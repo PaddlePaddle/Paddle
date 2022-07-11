@@ -44,7 +44,8 @@ phi::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
   int error = posix_memalign(&ptr, kAlignment, size);
   PADDLE_ENFORCE_EQ(
-      error, 0,
+      error,
+      0,
       platform::errors::ResourceExhausted(
           "Fail to alloc memory of %ld size, error code is %d.", size, error));
   return new Allocation(ptr, size, platform::NPUPinnedPlace());

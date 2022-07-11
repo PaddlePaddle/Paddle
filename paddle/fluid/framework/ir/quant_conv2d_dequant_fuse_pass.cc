@@ -49,6 +49,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_quantize_moving_average_abs_max"))
       .AddInput("X")
@@ -85,6 +89,10 @@ QuantDequantFusePass::QuantDequantFusePass() {
       .End()
       .AddAttr("bit_length")
       .IsIntIn({8, 16})
+      .End()
+      .AddAttr("round_type")
+      .IsOptional()
+      .IsIntIn({0, 1})
       .End();
   AddOpCompat(OpCompat("fake_dequantize_max_abs"))
       .AddInput("X")
@@ -309,7 +317,8 @@ QuantDequantFusePass::QuantDequantFusePass() {
 }
 // Delete quant op before quantized ops, and set input scale in the attr of
 // quantized ops
-void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
+void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
+                                       Scope* scope,
                                        const std::string& quant_type) const {
   const std::string pattern_name = "delete_quant_fuse";
   GraphPatternDetector gpd;
@@ -331,7 +340,8 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
       return;
     }
     PADDLE_ENFORCE_EQ(
-        subgraph.count(input_act_node), true,
+        subgraph.count(input_act_node),
+        true,
         platform::errors::NotFound(
             "Input act node(%s) not found in QuantDequantFuse pass.",
             input_act_node->name()));
@@ -345,12 +355,14 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
     // Get input scale from tensor
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument(
-                   "Scope in QuantDequantFuse pass should not be null."));
+        scope,
+        platform::errors::InvalidArgument(
+            "Scope in QuantDequantFuse pass should not be null."));
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
+        paddle::platform::is_cpu_place(input_scale_tensor.place()),
+        true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
     const float* input_scale_data = input_scale_tensor.data<float>();
@@ -382,8 +394,8 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
       IR_NODE_LINK_TO(input_act, quantized_node);
     }
     // Delete nodes and edges
-    std::unordered_set<const Node*> nodes2rm = {input_scale, quant,
-                                                output_scale, output_act};
+    std::unordered_set<const Node*> nodes2rm = {
+        input_scale, quant, output_scale, output_act};
     GraphSafeRemoveNodes(graph, nodes2rm);
   };
   gpd(graph, handler);
@@ -391,7 +403,8 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph, Scope* scope,
 
 // Delete dequant op after quantized ops, and convert weight from fp32 range to
 // int8 range
-void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
+void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
+                                       Scope* scope,
                                        const std::string& quantized_op_type,
                                        const std::string& dequant_type) const {
   std::string weight_name = "";
@@ -436,7 +449,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       return;
     }
     PADDLE_ENFORCE_EQ(
-        subgraph.count(quantized_op_input), true,
+        subgraph.count(quantized_op_input),
+        true,
         platform::errors::NotFound("Quantized op input node(%s) did not find "
                                    "in QuantDequantFuse pass.",
                                    quantized_op_input->name()));
@@ -464,14 +478,16 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
           subgraph.at(pattern.GetPDNode("dequant_channel_scale"));
       auto scales_name = dequant_op_node->Op()->Input("Scales");
       PADDLE_ENFORCE_EQ(
-          scales_name.size(), 2,
+          scales_name.size(),
+          2,
           platform::errors::InvalidArgument(
               "Scales size in channel-wise dequantize op should be 2, got %d.",
               scales_name.size()));
       const LoDTensor& channel_scale_tensor =
           scope->FindVar(scales_name[0])->Get<LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          paddle::platform::is_cpu_place(channel_scale_tensor.place()), true,
+          paddle::platform::is_cpu_place(channel_scale_tensor.place()),
+          true,
           platform::errors::InvalidArgument(
               "Channel scale tensor's place should be CPU."));
       const float* channel_scale_data = channel_scale_tensor.data<float>();
@@ -497,7 +513,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     if (quantized_op_type == "mul" || quantized_op_type == "matmul" ||
         quantized_op_type == "matmul_v2" || quantized_op_type == "fc") {
       if (dequant_type == "fake_dequantize_max_abs") {
-        PADDLE_ENFORCE_EQ(weight_scale.size(), 1,
+        PADDLE_ENFORCE_EQ(weight_scale.size(),
+                          1,
                           platform::errors::InvalidArgument(
                               "mul/matmul/matmul_v2 op weight dequantized by "
                               "[fake_dequantize_max_abs] "
@@ -511,7 +528,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
         if (quant_axis == 0) {
         } else {
           PADDLE_ENFORCE_EQ(
-              quant_axis == 1, true,
+              quant_axis == 1,
+              true,
               platform::errors::InvalidArgument(
                   "'quant_axis' of mul/matmul/fc/matmul_v2 op weight "
                   "dequantized by "
@@ -520,14 +538,16 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
                   quant_axis));
         }
         PADDLE_ENFORCE_EQ(
-            weight_scale.size(), static_cast<size_t>(w_dims[1]),
+            weight_scale.size(),
+            static_cast<size_t>(w_dims[1]),
             platform::errors::InvalidArgument(
                 "mul/matmul/matmul_v2 op weight dequantized by "
                 "[fake_channel_wise_dequantize_max_abs] requires weight scale "
                 "size = 2nd dim of mul/matmul/matmul_v2's weight, which is %d, "
                 "but got "
                 "%d.",
-                static_cast<size_t>(w_dims[1]), weight_scale.size()));
+                static_cast<size_t>(w_dims[1]),
+                weight_scale.size()));
         for (int j = 0; j < weight_tensor->numel(); j++) {
           quantized_weight_data[j] *= weight_scale[j % w_dims[1]];
         }
@@ -535,7 +555,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
     } else if (quantized_op_type == "conv2d" ||
                quantized_op_type == "depthwise_conv2d") {
       PADDLE_ENFORCE_EQ(
-          dequant_type, "fake_channel_wise_dequantize_max_abs",
+          dequant_type,
+          "fake_channel_wise_dequantize_max_abs",
           platform::errors::InvalidArgument(
               "conv2d op must be dequantized by "
               "[fake_channel_wise_dequantize_max_abs], but got %s. "
@@ -546,7 +567,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       if (quant_axis == 0) {
       } else {
         PADDLE_ENFORCE_EQ(
-            quant_axis == 0, true,
+            quant_axis == 0,
+            true,
             platform::errors::InvalidArgument(
                 "'quant_axis' of conv2d/depthwise_conv2d op weight dequantized "
                 "by [fake_channel_wise_dequantize_max_abs]should be 0, but "
@@ -554,18 +576,21 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
                 quant_axis));
       }
       PADDLE_ENFORCE_EQ(
-          weight_scale.size(), static_cast<size_t>(w_dims[0]),
+          weight_scale.size(),
+          static_cast<size_t>(w_dims[0]),
           platform::errors::InvalidArgument(
               "conv2d op requires weight scale size = channel size of the "
               "weight, which is %d, but got %d.",
-              static_cast<size_t>(w_dims[0]), weight_scale.size()));
+              static_cast<size_t>(w_dims[0]),
+              weight_scale.size()));
       for (int j = 0; j < weight_tensor->numel(); j++) {
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         quantized_weight_data[j] *= weight_scale[j / inner_size];
       }
     } else if (quantized_op_type == "conv2d_transpose") {
       PADDLE_ENFORCE_EQ(
-          dequant_type, "fake_channel_wise_dequantize_max_abs",
+          dequant_type,
+          "fake_channel_wise_dequantize_max_abs",
           platform::errors::InvalidArgument(
               "conv2d_transpose must be dequantized by "
               "[fake_channel_wise_dequantize_max_abs], but got %s",
@@ -573,7 +598,8 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
       if (quant_axis == 0) {
       } else {
         PADDLE_ENFORCE_EQ(
-            quant_axis == 1, true,
+            quant_axis == 1,
+            true,
             platform::errors::InvalidArgument(
                 "'quant_axis' of conv2d_transpose op weight dequantized by "
                 "[fake_channel_wise_dequantize_max_abs]should be 1, but "
@@ -581,11 +607,13 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph, Scope* scope,
                 quant_axis));
       }
       PADDLE_ENFORCE_EQ(
-          weight_scale.size(), static_cast<size_t>(w_dims[1]),
+          weight_scale.size(),
+          static_cast<size_t>(w_dims[1]),
           platform::errors::InvalidArgument(
               "conv2d_transpose op requires weight scale size = channel size "
               "of the weight, which is %d, but got %d.",
-              static_cast<size_t>(w_dims[1]), weight_scale.size()));
+              static_cast<size_t>(w_dims[1]),
+              weight_scale.size()));
       for (int j = 0; j < weight_tensor->numel(); j++) {
         int inner_size = w_dims[2] * w_dims[3];
         quantized_weight_data[j] *= weight_scale[(j / inner_size) % w_dims[1]];
@@ -639,8 +667,13 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> quant_types = {
       "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
   std::unordered_set<std::string> quantized_op_types = {
-      "conv2d",           "mul", "matmul",    "depthwise_conv2d",
-      "conv2d_transpose", "fc",  "matmul_v2",
+      "conv2d",
+      "mul",
+      "matmul",
+      "depthwise_conv2d",
+      "conv2d_transpose",
+      "fc",
+      "matmul_v2",
   };
   auto* scope = param_scope();
 

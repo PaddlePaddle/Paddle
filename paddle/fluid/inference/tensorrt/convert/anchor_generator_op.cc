@@ -53,22 +53,35 @@ class AnchorGeneratorOpConverter : public OpConverter {
 
     nvinfer1::IPluginV2* anchor_generator_plugin = nullptr;
     if (is_dynamic) {
-      anchor_generator_plugin = new plugin::AnchorGeneratorPluginDynamic(
-          data_type, anchor_sizes, aspect_ratios, stride, variances, offset,
-          num_anchors);
+      anchor_generator_plugin =
+          new plugin::AnchorGeneratorPluginDynamic(data_type,
+                                                   anchor_sizes,
+                                                   aspect_ratios,
+                                                   stride,
+                                                   variances,
+                                                   offset,
+                                                   num_anchors);
     } else {
-      anchor_generator_plugin = new plugin::AnchorGeneratorPlugin(
-          data_type, anchor_sizes, aspect_ratios, stride, variances, offset,
-          height, width, num_anchors, box_num);
+      anchor_generator_plugin = new plugin::AnchorGeneratorPlugin(data_type,
+                                                                  anchor_sizes,
+                                                                  aspect_ratios,
+                                                                  stride,
+                                                                  variances,
+                                                                  offset,
+                                                                  height,
+                                                                  width,
+                                                                  num_anchors,
+                                                                  box_num);
     }
 
     std::vector<nvinfer1::ITensor*> anchor_generator_inputs{input};
-    auto* anchor_generator_layer = engine_->network()->addPluginV2(
-        anchor_generator_inputs.data(), anchor_generator_inputs.size(),
-        *anchor_generator_plugin);
+    auto* anchor_generator_layer =
+        engine_->network()->addPluginV2(anchor_generator_inputs.data(),
+                                        anchor_generator_inputs.size(),
+                                        *anchor_generator_plugin);
 
-    RreplenishLayerAndOutput(anchor_generator_layer, "anchor_generator",
-                             output_names, test_mode);
+    RreplenishLayerAndOutput(
+        anchor_generator_layer, "anchor_generator", output_names, test_mode);
   }
 };
 

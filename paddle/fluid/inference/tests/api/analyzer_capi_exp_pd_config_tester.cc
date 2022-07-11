@@ -56,8 +56,8 @@ TEST(PD_Config, interface) {
   EXPECT_TRUE(ir_optim);
 
 #ifndef PADDLE_WITH_LITE
-  PD_ConfigEnableLiteEngine(config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0,
-                            nullptr);
+  PD_ConfigEnableLiteEngine(
+      config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0, nullptr);
   bool lite_enabled = PD_ConfigLiteEngineEnabled(config);
   EXPECT_TRUE(lite_enabled);
 #endif

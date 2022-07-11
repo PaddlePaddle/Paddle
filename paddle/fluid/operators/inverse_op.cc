@@ -31,27 +31,33 @@ class InverseOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     int64_t input_rank = input_dims.size();
     PADDLE_ENFORCE_GE(
-        input_rank, 2,
+        input_rank,
+        2,
         platform::errors::InvalidArgument(
             "The dimension of Input(Input) is expected to be no less than 2. "
             "But received: Input(Input)'s dimension = %d, shape = [%s].",
-            input_rank, input_dims));
+            input_rank,
+            input_dims));
     for (int64_t i = 0; i < input_rank; ++i) {
       PADDLE_ENFORCE_EQ(
-          (input_dims[i] == -1) || (input_dims[i] > 0), true,
+          (input_dims[i] == -1) || (input_dims[i] > 0),
+          true,
           platform::errors::InvalidArgument(
               "Each dimension of input tensor is expected to be -1 or a "
               "positive number, but received %d. Input's shape is [%s].",
-              input_dims[i], input_dims));
+              input_dims[i],
+              input_dims));
     }
     if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
-      PADDLE_ENFORCE_EQ(input_dims[input_rank - 2], input_dims[input_rank - 1],
+      PADDLE_ENFORCE_EQ(input_dims[input_rank - 2],
+                        input_dims[input_rank - 1],
                         platform::errors::InvalidArgument(
                             "The last two dimensions are expected to be equal. "
                             "But received: %d and %d; "
                             "Input(Input)'s shape = [%s].",
                             input_dims[input_rank - 2],
-                            input_dims[input_rank - 1], input_dims));
+                            input_dims[input_rank - 1],
+                            input_dims));
     }
 
     ctx->SetOutputDim("Output", input_dims);
@@ -78,8 +84,8 @@ class InverseGradOp : public framework::OperatorWithKernel {
     auto output_grad = framework::GradVarName("Output");
 
     OP_INOUT_CHECK(ctx->HasInput("Output"), "Input", "Output", "InverseGrad");
-    OP_INOUT_CHECK(ctx->HasInput(output_grad), "Input", output_grad,
-                   "InverseGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput(output_grad), "Input", output_grad, "InverseGrad");
 
     if (ctx->HasOutput(input_grad)) {
       ctx->SetOutputDim(input_grad, ctx->GetInputDim(output_grad));
@@ -122,17 +128,18 @@ class InverseGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(inverse, ops::InverseOp, ops::InverseOpMaker,
+REGISTER_OPERATOR(inverse,
+                  ops::InverseOp,
+                  ops::InverseOpMaker,
                   ops::InverseOpInferVarType,
                   ops::InverseGradOpMaker<paddle::framework::OpDesc>,
                   ops::InverseGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(inverse_grad, ops::InverseGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    inverse_grad,
-    ops::InverseGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InverseGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(inverse,
+                       ops::InverseKernel<phi::CPUContext, float>,
+                       ops::InverseKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(inverse_grad,
+                       ops::InverseGradKernel<phi::CPUContext, float>,
+                       ops::InverseGradKernel<phi::CPUContext, double>);
