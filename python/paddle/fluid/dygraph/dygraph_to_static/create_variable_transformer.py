@@ -41,7 +41,7 @@ class CreateVariableTransformer(gast.NodeTransformer):
     def visit_FunctionDef(self, node):
         #attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
         bodys = node.body
-        names = node.pd_scope.created_vars()
+        names = sorted(node.pd_scope.created_vars())
         for name in names:
             bodys[0:0] = [create_undefined_var(name)]
         return node

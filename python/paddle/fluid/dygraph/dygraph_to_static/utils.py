@@ -1101,6 +1101,18 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             if isinstance(node, gast.FunctionDef):
                 return self._get_name_scope(node)
 
+    def visit_ListComp(self, node):
+        """ [ i for i in range(10) ]
+            In this case, `i` will not created in FunctionScope. 
+            We don't collect `i` by not calling generic_visit.
+        """
+        pass
+
+    def visit_DictComp(self, node):
+        """ the same as ListComp.
+        """
+        pass
+
     def visit_Name(self, node):
         self.generic_visit(node)
         write_context = (gast.Store, gast.AugStore, gast.Del)
