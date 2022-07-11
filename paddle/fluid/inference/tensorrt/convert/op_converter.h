@@ -343,6 +343,8 @@ class OpConverter {
             FluidDataType2TRT(
                 var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(var_shape, input));
+        VLOG(1) << "Set trt input [" << input << "] type is "
+                << var->Proto()->type().lod_tensor().tensor().data_type();
       }
     }
     PADDLE_ENFORCE_EQ(all_dynamic_shape_set,
@@ -561,33 +563,8 @@ class OpConverter {
                                            const std::string& name) {
     auto* var_v = scope.FindVar(name);
     auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-    void* trt_ptr = nullptr;
-    size_t trt_num = static_cast<size_t>(var_t->numel());
-    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
-    if (var_t->dtype() == phi::DataType::FLOAT32) {
-      float* data_ptr = engine_->GetWeightCPUData(name, var_t);
-      trt_ptr = static_cast<void*>(data_ptr);
-    } else if (var_t->dtype() == phi::DataType::INT32) {
-      int32_t* data_ptr = engine_->GetWeightCPUData<int32_t>(name, var_t);
-      trt_ptr = static_cast<void*>(data_ptr);
-      trt_dtype = nvinfer1::DataType::kINT32;
-    } else if (var_t->dtype() == phi::DataType::INT64) {
-      int64_t* data_ptr = engine_->GetWeightCPUData<int64_t>(name, var_t);
-      // We must create a new framework::Tensor()
-      std::unique_ptr<framework::Tensor> new_var_t(new framework::Tensor());
-      new_var_t->Resize({var_t->numel()});
-      int32_t* new_data_ptr =
-          new_var_t->mutable_data<int32_t>(platform::CPUPlace());
-      for (size_t i = 0; i < trt_num; i++) {
-        new_data_ptr[i] = data_ptr[i];
-      }
-      engine_->SetWeights(name, std::move(new_var_t));
-      trt_ptr = static_cast<void*>(new_data_ptr);
-      trt_dtype = nvinfer1::DataType::kINT32;
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported datatype in TensorRT"));
-    }
+    auto weight = engine_->GetTrtWeight(name, *var_t);
+
     // Now we have create weights, then we need create a itensor
     auto var_dims = var_t->dims();
     nvinfer1::Dims trt_in_shape;
@@ -603,7 +580,6 @@ class OpConverter {
         trt_in_shape.d[i] = trt_in_shape.d[i + 1];
       }
     }
-    TensorRTEngine::Weight weight{trt_dtype, trt_ptr, trt_num};
     nvinfer1::ILayer* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
     engine_->SetITensor(name, layer->getOutput(0));
