@@ -31,3 +31,6 @@ PD_REGISTER_KERNEL(real_grad,
                    phi::RealGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(
+    complex_grad, GPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double) {}
