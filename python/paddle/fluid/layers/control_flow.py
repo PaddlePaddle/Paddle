@@ -2457,10 +2457,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
              refer to :ref:`api_guide_Name` .
-        return_names(sequence of string, optional): A sequence of strings 
-            to represents the name of returned vars. 
-            The structure of sequence must be same with return values of 
-            true_fn and false_fn.
+        return_names(sequence of string, optional): The default value is ``None`` . 
+             Normally users don't have to set this parameters.  A sequence of strings 
+             to represents the name of returned vars.  The structure of sequence must 
+             be same with return values of true_fn and false_fn.
 
     Returns:
         Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
