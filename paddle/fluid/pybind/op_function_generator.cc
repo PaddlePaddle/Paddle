@@ -534,7 +534,7 @@ int main(int argc, char* argv[]) {
       << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
-  out << "inline void BindOpFunctions(pybind11::module *module) {\n"
+  out << "void BindOpFunctions(pybind11::module *module) {\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
