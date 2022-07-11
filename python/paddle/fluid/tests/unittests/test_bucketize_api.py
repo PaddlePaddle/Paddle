@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from re import X
 
 import unittest
 import numpy as np
@@ -45,15 +44,20 @@ class TestBucketizeAPI(unittest.TestCase):
                     shape=self.sorted_sequence.shape,
                     dtype="float64")
                 x = paddle.static.data('x', shape=self.x.shape, dtype="float64")
-                out = paddle.bucketize(x, sorted_sequence)
+                out1 = paddle.bucketize(x, sorted_sequence)
+                out2 = paddle.bucketize(x, sorted_sequence, right=True)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={
                     'SortedSequence': self.sorted_sequence,
                     'x': self.x
                 },
-                              fetch_list=out)
-                out_ref = np.searchsorted(self.sorted_sequence, self.x)
-                self.assertTrue(np.allclose(out_ref, res))
+                              fetch_list=[out1, out2])
+            out_ref = np.searchsorted(self.sorted_sequence, self.x)
+            out_ref1 = np.searchsorted(self.sorted_sequence,
+                                       self.x,
+                                       side='right')
+            self.assertTrue(np.allclose(out_ref, res[0]))
+            self.assertTrue(np.allclose(out_ref1, res[1]))
 
         for place in self.place:
             run(place)
@@ -64,11 +68,14 @@ class TestBucketizeAPI(unittest.TestCase):
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             x = paddle.to_tensor(self.x)
-            out = paddle.bucketize(x, sorted_sequence, right=True)
-            out_ref = np.searchsorted(self.sorted_sequence,
-                                      self.x,
-                                      side='right')
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            out1 = paddle.bucketize(x, sorted_sequence)
+            out2 = paddle.bucketize(x, sorted_sequence, right=True)
+            out_ref1 = np.searchsorted(self.sorted_sequence, self.x)
+            out_ref2 = np.searchsorted(self.sorted_sequence,
+                                       self.x,
+                                       side='right')
+            self.assertEqual(np.allclose(out_ref1, out1.numpy()), True)
+            self.assertEqual(np.allclose(out_ref2, out2.numpy()), True)
             paddle.enable_static()
 
         for place in self.place:
@@ -88,6 +95,13 @@ class TestBucketizeAPI(unittest.TestCase):
                                                  dtype="float64")
             x = paddle.static.data('x', shape=[2, 5], dtype="float64")
             self.assertRaises(ValueError, paddle.bucketize, x, sorted_sequence)
+
+    def test_input_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            sorted_sequence = paddle.to_tensor(self.sorted_sequence)
+            self.assertRaises(ValueError, paddle.bucketize, self.x,
+                              sorted_sequence)
 
 
 if __name__ == "__main__":
