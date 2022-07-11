@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
-
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 namespace phi {
 
@@ -371,7 +371,7 @@ __global__ void ManipulateMinMaxGradCUDAKernelForMul(const T* x_data,
     T* e_grad_off = e_grad + ty * e_len;
     while (tx < out_len) {
       int64_t x_add = use_bcast ? xbcast_off[tx] : tx;
-      int64_t e_add = use_bcast ? xbcast_off[tx] : tx;
+      int64_t e_add = use_bcast ? ebcast_off[tx] : tx;
       T val = x_off[x_add] * e_off[e_add];
       paddle::platform::CudaAtomicAdd(
           x_grad_off + x_add,

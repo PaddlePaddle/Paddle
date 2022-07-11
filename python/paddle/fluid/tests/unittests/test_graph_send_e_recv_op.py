@@ -38,6 +38,64 @@ def get_broadcast_shape(shp1, shp2):
     return rst
 
 
+class BroadCastInfo(object):
+
+    def __init__(self, x_shape, e_shape):
+        self.x_shape = x_shape
+        self.e_shape = e_shape
+
+        self.calculate_bcastinfo()
+
+    def use_bcast(self):
+        if len(self.x_shape) != len(self.e_shape):
+            return True
+        for i in range(1, len(self.x_shape)):
+            if self.x_shape[i] != self.e_shape[i]:
+                return True
+        return False
+
+    def calculate_bcastinfo(self):
+        lhs_len = 1
+        rhs_len = 1
+        for i in range(1, len(self.x_shape)):
+            lhs_len *= self.x_shape[i]
+        for i in range(1, len(self.e_shape)):
+            rhs_len *= self.e_shape[i]
+        use_b = self.use_bcast()
+
+        if use_b:
+            max_ndim = max(len(self.x_shape), len(self.e_shape)) - 1
+            out_len = 1
+            stride_l = stride_r = 1
+            lhs_offset = [0]
+            rhs_offset = [0]
+            for j in range(0, max_ndim):
+                dl = 1 if (len(self.x_shape) - 1 - j) < 1 \
+                       else self.x_shape[len(self.x_shape) - 1 - j]
+                dr = 1 if (len(self.e_shape) - 1 - j) < 1 \
+                       else self.e_shape[len(self.e_shape) - 1 - j]
+                for i in range(1, max(dl, dr)):
+                    for k in range(0, out_len):
+                        lhs_offset.append(lhs_offset[k] + i *
+                                          (i < dl) * stride_l)
+                        rhs_offset.append(rhs_offset[k] + i *
+                                          (i < dr) * stride_r)
+
+                out_len *= max(dl, dr)
+                stride_l *= dl
+                stride_r *= dr
+        else:
+            out_len = rhs_len
+
+        self.use_broadcast = use_b
+        self.out_len = out_len
+        self.lhs_len = lhs_len
+        self.rhs_len = rhs_len
+        if use_b:
+            self.lhs_offset = lhs_offset
+            self.rhs_offset = rhs_offset
+
+
 def compute_graph_send_e_recv_for_sum(inputs, attributes):
     x = inputs['X']
     e = inputs['E']
@@ -51,7 +109,7 @@ def compute_graph_send_e_recv_for_sum(inputs, attributes):
     ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
     results = np.zeros(out_shp, dtype=x.dtype)
 
-    # Calculate forward output
+    # Calculate forward output.
     if compute_type == 'ADD':
         x_compute_e = gather_x + e
     elif compute_type == 'MUL':
@@ -74,7 +132,7 @@ def compute_graph_send_e_recv_for_mean(inputs, attributes):
     ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
     results = np.zeros(out_shp, dtype=x.dtype)
 
-    # Calculate forward output
+    # Calculate forward output.
     if compute_type == 'ADD':
         x_compute_e = gather_x + e
     elif compute_type == 'MUL':
@@ -102,7 +160,7 @@ def compute_graph_send_e_recv_for_max_min(inputs, attributes):
     ] + get_broadcast_shape(x.shape[1:], e.shape[1:])
     results = np.zeros(out_shp, dtype=x.dtype)
 
-    # Calculate forward output
+    # Calculate forward output.
     if compute_type == 'ADD':
         x_compute_e = gather_x + e
     elif compute_type == 'MUL':
@@ -128,15 +186,64 @@ def compute_graph_send_e_recv_for_max_min(inputs, attributes):
     else:
         raise ValueError("Invalid pool_type, only MAX, MIN supported!")
 
-    # Calculate backward gradient
+    # Calculate backward gradient.
     x_gradient = np.zeros_like(x)
     e_gradient = np.zeros_like(e)
+    bcast_info = BroadCastInfo(x.shape, e.shape)
+    use_broadcast = bcast_info.use_broadcast
     for i in range(len(src_index)):
         forward_src_idx = src_index[i]
         forward_dst_idx = dst_index[i]
-        # ???
+        x_off = x[forward_src_idx]
+        e_off = e[i]
+        out_off = results[forward_dst_idx]
+        x_grad_off = x_gradient[forward_src_idx]
+        e_grad_off = e_gradient[i]
+        for j in range(bcast_info.out_len):
+            x_add = bcast_info.lhs_offset[j] if use_broadcast else j
+            e_add = bcast_info.rhs_offset[j] if use_broadcast else j
+            if compute_type == 'ADD':
+                if len(x_off.shape) == 1 and len(e_off.shape) == 1:
+                    val = x_off[x_add] + e_off[e_add]
+                    x_grad_off[x_add] += 1 * (val == out_off[j])
+                    e_grad_off[e_add] += 1 * (val == out_off[j])
+                else:
+                    # For simplicity, we only check the situation of x_off.shape=2
+                    x_add_0 = int(x_add / x_off.shape[1])
+                    x_add_1 = int(x_add % x_off.shape[1])
+                    e_add_0 = int(e_add / e_off.shape[1])
+                    e_add_1 = int(e_add % e_off.shape[1])
+                    out_add_0 = int(j / out_off.shape[1])
+                    out_add_1 = int(j % out_off.shape[1])
+                    val = x_off[x_add_0][x_add_1] + e_off[e_add_0][e_add_1]
+                    x_grad_off[x_add_0][x_add_1] += 1 * (
+                        val == out_off[out_add_0][out_add_1])
+                    e_grad_off[e_add_0][e_add_1] += 1 * (
+                        val == out_off[out_add_0][out_add_1])
+            elif compute_type == 'MUL':
+                if len(x_off.shape) == 1 and len(e_off.shape) == 1:
+                    val = x_off[x_add] * e_off[e_add]
+                    x_grad_off[x_add] += 1 * (val == out_off[j]) * e_off[e_add]
+                    e_grad_off[e_add] += 1 * (val == out_off[j]) * x_off[x_add]
+                else:
+                    # For simplicity, we only check the situation of x_off.shape=2
+                    x_add_0 = int(x_add / x_off.shape[1])
+                    x_add_1 = int(x_add % x_off.shape[1])
+                    e_add_0 = int(e_add / e_off.shape[1])
+                    e_add_1 = int(e_add % e_off.shape[1])
+                    out_add_0 = int(j / out_off.shape[1])
+                    out_add_1 = int(j % out_off.shape[1])
+                    val = x_off[x_add_0][x_add_1] * e_off[e_add_0][e_add_1]
+                    x_grad_off[x_add_0][x_add_1] += 1 * (
+                        val == out_off[out_add_0][out_add_1]
+                    ) * e_off[e_add_0][e_add_1]
+                    e_grad_off[e_add_0][e_add_1] += 1 * (
+                        val == out_off[out_add_0][out_add_1]
+                    ) * x_off[x_add_0][x_add_1]
 
-    return results
+    gradients = [x_gradient / results.size, e_gradient / results.size]
+
+    return results, gradients
 
 
 class TestGraphSendERecvSumOp(OpTest):
@@ -330,7 +437,8 @@ class TestGraphSendERecvMaxOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MAX'}
 
-        out = compute_graph_send_e_recv_for_max_min(self.inputs, self.attrs)
+        out, self.gradients = compute_graph_send_e_recv_for_max_min(
+            self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -345,8 +453,8 @@ class TestGraphSendERecvMaxOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X', 'E'], 'Out')
+    def test_check_grad(self):
+        self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
 
 
 class TestMaxCase1(TestGraphSendERecvMaxOp):
@@ -418,7 +526,8 @@ class TestGraphSendERecvMinOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MIN'}
 
-        out = compute_graph_send_e_recv_for_max_min(self.inputs, self.attrs)
+        out, self.gradients = compute_graph_send_e_recv_for_max_min(
+            self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -433,8 +542,8 @@ class TestGraphSendERecvMinOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X', 'E'], 'Out')
+    def test_check_grad(self):
+        self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
 
 
 class TestMinCase1(TestGraphSendERecvMinOp):

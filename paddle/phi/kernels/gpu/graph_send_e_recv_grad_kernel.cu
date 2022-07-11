@@ -37,7 +37,6 @@ void CalculateXEGradForMinMax(const Context& ctx,
                               const std::string& compute_type,
                               const std::string& pool_type,
                               int64_t index_size,
-                              int64_t slice_size,
                               T* x_grad,
                               T* e_grad,
                               const DenseTensor* out = nullptr) {
@@ -388,7 +387,6 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                                  compute_type,
                                                  pool_type,
                                                  index_size,
-                                                 slice_size,
                                                  x_grad_data,
                                                  e_grad_data,
                                                  out);
