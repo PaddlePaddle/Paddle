@@ -57,7 +57,7 @@ else()
   string(REPLACE "/O2 " "" MKLDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
   string(REPLACE "/O2 " "" MKLDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
   set(MKLDNN_LIB
-      "${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll"
+      "${MKLDNN_INSTALL_DIR}/bin/dnnl.dll"
       CACHE FILEPATH "mkldnn library." FORCE)
 endif()
 
