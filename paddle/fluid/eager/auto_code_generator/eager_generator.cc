@@ -3247,10 +3247,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   std::string forward_cc_path = output_dir +
                                 "/forwards/dygraph_forward_functions" +
                                 std::to_string(file_index) + ".tmp.cc";
-  fwd_function_str += "\n";
-  fwd_function_str += GenerateCoreOpsReturnsInfo();
   GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
   fwd_function_str = "";
+
+  GenerateForwardDygraphFile(
+      output_dir + "/forwards/dygraph_forward_functions_args_info.tmp.cc",
+      GenerateCoreOpsReturnsInfo());
 
   VLOG(6) << "-------- GenerateNodeCCFile -------";
   std::string node_cc_path =

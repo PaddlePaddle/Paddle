@@ -94,7 +94,8 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
                          "dygraph_forward_functions" + str(i + 1) + ".cc"))
         empty_files.append(os.path.join(nodes_dir,
                                         "nodes" + str(i + 1) + ".cc"))
-
+    empty_files.append(
+        os.path.join(forwards_dir, "dygraph_forward_functions_args_info.cc"))
     for path in empty_files:
         if not os.path.exists(path):
             open(path, 'a').close()
@@ -139,13 +140,16 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
                 + str(i + 1) +
                 ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions"
                 + str(i + 1) + ".cc\"\n")
-
+        f.write(
+            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.cc\"\n"
+        )
         f.write("  DEPENDS eager_codegen\n")
         f.write("  VERBATIM)\n")
 
         f.write("cc_library(dygraph_function SRCS ")
         for i in range(split_count):
             f.write("dygraph_forward_functions" + str(i + 1) + ".cc ")
+        f.write("dygraph_forward_functions_args_info.cc ")
         f.write(
             "DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${fluid_manual_functions})\n"
         )

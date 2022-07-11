@@ -27,7 +27,7 @@ message(
   "Generate dygraph file structure at path: ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated"
 )
 
-set(CODE_GEN_SPLIT_FILE_COUNT "24")
+set(CODE_GEN_SPLIT_FILE_COUNT "8")
 
 execute_process(
   COMMAND
