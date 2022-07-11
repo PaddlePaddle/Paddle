@@ -24,6 +24,7 @@ from op_test import OpTest
 import paddle
 from paddle import _C_ops
 
+paddle.enable_static()
 
 class TestL2LossOp(OpTest):
     """Test squared_l2_norm
@@ -66,5 +67,4 @@ class TestL2LossDeterministic(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
