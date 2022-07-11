@@ -20,15 +20,12 @@ import inspect
 from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
 from paddle.fluid.framework import Program
 try:
     from collections.abc import Sequence
 except:
     from collections import Sequence
-
-# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
-ORIGI_INFO = "Original information of source code for ast node."
-ORIGI_INFO_MAP = "Original information map of source code."
 
 
 class Location(object):
