@@ -105,7 +105,7 @@ function(kernel_declare TARGET_LIST)
              "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
       elseif(${kernel_path} MATCHES "./onednn\/")
         file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, MKLDNN, ALL_LAYOUT);\n")
+             "PD_DECLARE_KERNEL(${kernel_name}, OneDNN, ALL_LAYOUT);\n")
       else()
         # deal with device independent kernel, now we use CPU temporaary
         file(APPEND ${kernel_declare_file}
