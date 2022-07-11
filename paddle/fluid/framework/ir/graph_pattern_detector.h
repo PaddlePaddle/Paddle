@@ -524,49 +524,16 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
-// Conv with Activation
-// op: conv + activation
-// named nodes:
-// conv_input, conv_weight,
-// conv_out, conv,
-// activation_out, activation
-struct ConvActivation : public PatternBase {
-  ConvActivation(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_activation") {}
+struct OperatorActivation : public PatternBase {
+  OperatorActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_activation") {}
 
-  PDNode* operator()(PDNode* conv_input,
-                     std::string conv_type = "conv2d",
-                     std::string activation_type = "relu");
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(conv);
-  PATTERN_DECL_NODE(activation);
-  // declare variable node's name
-  PATTERN_DECL_NODE(conv_weight);
-  PATTERN_DECL_NODE(conv_out);
-  PATTERN_DECL_NODE(activation_out);
-};
-
-// Elementwise with Activation
-// op: elementwise + activation
-// named nodes:
-// elementwise_a, elementwise_b,
-// elementwise_out, elementwise,
-// activation_out, activation
-struct ElementwiseActivation : public PatternBase {
-  ElementwiseActivation(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_add_activation") {}
-
-  PDNode* operator()(PDNode* elementwise_a,
-                     const std::string& elementwise_type,
+  PDNode* operator()(const std::string& operator_type,
                      const std::string& activation_type);
 
-  // declare operator node's name
-  PATTERN_DECL_NODE(elementwise);
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
   PATTERN_DECL_NODE(activation);
-  // declare variable node's name
-  PATTERN_DECL_NODE(elementwise_b);
-  PATTERN_DECL_NODE(elementwise_out);
   PATTERN_DECL_NODE(activation_out);
 };
 
@@ -637,45 +604,6 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);
-};
-
-//
-// \brief   Pattern looking for fc and a directly following activation
-// operator.
-//
-// \note    Currently only gelu and tanh are supported as an activation
-// function.
-//          Formula: act(fc(x))
-//          Op: fc + act
-struct FCActOneDNN : public PatternBase {
-  FCActOneDNN(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fc_act_onednn") {}
-
-  PDNode* operator()(const std::string& act_type);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(fc);
-  PATTERN_DECL_NODE(act);
-  PATTERN_DECL_NODE(fc_out);
-  PATTERN_DECL_NODE(act_out);
-};
-
-// Fuse softplus with activation
-// ops: softplus + activation
-// nodes:
-// softplus, softplus_out,
-// activation, activation_out
-struct SoftplusActivation : public PatternBase {
-  SoftplusActivation(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "softplus_activation") {}
-
-  PDNode* operator()(std::string activation_type);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(softplus);
-  PATTERN_DECL_NODE(activation);
-  PATTERN_DECL_NODE(softplus_out);
-  PATTERN_DECL_NODE(activation_out);
 };
 
 // Embedding
