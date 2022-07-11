@@ -496,5 +496,19 @@ class TestBF16(unittest.TestCase):
             self.assertEqual(C.item(), 8.0)
 
 
+class TestComplex(unittest.TestCase):
+    """
+    EinsumOp support Complex type
+    """
+
+    def test_shape(self):
+        a = paddle.rand([4, 4])
+        b = paddle.rand([4, 4])
+        c = paddle.einsum('xy,yz->xz', a, b)
+        a = paddle.cast(a, 'complex64')
+        b = paddle.cast(b, 'complex64')
+        c = paddle.einsum('xy,yz->xz', a, b)
+
+
 if __name__ == "__main__":
     unittest.main()
