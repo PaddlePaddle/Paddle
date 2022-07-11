@@ -1282,7 +1282,7 @@ bool OperatorWithKernel::SupportsMKLDNN(
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::MKLDNN;
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
                   });
   if (has_phi_kernel) {
     return true;
