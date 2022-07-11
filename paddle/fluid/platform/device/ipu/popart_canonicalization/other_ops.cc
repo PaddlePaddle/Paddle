@@ -85,17 +85,6 @@ Node *identity_handler(Graph *graph, Node *node) {
       graph, node, "popart_identity", node->inputs, node->outputs);
 }
 
-Node *identity_loss_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
-  return CreateBaseOp(graph,
-                      node,
-                      "popart_identity_loss",
-                      node->inputs,
-                      node->outputs,
-                      {{"reduction", reduction}});
-}
-
 Node *detach_handler(Graph *graph, Node *node) {
   return CreateBaseOp(
       graph, node, "popart_detach_v2", node->inputs, node->outputs);
@@ -112,5 +101,4 @@ REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
 REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
 REGISTER_HANDLER(custom_nll_loss, custom_nll_loss_handler);
 REGISTER_HANDLER(identity, identity_handler);
-REGISTER_HANDLER(identity_loss, identity_loss_handler);
 REGISTER_HANDLER(detach, detach_handler);
