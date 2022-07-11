@@ -38,7 +38,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
-    dist_op_desc = block.desc.append_op()
+    dist_op_desc = block.append_op(type='nop').desc
     dist_op_desc.copy_from(src_op.desc)
     set_dist_op_desc_original_id(dist_op_desc, src_op.desc, ctx)
     for input_name in src_op.desc.input_names():
@@ -48,7 +48,6 @@ def copy_op_with_new_input_output(ctx, block, src_op, **kwargs):
         assert input_name in kwargs
         dist_op_desc.set_output(output_name, kwargs[output_name])
 
-    block._sync_with_cpp()
     return dist_op_desc
 
 
@@ -387,8 +386,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         matmul_op_desc = copy_op_with_new_input_output(ctx, main_block,
                                                        backward_op, **kwargs)
 
-    main_block._sync_with_cpp()
-
     # check if need gradient allreduce
     need_gradient_allreduce = False
 
@@ -421,7 +418,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                                             'scale': 1.0 / dp_degree,
                                             OP_ROLE_KEY: OpRole.Backward
                                         })
-        main_block._sync_with_cpp()
 
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
             Y_Grad_var).dims_mapping
@@ -462,7 +458,6 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
                                         'use_calc_stream': True,
                                         OP_ROLE_KEY: OpRole.Forward
                                     })
-    startup_block._sync_with_cpp()
 
 
 class DistributedMatmul(DistributedOperatorImplContainer):
