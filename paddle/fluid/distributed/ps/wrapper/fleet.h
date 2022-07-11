@@ -264,6 +264,13 @@ class FleetWrapper {
                     const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
 
+  //********* for fl-coordinator
+  void InitFlWorker(const std::vector<std::string>& host_list, int index,
+                    const std::string& self_endpoint);
+  void PushFlStateSync(const std::string& fl_params);
+  std::string PullFlStrategy();
+  //**********
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
   static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 

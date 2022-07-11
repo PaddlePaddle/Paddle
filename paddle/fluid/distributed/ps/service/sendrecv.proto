@@ -67,6 +67,8 @@ enum PsCmdID {
   PS_QUERY_WITH_SHARD = 46;
   // pserver2pserver cmd start from 100
   PS_S2S_MSG = 101;
+  FL_PUSH_PARAMS_SYNC = 200;
+  FL_PUSH_FL_STRATEGY = 201;
 }
 
 message PsRequestMessage {
@@ -81,6 +83,18 @@ message PsResponseMessage {
   required int32 err_code = 1 [ default = 0 ];
   required string err_msg = 2 [ default = "" ];
   optional bytes data = 3;
+};
+
+message CoordinatorReqMessage {
+  required uint32 cmd_id = 1;
+  optional int32 client_id = 2;
+  optional string str_params = 3;
+};
+
+message CoordinatorResMessage {
+  required int32 err_code = 1 [ default = 0 ];
+  required string err_msg = 2 [ default = "" ];
+  optional string str_params = 3;
 };
 
 enum VarType {
@@ -132,6 +146,7 @@ message MultiVariableMessage {
 
 service PsService {
   rpc service(PsRequestMessage) returns (PsResponseMessage);
+  rpc FlService(CoordinatorReqMessage) returns (CoordinatorResMessage);
   rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage);
   rpc SendToWorker(MultiVariableMessage) returns (PsResponseMessage);
   rpc SendToSwitch(MultiVariableMessage) returns (PsResponseMessage);

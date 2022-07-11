@@ -250,6 +250,10 @@ def get_trainer_endpoint(role_maker):
     return role_maker._get_trainer_endpoint()
 
 
+def get_trainer_endpoints(role_maker):
+    return role_maker._get_trainer_endpoints()
+
+
 def get_previous_stage_trainers(role_maker):
     try:
         return role_maker._get_previous_trainers()

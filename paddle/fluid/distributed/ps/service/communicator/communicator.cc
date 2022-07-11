@@ -681,7 +681,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
 
     if (tensor->lod().size() > 0) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
-        for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
+        for (auto j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
           uint64_t real_id = static_cast<uint64_t>(ids[j]);
           if (real_id == padding_id) {
@@ -1434,6 +1434,101 @@ void GeoCommunicator::MainThread() {
       task.wait();
     }
   }
+}
+
+void FlCommunicator::InitBrpcClient(
+    const std::string &dist_desc,
+    const std::vector<std::string> &host_sign_list) {
+  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+  if (_worker_ptr.get() == nullptr) {
+    VLOG(0) << ">>> FlCommunicator::InitBrpcClient get _worker_ptr";
+    _worker_ptr =
+        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted before,
+                             // but no need for Coordinator
+    VLOG(0) << ">>> _worker_ptr in FlCommunicator addr: " << _worker_ptr.get();
+  }
+  if (coordinator_client_ptr_ == nullptr) {
+    coordinator_client_ptr_.reset(new CoordinatorClient);
+  }
+  int16_t servers = host_sign_list.size();
+  coordinator_client_ptr_->_env = &ps_env_;
+  coordinator_client_ptr_->_env->SetPsServers(&host_sign_list, servers);
+}
+
+void FlCommunicator::StartCoordinatorClient(
+    const std::vector<std::string> &trainer_endpoints) {
+  if (coordinator_client_ptr_ == nullptr) {
+    LOG(ERROR) << "coordinator_client_ptr_ is null";
+    return;
+  }
+  coordinator_client_ptr_->Initialize(trainer_endpoints);
+}
+
+void FlCommunicator::StartCoordinatorServer() {
+  if (coordinator_client_ptr_ == nullptr) {
+    LOG(ERROR) << "coordinator_client_ptr_ is null";
+  }
+  int ret = coordinator_client_ptr_->StartClientService();
+  if (ret != 0) {
+    LOG(ERROR) << "coordinator_client_ptr_ StartClientService failed";
+  }
+  return;
+}
+
+std::unordered_map<uint32_t, std::string> FlCommunicator::QueryFlClientsInfo() {
+  return coordinator_client_ptr_->QueryFlClientsInfo();
+}
+
+void FlCommunicator::SaveFlStrategy(
+    const std::unordered_map<uint32_t, std::string> &fl_strategy) {
+  coordinator_client_ptr_->SaveFlStrategy(fl_strategy);
+  return;
+}
+
+void FlCommunicator::SendThreadAsync() {
+  VLOG(0) << ">>> entering FlCommunicator::SendThreadAsync";
+  while (is_running_) {
+    SendToFlClient();
+  }
+  VLOG(0) << "<<< FlCommunicator::SendThreadAsync exit";
+  return;
+}
+
+void FlCommunicator::SendToFlClient() {
+  VLOG(0) << "entering FlCommunicator::SendToFlClient";
+  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+  while (!coordinator_client_ptr_->IsFlStrategyReady()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    VLOG(0) << "waiting for fl strategy ready!";
+  }
+  std::set<uint32_t> clients = coordinator_client_ptr_->GetFlClientIds();
+  VLOG(0) << ">>> In FlCommunicator::SendToFlClient clients size is: "
+          << clients.size();
+  for (auto client_id : clients) {
+    RPCSendFlStrategy(client_id);
+  }
+  coordinator_client_ptr_->SetFlStrategyReady(false);
+  VLOG(0) << "FlCommunicator::SendToFlClient finished！";
+  return;
+}
+
+void FlCommunicator::RPCSendFlStrategy(const uint32_t &client_id) {
+  VLOG(0) << "entering FlCommunicator::RPCSendFlStrategy";
+  coordinator_client_ptr_->SendFlStrategy(client_id);
+  VLOG(0) << "RPCSendFlStrategy to client_id: " << client_id << " finished!";
+}
+
+void FlCommunicator::StartCoordinator(
+    const std::string &self_endpoint,
+    const std::vector<std::string> &trainer_endpoints) {
+  coordinator_client_ptr_->SetEndpoint(self_endpoint);
+  StartCoordinatorClient(trainer_endpoints);
+  VLOG(0) << ">>> StartCoordinatorClient succeed!";
+  StartCoordinatorServer();
+  VLOG(0) << ">>> StartCoordinatorServer succeed!";
+  async_send_thread_.reset(
+      new std::thread(&FlCommunicator::SendThreadAsync, this));
+  VLOG(0) << ">>> SendThreadAsync in coordinator succeed!";
 }
 
 }  // namespace distributed

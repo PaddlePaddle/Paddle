@@ -29,6 +29,7 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
+from paddle.distributed.ps.coordinator import Coordinator
 
 __all__ = [
     'Table', 'SparseTable', 'GeoSparseTable', 'BarrierTable', 'TensorTable',
@@ -771,6 +772,7 @@ class PsDescBuilder(object):
         self.fs_client = self._get_fs_client()
 
         self.ps_desc = the_one_ps_pb2.PSParameter()
+        self.fl_desc = the_one_ps_pb2.FLParameter()
 
     def _get_tensor_tables(self):
         program_idx = 0
@@ -809,6 +811,9 @@ class PsDescBuilder(object):
     def _get_fs_client(self):
         return fsClient(self.context["user_defined_strategy"].fs_client_param)
 
+    def build_fl_worker_desc(client_info):
+        pass
+
     def build_worker_desc(self):
         for table in self.tables:
             table_proto = self.ps_desc.worker_param.downpour_worker_param.downpour_table_param.add(
@@ -846,6 +851,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
+        self._coordinator = None
         self._server_sub_program = []
         self._heter_client = None
         self._send_ctx = None
@@ -874,12 +880,24 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
+        self.trainer_endpoints = get_trainer_endpoints(self.role_maker)
+
         self.endpoints = get_ps_endpoints(self.role_maker)
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
+
+        self.with_coordinator = self.role_maker._with_coordinator
+        self.coordinator_hosts = []
+        if self.with_coordinator:
+            print(">>> all ps addr: {}".format(self.string_hosts))
+            coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
+            for idx, ep in enumerate(coordinator_endpoints):
+                ip, port = ep.split(":")
+                pshost = fluid.core.PSHost(ip, int(port), idx)
+                self.coordinator_hosts.append(pshost.serialize_to_string())
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
@@ -983,6 +1001,14 @@ class TheOnePSRuntime(RuntimeBase):
 
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+        self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
+        print(">>> trainer_endpoint: {}".format(self.trainer_endpoint))
+        print(">>> with_coordinator?: {}".format(self.with_coordinator))
+        print(">>> coordinator address: {} - {}".format(self.coordinator_hosts,
+                                                        role_id))
+        if self.with_coordinator:
+            self._worker.init_fl_worker(self.coordinator_hosts, role_id,
+                                        self.trainer_endpoint)
 
         if self.context[
                 'ps_mode'] == DistributedMode.GEO or self.is_heter_ps_mode:
@@ -997,7 +1023,8 @@ class TheOnePSRuntime(RuntimeBase):
         # info = self._communicator.get_client_info()
         info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
-            all_info = self.role_maker._all_gather(info[0])
+            all_info = self.role_maker._all_gather(
+                info[0])  # 收集其他 client 的 service 地址
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
@@ -1074,6 +1101,21 @@ class TheOnePSRuntime(RuntimeBase):
                 self._heter_client = HeterClient(
                     next_trainers, previous_trainers,
                     self.role_maker._role_id())  # --> HeterClient::GetInstance
+
+    def _init_coordinator(self, scopes=None):
+        if self._coordinator == None:
+            self._coordinator = Coordinator(self.string_hosts)
+
+        print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
+        print(">>> all trainer endpoints: {}".format(self.trainer_endpoints))
+        self._coordinator.start_coordinator(self.coordinator_hosts[0],
+                                            self.trainer_endpoints)
+
+    def _make_fl_strategy(self):
+        if self._coordinator == None:
+            assert ("Coordinator py object is null!")
+        else:
+            self._coordinator.make_fl_strategy()
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()

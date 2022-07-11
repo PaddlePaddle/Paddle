@@ -251,7 +251,7 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-
+  VLOG(0) << "FinalizeDumpEnv done";
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -289,13 +289,21 @@ void MultiTrainer::Finalize() {
 #endif
 
 #if defined PADDLE_WITH_PSCORE
-  auto communicator = paddle::distributed::Communicator::GetInstance();
+  auto* communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first
   if (communicator == nullptr) {
     VLOG(0) << "MultiTrainer::Finalize communicator is null!";
   } else {
+    VLOG(0) << "communicator type: " << typeid(communicator).name();
+    VLOG(0) << "_worker_ptr type: " << typeid(communicator->_worker_ptr).name();
+    if (communicator->_worker_ptr == nullptr) {
+      VLOG(0) << "communicator->_worker_ptr == nullptr";
+      auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+      VLOG(0) << ">>> _worker_ptr in FleetWrapper addr: "
+              << fleet->worker_ptr_.get();
+    }
     communicator->_worker_ptr->Flush();
-    VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+    VLOG(0) << "MultiTrainer::Finalize ps client flush done";
   }
 #endif
   root_scope_->DropKids();

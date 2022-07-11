@@ -78,6 +78,10 @@ set_source_files_properties(
   graph_brpc_server.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
   graph_brpc_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
+set_source_files_properties(
+  coordinator_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+
 cc_library(
   brpc_utils
   SRCS brpc_utils.cc
@@ -90,6 +94,7 @@ cc_library(
 cc_library(
   downpour_client
   SRCS graph_brpc_client.cc brpc_ps_client.cc ps_local_client.cc
+       coordinator_client.cc
   DEPS boost eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
 
 cc_library(

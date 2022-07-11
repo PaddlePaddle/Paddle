@@ -283,14 +283,16 @@ class PSClient {
 
  protected:
   virtual int32_t Initialize() = 0;
-  size_t _client_id;
   PSParameter _config;
   std::map<uint64_t, std::vector<paddle::distributed::Region>>
       _dense_pull_regions;
-  PSEnvironment *_env;
   std::unordered_map<uint32_t, std::shared_ptr<ValueAccessor>> _table_accessors;
   std::unordered_map<int32_t, MsgHandlerFunc>
       _msg_handler_map;  // 处理client2client消息
+
+ public:
+  size_t _client_id;
+  PSEnvironment *_env;
 };
 
 template <class T>

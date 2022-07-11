@@ -1,5 +1,6 @@
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
+set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 set_source_files_properties(
   communicator.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 

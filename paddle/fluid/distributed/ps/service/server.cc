@@ -76,7 +76,7 @@ int32_t PSServer::Configure(
   uint32_t barrier_table = UINT32_MAX;
   uint32_t global_step_table = UINT32_MAX;
 
-  for (size_t i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
+  for (int i = 0; i < downpour_param.downpour_table_param_size(); ++i) {
     auto *table = CREATE_PSCORE_CLASS(
         Table, downpour_param.downpour_table_param(i).table_class());
 

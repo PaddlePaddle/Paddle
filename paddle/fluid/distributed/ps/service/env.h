@@ -128,6 +128,7 @@ class PSEnvironment {
   virtual int32_t SetPsClients(std::string *host_endpoint_list, int node_num) {
     return 0;
   }
+
   virtual uint64_t GetLocalHostSign() { return 0; }
   virtual std::vector<PSHost> GetPsServers() const { return _ps_server_list; }
   virtual int32_t RegistePsServer(const std::string &ip, uint32_t port,
@@ -139,6 +140,15 @@ class PSEnvironment {
   virtual int32_t RegistePsClient(const std::string &ip, uint32_t port,
                                   int32_t rank) {
     return RegistePsHost(ip, port, rank, _ps_client_list, _ps_client_sign_set);
+  }
+
+  virtual std::vector<PSHost> GetCoordinators() const {
+    return _coordinator_list;
+  }
+  virtual int32_t RegisteCoordinatorClient(const std::string &ip, uint32_t port,
+                                           int32_t rank) {
+    return RegistePsHost(ip, port, rank, _coordinator_list,
+                         _coordinator_sign_set);
   }
 
   virtual std::vector<uint64_t> GetClientInfo() {
@@ -190,6 +200,9 @@ class PSEnvironment {
 
   std::vector<PSHost> _ps_server_list;
   std::unordered_set<uint64_t> _ps_server_sign_set;  // for unique filter
+
+  std::vector<PSHost> _coordinator_list;
+  std::unordered_set<uint64_t> _coordinator_sign_set;
 };
 
 class PaddlePSEnvironment : public PSEnvironment {
@@ -266,6 +279,22 @@ class PaddlePSEnvironment : public PSEnvironment {
         [](const PSHost &h1, const PSHost &h2) { return h1.rank < h2.rank; });
     VLOG(1) << "env.set_ps_clients done\n";
     return 0;
+  }
+
+  virtual void SetCoordinators(const std::vector<std::string> *host_sign_list,
+                               size_t node_num) {
+    _coordinator_list.clear();
+    _coordinator_sign_set.clear();
+    for (size_t i = 0; i < node_num; ++i) {
+      if (host_sign_list->at(i) != "") {
+        PSHost host;
+        host.ParseFromString(host_sign_list->at(i));
+        _coordinator_list.push_back(host);
+        _coordinator_sign_set.insert(host.rank);
+        VLOG(0) << ">>> Coordinator info: " << host.ToString();
+      }
+    }
+    return;
   }
 
   virtual uint64_t GetLocalHostSign() {

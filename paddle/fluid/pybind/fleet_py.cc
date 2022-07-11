@@ -75,7 +75,10 @@ void BindDistFleetWrapper(py::module* m) {
       .def("client_flush", &FleetWrapper::ClientFlush)
       .def("get_cache_threshold", &FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
-      .def("save_cache", &FleetWrapper::SaveCache);
+      .def("save_cache", &FleetWrapper::SaveCache)
+      .def("init_fl_worker", &FleetWrapper::InitFlWorker)
+      .def("push_fl_state_sync", &FleetWrapper::PushFlStateSync)
+      .def("get_fl_strategy", &FleetWrapper::PullFlStrategy);
 }
 
 void BindPSHost(py::module* m) {
@@ -121,6 +124,7 @@ void BindCommunicatorContext(py::module* m) {
 }
 
 using paddle::distributed::AsyncCommunicator;
+using paddle::distributed::FlCommunicator;
 using paddle::distributed::GeoCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
@@ -145,6 +149,9 @@ void BindDistCommunicator(py::module* m) {
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "WITH_COORDINATOR") {
+          Communicator::InitInstance<FlCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));
@@ -160,7 +167,10 @@ void BindDistCommunicator(py::module* m) {
       .def("create_client_to_client_connection",
            &Communicator::CreateC2CConnection)
       .def("get_client_info", &Communicator::GetClientInfo)
-      .def("set_clients", &Communicator::SetClients);
+      .def("set_clients", &Communicator::SetClients)
+      .def("start_coordinator", &Communicator::StartCoordinator)
+      .def("query_fl_clients_info", &Communicator::QueryFlClientsInfo)
+      .def("save_fl_strategy", &Communicator::SaveFlStrategy);
 }
 
 void BindHeterClient(py::module* m) {
@@ -221,8 +231,8 @@ void BindGraphPyClient(py::module* m) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
              std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
-             for (int i = 0; i < feats.size(); ++i) {
-               for (int j = 0; j < feats[i].size(); ++j) {
+             for (size_t i = 0; i < feats.size(); ++i) {
+               for (size_t j = 0; j < feats[i].size(); ++j) {
                  bytes_feats[i].push_back(py::bytes(feats[i][j]));
                }
              }
@@ -234,8 +244,8 @@ void BindGraphPyClient(py::module* m) {
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
-             for (int i = 0; i < bytes_feats.size(); ++i) {
-               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+             for (size_t i = 0; i < bytes_feats.size(); ++i) {
+               for (size_t j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }
