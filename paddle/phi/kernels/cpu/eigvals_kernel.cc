@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
@@ -76,7 +77,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
   w.Resize(make_ddim({n_dim << 1}));
-  T* w_data = ctx.template HostAlloc<T>(&w);
+  T* w_data = ctx.template Alloc<T>(&w);
 
   int64_t work_mem = work->memory_size();
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
@@ -200,7 +201,7 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
 
 template <typename T, typename Context>
 void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template HostAlloc<PaddleCType<T>>(out);
+  ctx.template Alloc<PaddleCType<T>>(out);
 
   std::vector<DenseTensor> x_matrices;
   SpiltBatchSquareMatrix(x, /*->*/ &x_matrices);
@@ -233,11 +234,11 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   DenseTensor work, rwork;
 
   work.Resize(make_ddim({lwork}));
-  ctx.template HostAlloc<T>(&work);
+  ctx.template Alloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
     rwork.Resize(make_ddim({n_dim << 1}));
-    ctx.template HostAlloc<dtype::Real<T>>(&rwork);
+    ctx.template Alloc<dtype::Real<T>>(&rwork);
   }
 
   for (int64_t i = 0; i < n_batch; ++i) {
