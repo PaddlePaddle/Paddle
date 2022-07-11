@@ -54,16 +54,15 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizePool(Graph* graph) const;
   void QuantizeConcat(Graph* graph) const;
   void QuantizePriorBox(Graph* graph) const;
-  void QuantizeTranspose(Graph* graph) const;
-  void QuantizeReshape(Graph* graph) const;
   void QuantizeMatmul(Graph* graph) const;
   void QuantizeElementwise(Graph* graph,
-                           const std::string elementwise_type) const;
+                           const std::string& elementwise_type) const;
   void QuantizeFusionGru(Graph* graph) const;
   void QuantizeMultiGru(Graph* graph) const;
   void QuantizeFusionLSTM(Graph* graph) const;
-  void QuantizeSlice(Graph* graph) const;
-  void QuantizeNearestInterp(Graph* graph) const;
+  void QuantizeImmutable(Graph* graph,
+                         const std::string& immutable_type,
+                         const std::string& input_name) const;
 
   void QuantizeInput(Graph* g,
                      Node* op,

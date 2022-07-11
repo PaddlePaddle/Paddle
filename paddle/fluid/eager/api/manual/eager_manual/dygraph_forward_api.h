@@ -12,11 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/dist_grad_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dist_grad_kernel_impl.h"
+#include "paddle/phi/api/include/tensor.h"
 
-PD_REGISTER_KERNEL(
-    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
+paddle::experimental::Tensor add_n_final_state_dygraph_function(
+    const std::vector<paddle::experimental::Tensor>& x);
+
+paddle::experimental::Tensor conv2d_final_state_dygraph_function(
+    const paddle::experimental::Tensor& input,
+    const paddle::experimental::Tensor& filter,
+    std::vector<int> strides,
+    std::vector<int> paddings,
+    std::string paddding_algorithm,
+    int groups,
+    std::vector<int> dilations,
+    std::string data_format,
+    bool use_addto,
+    int workspace_size_MB,
+    bool exhaustive_search);

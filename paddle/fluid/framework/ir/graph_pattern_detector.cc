@@ -1721,80 +1721,23 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::Transpose::operator()() {
+PDNode *patterns::Immutable::operator()(const std::string &immutable_type,
+                                        const std::string &input_name) {
   auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
 
-  auto transpose_op =
-      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto immutable_op =
+      pattern->NewNode(immutable_op_repr())->assert_is_op(immutable_type);
 
-  auto transpose_in = pattern->NewNode(transpose_in_repr())
+  auto immutable_in = pattern->NewNode(immutable_in_repr())
                           ->AsInput()
-                          ->assert_is_op_input("transpose2");
-  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                          ->assert_is_op_input(immutable_type, input_name);
+  auto immutable_out = pattern->NewNode(immutable_out_repr())
                            ->AsOutput()
-                           ->assert_is_op_output("transpose2", "Out");
+                           ->assert_is_op_output(immutable_type, "Out");
 
-  prev_op->LinksTo({transpose_in});
-  transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
-  return transpose_out;
-}
-
-PDNode *patterns::Reshape::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto reshape_op =
-      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
-
-  auto reshape_in = pattern->NewNode(reshape_in_repr())
-                        ->AsInput()
-                        ->assert_is_op_input("reshape2", "X");
-  auto reshape_out = pattern->NewNode(reshape_out_repr())
-                         ->AsOutput()
-                         ->assert_is_op_output("reshape2", "Out");
-
-  prev_op->LinksTo({reshape_in});
-  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
-  return reshape_out;
-}
-
-PDNode *patterns::Slice::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
-
-  auto slice_in = pattern->NewNode(slice_in_repr())
-                      ->AsInput()
-                      ->assert_is_op_input("slice", "Input");
-  auto slice_out = pattern->NewNode(slice_out_repr())
-                       ->AsOutput()
-                       ->assert_is_op_output("slice", "Out");
-
-  prev_op->LinksTo({slice_in});
-  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
-  return slice_out;
-}
-
-PDNode *patterns::NearestInterp::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto nearest_interp_op =
-      pattern->NewNode(nearest_interp_op_repr())
-          ->assert_is_ops({"nearest_interp", "nearest_interp_v2"});
-
-  auto nearest_interp_in =
-      pattern->NewNode(nearest_interp_in_repr())
-          ->AsInput()
-          ->assert_is_ops_input({"nearest_interp", "nearest_interp_v2"}, "X");
-  auto nearest_interp_out =
-      pattern->NewNode(nearest_interp_out_repr())
-          ->AsOutput()
-          ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
-                                 "Out");
-
-  prev_op->LinksTo({nearest_interp_in});
-  nearest_interp_op->LinksFrom({nearest_interp_in})
-      .LinksTo({nearest_interp_out});
-  return nearest_interp_out;
+  prev_op->LinksTo({immutable_in});
+  immutable_op->LinksFrom({immutable_in}).LinksTo({immutable_out});
+  return immutable_out;
 }
 
 PDNode *patterns::Matmul::operator()() {
@@ -2037,7 +1980,7 @@ PDNode *patterns::Pool::operator()() {
 
 PDNode *patterns::Elementwise::operator()(PDNode *x_var,
                                           PDNode *y_var,
-                                          const std::string elementwise_type) {
+                                          const std::string &elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2054,7 +1997,7 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var,
 }
 
 PDNode *patterns::ElementwiseOp::operator()(
-    const std::string elementwise_type) {
+    const std::string &elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2070,7 +2013,7 @@ PDNode *patterns::ElementwiseOp::operator()(
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,
-    const std::string elementwise_type,
+    const std::string &elementwise_type,
     bool as_x) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
@@ -2300,7 +2243,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+std::unordered_set<std::string> conv_act_set(
+    {"identity", "relu", "sigmoid", "tanh"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   conv_in->AsInput();

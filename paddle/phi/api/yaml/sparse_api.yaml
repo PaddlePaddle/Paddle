@@ -147,6 +147,8 @@
   kernel :
     func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
     layout : sparse_mask
+    data_type: query
+  optional : key_padding_mask, attn_mask
   intermediate : softmax
   backward: fused_attention_grad
 

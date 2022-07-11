@@ -690,8 +690,13 @@ class BinaryMKLDNNHandler
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
 
-    this->AcquireForwardPrimitiveDescriptor(
-        attributes, algo, src0_md, src1_md, dst_md);
+    if (x->numel() < y->numel()) {
+      this->AcquireForwardPrimitiveDescriptor(
+          attributes, algo, src1_md, src0_md, dst_md);
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(
+          attributes, algo, src0_md, src1_md, dst_md);
+    }
   }
   std::shared_ptr<dnnl::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {

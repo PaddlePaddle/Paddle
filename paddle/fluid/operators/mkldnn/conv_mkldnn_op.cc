@@ -583,7 +583,7 @@ class ConvMKLDNNHandlerT
       post_operations.append_sum(sum_scale);
     }
 
-    paddle::platform::AppendActivation(ctx, post_operations, activation_scale);
+    platform::AppendActivation(ctx, post_operations, activation_scale);
 
     conv_attr.set_post_ops(post_operations);
     return conv_attr;

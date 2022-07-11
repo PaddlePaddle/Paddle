@@ -160,6 +160,10 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
+    "trt_map_matmul_v2_to_mul_pass",
+    "trt_map_matmul_v2_to_matmul_pass",
+    "trt_map_matmul_to_mul_pass",
+    "fc_fuse_pass",
     "tensorrt_subgraph_pass",
 };
 
