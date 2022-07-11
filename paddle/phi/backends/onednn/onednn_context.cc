@@ -39,6 +39,8 @@ OneDNNContextThreadLocals::Body::Body()
 // related to thread that is to be terminated
 OneDNNContextThreadLocals::Body::~Body() {
   auto cpu_place = phi::CPUPlace();
+  // TODO(YuanRisheng): we need remove the dependency on fluid device context
+  // here
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   OneDNNContext* dev_ctx = static_cast<OneDNNContext*>(pool.Get(cpu_place));
