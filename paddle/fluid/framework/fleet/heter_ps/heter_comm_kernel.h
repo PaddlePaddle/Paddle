@@ -201,10 +201,22 @@ class HeterCommKernel {
   void shrink_keys(const KeyType* d_keys, const uint32_t* d_segments_offset,
           KeyType* d_segments_keys, size_t segments_num, const StreamType& stream);
 
-  CommonFeatureValueAccessor feature_value_accessor_;
+  template <typename KeyType, typename StreamType>
+  void fill_restore_idx(const uint32_t* d_sorted_idx, const uint32_t* d_offset,
+          const uint32_t* d_merged_cnts, const KeyType* d_merged_keys,
+          const size_t len, uint32_t* d_restore_idx, const StreamType& stream);
+
+  template <typename KeyType, typename StreamType>
+  void unpack_merged_vals(size_t n,
+          const KeyType* d_keys,
+          const void* d_merged_vals,
+          const uint32_t* d_restore_idx,
+          void* d_vals, size_t val_size,
+          const StreamType& stream);
 
  private:
   int block_size_{256};
+  CommonFeatureValueAccessor feature_value_accessor_;
 };
 
 }  // end namespace framework

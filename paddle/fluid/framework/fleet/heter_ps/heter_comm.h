@@ -55,6 +55,11 @@ class HeterComm {
 
   void split_input_to_shard(KeyType* d_keys, int* d_idx_ptr, size_t len,
           int* left, int* right, int gpu_num);
+  void merge_keys(int gpu_num, const KeyType* d_keys, size_t len,
+          KeyType* d_sorted_keys,
+          KeyType* d_merged_keys,
+          uint32_t* d_restore_idx,
+          size_t & uniq_len);
   void merge_grad(int gpu_num, KeyType* d_keys, GradType* d_grads, size_t len,
           int& uniq_len);  // NOLINT
   void dynamic_merge_grad(int gpu_num, KeyType* d_keys, float* d_grads,

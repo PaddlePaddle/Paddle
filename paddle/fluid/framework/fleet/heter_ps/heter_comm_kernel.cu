@@ -259,6 +259,80 @@ __global__ void shrink_keys_kernel(
   d_segments_keys[tx] = d_keys[d_segments_offset[tx]];
 }
 
+template<typename KeyType, typename T>
+__global__ void fill_restore_idx_kernel(
+        const T *d_sorted_idx,
+        const T *d_offset,
+        const T *d_merged_cnts,
+        const KeyType *d_merged_keys,
+        T *d_restore_idx,
+        size_t n) {
+  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tx >= n) {
+    return;
+  }
+
+  const KeyType & key = d_merged_keys[tx];
+  if (key == 0) {
+    return;
+  }
+
+  const T &off = d_offset[tx];
+  const T &num = d_merged_cnts[tx];
+  for (size_t k = 0; k < num; ++k) {
+    d_restore_idx[d_sorted_idx[off + k]] = tx;
+  }
+}
+
+template<typename KeyType>
+__global__ void unpack_merged_vals_kernel(
+        const KeyType* d_keys,
+        const float* d_merged_vals,
+        const uint32_t* d_restored_idx,
+        float* d_out, size_t val_size, const size_t n,
+        CommonFeatureValueAccessor feature_value_accessor) {
+  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tx >= n) {
+    return;
+  }
+
+  size_t src_val_idx = 0;
+  const KeyType & key = d_keys[tx];
+  if (key != 0) {
+    src_val_idx = d_restored_idx[tx];
+  }
+
+  uint64_t dst_offset = uint64_t(tx) * val_size;
+  float* dst = (float*)((char*)d_out + dst_offset);
+  float* src_val = (float*)((char*)d_merged_vals + uint64_t(src_val_idx) * val_size);
+  int mf_dim = int(src_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
+
+  *(reinterpret_cast<uint64_t*>(dst + feature_value_accessor.common_feature_value.CpuPtrIndex())) =
+      *(reinterpret_cast<uint64_t*>(src_val + feature_value_accessor.common_feature_value.CpuPtrIndex()));
+  dst[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
+      src_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
+  dst[feature_value_accessor.common_feature_value.ShowIndex()] =
+      src_val[feature_value_accessor.common_feature_value.ShowIndex()];
+  dst[feature_value_accessor.common_feature_value.ClickIndex()] =
+      src_val[feature_value_accessor.common_feature_value.ClickIndex()];
+  dst[feature_value_accessor.common_feature_value.EmbedWIndex()] =
+      src_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
+  for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
+      dst[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
+          src_val[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
+  }
+  dst[feature_value_accessor.common_feature_value.SlotIndex()] =
+      src_val[feature_value_accessor.common_feature_value.SlotIndex()];
+  dst[feature_value_accessor.common_feature_value.MfDimIndex()] = mf_dim;
+  dst[feature_value_accessor.common_feature_value.MfSizeIndex()] =
+      src_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
+
+  for (int x = feature_value_accessor.common_feature_value.EmbedxG2SumIndex();
+          x < int(feature_value_accessor.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
+    dst[x] = src_val[x];
+  }
+}
+
 template <typename T>
 __global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals, float* d_vals,
                                         T* idx, size_t len, size_t val_size,
@@ -450,9 +524,29 @@ void HeterCommKernel::expand_segments(const uint32_t* d_fea_num_info,
 template <typename KeyType, typename StreamType>
 void HeterCommKernel::shrink_keys(const KeyType* d_keys, const uint32_t* d_segments_offset,
           KeyType* d_segments_keys, size_t n, const StreamType& stream) {
-    int grid_size = (n - 1) / block_size_ + 1;
+  int grid_size = (n - 1) / block_size_ + 1;
   shrink_keys_kernel<<<grid_size, block_size_, 0, stream>>>(
           d_keys, d_segments_offset, d_segments_keys, n);
+}
+
+template <typename KeyType, typename StreamType>
+void HeterCommKernel::fill_restore_idx(
+        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
+        const uint32_t* d_merged_cnts, const KeyType* d_merged_keys,
+        const size_t n, uint32_t *d_restore_idx, const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  fill_restore_idx_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_sorted_idx, d_offset, d_merged_cnts, d_merged_keys, d_restore_idx, n);
+}
+
+template <typename KeyType, typename StreamType>
+void HeterCommKernel::unpack_merged_vals(size_t n, const KeyType* d_keys,
+        const void* d_merged_vals, const uint32_t* d_restore_idx,
+        void* d_vals, size_t val_size, const StreamType& stream) {
+  int grid_size = (n - 1) / block_size_ + 1;
+  unpack_merged_vals_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_keys, (const float *)d_merged_vals, d_restore_idx,
+          (float *)d_vals, val_size, n, feature_value_accessor_);
 }
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
@@ -561,6 +655,26 @@ template void HeterCommKernel::shrink_keys<uint32_t, cudaStream_t>(
 template void HeterCommKernel::shrink_keys<uint64_t, cudaStream_t>(
         const uint64_t* d_keys, const uint32_t* d_segments,
         uint64_t* d_segments_keys, size_t total_segment_num, const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_restore_idx<uint64_t, cudaStream_t>(
+        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
+        const uint32_t* d_merged_cnts, const uint64_t* d_merged_keys,
+        const size_t n, uint32_t* d_restore_idx, const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_restore_idx<uint32_t, cudaStream_t>(
+        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
+        const uint32_t* d_merged_cnts, const uint32_t* d_merged_keys,
+        const size_t n, uint32_t* d_restore_idx, const cudaStream_t& stream);
+
+template void HeterCommKernel::unpack_merged_vals<uint64_t, cudaStream_t>(
+        size_t n, const uint64_t* d_keys, const void* d_merged_vals,
+        const uint32_t* d_restore_idx, void* d_vals, size_t val_size,
+        const cudaStream_t& stream);
+
+template void HeterCommKernel::unpack_merged_vals<uint32_t, cudaStream_t>(
+        size_t n, const uint32_t* d_keys, const void* d_merged_vals,
+        const uint32_t* d_restore_idx, void* d_vals, size_t val_size,
+        const cudaStream_t& stream);
 #endif
 
 }  // namespace framework

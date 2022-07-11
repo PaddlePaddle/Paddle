@@ -635,7 +635,6 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
   KeyType* d_merge_keys_ptr = reinterpret_cast<KeyType*>(d_merge_keys->ptr());
-
   auto d_fea_num_info = memory::Alloc(place, sizeof(uint32_t) * (len * 3 + 1));
   uint32_t* d_fea_num_info_ptr =
       reinterpret_cast<uint32_t*>(d_fea_num_info->ptr());
@@ -643,15 +642,16 @@ void HeterComm<KeyType, ValType, GradType>::dynamic_merge_grad(
   uint32_t* d_idx = (uint32_t*)&d_index[len];
   int* d_merged_size = (int*)&d_idx[len];
   heter_comm_kernel_->fill_idx(d_idx, len, stream);
+
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       NULL, temp_storage_bytes, d_keys, d_merge_keys_ptr, d_idx, d_index, len,
       0, 8 * sizeof(KeyType), stream));
-  void* d_buff = NULL;
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
       d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_merge_keys_ptr,
       d_idx, d_index, len, 0, 8 * sizeof(KeyType), stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
   temp_storage_bytes = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRunLengthEncode::Encode(
       NULL, temp_storage_bytes, d_merge_keys_ptr, d_keys, d_fea_num_info_ptr,
@@ -854,6 +854,73 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
 }
 
 template <typename KeyType, typename ValType, typename GradType>
+void HeterComm<KeyType, ValType, GradType>::merge_keys(
+        int gpu_num, const KeyType* d_keys, size_t len, // input
+        KeyType* d_sorted_keys, // output
+        KeyType* d_merged_keys, // output
+        uint32_t* d_restore_idx, // output
+        size_t& uniq_len) { // output
+  int dev_id = resource_->dev_id(gpu_num);
+  platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+  platform::CUDADeviceGuard guard(dev_id);
+  auto stream = resource_->local_stream(gpu_num, 0);
+
+  size_t grad_dim = max_mf_dim_;
+  size_t grad_value_size = TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
+
+  auto d_fea_num_info = memory::Alloc(place, sizeof(uint32_t) * (len * 4 + 1));
+  uint32_t* d_fea_num_info_ptr = reinterpret_cast<uint32_t*>(d_fea_num_info->ptr());
+  uint32_t* d_idx = (uint32_t*)&d_fea_num_info_ptr[len];
+  uint32_t* d_index = (uint32_t*)&d_idx[len];
+  uint32_t* d_offset = (uint32_t*)&d_index[len];
+  uint32_t* d_merged_size = (uint32_t*)&d_offset[len];
+  heter_comm_kernel_->fill_idx(d_idx, len, stream);
+
+  size_t temp_storage_bytes;
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
+      NULL, temp_storage_bytes, d_keys, d_sorted_keys, d_idx, d_index, len,
+      0, 8 * sizeof(KeyType), stream));
+  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage->ptr(), temp_storage_bytes, d_keys, d_sorted_keys,
+      d_idx, d_index, len, 0, 8 * sizeof(KeyType), stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
+  temp_storage_bytes = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRunLengthEncode::Encode(
+      NULL, temp_storage_bytes, d_sorted_keys, d_merged_keys, d_fea_num_info_ptr,
+      d_merged_size, len, stream));
+  if (d_temp_storage->size() < temp_storage_bytes) {
+    d_temp_storage = NULL;
+    d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceRunLengthEncode::Encode(
+      d_temp_storage->ptr(), temp_storage_bytes, d_sorted_keys, d_merged_keys,
+      d_fea_num_info_ptr, d_merged_size, len, stream));
+  cudaMemcpyAsync((void*)&uniq_len, d_merged_size, sizeof(int),
+                  cudaMemcpyDeviceToHost, stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
+  temp_storage_bytes = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceScan::ExclusiveSum(
+      NULL, temp_storage_bytes, d_fea_num_info_ptr, d_offset, uniq_len,
+      stream));
+  if (d_temp_storage->size() < temp_storage_bytes) {
+    d_temp_storage = NULL;
+    d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceScan::ExclusiveSum(
+      d_temp_storage->ptr(), temp_storage_bytes, d_fea_num_info_ptr, d_offset, uniq_len,
+      stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+
+  heter_comm_kernel_->fill_restore_idx(
+      d_index, d_offset, d_fea_num_info_ptr, d_merged_keys, uniq_len,
+      d_restore_idx, stream);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+}
+
+template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                                                         KeyType* d_keys,
                                                         float* d_vals,
@@ -897,21 +964,33 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
                         XPUAPIErrorMsg[r2]));
 #endif
 
-  auto d_idx = memory::Alloc(place, len * sizeof(int));
-  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
-
   size_t val_type_size = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
   VLOG(3) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;
+  auto d_sorted_keys = memory::Alloc(place, len * sizeof(KeyType));
+  auto d_sorted_keys_ptr = reinterpret_cast<KeyType*>(d_sorted_keys->ptr());
+  auto d_merged_keys = memory::Alloc(place, len * sizeof(KeyType));
+  auto d_merged_keys_ptr = reinterpret_cast<KeyType*>(d_merged_keys->ptr());
+  auto d_restore_idx = memory::Alloc(place, len * sizeof(uint32_t));
+  auto d_restore_idx_ptr = reinterpret_cast<uint32_t*>(d_restore_idx->ptr());
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
-  KeyType* d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
+  auto d_shard_keys_ptr = reinterpret_cast<KeyType*>(d_shard_keys->ptr());
   auto d_shard_vals = memory::Alloc(place, len * val_type_size);
-  float* d_shard_vals_ptr = reinterpret_cast<float*>(d_shard_vals->ptr());
+  auto d_shard_vals_ptr = reinterpret_cast<float*>(d_shard_vals->ptr());
 
-  split_input_to_shard(d_keys, d_idx_ptr, len, d_left_ptr, d_right_ptr, num);
+  size_t uniq_len = 0;
+  merge_keys(num, d_keys, len,
+          d_sorted_keys_ptr,
+          d_merged_keys_ptr,
+          d_restore_idx_ptr,
+          uniq_len);
+  sync_stream(stream);
 
-  heter_comm_kernel_->fill_shard_key(d_shard_keys_ptr, d_keys, d_idx_ptr, len,
-                                     stream);
-
+  auto d_idx = memory::Alloc(place, uniq_len * sizeof(int));
+  auto d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+  split_input_to_shard(d_merged_keys_ptr, d_idx_ptr, uniq_len, d_left_ptr, d_right_ptr, num);
+  heter_comm_kernel_->fill_shard_key(
+          d_shard_keys_ptr, d_merged_keys_ptr, d_idx_ptr, uniq_len,
+          stream);
   sync_stream(stream);
 
   auto dst_place = platform::CPUPlace();
@@ -933,6 +1012,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     walk_to_dest(num, total_device, h_left, h_right, d_shard_keys_ptr, NULL);
   }
+
   for (int i = 0; i < total_device; ++i) {
     if (h_left[i] == -1) {
       continue;
@@ -962,6 +1042,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
     ptr_tables_[i]->rwlock_->UNLock();
   }
+
   if (!FLAGS_gpugraph_enable_gpu_direct_access) {
     walk_to_src(num, total_device, h_left, h_right,
                 reinterpret_cast<char*>(d_shard_vals_ptr), val_type_size);
@@ -971,10 +1052,21 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     }
   }
 
-  heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr, d_vals, d_idx_ptr, len,
-                                       val_type_size, stream);
-
+  auto d_merged_vals = memory::Alloc(place, uniq_len * val_type_size);
+  auto d_merged_vals_ptr = reinterpret_cast<float*>(d_merged_vals->ptr());
+  heter_comm_kernel_->dy_mf_fill_dvals(
+          d_shard_vals_ptr, d_merged_vals_ptr,
+          d_idx_ptr, uniq_len,
+          val_type_size, stream);
   sync_stream(stream);
+
+  heter_comm_kernel_->unpack_merged_vals(
+          len, d_keys,
+          d_merged_vals_ptr,
+          d_restore_idx_ptr,
+          d_vals, val_type_size, stream);
+  sync_stream(stream);
+
   if (!FLAGS_gpugraph_enable_gpu_direct_access) {
     for (int i = 0; i < total_device; ++i) {
       if (h_left[i] == -1 || h_right[i] == -1) {
