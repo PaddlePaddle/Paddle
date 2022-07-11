@@ -25,10 +25,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/operators/unique_op.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/unique_functor.h"
 
 namespace phi {
 
@@ -356,12 +357,11 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
   DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   context.template Alloc<InT>(&in_trans);
-  paddle::operators::TransCompute<Context, InT>(
-      in.dims().size(),  // num of dims
-      context,           // device
-      in,                // original Tensor
-      &in_trans,         // Tensor after reshape
-      permute);          // index of axis
+  phi::funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
+                                         context,           // device
+                                         in,                // original Tensor
+                                         &in_trans,  // Tensor after reshape
+                                         permute);   // index of axis
 
   // Reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
@@ -406,11 +406,10 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(phi::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(out);
-  std::vector<DenseTensor> out_trans_unbind =
-      paddle::operators::Unbind(out_trans);
+  std::vector<DenseTensor> out_trans_unbind = phi::funcs::Unbind(out_trans);
   phi::funcs::ConcatFunctor<Context, InT> concat_functor;
   concat_functor(context, out_trans_unbind, 0, &out_trans);
-  paddle::operators::TransCompute<Context, InT>(
+  phi::funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), context, out_trans, out, permute);
 }
 

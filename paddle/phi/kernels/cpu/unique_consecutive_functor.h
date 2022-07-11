@@ -15,10 +15,11 @@
 #pragma once
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/operators/unique_op.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/unique_functor.h"
 
 namespace phi {
 
@@ -161,7 +162,7 @@ static void UniqueConsecutiveDim(const Context& context,
   DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   context.template Alloc<InT>(&in_trans);
-  paddle::operators::TransCompute<Context, InT>(
+  phi::funcs::TransCompute<Context, InT>(
       in.dims().size(), context, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
@@ -182,8 +183,7 @@ static void UniqueConsecutiveDim(const Context& context,
            in_trans_data + static_cast<int64_t>(sorted_indices_vec[i]) * col,
            col * sizeof(InT));
   }
-  std::vector<DenseTensor> input_unbind =
-      paddle::operators::Unbind(input_sorted);
+  std::vector<DenseTensor> input_unbind = phi::funcs::Unbind(input_sorted);
   std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   auto last = UniqueConsecutiveDimImpl<Context,
@@ -207,7 +207,7 @@ static void UniqueConsecutiveDim(const Context& context,
   out->Resize(phi::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(out);
   concat_functor(context, input_unbind, 0, &out_trans);
-  paddle::operators::TransCompute<Context, InT>(
+  phi::funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), context, out_trans, out, permute);
   if (return_inverse) {
     paddle::framework::TensorFromVector(inverse_vec, context, inverse);
