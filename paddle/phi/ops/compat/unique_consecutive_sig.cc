@@ -25,3 +25,6 @@ KernelSignature UniqueConsecutiveOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(unique_consecutive,
+                           phi::UniqueConsecutiveOpArgumentMapping);

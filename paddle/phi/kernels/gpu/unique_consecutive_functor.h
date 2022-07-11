@@ -25,10 +25,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace phi {
 
@@ -291,10 +291,8 @@ void IndexSelect(const Context& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(
-      input, context.device_context(), &input_vec);
-  paddle::framework::TensorToVector(
-      index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(input, context, &input_vec);
+  paddle::framework::TensorToVector(index, context, &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
@@ -331,8 +329,7 @@ void IndexSelect(const Context& context,
     }
   }
   context.template Alloc<InT>(output);
-  paddle::framework::TensorFromVector(
-      out_vec, context.device_context(), output);
+  paddle::framework::TensorFromVector(out_vec, context, output);
   output->Resize(output_dim);
 }
 
@@ -411,7 +408,7 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
   context.template Alloc<InT>(out);
   std::vector<DenseTensor> out_trans_unbind =
       paddle::operators::Unbind(out_trans);
-  paddle::operators::math::ConcatFunctor<Context, InT> concat_functor;
+  phi::funcs::ConcatFunctor<Context, InT> concat_functor;
   concat_functor(context, out_trans_unbind, 0, &out_trans);
   paddle::operators::TransCompute<Context, InT>(
       out_trans.dims().size(), context, out_trans, out, permute);

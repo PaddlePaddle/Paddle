@@ -15,10 +15,10 @@
 #pragma once
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace phi {
 
@@ -107,7 +107,7 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
   }
 };
 
-template <class ForwardIt, typename InT, typename IndexT, typename Context>
+template <typename Context, class ForwardIt, typename InT, typename IndexT>
 static ForwardIt UniqueConsecutiveDimImpl(
     const Context& context,
     ForwardIt first,
@@ -186,18 +186,18 @@ static void UniqueConsecutiveDim(const Context& context,
       paddle::operators::Unbind(input_sorted);
   std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
-  auto last = UniqueConsecutiveDimImpl<std::vector<DenseTensor>::iterator,
-                                       InT,
-                                       Context>(context,
-                                                input_unbind.begin(),
-                                                input_unbind.end(),
-                                                sorted_indices_vec,
-                                                &inverse_vec,
-                                                &counts_vec);
+  auto last = UniqueConsecutiveDimImpl<Context,
+                                       std::vector<DenseTensor>::iterator,
+                                       InT>(context,
+                                            input_unbind.begin(),
+                                            input_unbind.end(),
+                                            sorted_indices_vec,
+                                            &inverse_vec,
+                                            &counts_vec);
   input_unbind.erase(last, input_unbind.end());
   counts_vec.erase(counts_vec.begin() + input_unbind.size(), counts_vec.end());
 
-  paddle::operators::math::ConcatFunctor<Context, InT> concat_functor;
+  phi::funcs::ConcatFunctor<Context, InT> concat_functor;
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
