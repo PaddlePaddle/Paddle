@@ -342,6 +342,15 @@
     func : clip
   backward : clip_grad
 
+- api : complex
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+  backward : complex_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
