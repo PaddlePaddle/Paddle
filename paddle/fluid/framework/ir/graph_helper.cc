@@ -578,6 +578,12 @@ void GraphToProgram(const Graph &graph,
 
     VLOG(3) << "Graph to program need convert " << graph.SubGraphsSize()
             << " sub graph";
+
+    std::unordered_set<std::string> vars_in_root_block;
+    for (const proto::VarDesc &var : block->vars()) {
+      vars_in_root_block.insert(var.name());
+    }
+
     for (size_t idx = 0; idx < graph.SubGraphsSize(); ++idx) {
       // avoid kRootBlockIndex not 0
       if (idx == kRootBlockIndex) continue;
@@ -585,7 +591,14 @@ void GraphToProgram(const Graph &graph,
       block = program_pb.add_blocks();
       block->set_idx(idx);
       block->set_parent_idx(kRootBlockIndex);
-      GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
+
+      Graph *subgraph = graph.GetSubGraph(idx);
+      subgraph->SetNotOwned<std::unordered_set<std::string>>(
+          kGraphToProgramVarsToRemove, &vars_in_root_block);
+
+      GraphToBlock(*subgraph, block, sort_kind);
+
+      subgraph->Erase(kGraphToProgramVarsToRemove);
     }
   } else {
     GraphToBlock(graph, block, sort_kind);
