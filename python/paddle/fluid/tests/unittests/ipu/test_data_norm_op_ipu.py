@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,35 +30,22 @@ class TestBase(IPUOpTest):
         self.set_feed()
         self.set_op_attrs()
 
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
-
     def set_op_attrs(self):
         self.attrs = {}
-        self.attrs['num_filters'] = 3
-        self.attrs['filter_size'] = 3
-        self.attrs['stride'] = 1
-        self.attrs['padding'] = 0
-        self.attrs['dilation'] = 1
-        self.attrs['groups'] = 1
-        self.attrs['data_format'] = 'NCHW'
+
+    def set_feed(self):
+        data = np.random.uniform(size=[32, 100])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-        x = paddle.fluid.layers.conv2d(x, **self.attrs)
+        x = paddle.static.nn.data_norm(input=x, **self.attrs)
         self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
@@ -75,64 +62,68 @@ class TestBase(IPUOpTest):
 class TestCase1(TestBase):
 
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['num_filters'] = 1
+        self.attrs = {"in_place": True}
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        x = paddle.static.nn.data_norm(input=x, **self.attrs)
+        x = x + 1
+        self.fetch_list = [x.name]
 
 
+@unittest.skip("Do not support in_place=True when test single data_norm Op")
 class TestCase2(TestBase):
 
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['filter_size'] = [3, 3]
-
-
-class TestCase2_1(TestBase):
-
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['filter_size'] = [3, 2]
+        self.attrs = {"in_place": True}
 
 
 class TestCase3(TestBase):
 
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['stride'] = [2, 3]
+        self.attrs = {"data_layout": "NHWC"}
 
 
 class TestCase4(TestBase):
 
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['dilation'] = [2, 2]
+        self.attrs = {"epsilon": 0.001}
 
 
 class TestCase5(TestBase):
-    # Depthwise conv2d
+
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['groups'] = 3
+        self.attrs = {"do_model_average_for_mean_and_var": True}
 
 
 class TestCase6(TestBase):
-
+    # If enable_scale_and_shift=True, it requires to set values of scale and bias in `param_attr`
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = 2
+        self.attrs = {
+            "param_attr": {
+                "scale_w": 0.5,
+                "bias": 0.1
+            },
+            "enable_scale_and_shift": True
+        }
 
 
 class TestCase7(TestBase):
 
     def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = [2, 3]
-
-
-class TestCase8(TestBase):
-
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = [1, 2, 2, 3]
+        self.attrs = {
+            "param_attr": {
+                "batch_size": 1e3,
+                "batch_sum": 0.1,
+                "batch_square": 1e3,
+                "scale_w": 0.5,
+                "bias": 0.1
+            },
+            "enable_scale_and_shift": True
+        }
 
 
 if __name__ == "__main__":
