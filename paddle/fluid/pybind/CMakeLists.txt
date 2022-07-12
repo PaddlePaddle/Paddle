@@ -83,6 +83,7 @@ if(WITH_CNCL)
 endif()
 
 if(NOT WIN32)
+  set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
