@@ -83,7 +83,8 @@ void EighInferMeta(const MetaTensor& x,
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out,
-                     std::vector<MetaTensor*> inner_cache);
+                     std::vector<MetaTensor*> inner_cache,
+                     std::vector<MetaTensor*> xshape);
 
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
@@ -467,5 +468,7 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
                              MetaTensor* out);
+
+void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 }  // namespace phi

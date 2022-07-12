@@ -19,6 +19,7 @@ import unittest
 import time
 import threading
 import numpy
+import tempfile
 
 import paddle
 
@@ -32,7 +33,9 @@ import paddle.distributed.fleet as fleet
 class TestCommunicator(unittest.TestCase):
 
     def test_communicator_ps_gpu(self):
-        with open("test_communicator_ps_gpu.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        path = os.path.join(temp_dir.name, "test_communicator_ps_gpu.txt")
+        with open(path, "w") as f:
             data = "1 0.6 1 0.7\n"
             f.write(data)
 
@@ -56,7 +59,7 @@ class TestCommunicator(unittest.TestCase):
         slots_vars = [x, y]
 
         cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)
 
@@ -94,7 +97,7 @@ class TestCommunicator(unittest.TestCase):
             self.assertTrue(False)
         time.sleep(10)
         fleet.stop_worker()
-        os.remove("./test_communicator_ps_gpu.txt")
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

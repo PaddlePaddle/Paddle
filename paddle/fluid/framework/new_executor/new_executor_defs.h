@@ -71,18 +71,23 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   std::string GetOutputNameByIdx(size_t idx) const override;
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) override;
 
   void ShareAllLoD(const std::string& in,
                    const std::string& out) const override;
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) const override;
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
 
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
                    size_t j = 0) const override;
 
   bool IsRuntime() const override;
@@ -163,29 +168,7 @@ struct VariableMetaInfo {
       : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
-class VariableScope;
-class VariableScopeListener : public ScopeListener {
- public:
-  explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name, Variable* v) override;
-  void onDeleteVariable(const std::string& name) override;
-  void onRenameVariable(const std::string& old_name,
-                        const std::string& new_name) override;
-  void onCreateScope(Scope* Scope) override;
-  void onDeleteScope(Scope* Scope) override;
-  void onClear() override;
-
- private:
-  VariableScope* var_scope_;  // not owned
-};
-
-// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
-
-// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase. Scope manager the variables and VariableScope is just a quick
-// access machanism. ScopeListener is the callback to sync changes in Original
-// Scope. We can make it a membership of VariableScope. Here we use inherent.
-class VariableScope : public ScopeBase {
+class VariableScope {
  public:
   explicit VariableScope(Scope* scope);
 
@@ -194,8 +177,6 @@ class VariableScope : public ScopeBase {
   Scope* GetMutableLocalScope() const;
 
   void SetLocalScope(Scope* local_scope);
-
-  Variable* FindVar(const std::string& name) const;
 
   ~VariableScope();
 
@@ -209,16 +190,11 @@ class VariableScope : public ScopeBase {
 
   int VarId(const std::string& name) const;
 
-  Variable* Var(int id) const;
-
-  Variable* Var(const std::string& name) const;
-
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc,
-              bool local_scope = false);
+  void AddVar(const std::string& name, VarDesc* var_desc);
 
-  void AddVar(const std::string& name, const Variable& var);
+  Variable* VarRef(int id) const;
 
   void SetVarDesc(const std::string& name, framework::VarDesc* var_desc);
 
@@ -236,29 +212,22 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
-  const std::shared_ptr<VariableScopeListener>& Listener() const {
-    return listener_;
-  }
-
   void SetVarSikpInplace(const std::string& name, bool skip);
 
   bool GetVarSikpInplace(int id) const;
 
-  void ClearListener();
-
-  void ResetListener();
-
-  friend class VariableScopeListener;
-
  private:
+  // not owned, better remove it since all vars should be
+  // accessed by Scope instead of VariableScope
   std::vector<Variable*> var_list_;
+
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+
   Scope* scope_{nullptr};
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_{nullptr};
 };
 
 class NextInstruction {
@@ -297,7 +266,7 @@ struct InstructionInfo {
 
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 
@@ -321,7 +290,8 @@ struct OpFuncNode {
 
 class Instruction {
  public:
-  Instruction(size_t id, OpFuncNode&& op_func_node,
+  Instruction(size_t id,
+              OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   size_t Id() const;
@@ -415,6 +385,12 @@ static bool IsMemcpyD2H(const Instruction& instr) {
 
 static bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+// is supported heterogeneous place
+static bool IsSupportedHetePlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place);
 }
 
 }  // namespace interpreter

@@ -374,6 +374,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
+        self._base_seed = np.random.randint(low=0, high=sys.maxsize)
+
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
@@ -406,7 +408,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                       self._data_queue, self._workers_done_event,
                       self._auto_collate_batch, self._collate_fn,
                       self._drop_last, self._worker_init_fn, i,
-                      self._num_workers, self._use_shared_memory))
+                      self._num_workers, self._use_shared_memory,
+                      self._base_seed))
             worker.daemon = True
             worker.start()
             self._workers.append(worker)

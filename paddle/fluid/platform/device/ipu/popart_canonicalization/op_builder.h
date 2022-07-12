@@ -24,52 +24,73 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-template <typename T>
-AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
-                              int dtype) {
-  return AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}};
-}
-
-template <typename T>
-AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
-                                       int dtype) {
-  size_t size = 1;
-  for (auto &dim : dims) {
-    size *= dim;
-  }
-  return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
-}
-
 const std::string GenerateVarName();
 const std::string CreateOpIdentifyId(Node *node);
 
 Node *MakeVarNode(Graph *graph, Node *node);
-Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
+Node *MakeOpNode(Graph *graph,
+                 Node *node,
+                 const std::string &type,
                  const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs);
 
-Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
+Node *CreateBaseOp(Graph *graph,
+                   Node *node,
+                   const std::string &type,
                    const std::vector<Node *> &inputs,
                    const std::vector<Node *> &outputs,
                    const AttributeMap &attrs = {});
 
-Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConst(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,
                   const AttributeMap &attrs);
 
-// otype is framework::proto::VarType::Type
-Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, const int otype);
+template <typename T>
+Node *CreateConst(Graph *graph,
+                  Node *node,
+                  const std::vector<T> &value,
+                  const std::vector<int64_t> &dims,
+                  ONNXDataType dtype) {
+  return CreateConst(
+      graph,
+      node,
+      {},
+      {},
+      AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}});
+}
 
-Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, int64_t transA = 0,
-                 int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
+Node *CreateCast(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 const VarType::Type otype);
 
-Node *CreateReshape(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction);
+
+Node *CreateGemm(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 int64_t transA = 0,
+                 int64_t transB = 0,
+                 float alpha = 1.0f,
+                 float beta = 1.0f);
+
+Node *CreateReshape(Graph *graph,
+                    Node *node,
+                    const std::vector<Node *> &inputs,
                     const std::vector<Node *> &outputs,
                     const std::vector<int64_t> &oshape);
 
-Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConv(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs,
                  const std::vector<int64_t> &dilations = {1, 1},
                  int64_t group = 1,
@@ -77,9 +98,11 @@ Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                  const std::vector<int64_t> &pads = {0, 0, 0, 0},
                  const std::vector<int64_t> &strides = {1, 1});
 
-Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
+Node *CreateSoftmaxOpset11(Graph *graph,
+                           Node *node,
                            const std::vector<Node *> &inputs,
-                           const std::vector<Node *> &outputs, int64_t axis);
+                           const std::vector<Node *> &outputs,
+                           int64_t axis);
 
 }  // namespace ipu
 }  // namespace platform

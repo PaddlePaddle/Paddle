@@ -62,7 +62,8 @@ using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
 class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
-      const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
+      const OpDesc& fwd_op,
+      const std::unordered_set<std::string>& no_grad_set,
       std::unordered_map<std::string, std::string>* grad_to_var,
       const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>())
       : fwd_op_(fwd_op),
@@ -83,7 +84,8 @@ class GradOpDescMakerBase {
     std::vector<std::string> ret_val;
     auto var_names = this->Input(name);
     ret_val.reserve(var_names.size());
-    std::transform(var_names.begin(), var_names.end(),
+    std::transform(var_names.begin(),
+                   var_names.end(),
                    std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
@@ -98,7 +100,8 @@ class GradOpDescMakerBase {
       return ret_val;
     }
     PADDLE_ENFORCE_LE(
-        var_names.size(), 1UL,
+        var_names.size(),
+        1UL,
         platform::errors::Unavailable(
             "BUG from operator developer:"
             " for input argument with a list of variables, "
@@ -108,7 +111,8 @@ class GradOpDescMakerBase {
 
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
-    std::copy_if(ret_val.begin(), ret_val.end(),
+    std::copy_if(ret_val.begin(),
+                 ret_val.end(),
                  std::back_inserter(dropped_ret_val),
                  [](const std::string& str) { return str != kEmptyVarName; });
     return dropped_ret_val;
@@ -118,7 +122,9 @@ class GradOpDescMakerBase {
     std::vector<std::string> ret_val;
     auto onames = this->Output(name);
     ret_val.reserve(onames.size());
-    std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
+    std::transform(onames.begin(),
+                   onames.end(),
+                   std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
                      (*this->grad_to_var_)[g_name] = fwd_var_name;
@@ -159,7 +165,8 @@ class GradOpDescMakerBase {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
     PADDLE_ENFORCE_NE(
-        it, map.end(),
+        it,
+        map.end(),
         platform::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
@@ -225,9 +232,11 @@ class SingleGradOpMaker<imperative::OpBase>
     auto it = Attrs().find(name);
     if (it == Attrs().end()) {
       it = this->DefaultAttrsMap().find(name);
-      PADDLE_ENFORCE_EQ(it != this->DefaultAttrsMap().end(), true,
+      PADDLE_ENFORCE_EQ(it != this->DefaultAttrsMap().end(),
+                        true,
                         platform::errors::NotFound(
-                            "Cannot find attribute [%s] in operator [%s]", name,
+                            "Cannot find attribute [%s] in operator [%s]",
+                            name,
                             this->ForwardOpType()));
     }
 

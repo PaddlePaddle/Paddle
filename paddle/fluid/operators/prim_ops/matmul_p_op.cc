@@ -63,40 +63,47 @@ class MatmulPrimOpShapeInference : public framework::InferShapeBase {
     auto y_shape = y_var->GetShape();
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
-    PADDLE_ENFORCE_EQ(x_rank, y_rank,
+    PADDLE_ENFORCE_EQ(x_rank,
+                      y_rank,
                       platform::errors::InvalidArgument(
                           "The two input tensor's dimension should be equal"
                           "But received first input tensor's dimension is %d, "
                           "and another input tensor's dimension is %d",
-                          x_rank, y_rank));
+                          x_rank,
+                          y_rank));
 
-    PADDLE_ENFORCE_EQ(x_rank == 2 || x_rank == 3, true,
+    PADDLE_ENFORCE_EQ(x_rank == 2 || x_rank == 3,
+                      true,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension should be 2 or 3"
                           "But received input tensor's dimension is %d",
                           x_rank));
 
     PADDLE_ENFORCE_EQ(
-        x_shape[x_rank - 1], y_shape[y_rank - 2],
+        x_shape[x_rank - 1],
+        y_shape[y_rank - 2],
         platform::errors::InvalidArgument(
             "Invalid shape for matmul, the last dimension of first input and "
             "the penultimate dimension for the second input should be same."
             "But received  %d and %d.",
-            x_shape[x_rank - 1], y_shape[y_rank - 2]));
+            x_shape[x_rank - 1],
+            y_shape[y_rank - 2]));
     if (x_rank == 2) {
       std::vector<int64_t> z_shape{x_shape[x_rank - 2], y_shape[y_rank - 1]};
       BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     } else {
-      PADDLE_ENFORCE_EQ(x_shape[0], y_shape[0],
+      PADDLE_ENFORCE_EQ(x_shape[0],
+                        y_shape[0],
                         platform::errors::InvalidArgument(
                             "Invalid shape for matmul when input tensor's "
                             "dimension is 3, the first dimension of first "
                             "input and the second input should be same."
                             "But received  %d and %d.",
-                            x_shape[0], y_shape[0]));
+                            x_shape[0],
+                            y_shape[0]));
 
-      std::vector<int64_t> z_shape{x_shape[0], x_shape[x_rank - 2],
-                                   y_shape[y_rank - 1]};
+      std::vector<int64_t> z_shape{
+          x_shape[0], x_shape[x_rank - 2], y_shape[y_rank - 1]};
       BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(z_shape);
     }
   }
@@ -113,16 +120,20 @@ class MatmulPrimOpVarTypeInference
     auto y_type = GetType(ctx, y_name);
     auto x_dtype = GetDataType(ctx, x_name);
     auto y_dtype = GetDataType(ctx, y_name);
-    PADDLE_ENFORCE_EQ(x_type, y_type,
+    PADDLE_ENFORCE_EQ(x_type,
+                      y_type,
                       platform::errors::InvalidArgument(
                           "The type of two input tensor should be same, "
                           "but get %d and %d",
-                          x_type, y_type));
-    PADDLE_ENFORCE_EQ(x_dtype, y_dtype,
+                          x_type,
+                          y_type));
+    PADDLE_ENFORCE_EQ(x_dtype,
+                      y_dtype,
                       platform::errors::InvalidArgument(
                           "The datatype of two input tensor should be same, "
                           "but get %d and %d",
-                          x_dtype, y_dtype));
+                          x_dtype,
+                          y_dtype));
 
     SetType(ctx, z_name, x_type);
     SetDataType(ctx, z_name, x_dtype);
@@ -132,7 +143,8 @@ class MatmulPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(matmul_p, paddle::operators::MatmulPrimOp,
+REGISTER_OPERATOR(matmul_p,
+                  paddle::operators::MatmulPrimOp,
                   paddle::operators::MatmulPrimOpMaker,
                   paddle::operators::MatmulPrimOpShapeInference,
                   paddle::operators::MatmulPrimOpVarTypeInference);

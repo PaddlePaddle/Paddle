@@ -92,11 +92,14 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto dxs = ctx->Outputs(framework::GradVarName("X"));
-    PADDLE_ENFORCE_NE(dxs.empty(), true,
+    PADDLE_ENFORCE_NE(dxs.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(X@Grad) should not be null."));
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "MultiplexGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "MultiplexGrad");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputsDim(framework::GradVarName("X"),
                        std::vector<framework::DDim>(dxs.size(), dout_dim));
@@ -130,10 +133,13 @@ class MultiplexGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(multiplex, MultiplexInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(multiplex,
+                            MultiplexInferShapeFunctor,
                             PD_INFER_META(phi::MultiplexInferMeta));
 
-REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
+REGISTER_OPERATOR(multiplex,
+                  ops::MultiplexOp,
+                  ops::MultiplexOpMaker,
                   ops::MultiplexGradMaker<paddle::framework::OpDesc>,
                   ops::MultiplexGradMaker<paddle::imperative::OpBase>,
                   MultiplexInferShapeFunctor);

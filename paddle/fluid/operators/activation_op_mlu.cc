@@ -37,8 +37,12 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc output_desc(*output);
 
-    MLUCnnl::Active(ctx, act_desc.get(), input_desc.get(), GetBasePtr(input),
-                    output_desc.get(), GetBasePtr(output));
+    MLUCnnl::Active(ctx,
+                    act_desc.get(),
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    output_desc.get(),
+                    GetBasePtr(output));
   }
 };
 
@@ -58,9 +62,18 @@ class ActivationGradMLUKernelV1 : public framework::OpKernel<T> {
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
-    MLUCnnl::ActiveGrad(ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
-                        dout_desc.get(), GetBasePtr(dout), x_desc.get(),
-                        GetBasePtr(x), dx_desc.get(), GetBasePtr(dx));
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        x_desc.get(),
+                        GetBasePtr(x),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
   }
 };
 
@@ -80,9 +93,18 @@ class ActivationGradMLUKernelV2 : public framework::OpKernel<T> {
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
-    MLUCnnl::ActiveGrad(ctx, act_desc.get(), nullptr, nullptr, out_desc.get(),
-                        GetBasePtr(out), dout_desc.get(), GetBasePtr(dout),
-                        nullptr, nullptr, dx_desc.get(), GetBasePtr(dx));
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        nullptr,
+                        nullptr,
+                        dx_desc.get(),
+                        GetBasePtr(dx));
   }
 };
 
@@ -102,9 +124,18 @@ class ActivationGradMLUKernelV3 : public framework::OpKernel<T> {
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
-    MLUCnnl::ActiveGrad(ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,
-                        dout_desc.get(), GetBasePtr(dout), out_desc.get(),
-                        GetBasePtr(out), dx_desc.get(), GetBasePtr(dx));
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
   }
 };
 
@@ -123,8 +154,12 @@ class SqrtMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc output_desc(*out);
 
     cnnlComputationPreference_t prefer = CNNL_COMPUTATION_FAST;
-    MLUCnnl::Sqrt(ctx, prefer, input_desc.get(), GetBasePtr(x),
-                  output_desc.get(), GetBasePtr(out));
+    MLUCnnl::Sqrt(ctx,
+                  prefer,
+                  input_desc.get(),
+                  GetBasePtr(x),
+                  output_desc.get(),
+                  GetBasePtr(out));
   }
 };
 
@@ -140,8 +175,227 @@ class SqrtGradMLUKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(place);
 
     MLUCnnlTensorDesc data_desc(*out);
-    MLUCnnl::SqrtGrad(ctx, data_desc.get(), GetBasePtr(out), GetBasePtr(dout),
+    MLUCnnl::SqrtGrad(ctx,
+                      data_desc.get(),
+                      GetBasePtr(out),
+                      GetBasePtr(dout),
                       GetBasePtr(dx));
+  }
+};
+
+// CNNL_LOG_E = 0,
+// CNNL_LOG_2 = 1,
+// CNNL_LOG_10 = 2,
+template <cnnlLogBase_t Log_base, typename T>
+class LogMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+
+    MLUCnnl::Log(ctx,
+                 prefer,
+                 Log_base,
+                 input_desc.get(),
+                 GetBasePtr(input),
+                 output_desc.get(),
+                 GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class ExpMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+    cnnlComputationPreference_t prefer = CNNL_COMPUTATION_HIGH_PRECISION;
+
+    MLUCnnl::Exp(ctx,
+                 prefer,
+                 input_desc.get(),
+                 GetBasePtr(input),
+                 output_desc.get(),
+                 GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class ExpGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    dx->mutable_data<T>(ctx.GetPlace());
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlTensorDesc out_desc(*out);
+
+    MLUCnnlOpTensorDesc op_tensor_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+
+    MLUCnnl::OpTensor(ctx,
+                      op_tensor_desc.get(),
+                      dout_desc.get(),
+                      GetBasePtr(dout),
+                      out_desc.get(),
+                      GetBasePtr(out),
+                      dx_desc.get(),
+                      GetBasePtr(dx),
+                      ToCnnlDataType<T>());
+  }
+};
+
+template <typename T>
+class HardSwishMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
+                      platform::errors::External(
+                          "Not support threshold [%f] in MLU", threshold));
+    PADDLE_ENFORCE_EQ(
+        scale,
+        6.0f,
+        platform::errors::External("Not support scale [%f] in MLU", scale));
+    PADDLE_ENFORCE_EQ(
+        offset,
+        3.0f,
+        platform::errors::External("Not support offset [%f] in MLU", offset));
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSWISH,
+                                   1.0f /*ceof useless*/);
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Active(ctx,
+                    act_desc.get(),
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    output_desc.get(),
+                    GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class HardSwishGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    float threshold = ctx.Attr<float>("threshold");
+    float scale = ctx.Attr<float>("scale");
+    float offset = ctx.Attr<float>("offset");
+    PADDLE_ENFORCE_EQ(threshold,
+                      6.0f,
+                      platform::errors::External(
+                          "Not support threshold [%f] in MLU", threshold));
+    PADDLE_ENFORCE_EQ(
+        scale,
+        6.0f,
+        platform::errors::External("Not support scale [%f] in MLU", scale));
+    PADDLE_ENFORCE_EQ(
+        offset,
+        3.0f,
+        platform::errors::External("Not support offset [%f] in MLU", offset));
+    auto* out = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSWISH,
+                                   1.0f /*ceof useless*/);
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
+  }
+};
+
+template <typename T>
+class HardSigmoidMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSIGMOID,
+                                   1.0f /*ceof useless*/,
+                                   1.0f /*sliced_dim useless*/,
+                                   slope,
+                                   offset);
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Active(ctx,
+                    act_desc.get(),
+                    input_desc.get(),
+                    GetBasePtr(input),
+                    output_desc.get(),
+                    GetBasePtr(output));
+  }
+};
+
+template <typename T>
+class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    float slope = ctx.Attr<float>("slope");
+    float offset = ctx.Attr<float>("offset");
+    dx->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlActivationDesc act_desc(CNNL_ACTIVATION_HARDSIGMOID,
+                                   1.0f /*ceof useless*/,
+                                   1.0f /*sliced_dim useless*/,
+                                   slope,
+                                   offset);
+    MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc dout_desc(*dout);
+    MLUCnnlTensorDesc dx_desc(*dx);
+    MLUCnnl::ActiveGrad(ctx,
+                        act_desc.get(),
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        dout_desc.get(),
+                        GetBasePtr(dout),
+                        out_desc.get(),
+                        GetBasePtr(out),
+                        dx_desc.get(),
+                        GetBasePtr(dx));
   }
 };
 
@@ -152,19 +406,23 @@ namespace ops = paddle::operators;
 
 // relu
 REGISTER_OP_MLU_KERNEL(
-    relu, ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU, float>,
+    relu,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU, float>,
     ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU, paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    relu_grad, ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU, float>,
+    relu_grad,
+    ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU, float>,
     ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU,
                                    paddle::platform::float16>);
 
 // relu6
 REGISTER_OP_MLU_KERNEL(
-    relu6, ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU6, float>,
+    relu6,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU6, float>,
     ops::ActivationMLUKernel<CNNL_ACTIVATION_RELU6, paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    relu6_grad, ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU6, float>,
+    relu6_grad,
+    ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU6, float>,
     ops::ActivationGradMLUKernelV3<CNNL_ACTIVATION_RELU6,
                                    paddle::platform::float16>);
 
@@ -181,25 +439,30 @@ REGISTER_OP_MLU_KERNEL(
 
 // tanh
 REGISTER_OP_MLU_KERNEL(
-    tanh, ops::ActivationMLUKernel<CNNL_ACTIVATION_TANH, float>,
+    tanh,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_TANH, float>,
     ops::ActivationMLUKernel<CNNL_ACTIVATION_TANH, paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    tanh_grad, ops::ActivationGradMLUKernelV2<CNNL_ACTIVATION_TANH, float>,
+    tanh_grad,
+    ops::ActivationGradMLUKernelV2<CNNL_ACTIVATION_TANH, float>,
     ops::ActivationGradMLUKernelV2<CNNL_ACTIVATION_TANH,
                                    paddle::platform::float16>);
 
 // gelu
 REGISTER_OP_MLU_KERNEL(
-    gelu, ops::ActivationMLUKernel<CNNL_ACTIVATION_GELU, float>,
+    gelu,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_GELU, float>,
     ops::ActivationMLUKernel<CNNL_ACTIVATION_GELU, paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    gelu_grad, ops::ActivationGradMLUKernelV1<CNNL_ACTIVATION_GELU, float>,
+    gelu_grad,
+    ops::ActivationGradMLUKernelV1<CNNL_ACTIVATION_GELU, float>,
     ops::ActivationGradMLUKernelV1<CNNL_ACTIVATION_GELU,
                                    paddle::platform::float16>);
 
 // leaky_relu
 REGISTER_OP_MLU_KERNEL(
-    leaky_relu, ops::ActivationMLUKernel<CNNL_ACTIVATION_LEAKYRELU, float>,
+    leaky_relu,
+    ops::ActivationMLUKernel<CNNL_ACTIVATION_LEAKYRELU, float>,
     ops::ActivationMLUKernel<CNNL_ACTIVATION_LEAKYRELU,
                              paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
@@ -209,7 +472,50 @@ REGISTER_OP_MLU_KERNEL(
                                    paddle::platform::float16>);
 
 // sqrt
-REGISTER_OP_MLU_KERNEL(sqrt, ops::SqrtMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(sqrt,
+                       ops::SqrtMLUKernel<float>,
                        ops::SqrtMLUKernel<paddle::platform::float16>);
-REGISTER_OP_MLU_KERNEL(sqrt_grad, ops::SqrtGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(sqrt_grad,
+                       ops::SqrtGradMLUKernel<float>,
                        ops::SqrtGradMLUKernel<paddle::platform::float16>);
+
+// log log2 log10
+REGISTER_OP_MLU_KERNEL(
+    log,
+    ops::LogMLUKernel<CNNL_LOG_E, float>,
+    ops::LogMLUKernel<CNNL_LOG_E, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    log2,
+    ops::LogMLUKernel<CNNL_LOG_2, float>,
+    ops::LogMLUKernel<CNNL_LOG_2, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    log10,
+    ops::LogMLUKernel<CNNL_LOG_10, float>,
+    ops::LogMLUKernel<CNNL_LOG_10, paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp,
+                       ops::ExpMLUKernel<float>,
+                       ops::ExpMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(exp_grad,
+                       ops::ExpGradMLUKernel<float>,
+                       ops::ExpGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_swish,
+                       ops::HardSwishMLUKernel<float>,
+                       ops::HardSwishMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_swish_grad,
+                       ops::HardSwishGradMLUKernel<float>,
+                       ops::HardSwishGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(hard_sigmoid,
+                       ops::HardSigmoidMLUKernel<float>,
+                       ops::HardSigmoidMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(
+    hard_sigmoid_grad,
+    ops::HardSigmoidGradMLUKernel<float>,
+    ops::HardSigmoidGradMLUKernel<paddle::platform::float16>);

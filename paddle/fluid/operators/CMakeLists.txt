@@ -1,6 +1,6 @@
 include(operators)
 
-# solve "math constants not defined" problems caused by the order of inclusion 
+# solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
 
@@ -149,6 +149,10 @@ if (WITH_ASCEND_CL)
   op_library(sync_batch_norm_op)
 endif()
 
+if (WITH_MLU)
+  op_library(sync_batch_norm_op)
+endif()
+
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
@@ -173,6 +177,9 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)
 if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
+endif()
+if(WITH_XPU)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)

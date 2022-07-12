@@ -38,7 +38,8 @@ TEST(Analyzer_seq_pool1_compare_zero_copy, compare_zero_copy) {
   outputs_name.emplace_back(out_var_name);
   CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
                              reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
-                             input_slots_all, outputs_name);
+                             input_slots_all,
+                             outputs_name);
 }
 
 }  // namespace seq_pool1_tester

@@ -18,7 +18,8 @@ namespace paddle {
 namespace framework {
 
 void InterpreterCoreFastGarbageCollector::Add(
-    Variable* var, platform::DeviceEvent* event,
+    Variable* var,
+    platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not implemented for InterpreterCoreFastGarbageCollector."));

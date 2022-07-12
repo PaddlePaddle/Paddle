@@ -36,11 +36,12 @@ class LinspaceOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (platform::is_xpu_place(tensor.place())) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
     return expected_kernel_type;
   }
@@ -69,10 +70,13 @@ class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(linspace, LinspaceInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(linspace,
+                            LinspaceInferShapeFunctor,
                             PD_INFER_META(phi::LinspaceRawInferMeta));
 REGISTER_OPERATOR(
-    linspace, ops::LinspaceOp, ops::LinspaceOpMaker,
+    linspace,
+    ops::LinspaceOp,
+    ops::LinspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     LinspaceInferShapeFunctor);

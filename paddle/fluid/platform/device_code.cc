@@ -55,7 +55,8 @@ platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
   auto code_iter = codes_map.find(name);
   if (code_iter == codes_map.end()) {
     PADDLE_THROW(platform::errors::NotFound(
-        "Device code named %s for place %s does not exist.", name.c_str(),
+        "Device code named %s for place %s does not exist.",
+        name.c_str(),
         place));
   }
 
@@ -63,7 +64,8 @@ platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
 }
 
 DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0,
+  PADDLE_ENFORCE_GT(places.size(),
+                    0,
                     errors::InvalidArgument(
                         "Expected the number of places >= 1. But received %d.",
                         places.size()));
@@ -91,13 +93,15 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_HIP
-static bool CheckCUDADriverResult(hipError_t result, std::string caller,
+static bool CheckCUDADriverResult(hipError_t result,
+                                  std::string caller,
                                   std::string kernel_name = "") {
   if (result != hipSuccess) {
     const char* error = nullptr;
     error = dynload::hipGetErrorString(result);
 #else
-static bool CheckCUDADriverResult(CUresult result, std::string caller,
+static bool CheckCUDADriverResult(CUresult result,
+                                  std::string caller,
                                   std::string kernel_name = "") {
   if (result != CUDA_SUCCESS) {
     const char* error = nullptr;
@@ -211,7 +215,8 @@ static std::string FindCUDAIncludePath() {
   return "";
 }
 
-CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
+CUDADeviceCode::CUDADeviceCode(const Place& place,
+                               const std::string& name,
                                const std::string& kernel) {
   if (!is_gpu_place(place)) {
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -380,13 +385,15 @@ bool CUDADeviceCode::Compile(bool include_path) {
   }
 
   if (!CheckCUDADriverResult(dynload::cuModuleLoadData(&module_, ptx_.data()),
-                             "cuModuleLoadData", name_)) {
+                             "cuModuleLoadData",
+                             name_)) {
     return false;
   }
 
   if (!CheckCUDADriverResult(
           dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
-          "cuModuleGetFunction", name_)) {
+          "cuModuleGetFunction",
+          name_)) {
     return false;
   }
 #endif
@@ -398,22 +405,28 @@ bool CUDADeviceCode::Compile(bool include_path) {
 
 void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
   PADDLE_ENFORCE_EQ(
-      is_compiled_, true,
+      is_compiled_,
+      true,
       errors::PreconditionNotMet(
           "Please compile the code before launching the kernel."));
 
   int max_blocks = std::max(max_threads_ / num_threads_, 1);
   int workload_per_block = workload_per_thread_ * num_threads_;
-  int num_blocks =
-      std::min(max_blocks, (static_cast<int>(n) + workload_per_block - 1) /
-                               workload_per_block);
+  int num_blocks = std::min(
+      max_blocks,
+      (static_cast<int>(n) + workload_per_block - 1) / workload_per_block);
 
   auto* dev_ctx = reinterpret_cast<CUDADeviceContext*>(
       DeviceContextPool::Instance().Get(place_));
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
-      dynload::hipModuleLaunchKernel(function_, num_blocks, 1, 1,  // grid dim
-                                     num_threads_, 1, 1,           // block dim
+      dynload::hipModuleLaunchKernel(function_,
+                                     num_blocks,
+                                     1,
+                                     1,  // grid dim
+                                     num_threads_,
+                                     1,
+                                     1,                  // block dim
                                      0,                  // shared memory
                                      dev_ctx->stream(),  // stream
                                      args->data(),       // arguments
@@ -423,11 +436,16 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
                        name_.c_str()));
 #else
   PADDLE_ENFORCE_EQ(
-      dynload::cuLaunchKernel(function_, num_blocks, 1, 1,  // grid dim
-                              num_threads_, 1, 1,           // block dim
-                              0,                            // shared memory
-                              dev_ctx->stream(),            // stream
-                              args->data(),                 // arguments
+      dynload::cuLaunchKernel(function_,
+                              num_blocks,
+                              1,
+                              1,  // grid dim
+                              num_threads_,
+                              1,
+                              1,                  // block dim
+                              0,                  // shared memory
+                              dev_ctx->stream(),  // stream
+                              args->data(),       // arguments
                               nullptr),
       CUDA_SUCCESS,
       errors::External("Fail to launch kernel %s (in cuLaunchKernel.)",

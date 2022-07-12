@@ -49,7 +49,7 @@ def convert_dtype(dtype):
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         if dtype in [
-                np.bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
+                bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
                 np.int16, np.int32, np.int64, np.uint8, np.complex64,
                 np.complex128
         ]:

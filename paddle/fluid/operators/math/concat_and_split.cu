@@ -26,7 +26,8 @@ template <typename T>
 class ConcatFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
                   framework::Tensor* output) {
     phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     functor(context, input, axis, output);
@@ -43,7 +44,8 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  int axis, std::vector<framework::Tensor*>* outputs) {
+                  int axis,
+                  std::vector<framework::Tensor*>* outputs) {
     phi::funcs::SplitFunctor<phi::GPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }

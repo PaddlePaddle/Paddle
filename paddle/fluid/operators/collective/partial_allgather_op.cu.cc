@@ -40,16 +40,20 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     PADDLE_ENFORCE_EQ(
-        nranks, comm->nranks(),
-        platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                          nranks, comm->nranks()));
-    PADDLE_ENFORCE_EQ(rank, comm->rank(),
+        nranks,
+        comm->nranks(),
+        platform::errors::InvalidArgument(
+            "nranks: %s should equal to %s", nranks, comm->nranks()));
+    PADDLE_ENFORCE_EQ(rank,
+                      comm->rank(),
                       platform::errors::InvalidArgument(
                           "rank: %s should equal to %s", rank, comm->rank()));
     PADDLE_ENFORCE_EQ(
-        (numel % nranks), 0,
+        (numel % nranks),
+        0,
         platform::errors::InvalidArgument(
-            "The input numel (%d) must be divisible by nranks(%d)", numel,
+            "The input numel (%d) must be divisible by nranks(%d)",
+            numel,
             nranks));
 
     framework::DDim dims = in->dims();
@@ -68,9 +72,13 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
-        send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
-        comm->comm(), stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         static_cast<ncclDataType_t>(dtype),
+                                         comm->comm(),
+                                         stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

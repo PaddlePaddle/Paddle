@@ -250,7 +250,7 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
 // ROCM is not yet supported
 #if defined(PADDLE_WITH_CUDA)
 // The generic APIs is supported from CUDA10.1
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= 11000
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(*handle, stream));
 #endif
@@ -259,7 +259,7 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
 
 void DestroySparseHandle(sparseHandle_t handle) {
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= 11000
   if (handle != nullptr) {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseDestroy(handle));
     handle = nullptr;

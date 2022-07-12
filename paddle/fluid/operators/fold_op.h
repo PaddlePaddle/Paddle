@@ -62,8 +62,10 @@ class FoldOpKernel : public framework::OpKernel<T> {
     framework::DDim output_shape(
         {n_output_plane, output_sizes[0], output_sizes[1]});
 
-    framework::DDim input_matrix_shape({input_dims[0], kernel_sizes[0],
-                                        kernel_sizes[1], output_height,
+    framework::DDim input_matrix_shape({input_dims[0],
+                                        kernel_sizes[0],
+                                        kernel_sizes[1],
+                                        output_height,
                                         output_width});
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, output, static_cast<T>(0));
@@ -112,8 +114,10 @@ class FoldGradOpKernel : public framework::OpKernel<T> {
 
     framework::DDim output_shape(
         {n_output_plane, output_sizes[0], output_sizes[1]});
-    framework::DDim input_matrix_shape({input_dims[0], kernel_sizes[0],
-                                        kernel_sizes[1], output_height,
+    framework::DDim input_matrix_shape({input_dims[0],
+                                        kernel_sizes[0],
+                                        kernel_sizes[1],
+                                        output_height,
                                         output_width});
 
     math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
@@ -123,7 +127,11 @@ class FoldGradOpKernel : public framework::OpKernel<T> {
       Tensor out_grad_batch = output_grad->Slice(i, i + 1).Resize(output_shape);
       Tensor in_grad_batch =
           input_grad->Slice(i, i + 1).Resize(input_matrix_shape);
-      im2col(dev_ctx, out_grad_batch, dilations, strides, paddings,
+      im2col(dev_ctx,
+             out_grad_batch,
+             dilations,
+             strides,
+             paddings,
              &in_grad_batch);
     }
   }

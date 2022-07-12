@@ -27,12 +27,12 @@ repos:
         files: (api|backward)\.yaml$
 -   repo: local
     hooks:
-    -   id: clang-format-with-version-check
+    -   id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         exclude: |
             (?x)^(
                 paddle/fluid/distributed/ps/thirdparty/round_robin.h
@@ -80,65 +80,3 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
-        # exclude files which need to be fixed
-        exclude: |
-            (?x)^(
-                CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/CMakeLists.txt|             
-                paddle/fluid/inference/tests/infer_ut/CMakeLists.txt|
-                cmake/configure.cmake|
-                paddle/fluid/inference/api/demo_ci/CMakeLists.txt|
-                cmake/flags.cmake|
-                cmake/inference_lib.cmake|
-                cmake/external/protobuf.cmake|
-                paddle/fluid/framework/fleet/CMakeLists.txt|
-                paddle/fluid/inference/CMakeLists.txt|
-                paddle/fluid/inference/tests/api/CMakeLists.txt|
-                paddle/fluid/operators/CMakeLists.txt|
-                cmake/external/lite.cmake|
-                cmake/external/poplar.cmake|
-                cmake/python_module.cmake|
-                python/paddle/fluid/tests/unittests/asp/CMakeLists.txt|
-                cmake/cuda.cmake|
-                cmake/FindNumPy.cmake|
-                cmake/coveralls.cmake|
-                cmake/external/glog.cmake|
-                cmake/external/onnxruntime.cmake|
-                cmake/external/openblas.cmake|
-                cmake/external/xpu.cmake|
-                cmake/hip.cmake|
-                paddle/fluid/inference/analysis/ir_passes/CMakeLists.txt|
-                paddle/fluid/inference/api/CMakeLists.txt|
-                paddle/fluid/operators/controlflow/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/distributed_passes/CMakeLists.txt|
-                cmake/operators.cmake|
-                cmake/tensorrt.cmake|
-                paddle/fluid/inference/api/details/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/xpu/CMakeLists.txt|
-                cmake/external/arm_brpc.cmake|
-                cmake/external/concurrentqueue.cmake|
-                cmake/external/eigen.cmake|
-                cmake/external/mklml.cmake|
-                cmake/external/paddle2onnx.cmake|
-                cmake/miopen.cmake|
-                cmake/nccl.cmake|
-                cmake/simd.cmake|
-                paddle/fluid/inference/analysis/CMakeLists.txt|
-                paddle/fluid/inference/tests/infer_ut/external-cmake/gtest-cpp.cmake|
-                paddle/fluid/memory/allocation/CMakeLists.txt|
-                paddle/fluid/memory/CMakeLists.txt|
-                paddle/fluid/operators/cinn/CMakeLists.txt|
-                paddle/infrt/external_kernels/CMakeLists.txt|
-                paddle/infrt/kernel/phi/CMakeLists.txt|
-                python/paddle/fluid/contrib/slim/tests/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/autograd/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/distribution/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/fft/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/ipu/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/mkldnn/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/npu/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/ps/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/rnn/CMakeLists.txt|
-                python/paddle/fluid/tests/unittests/sequence/CMakeLists.txt
-            )$

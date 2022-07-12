@@ -121,7 +121,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
         elementwise_add_op_desc->GetNullableAttr("out_threshold");
     // set the out_threshold of the elementwise add op to be the out_threshold
     // of the conv2d_fusion
-    if (out_threshold_attr.which()) {
+    if (out_threshold_attr.index()) {
       new_op_desc.SetAttr("out_threshold", out_threshold_attr);
     }
     new_op_desc.Flush();
@@ -131,7 +131,8 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(
-        subgraph.count(x), 0,
+        subgraph.count(x),
+        0,
         platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 

@@ -51,16 +51,20 @@ inline static size_t TotalSequenceLength(
 inline static void CheckDims(const framework::DDim& seq_tensor_dims,
                              const framework::DDim& pad_tensor_dims,
                              const framework::Vector<size_t>& seq_offset,
-                             int64_t padded_seq_len, int64_t step_width,
+                             int64_t padded_seq_len,
+                             int64_t step_width,
                              const PadLayout& layout) {
   PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
+      static_cast<size_t>(seq_tensor_dims[0]),
+      seq_offset.back(),
       platform::errors::InvalidArgument(
           "Value of 1st dimension of the sequence tensor should be "
           "equal to sum of lengths of all sequences. Expected %ld == %ld, but "
           "got %ld != %ld. Please check the input value.",
-          static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
-          static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back()));
+          static_cast<size_t>(seq_tensor_dims[0]),
+          seq_offset.back(),
+          static_cast<size_t>(seq_tensor_dims[0]),
+          seq_offset.back()));
 
   PADDLE_ENFORCE_EQ(
       seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
@@ -71,8 +75,10 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
           "rank, or be equal with it. The pad_tensor's rank is %ld, "
           "expected the seq_tensor's rank is %ld or %ld, but got %ld. "
           "Please check the input value.",
-          pad_tensor_dims.size(), pad_tensor_dims.size(),
-          pad_tensor_dims.size() - 1, seq_tensor_dims.size()));
+          pad_tensor_dims.size(),
+          pad_tensor_dims.size(),
+          pad_tensor_dims.size() - 1,
+          seq_tensor_dims.size()));
 }
 
 /*
@@ -107,8 +113,10 @@ class PaddingLoDTensorFunctor {
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
-                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
+                  const framework::LoDTensor& pad_value,
+                  int pad_seq_len = -1,
+                  int lod_level = 0,
+                  bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 
@@ -117,8 +125,10 @@ class UnpaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& pad_tensor,
-                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
+                  framework::LoDTensor* seq_tensor,
+                  int pad_seq_len = -1,
+                  int lod_level = 0,
+                  bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 

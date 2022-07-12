@@ -83,8 +83,10 @@ type_dict_str_to_numpy = {
 }
 
 xpu_test_op_white_list = []
-xpu_test_type_white_list = ['float64']
-xpu_test_op_type_white_list = []
+xpu_test_device_type_white_list = ['xpu1_float64']
+xpu_test_op_type_white_list = [
+    'dropout_float16', 'dropout_grad_float16', 'matmul_v2_float16'
+]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
@@ -106,7 +108,18 @@ def get_op_white_list():
 
 
 def get_type_white_list():
-    type_white_list = xpu_test_type_white_list
+    xpu_version = core.get_xpu_device_version(0)
+    version_str = "xpu2" if xpu_version == core.XPUVersion.XPU2 else "xpu1"
+    xpu1_type_white_list = []
+    xpu2_type_white_list = []
+    for device_type in xpu_test_device_type_white_list:
+        device, t_type = device_type.split("_")
+        if "xpu1" == device:
+            xpu1_type_white_list.append(t_type)
+        else:
+            xpu2_type_white_list.append(t_type)
+
+    type_white_list = xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
             os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(','))
@@ -159,8 +172,10 @@ def make_xpu_op_list(xpu_version):
         for op_type in type_list:
             if op_type == paddle.bfloat16:
                 op_type = paddle.bfloat16
-            if op_type in type_white_list or op_type not in type_dict_paddle_to_str.keys(
-            ):
+
+            if type_dict_paddle_to_str[
+                    op_type] in type_white_list or op_type not in type_dict_paddle_to_str.keys(
+                    ):
                 continue
 
             device_op_type_name = device_op_name + '_' + type_dict_paddle_to_str[
@@ -187,10 +202,14 @@ def get_xpu_op_support_types(op_name, dev_id=0):
                 type_dict_paddle_to_str[paddle.bfloat16])
         else:
             support_type_str_list.append(type_dict_paddle_to_str[stype])
-    type_white_list = get_type_white_list()
-    return [
-        stype for stype in support_type_str_list if stype not in type_white_list
-    ]
+    ops = make_xpu_op_list(xpu_version)
+    support_types = []
+    for stype in support_type_str_list:
+        op_name_type = op_name + "_" + stype
+        if op_name_type in ops:
+            support_types.append(stype)
+
+    return support_types
 
 
 def record_op_test(op_name, test_type):

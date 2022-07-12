@@ -31,7 +31,9 @@ class LstsqOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("Solution"), "Output", "Solution", "LstsqOp");
     OP_INOUT_CHECK(ctx->HasOutput("Rank"), "Output", "Rank", "LstsqOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SingularValues"), "Output", "SingularValues",
+    OP_INOUT_CHECK(ctx->HasOutput("SingularValues"),
+                   "Output",
+                   "SingularValues",
                    "LstsqOp");
 
     auto x_dims = ctx->GetInputDim("X");
@@ -39,43 +41,52 @@ class LstsqOp : public framework::OperatorWithKernel {
     int x_rank = x_dims.size();
     int y_rank = y_dims.size();
 
-    PADDLE_ENFORCE_GE(x_rank, 2,
+    PADDLE_ENFORCE_GE(x_rank,
+                      2,
                       platform::errors::InvalidArgument(
                           "Expects input tensor x to be not less than "
                           "2 dimentions, but got dimention %d",
                           x_rank));
-    PADDLE_ENFORCE_GE(y_rank, 2,
+    PADDLE_ENFORCE_GE(y_rank,
+                      2,
                       platform::errors::InvalidArgument(
                           "Expects input tensor y to be not less than "
                           "2 dimentions, but got dimention %d",
                           y_rank));
 
     PADDLE_ENFORCE_EQ(
-        x_rank, y_rank,
+        x_rank,
+        y_rank,
         platform::errors::InvalidArgument(
             "Expects input tensor x and y to have the same dimension "
             "but got x's dimention [%d] and y's dimention [%d]",
-            x_rank, y_rank));
+            x_rank,
+            y_rank));
 
     std::vector<int> batch_dims_vec{};
     for (int i = 0; i < x_rank - 2; ++i) {
       PADDLE_ENFORCE_EQ(
-          x_dims[i], y_dims[i],
+          x_dims[i],
+          y_dims[i],
           platform::errors::InvalidArgument(
               "Expects input tensor x and y to have the same batch "
               "dimension, but got x's batch dimention [%d] and "
               "y's batch dimention [%d] in %d-th dim",
-              x_dims[i], y_dims[i], i));
+              x_dims[i],
+              y_dims[i],
+              i));
       batch_dims_vec.emplace_back(x_dims[i]);
     }
 
     PADDLE_ENFORCE_EQ(
-        x_dims[x_rank - 2], y_dims[y_rank - 2],
+        x_dims[x_rank - 2],
+        y_dims[y_rank - 2],
         platform::errors::InvalidArgument(
             "Expects input tensor x and y to have the same row dimension "
             "of the inner-most 2-dims matrix, "
             "but got x's row dimention [%d] and y's row dimention [%d]",
-            x_dims[x_rank - 2], y_dims[y_rank - 2]));
+            x_dims[x_rank - 2],
+            y_dims[y_rank - 2]));
 
     ctx->SetOutputDim("Rank", phi::make_ddim(batch_dims_vec));
 
@@ -139,6 +150,6 @@ This API processes Lstsq functor for general matrices.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstsq, ops::LstsqOp, ops::LstsqOpMaker)
 
-REGISTER_OP_CPU_KERNEL(
-    lstsq, ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LstsqCPUKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(lstsq,
+                       ops::LstsqCPUKernel<phi::CPUContext, float>,
+                       ops::LstsqCPUKernel<phi::CPUContext, double>);

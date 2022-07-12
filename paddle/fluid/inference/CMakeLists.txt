@@ -97,7 +97,7 @@ set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
-endif(WITH_CRYPTO)
+endif()
 
 if(WITH_PSCORE)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
@@ -108,7 +108,7 @@ if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
-endif(WITH_ONNXRUNTIME)
+endif()
 
 # Create shared inference library
 cc_library(
@@ -119,6 +119,8 @@ cc_library(
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
+  set_property(TARGET paddle_inference_shared
+               PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared gflags)
 endif()
 

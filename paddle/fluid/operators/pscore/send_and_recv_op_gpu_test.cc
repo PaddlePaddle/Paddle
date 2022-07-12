@@ -90,7 +90,8 @@ void CreateVarsOnScope(framework::Scope* scope) {
   res_var->GetMutable<framework::LoDTensor>();
 }
 
-void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
+void InitTensorsOnClient(framework::Scope* scope,
+                         int64_t rows_numel,
                          const platform::DeviceContext& ctx) {
   CreateVarsOnScope(scope);
   const auto place = ctx.GetPlace();
@@ -109,8 +110,10 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> temp_vec{0};
   float* temp_ptr = temp_vec.data();
 
-  memory::Copy(place, reinterpret_cast<void*>(micro_id_ptr),
-               platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+  memory::Copy(place,
+               reinterpret_cast<void*>(micro_id_ptr),
+               platform::CPUPlace(),
+               reinterpret_cast<void*>(temp_ptr),
                micro_id_var->numel() *
                    framework::SizeOfType(
                        framework::TransToProtoVarType(micro_id_var->dtype())),
@@ -122,7 +125,9 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   std::vector<float> x_vec;
   for (int64_t i = 0; i < rows_numel; ++i) x_vec.push_back(1.0);
   float* x_vec_ptr = x_vec.data();
-  memory::Copy(place, reinterpret_cast<void*>(x_ptr), platform::CPUPlace(),
+  memory::Copy(place,
+               reinterpret_cast<void*>(x_ptr),
+               platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
                x_var->numel() * framework::DataTypeSize(x_var->dtype()),
                stream);
@@ -133,7 +138,8 @@ void InitTensorsOnClient(framework::Scope* scope, int64_t rows_numel,
   // for (int64_t i = 0; i < rows_numel; ++i) res_ptr[i] = 1.0;
 }
 
-void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
+void InitTensorsOnServer(framework::Scope* scope,
+                         platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope);
   auto w = scope->Var("w")->GetMutable<phi::SelectedRows>();
@@ -157,7 +163,7 @@ void StartSendAndRecvServer(std::string endpoint) {
   framework::Scope scope;
   platform::CPUPlace place;
   framework::Executor exe(place);
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
   LOG(INFO) << "before AppendSendAndRecvBlock";
   auto block = AppendSendAndRecvBlock(&program);
   std::string in_var_name("x");
@@ -177,12 +183,13 @@ void StartSendAndRecvServer(std::string endpoint) {
   b_rpc_service2 = distributed::HeterServer::GetInstance();
   b_rpc_service2->SetEndPoint(endpoint);
   LOG(INFO) << "before HeterServer::RegisterServiceHandler";
-  b_rpc_service2->RegisterServiceHandler(
-      in_var_name,
-      [&](const MultiVarMsg* request, MultiVarMsg* response,
-          brpc::Controller* cntl) -> int {
-        return b_req_handler->Handle(request, response, cntl);
-      });
+  b_rpc_service2->RegisterServiceHandler(in_var_name,
+                                         [&](const MultiVarMsg* request,
+                                             MultiVarMsg* response,
+                                             brpc::Controller* cntl) -> int {
+                                           return b_req_handler->Handle(
+                                               request, response, cntl);
+                                         });
 
   b_rpc_service2->SetServiceHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
@@ -220,9 +227,10 @@ TEST(SENDANDRECV, GPU) {
       std::unordered_map<int,
                          std::shared_ptr<::paddle::framework::BlockingQueue<
                              std::pair<std::string, int>>>>;
-  using SharedTaskQueue = std::shared_ptr<std::unordered_map<
-      int, std::shared_ptr<::paddle::framework::BlockingQueue<
-               std::pair<std::string, int>>>>>;
+  using SharedTaskQueue = std::shared_ptr<
+      std::unordered_map<int,
+                         std::shared_ptr<::paddle::framework::BlockingQueue<
+                             std::pair<std::string, int>>>>>;
   SharedTaskQueue task_queue_(new TaskQueue{});
   (*task_queue_)[0] = std::make_shared<
       ::paddle::framework::BlockingQueue<std::pair<std::string, int>>>();
@@ -305,13 +313,15 @@ TEST(SENDANDRECV, GPU) {
   auto task = (*task_queue_)[0]->Pop();
   LOG(INFO) << "client get from task queue";
   PADDLE_ENFORCE_EQ(
-      task.first, "x",
+      task.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
-      task2.first, "x",
+      task2.first,
+      "x",
       platform::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 

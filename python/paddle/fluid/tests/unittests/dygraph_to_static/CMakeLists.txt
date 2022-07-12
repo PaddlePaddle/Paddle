@@ -32,8 +32,8 @@ set(TEST_EAGER_OPS
     test_simnet
     test_transformer)
 list(REMOVE_ITEM TEST_OPS test_lac)
-# NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope will
-# be removed and will cause some random failed in multi-thread.
+# NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
+# will be removed and will cause some random failed in multi-thread.
 if(NOT ON_INFER)
   py_test_modules(test_lac MODULES test_lac ENVS FLAGS_enable_eager_mode=1)
   set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
@@ -51,7 +51,7 @@ foreach(TEST_OP ${TEST_OPS})
   else()
     py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
   endif()
-endforeach(TEST_OP)
+endforeach()
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS

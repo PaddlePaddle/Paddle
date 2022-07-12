@@ -88,7 +88,8 @@ class Table {
 
   // only for tensor table
   virtual int32_t SetProgramEnv(
-      framework::Scope *scope, platform::Place place,
+      framework::Scope *scope,
+      platform::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) {
     return 0;
   }
@@ -112,17 +113,19 @@ class Table {
                        const std::string &converter) = 0;
   // for cache
   virtual int32_t SaveCache(
-      const std::string &path, const std::string &param,
+      const std::string &path,
+      const std::string &param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel) {
     return 0;
   }
 
   virtual int64_t CacheShuffle(
-      const std::string &path, const std::string &param, double cache_threshold,
-      std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
-                                         std::string &msg)>
-          send_msg_func,
+      const std::string &path,
+      const std::string &param,
+      double cache_threshold,
+      std::function<std::future<int32_t>(
+          int msg_type, int to_pserver_id, std::string &msg)> send_msg_func,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel,
       const std::vector<Table *> &table_ptrs) {
@@ -149,8 +152,8 @@ class Table {
   virtual int32_t InitializeAccessor();
   virtual int32_t InitializeShard() = 0;
   virtual std::string TableDir(const std::string &model_dir) {
-    return paddle::string::format_string("%s/%03d/", model_dir.c_str(),
-                                         _config.table_id());
+    return paddle::string::format_string(
+        "%s/%03d/", model_dir.c_str(), _config.table_id());
   }
 
   size_t _shard_idx;  // table 分片编号

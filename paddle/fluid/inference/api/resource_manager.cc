@@ -39,7 +39,8 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
   ~EigenGpuStreamDevice() override {}
 
-  void Reinitialize(gpuStream_t cuda_stream, phi::Allocator* allocator,
+  void Reinitialize(gpuStream_t cuda_stream,
+                    phi::Allocator* allocator,
                     GPUPlace place) {
     stream_ = cuda_stream;
     allocator_ = allocator;
@@ -163,9 +164,13 @@ void GPUContextResource::DestroyGPUResource() {
 }
 
 void GPUContextResource::InitGpuProperties() {
-  phi::InitGpuProperties(place_, &compute_capability_, &runtime_version_,
-                         &driver_version_, &multi_process_,
-                         &max_threads_per_mp_, &max_threads_per_block_,
+  phi::InitGpuProperties(place_,
+                         &compute_capability_,
+                         &runtime_version_,
+                         &driver_version_,
+                         &multi_process_,
+                         &max_threads_per_mp_,
+                         &max_threads_per_block_,
                          &max_grid_dim_size_);
 }
 
@@ -319,14 +324,16 @@ void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
 }
 
 void ResourceManager::DestroyGPUResource(void* stream) {
-  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream), true,
+  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
+                    true,
                     platform::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   Decrease(stream);
 }
 
 void ResourceManager::Decrease(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream), true,
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
                     platform::errors::InvalidArgument(
                         "The stream[%p] not found in ref_count.", stream));
   --ref_count_[stream];
@@ -337,14 +344,16 @@ void ResourceManager::Decrease(void* stream) {
 }
 
 void ResourceManager::Increase(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream), true,
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
                     platform::errors::InvalidArgument(
                         "The stream[%p] not found in ref_count.", stream));
   ++ref_count_[stream];
 }
 
 GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
-  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream), true,
+  PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
+                    true,
                     platform::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   return gpu_resources_.at(stream).get();

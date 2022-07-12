@@ -56,7 +56,8 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     auto& desired_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(), size,
+      return paddle::memory::Alloc(desired_dev_ctx.GetPlace(),
+                                   size,
                                    phi::Stream(reinterpret_cast<phi::StreamId>(
                                        desired_dev_ctx.stream())));
     } else {
@@ -122,6 +123,10 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::CUDA;
   } else if (platform::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
+  } else if (platform::is_ipu_place(place)) {
+    return platform::DeviceType::IPU;
+  } else if (platform::is_npu_place(place)) {
+    return platform::DeviceType::NPU;
   } else if (platform::is_mlu_place(place)) {
     return platform::DeviceType::MLU;
   } else {
@@ -224,11 +229,15 @@ template <typename DevCtx>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    platform::Place place, bool disable_setting_default_stream_for_allocator) {
+    platform::Place place,
+    bool disable_setting_default_stream_for_allocator) {
   // lazy evaluation. i.e., only create device context at first `Get`
   place_to_device_context->emplace(
-      place, std::async(std::launch::deferred, CreateDeviceContext<DevCtx>,
-                        place, disable_setting_default_stream_for_allocator));
+      place,
+      std::async(std::launch::deferred,
+                 CreateDeviceContext<DevCtx>,
+                 place,
+                 disable_setting_default_stream_for_allocator));
 }
 
 void EmplaceDeviceContexts(
@@ -237,7 +246,8 @@ void EmplaceDeviceContexts(
     const std::vector<platform::Place>& places,
     bool disable_setting_default_stream_for_allocator) {
   PADDLE_ENFORCE_GT(
-      places.size(), 0,
+      places.size(),
+      0,
       platform::errors::InvalidArgument("The number of platform places should "
                                         "be larger than 0. But received %d.",
                                         places.size()));
@@ -251,17 +261,20 @@ void EmplaceDeviceContexts(
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
       EmplaceDeviceContext<MKLDNNDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
-      EmplaceDeviceContext<CPUDeviceContext>(
-          place_to_device_context, p,
+      EmplaceDeviceContext<phi::CPUContext>(
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #endif
     } else if (platform::is_gpu_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDADeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(
@@ -271,7 +284,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_cuda_pinned_place(p)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       EmplaceDeviceContext<CUDAPinnedDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -281,7 +295,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_xpu_place(p)) {
 #ifdef PADDLE_WITH_XPU
       EmplaceDeviceContext<XPUDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(
@@ -291,7 +306,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_mlu_place(p)) {
 #ifdef PADDLE_WITH_MLU
       EmplaceDeviceContext<MLUDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(
@@ -301,7 +317,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_ipu_place(p)) {
 #ifdef PADDLE_WITH_IPU
       EmplaceDeviceContext<IPUDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(
@@ -311,7 +328,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       EmplaceDeviceContext<NPUDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -321,7 +339,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_npu_pinned_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       EmplaceDeviceContext<NPUPinnedDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -332,7 +351,8 @@ void EmplaceDeviceContexts(
     } else if (platform::is_custom_place(p)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       EmplaceDeviceContext<CustomDeviceContext>(
-          place_to_device_context, p,
+          place_to_device_context,
+          p,
           disable_setting_default_stream_for_allocator);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -346,16 +366,9 @@ void EmplaceDeviceContexts(
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
-  EmplaceDeviceContexts(&device_contexts_, places,
+  EmplaceDeviceContexts(&device_contexts_,
+                        places,
                         /*disable_setting_default_stream_for_allocator=*/false);
-}
-
-CPUDeviceContext::CPUDeviceContext() : phi::CPUContext() {
-  phi::CPUContext::Init();
-}
-
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : phi::CPUContext(place) {
-  phi::CPUContext::Init();
 }
 
 #ifdef PADDLE_WITH_IPU
@@ -401,8 +414,8 @@ NPUDeviceContext::~NPUDeviceContext() {
 }
 
 void NPUDeviceContext::Wait() const {
-  platform::RecordEvent record_event("NPUDeviceContext/wait",
-                                     platform::TracerEventType::UserDefined, 2);
+  platform::RecordEvent record_event(
+      "NPUDeviceContext/wait", platform::TracerEventType::UserDefined, 2);
   VLOG(4) << "NPU context(" << this << ")  Wait";
   stream_->Wait();
 }
@@ -742,7 +755,7 @@ const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), p_blobmap_() {
+    : phi::CPUContext(place), p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_exec_items_.reset(new ExecShape());
   p_mutex_.reset(new std::mutex());
@@ -845,7 +858,8 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
     VLOG(3) << "Prevented Clearing DNNL cache. Updated "
                "block_next_cache_clearing_ : "
             << block_next_cache_clearing_;
-    PADDLE_ENFORCE_GE(block_next_cache_clearing_, 0,
+    PADDLE_ENFORCE_GE(block_next_cache_clearing_,
+                      0,
                       platform::errors::InvalidArgument(
                           "Cache clearing mark should be non-negative "
                           ". But received %d.",

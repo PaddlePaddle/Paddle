@@ -20,9 +20,15 @@ using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
-void TemporalShiftBwNCHW(const T* output_grad, T* input_grad, const int ntchw,
-                         const int tchw, const int chw, const int hw,
-                         const int t, const int c1, const int c2) {
+void TemporalShiftBwNCHW(const T* output_grad,
+                         T* input_grad,
+                         const int ntchw,
+                         const int tchw,
+                         const int chw,
+                         const int hw,
+                         const int t,
+                         const int c1,
+                         const int c2) {
   int src_it = 0;
   for (int i = 0; i < ntchw; i++) {
     int it = (i % tchw) / chw;
@@ -45,9 +51,15 @@ void TemporalShiftBwNCHW(const T* output_grad, T* input_grad, const int ntchw,
 }
 
 template <typename T>
-void TemporalShiftBwNHWC(const T* output_grad, T* input_grad, const int nthwc,
-                         const int thwc, const int hwc, const int t,
-                         const int c, const int c1, const int c2) {
+void TemporalShiftBwNHWC(const T* output_grad,
+                         T* input_grad,
+                         const int nthwc,
+                         const int thwc,
+                         const int hwc,
+                         const int t,
+                         const int c,
+                         const int c1,
+                         const int c2) {
   int src_it = 0;
   for (int i = 0; i < nthwc; i++) {
     int it = (i % thwc) / hwc;
@@ -111,11 +123,11 @@ class TemporalShiftGradKernel : public framework::OpKernel<T> {
         input_grad->mutable_data<T>(in_grad_dims, ctx.GetPlace());
 
     if (data_layout == DataLayout::kNCHW) {
-      TemporalShiftBwNCHW<T>(output_grad_data, input_grad_data, ntchw, tchw,
-                             chw, hw, t, c1, c2);
+      TemporalShiftBwNCHW<T>(
+          output_grad_data, input_grad_data, ntchw, tchw, chw, hw, t, c1, c2);
     } else {
-      TemporalShiftBwNHWC<T>(output_grad_data, input_grad_data, ntchw, tchw,
-                             chw, t, c, c1, c2);
+      TemporalShiftBwNHWC<T>(
+          output_grad_data, input_grad_data, ntchw, tchw, chw, t, c, c1, c2);
     }
   }
 };

@@ -16,7 +16,8 @@
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    tree_conv, ops::TreeConvKernel<paddle::platform::CUDADeviceContext, float>,
+    tree_conv,
+    ops::TreeConvKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TreeConvKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     tree_conv_grad,

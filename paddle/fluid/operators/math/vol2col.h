@@ -71,20 +71,24 @@ using DataLayout = framework::DataLayout;
 template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& vol,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* col,
                   const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& col,
+  void operator()(const DeviceContext& context,
+                  const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const std::vector<int>& paddings,
+                  framework::Tensor* vol,
                   const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 

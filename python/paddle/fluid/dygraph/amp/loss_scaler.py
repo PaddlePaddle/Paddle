@@ -129,11 +129,11 @@ class AmpScaler(object):
             self._decr_count = 0
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
-            self._found_inf = to_variable(np.array([0]).astype(np.bool))
+            self._found_inf = to_variable(np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp16 = to_variable(
-                np.array([0]).astype(np.bool))
+                np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp32 = to_variable(
-                np.array([0]).astype(np.bool))
+                np.array([0]).astype(np.bool_))
             self._scale = to_variable(
                 np.array([self._init_loss_scaling]).astype(np.float32))
             self._cache_founf_inf = None

@@ -94,10 +94,14 @@ class ReverseGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(reverse, ReverseInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(reverse,
+                            ReverseInferShapeFunctor,
                             PD_INFER_META(phi::ReverseInferMeta));
-REGISTER_OPERATOR(reverse, ops::ReverseOp, ops::ReverseOpMaker,
+REGISTER_OPERATOR(reverse,
+                  ops::ReverseOp,
+                  ops::ReverseOpMaker,
                   ops::ReverseGradMaker<paddle::framework::OpDesc>,
                   ops::ReverseGradMaker<paddle::imperative::OpBase>,
-                  ops::ReverseOpVarTypeInference, ReverseInferShapeFunctor);
+                  ops::ReverseOpVarTypeInference,
+                  ReverseInferShapeFunctor);
 REGISTER_OPERATOR(reverse_grad, ops::ReverseOp, ops::ReverseOpVarTypeInference);

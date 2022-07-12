@@ -63,8 +63,10 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 namespace platform = paddle::platform;
-DECLARE_INFER_SHAPE_FUNCTOR(viterbi_decode, ViterbiDecodeInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(viterbi_decode,
+                            ViterbiDecodeInferShapeFunctor,
                             PD_INFER_META(phi::ViterbiDecodeInferMeta));
-REGISTER_OP_WITHOUT_GRADIENT(viterbi_decode, ops::ViterbiDecodeOp,
+REGISTER_OP_WITHOUT_GRADIENT(viterbi_decode,
+                             ops::ViterbiDecodeOp,
                              ops::ViterbiDecodeOpMaker,
                              ViterbiDecodeInferShapeFunctor);

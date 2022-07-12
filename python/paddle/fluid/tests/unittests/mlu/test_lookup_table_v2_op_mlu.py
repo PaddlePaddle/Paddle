@@ -97,7 +97,6 @@ class TestLookupTableV2FP16(TestLookupTableV2):
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.__class__.no_need_check_grad = True
 
 
 class TestLookupTableV2Dim32(TestLookupTableV2):
@@ -126,7 +125,6 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.__class__.no_need_check_grad = True
 
 
 class TestLookupTableV2WithPadding(TestLookupTableV2):

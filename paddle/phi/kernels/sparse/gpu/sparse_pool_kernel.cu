@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
 namespace phi {
 namespace sparse {

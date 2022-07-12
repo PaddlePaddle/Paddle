@@ -46,8 +46,11 @@ T sign(T val) {
 
 template <typename T>
 struct SlogDeterminantFunctor {
-  void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int64_t rank, int64_t batch_count, Tensor* output) {
+  void operator()(const Tensor& input,
+                  const framework::ExecutionContext ctx,
+                  int64_t rank,
+                  int64_t batch_count,
+                  Tensor* output) {
     std::vector<T> input_vec;
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
@@ -92,7 +95,8 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto batch_count = phi::detail::GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
     PADDLE_ENFORCE_GE(
-        input_dim_size, 2,
+        input_dim_size,
+        2,
         platform::errors::InvalidArgument(
             "the input matrix dimension size should greater than 2."));
     PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
@@ -126,14 +130,16 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     auto* dslogdet =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
-    PADDLE_ENFORCE_EQ(grad->dims()[0], 2,
+    PADDLE_ENFORCE_EQ(grad->dims()[0],
+                      2,
                       platform::errors::InvalidArgument(
                           "The grad tensor of SlogDet should contain two"
                           " grad: sign and absslogdet, but here %ld.",
                           grad->dims()[0]));
     if (input->dims().size() > 2) {
       PADDLE_ENFORCE_EQ(
-          grad->dims().size() + 1, input->dims().size(),
+          grad->dims().size() + 1,
+          input->dims().size(),
           platform::errors::InvalidArgument(
               "The grad tensor of slogdet dims size should 1 less than"
               " input tensor's, but here differ %d",
@@ -149,13 +155,16 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     auto slogdet_vec = slogdet->Split(1, 0);
     auto absslogdet_val = slogdet_vec[0];
     if (!phi::detail::CheckMatrixInvertible<
-            T, typename framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+            T,
+            typename framework::ConvertToPhiContext<DeviceContext>::TYPE>(
             dev_ctx, &absslogdet_val)) {
       // The matrix is not invertible
       VLOG(3) << "The input matrix not invertible!";
       dslogdet->Resize(input->dims());
-      phi::Full<T>(dev_ctx, phi::vectorize(input->dims()),
-                   std::numeric_limits<T>::quiet_NaN(), dslogdet);
+      phi::Full<T>(dev_ctx,
+                   phi::vectorize(input->dims()),
+                   std::numeric_limits<T>::quiet_NaN(),
+                   dslogdet);
       return;
     }
 

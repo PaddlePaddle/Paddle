@@ -30,10 +30,13 @@ namespace operators {
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank, true,
+      axis >= -rank && axis < rank,
+      true,
       platform::errors::InvalidArgument(
-          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
-          rank, axis));
+          "The axis is expected to be in range of [%d, %d), but got %d",
+          -rank,
+          rank,
+          axis));
   if (axis < 0) {
     axis = axis + rank;
   }
