@@ -12,11 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/dist_grad_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/dist_grad_kernel_impl.h"
+#include <vector>
 
-PD_REGISTER_KERNEL(
-    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void UniqueConsecutiveKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             bool return_inverse,
+                             bool return_counts,
+                             const std::vector<int>& axis,
+                             int dtype,
+                             DenseTensor* out,
+                             DenseTensor* index,
+                             DenseTensor* counts);
+
+}  // namespace phi

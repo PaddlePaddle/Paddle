@@ -94,14 +94,13 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor) The type of output "
               "is the same as input X.");
-    AddAttr<int>(
-        "dst_place_type",
-        "Determine the dst place of tensor copy. "
-        "By Now it ONLY support CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace "
-        "Other place type is Unimplemented and will cause ERROR."
-        "0: dst is on CUDAPlace. "
-        "1: dst is on NPUPlace. "
-        "2: dst is on XPUPlace. ");
+    AddAttr<int>("dst_place_type",
+                 "Determine the dst place of tensor copy. "
+                 "By Now it support:"
+                 "0. CUDAPinnedPlace/CPU <->CUDAPlace"
+                 "1. NPUPinnedPlace/CPU <-> NPUPlace"
+                 "2. CPU <->XPUPlace"
+                 "Other place type is Unimplemented and will cause ERROR.");
     AddComment(R"DOC(
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.

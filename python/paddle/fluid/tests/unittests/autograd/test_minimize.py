@@ -13,80 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 import paddle
 from paddle.incubate.autograd.primx import prim2orig
-from paddle.incubate.autograd.utils import enable_prim, disable_prim, prim_enabled
+from paddle.incubate.autograd.utils import (disable_prim, enable_prim,
+                                            prim_enabled)
 
 paddle.enable_static()
-
-
-class TestGradients(unittest.TestCase):
-
-    def test_third_order(self):
-        enable_prim()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x2 = paddle.multiply(x, x)
-            x3 = paddle.multiply(x2, x)
-            x4 = paddle.multiply(x3, x)
-
-            grad1, = paddle.static.gradients([x4], [x])
-            grad2, = paddle.static.gradients([grad1], [x])
-            grad3, = paddle.static.gradients([grad2], [x])
-
-            prim2orig(main.block(0))
-
-        feed = {x.name: np.array([2.]).astype('float32')}
-        fetch_list = [grad3.name]
-        result = [np.array([48.])]
-
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
-        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.allclose(outs, result)
-        disable_prim()
-
-    def test_fourth_order(self):
-        enable_prim()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name='x', shape=[1], dtype='float32')
-            x2 = paddle.multiply(x, x)
-            x3 = paddle.multiply(x2, x)
-            x4 = paddle.multiply(x3, x)
-            x5 = paddle.multiply(x4, x)
-            out = paddle.sqrt(x5 + x4)
-
-            grad1, = paddle.static.gradients([out], [x])
-            grad2, = paddle.static.gradients([grad1], [x])
-            grad3, = paddle.static.gradients([grad2], [x])
-            grad4, = paddle.static.gradients([grad3], [x])
-
-            prim2orig(main.block(0))
-
-        feed = {
-            x.name: np.array([2.]).astype('float32'),
-        }
-        fetch_list = [grad4.name]
-        # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
-        result = [np.array([-0.27263762711])]
-
-        place = paddle.CPUPlace()
-        if paddle.device.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup)
-        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.allclose(outs, result)
-        disable_prim()
 
 
 class TestMinimize(unittest.TestCase):
