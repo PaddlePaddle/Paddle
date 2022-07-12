@@ -282,7 +282,7 @@ bash $PADDLE_ROOT/tools/check_added_ut_win.sh
 rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-    ctest -R "(${added_uts})" -E "$disable_wingpu11_test" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    ctest -R "(${added_uts})" -E "$disable_wingpu11_test|${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
     rm -f $PADDLE_ROOT/added_ut
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
