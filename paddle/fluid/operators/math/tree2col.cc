@@ -84,9 +84,9 @@ void Tree2ColUtil::construct_tree(const framework::Tensor &EdgeSet,
 }
 
 template <typename T>
-class Tree2ColFunctor<platform::CPUDeviceContext, T> {
+class Tree2ColFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
+  void operator()(const phi::CPUContext &context,
                   const framework::Tensor &EdgeSet,
                   const framework::Tensor &node_features,
                   framework::Tensor *patch,
@@ -94,7 +94,7 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
     auto cpu_place = context.GetPlace();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, patch_size;
@@ -138,9 +138,9 @@ class Tree2ColFunctor<platform::CPUDeviceContext, T> {
   }
 };
 template <typename T>
-class Col2TreeFunctor<platform::CPUDeviceContext, T> {
+class Col2TreeFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
+  void operator()(const phi::CPUContext &context,
                   const framework::Tensor &EdgeSet,
                   const framework::Tensor &out_grad,
                   framework::Tensor *in_grad,
@@ -148,7 +148,7 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();
     auto cpu_place = context.GetPlace();
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> constant;
+    phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, grad_count = 0;
@@ -195,10 +195,10 @@ class Col2TreeFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class Tree2ColFunctor<platform::CPUDeviceContext, float>;
-template class Tree2ColFunctor<platform::CPUDeviceContext, double>;
-template class Col2TreeFunctor<platform::CPUDeviceContext, float>;
-template class Col2TreeFunctor<platform::CPUDeviceContext, double>;
+template class Tree2ColFunctor<phi::CPUContext, float>;
+template class Tree2ColFunctor<phi::CPUContext, double>;
+template class Col2TreeFunctor<phi::CPUContext, float>;
+template class Col2TreeFunctor<phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

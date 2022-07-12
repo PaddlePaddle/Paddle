@@ -320,18 +320,16 @@ REGISTER_OPERATOR(crop_tensor,
                   ops::CropTensorGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(crop_tensor_grad, ops::CropTensorOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    crop_tensor,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    crop_tensor_grad,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(crop_tensor,
+                       ops::CropTensorKernel<phi::CPUContext, float>,
+                       ops::CropTensorKernel<phi::CPUContext, double>,
+                       ops::CropTensorKernel<phi::CPUContext, int>,
+                       ops::CropTensorKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(crop_tensor_grad,
+                       ops::CropTensorGradKernel<phi::CPUContext, float>,
+                       ops::CropTensorGradKernel<phi::CPUContext, double>,
+                       ops::CropTensorGradKernel<phi::CPUContext, int>,
+                       ops::CropTensorGradKernel<phi::CPUContext, int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(
     crop_tensor,

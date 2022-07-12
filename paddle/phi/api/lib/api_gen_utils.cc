@@ -62,7 +62,7 @@ std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor) {
 
 /* ----------------- for infer_meta --------------------- */
 
-phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
+phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor) {
   return phi::MetaTensor(tensor);
 }
 
@@ -94,20 +94,12 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
-  return phi::MetaTensor(tensor);
-}
-
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SelectedRows>& tensor) {
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
   }
   return phi::MetaTensor();
-}
-
-phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {
-  return phi::MetaTensor(tensor);
 }
 
 /* ------------------ for output ----------------------- */

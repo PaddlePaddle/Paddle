@@ -149,7 +149,7 @@ template <typename T>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<LoDTensor>("X");
     auto* w = ctx.Input<Tensor>("Filter");
     auto* b = ctx.Input<Tensor>("Bias");

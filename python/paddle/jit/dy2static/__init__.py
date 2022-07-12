@@ -14,25 +14,21 @@
 
 from .base import saw
 from .base import UndefinedVar
-from .convert_call_func import convert_call  # noqa: F401
-from .convert_operators import cast_bool_if_necessary  # noqa: F401
-from .convert_operators import convert_assert  # noqa: F401
-from .convert_operators import convert_ifelse  # noqa: F401
-from .convert_operators import convert_len  # noqa: F401
-from .convert_operators import convert_logical_and  # noqa: F401
-from .convert_operators import convert_logical_not  # noqa: F401
-from .convert_operators import convert_logical_or  # noqa: F401
-from .convert_operators import convert_pop  # noqa: F401
-from .convert_operators import convert_print  # noqa: F401
-from .convert_operators import convert_shape_compare  # noqa: F401
-from .convert_operators import convert_var_dtype  # noqa: F401
-from .convert_operators import convert_shape  # noqa: F401
-from .convert_operators import convert_while_loop  # noqa: F401
+from .convert_operators import convert_logical_and as And  # noqa: F401
+from .convert_operators import convert_var_dtype as AsDtype  # noqa: F401
+from .convert_operators import convert_assert as Assert  # noqa: F401
+from .convert_call_func import convert_call as Call  # noqa: F401
+from .convert_operators import convert_ifelse as IfElse  # noqa: F401
+from .convert_operators import convert_len as Len  # noqa: F401
+from .convert_operators import convert_logical_not as Not  # noqa: F401
+from .convert_operators import convert_logical_or as Or  # noqa: F401
+from .convert_operators import convert_pop as Pop  # noqa: F401
+from .convert_operators import convert_print as Print  # noqa: F401
+from .convert_operators import convert_shape as Shape  # noqa: F401
+from .convert_operators import convert_while_loop as While  # noqa: F401
+
 from .variable_trans_func import create_bool_as_type  # noqa: F401
-from .variable_trans_func import create_fill_constant_node  # noqa: F401
-from .variable_trans_func import create_static_variable_gast_node  # noqa: F401
-from .variable_trans_func import data_layer_not_check  # noqa: F401
 from .variable_trans_func import to_static_variable  # noqa: F401
-from .variable_trans_func import to_static_variable_gast_node  # noqa: F401
+from .convert_operators import convert_shape_compare  # noqa: F401
 
 __all__ = []

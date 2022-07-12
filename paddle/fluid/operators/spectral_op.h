@@ -25,7 +25,6 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"

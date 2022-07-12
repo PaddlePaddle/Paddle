@@ -573,7 +573,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         smem[warp_m * WARPS_N + warp_n] = mu_local;
       }
       __syncthreads();
-      if (tidx == 0) {
+      if (tidx % THREADS_PER_ROW == 0) {
         mu_local = 0.f;
 #pragma unroll
         for (int it = 0; it < WARPS_N; ++it) {
@@ -608,7 +608,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
         smem[warp_m * WARPS_N + warp_n] = var_local;
       }
       __syncthreads();
-      if (tidx == 0) {
+      if (tidx % THREADS_PER_ROW == 0) {
         var_local = 0.f;
 #pragma unroll
         for (int it = 0; it < WARPS_N; ++it) {

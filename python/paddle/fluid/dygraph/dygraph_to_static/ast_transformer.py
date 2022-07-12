@@ -20,6 +20,7 @@ from __future__ import print_function
 # See details in https://github.com/serge-sans-paille/gast/
 import os
 from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
@@ -58,7 +59,7 @@ def apply_optimization(transformers):
         transformers.insert(3, BreakTransformOptimizer)
 
 
-class DygraphToStaticAst(gast.NodeTransformer):
+class DygraphToStaticAst(BaseTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
@@ -95,6 +96,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
+            #CreateVariableTransformer,  # create undefined var for if / while / for
             LoopTransformer,  # for/while -> while_op
             IfElseTransformer,  # if/else -> cond_op
             AssertTransformer,  # assert statement

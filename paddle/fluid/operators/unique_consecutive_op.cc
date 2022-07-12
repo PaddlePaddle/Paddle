@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/unique_consecutive_op.h"
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -118,12 +117,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(unique_consecutive,
                              ops::UniqueConsecutiveOp,
                              ops::UniqueConsecutiveOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    unique_consecutive,
-    ops::UniqueConsecutiveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::UniqueConsecutiveKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::UniqueConsecutiveKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::UniqueConsecutiveKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_VERSION(unique_consecutive)
     .AddCheckpoint(
         R"ROC(

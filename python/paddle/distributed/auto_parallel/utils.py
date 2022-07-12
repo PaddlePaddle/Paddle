@@ -1057,13 +1057,15 @@ def set_grad_var_shape(program, dist_context):
                 "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
                 "dropout_grad", "tanh_grad", "slice", "assign",
                 "matmul_v2_triple_grad", "elementwise_add_triple_grad",
-                "fill_constant", "sqrt_grad"
+                "fill_constant", "sqrt_grad",
+                "fused_softmax_mask_upper_triangle_grad"
             ]
             forward_list = [
                 "reshape2", "softmax_with_cross_entropy", "transpose2",
                 "softmax", "cross_entropy2", "dropout", "tanh",
                 ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
-                "elementwise_add_grad_grad", "shape", "sqrt"
+                "elementwise_add_grad_grad", "shape", "sqrt",
+                "fused_softmax_mask_upper_triangle"
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1094,11 +1096,9 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
-    ref_role1 = int(core.op_proto_and_checker_maker.OpRole.Forward)
-    ref_role2 = int(core.op_proto_and_checker_maker.OpRole.Loss)
     op_role = int(op.attr('op_role'))
-    return OP_ROLE_KEY in op.attr_names and (op_role == ref_role1
-                                             or op_role == ref_role2)
+    return OP_ROLE_KEY in op.attr_names and (op_role == int(OpRole.Forward)
+                                             or op_role == int(OpRole.Loss))
 
 
 def is_backward_op(op):
@@ -1111,9 +1111,14 @@ def is_optimize_op(op):
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
 
 
+def is_lr_sched_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize.LRSched)
+
+
 def is_loss_op(op):
     return OP_ROLE_KEY in op.attr_names and \
-        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
 
 
 def is_prim_op(op):

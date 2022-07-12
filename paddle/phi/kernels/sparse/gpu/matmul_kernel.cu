@@ -76,7 +76,7 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
   MetaTensor meta_out(out);
   meta_out.set_dims(phi::make_ddim(out_dim_vec));
-  meta_out.set_dtype(x.non_zero_elements().dtype());
+  meta_out.set_dtype(y.dtype());
 
   dev_ctx.template Alloc<T>(out);
 

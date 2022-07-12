@@ -29,6 +29,12 @@ using string::Style;
 
 size_t PDPattern::id_ = 0UL;
 
+#ifdef PADDLE_WITH_TENSORRT
+namespace patterns {
+thread_local std::unordered_map<std::string, size_t> KeyCounter::dic_;
+}
+#endif
+
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
     PADDLE_ENFORCE_EQ(
@@ -925,65 +931,22 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
-PDNode *patterns::ConvActivation::operator()(
-    paddle::framework::ir::PDNode *conv_input,
-    std::string conv_type,
-    std::string activation_type) {
-  // Create Operators
-  conv_input->assert_is_op_input(conv_type, "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
+PDNode *patterns::OperatorActivation::operator()(
+    const std::string &operator_type, const std::string &activation_type) {
+  auto *preceding_op =
+      pattern->NewNode(preceding_op_repr())->assert_is_op(operator_type);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_only_output_of_op(operator_type)
+                               ->assert_is_op_input(activation_type);
   auto *activation_op =
       pattern->NewNode(activation_repr())->assert_is_op(activation_type);
-  // Create variables
-  // Filter
-  auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
-                              ->AsInput()
-                              ->assert_is_persistable_var()
-                              ->assert_is_op_input(conv_type, "Filter");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *conv_out_var = pattern->NewNode(conv_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op(conv_type)
-                           ->assert_is_op_input(activation_type);
-  // output
-  auto *activation_out_var = pattern->NewNode(activation_out_repr())
-                                 ->AsOutput()
-                                 ->assert_is_op_output(activation_type);
-
-  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
-  activation_op->LinksFrom({conv_out_var}).LinksTo({activation_out_var});
-  return activation_out_var;
-}
-
-PDNode *patterns::ElementwiseActivation::operator()(
-    paddle::framework::ir::PDNode *elementwise_a,
-    const std::string &elementwise_type,
-    const std::string &activation_type) {
-  // Create Operators
-  elementwise_a->assert_is_op_input(elementwise_type, "X");
-  auto *elementwise_op =
-      pattern->NewNode(elementwise_repr())->assert_is_op(elementwise_type);
-  auto *activation_op =
-      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
-  // Create variables
-  auto *elementwise_b = pattern->NewNode(elementwise_b_repr())
-                            ->AsInput()
-                            ->assert_is_op_input(elementwise_type, "Y");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *elementwise_out_var =
-      pattern->NewNode(elementwise_out_repr())
-          ->AsIntermediate()
-          ->assert_is_only_output_of_op(elementwise_type)
-          ->assert_is_op_input(activation_type);
-  // output
-  auto *activation_out_var = pattern->NewNode(activation_out_repr())
-                                 ->AsOutput()
-                                 ->assert_is_op_output(activation_type);
-
-  elementwise_op->LinksFrom({elementwise_a, elementwise_b})
-      .LinksTo({elementwise_out_var});
-  activation_op->LinksFrom({elementwise_out_var}).LinksTo({activation_out_var});
-  return activation_out_var;
+  auto *activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output(activation_type);
+  preceding_op->LinksTo({preceding_op_out});
+  activation_op->LinksFrom({preceding_op_out}).LinksTo({activation_out});
+  return activation_out;
 }
 
 PDNode *patterns::SeqConvEltAddRelu::operator()(
@@ -1113,44 +1076,6 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
       .LinksTo({fc_out_var});
   return fc_out_var;
-}
-
-PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
-  auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
-  auto *fc_out = pattern->NewNode(fc_out_repr())
-                     ->assert_is_op_output("fc", "Out")
-                     ->assert_is_op_input(act_type);
-  auto *act =
-      pattern->NewNode(act_repr())->assert_is_op(act_type)->AsIntermediate();
-  auto *act_out = pattern->NewNode(act_out_repr())
-                      ->assert_is_op_output(act_type, "Out")
-                      ->AsOutput();
-
-  fc->LinksTo({fc_out});
-  act->LinksFrom({fc_out}).LinksTo({act_out});
-
-  return act_out;
-}
-
-PDNode *patterns::SoftplusActivation::operator()(std::string activation_type) {
-  // Create Operators
-  auto *softplus_op =
-      pattern->NewNode(softplus_repr())->assert_is_op("softplus");
-  auto *activation_op =
-      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *softplus_out = pattern->NewNode(softplus_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_only_output_of_op("softplus")
-                           ->assert_is_op_input(activation_type);
-  // output
-  auto *activation_out = pattern->NewNode(activation_out_repr())
-                             ->AsOutput()
-                             ->assert_is_op_output(activation_type);
-
-  softplus_op->LinksTo({softplus_out});
-  activation_op->LinksFrom({softplus_out}).LinksTo({activation_out});
-  return activation_out;
 }
 
 PDNode *patterns::Embedding::operator()(PDNode *x) {
@@ -1796,80 +1721,23 @@ PDNode *patterns::Conv::operator()() {
   return output_var;
 }
 
-PDNode *patterns::Transpose::operator()() {
+PDNode *patterns::Immutable::operator()(const std::string &immutable_type,
+                                        const std::string &input_name) {
   auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
 
-  auto transpose_op =
-      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto immutable_op =
+      pattern->NewNode(immutable_op_repr())->assert_is_op(immutable_type);
 
-  auto transpose_in = pattern->NewNode(transpose_in_repr())
+  auto immutable_in = pattern->NewNode(immutable_in_repr())
                           ->AsInput()
-                          ->assert_is_op_input("transpose2");
-  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                          ->assert_is_op_input(immutable_type, input_name);
+  auto immutable_out = pattern->NewNode(immutable_out_repr())
                            ->AsOutput()
-                           ->assert_is_op_output("transpose2", "Out");
+                           ->assert_is_op_output(immutable_type, "Out");
 
-  prev_op->LinksTo({transpose_in});
-  transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
-  return transpose_out;
-}
-
-PDNode *patterns::Reshape::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto reshape_op =
-      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
-
-  auto reshape_in = pattern->NewNode(reshape_in_repr())
-                        ->AsInput()
-                        ->assert_is_op_input("reshape2", "X");
-  auto reshape_out = pattern->NewNode(reshape_out_repr())
-                         ->AsOutput()
-                         ->assert_is_op_output("reshape2", "Out");
-
-  prev_op->LinksTo({reshape_in});
-  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
-  return reshape_out;
-}
-
-PDNode *patterns::Slice::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto slice_op = pattern->NewNode(slice_op_repr())->assert_is_op("slice");
-
-  auto slice_in = pattern->NewNode(slice_in_repr())
-                      ->AsInput()
-                      ->assert_is_op_input("slice", "Input");
-  auto slice_out = pattern->NewNode(slice_out_repr())
-                       ->AsOutput()
-                       ->assert_is_op_output("slice", "Out");
-
-  prev_op->LinksTo({slice_in});
-  slice_op->LinksFrom({slice_in}).LinksTo({slice_out});
-  return slice_out;
-}
-
-PDNode *patterns::NearestInterp::operator()() {
-  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-
-  auto nearest_interp_op =
-      pattern->NewNode(nearest_interp_op_repr())
-          ->assert_is_ops({"nearest_interp", "nearest_interp_v2"});
-
-  auto nearest_interp_in =
-      pattern->NewNode(nearest_interp_in_repr())
-          ->AsInput()
-          ->assert_is_ops_input({"nearest_interp", "nearest_interp_v2"}, "X");
-  auto nearest_interp_out =
-      pattern->NewNode(nearest_interp_out_repr())
-          ->AsOutput()
-          ->assert_is_ops_output({"nearest_interp", "nearest_interp_v2"},
-                                 "Out");
-
-  prev_op->LinksTo({nearest_interp_in});
-  nearest_interp_op->LinksFrom({nearest_interp_in})
-      .LinksTo({nearest_interp_out});
-  return nearest_interp_out;
+  prev_op->LinksTo({immutable_in});
+  immutable_op->LinksFrom({immutable_in}).LinksTo({immutable_out});
+  return immutable_out;
 }
 
 PDNode *patterns::Matmul::operator()() {
@@ -2112,7 +1980,7 @@ PDNode *patterns::Pool::operator()() {
 
 PDNode *patterns::Elementwise::operator()(PDNode *x_var,
                                           PDNode *y_var,
-                                          const std::string elementwise_type) {
+                                          const std::string &elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2129,7 +1997,7 @@ PDNode *patterns::Elementwise::operator()(PDNode *x_var,
 }
 
 PDNode *patterns::ElementwiseOp::operator()(
-    const std::string elementwise_type) {
+    const std::string &elementwise_type) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
@@ -2145,7 +2013,7 @@ PDNode *patterns::ElementwiseOp::operator()(
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,
-    const std::string elementwise_type,
+    const std::string &elementwise_type,
     bool as_x) {
   auto elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
@@ -2375,7 +2243,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+std::unordered_set<std::string> conv_act_set(
+    {"identity", "relu", "sigmoid", "tanh"});
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   conv_in->AsInput();
