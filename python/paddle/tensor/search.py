@@ -1031,7 +1031,8 @@ def bucketize(x,
             #        [0, 1, 3, 2]])
 
     """
-    assert sorted_sequence.dim() == 1, "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
+    assert sorted_sequence.dim() == 1, \
+        "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
     out = searchsorted(sorted_sequence, x, out_int32, right, name)
 
     return out
