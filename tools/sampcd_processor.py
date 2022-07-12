@@ -458,6 +458,8 @@ def get_filenames(full_test=False):
     all_sample_code_filenames = {}
     with open(API_DIFF_SPEC_FN) as f:
         for line in f.readlines():
+            if line.find('paddle.fluid.core_avx.eager.ops') >= 0:
+                continue
             api = line.replace('\n', '')
             try:
                 api_obj = eval(api)
