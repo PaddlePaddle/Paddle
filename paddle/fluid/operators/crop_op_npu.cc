@@ -70,8 +70,12 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             shape->dims().size(),
                             x->dims().size()));
 
+      // shape memory maybe have gc.
+      Tensor tmp_shape(*shape);
+      tmp_shape.mutable_data<T>(ctx.GetPlace());
+
       const auto& runner =
-          NpuOpRunner("Crop", {*x, *shape}, {*out}, attr_input);
+          NpuOpRunner("Crop", {*x, tmp_shape}, {*out}, attr_input);
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();

@@ -49,7 +49,7 @@ TEST(DEV_API, sparse_relu) {
   memcpy(dense_x.data<float>(), data.data(), data.size() * sizeof(float));
   auto sparse_coo = sparse::DenseToSparseCoo<float>(dev_ctx_cpu, dense_x, 2);
 
-  auto sparse_out = sparse::SparseRelu<float>(dev_ctx_cpu, sparse_coo);
+  auto sparse_out = sparse::ReluCoo<float>(dev_ctx_cpu, sparse_coo);
   DenseTensor dense_out =
       phi::EmptyLike<float>(dev_ctx_cpu, sparse_out.non_zero_elements());
   ReluKernel<float>(dev_ctx_cpu, sparse_coo.non_zero_elements(), &dense_out);
@@ -69,7 +69,7 @@ TEST(DEV_API, sparse_relu) {
 
   SparseCooTensor sparse_out_grad(
       sparse_coo.non_zero_indices(), dense_out, {3, 4});
-  sparse::SparseCooReluGradKernel<float>(
+  sparse::ReluCooGradKernel<float>(
       dev_ctx_cpu, sparse_coo, sparse_out_grad, &sparse_grad_x);
 
   cmp = memcmp(dense_grad_x.data<float>(),

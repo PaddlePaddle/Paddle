@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/imperative/tracer.h"
 
 class Conv2dGradNodeFinal : public egr::GradNodeBase {
  public:
@@ -179,4 +180,50 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   bool use_addto_;
   int workspace_size_MB_;
   bool exhaustive_search_;
+};
+
+class AddNGradNodeFinal : public egr::GradNodeBase {
+ public:
+  AddNGradNodeFinal() : egr::GradNodeBase() {}
+  AddNGradNodeFinal(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~AddNGradNodeFinal() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
+                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false) override;
+  std::string name() override { return "AddNGradNodeFinal"; }
+
+  void ClearTensorWrappers() override {
+    for (auto& tw : x_) {
+      tw.clear();
+    }
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<AddNGradNodeFinal>(new AddNGradNodeFinal(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const std::vector<paddle::experimental::Tensor>& x) {
+    for (const auto& eager_tensor : x) {
+      x_.emplace_back(egr::TensorWrapper(eager_tensor, true));
+    }
+  }
+
+  // SetAttributes
+
+ private:
+  // TensorWrappers
+  std::vector<egr::TensorWrapper> x_;
+
+  // Attributes
 };

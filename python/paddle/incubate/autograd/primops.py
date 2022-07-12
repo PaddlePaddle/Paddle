@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
+
 from .primreg import REGISTER_FN
 
 

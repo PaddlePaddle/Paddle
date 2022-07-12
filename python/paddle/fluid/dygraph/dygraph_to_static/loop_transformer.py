@@ -25,14 +25,14 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysi
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForLoopTuplePreTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes, create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import ARGS_NAME
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import RenameTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForLoopTuplePreTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForNodeVisitor
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -489,14 +489,15 @@ class LoopTransformer(BaseTransformer):
         self.name_visitor = NameVisitor(self.root)
         self.visit(self.root)
 
-    def visit(self, node):
+    def visit_While(self, node):
         self.generic_visit(node)
-        # All parent nodes that may contain gast.While/gast.For
-        if hasattr(node, 'body'):
-            self.replace_stmt_list(node.body)
-        if hasattr(node, 'orelse'):
-            self.replace_stmt_list(node.orelse)
-        return node
+        new_stmts = self.get_while_stmt_nodes(node)
+        return new_stmts
+
+    def visit_For(self, node):
+        self.generic_visit(node)
+        new_stmts = self.get_for_stmt_nodes(node)
+        return new_stmts
 
     def replace_stmt_list(self, body_list):
         if not isinstance(body_list, list):

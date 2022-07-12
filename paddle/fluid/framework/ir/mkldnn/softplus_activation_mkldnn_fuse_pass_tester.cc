@@ -50,9 +50,9 @@ void MainTest(const std::string& activation_type) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto activation_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation_type"));
+          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(activation_type.compare(activation_type), 0);
     }
   }

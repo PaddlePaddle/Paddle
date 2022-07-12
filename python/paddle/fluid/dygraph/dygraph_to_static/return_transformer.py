@@ -188,9 +188,7 @@ class ReturnTransformer(BaseTransformer):
         Self-defined visit for appending ancestor
         """
         self.ancestor_nodes.append(node)
-        method = 'visit_' + node.__class__.__name__
-        visitor = getattr(self, method, self.generic_visit)
-        ret = visitor(node)
+        ret = super(ReturnTransformer, self).visit(node)
         self.ancestor_nodes.pop()
         return ret
 
