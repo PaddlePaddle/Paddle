@@ -1336,7 +1336,7 @@ def ifftshift(x, axes=None, name=None):
     odd length 'x' is different. An example.
 
     Args:
-        n (int): Dimension inputed.
+        x (Tensor): The input data. It's a complex or real type.
         axes (int|tuple, optional): The axis on which to move. The default is none, which moves all axes.
             Default is None.
         name (str, optional): The default value is None.  Normally there is no need for user to set 
