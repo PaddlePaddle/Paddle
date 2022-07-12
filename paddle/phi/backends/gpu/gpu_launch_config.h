@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
