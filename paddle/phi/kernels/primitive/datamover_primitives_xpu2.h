@@ -320,6 +320,7 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
                                           T* src,
                                           int num) {
   if (num > 0) {
+    mfence_local();
     LM2GM(src, dst, num * sizeof(T));
   }
 }
@@ -495,6 +496,7 @@ __device__ __inline__ void ReadData(T* dst,
       }
     }
   } else {  // core_num() * NX < num
+    mfence_local();
     GM2LM(src + thread_offset, dst, NX * sizeof(T));
   }
 }
@@ -515,6 +517,7 @@ __device__ __inline__ void ReadData(T* dst,
       }
     }
   } else {  // core_num() * read_lens < num
+    mfence_local();
     GM2LM(src + thread_offset, dst, read_lens * sizeof(T));
   }
 }
@@ -756,12 +759,12 @@ __device__ void WriteData(T _global_ptr_* dst,
     for (int idx = 0; idx < read_lens; ++idx) {
       if (idx + thread_offset < num) {
         in_temp[0] = src[idx];
-        mfence();
+        mfence_local();
         LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * read_lens < num
-    mfence();
+    mfence_local();
     LM2GM(src, dst + thread_offset, read_lens * sizeof(T));
   }
 }
@@ -776,10 +779,12 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
     for (int idx = 0; idx < NX; ++idx) {
       if (idx + thread_offset < num) {
         in_temp[0] = src[idx];
+        mfence_local();
         LM2GM(in_temp, dst + idx + thread_offset, sizeof(T));
       }
     }
   } else {  // core_num() * NX < num
+    mfence_local();
     LM2GM(src, dst + thread_offset, NX * sizeof(T));
   }
 }
@@ -831,10 +836,12 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
     if (IsBoundary) {
       if (left_size_nx > 0) {
         in_temp[0] = static_cast<Ty>(src[0]);
+        mfence_local();
         LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
       }
     } else {
       in_temp[0] = static_cast<Ty>(src[0]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset, sizeof(Ty));
     }
   } else if (NX == 1) {
@@ -847,6 +854,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idy]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idy * stride_ny, sizeof(Ty));
     }
   } else if (NY == 1) {  // for NY == 1 and NX != 1
@@ -859,6 +867,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
       }
 
       in_temp[0] = static_cast<Ty>(src[idx]);
+      mfence_local();
       LM2GM(in_temp, dst + thread_offset + idx * stride_nx, sizeof(Ty));
     }
   } else {  // for NX != 1 and NY != 1
@@ -877,6 +886,7 @@ __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
           }
         }
         in_temp[0] = static_cast<Ty>(src[idx + idy * NX]);
+        mfence_local();
         LM2GM(in_temp,
               dst + thread_offset + idx * stride_nx + idy * stride_ny,
               sizeof(Ty));
@@ -1169,6 +1179,7 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
     if (index_src >= index_base && index_src < index_base + cache_size) {
       in_temp = src_temp[index_src - index_base];
     } else {
+      mfence_local();
       GM2LM(src + index_src, &in_temp, sizeof(T));
     }
     dst[nx] = in_temp;
