@@ -3282,10 +3282,6 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts) {
-  PADDLE_ENFORCE_NE(x,
-                    nullptr,
-                    phi::errors::InvalidArgument(
-                        "unique_consecutive should have input tensor x."));
   PADDLE_ENFORCE_NE(out,
                     nullptr,
                     phi::errors::InvalidArgument(
