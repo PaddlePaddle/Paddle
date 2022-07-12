@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -28,40 +27,29 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_data_feed()
-        self.set_feed_attr()
+        self.set_feed()
         self.set_op_attrs()
-
-    def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'x': data.astype(np.float32)}
-        self.feed_fp16 = {'x': data.astype(np.float16)}
-        self.feed_list = list(self.feed_fp32.keys())
-
-    def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
+
+    def set_feed(self):
+        data = np.random.uniform(size=[32, 100])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-
-        array = np.random.uniform(size=[1]).astype(np.float32)
-        result1 = paddle.zeros(shape=[1], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
-        self.fetch_list = [out.name]
+        x = paddle.static.nn.data_norm(input=x, **self.attrs)
+        self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):
-        ipu_strategy = paddle.static.IpuStrategy()
-        ipu_strategy.set_graph_config(is_training=self.is_training)
-        self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
+        self.run_op_test(exec_mode)
 
     def test(self):
         for m in IPUOpTest.ExecutionMode:
@@ -73,16 +61,69 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
+    def set_op_attrs(self):
+        self.attrs = {"in_place": True}
+
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-        array = np.random.uniform(size=[3]).astype(np.float32)
-        result1 = paddle.zeros(shape=[3], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
-        self.fetch_list = [out.name]
+        x = paddle.static.nn.data_norm(input=x, **self.attrs)
+        x = x + 1
+        self.fetch_list = [x.name]
+
+
+@unittest.skip("Do not support in_place=True when test single data_norm Op")
+class TestCase2(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {"in_place": True}
+
+
+class TestCase3(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {"data_layout": "NHWC"}
+
+
+class TestCase4(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {"epsilon": 0.001}
+
+
+class TestCase5(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {"do_model_average_for_mean_and_var": True}
+
+
+class TestCase6(TestBase):
+    # If enable_scale_and_shift=True, it requires to set values of scale and bias in `param_attr`
+    def set_op_attrs(self):
+        self.attrs = {
+            "param_attr": {
+                "scale_w": 0.5,
+                "bias": 0.1
+            },
+            "enable_scale_and_shift": True
+        }
+
+
+class TestCase7(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {
+            "param_attr": {
+                "batch_size": 1e3,
+                "batch_sum": 0.1,
+                "batch_square": 1e3,
+                "scale_w": 0.5,
+                "bias": 0.1
+            },
+            "enable_scale_and_shift": True
+        }
 
 
 if __name__ == "__main__":

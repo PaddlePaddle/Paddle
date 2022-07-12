@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -32,36 +31,39 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
+    @property
+    def fp16_enabled(self):
+        return False
+
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'x': data.astype(np.float32)}
-        self.feed_fp16 = {'x': data.astype(np.float16)}
-        self.feed_list = list(self.feed_fp32.keys())
+        data = np.random.uniform(size=[1, 3, 32, 32])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
+        self.attrs['data_layout'] = 'NCHW'
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-
-        array = np.random.uniform(size=[1]).astype(np.float32)
-        result1 = paddle.zeros(shape=[1], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
+        data = paddle.static.data(name=self.feed_list[0],
+                                  shape=self.feed_shape[0],
+                                  dtype='float32')
+        input_scale = paddle.fluid.layers.create_parameter(
+            shape=[self.feed_shape[0][1]], dtype="float32")
+        input_bias = paddle.fluid.layers.create_parameter(
+            shape=[self.feed_shape[0][1]], dtype="float32")
+        out = paddle.fluid.layers.affine_channel(data,
+                                                 scale=input_scale,
+                                                 bias=input_bias)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
-        ipu_strategy = paddle.static.IpuStrategy()
-        ipu_strategy.set_graph_config(is_training=self.is_training)
-        self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
+        self.run_op_test(exec_mode)
 
     def test(self):
         for m in IPUOpTest.ExecutionMode:
@@ -73,16 +75,23 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        array = np.random.uniform(size=[3]).astype(np.float32)
-        result1 = paddle.zeros(shape=[3], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
-        self.fetch_list = [out.name]
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 4, 64, 64])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
+
+
+@unittest.skip("Only support NCHW")
+class TestNHWC(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['data_layout'] = 'NHWC'
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 64, 64, 3])
+        self.feed_fp32 = {'data': data.astype(np.float32)}
+        self.feed_fp16 = {'data': data.astype(np.float16)}
 
 
 if __name__ == "__main__":

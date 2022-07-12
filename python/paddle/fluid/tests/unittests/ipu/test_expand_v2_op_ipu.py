@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -30,38 +29,31 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
+        self.set_attrs()
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
+        data = np.random.uniform(size=[2, 3])
         self.feed_fp32 = {'x': data.astype(np.float32)}
         self.feed_fp16 = {'x': data.astype(np.float16)}
-        self.feed_list = list(self.feed_fp32.keys())
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
         self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
-    def set_op_attrs(self):
-        self.attrs = {}
+    def set_attrs(self):
+        self.attrs = {"shape": [2, 2, 3]}
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
-                               dtype='float32')
-
-        array = np.random.uniform(size=[1]).astype(np.float32)
-        result1 = paddle.zeros(shape=[1], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
+                               dtype="float32")
+        out = paddle.expand(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
-        ipu_strategy = paddle.static.IpuStrategy()
-        ipu_strategy.set_graph_config(is_training=self.is_training)
-        self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
+        self.run_op_test(exec_mode)
 
     def test(self):
         for m in IPUOpTest.ExecutionMode:
@@ -73,15 +65,49 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 2, 3]}
+
+
+class TestCase2(TestBase):
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 1, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
+
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 2, 3]}
+
+
+@unittest.skip("corresponding dimensions must have the same value.")
+class TestCase3(TestBase):
+
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 4, 3]}
+
+
+@unittest.skip("Do not support `shape` = Tensors.")
+class TestCase4(TestBase):
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[3, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
+
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
-                               dtype='float32')
-        array = np.random.uniform(size=[3]).astype(np.float32)
-        result1 = paddle.zeros(shape=[3], dtype='float32')
-        weight = paddle.assign(array, result1)
-        out = F.prelu(x, weight=weight, **self.attrs)
+                               dtype="float32")
+        self.attrs = {
+            'name': 'y',
+            'shape': [3],
+            'dtype': 'int32',
+            'value': 3,
+        }
+        y = paddle.fluid.layers.fill_constant(**self.attrs)
+        out = paddle.expand(x, shape=y)
         self.fetch_list = [out.name]
 
 
