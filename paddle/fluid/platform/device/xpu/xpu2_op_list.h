@@ -351,8 +351,6 @@ XPUOpMap& get_kl2_ops() {
       {"relu",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
-      {"relu6", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"relu6_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reshape2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
