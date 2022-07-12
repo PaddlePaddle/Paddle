@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATION_DEPS place stats profiler)
+set(ALLOCATOR_DEPS place stats profiler)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
