@@ -85,9 +85,7 @@ class TestBucketizeAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         sorted_sequence = paddle.to_tensor(self.sorted_sequence)
         out = paddle.bucketize(x, sorted_sequence, right=True)
-        out_ref = np.searchsorted(self.sorted_sequence,
-                                  self.x,
-                                  side='right')
+        out_ref = np.searchsorted(self.sorted_sequence, self.x, side='right')
         self.assertEqual(np.allclose(out_ref, out.numpy()), True)
 
 
