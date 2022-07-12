@@ -42,7 +42,13 @@ def unpack_by_structure(target, structure):
     if isinstance(target, Variable):
         return _unpack_by_structure_paddle(target, structure)
     else:
-        return _unpack_by_structure_paddle(target, structure)
+        return _unpack_by_structure_python(target, structure)
+
+
+def _unpack_by_structure_python(target, structure):
+    """ TODO(xiongkun): analysis the differences between python and paddle unpack.
+    """
+    return _unpack_by_structure_paddle(target, structure)
 
 
 def _unpack_by_structure_paddle(target, structure):
@@ -430,7 +436,7 @@ def convert_zip(*args):
     return zip(*args)
 
 
-# TODO(xiongkun): delete when list<variable> is product.
+# TODO(xiongkun): delete when list<variable> is ready.
 class VariableTuple:
     """ 
         this class will cause enumerate can't be wrapped by other iterator change function.

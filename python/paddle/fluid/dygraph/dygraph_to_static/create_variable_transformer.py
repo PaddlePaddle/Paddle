@@ -18,9 +18,10 @@ from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class CreateVariableTransformer(gast.NodeTransformer):
+class CreateVariableTransformer(BaseTransformer):
     """
     """
 

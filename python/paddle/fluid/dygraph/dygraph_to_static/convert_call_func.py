@@ -27,7 +27,8 @@ import numpy
 import six
 
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip, convert_range, convert_enumerate
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_range, convert_enumerate
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static

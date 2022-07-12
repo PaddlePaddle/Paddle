@@ -56,8 +56,8 @@ class CallTransformer(BaseTransformer):
                 'enumerate',
             }
             is_builtin = eval("is_builtin({})".format(func_str))
-            is_need_convert = func_str in need_convert_builtin_func_list
-            return is_builtin and not is_need_convert
+            need_convert = func_str in need_convert_builtin_func_list
+            return is_builtin and not need_convert
         except Exception:
             return False
 

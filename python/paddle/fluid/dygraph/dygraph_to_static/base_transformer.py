@@ -120,16 +120,16 @@ class NameNodeReplaceTransformer(BaseTransformer):
         return node
 
 
-class ForLoopTuplePreTransformer(gast.NodeTransformer):
+class ForLoopTuplePreTransformer(BaseTransformer):
     """ pre-process of for loop.
     >>> for A in B: 
     >>>    C
 
     will be changed into : 
 
-    >>> UUID_iterator = _jst.indexable(B)  # make iterator only to indexable list.
+    >>> UUID_iterator = _jst.Indexable(B)  # make iterator-only to indexable list.
     >>> for UUID_target in UUID_iterator:
-    >>>     A = _jst.unpack_by_structure(UUID_target, structure)
+    >>>     A = _jst.Unpack(UUID_target, structure)
     >>>     C
 
     make the later loop_transform have unified type:
@@ -146,27 +146,31 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
 
     def visit_For(self, node):
         self.generic_visit(node)
-        if self.is_for_iter(node):
-            tuple_target = unique_name.generate(FOR_ITER_TARGET_PREFIX)
-            tuple_iterator = unique_name.generate(FOR_ITER_ITERATOR_PREFIX)
-            origin_tuple_node = node.target
-            assign_iterator_node = gast.parse(
-                f"{tuple_iterator} = _jst.indexable({ast_to_source_code(node.iter).strip()})"
-            ).body[0]
-            node.target = gast.Name(id=tuple_target,
-                                    ctx=gast.Store(),
-                                    annotation=None,
-                                    type_comment=None)
-            node.iter = gast.Name(id=tuple_iterator,
-                                  ctx=gast.Load(),
-                                  annotation=None,
-                                  type_comment=None)
-            node.body[0:0] = self.tuple_to_stmts(origin_tuple_node,
-                                                 tuple_target)
+        tuple_target = unique_name.generate(FOR_ITER_TARGET_PREFIX)
+        tuple_iterator = unique_name.generate(FOR_ITER_ITERATOR_PREFIX)
+        origin_tuple_node = node.target
+        assign_iterator_node = gast.parse(
+            f"{tuple_iterator} = _jst.Indexable({ast_to_source_code(node.iter).strip()})"
+        ).body[0]
+        node.target = gast.Name(id=tuple_target,
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+        node.iter = gast.Name(id=tuple_iterator,
+                              ctx=gast.Load(),
+                              annotation=None,
+                              type_comment=None)
+        node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_target)
         # return a list will insert a list of node replace the original for node.
         return [assign_iterator_node, node]
 
     def tuple_node_to_unpack_structure(self, node):
+        """ Create a sequence to represents the structure of nest.
+            For example: `a, (b,c), [d,e,f]` is represented by 
+            `[1, [1,1], [1,1,1]]`. the `1` is just a notation.
+            
+            Specially, `a` is represented by `1`.
+        """
         ret = []
         if not isinstance(node, (gast.Tuple, gast.List)):
             return 1
@@ -177,14 +181,9 @@ class ForLoopTuplePreTransformer(gast.NodeTransformer):
     def tuple_to_stmts(self, node, tuple_name):
         structure_str = str(self.tuple_node_to_unpack_structure(node))
         node_str = ast_to_source_code(node).strip()
-        assign_node_str = f"{node_str} = _jst.unpack_by_structure({tuple_name}, {structure_str})"
+        assign_node_str = f"{node_str} = _jst.Unpack({tuple_name}, {structure_str})"
         assign_node = gast.parse(assign_node_str).body[0]
         return [assign_node]
-
-    def is_for_iter(self, for_node):
-        assert isinstance(for_node,
-                          gast.For), "Input node is not gast.For node."
-        return True
 
 
 class SplitAssignTransformer(BaseTransformer):
