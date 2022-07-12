@@ -182,7 +182,7 @@ class TestBucketizeError(unittest.TestCase):
                 out = paddle.bucketize(x, sorted_sequence, out_int32=True)
 
         self.assertRaises(AssertionError,
-                          test_bucketize_searchsorted_dims_matched_error)
+                          test_bucketize_sortedsequence_size_error)
 
         def test_sortedsequence_x_type_error():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -196,9 +196,9 @@ class TestBucketizeError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_sortedsequence_x_type_error)
 
-        def test_tensor_type(self):
+        def test_tensor_type():
             paddle.disable_static()
-            x = self.x
+            x = np.ones((3, 3))
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             out = paddle.bucketize(x, sorted_sequence)
 
