@@ -72,6 +72,7 @@ class TestUniqueConsecutiveOp(OpTest):
         self.x_range = 20
         self.return_inverse = False
         self.return_counts = False
+        self.python_api = paddle.unique_consecutive
 
     def init_kernel_type(self):
         self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
@@ -94,7 +95,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):

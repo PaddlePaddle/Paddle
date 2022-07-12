@@ -2066,7 +2066,19 @@ def unique_consecutive(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out, inverse, counts = _C_ops.final_state_unique_consecutive(
+            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
+            'return_counts', return_counts, 'axis', axis)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    elif paddle.in_dynamic_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
