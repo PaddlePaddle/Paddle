@@ -37,7 +37,7 @@ import utils
      ('input_gradients_not_none', paddle.matmul,
       (np.random.rand(3, 3), np.random.rand(3, 3)),
       (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64')))
-class TestForwardGradients(unittest.TestCase):
+class TestForwardGrad(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -55,7 +55,7 @@ class TestForwardGradients(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         paddle.disable_static()
 
-    def test_forward_gradients(self):
+    def test_forward_grad(self):
 
         def expected():
             paddle.incubate.autograd.disable_prim()
@@ -64,7 +64,8 @@ class TestForwardGradients(unittest.TestCase):
             with paddle.static.program_guard(mp, sp):
                 feed, static_xs, static_v = utils.gen_static_data_and_feed(
                     self.xs, self.v, stop_gradient=False)
-                _, ys_grad = paddle.autograd.jvp(self.fun, static_xs, static_v)
+                _, ys_grad = paddle.incubate.autograd.jvp(
+                    self.fun, static_xs, static_v)
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
@@ -80,7 +81,8 @@ class TestForwardGradients(unittest.TestCase):
                     self.xs, self.v, stop_gradient=False)
                 ys = self.fun(*static_xs) if isinstance(
                     static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = primapi.forward_gradients(ys, static_xs, static_v)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -106,7 +108,7 @@ class TestForwardGradients(unittest.TestCase):
                     self.xs, self.v, stop_gradient=False)
                 ys = self.fun(*static_xs) if isinstance(
                     static_xs, typing.Sequence) else self.fun(static_xs)
-                ys_grad = primapi.forward_gradients(ys, static_xs, static_v)
+                ys_grad = primapi.forward_grad(ys, static_xs, static_v)
                 paddle.incubate.autograd.prim2orig(mp.block(0))
             exe = paddle.static.Executor()
             exe.run(sp)
@@ -116,13 +118,124 @@ class TestForwardGradients(unittest.TestCase):
     def test_illegal_param(self):
         paddle.incubate.autograd.enable_prim()
         with self.assertRaises(TypeError):
-            primapi.forward_gradients(1, paddle.static.data('inputs',
-                                                            shape=[1]))
+            primapi.forward_grad(1, paddle.static.data('inputs', shape=[1]))
 
         with self.assertRaises(TypeError):
-            primapi.forward_gradients(paddle.static.data('targets', shape=[1]),
-                                      1)
+            primapi.forward_grad(paddle.static.data('targets', shape=[1]), 1)
         paddle.incubate.autograd.disable_prim()
+
+
+class TestGrad(unittest.TestCase):
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
+
+    def test_third_order(self):
+        paddle.incubate.autograd.enable_prim()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x2 = paddle.multiply(x, x)
+            x3 = paddle.multiply(x2, x)
+            x4 = paddle.multiply(x3, x)
+
+            grad1, = paddle.incubate.autograd.grad([x4], [x])
+            grad2, = paddle.incubate.autograd.grad([grad1], [x])
+            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+
+            paddle.incubate.autograd.prim2orig(main.block(0))
+
+        feed = {x.name: np.array([2.]).astype('float32')}
+        fetch_list = [grad3.name]
+        result = [np.array([48.])]
+
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup)
+        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+        np.allclose(outs, result)
+        paddle.incubate.autograd.disable_prim()
+
+    def test_fourth_order(self):
+        paddle.incubate.autograd.enable_prim()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x2 = paddle.multiply(x, x)
+            x3 = paddle.multiply(x2, x)
+            x4 = paddle.multiply(x3, x)
+            x5 = paddle.multiply(x4, x)
+            out = paddle.sqrt(x5 + x4)
+
+            grad1, = paddle.incubate.autograd.grad([out], [x])
+            grad2, = paddle.incubate.autograd.grad([grad1], [x])
+            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+            grad4, = paddle.incubate.autograd.grad([grad3], [x])
+
+            paddle.incubate.autograd.prim2orig(main.block(0))
+
+        feed = {
+            x.name: np.array([2.]).astype('float32'),
+        }
+        fetch_list = [grad4.name]
+        # (3*(-5*x^2-16*x-16))/(16*(x+1)^3.5)
+        result = [np.array([-0.27263762711])]
+
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup)
+        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+        np.allclose(outs, result)
+        paddle.incubate.autograd.disable_prim()
+
+    def test_disable_prim(self):
+
+        def actual(x: np.array):
+            paddle.incubate.autograd.disable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                var_x = paddle.static.data('x', shape=x.shape, dtype=x.dtype)
+                var_x.stop_gradient = False
+                y = paddle.tanh(var_x)
+                y_grad = paddle.incubate.autograd.grad(y, var_x)
+                y_second_grad = paddle.incubate.autograd.grad(y_grad, var_x)
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            return exe.run(main,
+                           feed={'x': x},
+                           fetch_list=[y_grad, y_second_grad])
+
+        def expect(x: np.array):
+            paddle.incubate.autograd.disable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                var_x = paddle.static.data('x', shape=x.shape, dtype=x.dtype)
+                var_x.stop_gradient = False
+                y = paddle.tanh(var_x)
+                y_grad = paddle.static.gradients(y, var_x)
+                y_second_grad = paddle.static.gradients(y_grad, var_x)
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            return exe.run(main,
+                           feed={'x': x},
+                           fetch_list=[y_grad, y_second_grad])
+
+        x = np.random.randn(100, 200)
+        for i, j in zip(actual(x), expect(x)):
+            np.testing.assert_allclose(i, j)
 
 
 if __name__ == '__main__':

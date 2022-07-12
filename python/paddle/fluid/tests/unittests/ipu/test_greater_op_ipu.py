@@ -127,5 +127,17 @@ class TestEqual(TestGreaterThan):
         self.op = paddle.fluid.layers.equal
 
 
+class TestGreaterEqual(TestGreaterThan):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.greater_equal
+
+
+class TestLessEqual(TestGreaterThan):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.less_equal
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -363,6 +363,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"rmsprop", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"rnn", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"rnn_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"roi_align", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -482,7 +483,8 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
-                     pOpKernelType(vartype::FP32, XPUPlace())})},
+                     pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
       {"unsqueeze2",
        XPUKernelSet({pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace()),
@@ -490,7 +492,8 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::INT8, XPUPlace()),
                      pOpKernelType(vartype::UINT8, XPUPlace()),
-                     pOpKernelType(vartype::FP32, XPUPlace())})},
+                     pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
       {"where_index",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
@@ -505,6 +508,14 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+
+      // Fused op
+      {"resnet_basic_block_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"resnet_basic_block",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
   };
 
   return s_xpu2_kernels;

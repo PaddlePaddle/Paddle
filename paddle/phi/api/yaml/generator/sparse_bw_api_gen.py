@@ -109,6 +109,7 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
