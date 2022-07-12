@@ -101,13 +101,15 @@ endif()
 set(PYBIND_SRCS
     pybind.cc
     imperative.cc
-    op_function.cc
     inference_api.cc
     ir.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
+    pe.cc
+    tensor.cc
+    place.cc
     const_value.cc
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
@@ -494,6 +496,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator_node)
   endif()
 
+  set(PYBIND_SRCS op_function.cc ${PYBIND_SRCS})
   cc_library(
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}

@@ -1,8 +1,3 @@
-cc_library(
-  conv2d_nodes
-  SRCS conv2d_nodes.cc
-  DEPS ${eager_deps} ${fluid_deps})
-
 set(eager_manual_nodes
-    conv2d_nodes
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/manual/eager_manual/nodes/conv2d_nodes.cc
     PARENT_SCOPE)
