@@ -64,6 +64,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+std::atomic<int> VarBaseUniqueNameID{0};
 PyTypeObject *g_varbase_pytype = nullptr;
 
 namespace py = ::pybind11;

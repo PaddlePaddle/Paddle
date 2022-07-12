@@ -519,6 +519,8 @@ GenerateOpFunctions(int split_count) {
     }
   }
 
+  result.push_back(std::make_tuple(op_function_list, bind_function_list));
+
   return result;
 }
 
@@ -559,7 +561,7 @@ int main(int argc, char* argv[]) {
 
     out << "namespace paddle {\n"
         << "namespace pybind {\n\n";
-    out << "std::atomic<int> VarBaseUniqueNameID{0};\n";
+    out << "extern std::atomic<int> VarBaseUniqueNameID{0};\n";
     out << paddle::string::join_strings(std::get<0>(op_funcs[i]), '\n');
     out << "\n\n";
 
