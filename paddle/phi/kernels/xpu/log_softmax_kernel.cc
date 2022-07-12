@@ -30,7 +30,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
 
   if (x.numel() != 0) {
     auto x_shape = phi::vectorize<int>(x.dims());
-    out->mutable_data<float>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(out);
     if (axis < 0) axis += rank;
     int r = xpu::softmax<T>(
         dev_ctx.x_context(), x.data<T>(), out->data<T>(), x_shape, axis);

@@ -24,8 +24,7 @@ void GradAddXPUKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-  VLOG(3) << "grad add xpu kernel";
-  out->mutable_data<float>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
   auto x_shape = phi::vectorize<int>(x.dims());
   auto y_shape = phi::vectorize<int>(y.dims());
   int r = xpu::broadcast_add(dev_ctx.x_context(),

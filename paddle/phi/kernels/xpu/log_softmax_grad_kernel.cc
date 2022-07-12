@@ -31,10 +31,14 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
 
   if (out.numel() != 0) {
     auto out_shape = phi::vectorize<int>(out.dims());
-    x_grad->mutable_data<float>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(x_grad);
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     T* tmp_ptr = RAII_GUARD.alloc_l3_or_gm<T>(out_grad.numel());
     T* tmp2_ptr = RAII_GUARD.alloc_l3_or_gm<T>(out_grad.numel());
+    PADDLE_ENFORCE_NE(
+        tmp_ptr, nullptr, phi::errors::External("no enough memory in xpu"));
+    PADDLE_ENFORCE_NE(
+        tmp2_ptr, nullptr, phi::errors::External("no enough memory in xpu"));
 
     int r =
         xpu::exp(dev_ctx.x_context(), out.data<T>(), tmp_ptr, out_grad.numel());
@@ -47,14 +51,14 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
                  out_grad.data<T>(),
                  tmp2_ptr,
                  out_grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reciprocal");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
     r = xpu::softmax_grad(dev_ctx.x_context(),
                           tmp_ptr,
                           tmp2_ptr,
                           x_grad->data<T>(),
                           out_shape,
                           axis);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax_grad");
   }
 }
 

@@ -51,13 +51,13 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
 
     def __init__(self):
         self.op_name = 'log_softmax'
-        self.use_dynamic_create_class = False
+        self.use_dynamic_create_class = True
 
     def dynamic_create_class(self):
         base_class = self.TestXPULogSoftmaxOp
         classes = []
         axis_arr = [-1, 1]
-        shape_arr = [[2, 3, 4, 5], [12, 10]]
+        shape_arr = [[2, 3, 4, 5], [12, 10], [2, 5], [7, 7], [3, 5, 7]]
         for axis in axis_arr:
             for shape in shape_arr:
                 class_name = 'XPUTestLogSoftmax_' + \
@@ -74,7 +74,7 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
             self.dtype = 'float32'
             self.set_attrs()
             self.use_xpu = True
-            if not hasattr(self, 'batch_size'):
+            if not hasattr(self, 'axis'):
                 self.shape = [2, 3, 4, 5]
                 self.axis = -1
 
