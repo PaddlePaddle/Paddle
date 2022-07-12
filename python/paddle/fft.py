@@ -807,7 +807,7 @@ def ihfftn(x, s=None, axes=None, norm="backward", name=None):
     efficient algorithm called the Fast Fourier Transform (FFT).
 
     Args:
-        x(Tensor): Input tensor.
+        x(Tensor): Input tensor. The data type is real.
         s(Sequence[int], optional) : Shape (length along each transformed axis) 
             to use from the input. (``s[0]`` refers to axis 0, ``s[1]`` to axis 
             1, etc.). Along any axis, if the given shape is smaller than that 
