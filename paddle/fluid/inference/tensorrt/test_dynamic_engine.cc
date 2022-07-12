@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/phi/common/data_type.h"
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 #include "paddle/fluid/inference/tensorrt/plugin/spmm_plugin.h"
 #endif
@@ -66,6 +67,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
                                  max_input_shape,
                                  optim_input_shape,
                                  false,
+                                 phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
     engine_->InitNetwork();
   }

@@ -90,6 +90,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/fluid/pybind/jit.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -534,6 +535,7 @@ PYBIND11_MODULE(core_noavx, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
   paddle::platform::CpuTotalPhysicalMemory();

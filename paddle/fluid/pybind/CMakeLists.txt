@@ -38,7 +38,8 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
-    new_profiler)
+    new_profiler
+    jit_layer)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -124,7 +125,14 @@ set(PYBIND_SRCS
     io.cc
     generator_py.cc
     communication.cc
-    cuda_streams_py.cc)
+    cuda_streams_py.cc
+    jit.cc)
+
+execute_process(
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/generate_file_structures.py"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/")
 
 execute_process(
   COMMAND

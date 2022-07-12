@@ -41,7 +41,7 @@ from codegen_utils import AssertMessage, GetIndent
 # and this will be fixed in the futrue.
 inplace_check_blacklist = set(["assign_out_"])
 # # --- Black Ops list that's NO NEED to apply backward code generation
-black_ops_list = ["conv2d", "conv2d_grad", "conv2d_grad_grad"]
+black_ops_list = ["conv2d", "conv2d_grad", "conv2d_grad_grad", "add_n"]
 
 
 ###########
@@ -283,6 +283,7 @@ NODE_H_FILE_TEMPLATE = \
 #pragma once
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 
 {}
 """
@@ -316,6 +317,7 @@ FORWARD_H_FILE_TEMPLATE = \
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+
 {}
 {}
 """
@@ -1648,6 +1650,8 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         namespace = self.namespace
 
         for forward_api_contents in forward_api_list:
+            if forward_api_contents['api'] in black_ops_list: continue
+
             backward_api_contents = self.GetBackwardAPIContents(
                 forward_api_contents)
             if backward_api_contents is None: continue

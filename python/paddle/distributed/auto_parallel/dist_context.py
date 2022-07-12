@@ -125,6 +125,9 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
+        # flag whether using `to_static`
+        self._dygraph_mode = True
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
