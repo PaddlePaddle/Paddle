@@ -33,4 +33,6 @@ PD_REGISTER_KERNEL(imag_grad,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(
-    complex_grad, CPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double) {}
+    complex_grad, CPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+}
