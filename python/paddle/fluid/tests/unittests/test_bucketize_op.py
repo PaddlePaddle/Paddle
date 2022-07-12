@@ -23,8 +23,8 @@ paddle.enable_static()
 class TestBucketizeAPI(unittest.TestCase):
 
     def init_test_case(self):
-        self.x = np.array([[0, 8, 4, 16], [-1, 2, 8, 4]]).astype("float32")
-        self.sorted_sequence = np.array([2, 4, 8, 16]).astype("float32")
+        self.x = np.array([[0, 8, 4, 16], [-1, 2, 8, 4]]).astype("float64")
+        self.sorted_sequence = np.array([2, 4, 8, 16]).astype("float64")
 
     def setUp(self):
         self.init_test_case()
