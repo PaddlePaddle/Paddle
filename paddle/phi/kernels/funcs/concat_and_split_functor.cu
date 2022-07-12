@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
@@ -312,19 +314,19 @@ struct ConcatFunctor<phi::GPUContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
-    paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
+    phi::DenseTensor tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = paddle::memory::Alloc(context, in_num * sizeof(T*));
+      context.Alloc<T>(&tmp_dev_ins_data, in_num * sizeof(T*));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_data, in_num);
       paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_data->ptr(),
+                           tmp_dev_ins_data.data(),
                            paddle::platform::CPUPlace(),
                            restored,
                            in_num * sizeof(T*),
                            context.stream());
-      dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
+      dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data.data());
     }
 
     if (has_same_shape) {
@@ -360,19 +362,20 @@ struct ConcatFunctor<phi::GPUContext, T> {
             dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
       }
     } else {
-      auto tmp_dev_ins_col_data =
-          paddle::memory::Alloc(context, inputs_col_num * sizeof(int64_t));
+      phi::DenseTensor tmp_dev_ins_col_data;
+      context.Alloc<int64_t>(&tmp_dev_ins_col_data,
+                             inputs_col_num * sizeof(int64_t));
 
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           inputs_col, inputs_col_num);
       paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_col_data->ptr(),
+                           tmp_dev_ins_col_data.data(),
                            paddle::platform::CPUPlace(),
                            restored,
                            inputs_col_num * sizeof(int64_t),
                            context.stream());
       int64_t* dev_ins_col_data =
-          static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
+          static_cast<int64_t*>(tmp_dev_ins_col_data.data());
 
       ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           dev_ins_data,
@@ -471,20 +474,20 @@ class SplitFunctor<phi::GPUContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, in_col, &block_dims, &grid_dims);
 
-    paddle::memory::allocation::AllocationPtr tmp_dev_outs_data;
+    phi::DenseTensor tmp_dev_outs_data;
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       // TODO(chentianyu03): try to find a method to remove the Alloc function
-      tmp_dev_outs_data = paddle::memory::Alloc(context, o_num * sizeof(T*));
+      context.Alloc<T>(&tmp_dev_outs_data, o_num * sizeof(T*));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_outs_data->ptr(),
+                           tmp_dev_outs_data.data(),
                            paddle::platform::CPUPlace(),
                            restored,
                            o_num * sizeof(T*),
                            context.stream());
-      dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data->ptr());
+      dev_out_gpu_data = reinterpret_cast<T**>(tmp_dev_outs_data.data());
     }
 
     if (has_same_shape) {
@@ -520,20 +523,23 @@ class SplitFunctor<phi::GPUContext, T> {
             input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
       }
     } else {
-      auto tmp_dev_ins_col_data =
-          // TODO(chentianyu03): try to find a method to remove the Alloc
-          // function
-          paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
+      // auto tmp_dev_ins_col_data =
+      // TODO(chentianyu03): try to find a method to remove the Alloc
+      // function
+      // paddle::memory::Alloc(context, outputs_cols_num * sizeof(int64_t));
+      phi::DenseTensor tmp_dev_ins_col_data;
+      context.Alloc<int64_t>(&tmp_dev_ins_col_data,
+                             outputs_cols_num * sizeof(int64_t));
       auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_col_data->ptr(),
+                           tmp_dev_ins_col_data.data(),
                            paddle::platform::CPUPlace(),
                            restored,
                            outputs_cols_num * sizeof(int64_t),
                            context.stream());
       int64_t* dev_outs_col_data =
-          reinterpret_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
+          reinterpret_cast<int64_t*>(tmp_dev_ins_col_data.data());
 
       SplitKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
           input.data<T>(),
