@@ -34,7 +34,8 @@ class TestBucketize(OpTest):
         }
         self.attrs = {
             "out_int32": False,
-            "right": True if self.side == 'right' else False}
+            "right": True if self.side == 'right' else False
+        }
         self.outputs = {
             'Out': np.searchsorted(self.sorted_sequence, self.x, side=self.side)
         }
@@ -120,8 +121,8 @@ class TestBucketizeAPI(unittest.TestCase):
                 res = exe.run(feed={
                     'InputTensor': self.x,
                     'SortedSequence': self.sorted_sequence,
-                    },
-                                fetch_list=out)
+                },
+                            fetch_list=out)
                 out_ref = np.searchsorted(self.sorted_sequence, self.x)
                 self.assertTrue(np.allclose(out_ref, res))
 
