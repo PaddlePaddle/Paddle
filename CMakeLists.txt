@@ -389,6 +389,7 @@ endif()
 if(WITH_DISTRIBUTE)
     if(LINUX)
         set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+        set(WITH_MPI ON CACHE STRING "Enable MPI when compiling WITH_DISTRIBUTE=ON." FORCE)
     endif()
     if(WITH_ASCEND_CL AND NOT WITH_ARM_BRPC)
         # disable WITH_PSCORE for NPU before include third_party
