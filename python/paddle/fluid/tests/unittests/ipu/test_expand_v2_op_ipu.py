@@ -29,27 +29,27 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
+        self.set_attrs()
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[2, 3, 1])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        data = np.random.uniform(size=[2, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
-    def set_op_attrs(self):
-        self.attrs = {'fill_value': 0.3, 'dtype': 'float32'}
+    def set_attrs(self):
+        self.attrs = {"shape": [2, 2, 3]}
 
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
-                               dtype='float32')
-        x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
+                               dtype="float32")
+        out = paddle.expand(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -65,27 +65,50 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
 
-    def set_op_attrs(self):
-        self.attrs = {'fill_value': 3, 'dtype': 'int32'}
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 2, 3]}
 
 
-class TestError(TestBase):
+class TestCase2(TestBase):
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 1, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
+
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 2, 3]}
+
+
+@unittest.skip("corresponding dimensions must have the same value.")
+class TestCase3(TestBase):
+
+    def set_attrs(self):
+        self.attrs = {"shape": [5, 2, 4, 3]}
+
+
+@unittest.skip("Do not support `shape` = Tensors.")
+class TestCase4(TestBase):
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[3, 3])
+        self.feed_fp32 = {'x': data.astype(np.float32)}
+        self.feed_fp16 = {'x': data.astype(np.float16)}
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.fluid.data('x', [-1, 3, 13], 'float32')
-        x_fill = paddle.full_like(x, **self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x_fill, x_fill)
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        self.attrs = {
+            'name': 'y',
+            'shape': [3],
+            'dtype': 'int32',
+            'value': 3,
+        }
+        y = paddle.fluid.layers.fill_constant(**self.attrs)
+        out = paddle.expand(x, shape=y)
         self.fetch_list = [out.name]
-
-    def test(self):
-        self.build_model()
-
-        def test_error():
-            self.run_op_test(IPUOpTest.ExecutionMode.IPU_FP32)
-
-        self.assertRaisesRegex(Exception, "Please check tensor shape setting",
-                               test_error)
 
 
 if __name__ == "__main__":
