@@ -1399,9 +1399,9 @@ class Executor(object):
                     return False
 
                 # Unsupported case 2 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
-                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                                  None) not in [1, '1', True, 'True', 'true']:
-                    return False
+                # if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                #                   None) not in [1, '1', True, 'True', 'true']:
+                #     return False
 
                 # Unsupported case 3: data parallel
                 if program._is_data_parallel == True and len(
