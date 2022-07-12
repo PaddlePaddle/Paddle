@@ -423,7 +423,7 @@ class Engine:
 
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         print("engine.py predict step****")
-        print_program_with_dist_attr(dist_main_prog, self.dist_context)
+        # print_program_with_dist_attr(dist_main_prog, self.dist_context)
         outputs = []
         for step, _ in enumerate(test_dataloader):
             predict_logs = {"step": step}

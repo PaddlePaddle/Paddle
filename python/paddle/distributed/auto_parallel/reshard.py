@@ -1789,8 +1789,8 @@ class Resharder:
 
     def reshard(self):
         print("reshard.py enter reshard dist program****")
-        print_program_with_dist_attr(self.auto_parallel_main_prog,
-                                     self.dist_context)
+        # print_program_with_dist_attr(self.auto_parallel_main_prog,
+        #                              self.dist_context)
         # it is to avoid global process mesh in dist_context.process_meshes
         processes_set = set()
         process_mesh_count = len(self.dist_context.process_meshes)
@@ -1877,9 +1877,9 @@ class Resharder:
                                         self.auto_parallel_main_prog)
                                     # print("reshard.py output_tensor_name", output_tensor, output_tensor.desc.id())
                                     # print("reshard.py program****")
-                                    print_program_with_dist_attr(
-                                        self.auto_parallel_main_prog,
-                                        self.dist_context)
+                                    # print_program_with_dist_attr(
+                                    #     self.auto_parallel_main_prog,
+                                    #     self.dist_context)
                                     # tensor_dims_mapping = self.dist_context.get_dist_tensor_for_program(output_tensor).dist_attr.dims_mapping
                                     tensor_dims_mapping = self.dist_context.get_tensor_dist_attr_for_program(
                                         output_tensor).dims_mapping
@@ -2641,8 +2641,8 @@ class Resharder:
         # reset some variable when remove operation ended
         Resharder.while_block_info = {}
         print("reshard.py startup prgram")
-        print_program_with_dist_attr(self.auto_parallel_startup_prog,
-                                     self.dist_context)
+        # print_program_with_dist_attr(self.auto_parallel_startup_prog,
+        #                              self.dist_context)
 
     def get_cost(self, op, tensor, cluster):
         # NOTE: The program should be the serial_program which is not been parted

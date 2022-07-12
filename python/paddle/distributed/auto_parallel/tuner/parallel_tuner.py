@@ -462,10 +462,10 @@ class ParallelTuner:
         for op_id, dist_op in self._concerned_dist_ops.items():
             op_dist_attr_candidates = self._generate_dist_attr_candidates(
                 op_id, dist_op)
-            print("concerned dist ops",
-                  dist_op.serial_op.type,
-                  len(op_dist_attr_candidates),
-                  flush=True)
+            # print("concerned dist ops",
+            #       dist_op.serial_op.type,
+            #       len(op_dist_attr_candidates),
+            #       flush=True)
             search_space *= len(op_dist_attr_candidates)
             self._space.choice(str(op_id),
                                op_dist_attr_candidates,
@@ -911,6 +911,7 @@ class ParallelTuner:
         intra_node_partition = trial.space.values["intra_node_partitions"]
         process_mesh_list = self._generate_process_mesh_list(
             inter_node_partition, intra_node_partition)
+        print("\tprocess_mesh list", process_mesh_list, flush=True)
         op_id_to_process_mesh = self._apply_pipeline_partition_random(
             process_mesh_list)
         if op_id_to_process_mesh is None:
@@ -947,7 +948,8 @@ class ParallelTuner:
             dist_op.dist_attr.process_mesh = process_mesh
         self._amend_dist_attr()
 
-        self._complete_tensor_dist_attr_by_op()
+        # self._complete_tensor_dist_attr_by_op()
+        self._completer._complete_tensor_dist_attr_by_op()
 
         self._dist_context.block_state.parse_forward_blocks(
             self._dist_context.serial_main_program)
@@ -1478,8 +1480,7 @@ class ParallelTuner:
         self._sample_time = 0.0
         self._complete_time = 0.0
         self._estimate_time = 0.0
-        found_better = False
-        while True and not found_better:
+        while True:
             start_time = time.time()
             trial = self._create_trial()
             if self._num_trials == 0:
@@ -1522,7 +1523,6 @@ class ParallelTuner:
                 self._update_trail(trial, results)
                 self._store_best_parallel_strategy()
                 best_time = cur_time
-                found_better = True
             # We need to restore the distributed context and reset the distributed information to the default.
             self._dist_context._restore(serial=True,
                                         serial_mode="to_backup",

@@ -356,7 +356,6 @@ class OperatorDistributedAttribute:
         return dynamic_dims
 
     def set_input_dynamic_dims(self, name, dynamic_dims):
-        print(dynamic_dims)
         input_dist_attr = self.get_input_dist_attr(name)
         if input_dist_attr:
             input_dist_attr.dynamic_dims = dynamic_dims
@@ -364,7 +363,6 @@ class OperatorDistributedAttribute:
             dist_attr = TensorDistributedAttribute()
             dist_attr.dynamic_dims = dynamic_dims
             self._inputs_dist_attrs[name] = dist_attr
-            print(dist_attr)
 
     def get_output_dynamic_dims(self, name):
         output_dist_attr = self.get_output_dist_attr(name)

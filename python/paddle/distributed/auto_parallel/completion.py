@@ -141,6 +141,7 @@ class Completer:
     def __init__(self, dist_context):
         assert dist_context is not None
         self._dist_context = dist_context
+        self._has_prepared = False
 
     def _update_tensor_node_dims_mapping(self, tensor_node, fwd=True):
         changed = False
@@ -727,6 +728,8 @@ class Completer:
         self._update_process_mesh_between_graphs()
 
     def _prepare(self):
+        if self._has_prepared:
+            return
         self._while_op_nodes = {}
         self._array_nodes = {}
         self._node_pairs_between_graphs = []
@@ -762,6 +765,7 @@ class Completer:
                                 and after_node.var().name() == node.var().name():
                             self._node_pairs_between_graphs.append(
                                 (after_node, node))
+        self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):
         """ Complete annotation for the partial annotated serial_main_program.
@@ -801,6 +805,80 @@ class Completer:
         self._dist_context.validate_dist_attr_for_program()
 
         return serial_main_program
+
+    def _complete_tensor_dist_attr_by_op(self, serial_main_program=None):
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context._serial_main_program = serial_main_program
+
+        self._dist_context.initialize()
+
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+
+        self._prepare()
+
+        has_set_dist_attr = set()
+
+        all_nodes = self._dist_context.serial_ordered_nodes
+        for node in all_nodes:
+            if node.is_op():
+                # if node.op().type() in [
+                #         "while", "read_from_array", "write_to_array"
+                # ]:
+                #     continue
+                dist_op = self._dist_context.get_dist_op_for_graph(node)
+                op_dist_attr = dist_op.dist_attr
+                for tensor_node in node.inputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        # Skip the non-leaf var node
+                        if len(tensor_node.inputs) != 0:
+                            continue
+                        tensor_desc = tensor_node.var()
+                        tensor_name = tensor_desc.name()
+                        tensor = dist_op.get_serial_input(tensor_name)
+                        # Use the first op to set the tensor dist attr
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_input_dims_mapping(
+                            tensor_name) if tensor.is_parameter else [
+                                -1 for i in tensor_desc.shape()
+                            ]
+                        has_set_dist_attr.add(tensor_name)
+                for tensor_node in node.outputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        tensor_name = tensor_node.var().name()
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                            tensor_name)
+                        has_set_dist_attr.add(tensor_name)
+
+        self._update_process_mesh_for_specials()
+
+        self._update_process_mesh_between_graphs()
+
+        self._update_dims_mapping_for_special()
+
+        self._update_dims_mapping_between_graphs()
+
+        # Copy the corresponding distributed attribute from graph to serial_main_program
+        self._dist_context.copy_dist_attr_from_graph_to_program()
+
+        # # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
+        # self._complete_high_order_grad_annotation(serial_main_program)
+
+        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
+        # Do the validation check and amend some completion
+        self._dist_context.amend_dist_attr_for_program()
+
+        self._dist_context.validate_dist_attr_for_program()
 
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """

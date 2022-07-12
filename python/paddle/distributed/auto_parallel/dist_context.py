@@ -988,5 +988,4 @@ class BlockState(object):
             self.backward_to_forward_index_map[idx] = block.forward_block_idx
             self.nblock += 1
 
-        print("dist_context.py", self.nblock, len(program.blocks))
         assert self.nblock == len(program.blocks)
