@@ -124,7 +124,7 @@ class Blas {
             T* C,
             int ldc) const;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_CUDA
   template <typename T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,

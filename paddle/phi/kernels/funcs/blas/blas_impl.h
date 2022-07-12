@@ -1937,7 +1937,7 @@ void Blas<phi::CPUContext>::TRSM(CBLAS_SIDE side,
       CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda, B, ldb);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_CUDA
 
 template <>
 template <typename T>
