@@ -477,16 +477,21 @@ def abs(x, name=None):
 @dygraph_only
 def coalesce(x):
     r"""
-    the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique, .
-    Args:
+    the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+    Parameters:
         x (Tensor): the input SparseCooTensor.
+
     Returns:
         Tensor: return the SparseCooTensor after coalesced.
+
     Examples:
     ..  code-block:: python
+
         import paddle
         from paddle.incubate import sparse
         from paddle.fluid.framework import _test_eager_guard
+
         with _test_eager_guard():
             indices = [[0, 0, 1], [1, 1, 2]]
             values = [1.0, 2.0, 3.0]
