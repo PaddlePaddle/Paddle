@@ -395,7 +395,7 @@ if(WITH_PYTHON)
     endif()
 
     add_custom_command(
-      OUTPUT ${impl_file}
+      OUTPUT op_function
       COMMAND
         ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
