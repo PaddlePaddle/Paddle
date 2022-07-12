@@ -37,7 +37,8 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -61,8 +62,8 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
-        # if self.cluster is None:
-        #     self.cluster = get_default_cluster()
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
@@ -244,7 +245,7 @@ class Engine:
             cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
             cur_rank_recv_port = int(cur_rank_port) + magic_num
             server_socket = None
-            # large enough for recv rank
+            # Large enough for recv rank
             buff_size = 1024
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.bind((cur_rank_ip, cur_rank_recv_port))

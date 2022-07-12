@@ -132,16 +132,17 @@ class ProcessGroup:
             else:
                 assert False, ("No CUDA device found")
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of
-        # hang caused by cross-creation of new_group
-        paddle.disable_static()
-        paddle.set_device('gpu:%d' % paddle.distributed.ParallelEnv().dev_id)
-        tmp = paddle.to_tensor(
-            [1], dtype="int32") if _non_static_mode() else fill_constant(
-                [0], dtype="int32", value="1")
-        paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
-        paddle.distributed.wait(tmp, group=self)
-        paddle.enable_static()
+            # TODO(shenliang03): This is a temporary solution to solve the problem of
+            # hang caused by cross-creation of new_group
+            paddle.framework._in_legacy_dygraph()
+            paddle.set_device('gpu:%d' %
+                              paddle.distributed.ParallelEnv().dev_id)
+            tmp = paddle.to_tensor(
+                [1], dtype="int32") if _non_static_mode() else fill_constant(
+                    [0], dtype="int32", value="1")
+            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            paddle.distributed.wait(tmp, group=self)
+            paddle.enable_static()
 
         self._is_instantiate = True
 
