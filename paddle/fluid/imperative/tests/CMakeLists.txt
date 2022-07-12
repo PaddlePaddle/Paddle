@@ -39,8 +39,14 @@ endif()
 cc_test(
   test_gradient_accmulator
   SRCS test_gradient_accmulator.cc
-  DEPS memcpy selected_rows_utils selected_rows_functor gradient_accumulator
-       math_function phi_tensor)
+  DEPS memcpy
+       selected_rows_utils
+       selected_rows_functor
+       gradient_accumulator
+       math_function
+       phi_tensor
+       phi_api
+       phi_api_utils)
 cc_test(
   test_layer
   SRCS test_layer.cc

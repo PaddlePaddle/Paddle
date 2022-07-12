@@ -5,6 +5,7 @@ set(STANDALONE_EXECUTOR_SRCS
     data_transfer.cc
     new_executor_defs.cc
     interpretercore_util.cc
+    interpretercore.cc
     event_manager.cc
     stream_analyzer.cc
     interpretercore.cc
