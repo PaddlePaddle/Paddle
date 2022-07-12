@@ -35,8 +35,6 @@ for each_diff in result:
     if each_diff[0] in ['-', '?']:  # delete or change API is not allowed
         error = True
     elif each_diff[0] == '+':
-        if each_diff.find('paddle.fluid.core_avx.eager.ops') >= 0:
-            continue
         error = True
 
     if each_diff[0] != ' ':
