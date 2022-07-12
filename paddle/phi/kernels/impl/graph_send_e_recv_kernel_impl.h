@@ -114,39 +114,4 @@ inline std::vector<int> InferBroadcastShape(const phi::DDim& x_dims,
   return out_dims_array;
 }
 
-inline std::vector<int64_t> GetGradReduceDim(
-    const std::vector<int>& grad_dims, const std::vector<int>& input_dims) {
-  // Whether to reduce the gradients.
-  // If there is broadcast in forward pass, gradients need to be reduced on
-  // broadcast dimension.
-  std::vector<int> grad_shape(grad_dims.begin() + 1, grad_dims.end());
-  std::vector<int> input_shape(input_dims.begin() + 1, input_dims.end());
-  std::vector<int64_t> reduce_idx;
-  bool need_reduce = false;
-  if (grad_shape.size() != input_shape.size()) {
-    need_reduce = true;
-  } else {
-    for (int i = 0; i < grad_shape.size(); i++) {
-      if (grad_shape[i] != input_shape[i]) {
-        need_reduce = true;
-        break;
-      }
-    }
-  }
-  if (!need_reduce) {
-    return reduce_idx;
-  }
-
-  int num_to_squeeze = grad_shape.size() - input_shape.size();
-  for (int i = 0; i < num_to_squeeze; i++) {
-    input_shape.insert(input_shape.begin(), 1);
-  }
-  for (int i = 0; i < input_shape.size(); i++) {
-    if (grad_shape[i] - input_shape[i] != 0) {
-      reduce_idx.push_back(i + 1);
-    }
-  }
-  return reduce_idx;
-}
-
 }  // namespace phi

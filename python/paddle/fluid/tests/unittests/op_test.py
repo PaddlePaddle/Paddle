@@ -1774,7 +1774,6 @@ class OpTest(unittest.TestCase):
             self.__class__.use_xpu = True
 
         places = self._get_places()
-        places = places[1:]
         for place in places:
             res = self.check_output_with_place(place,
                                                atol,
@@ -1861,7 +1860,6 @@ class OpTest(unittest.TestCase):
                    check_eager=False):
         self._check_grad_helper()
         places = self._get_places()
-        places = places[1:]
         for place in places:
             self.check_grad_with_place(place,
                                        inputs_to_check,
