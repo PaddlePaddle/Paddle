@@ -561,7 +561,7 @@ int main(int argc, char* argv[]) {
 
     out << "namespace paddle {\n"
         << "namespace pybind {\n\n";
-    out << "extern std::atomic<int> VarBaseUniqueNameID{0};\n";
+    out << "extern std::atomic<int> VarBaseUniqueNameID;\n";
     out << paddle::string::join_strings(std::get<0>(op_funcs[i]), '\n');
     out << "\n\n";
 
