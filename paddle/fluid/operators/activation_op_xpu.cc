@@ -559,8 +559,8 @@ REGISTER_OP_XPU_KERNEL(
         ops::XPUReluGradFunctor<paddle::platform::float16>>);
 REGISTER_OP_XPU_KERNEL(relu6,
                        ops::XPUActivationKernel<ops::XPURelu6Functor<float>>);
-REGISTER_OP_XPU_KERNEL(relu6_grad,
-                       ops::XPUActivationKernel<ops::XPURelu6GradFunctor<float>>);
+REGISTER_OP_XPU_KERNEL(
+    relu6_grad, ops::XPUActivationKernel<ops::XPURelu6GradFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(
     tanh,
     ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
