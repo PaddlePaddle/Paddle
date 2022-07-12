@@ -1408,7 +1408,7 @@ class Executor(object):
                         place, program._places)) != 1:
                     return False
 
-                return true
+                return True
             else:
                 if isinstance(program._graph, compiler.CompiledProgram):
                     return False
