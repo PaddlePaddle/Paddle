@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -29,7 +28,6 @@ void CalculateXEGradForMinMax(const Context& ctx,
                               const T* out_grad,
                               const T* x_data,
                               const T* e_data,
-                              const phi::DDim& out_grad_dims,
                               const phi::DDim& x_dims,
                               const phi::DDim& e_dims,
                               const IndexT* s_index,
@@ -208,7 +206,6 @@ void CalculateEGrad(const Context& ctx,
                     const T* out_grad,
                     const T* x_data,
                     const T* e_data,
-                    const phi::DDim& out_grad_dims,
                     const phi::DDim& x_dims,
                     const phi::DDim& e_dims,
                     const IndexT* s_index,
@@ -217,8 +214,7 @@ void CalculateEGrad(const Context& ctx,
                     const std::string& pool_type,
                     int64_t index_size,
                     T* e_grad,
-                    const DenseTensor* dst_count = nullptr,
-                    const DenseTensor* out = nullptr) {
+                    const DenseTensor* dst_count = nullptr) {
   const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
@@ -363,7 +359,6 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                        out_grad_data,
                                        x_data,
                                        e_data,
-                                       out_grad.dims(),
                                        x_dims,
                                        e_dims,
                                        s_index,
@@ -372,14 +367,12 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                        pool_type,
                                        index_size,
                                        e_grad_data,
-                                       dst_count,
-                                       out);
+                                       dst_count);
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     CalculateXEGradForMinMax<Context, T, IndexT>(ctx,
                                                  out_grad_data,
                                                  x_data,
                                                  e_data,
-                                                 out_grad.dims(),
                                                  x_dims,
                                                  e_dims,
                                                  s_index,
