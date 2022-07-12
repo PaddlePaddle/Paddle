@@ -350,7 +350,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (block) {
         auto* x_var_desc = block->FindVar(X_name);
         // Can't get feed op's TensorDesc
-        if (op_type != "feed" && x_var_desc) {
+        if (op_type != "feed" && x_var_desc && !x_var_desc->Persistable()) {
           const auto x_shape = x_var_desc->GetShape();
           if (x_shape.size() == 1) return false;
         }
@@ -1348,7 +1348,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                    "elementwise op.";
         return false;
       }
-      if (x_var_desc->Persistable()) {
+      if (x_var_desc->Persistable() && !with_dynamic_shape) {
         VLOG(3) << "Input X is a parameter which is not supported for "
                    "elementwise_add/elementwise_mul in tensorrt, swap x and "
                    "y will work";
