@@ -20,7 +20,7 @@ COPY paddle/scripts/docker/root/ /root/
 RUN chmod 777 /tmp
 
 RUN apt-key del 7fa2af80
-RUN rm /etc/apt/sources.list.d/cuda.list && rm /etc/apt/sources.list.d/nvidia-ml.list
+RUN rm /etc/apt/sources.list.d/*
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
 
 RUN apt-get update --allow-unauthenticated && \
@@ -35,7 +35,7 @@ RUN apt-get update --allow-unauthenticated && \
 WORKDIR /usr/bin 
 COPY tools/dockerfile/build_scripts /build_scripts 
 RUN bash /build_scripts/install_trt.sh
-RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN bash /build_scripts/install_gcc.sh gcc82 
 RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
 RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
 RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
@@ -43,6 +43,10 @@ RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
 
+Run bash /build_scripts/install_cudnn.sh cudnn841
+ENV CUDNN_VERSION=8.4.1
+RUN bash /build_scripts/install_nccl2.sh
+RUN rm -rf /build_scripts
 
 # install cmake
 WORKDIR /home
