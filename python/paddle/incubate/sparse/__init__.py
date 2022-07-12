@@ -18,6 +18,7 @@ from .creation import sparse_csr_tensor
 from .unary import sqrt
 from .unary import sin
 from .unary import tanh
+from .unary import coalesce
 
 from .binary import mv
 from .binary import matmul
@@ -43,4 +44,5 @@ __all__ = [
     'subtract',
     'multiply',
     'divide',
+    'coalesce',
 ]

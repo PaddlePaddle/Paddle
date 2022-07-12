@@ -109,3 +109,29 @@ def sin(x, name=None):
                 out = paddle.incubate.sparse.sin(sparse_x)
     """
     return _C_ops.final_state_sparse_sin(x)
+
+
+@dygraph_only
+def coalesce(x):
+    r"""
+    the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique, .
+    Args:
+        x (Tensor): the input SparseCooTensor.
+    Returns:
+        Tensor: return the SparseCooTensor after coalesced.
+    Examples:
+    ..  code-block:: python
+        import paddle
+        from paddle.incubate import sparse
+        from paddle.fluid.framework import _test_eager_guard
+        with _test_eager_guard():
+            indices = [[0, 0, 1], [1, 1, 2]]
+            values = [1.0, 2.0, 3.0]
+            sp_x = sparse.sparse_coo_tensor(indices, values)
+            sp_x = sparse.coalesced(sp_x)
+            print(sp_x.indices())
+            #[[0, 1], [1, 2]]
+            print(sp_x.values())
+            #[3.0, 3.0]
+	"""
+    return _C_ops.final_state_sparse_coalesce(x)
