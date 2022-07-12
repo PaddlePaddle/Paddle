@@ -1027,11 +1027,18 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
             #        [0, 1, 3, 2]])
 
     """
-    if not paddle.is_tensor(x):
-        raise TypeError("input variable must be a tensor type.")
+    if in_dygraph_mode():
+        if not paddle.is_tensor(x):
+            raise TypeError("input variable must be a tensor type.")
 
-    if not paddle.is_tensor(sorted_sequence):
-        raise TypeError("sorted_sequence must be a tensor type.")
+        if not paddle.is_tensor(sorted_sequence):
+            raise TypeError("sorted_sequence must be a tensor type.")
+    else:
+        if type(x) is not paddle.fluid.framework.Variable:
+            raise TypeError("input variable must be a tensor type.")
+
+        if type(sorted_sequence) is not paddle.fluid.framework.Variable:
+            raise TypeError("sorted_sequence must be a tensor type.")
 
     assert sorted_sequence.dim() == 1, \
         "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
