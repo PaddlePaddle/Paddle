@@ -49,8 +49,8 @@ if(WITH_GPU OR WITH_ROCM)
                                interpretercore_fast_garbage_collector)
 endif()
 
-cc_library(standalone_executor STANDALONE_EXECUTOR_SRCS
-           DEPS STANDALONE_EXECUTOR_DEPS)
+cc_library(standalone_executor ${STANDALONE_EXECUTOR_SRCS}
+           DEPS ${STANDALONE_EXECUTOR_DEPS})
 
 cc_library(
   staticgraph_executor_statistics
