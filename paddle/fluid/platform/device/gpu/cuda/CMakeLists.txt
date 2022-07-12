@@ -1,7 +1,7 @@
 nv_library(
   cuda_graph
   SRCS cuda_graph.cc
-  DEPS enforce allocator)
+  DEPS enforce)
 nv_library(
   cuda_profiler
   SRCS cuda_profiler.cc
