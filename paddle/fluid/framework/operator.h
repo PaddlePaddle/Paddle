@@ -735,7 +735,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;
-  std::vector<std::string> graphed_ops{"conv2d_fusion", "fc"};
+  std::vector<std::string> graphed_ops{"conv2d_fusion", "depthwise_conv2d"};
   mutable CacheImpl* impl_{nullptr};
 };
 

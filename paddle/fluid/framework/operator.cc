@@ -1414,7 +1414,8 @@ bool OperatorWithKernel::cacheEnabled() const {
 }
 bool OperatorWithKernel::cudaGraphEnabled() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return std::count(graphed_ops.begin(), graphed_ops.end(), Type());
+  return std::count(graphed_ops.begin(), graphed_ops.end(), Type()) &&
+         !need_prepare_data_ && !need_prepare_phi_data_;
 #else
   return false;
 #endif
@@ -1449,6 +1450,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       InitOpCache(scope, place);
     } else {
       if (cacheEnabled()) {
+        // 1. inferShape func
+        if (!all_kernels_must_compute_runtime_shape_)
+          this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+          // 2. run impl
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (cudaGraphEnabled()) {
           if (impl_->updateInputsShapesDimCache()) {
@@ -1466,8 +1471,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           }
         } else {
 #endif
-          if (!all_kernels_must_compute_runtime_shape_)
-            this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
           (*pt_kernel_)(impl_->getKernelContext());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         }
