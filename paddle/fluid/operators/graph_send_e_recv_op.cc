@@ -134,9 +134,11 @@ class GraphSendERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(graph_send_e_recv, GraphSendERecvInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(graph_send_e_recv,
+                            GraphSendERecvInferShapeFunctor,
                             PD_INFER_META(phi::GraphSendERecvInferMeta));
-REGISTER_OPERATOR(graph_send_e_recv, ops::GraphSendERecvOP,
+REGISTER_OPERATOR(graph_send_e_recv,
+                  ops::GraphSendERecvOP,
                   ops::GraphSendERecvOpMaker,
                   ops::GraphSendERecvGradOpMaker<paddle::framework::OpDesc>,
                   ops::GraphSendERecvGradOpMaker<paddle::imperative::OpBase>,

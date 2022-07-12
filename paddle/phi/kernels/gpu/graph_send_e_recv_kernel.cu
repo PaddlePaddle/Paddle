@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/graph_send_e_recv_kernel.h"
 #include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/graph_send_e_recv_kernel.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 #include <thrust/device_vector.h>
@@ -99,46 +99,46 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     GraphSendERecvSumCUDAFunctor<T> sum_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvSumCUDAFunctor<T>,
-          funcs::AddFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          add_funtor,
-          sum_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvSumCUDAFunctor<T>,
+                               funcs::AddFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              add_funtor,
+              sum_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvSumCUDAFunctor<T>,
-          funcs::MultiplyFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          mul_functor,
-          sum_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvSumCUDAFunctor<T>,
+                               funcs::MultiplyFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              mul_functor,
+              sum_functor);
     }
     if (pool_type == "MEAN") {
       ctx.template Alloc<int>(dst_count);
@@ -152,9 +152,9 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
       cudaMemset(dst_count_data, 0, input_size * sizeof(int));
 #endif
       int64_t grid_count = (index_size + block_ - 1) / block_;
-      ComputeCountCUDAKernel<T,
-                             IndexT><<<grid_count, block_, 0, ctx.stream()>>>(
-          dst_count_data, d_index, index_size);
+      ComputeCountCUDAKernel<T, IndexT>
+          <<<grid_count, block_, 0, ctx.stream()>>>(
+              dst_count_data, d_index, index_size);
 
       int64_t grid_mean = (input_size * out_len + block_ - 1) / block_;
       int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
@@ -167,46 +167,46 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     GraphSendERecvMaxCUDAFunctor<T> max_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMaxCUDAFunctor<T>,
-          funcs::AddFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          add_funtor,
-          max_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvMaxCUDAFunctor<T>,
+                               funcs::AddFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              add_funtor,
+              max_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMaxCUDAFunctor<T>,
-          funcs::MultiplyFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          mul_functor,
-          max_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvMaxCUDAFunctor<T>,
+                               funcs::MultiplyFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              mul_functor,
+              max_functor);
     }
     if (out_size > 0) {
       input_size = out_size;
@@ -214,52 +214,52 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     int64_t grid_max = (input_size * out_len + block_ - 1) / block_;
     int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_max_ = grid_max < max_grid_dimx ? grid_max : max_grid_dimx;
-    InputResetMaxCUDAKernel<T><<<grid_max_, block_, 0, ctx.stream()>>>(
-        out_data, input_size, out_len);
+    InputResetMaxCUDAKernel<T>
+        <<<grid_max_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
   } else if (pool_type == "MIN") {
     GraphSendERecvMinCUDAFunctor<T> min_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMinCUDAFunctor<T>,
-          funcs::AddFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          add_funtor,
-          min_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvMinCUDAFunctor<T>,
+                               funcs::AddFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              add_funtor,
+              min_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<
-          T,
-          IndexT,
-          GraphSendERecvMinCUDAFunctor<T>,
-          funcs::MultiplyFunctor<T>><<<grid, block, 0, ctx.stream()>>>(
-          x_data,
-          e_data,
-          s_index,
-          d_index,
-          thrust::raw_pointer_cast(x_bcastoff.data()),
-          thrust::raw_pointer_cast(e_bcastoff.data()),
-          out_data,
-          index_size,
-          bcast_info.l_len,
-          bcast_info.r_len,
-          out_len,
-          bcast_info.use_bcast,
-          mul_functor,
-          min_functor);
+      GraphSendERecvCUDAKernel<T,
+                               IndexT,
+                               GraphSendERecvMinCUDAFunctor<T>,
+                               funcs::MultiplyFunctor<T>>
+          <<<grid, block, 0, ctx.stream()>>>(
+              x_data,
+              e_data,
+              s_index,
+              d_index,
+              thrust::raw_pointer_cast(x_bcastoff.data()),
+              thrust::raw_pointer_cast(e_bcastoff.data()),
+              out_data,
+              index_size,
+              bcast_info.l_len,
+              bcast_info.r_len,
+              out_len,
+              bcast_info.use_bcast,
+              mul_functor,
+              min_functor);
     }
     if (out_size > 0) {
       input_size = out_size;
@@ -267,8 +267,8 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     int64_t grid_min = (input_size * out_len + block_ - 1) / block_;
     int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_min_ = grid_min < max_grid_dimx ? grid_min : max_grid_dimx;
-    InputResetMinCUDAKernel<T><<<grid_min_, block_, 0, ctx.stream()>>>(
-        out_data, input_size, out_len);
+    InputResetMinCUDAKernel<T>
+        <<<grid_min_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
   }
 }
 
