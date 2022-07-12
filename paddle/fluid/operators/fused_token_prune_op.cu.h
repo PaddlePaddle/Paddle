@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <thrust/sort.h>
+#include "cub/cub.cuh"
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/phi/kernels/funcs/slice.h"
@@ -38,6 +38,18 @@ inline int ComputeBlockSize(int col) {
   else
     return 64;
 }
+
+// Iter for move to next row
+struct SegmentOffsetIter {
+  EIGEN_DEVICE_FUNC
+  explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}
+
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int operator()(int idx) const {
+    return idx * num_cols_;
+  }
+
+  int num_cols_;
+};
 
 }  // namespace operators
 }  // namespace paddle
