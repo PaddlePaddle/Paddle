@@ -1144,7 +1144,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     For more details see `ihfftn`.
 
     Args:
-        x(Tensor): Input tensor
+        x(Tensor): Input tensor. The data type is real.
         s(Sequence[int], optional): Shape of the real input to the inverse FFT.
         axes(Sequance[int], optional): The axes over which to compute the 
             inverse fft. Default is the last two axes.
