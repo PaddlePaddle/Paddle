@@ -436,7 +436,7 @@ def ihfft(x, n=None, axis=-1, norm="backward", name=None):
     ``n//2 + 1``.
 
     Args:
-        x(Tensor): Input tensor.
+        x(Tensor): Input tensor. The data type is real.
         n(int, optional): The number of points along transformation axis in the 
             input to use.  If `n` is smaller than the length of the input, the 
             input is cropped.  If it is larger, the input is padded with zeros. 
