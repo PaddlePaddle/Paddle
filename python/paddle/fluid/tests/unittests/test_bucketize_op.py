@@ -195,3 +195,11 @@ class TestBucketizeError(unittest.TestCase):
                 out = paddle.bucketize(x, sorted_sequence)
 
         self.assertRaises(TypeError, test_sortedsequence_x_type_error)
+
+        def test_tensor_type(self):
+            paddle.disable_static()
+            x = self.x
+            sorted_sequence = paddle.to_tensor(self.sorted_sequence)
+            out = paddle.bucketize(x, sorted_sequence)
+
+        self.assertRaises(AssertionError, test_tensor_type)

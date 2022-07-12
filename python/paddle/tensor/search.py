@@ -1027,8 +1027,12 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
             #        [0, 1, 3, 2]])
 
     """
+    assert paddle.is_tensor(x), "input variable must be a tensor type."
+    assert paddle.is_tensor(sorted_sequence), "sorted_sequence must be a tensor type."
+
     assert sorted_sequence.dim() == 1, \
         "sorted_sequence tensor must be 1 dimension, but got dim(" + str(sorted_sequence.dim()) + ")"
+
     out = searchsorted(sorted_sequence, x, out_int32, right, name)
 
     return out
