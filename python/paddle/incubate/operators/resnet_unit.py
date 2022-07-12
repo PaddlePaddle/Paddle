@@ -45,11 +45,11 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
     bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
-    bit_mask = helper.create_variable_for_type_inference(
-        dtype=bit_mask_dtype, stop_gradient=True)
+    bit_mask = helper.create_variable_for_type_inference(dtype=bit_mask_dtype,
+                                                         stop_gradient=True)
     # intermediate_out for x
-    conv_x = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+    conv_x = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                       stop_gradient=True)
     saved_mean_x = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     saved_invstd_x = helper.create_variable_for_type_inference(
@@ -57,8 +57,8 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
     running_mean_x = mean_x
     running_var_x = var_x
     # intermediate_out for z
-    conv_z = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+    conv_z = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                       stop_gradient=True)
     saved_mean_z = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     saved_invstd_z = helper.create_variable_for_type_inference(
@@ -114,8 +114,10 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'RunningVarZ': running_var_z,
     }
 
-    helper.append_op(
-        type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs)
+    helper.append_op(type='resnet_unit',
+                     inputs=inputs,
+                     outputs=outputs,
+                     attrs=attrs)
 
     return out
 
@@ -194,26 +196,23 @@ class ResNetUnit(Layer):
             attr=scale_x_attr,
             dtype=bn_param_dtype,
             default_initializer=I.Constant(1.0))
-        self.bias_x = self.create_parameter(
-            shape=bn_param_shape,
-            attr=bias_x_attr,
-            dtype=bn_param_dtype,
-            is_bias=True)
-        self.mean_x = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_mean_x_name,
-                initializer=I.Constant(0.0),
-                trainable=False),
-            shape=bn_param_shape,
-            dtype=bn_param_dtype)
+        self.bias_x = self.create_parameter(shape=bn_param_shape,
+                                            attr=bias_x_attr,
+                                            dtype=bn_param_dtype,
+                                            is_bias=True)
+        self.mean_x = self.create_parameter(attr=ParamAttr(
+            name=moving_mean_x_name,
+            initializer=I.Constant(0.0),
+            trainable=False),
+                                            shape=bn_param_shape,
+                                            dtype=bn_param_dtype)
         self.mean_x.stop_gradient = True
-        self.var_x = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_var_x_name,
-                initializer=I.Constant(1.0),
-                trainable=False),
-            shape=bn_param_shape,
-            dtype=bn_param_dtype)
+        self.var_x = self.create_parameter(attr=ParamAttr(
+            name=moving_var_x_name,
+            initializer=I.Constant(1.0),
+            trainable=False),
+                                           shape=bn_param_shape,
+                                           dtype=bn_param_dtype)
         self.var_x.stop_gradient = True
         if has_shortcut:
             self.filter_z = self.create_parameter(
@@ -226,26 +225,23 @@ class ResNetUnit(Layer):
                 attr=scale_z_attr,
                 dtype=bn_param_dtype,
                 default_initializer=I.Constant(1.0))
-            self.bias_z = self.create_parameter(
-                shape=bn_param_shape,
-                attr=bias_z_attr,
-                dtype=bn_param_dtype,
-                is_bias=True)
-            self.mean_z = self.create_parameter(
-                attr=ParamAttr(
-                    name=moving_mean_z_name,
-                    initializer=I.Constant(0.0),
-                    trainable=False),
-                shape=bn_param_shape,
-                dtype=bn_param_dtype)
+            self.bias_z = self.create_parameter(shape=bn_param_shape,
+                                                attr=bias_z_attr,
+                                                dtype=bn_param_dtype,
+                                                is_bias=True)
+            self.mean_z = self.create_parameter(attr=ParamAttr(
+                name=moving_mean_z_name,
+                initializer=I.Constant(0.0),
+                trainable=False),
+                                                shape=bn_param_shape,
+                                                dtype=bn_param_dtype)
             self.mean_z.stop_gradient = True
-            self.var_z = self.create_parameter(
-                attr=ParamAttr(
-                    name=moving_var_z_name,
-                    initializer=I.Constant(1.0),
-                    trainable=False),
-                shape=bn_param_shape,
-                dtype=bn_param_dtype)
+            self.var_z = self.create_parameter(attr=ParamAttr(
+                name=moving_var_z_name,
+                initializer=I.Constant(1.0),
+                trainable=False),
+                                               shape=bn_param_shape,
+                                               dtype=bn_param_dtype)
             self.var_z.stop_gradient = True
         else:
             self.filter_z = None
@@ -258,11 +254,12 @@ class ResNetUnit(Layer):
         if self._fuse_add and z is None:
             raise ValueError("z can not be None")
 
-        out = resnet_unit(
-            x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,
-            self.var_x, z, self.filter_z, self.scale_z, self.bias_z,
-            self.mean_z, self.var_z, self._stride, self._stride_z,
-            self._padding, self._dilation, self._groups, self._momentum,
-            self._eps, self._data_format, self._fuse_add, self._has_shortcut,
-            self._use_global_stats, self._is_test, self._act)
+        out = resnet_unit(x, self.filter_x, self.scale_x, self.bias_x,
+                          self.mean_x, self.var_x, z, self.filter_z,
+                          self.scale_z, self.bias_z, self.mean_z, self.var_z,
+                          self._stride, self._stride_z, self._padding,
+                          self._dilation, self._groups, self._momentum,
+                          self._eps, self._data_format, self._fuse_add,
+                          self._has_shortcut, self._use_global_stats,
+                          self._is_test, self._act)
         return out

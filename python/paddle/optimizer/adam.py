@@ -191,12 +191,11 @@ class Adam(Optimizer):
             if not 0 <= epsilon:
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0.")
-        super(Adam, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
+        super(Adam, self).__init__(learning_rate=learning_rate,
+                                   parameters=parameters,
+                                   weight_decay=weight_decay,
+                                   grad_clip=grad_clip,
+                                   name=name)
         self.type = "adam"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -237,21 +236,19 @@ class Adam(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True)
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
             block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32
-                })
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
             self._master_weights[param.name] = var
         return var
 
@@ -269,10 +266,11 @@ class Adam(Optimizer):
         target_param = self._master_weights[
             param.name] if find_master else param
         target_name = target_param.name
-        if (name not in self._accumulators or
-                target_name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, target_name))
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -344,7 +342,7 @@ class Adam(Optimizer):
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
 
-            _, _, _, _, _, _ = _C_ops.final_state_adam(
+            _, _, _, _, _, _ = _C_ops.final_state_adam_(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, found_inf, _beta1,
                 _beta2, self._epsilon, self._lazy_mode, 1000, find_master,
@@ -407,12 +405,11 @@ class Adam(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        adam_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True)
+        adam_op = block.append_op(type=self.type,
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  attrs=attrs,
+                                  stop_gradient=True)
 
         return adam_op
 
@@ -455,16 +452,17 @@ class Adam(Optimizer):
                                 "Adam don't support weight_decay with sparse parameters, please set it to None."
                             )
                     else:
-                        if hasattr(grad_var,
-                                   "_is_sparse") and grad_var._is_sparse(
-                                   ) and self.regularization is not None:
+                        if hasattr(
+                                grad_var, "_is_sparse") and grad_var._is_sparse(
+                                ) and self.regularization is not None:
                             raise RuntimeError(
                                 "Adam don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
 
-            optimize_ops = self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads)
+            optimize_ops = self._apply_optimize(loss=None,
+                                                startup_program=None,
+                                                params_grads=params_grads)
         else:
             # optimize parameters in groups
             for param_group in self._param_groups:
@@ -478,8 +476,9 @@ class Adam(Optimizer):
                 params_grads.update(
                     {k: v
                      for k, v in param_group.items() if k != 'params'})
-                self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads)
+                self._apply_optimize(loss=None,
+                                     startup_program=None,
+                                     params_grads=params_grads)
 
     def _multi_tensor_init(self, target_block, parameters):
         """
@@ -623,12 +622,11 @@ class Adam(Optimizer):
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
                         attrs["multi_precision"] = find_master
-                    target_block.append_op(
-                        type="merged_adam",
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=attrs,
-                        stop_gradient=True)
+                    target_block.append_op(type="merged_adam",
+                                           inputs=inputs,
+                                           outputs=outputs,
+                                           attrs=attrs,
+                                           stop_gradient=True)
         return None
 
     def _update_param_group(self, parameters):

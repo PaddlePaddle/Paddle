@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):
+
     def func_set_trainable(self):
         with fluid.dygraph.guard():
             label = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)

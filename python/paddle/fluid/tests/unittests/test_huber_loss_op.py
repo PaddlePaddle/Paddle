@@ -31,6 +31,7 @@ def huber_loss_forward(val, delta):
 
 
 class TestHuberLossOp(OpTest):
+
     def setUp(self):
         self.op_type = 'huber_loss'
         self.python_api = paddle.fluid.layers.huber_loss
@@ -61,30 +62,38 @@ class TestHuberLossOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.008, no_grad_set=set("residual"))
+        self.check_grad(['Y'],
+                        'Out',
+                        max_relative_error=0.008,
+                        no_grad_set=set("residual"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.008,
+                        no_grad_set=set('residual'))
 
 
 def TestHuberLossOp1(TestHuberLossOp):
+
     def set_shape(self):
         return (64)
 
 
 def TestHuberLossOp2(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6)
 
 
 def TestHuberLossOp3(TestHuberLossOp):
+
     def set_shape(self):
         return (6, 6, 1)
 
 
 class TestHuberLossOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input and label must be Variable

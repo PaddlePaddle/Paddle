@@ -17,6 +17,7 @@
 #include <list>
 #include <map>
 #include <set>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/place.h"
@@ -61,7 +62,8 @@ class StreamSafeCUDAAllocator
       public std::enable_shared_from_this<StreamSafeCUDAAllocator> {
  public:
   StreamSafeCUDAAllocator(std::shared_ptr<Allocator> underlying_allocator,
-                          platform::CUDAPlace place, gpuStream_t default_stream,
+                          platform::CUDAPlace place,
+                          gpuStream_t default_stream,
                           bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
 

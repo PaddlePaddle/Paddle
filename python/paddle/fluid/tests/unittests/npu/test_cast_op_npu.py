@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -29,6 +30,7 @@ SEED = 2021
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast1(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"
@@ -52,6 +54,7 @@ class TestCast1(OpTest):
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast2(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"
@@ -75,6 +78,7 @@ class TestCast2(OpTest):
 
 @skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast3(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "cast"

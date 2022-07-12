@@ -17,9 +17,10 @@ from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class CastTransformer(gast.NodeTransformer):
+class CastTransformer(BaseTransformer):
     """
     This class transforms type casting into Static Graph Ast.
     """
@@ -39,8 +40,7 @@ class CastTransformer(gast.NodeTransformer):
         func_str = ast_to_source_code(node.func).strip()
         if func_str in self._castable_type and len(node.args) > 0:
             args_str = ast_to_source_code(node.args[0]).strip()
-            new_func_str = "paddle.jit.dy2static.convert_var_dtype({}, '{}')".format(
-                args_str, func_str)
+            new_func_str = "_jst.AsDtype({}, '{}')".format(args_str, func_str)
             new_node = gast.parse(new_func_str).body[0].value
             return new_node
 

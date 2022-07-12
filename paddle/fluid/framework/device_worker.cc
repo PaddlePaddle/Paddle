@@ -135,7 +135,8 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   dump_interval_ = desc.dump_interval();
 }
 
-void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
+void DeviceWorker::DumpField(const Scope& scope,
+                             int dump_mode,
                              int dump_interval) {  // dump_mode: 0: no random,
                                                    // 1: random with insid hash,
                                                    // 2: random with random
@@ -190,9 +191,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
-                                            "skipped. Maybe the dimension is "
-                                            "wrong ";
+      VLOG(0) << "Note: field[" << field
+              << "] cannot pass check, so it was "
+                 "skipped. Maybe the dimension is "
+                 "wrong ";
       continue;
     }
     for (size_t i = 0; i < batch_size; ++i) {

@@ -152,6 +152,7 @@ def reader_creator(corpus_reader,
                    word_dict=None,
                    predicate_dict=None,
                    label_dict=None):
+
     def reader():
         for sentence, predicate, labels in corpus_reader():
 

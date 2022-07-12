@@ -24,6 +24,7 @@ paddle.enable_static()
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestIpuShard(unittest.TestCase):
+
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
@@ -61,13 +62,13 @@ class TestIpuShard(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 2, 3, 1, 2, 1, 2]
         self.assertTrue(
-            np.allclose(
-                ipu_index_list, expected_ipu_index_list, atol=0))
+            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestIpuPipeline(unittest.TestCase):
+
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
@@ -106,8 +107,7 @@ class TestIpuPipeline(unittest.TestCase):
         expected_ipu_index_list = [1, 2, 3, 1, 2, 1, 2]
 
         self.assertTrue(
-            np.allclose(
-                ipu_index_list, expected_ipu_index_list, atol=0))
+            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
 
 
 if __name__ == "__main__":

@@ -27,6 +27,8 @@ limitations under the License. */
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
+#include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
@@ -54,6 +56,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
 #endif
+#ifdef PADDLE_WITH_PSLIB
+#include "downpour_accessor.h"  // NOLINT
+#endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {
@@ -68,8 +74,10 @@ class AfsWrapper {
  public:
   AfsWrapper() {}
   virtual ~AfsWrapper() {}
-  void init(const std::string& fs_name, const std::string& fs_user,
-            const std::string& pass_wd, const std::string& conf);
+  void init(const std::string& fs_name,
+            const std::string& fs_user,
+            const std::string& pass_wd,
+            const std::string& conf);
   int remove(const std::string& path);
   int mkdir(const std::string& path);
   std::vector<std::string> list(const std::string& path);
@@ -95,37 +103,73 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
     hbm_thread_pool_.resize(thread_keys_shard_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
   }
 
-  void PullSparse(const paddle::platform::Place& place, const int table_id,
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
+                  const std::vector<const uint64_t*>& keys,
+                  const std::vector<float*>& values,
+                  const std::vector<int64_t>& slot_lengths,
+                  const std::vector<int>& slot_dim,
+                  const int hidden_size);
+  void PullSparse(const paddle::platform::Place& place,
+                  const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place, const int table_id,
+  void PushSparseGrad(const paddle::platform::Place& place,
+                      const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
-                      const int hidden_size, const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
-                uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
+                      const int hidden_size,
+                      const int batch_size);
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint64_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
                 int total_len);
-  void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
+  void CopyForPull(const paddle::platform::Place& place,
+                   uint64_t** gpu_keys,
                    const std::vector<float*>& values,
-                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
-                   const int slot_num, const int hidden_size,
+                   const FeatureValue* total_values_gpu,
+                   const int64_t* gpu_len,
+                   const int slot_num,
+                   const int hidden_size,
                    const int64_t total_length);
-
+  void CopyForPull(const paddle::platform::Place& place,
+                   uint64_t** gpu_keys,
+                   const std::vector<float*>& values,
+                   const FeatureValue* total_values_gpu,
+                   const int64_t* gpu_len,
+                   const int slot_num,
+                   const int hidden_size,
+                   const int64_t total_length,
+                   int* gpu_dim);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                   const int hidden_size, const int64_t total_length,
+                   const int hidden_size,
+                   const int64_t total_length,
                    const int batch_size);
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const uint64_t total_length,
+                   const int batch_size,
+                   size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -174,8 +218,8 @@ class PSGPUWrapper {
         // init inner comm
         inner_comms_.resize(dev_size);
         inter_ncclids_.resize(dev_size);
-        platform::dynload::ncclCommInitAll(&(inner_comms_[0]), dev_size,
-                                           &dev_ids[0]);
+        platform::dynload::ncclCommInitAll(
+            &(inner_comms_[0]), dev_size, &dev_ids[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
@@ -186,7 +230,8 @@ class PSGPUWrapper {
         }
 
         PADDLE_ENFORCE_EQ(
-            gloo->IsInitialized(), true,
+            gloo->IsInitialized(),
+            true,
             platform::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
@@ -195,8 +240,8 @@ class PSGPUWrapper {
         gloo::broadcast(opts);
 
         for (int i = 0; i < dev_size; ++i) {
-          platform::dynload::ncclCommInitRank(&inter_comms_[i], gloo->Size(),
-                                              inter_ncclids_[i], gloo->Rank());
+          platform::dynload::ncclCommInitRank(
+              &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
         node_size_ = gloo->Size();
 #else
@@ -223,12 +268,19 @@ class PSGPUWrapper {
     }
   }
 
-  void SetSparseSGD(float nonclk_coeff, float clk_coeff, float min_bound,
-                    float max_bound, float learning_rate, float initial_g2sum,
+  void SetSparseSGD(float nonclk_coeff,
+                    float clk_coeff,
+                    float min_bound,
+                    float max_bound,
+                    float learning_rate,
+                    float initial_g2sum,
                     float initial_range);
-  void SetEmbedxSGD(float mf_create_thresholds, float mf_learning_rate,
-                    float mf_initial_g2sum, float mf_initial_range,
-                    float mf_min_bound, float mf_max_bound);
+  void SetEmbedxSGD(float mf_create_thresholds,
+                    float mf_learning_rate,
+                    float mf_initial_g2sum,
+                    float mf_initial_range,
+                    float mf_min_bound,
+                    float mf_max_bound);
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
@@ -271,18 +323,19 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 1.0
                              : config["mf_max_bound"];
-    for (size_t i = 0; i < heter_devices_.size(); i++) {
-#ifdef PADDLE_WITH_CUDA
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(heter_devices_[i]));
-#elif defined(PADDLE_WITH_XPU_KP)
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(heter_devices_[i]));
-#endif
-      this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                         learning_rate, initial_g2sum, initial_range);
-      this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-                         mf_initial_g2sum, mf_initial_range, mf_min_bound,
-                         mf_max_bound);
-    }
+    this->SetSparseSGD(nonclk_coeff,
+                       clk_coeff,
+                       min_bound,
+                       max_bound,
+                       learning_rate,
+                       initial_g2sum,
+                       initial_range);
+    this->SetEmbedxSGD(mf_create_thresholds,
+                       mf_learning_rate,
+                       mf_initial_g2sum,
+                       mf_initial_range,
+                       mf_min_bound,
+                       mf_max_bound);
   }
 
   void SetDate(int year, int month, int day) {
@@ -310,13 +363,40 @@ class PSGPUWrapper {
 
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
+    std::cout << "yxf set: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " << std::endl;
   }
 
 #ifdef PADDLE_WITH_CUDA
   void SetSlotDimVector(const std::vector<int>& slot_mf_dim_vector) {
     slot_mf_dim_vector_ = slot_mf_dim_vector;
     assert(slot_mf_dim_vector_.size() == slot_vector_.size());
-    for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
+  }
+
+  void InitSlotInfo() {
+    if (slot_info_initialized_) {
+      return;
+    }
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    auto slots_vec = dataset->GetSlots();
+    slot_offset_vector_.clear();
+    for (auto& slot : slot_vector_) {
+      for (size_t i = 0; i < slots_vec.size(); ++i) {
+        if (std::to_string(slot) == slots_vec[i]) {
+          slot_offset_vector_.push_back(i);
+          break;
+        }
+      }
+    }
+    std::cout << "psgpu wrapper use slots: ";
+    for (auto s : slot_offset_vector_) {
+      std::cout << s << " | ";
+    }
+    std::cout << " end " << std::endl;
+    for (size_t i = 0; i < slot_mf_dim_vector_.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
 
@@ -345,6 +425,7 @@ class PSGPUWrapper {
         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+    slot_info_initialized_ = true;
   }
 #endif
 
@@ -358,8 +439,10 @@ class PSGPUWrapper {
     return afs_handler_.open_reader(filename);
   }
 
-  void InitAfsApi(const std::string& fs_name, const std::string& fs_user,
-                  const std::string& pass_wd, const std::string& conf);
+  void InitAfsApi(const std::string& fs_name,
+                  const std::string& fs_user,
+                  const std::string& pass_wd,
+                  const std::string& conf);
 #endif
 
  private:
@@ -369,7 +452,8 @@ class PSGPUWrapper {
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif
   std::unordered_map<
-      uint64_t, std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
+      uint64_t,
+      std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
   HeterPsBase* HeterPs_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
@@ -385,6 +469,12 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
+
+  double time_1 = 0.0;
+  double time_2 = 0.0;
+  double time_3 = 0.0;
+  double time_4 = 0.0;
+
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
@@ -405,6 +495,7 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  bool slot_info_initialized_ = false;
   int use_afs_api_ = 0;
 
 #ifdef PADDLE_WITH_CUDA
@@ -428,6 +519,7 @@ class PSGPUWrapper {
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   bool running_ = false;
+  std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
 
  protected:

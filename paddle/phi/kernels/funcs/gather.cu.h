@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/memory/memcpy.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
@@ -260,17 +261,16 @@ void GatherV2CUDAFunction(const DenseTensor* input,
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
   auto stream = ctx.stream();
-  GatherGPUKernel<
-      T,
-      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data,
-      index_data,
-      out_data,
-      outer_dim_size,
-      inner_dim_size,
-      index_size,
-      index_dim_size,
-      out_size);
+  GatherGPUKernel<T, U>
+      <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+          input_data,
+          index_data,
+          out_data,
+          outer_dim_size,
+          inner_dim_size,
+          index_size,
+          index_dim_size,
+          out_size);
 }
 
 template <typename T, typename U>
@@ -306,17 +306,16 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_size);
   auto stream = ctx.stream();
-  GatherGradGPUKernel<
-      T,
-      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data,
-      index_data,
-      out_data,
-      outer_dim_size,
-      inner_dim_size,
-      input_index_dim_size,
-      out_index_dim_size,
-      input_size);
+  GatherGradGPUKernel<T, U>
+      <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+          input_data,
+          index_data,
+          out_data,
+          outer_dim_size,
+          inner_dim_size,
+          input_index_dim_size,
+          out_index_dim_size,
+          input_size);
 }
 
 }  // namespace funcs

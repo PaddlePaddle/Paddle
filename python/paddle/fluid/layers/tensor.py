@@ -90,8 +90,9 @@ def create_tensor(dtype, name=None, persistable=False):
         'int64'
     ], 'create_tensor')
     helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(
-        name=helper.name, dtype=dtype, persistable=persistable)
+    return helper.create_variable(name=helper.name,
+                                  dtype=dtype,
+                                  persistable=persistable)
 
 
 def create_parameter(shape,
@@ -148,8 +149,7 @@ def create_parameter(shape,
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
         attr = ParamAttr(name=name)
-    return helper.create_parameter(attr, shape,
-                                   convert_dtype(dtype), is_bias,
+    return helper.create_parameter(attr, shape, convert_dtype(dtype), is_bias,
                                    default_initializer)
 
 
@@ -206,15 +206,14 @@ def create_global_var(shape,
     ], 'create_global_var')
 
     helper = LayerHelper("global_var", **locals())
-    var = helper.create_global_variable(
-        dtype=dtype,
-        shape=shape,
-        persistable=persistable,
-        name=name,
-        stop_gradient=True)
-    helper.set_variable_initializer(
-        var, initializer=Constant(
-            value=float(value), force_cpu=force_cpu))
+    var = helper.create_global_variable(dtype=dtype,
+                                        shape=shape,
+                                        persistable=persistable,
+                                        name=name,
+                                        stop_gradient=True)
+    helper.set_variable_initializer(var,
+                                    initializer=Constant(value=float(value),
+                                                         force_cpu=force_cpu))
 
     return var
 
@@ -266,12 +265,13 @@ def cast(x, dtype):
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=x.stop_gradient)
-    helper.append_op(
-        type='cast',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'in_dtype': x.dtype,
-               'out_dtype': out.dtype})
+    helper.append_op(type='cast',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]},
+                     attrs={
+                         'in_dtype': x.dtype,
+                         'out_dtype': out.dtype
+                     })
     return out
 
 
@@ -352,7 +352,8 @@ def concat(input, axis=0, name=None):
                 'concat')
             if x.dtype != input[0].dtype:
                 raise TypeError(
-                    "All the Tensors in the input must have the same data type.")
+                    "All the Tensors in the input must have the same data type."
+                )
     else:
         input = [input]
     check_type(axis, 'axis', (int, Variable), 'concat')
@@ -360,7 +361,8 @@ def concat(input, axis=0, name=None):
     if isinstance(axis, Variable):
         check_dtype(
             axis.dtype, 'axis', ['int32', 'int64'], 'concat',
-            "The data type of axis must be int32 or int64 when axis is a Tensor")
+            "The data type of axis must be int32 or int64 when axis is a Tensor"
+        )
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -373,13 +375,16 @@ def concat(input, axis=0, name=None):
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
                 "number of the elements must be 1, but received %s." % len(input)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': input[0]},
-            outputs={'Out': [out],
-                     'OutIndex': [out_index]},
-            attrs={'axis': axis,
-                   'use_stack': False})
+        helper.append_op(type='tensor_array_to_tensor',
+                         inputs={'X': input[0]},
+                         outputs={
+                             'Out': [out],
+                             'OutIndex': [out_index]
+                         },
+                         attrs={
+                             'axis': axis,
+                             'use_stack': False
+                         })
     else:
         inputs = {'X': input}
         attrs = {}
@@ -389,8 +394,10 @@ def concat(input, axis=0, name=None):
         else:
             attrs['axis'] = axis
 
-        helper.append_op(
-            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+        helper.append_op(type='concat',
+                         inputs=inputs,
+                         outputs={'Out': [out]},
+                         attrs=attrs)
     return out
 
 
@@ -493,13 +500,16 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
-    helper.append_op(
-        type='tensor_array_to_tensor',
-        inputs={'X': input},
-        outputs={'Out': [out],
-                 'OutIndex': [out_index]},
-        attrs={'axis': axis,
-               'use_stack': use_stack})
+    helper.append_op(type='tensor_array_to_tensor',
+                     inputs={'X': input},
+                     outputs={
+                         'Out': [out],
+                         'OutIndex': [out_index]
+                     },
+                     attrs={
+                         'axis': axis,
+                         'use_stack': use_stack
+                     })
     return out, out_index
 
 
@@ -567,14 +577,14 @@ def sums(input, out=None):
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
     else:
-        check_variable_and_dtype(
-            out, "out", ['float32', 'float64', 'int32', 'int64'], 'sums')
+        check_variable_and_dtype(out, "out",
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'sums')
 
-    helper.append_op(
-        type='sum',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False})
+    helper.append_op(type='sum',
+                     inputs={'X': input},
+                     outputs={'Out': out},
+                     attrs={'use_mkldnn': False})
     return out
 
 
@@ -609,8 +619,9 @@ def assign(input, output=None):
           result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    check_type(input, 'input', (Variable, numpy.ndarray, list, tuple, float,
-                                int, bool), 'assign')
+    check_type(input, 'input',
+               (Variable, numpy.ndarray, list, tuple, float, int, bool),
+               'assign')
     is_inplace = True if output is not None else False
 
     if numpy.isscalar(input) and not isinstance(input, str):
@@ -641,9 +652,9 @@ def assign(input, output=None):
             if output is None:
                 output = helper.create_variable_for_type_inference(
                     dtype=input.dtype)
-            helper.append_op(
-                type='assign', inputs={'X': [input]},
-                outputs={'Out': [output]})
+            helper.append_op(type='assign',
+                             inputs={'X': [input]},
+                             outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         # Not support [var, var, ...] currently.
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
@@ -681,14 +692,17 @@ def assign(input, output=None):
                              "saving it to file and 'load_op' to load it")
         if output is None:
             output = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type='assign_value',
-            outputs={'Out': [output]},
-            attrs={
-                'dtype': dtype,
-                'shape': list(input.shape),
-                value_name: values
-            })
+        if _non_static_mode():
+            _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
+                                dtype, value_name, values)
+        else:
+            helper.append_op(type='assign_value',
+                             outputs={'Out': [output]},
+                             attrs={
+                                 'dtype': dtype,
+                                 'shape': list(input.shape),
+                                 value_name: values
+                             })
 
     if is_inplace and _non_static_mode():
         output._bump_inplace_version()
@@ -760,8 +774,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             place = _current_expected_place()
             if force_cpu:
                 place = core.CPUPlace()
+            if isinstance(shape, (list, tuple)):
+                for item in shape:
+                    if not isinstance(item, Variable):
+                        shape = list(
+                            map(
+                                lambda x: x.numpy().flat[0]
+                                if isinstance(x, Variable) else x, shape))
+                        break
 
-            shape = utils.convert_shape_to_list(shape)
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             out = _C_ops.final_state_full(shape, float(value), dtype, place)
@@ -779,10 +800,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 else:
                     attrs['str_value'] = str(float(value.numpy().item(0)))
 
-            _C_ops.fill_constant(out, 'value',
-                                 float(value), 'force_cpu', force_cpu, 'dtype',
-                                 out.dtype, 'str_value', attrs['str_value'],
-                                 'shape', shape)
+            _C_ops.fill_constant(out, 'value', float(value), 'force_cpu',
+                                 force_cpu, 'dtype', out.dtype, 'str_value',
+                                 attrs['str_value'], 'shape', shape)
             out.stop_gradient = True
             return out
 
@@ -805,18 +825,19 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                                  'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
-    utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant')
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=shape,
+                                  op_type='fill_constant')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs['dtype'] = out.dtype
-    helper.append_op(
-        type='fill_constant',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs,
-        stop_gradient=True)
+    helper.append_op(type='fill_constant',
+                     inputs=inputs,
+                     outputs={'Out': [out]},
+                     attrs=attrs,
+                     stop_gradient=True)
     out.stop_gradient = True
     return out
 
@@ -871,8 +892,9 @@ def fill_constant_batch_size_like(input,
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
-        out = _C_ops.final_state_full_batch_size_like(
-            input, shape, dtype, value, input_dim_idx, output_dim_idx, place)
+        out = _C_ops.final_state_full_batch_size_like(input, shape, dtype,
+                                                      value, input_dim_idx,
+                                                      output_dim_idx, place)
         out.stop_gradient = True
         return out
 
@@ -890,11 +912,10 @@ def fill_constant_batch_size_like(input,
         attrs['str_value'] = str(int(value))
     else:
         attrs['str_value'] = str(float(value))
-    helper.append_op(
-        type='fill_constant_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': [out]},
-        attrs=attrs)
+    helper.append_op(type='fill_constant_batch_size_like',
+                     inputs={'Input': input},
+                     outputs={'Out': [out]},
+                     attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -957,11 +978,10 @@ def argmin(x, axis=0):
         'argmin')
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
-    helper.append_op(
-        type='arg_min',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis})
+    helper.append_op(type='arg_min',
+                     inputs={'X': x},
+                     outputs={'Out': [out]},
+                     attrs={'axis': axis})
     out.stop_gradient = True
     return out
 
@@ -1020,11 +1040,10 @@ def argmax(x, axis=0):
         'argmax')
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
-    helper.append_op(
-        type='arg_max',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis})
+    helper.append_op(type='arg_max',
+                     inputs={'X': x},
+                     outputs={'Out': [out]},
+                     attrs={'axis': axis})
     out.stop_gradient = True
     return out
 
@@ -1107,17 +1126,20 @@ def argsort(input, axis=-1, descending=False, name=None):
         input, 'input',
         ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'], 'argsort')
     helper = LayerHelper("argsort", **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=input.dtype, stop_gradient=True)
-    ids = helper.create_variable_for_type_inference(
-        VarDesc.VarType.INT64, stop_gradient=True)
-    helper.append_op(
-        type='argsort',
-        inputs={'X': input},
-        outputs={'Out': out,
-                 'Indices': ids},
-        attrs={'axis': axis,
-               'descending': descending})
+    out = helper.create_variable_for_type_inference(dtype=input.dtype,
+                                                    stop_gradient=True)
+    ids = helper.create_variable_for_type_inference(VarDesc.VarType.INT64,
+                                                    stop_gradient=True)
+    helper.append_op(type='argsort',
+                     inputs={'X': input},
+                     outputs={
+                         'Out': out,
+                         'Indices': ids
+                     },
+                     attrs={
+                         'axis': axis,
+                         'descending': descending
+                     })
     return out, ids
 
 
@@ -1243,18 +1265,18 @@ def reverse(x, axis):
 
           reversed_tensor_array = fluid.layers.reverse(tensor_array, 0) # {[[3, 4, 5]], [[0, 1, 2]]}
     """
-    check_variable_and_dtype(
-        x, 'x', ('float32', 'float64', 'int32', 'int64', 'uint8'), 'reverse')
+    check_variable_and_dtype(x, 'x',
+                             ('float32', 'float64', 'int32', 'int64', 'uint8'),
+                             'reverse')
     check_type(axis, 'axis', (int, tuple, list), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reverse',
-        inputs={'X': x},
-        outputs={'Out': [out]},
-        attrs={'axis': axis})
+    helper.append_op(type='reverse',
+                     inputs={'X': x},
+                     outputs={'Out': [out]},
+                     attrs={'axis': axis})
     return out
 
 
@@ -1270,12 +1292,13 @@ def save(x, file_path, overwrite=True):
             error will be thrown.
     """
     helper = LayerHelper("save", **locals())
-    helper.append_op(
-        type="save",
-        inputs={"input": x},
-        outputs={},
-        args={"file_path": file_path,
-              "overwrite": overwrite})
+    helper.append_op(type="save",
+                     inputs={"input": x},
+                     outputs={},
+                     args={
+                         "file_path": file_path,
+                         "overwrite": overwrite
+                     })
 
 
 def save_combine(x, file_path, overwrite=True):
@@ -1307,12 +1330,13 @@ def save_combine(x, file_path, overwrite=True):
             normed = fluid.layers.save_combine([v1, v2], file_path="output")
     """
     helper = LayerHelper("save_combine", **locals())
-    helper.append_op(
-        type="save_combine",
-        inputs={"input": x},
-        outputs={},
-        args={"file_path": file_path,
-              "overwrite": overwrite})
+    helper.append_op(type="save_combine",
+                     inputs={"input": x},
+                     outputs={},
+                     args={
+                         "file_path": file_path,
+                         "overwrite": overwrite
+                     })
 
 
 def load_combine(out, file_path):
@@ -1324,11 +1348,10 @@ def load_combine(out, file_path):
         file_path(str): The path of the disk file.
     """
     helper = LayerHelper("load_combine", **locals())
-    helper.append_op(
-        type="load_combine",
-        inputs={},
-        output={"Out": out},
-        args={"file_path": file_path})
+    helper.append_op(type="load_combine",
+                     inputs={},
+                     output={"Out": out},
+                     args={"file_path": file_path})
 
 
 def has_inf(x):
@@ -1509,12 +1532,13 @@ def range(start, end, step, dtype, name=None):
                 'range/arange')
     helper = LayerHelper('range', **locals())
     out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
-    helper.append_op(
-        type='range',
-        inputs={'Start': start,
-                'End': end,
-                'Step': step},
-        outputs={'Out': out})
+    helper.append_op(type='range',
+                     inputs={
+                         'Start': start,
+                         'End': end,
+                         'Step': step
+                     },
+                     outputs={'Out': out})
     out.stop_gradient = True
     if out_shape is not None:
         out.desc.set_shape(out_shape)
@@ -1594,10 +1618,10 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_dtype(num.dtype, 'num', ['int32'], 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
-    if ((stop_dtype == "float64" or start_dtype == "float64") and
-            out_dtype in ["float32", "int32"]) or ((stop_dtype == "int64" or
-                                                    start_dtype == "int64") and
-                                                   out_dtype == "int32"):
+    if ((stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]) or (
+                (stop_dtype == "int64" or start_dtype == "int64")
+                and out_dtype == "int32"):
         raise ValueError(
             "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
             "which may cause data type overflows. Please reset attr(dtype) of linspace."
@@ -1605,13 +1629,14 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper.append_op(
-        type='linspace',
-        inputs={'Start': tensor_start,
-                'Stop': tensor_stop,
-                'Num': tensor_num},
-        attrs={'dtype': dtype},
-        outputs={'Out': [out]})
+    helper.append_op(type='linspace',
+                     inputs={
+                         'Start': tensor_start,
+                         'Stop': tensor_stop,
+                         'Num': tensor_num
+                     },
+                     attrs={'dtype': dtype},
+                     outputs={'Out': [out]})
     if isinstance(num, int):
         out.desc.set_shape((num, ))
     return out
@@ -1644,8 +1669,9 @@ def zeros_like(x, out=None):
 
     """
 
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like')
+    check_variable_and_dtype(x, "x",
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'ones_like')
     helper = LayerHelper("zeros_like", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1654,8 +1680,9 @@ def zeros_like(x, out=None):
             out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
             'zeros_like')
 
-    helper.append_op(
-        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+    helper.append_op(type='fill_zeros_like',
+                     inputs={'X': [x]},
+                     outputs={'Out': [out]})
     out.stop_gradient = True
     return out
 
@@ -1701,8 +1728,9 @@ def diag(diagonal):
 
     out = helper.create_variable_for_type_inference(dtype=diagonal.dtype)
 
-    helper.append_op(
-        type='diag', inputs={'Diagonal': [diagonal]}, outputs={'Out': [out]})
+    helper.append_op(type='diag',
+                     inputs={'Diagonal': [diagonal]},
+                     outputs={'Out': [out]})
 
     out.stop_gradient = True
     return out
@@ -1771,16 +1799,15 @@ def eye(num_rows,
         if not isinstance(num_rows, int) or num_rows < 0:
             raise TypeError("num_rows should be a non-negative int")
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(
-            type='eye',
-            inputs={},
-            outputs={'Out': [out]},
-            attrs={
-                'num_rows': num_rows,
-                'num_columns': num_columns,
-                'dtype': dtype
-            },
-            stop_gradient=True)
+        helper.append_op(type='eye',
+                         inputs={},
+                         outputs={'Out': [out]},
+                         attrs={
+                             'num_rows': num_rows,
+                             'num_columns': num_columns,
+                             'dtype': dtype
+                         },
+                         stop_gradient=True)
 
     if batch_shape is not None:
         re_shape = [1] * len(batch_shape)
@@ -1827,8 +1854,9 @@ def ones_like(x, out=None):
           data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
 
     """
-    check_variable_and_dtype(
-        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like')
+    check_variable_and_dtype(x, "x",
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'ones_like')
 
     helper = LayerHelper("ones_like", **locals())
     if out is None:
@@ -1837,11 +1865,10 @@ def ones_like(x, out=None):
         check_variable_and_dtype(
             out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
             'ones_like')
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [x]},
-        attrs={'value': 1.0},
-        outputs={'Out': [out]})
+    helper.append_op(type='fill_any_like',
+                     inputs={'X': [x]},
+                     attrs={'value': 1.0},
+                     outputs={'Out': [out]})
     return out
 
 

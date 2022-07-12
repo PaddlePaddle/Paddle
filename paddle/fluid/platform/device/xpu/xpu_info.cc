@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,14 +13,13 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 #include <string>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
@@ -52,7 +51,9 @@ std::vector<int> GetXPUSelectedDevices() {
 
 /**************************** Memory Management **************************/
 
-void MemcpySyncH2D(void* dst, const void* src, size_t count,
+void MemcpySyncH2D(void* dst,
+                   const void* src,
+                   size_t count,
                    const platform::XPUPlace& dst_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(dst_place);
@@ -60,7 +61,9 @@ void MemcpySyncH2D(void* dst, const void* src, size_t count,
   phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
 
-void MemcpySyncD2H(void* dst, const void* src, size_t count,
+void MemcpySyncD2H(void* dst,
+                   const void* src,
+                   size_t count,
                    const platform::XPUPlace& src_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
@@ -70,13 +73,19 @@ void MemcpySyncD2H(void* dst, const void* src, size_t count,
 
 // if src.device == dst.device and you need sync , after call this function,
 // need to call xpu_wait()
-void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
-                   const void* src, const platform::XPUPlace& src_place,
+void MemcpySyncD2D(void* dst,
+                   const platform::XPUPlace& dst_place,
+                   const void* src,
+                   const platform::XPUPlace& src_place,
                    size_t count) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
-  phi::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
-                                    *dev_ctx);
+  phi::backends::xpu::MemcpySyncD2D(
+      dst, dst_place, src, src_place, count, *dev_ctx);
+}
+
+void XPUStreamSync(xpuStream stream) {
+  PADDLE_ENFORCE_XDNN_SUCCESS(xpu_wait(stream), "xpu_wait");
 }
 
 /**************************** Others **************************/

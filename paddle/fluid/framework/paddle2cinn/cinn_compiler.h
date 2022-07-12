@@ -18,14 +18,15 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace cinn {
 namespace common {
@@ -75,24 +76,28 @@ class CinnCompiler {
   const CinnCompiledObject& Compile(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, void* stream = nullptr);
+      const ::cinn::common::Target& target,
+      void* stream = nullptr);
 
   const CinnCompiledObject& Compile(
-      const std::string& compilation_key,
+      int64_t compilation_key,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, void* stream = nullptr);
+      const ::cinn::common::Target& target,
+      void* stream = nullptr);
 
   const CinnCompiledObject& GetCompiledObject(int64_t cached_index) const;
 
-  std::string AddGraph(std::unique_ptr<ir::Graph> graph);
+  int64_t AddGraph(std::unique_ptr<ir::Graph> graph);
 
-  const ir::Graph& FindGraph(const std::string& graph_key) const;
+  const ir::Graph& FindGraph(int64_t graph_key) const;
 
-  std::string VizGraph(const std::string& graph_key) const;
+  std::string VizGraph(int64_t graph_key) const;
 
   std::string VizGraph(const ir::Graph& graph) const;
 
-  std::string ReadableKey(const std::string& compilation_key) const;
+  std::string SerializeKey(int64_t compilation_key) const;
+
+  std::string ReadableKey(int64_t compilation_key) const;
 
   void Clear();
 
@@ -105,7 +110,8 @@ class CinnCompiler {
   std::unique_ptr<CinnCompiledObject> CompileGraph(
       const ir::Graph& graph,
       const std::map<std::string, const LoDTensor*>& input_tensors,
-      const ::cinn::common::Target& target, std::int64_t compiled_num,
+      const ::cinn::common::Target& target,
+      std::int64_t compiled_num,
       void* stream = nullptr) const;
 
   // check whether a compiled result is valid by comparing
@@ -115,7 +121,7 @@ class CinnCompiler {
       const std::map<std::string, const LoDTensor*>& input_tensors,
       const CinnCompiledObject& compiled_obj) const;
 
-  std::unordered_map<std::string, std::unique_ptr<ir::Graph>> graphs_;
+  std::unordered_map<int64_t, std::unique_ptr<ir::Graph>> graphs_;
   std::unordered_map<CinnCacheKeyByAddress, std::int64_t, CinnCacheKey::Hash>
       cache_by_address_;
   std::unordered_map<CinnCacheKeyByStructure, std::int64_t, CinnCacheKey::Hash>
@@ -123,7 +129,7 @@ class CinnCompiler {
   std::unordered_map<std::int64_t, std::unique_ptr<CinnCompiledObject>>
       index2cache_;
   std::atomic_int64_t real_compiled_num_{0};
-  mutable phi::RWLock rwlock_;
+  mutable std::mutex lock_;
 
   DISABLE_COPY_AND_ASSIGN(CinnCompiler);
 };

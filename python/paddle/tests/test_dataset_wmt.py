@@ -19,6 +19,7 @@ from paddle.text.datasets import WMT14, WMT16
 
 
 class TestWMT14Train(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='train', dict_size=50)
         self.assertTrue(len(wmt14) == 191155)
@@ -34,6 +35,7 @@ class TestWMT14Train(unittest.TestCase):
 
 
 class TestWMT14Test(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='test', dict_size=50)
         self.assertTrue(len(wmt14) == 5957)
@@ -49,6 +51,7 @@ class TestWMT14Test(unittest.TestCase):
 
 
 class TestWMT14Gen(unittest.TestCase):
+
     def test_main(self):
         wmt14 = WMT14(mode='gen', dict_size=50)
         self.assertTrue(len(wmt14) == 3001)
@@ -64,9 +67,12 @@ class TestWMT14Gen(unittest.TestCase):
 
 
 class TestWMT16Train(unittest.TestCase):
+
     def test_main(self):
-        wmt16 = WMT16(
-            mode='train', src_dict_size=50, trg_dict_size=50, lang='en')
+        wmt16 = WMT16(mode='train',
+                      src_dict_size=50,
+                      trg_dict_size=50,
+                      lang='en')
         self.assertTrue(len(wmt16) == 29000)
 
         # traversal whole dataset may cost a
@@ -80,9 +86,12 @@ class TestWMT16Train(unittest.TestCase):
 
 
 class TestWMT16Test(unittest.TestCase):
+
     def test_main(self):
-        wmt16 = WMT16(
-            mode='test', src_dict_size=50, trg_dict_size=50, lang='en')
+        wmt16 = WMT16(mode='test',
+                      src_dict_size=50,
+                      trg_dict_size=50,
+                      lang='en')
         self.assertTrue(len(wmt16) == 1000)
 
         # traversal whole dataset may cost a
@@ -96,6 +105,7 @@ class TestWMT16Test(unittest.TestCase):
 
 
 class TestWMT16Val(unittest.TestCase):
+
     def test_main(self):
         wmt16 = WMT16(mode='val', src_dict_size=50, trg_dict_size=50, lang='en')
         self.assertTrue(len(wmt16) == 1014)

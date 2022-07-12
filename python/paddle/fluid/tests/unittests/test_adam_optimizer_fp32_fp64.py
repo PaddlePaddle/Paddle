@@ -33,14 +33,14 @@ def main_test_func(place, dtype):
             y = fluid.data(name='y', shape=[None, 1], dtype=dtype)
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
             adam_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
-            train_reader = fluid.io.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1)
+            train_reader = fluid.io.batch(paddle.dataset.uci_housing.train(),
+                                          batch_size=1)
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -49,6 +49,7 @@ def main_test_func(place, dtype):
 
 
 class AdamFp32Test(unittest.TestCase):
+
     def setUp(self):
         self.dtype = 'float32'
 
@@ -58,6 +59,7 @@ class AdamFp32Test(unittest.TestCase):
 
 
 class AdamFp64Test(AdamFp32Test):
+
     def setUp(self):
         self.dtype = 'float64'
 

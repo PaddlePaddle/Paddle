@@ -38,7 +38,7 @@ template <class T, class Factory>
 void construct(Factory const& factory, void* address) {
   factory.template apply<T>(address);
 }
-}
+}  // namespace paddle_optional_detail
 
 template <typename T>
 class optional;
@@ -100,7 +100,11 @@ class reference_content {
  public:  // structors
   ~reference_content() {}
 
+// TODO(zhiqiu): remove it
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   reference_content(RefT r) : content_(r) {}
+#pragma GCC diagnostic pop
 
   reference_content(const reference_content& operand)
       : content_(operand.content_) {}

@@ -14,7 +14,16 @@
 
 from .base_cost import _g_op_cost_factory
 from .base_cost import Cost
-from .comm_op_cost import AllreduceSumCost
-from .comp_op_cost import MatmulV2OpCost
+from .base_cost import CommContext
+from .base_cost import build_comm_desc
 from .tensor_cost import TensorCost
 from .estimate_cost import CostEstimator
+
+from .comp_op_cost import MatmulV2OpCost
+
+from .comm_op_cost import SendOpCost
+from .comm_op_cost import RecvOpCost
+from .comm_op_cost import IdentityOpCost
+from .comm_op_cost import BroadcastOpCost
+from .comm_op_cost import AllgatherOpCost
+from .comm_op_cost import AllreduceSumOpCost

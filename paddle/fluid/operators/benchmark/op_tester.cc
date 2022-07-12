@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/benchmark/op_tester.h"
+
 #include <fstream>
+
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -177,9 +179,11 @@ void OpTester::CreateInputVarDesc() {
   for (auto &name : input_names) {
     const OpInputConfig *input = config_.GetInput(name);
     PADDLE_ENFORCE_NOT_NULL(
-        input, platform::errors::NotFound(
-                   "The input %s of operator %s is not correctlly provided.",
-                   name, config_.op_type));
+        input,
+        platform::errors::NotFound(
+            "The input %s of operator %s is not correctlly provided.",
+            name,
+            config_.op_type));
 
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
@@ -215,9 +219,10 @@ void OpTester::CreateOpDesc() {
   for (auto item : config_.attrs) {
     const std::string &name = item.first;
     PADDLE_ENFORCE_NE(
-        attr_types.find(name), attr_types.end(),
-        platform::errors::NotFound("Operator %s does not have attribute %d.",
-                                   type_, name));
+        attr_types.find(name),
+        attr_types.end(),
+        platform::errors::NotFound(
+            "Operator %s does not have attribute %d.", type_, name));
 
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
@@ -266,7 +271,9 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 
 template <typename T>
 void OpTester::SetupTensor(framework::LoDTensor *tensor,
-                           const std::vector<int64_t> &shape, T lower, T upper,
+                           const std::vector<int64_t> &shape,
+                           T lower,
+                           T upper,
                            const std::string &initializer,
                            const std::string &filename) {
   static unsigned int seed = 100;
@@ -345,18 +352,24 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     auto *tensor = var->GetMutable<framework::LoDTensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
-      SetupTensor<int>(tensor, shape, 0, 1, item.second.initializer,
-                       item.second.filename);
+      SetupTensor<int>(
+          tensor, shape, 0, 1, item.second.initializer, item.second.filename);
     } else if (data_type == framework::proto::VarType::INT64) {
-      SetupTensor<int64_t>(tensor, shape, 0, 1, item.second.initializer,
-                           item.second.filename);
+      SetupTensor<int64_t>(
+          tensor, shape, 0, 1, item.second.initializer, item.second.filename);
     } else if (data_type == framework::proto::VarType::FP32) {
-      SetupTensor<float>(tensor, shape, static_cast<float>(0.0),
-                         static_cast<float>(1.0), item.second.initializer,
+      SetupTensor<float>(tensor,
+                         shape,
+                         static_cast<float>(0.0),
+                         static_cast<float>(1.0),
+                         item.second.initializer,
                          item.second.filename);
     } else if (data_type == framework::proto::VarType::FP64) {
-      SetupTensor<double>(tensor, shape, static_cast<double>(0.0),
-                          static_cast<double>(1.0), item.second.initializer,
+      SetupTensor<double>(tensor,
+                          shape,
+                          static_cast<double>(0.0),
+                          static_cast<double>(1.0),
+                          item.second.initializer,
                           item.second.filename);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -495,7 +508,8 @@ TEST(op_tester, base) {
   if (!FLAGS_op_config_list.empty()) {
     std::ifstream fin(FLAGS_op_config_list, std::ios::in | std::ios::binary);
     PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin), true,
+        static_cast<bool>(fin),
+        true,
         platform::errors::InvalidArgument("OpTester cannot open file %s",
                                           FLAGS_op_config_list.c_str()));
     std::vector<OpTesterConfig> op_configs;

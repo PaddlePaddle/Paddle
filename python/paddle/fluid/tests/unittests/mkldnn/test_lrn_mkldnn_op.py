@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 
 
 class TestLRNMKLDNNOp(TestLRNOp):
+
     def get_attrs(self):
         attrs = TestLRNOp.get_attrs(self)
         attrs['use_mkldnn'] = True
@@ -28,26 +29,33 @@ class TestLRNMKLDNNOp(TestLRNOp):
     def test_check_output(self):
         # We cannot validate MidOut as LRN REF has diffrent meaning in it
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(
-            atol=0.002, no_check_set=['MidOut'], check_dygraph=False)
+        self.check_output(atol=0.002,
+                          no_check_set=['MidOut'],
+                          check_dygraph=False)
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.01, check_dygraph=False)
+        self.check_grad(['X'],
+                        'Out',
+                        max_relative_error=0.01,
+                        check_dygraph=False)
 
 
 class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
+
     def get_attrs(self):
         attrs = TestLRNMKLDNNOp.get_attrs(self)
         attrs['is_test'] = True
         return attrs
 
     def test_check_grad_normal(self):
+
         def check_raise_is_test():
             try:
-                self.check_grad(
-                    ['X'], 'Out', max_relative_error=0.01, check_dygraph=False)
+                self.check_grad(['X'],
+                                'Out',
+                                max_relative_error=0.01,
+                                check_dygraph=False)
             except Exception as e:
                 t = \
                 "is_test attribute should be set to False in training phase."
@@ -58,6 +66,7 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
 
 
 class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
+
     def init_test_case(self):
         self.data_format = 'NHWC'
 

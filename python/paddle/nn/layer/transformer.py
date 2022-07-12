@@ -163,9 +163,9 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__()
 
         assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
-                               "but recieved {}".format(embed_dim))
+                               "but received {}".format(embed_dim))
         assert num_heads > 0, ("Expected num_heads to be greater than 0, "
-                               "but recieved {}".format(num_heads))
+                               "but received {}".format(num_heads))
 
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
@@ -177,14 +177,22 @@ class MultiHeadAttention(Layer):
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
 
-        self.q_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.k_proj = Linear(
-            self.kdim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.v_proj = Linear(
-            self.vdim, embed_dim, weight_attr, bias_attr=bias_attr)
-        self.out_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr)
+        self.q_proj = Linear(embed_dim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.k_proj = Linear(self.kdim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.v_proj = Linear(self.vdim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.out_proj = Linear(embed_dim,
+                               embed_dim,
+                               weight_attr,
+                               bias_attr=bias_attr)
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -402,19 +410,19 @@ class MultiHeadAttention(Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
         # scale dot product attention
-        product = paddle.matmul(
-            x=q * (self.head_dim**-0.5), y=k, transpose_y=True)
+        product = paddle.matmul(x=q * (self.head_dim**-0.5),
+                                y=k,
+                                transpose_y=True)
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, product.dtype)
             product = product + attn_mask
         weights = F.softmax(product)
         if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train")
+            weights = F.dropout(weights,
+                                self.dropout,
+                                training=self.training,
+                                mode="upscale_in_train")
 
         out = tensor.matmul(weights, v)
 
@@ -508,12 +516,12 @@ class TransformerEncoderLayer(Layer):
         super(TransformerEncoderLayer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
@@ -522,17 +530,20 @@ class TransformerEncoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0])
-        self.linear1 = Linear(
-            d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1])
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0])
+        self.linear1 = Linear(d_model,
+                              dim_feedforward,
+                              weight_attrs[1],
+                              bias_attr=bias_attrs[1])
         self.dropout = Dropout(act_dropout, mode="upscale_in_train")
-        self.linear2 = Linear(
-            dim_feedforward, d_model, weight_attrs[1], bias_attr=bias_attrs[1])
+        self.linear2 = Linear(dim_feedforward,
+                              d_model,
+                              weight_attrs[1],
+                              bias_attr=bias_attrs[1])
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
@@ -613,8 +624,8 @@ class TransformerEncoderLayer(Layer):
                 `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
-        incremental_cache = self.self_attn.gen_cache(
-            src, type=self.self_attn.Cache)
+        incremental_cache = self.self_attn.gen_cache(src,
+                                                     type=self.self_attn.Cache)
         return incremental_cache
 
 
@@ -648,9 +659,10 @@ class TransformerEncoder(Layer):
 
     def __init__(self, encoder_layer, num_layers, norm=None):
         super(TransformerEncoder, self).__init__()
-        self.layers = LayerList([(encoder_layer if i == 0 else
-                                  type(encoder_layer)(**encoder_layer._config))
-                                 for i in range(num_layers)])
+        self.layers = LayerList([
+            (encoder_layer if i == 0 else type(encoder_layer)(
+                **encoder_layer._config)) for i in range(num_layers)
+        ])
         self.num_layers = num_layers
         self.norm = norm
 
@@ -813,12 +825,12 @@ class TransformerDecoderLayer(Layer):
         super(TransformerDecoderLayer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
@@ -827,23 +839,25 @@ class TransformerDecoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
 
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0])
-        self.cross_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[1],
-            bias_attr=bias_attrs[1])
-        self.linear1 = Linear(
-            d_model, dim_feedforward, weight_attrs[2], bias_attr=bias_attrs[2])
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0])
+        self.cross_attn = MultiHeadAttention(d_model,
+                                             nhead,
+                                             dropout=attn_dropout,
+                                             weight_attr=weight_attrs[1],
+                                             bias_attr=bias_attrs[1])
+        self.linear1 = Linear(d_model,
+                              dim_feedforward,
+                              weight_attrs[2],
+                              bias_attr=bias_attrs[2])
         self.dropout = Dropout(act_dropout, mode="upscale_in_train")
-        self.linear2 = Linear(
-            dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2])
+        self.linear2 = Linear(dim_feedforward,
+                              d_model,
+                              weight_attrs[2],
+                              bias_attr=bias_attrs[2])
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
         self.norm3 = LayerNorm(d_model)
@@ -958,8 +972,8 @@ class TransformerDecoderLayer(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
-        incremental_cache = self.self_attn.gen_cache(
-            memory, type=self.self_attn.Cache)
+        incremental_cache = self.self_attn.gen_cache(memory,
+                                                     type=self.self_attn.Cache)
         static_cache = self.cross_attn.gen_cache(
             memory, memory, type=self.cross_attn.StaticCache)
         return incremental_cache, static_cache
@@ -1002,9 +1016,10 @@ class TransformerDecoder(Layer):
 
     def __init__(self, decoder_layer, num_layers, norm=None):
         super(TransformerDecoder, self).__init__()
-        self.layers = LayerList([(decoder_layer if i == 0 else
-                                  type(decoder_layer)(**decoder_layer._config))
-                                 for i in range(num_layers)])
+        self.layers = LayerList([
+            (decoder_layer if i == 0 else type(decoder_layer)(
+                **decoder_layer._config)) for i in range(num_layers)
+        ])
         self.num_layers = num_layers
         self.norm = norm
 
@@ -1220,12 +1235,12 @@ class Transformer(Layer):
         super(Transformer, self).__init__()
 
         assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
+                             "but received {}".format(d_model))
         assert nhead > 0, ("Expected nhead to be greater than 0, "
-                           "but recieved {}".format(nhead))
+                           "but received {}".format(nhead))
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
+            "but received {}".format(dim_feedforward))
 
         if isinstance(bias_attr, (list, tuple)):
             if len(bias_attr) == 1:
@@ -1344,8 +1359,10 @@ class Transformer(Layer):
 
         tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
         memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
-        output = self.decoder(
-            tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
+        output = self.decoder(tgt,
+                              memory,
+                              tgt_mask=tgt_mask,
+                              memory_mask=memory_mask)
         return output
 
     def generate_square_subsequent_mask(self, length):
@@ -1379,7 +1396,5 @@ class Transformer(Layer):
                 # [  0.   0.   0.   0.   0.]]
 
         """
-        return paddle.tensor.triu(
-            (paddle.ones(
-                (length, length), dtype=paddle.get_default_dtype()) * -np.inf),
-            1)
+        return paddle.tensor.triu((paddle.ones(
+            (length, length), dtype=paddle.get_default_dtype()) * -np.inf), 1)

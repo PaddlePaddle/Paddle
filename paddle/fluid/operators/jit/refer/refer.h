@@ -270,8 +270,12 @@ void GRUHtPart2(gru_t* step, const gru_attr_t* attr) {
 }
 
 template <typename T>
-void CRFDecoding(const int seq_len, const T* x, const T* w, T* alpha,
-                 int* track, int right) {
+void CRFDecoding(const int seq_len,
+                 const T* x,
+                 const T* w,
+                 T* alpha,
+                 int* track,
+                 int right) {
   constexpr int state_trans_base_idx = 2;
   for (int i = 0; i < right; ++i) {
     alpha[i] = w[i] + x[i];
@@ -295,8 +299,15 @@ void CRFDecoding(const int seq_len, const T* x, const T* w, T* alpha,
 }
 
 template <typename T>
-void LayerNorm(T* x, T* out, T* mean, T* var, const T* scale, const T* bias,
-               int height, const float epsilon, int right) {
+void LayerNorm(T* x,
+               T* out,
+               T* mean,
+               T* var,
+               const T* scale,
+               const T* bias,
+               int height,
+               const float epsilon,
+               int right) {
   // get mean
   for (int i = 0; i < height; i++) {
     T sum = 0.0;
@@ -464,32 +475,43 @@ void Softmax(const T* x, T* y, int n, int bs = 1, int remain = 1) {
 // idx is a matrix with (idx_h, idx_w)
 // output is a vector with length tbl_w * idx_w
 template <typename T>
-void EmbSeqPool(const T* table, const int64_t* idx, T* out,
+void EmbSeqPool(const T* table,
+                const int64_t* idx,
+                T* out,
                 const emb_seq_pool_attr_t* attr) {
   PADDLE_ENFORCE_EQ(
-      attr->table_width * attr->index_width, attr->out_width,
+      attr->table_width * attr->index_width,
+      attr->out_width,
       platform::errors::InvalidArgument(
           "The attribute table_width * index_width of EmbSeqPool should "
           "be equal to out_width. But table_width * index_width is %d and "
           "out_width is %d.",
-          attr->table_width * attr->index_width, attr->out_width));
+          attr->table_width * attr->index_width,
+          attr->out_width));
 
   auto check_idx_value_valid = [&](int64_t i) {
     PADDLE_ENFORCE_LT(
-        idx[i], attr->table_height,
+        idx[i],
+        attr->table_height,
         platform::errors::InvalidArgument(
             "The idx shoud be lower than the attribute table_height of "
             "EmbSeqPool. But %dth of idx is %d and table_height is %d.",
-            i, idx[i], attr->table_height));
-    PADDLE_ENFORCE_GE(idx[i], 0, platform::errors::InvalidArgument(
-                                     "The idx shoud be equal to or larger than "
-                                     "the 0. But %dth of idx is %d.",
-                                     i, idx[i]));
+            i,
+            idx[i],
+            attr->table_height));
+    PADDLE_ENFORCE_GE(idx[i],
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The idx shoud be equal to or larger than "
+                          "the 0. But %dth of idx is %d.",
+                          i,
+                          idx[i]));
   };
 
   for (int64_t w = 0; w != attr->index_width; ++w) {
     check_idx_value_valid(w);
-    std::memcpy(out + w * attr->table_width, table + idx[w] * attr->table_width,
+    std::memcpy(out + w * attr->table_width,
+                table + idx[w] * attr->table_width,
                 attr->table_width * sizeof(T));
   }
 
@@ -497,8 +519,10 @@ void EmbSeqPool(const T* table, const int64_t* idx, T* out,
     for (int64_t w = 0; w < attr->index_width; ++w) {
       int64_t i = h * attr->index_width + w;
       check_idx_value_valid(i);
-      VAdd(table + idx[i] * attr->table_width, out + w * attr->table_width,
-           out + w * attr->table_width, attr->table_width);
+      VAdd(table + idx[i] * attr->table_width,
+           out + w * attr->table_width,
+           out + w * attr->table_width,
+           attr->table_width);
     }
   }
 }
@@ -517,33 +541,47 @@ void EmbSeqPool(const T* table, const int64_t* idx, T* out,
 // Note: when use sparse SGD, and if out != param,
 // the out rows which are not selected have not beed changed, which maybe empty
 template <typename T>
-void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
-         T* out, const sgd_attr_t* attr) {
-  PADDLE_ENFORCE_EQ(attr->param_width, attr->grad_width,
+void Sgd(const T* lr,
+         const T* param,
+         const T* grad,
+         const int64_t* rows,
+         T* out,
+         const sgd_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->param_width,
+                    attr->grad_width,
                     platform::errors::InvalidArgument(
                         "The attribute param_width of Sgd should be "
                         "equal to the attribute grad_width. But param_width "
                         "is %d and grad_width is %d.",
-                        attr->param_width, attr->grad_width));
-  PADDLE_ENFORCE_LE(attr->selected_rows_size, attr->grad_height,
+                        attr->param_width,
+                        attr->grad_width));
+  PADDLE_ENFORCE_LE(attr->selected_rows_size,
+                    attr->grad_height,
                     platform::errors::InvalidArgument(
                         "The attribute selected_rows_size of Sgd should be "
                         "equal to or less than the attribute grad_height. "
                         "But selected_rows_size is %d and grad_height is %d.",
-                        attr->selected_rows_size, attr->grad_height));
+                        attr->selected_rows_size,
+                        attr->grad_height));
   for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
     auto h_idx = rows[i];
-    PADDLE_ENFORCE_LT(h_idx, attr->param_height,
+    PADDLE_ENFORCE_LT(h_idx,
+                      attr->param_height,
                       platform::errors::InvalidArgument(
                           "The rows of Sgd should be "
                           "less than the attribute. But %dth of rows "
                           "is %d and grad_width is %d.",
-                          i, h_idx, attr->param_height));
-    PADDLE_ENFORCE_GE(h_idx, 0, platform::errors::InvalidArgument(
-                                    "The rows of Sgd should be "
-                                    "larger than 0. But %dth of rows "
-                                    "is %d.",
-                                    i, h_idx));
+                          i,
+                          h_idx,
+                          attr->param_height));
+    PADDLE_ENFORCE_GE(
+        h_idx,
+        0,
+        platform::errors::InvalidArgument("The rows of Sgd should be "
+                                          "larger than 0. But %dth of rows "
+                                          "is %d.",
+                                          i,
+                                          h_idx));
     for (int64_t j = 0; j < attr->grad_width; ++j) {
       out[h_idx * attr->grad_width + j] =
           param[h_idx * attr->grad_width + j] -
@@ -553,9 +591,18 @@ void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
 }
 
 template <typename T>
-void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
-          const T* mom1_ptr, const T* mom2_ptr, const T* param_ptr,
-          T* mom1_out_ptr, T* mom2_out_ptr, T* param_out_ptr) {
+void Adam(T beta1,
+          T beta2,
+          T lr,
+          T eps,
+          int64_t numel,
+          const T* grad_ptr,
+          const T* mom1_ptr,
+          const T* mom2_ptr,
+          const T* param_ptr,
+          T* mom1_out_ptr,
+          T* mom2_out_ptr,
+          T* param_out_ptr) {
   for (int i = 0; i < numel; ++i) {
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
@@ -566,10 +613,21 @@ void Adam(T beta1, T beta2, T lr, T eps, int64_t numel, const T* grad_ptr,
 }
 
 template <typename T>
-void AdamW(T beta1, T beta2, T lr, T eps, T old_lr, T lr_ratio, T coeff,
-           int64_t numel, const T* grad_ptr, const T* mom1_ptr,
-           const T* mom2_ptr, const T* param_ptr, T* mom1_out_ptr,
-           T* mom2_out_ptr, T* param_out_ptr) {
+void AdamW(T beta1,
+           T beta2,
+           T lr,
+           T eps,
+           T old_lr,
+           T lr_ratio,
+           T coeff,
+           int64_t numel,
+           const T* grad_ptr,
+           const T* mom1_ptr,
+           const T* mom2_ptr,
+           const T* param_ptr,
+           T* mom1_out_ptr,
+           T* mom2_out_ptr,
+           T* param_out_ptr) {
   for (int i = 0; i < numel; ++i) {
     auto param_tmp = param_ptr[i] - old_lr * lr_ratio * coeff * param_ptr[i];
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];

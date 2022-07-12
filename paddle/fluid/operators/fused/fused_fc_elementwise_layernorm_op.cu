@@ -55,11 +55,16 @@ struct PairForLayerNormAddFunctor {
 };
 
 template <typename T, bool DoRelu, int BlockDim>
-__global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
+__global__ void InplaceAddReluAddLayerNormKernel(const T* y,
+                                                 const T* bias_0,
                                                  const T* bias_1,
-                                                 const T* scale, T* out,
-                                                 T* mean, T* variance, int M,
-                                                 int N, float epsilon) {
+                                                 const T* scale,
+                                                 T* out,
+                                                 T* mean,
+                                                 T* variance,
+                                                 int M,
+                                                 int N,
+                                                 float epsilon) {
   using BlockReduce = cub::BlockReduce<PairForLayerNorm<T>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T shared_mem[BlockDim + 2];
@@ -151,8 +156,19 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
-    blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), x_data, K, w_data, N,
-              static_cast<T>(0.0), out_data, N);
+    blas.GEMM(false,
+              false,
+              M,
+              N,
+              K,
+              static_cast<T>(1.0),
+              x_data,
+              K,
+              w_data,
+              N,
+              static_cast<T>(0.0),
+              out_data,
+              N);
 
     auto* y = ctx.Input<framework::Tensor>("Y");
     auto* bias_0 = ctx.Input<framework::Tensor>("Bias0");
@@ -179,22 +195,38 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     if (with_relu) {
       switch (platform::RoundToPowerOfTwo(N)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            InplaceAddReluAddLayerNormKernel<
-                T, true,
-                kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
-                                  kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data,
-                mean_data, variance_data, M, N, epsilon));
+            InplaceAddReluAddLayerNormKernel<T, true, kPowerOfTwoDim>
+            <<<std::max(max_threads / kPowerOfTwoDim, 1),
+               kPowerOfTwoDim,
+               0,
+               dev_ctx.stream()>>>(y_data,
+                                   bias_0_data,
+                                   bias_1_data,
+                                   scale_data,
+                                   out_data,
+                                   mean_data,
+                                   variance_data,
+                                   M,
+                                   N,
+                                   epsilon));
       }
     } else {
       switch (platform::RoundToPowerOfTwo(N)) {
         CUDA_LAUNCH_KERNEL_HELPER(
-            InplaceAddReluAddLayerNormKernel<
-                T, false,
-                kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
-                                  kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data,
-                mean_data, variance_data, M, N, epsilon));
+            InplaceAddReluAddLayerNormKernel<T, false, kPowerOfTwoDim>
+            <<<std::max(max_threads / kPowerOfTwoDim, 1),
+               kPowerOfTwoDim,
+               0,
+               dev_ctx.stream()>>>(y_data,
+                                   bias_0_data,
+                                   bias_1_data,
+                                   scale_data,
+                                   out_data,
+                                   mean_data,
+                                   variance_data,
+                                   M,
+                                   N,
+                                   epsilon));
       }
     }
   }

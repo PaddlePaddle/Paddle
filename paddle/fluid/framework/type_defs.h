@@ -21,9 +21,12 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/platform/variant.h"
-#include "paddle/phi/core/compat/type_defs.h"
+
+#include "paddle/fluid/imperative/type_defs.h"
+
+#include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -39,23 +42,51 @@ class InferNoNeedBufferVarsFN;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
+using Attribute = paddle::variant<paddle::blank,
+                                  int,
+                                  float,
+                                  std::string,
+                                  std::vector<int>,
+                                  std::vector<float>,
+                                  std::vector<std::string>,
+                                  bool,
+                                  std::vector<bool>,
+                                  BlockDesc*,
+                                  int64_t,
+                                  std::vector<BlockDesc*>,
+                                  std::vector<int64_t>,
+                                  std::vector<double>>;
+using AttributeMap = std::unordered_map<std::string, Attribute>;
+
 #ifdef PADDLE_WITH_ASCEND_CL
-using NPUAttribute =
-    boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                   std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*, int64_t,
-                   std::vector<BlockDesc*>, std::vector<int64_t>,
-                   std::vector<double>, std::vector<std::vector<int64_t>>>;
+using NPUAttribute = paddle::variant<paddle::blank,
+                                     int,
+                                     float,
+                                     std::string,
+                                     std::vector<int>,
+                                     std::vector<float>,
+                                     std::vector<std::string>,
+                                     bool,
+                                     std::vector<bool>,
+                                     BlockDesc*,
+                                     int64_t,
+                                     std::vector<BlockDesc*>,
+                                     std::vector<int64_t>,
+                                     std::vector<double>,
+                                     std::vector<std::vector<int64_t>>>;
 
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
 #endif
 
-using OpCreator = std::function<OperatorBase*(
-    const std::string& /*type*/, const VariableNameMap& /*inputs*/,
-    const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
+using OpCreator =
+    std::function<OperatorBase*(const std::string& /*type*/,
+                                const VariableNameMap& /*inputs*/,
+                                const VariableNameMap& /*outputs*/,
+                                const AttributeMap& /*attrs*/)>;
 
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
-    const OpDesc&, const std::unordered_set<std::string>& /*no_grad_set*/,
+    const OpDesc&,
+    const std::unordered_set<std::string>& /*no_grad_set*/,
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
 

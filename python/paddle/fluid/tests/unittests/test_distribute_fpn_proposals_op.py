@@ -22,6 +22,7 @@ from op_test import OpTest
 
 
 class TestDistributeFPNProposalsOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -84,8 +85,8 @@ class TestDistributeFPNProposalsOp(OpTest):
             sub_lod = self.get_sub_lod(rois[idx_lvl, 0])
             rois_fpn.append((rois[idx_lvl, 1:], [sub_lod]))
             rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
-        rois_idx_restore = np.argsort(rois_idx_order).astype(
-            np.int32, copy=False)
+        rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32,
+                                                             copy=False)
         return rois_fpn, rois_idx_restore
 
     def calc_rois_distribute(self):
@@ -122,6 +123,7 @@ class TestDistributeFPNProposalsOp(OpTest):
 
 
 class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -139,10 +141,9 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
         }
         output = [('out%d' % i, self.rois_fpn[i])
                   for i in range(len(self.rois_fpn))]
-        rois_num_per_level = [
-            ('rois_num%d' % i, np.array(self.rois_fpn[i][1][0]).astype('int32'))
-            for i in range(len(self.rois_fpn))
-        ]
+        rois_num_per_level = [('rois_num%d' % i,
+                               np.array(self.rois_fpn[i][1][0]).astype('int32'))
+                              for i in range(len(self.rois_fpn))]
 
         self.outputs = {
             'MultiFpnRois': output,
@@ -153,6 +154,7 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
 
 class TestDistributeFPNProposalsOpNoOffset(
         TestDistributeFPNProposalsOpWithRoisNum):
+
     def init_test_case(self):
         self.roi_max_level = 5
         self.roi_min_level = 2

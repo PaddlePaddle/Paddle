@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestMulOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "mul"
         self.attrs = {'use_mkldnn': True}
@@ -39,9 +40,8 @@ class TestMulOneDNNOp(OpTest):
 
         self.inputs = {'X': self.x, 'Y': self.y}
 
-        output = np.dot(
-            np.reshape(self.x_fp32, self.np_x_shape),
-            np.reshape(self.y_fp32, self.np_y_shape))
+        output = np.dot(np.reshape(self.x_fp32, self.np_x_shape),
+                        np.reshape(self.y_fp32, self.np_y_shape))
         self.outputs = {'Out': np.reshape(output, self.out_shape)}
 
     def init_shapes_and_attrs(self):
@@ -70,6 +70,7 @@ class TestMulOneDNNOp(OpTest):
 
 
 class TestMulXNumColDims2OneDNNOp(TestMulOneDNNOp):
+
     def init_shapes_and_attrs(self):
         self.x_shape = (6, 7, 5)
         self.y_shape = (5, 21)
@@ -83,6 +84,7 @@ class TestMulXNumColDims2OneDNNOp(TestMulOneDNNOp):
 
 
 class TestMulYNumColDims2OneDNNOp(TestMulOneDNNOp):
+
     def init_shapes_and_attrs(self):
         self.x_shape = (20, 6)
         self.y_shape = (2, 3, 21)
@@ -96,6 +98,7 @@ class TestMulYNumColDims2OneDNNOp(TestMulOneDNNOp):
 
 
 class TestMulYAndXNumColDims2OneDNNOp(TestMulOneDNNOp):
+
     def init_shapes_and_attrs(self):
         self.x_shape = (10, 5, 6)
         self.y_shape = (2, 3, 21)
@@ -110,6 +113,7 @@ class TestMulYAndXNumColDims2OneDNNOp(TestMulOneDNNOp):
 
 
 class TestMulBF16OneDNNOp(TestMulOneDNNOp):
+
     def init_inputs_dtype(self):
         self.x = convert_float_to_uint16(self.x)
         self.y = convert_float_to_uint16(self.y)

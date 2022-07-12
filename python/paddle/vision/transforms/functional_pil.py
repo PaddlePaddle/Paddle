@@ -71,8 +71,8 @@ def to_tensor(pic, data_format='CHW'):
     """
 
     if data_format not in ['CHW', 'HWC']:
-        raise ValueError('data_format should be CHW or HWC. Got {}'.format(
-            data_format))
+        raise ValueError(
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
 
     # PIL Image
     if pic.mode == 'I':
@@ -231,8 +231,9 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         img = np.asarray(img)
         # RGB image
         if len(img.shape) == 3:
-            img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right),
-                               (0, 0)), padding_mode)
+            img = np.pad(img,
+                         ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                         padding_mode)
         # Grayscale image
         if len(img.shape) == 2:
             img = np.pad(img, ((pad_top, pad_bottom), (pad_left, pad_right)),
@@ -391,8 +392,8 @@ def adjust_hue(img, hue_factor):
 
     """
     if not (-0.5 <= hue_factor <= 0.5):
-        raise ValueError('hue_factor:{} is not in [-0.5, 0.5].'.format(
-            hue_factor))
+        raise ValueError(
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:
@@ -408,6 +409,32 @@ def adjust_hue(img, hue_factor):
 
     img = Image.merge('HSV', (h, s, v)).convert(input_mode)
     return img
+
+
+def affine(img, matrix, interpolation="nearest", fill=0):
+    """Affine the image by matrix.
+
+    Args:
+        img (PIL.Image): Image to be affined.
+        matrix (float or int): Affine matrix.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the affined image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        PIL.Image: Affined image.
+
+    """
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    return img.transform(img.size, Image.AFFINE, matrix,
+                         _pil_interp_from_str[interpolation], fill)
 
 
 def rotate(img,
@@ -445,12 +472,38 @@ def rotate(img,
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
-    return img.rotate(
-        angle,
-        _pil_interp_from_str[interpolation],
-        expand,
-        center,
-        fillcolor=fill)
+    return img.rotate(angle,
+                      _pil_interp_from_str[interpolation],
+                      expand,
+                      center,
+                      fillcolor=fill)
+
+
+def perspective(img, coeffs, interpolation="nearest", fill=0):
+    """Perspective the image.
+
+    Args:
+        img (PIL.Image): Image to be perspectived.
+        coeffs (list[float]): coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
+        interpolation (str, optional): Interpolation method. If omitted, or if the 
+            image has only one channel, it is set to PIL.Image.NEAREST . when use pil backend, 
+            support method are as following: 
+            - "nearest": Image.NEAREST, 
+            - "bilinear": Image.BILINEAR, 
+            - "bicubic": Image.BICUBIC
+        fill (3-tuple or int): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively.
+
+    Returns:
+        PIL.Image: Perspectived image.
+
+    """
+
+    if isinstance(fill, int):
+        fill = tuple([fill] * 3)
+
+    return img.transform(img.size, Image.PERSPECTIVE, coeffs,
+                         _pil_interp_from_str[interpolation], fill)
 
 
 def to_grayscale(img, num_output_channels=1):

@@ -65,14 +65,6 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return inputs_.at(idx);
 }
 
-paddle::optional<const MetaTensor&> InferMetaContext::OptionalInputAt(
-    size_t idx) const {
-  const auto& input = inputs_.at(idx);
-  return input.initialized()
-             ? paddle::optional<const MetaTensor&>{input}
-             : paddle::optional<const MetaTensor&>{paddle::none};
-}
-
 std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const MetaTensor*> result;
@@ -86,7 +78,7 @@ std::vector<const MetaTensor*> InferMetaContext::InputsBetween(
   return result;
 }
 
-paddle::optional<const std::vector<const MetaTensor*>>
+paddle::optional<std::vector<const MetaTensor*>>
 InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
   const auto& first = inputs_.at(start);
 
@@ -99,9 +91,9 @@ InferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<const std::vector<const MetaTensor*>>(result);
+    return paddle::optional<std::vector<const MetaTensor*>>(std::move(result));
   }
-  return paddle::optional<const std::vector<const MetaTensor*>>(paddle::none);
+  return paddle::none;
 }
 
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {

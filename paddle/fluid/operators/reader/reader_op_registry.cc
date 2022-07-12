@@ -67,12 +67,14 @@ void FileReaderMakerBase::Make() {
 
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_NE(
-      ctx->IsRuntime(), true,
+      ctx->IsRuntime(),
+      true,
       platform::errors::PreconditionNotMet("'FileReaderInferShape' should only "
                                            "be invoked during compile time."));
 
   PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Out"), true,
+      ctx->HasOutput("Out"),
+      true,
       platform::errors::NotFound("The output file reader should not be null."));
   bool use_data_config = ctx->Attrs().Get<bool>("use_data_config");
   if (use_data_config) {
@@ -84,25 +86,31 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
 
     const auto lod_levels = ctx->Attrs().Get<std::vector<int>>("lod_levels");
     PADDLE_ENFORCE_EQ(
-        lod_levels.size(), shapes.size(),
+        lod_levels.size(),
+        shapes.size(),
         platform::errors::InvalidArgument(
             "The number of 'lod_levels'(%d) doesn't match the number "
             "of 'shapes'(%d).",
-            lod_levels.size(), shapes.size()));
+            lod_levels.size(),
+            shapes.size()));
     const auto dtypes = ctx->Attrs().Get<std::vector<int>>("dtypes");
     PADDLE_ENFORCE_EQ(
-        dtypes.size(), shapes.size(),
+        dtypes.size(),
+        shapes.size(),
         platform::errors::InvalidArgument("The number of 'dtypes'(%d) doesn't "
                                           "match the number of 'shapes'(%d).",
-                                          dtypes.size(), shapes.size()));
+                                          dtypes.size(),
+                                          shapes.size()));
     const auto need_check_feed =
         ctx->Attrs().Get<std::vector<int>>("need_check_feed");
     PADDLE_ENFORCE_EQ(
-        need_check_feed.size(), shapes.size(),
+        need_check_feed.size(),
+        shapes.size(),
         platform::errors::InvalidArgument(
             "The number of 'need_check_feed'(%d) doesn't match the "
             "number of 'shapes'(%d).",
-            need_check_feed.size(), shapes.size()));
+            need_check_feed.size(),
+            shapes.size()));
     framework::VarDesc* reader =
         BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     reader->SetLoDLevels(lod_levels);
@@ -117,15 +125,18 @@ void FileReaderInferVarType::operator()(
 void DecoratedReaderInferShape::operator()(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_NE(
-      ctx->IsRuntime(), true,
+      ctx->IsRuntime(),
+      true,
       platform::errors::PreconditionNotMet(
           "'DecoratedReaderInferShape' should only be invoked during "
           "compile time."));
 
-  PADDLE_ENFORCE_EQ(ctx->HasInput("UnderlyingReader"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput("UnderlyingReader"),
+                    true,
                     platform::errors::NotFound(
                         "Input(UnderlyingReader) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                    true,
                     platform::errors::NotFound(
                         "The output decorated reader should not be null."));
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));

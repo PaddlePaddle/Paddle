@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <string>
+
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
@@ -42,7 +43,8 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     }
 
     auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::PermissionDenied(
                           "Unsupported Variable Type of Param & Grad in "
                           "MomentumOp-XPU. Excepted "
@@ -56,10 +58,16 @@ class MomentumOpXPUKernel : public framework::OpKernel<T> {
     // int momentum(Context* ctx, const T* param, const T* velocity, const T*
     // grad, T* param_out, T* velocity_out, int len, const float* lr, int
     // use_nesterov, float mu, float l2_weight_decay);
-    int r = xpu::momentum(dev_ctx.x_context(), param->data<float>(),
-                          velocity->data<float>(), grad->data<float>(),
-                          param_out->data<float>(), velocity_out->data<float>(),
-                          param_out->numel(), lr, use_nesterov, mu,
+    int r = xpu::momentum(dev_ctx.x_context(),
+                          param->data<float>(),
+                          velocity->data<float>(),
+                          grad->data<float>(),
+                          param_out->data<float>(),
+                          velocity_out->data<float>(),
+                          param_out->numel(),
+                          lr,
+                          use_nesterov,
+                          mu,
                           regularization_coeff);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "momentum");
   }

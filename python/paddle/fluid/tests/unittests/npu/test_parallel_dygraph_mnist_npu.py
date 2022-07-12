@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import sys
 import unittest
+
 sys.path.append("..")
 
 from test_dist_base import TestDistBase
@@ -51,14 +52,19 @@ need_envs = {
     os.getenv("ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"),
     "ASCEND_OPP_PATH":
     os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/nnae/latest/opp"),
-    "HCCL_CONNECT_TIMEOUT": "7200",
-    "HCCL_WHITELIST_DISABLE": "1",
-    "HCCL_SECURITY_MODE": "1",
-    "RANK_TABLE_FILE": "rank_table_file.json",
+    "HCCL_CONNECT_TIMEOUT":
+    "7200",
+    "HCCL_WHITELIST_DISABLE":
+    "1",
+    "HCCL_SECURITY_MODE":
+    "1",
+    "RANK_TABLE_FILE":
+    "rank_table_file.json",
 }
 
 
 class TestParallelDygraphMnistNPU(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._hccl_mode = True
@@ -78,6 +84,7 @@ class TestParallelDygraphMnistNPU(TestDistBase):
 
 
 class TestFleetDygraphMnistNPU(TestParallelDygraphMnistNPU):
+
     def _setup_config(self):
         self._sync_mode = False
         self._hccl_mode = True

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
+
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -22,9 +23,11 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
-bool CUDAStream::Init(const Place& place, const Priority& priority,
+bool CUDAStream::Init(const Place& place,
+                      const Priority& priority,
                       const StreamFlag& flag) {
-  PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_gpu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;

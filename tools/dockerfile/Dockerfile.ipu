@@ -6,7 +6,7 @@
 # run a container
 # docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --rm -it paddlepaddle/paddle:latest-dev-ipu bash
 
-FROM graphcore/poplar:2.3.0
+FROM graphcore/poplar:2.5.1
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables
@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar xz-ut
             bison graphviz libjpeg-dev zlib1g zlib1g-dev automake locales swig net-tools libtool module-init-tools numactl libnuma-dev \
             openssl libffi-dev pciutils libblas-dev gfortran libblas3 liblapack-dev liblapack3 default-jre screen tmux gdb lldb gcc g++
 RUN apt-get update && apt-get install -y rdma-core librdmacm1
+RUN apt-get update && apt-get install libspdlog-dev
 
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 

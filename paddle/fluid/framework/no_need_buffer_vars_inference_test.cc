@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/layer.h"

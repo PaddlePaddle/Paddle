@@ -89,7 +89,9 @@ class TestTrilIndicesAPICaseDygraph(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseError(unittest.TestCase):
+
     def test_case_error(self):
+
         def test_num_rows_type_check():
             out1 = paddle.tril_indices(1.0, 1, 2)
 

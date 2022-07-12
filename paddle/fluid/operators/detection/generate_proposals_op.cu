@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
@@ -32,11 +34,16 @@ using LoDTensor = framework::LoDTensor;
 namespace {
 template <typename T>
 static std::pair<Tensor, Tensor> ProposalForOneImage(
-    const platform::CUDADeviceContext &ctx, const Tensor &im_info,
-    const Tensor &anchors, const Tensor &variances,
+    const platform::CUDADeviceContext &ctx,
+    const Tensor &im_info,
+    const Tensor &anchors,
+    const Tensor &variances,
     const Tensor &bbox_deltas,  // [M, 4]
     const Tensor &scores,       // [N, 1]
-    int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
+    int pre_nms_top_n,
+    int post_nms_top_n,
+    float nms_thresh,
+    float min_size,
     float eta) {
   // 1. pre nms
   Tensor scores_sort, index_sort;
@@ -53,9 +60,12 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
 
   {
     platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
-    for_range(BoxDecodeAndClipFunctor<T>{
-        anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
-        index_sort.data<int>(), im_info.data<T>(), proposals.data<T>()});
+    for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
+                                         bbox_deltas.data<T>(),
+                                         variances.data<T>(),
+                                         index_sort.data<int>(),
+                                         im_info.data<T>(),
+                                         proposals.data<T>()});
   }
 
   // 3. filter
@@ -64,13 +74,20 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
-  FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
-      proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
-      keep_num_t.data<int>(), keep_index.data<int>());
+  FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(proposals.data<T>(),
+                                              im_info.data<T>(),
+                                              min_size,
+                                              pre_nms_num,
+                                              keep_num_t.data<int>(),
+                                              keep_index.data<int>());
   int keep_num;
   const auto gpu_place = ctx.GetPlace();
-  memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
-               keep_num_t.data<int>(), sizeof(int), ctx.stream());
+  memory::Copy(platform::CPUPlace(),
+               &keep_num,
+               gpu_place,
+               keep_num_t.data<int>(),
+               sizeof(int),
+               ctx.stream());
   ctx.Wait();
   keep_index.Resize({keep_num});
 
@@ -117,10 +134,14 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
-                                   "Anchors", "GenerateProposals");
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+                                   "Input",
+                                   "Anchors",
+                                   "GenerateProposals");
     auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
-                                     "Input", "Variances", "GenerateProposals");
+                                     "Input",
+                                     "Variances",
+                                     "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -130,7 +151,8 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float nms_thresh = context.Attr<float>("nms_thresh");
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
-    PADDLE_ENFORCE_GE(eta, 1.,
+    PADDLE_ENFORCE_GE(eta,
+                      1.,
                       platform::errors::InvalidArgument(
                           "Not support adaptive NMS. The attribute 'eta' "
                           "should not less than 1. But received eta=[%d]",
@@ -186,18 +208,32 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
       std::pair<Tensor, Tensor> box_score_pair =
-          ProposalForOneImage<T>(dev_ctx, im_info_slice, anchors, variances,
-                                 bbox_deltas_slice, scores_slice, pre_nms_top_n,
-                                 post_nms_top_n, nms_thresh, min_size, eta);
+          ProposalForOneImage<T>(dev_ctx,
+                                 im_info_slice,
+                                 anchors,
+                                 variances,
+                                 bbox_deltas_slice,
+                                 scores_slice,
+                                 pre_nms_top_n,
+                                 post_nms_top_n,
+                                 nms_thresh,
+                                 min_size,
+                                 eta);
 
       Tensor &proposals = box_score_pair.first;
       Tensor &scores = box_score_pair.second;
 
-      memory::Copy(place, rpn_rois_data + num_proposals * 4, place,
-                   proposals.data<T>(), sizeof(T) * proposals.numel(),
+      memory::Copy(place,
+                   rpn_rois_data + num_proposals * 4,
+                   place,
+                   proposals.data<T>(),
+                   sizeof(T) * proposals.numel(),
                    dev_ctx.stream());
-      memory::Copy(place, rpn_roi_probs_data + num_proposals, place,
-                   scores.data<T>(), sizeof(T) * scores.numel(),
+      memory::Copy(place,
+                   rpn_roi_probs_data + num_proposals,
+                   place,
+                   scores.data<T>(),
+                   sizeof(T) * scores.numel(),
                    dev_ctx.stream());
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
@@ -207,7 +243,11 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
-      memory::Copy(place, num_data, cpu_place, &tmp_num[0], sizeof(int) * num,
+      memory::Copy(place,
+                   num_data,
+                   cpu_place,
+                   &tmp_num[0],
+                   sizeof(int) * num,
                    dev_ctx.stream());
       rpn_rois_num->Resize({num});
     }
@@ -224,6 +264,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(generate_proposals,
-                        ops::CUDAGenerateProposalsKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    generate_proposals,
+    ops::CUDAGenerateProposalsKernel<paddle::platform::CUDADeviceContext,
+                                     float>);

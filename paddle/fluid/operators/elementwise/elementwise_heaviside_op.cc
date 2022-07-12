@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
@@ -63,7 +64,9 @@ class ElementwiseHeavisideGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    elementwise_heaviside, ops::ElementwiseOp, ops::ElementwiseHeavisideOpMaker,
+    elementwise_heaviside,
+    ops::ElementwiseOp,
+    ops::ElementwiseHeavisideOpMaker,
     ops::ElementwiseHeavisideGradOpMaker<paddle::framework::OpDesc>,
     ops::ElementwiseHeavisideGradOpMaker<paddle::imperative::OpBase>);
 

@@ -17,6 +17,7 @@ TestCases for Monitor
 
 from __future__ import print_function
 import paddle
+
 paddle.enable_static()
 
 import paddle.fluid as fluid
@@ -24,6 +25,7 @@ import paddle.fluid.core as core
 import numpy as np
 import os
 import unittest
+import tempfile
 
 
 class TestDatasetWithStat(unittest.TestCase):
@@ -35,12 +37,15 @@ class TestDatasetWithStat(unittest.TestCase):
         self.drop_last = False
 
     def test_dataset_run_with_stat(self):
-        with open("test_in_memory_dataset_run_a.txt", "w") as f:
+        temp_dir = tempfile.TemporaryDirectory()
+        path_a = os.path.join(temp_dir.name, "test_in_memory_dataset_run_a.txt")
+        path_b = os.path.join(temp_dir.name, "test_in_memory_dataset_run_b.txt")
+        with open(path_a, "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
             data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
             f.write(data)
-        with open("test_in_memory_dataset_run_b.txt", "w") as f:
+        with open(path_b, "w") as f:
             data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
             data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
@@ -50,8 +55,10 @@ class TestDatasetWithStat(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(
-                name=slot, shape=[1], dtype="int64", lod_level=1)
+            var = fluid.layers.data(name=slot,
+                                    shape=[1],
+                                    dtype="int64",
+                                    lod_level=1)
             slots_vars.append(var)
 
         embs = []
@@ -62,10 +69,7 @@ class TestDatasetWithStat(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset._set_batch_size(32)
         dataset._set_thread(3)
-        dataset.set_filelist([
-            "test_in_memory_dataset_run_a.txt",
-            "test_in_memory_dataset_run_b.txt"
-        ])
+        dataset.set_filelist([path_a, path_b])
         dataset._set_pipe_command("cat")
         dataset._set_use_var(slots_vars)
         dataset.load_into_memory()
@@ -75,9 +79,8 @@ class TestDatasetWithStat(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
-            data_loader = fluid.io.DataLoader.from_dataset(dataset,
-                                                           fluid.cpu_places(),
-                                                           self.drop_last)
+            data_loader = fluid.io.DataLoader.from_dataset(
+                dataset, fluid.cpu_places(), self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -85,12 +88,11 @@ class TestDatasetWithStat(unittest.TestCase):
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(
-                        fluid.default_main_program(),
-                        dataset,
-                        fetch_list=[embs[0], embs[1]],
-                        fetch_info=["emb0", "emb1"],
-                        print_period=1)
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset,
+                                           fetch_list=[embs[0], embs[1]],
+                                           fetch_info=["emb0", "emb1"],
+                                           print_period=1)
 
                 except Exception as e:
                     self.assertTrue(False)
@@ -99,8 +101,7 @@ class TestDatasetWithStat(unittest.TestCase):
         # total 56 keys
         print(int_stat["STAT_total_feasign_num_in_mem"])
 
-        os.remove("./test_in_memory_dataset_run_a.txt")
-        os.remove("./test_in_memory_dataset_run_b.txt")
+        temp_dir.cleanup()
 
 
 if __name__ == '__main__':

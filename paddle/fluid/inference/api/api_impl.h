@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -50,7 +51,7 @@ class NativePaddlePredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
   ~NativePaddlePredictor() override;
 

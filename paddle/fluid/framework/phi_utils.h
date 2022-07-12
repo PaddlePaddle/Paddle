@@ -21,11 +21,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
@@ -67,7 +66,7 @@ struct ConvertToPhiContext {
 };
 
 template <>
-struct ConvertToPhiContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<phi::CPUContext> {
   using TYPE = phi::CPUContext;
 };
 

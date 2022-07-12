@@ -19,6 +19,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundR
 
 
 class TestPsDispatcher(unittest.TestCase):
+
     def setUp(self):
         self.points = [
             "127.0.0.1:1001", "127.0.0.1:1002", "127.0.0.1:1003",
@@ -34,7 +35,9 @@ class TestPsDispatcher(unittest.TestCase):
             base.dispatch([])
 
     def test_hash(self):
+
         class Var:
+
             def __init__(self, index):
                 self._name = "var_{}".format(index)
 
@@ -52,7 +55,9 @@ class TestPsDispatcher(unittest.TestCase):
         self.assertEqual(len(eplist), 4)
 
     def test_round_rodin(self):
+
         class Var:
+
             def __init__(self, index):
                 self._name = "var_{}".format(index)
 

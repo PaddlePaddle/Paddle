@@ -78,10 +78,13 @@ class InitState(object):
             self._init = init
         elif init_boot is None:
             raise ValueError(
-                'init_boot must be provided to infer the shape of InitState .\n')
+                'init_boot must be provided to infer the shape of InitState .\n'
+            )
         else:
-            self._init = layers.fill_constant_batch_size_like(
-                input=init_boot, value=value, shape=shape, dtype=dtype)
+            self._init = layers.fill_constant_batch_size_like(input=init_boot,
+                                                              value=value,
+                                                              shape=shape,
+                                                              dtype=dtype)
 
         self._shape = shape
         self._value = value
@@ -98,6 +101,7 @@ class InitState(object):
 
 
 class _MemoryState(object):
+
     def __init__(self, state_name, rnn_obj, init_state):
         self._state_name = state_name  # each is a rnn.memory
         self._rnn_obj = rnn_obj
@@ -112,6 +116,7 @@ class _MemoryState(object):
 
 
 class _ArrayState(object):
+
     def __init__(self, state_name, block, init_state):
         self._state_name = state_name
         self._block = block
@@ -127,25 +132,25 @@ class _ArrayState(object):
             dtype='int64')
 
         # initialize counter
-        self._block.append_op(
-            type='fill_constant',
-            inputs={},
-            outputs={'Out': [self._counter]},
-            attrs={
-                'shape': [1],
-                'dtype': self._counter.dtype,
-                'value': float(0.0),
-                'force_cpu': True
-            })
+        self._block.append_op(type='fill_constant',
+                              inputs={},
+                              outputs={'Out': [self._counter]},
+                              attrs={
+                                  'shape': [1],
+                                  'dtype': self._counter.dtype,
+                                  'value': float(0.0),
+                                  'force_cpu': True
+                              })
 
         self._counter.stop_gradient = True
 
         # write initial state
-        block.append_op(
-            type='write_to_array',
-            inputs={'X': init_state.value,
-                    'I': self._counter},
-            outputs={'Out': self._state_array})
+        block.append_op(type='write_to_array',
+                        inputs={
+                            'X': init_state.value,
+                            'I': self._counter
+                        },
+                        outputs={'Out': self._state_array})
 
     def get_state(self):
         state = layers.array_read(array=self._state_array, i=self._counter)
@@ -588,18 +593,21 @@ class BeamSearchDecoder(object):
         self._counter = layers.zeros(shape=[1], dtype='int64')
         self._counter.stop_gradient = True
         self._type = _DecoderType.BEAM_SEARCH
-        self._max_len = layers.fill_constant(
-            shape=[1], dtype='int64', value=max_len)
-        self._cond = layers.less_than(
-            x=self._counter,
-            y=layers.fill_constant(
-                shape=[1], dtype='int64', value=max_len))
+        self._max_len = layers.fill_constant(shape=[1],
+                                             dtype='int64',
+                                             value=max_len)
+        self._cond = layers.less_than(x=self._counter,
+                                      y=layers.fill_constant(shape=[1],
+                                                             dtype='int64',
+                                                             value=max_len))
         self._while_op = layers.While(self._cond)
         self._state_cell = state_cell
         self._state_cell._enter_decoder(self)
         self._status = BeamSearchDecoder.BEFORE_BEAM_SEARCH_DECODER
-        self._zero_idx = layers.fill_constant(
-            shape=[1], value=0, dtype='int64', force_cpu=True)
+        self._zero_idx = layers.fill_constant(shape=[1],
+                                              value=0,
+                                              dtype='int64',
+                                              force_cpu=True)
         self._array_dict = {}
         self._array_link = []
         self._ids_array = None
@@ -632,11 +640,13 @@ class BeamSearchDecoder(object):
                     layers.increment(x=self._counter, value=1.0, in_place=True)
 
                     for value, array in self._array_link:
-                        layers.array_write(
-                            x=value, i=self._counter, array=array)
+                        layers.array_write(x=value,
+                                           i=self._counter,
+                                           array=array)
 
-                    layers.less_than(
-                        x=self._counter, y=self._max_len, cond=self._cond)
+                    layers.less_than(x=self._counter,
+                                     y=self._max_len,
+                                     cond=self._cond)
 
         self._status = BeamSearchDecoder.AFTER_BEAM_SEARCH_DECODER
         self._state_cell._leave_decoder(self)
@@ -649,8 +659,11 @@ class BeamSearchDecoder(object):
         """
         Stop the generation process in advance. Could be used as "break".
         """
-        layers.fill_constant(
-            shape=[1], value=0, dtype='bool', force_cpu=True, out=self._cond)
+        layers.fill_constant(shape=[1],
+                             value=0,
+                             dtype='bool',
+                             force_cpu=True,
+                             out=self._cond)
 
     def decode(self):
         """
@@ -665,8 +678,8 @@ class BeamSearchDecoder(object):
         """
         with self.block():
             prev_ids = self.read_array(init=self._init_ids, is_ids=True)
-            prev_scores = self.read_array(
-                init=self._init_scores, is_scores=True)
+            prev_scores = self.read_array(init=self._init_scores,
+                                          is_scores=True)
             prev_ids_embedding = layers.embedding(
                 input=prev_ids,
                 size=[self._target_dict_dim, self._word_dim],
@@ -683,14 +696,14 @@ class BeamSearchDecoder(object):
 
                 read_var = self.read_array(init=init_var)
                 update_dict[init_var_name] = read_var
-                feed_var_expanded = layers.sequence_expand(read_var,
-                                                           prev_scores)
+                feed_var_expanded = layers.sequence_expand(
+                    read_var, prev_scores)
                 feed_dict[init_var_name] = feed_var_expanded
 
             for state_str in self._state_cell._state_names:
                 prev_state = self.state_cell.get_state(state_str)
-                prev_state_expanded = layers.sequence_expand(prev_state,
-                                                             prev_scores)
+                prev_state_expanded = layers.sequence_expand(
+                    prev_state, prev_scores)
                 self.state_cell.set_state(state_str, prev_state_expanded)
 
             for i, input_name in enumerate(self._state_cell._inputs):
@@ -699,25 +712,23 @@ class BeamSearchDecoder(object):
 
             self.state_cell.compute_state(inputs=feed_dict)
             current_state = self.state_cell.out_state()
-            current_state_with_lod = layers.lod_reset(
-                x=current_state, y=prev_scores)
+            current_state_with_lod = layers.lod_reset(x=current_state,
+                                                      y=prev_scores)
             scores = layers.fc(input=current_state_with_lod,
                                size=self._target_dict_dim,
                                act='softmax')
             topk_scores, topk_indices = layers.topk(scores, k=self._topk_size)
-            accu_scores = layers.elementwise_add(
-                x=layers.log(x=topk_scores),
-                y=layers.reshape(
-                    prev_scores, shape=[-1]),
-                axis=0)
-            selected_ids, selected_scores = layers.beam_search(
-                prev_ids,
-                prev_scores,
-                topk_indices,
-                accu_scores,
-                self._beam_size,
-                end_id=1,
-                level=0)
+            accu_scores = layers.elementwise_add(x=layers.log(x=topk_scores),
+                                                 y=layers.reshape(prev_scores,
+                                                                  shape=[-1]),
+                                                 axis=0)
+            selected_ids, selected_scores = layers.beam_search(prev_ids,
+                                                               prev_scores,
+                                                               topk_indices,
+                                                               accu_scores,
+                                                               self._beam_size,
+                                                               end_id=1,
+                                                               level=0)
 
             with layers.Switch() as switch:
                 with switch.case(layers.is_empty(selected_ids)):
@@ -764,11 +775,12 @@ class BeamSearchDecoder(object):
             name=unique_name.generate('beam_search_decoder_array'),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=init.dtype)
-        parent_block.append_op(
-            type='write_to_array',
-            inputs={'X': init,
-                    'I': self._zero_idx},
-            outputs={'Out': array})
+        parent_block.append_op(type='write_to_array',
+                               inputs={
+                                   'X': init,
+                                   'I': self._zero_idx
+                               },
+                               outputs={'Out': array})
 
         if is_ids:
             self._ids_array = array
@@ -813,11 +825,10 @@ class BeamSearchDecoder(object):
         if self._status != BeamSearchDecoder.AFTER_BEAM_SEARCH_DECODER:
             raise ValueError('Output of BeamSearchDecoder object can '
                              'only be visited outside the block.')
-        return layers.beam_search_decode(
-            ids=self._ids_array,
-            scores=self._scores_array,
-            beam_size=self._beam_size,
-            end_id=self._end_id)
+        return layers.beam_search_decode(ids=self._ids_array,
+                                         scores=self._scores_array,
+                                         beam_size=self._beam_size,
+                                         end_id=self._end_id)
 
     @property
     def state_cell(self):

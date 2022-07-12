@@ -16,18 +16,15 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
-
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/tensor_meta.h"
-
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
@@ -42,9 +39,13 @@ TEST(Forward, SingleNode) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -88,9 +89,13 @@ TEST(Forward, LinearNodes) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -98,9 +103,11 @@ TEST(Forward, LinearNodes) {
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  paddle::experimental::Tensor out0 =
-      egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
-                 true /*trace_backward*/);
+  paddle::experimental::Tensor out0 = egr::scale(tensor,
+                                                 scale0,
+                                                 bias0,
+                                                 true /*bias_after_scale*/,
+                                                 true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;
@@ -168,9 +175,13 @@ TEST(Forward, BranchedNodes) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::experimental::Tensor t = egr_utils_api::CreateTensorWithValue(
-      ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
-      phi::DataLayout::NCHW, 5.0 /*value*/, false /*is_leaf*/);
+  paddle::experimental::Tensor t =
+      egr_utils_api::CreateTensorWithValue(ddim,
+                                           paddle::platform::CPUPlace(),
+                                           phi::DataType::FLOAT32,
+                                           phi::DataLayout::NCHW,
+                                           5.0 /*value*/,
+                                           false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::experimental::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -178,9 +189,11 @@ TEST(Forward, BranchedNodes) {
   // Run Forward Node 0
   float scale0 = 2.0;
   float bias0 = 3.0;
-  paddle::experimental::Tensor out0 =
-      egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
-                 true /*trace_backward*/);
+  paddle::experimental::Tensor out0 = egr::scale(tensor,
+                                                 scale0,
+                                                 bias0,
+                                                 true /*bias_after_scale*/,
+                                                 true /*trace_backward*/);
 
   // Run Forward Node 1
   float scale1 = 5.0;

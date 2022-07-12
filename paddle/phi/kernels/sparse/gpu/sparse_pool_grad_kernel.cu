@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -105,18 +105,18 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter[i] * in_channels, 1);
-    MaxPoolGradCudaKernel<T, IntT><<<config.block_per_grid.x,
-                                     config.thread_per_block.x,
-                                     0,
-                                     dev_ctx.stream()>>>(
-        in_features_ptr,
-        out_features_ptr,
-        out_grad_ptr,
-        rulebook_ptr + offsets[i] + rulebook_len,
-        counter[i],
-        rulebook_len,
-        in_channels,
-        x_grad_ptr);
+    MaxPoolGradCudaKernel<T, IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(in_features_ptr,
+                               out_features_ptr,
+                               out_grad_ptr,
+                               rulebook_ptr + offsets[i] + rulebook_len,
+                               counter[i],
+                               rulebook_len,
+                               in_channels,
+                               x_grad_ptr);
   }
 }
 

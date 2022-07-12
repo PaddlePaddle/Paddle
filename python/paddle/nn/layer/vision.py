@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define specitial functions used in computer vision task 
+# TODO: define specitial functions used in computer vision task
 
 from .. import Layer
 from .. import functional

@@ -18,19 +18,22 @@ from ..dist_attribute import OperatorDistributedAttribute
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
-    "elementwise", "gelu", "dropout", "cast", "gather", "concat"
+    "elementwise", "gelu", "dropout", "cast", "gather", "concat",
+    "fused_softmax_mask_upper_triangle"
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
 def is_elementwise_op(op_type):
-    for eltwise_op in _g_elementwise_ops:
-        if eltwise_op in op_type:
-            return True
+    if op_type in _g_elementwise_ops:
+        return True
+    if "elementwise" in op_type:
+        return True
     return False
 
 
 class DistributedOperatorImplContainer:
+
     def __init__(self, op_type):
         self._type = op_type
         self._impls = []
@@ -80,6 +83,7 @@ class DistributedOperatorImplContainer:
 
 
 class DistributedOperatorImpl(abc.ABC):
+
     def __init__(self, name):
         self._name = name
         self._type = None
@@ -156,9 +160,7 @@ def register_distributed_operator_impl(op_type, dist_impl):
         assert False, "Must register distributed operator registry first."
 
 
-def find_best_compatible_distributed_operator_impl(dist_op,
-                                                   fwd=True,
-                                                   partial=True):
+def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
     Here just return the first compatible implemention. 
     This will be improved by cost model in the future.

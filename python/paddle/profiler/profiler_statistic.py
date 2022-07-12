@@ -15,7 +15,7 @@ import collections
 from enum import Enum
 import re
 
-from paddle.fluid.core import TracerEventType
+from paddle.fluid.core import TracerEventType, TracerMemEventType
 
 from .statistic_helper import *
 
@@ -79,19 +79,14 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
-        self.is_terminal_operator_node = True
 
     def cal_statistic(self):
         for child in self.children_node:
             child.cal_statistic()
-            if child.is_terminal_operator_node == False:
-                self.is_terminal_operator_node = False
         for rt in self.runtime_node:
             rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         for child in self.children_node:
-            if child.type == TracerEventType.Operator:
-                self.is_terminal_operator_node = False
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= (child.end_ns - child.start_ns)
@@ -197,8 +192,8 @@ class TimeRangeSummary:
     def __init__(self):
         self.CPUTimeRange = collections.defaultdict(list)
         self.GPUTimeRange = collections.defaultdict(
-            lambda: collections.defaultdict(list)
-        )  # GPU events should be divided into different devices
+            lambda: collections.defaultdict(
+                list))  # GPU events should be divided into different devices
         self.CPUTimeRangeSum = collections.defaultdict(int)
         self.GPUTimeRangeSum = collections.defaultdict(
             lambda: collections.defaultdict(int))
@@ -212,8 +207,8 @@ class TimeRangeSummary:
         for threadid, hostnodes in thread2hostnodes.items():
             CPUTimeRange = collections.defaultdict(list)
             GPUTimeRange = collections.defaultdict(
-                lambda: collections.defaultdict(lambda: collections.defaultdict(list))
-            )  # device_id/type/stream_id
+                lambda: collections.defaultdict(lambda: collections.defaultdict(
+                    list)))  # device_id/type/stream_id
             for hostnode in hostnodes[1:]:  #skip root node
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns))
@@ -235,8 +230,8 @@ class TimeRangeSummary:
             for device_id, device_time_ranges in GPUTimeRange.items():
                 for event_type, event_time_ranges in device_time_ranges.items():
                     for stream_id, time_ranges in event_time_ranges.items():
-                        time_ranges = merge_self_ranges(
-                            time_ranges, is_sorted=False)
+                        time_ranges = merge_self_ranges(time_ranges,
+                                                        is_sorted=False)
                         self.GPUTimeRange[device_id][event_type] = merge_ranges(
                             self.GPUTimeRange[device_id][event_type],
                             time_ranges,
@@ -310,25 +305,27 @@ class DistributedSummary:
                         for devicenode in runtimenode.device_node:
                             if devicenode.type == TracerEventType.Kernel:
                                 if 'nccl' in devicenode.name.lower():
-                                    self.gpu_communication_range.append((
-                                        devicenode.start_ns, devicenode.end_ns))
+                                    self.gpu_communication_range.append(
+                                        (devicenode.start_ns,
+                                         devicenode.end_ns))
                                 else:
-                                    self.computation_range.append((
-                                        devicenode.start_ns, devicenode.end_ns))
+                                    self.computation_range.append(
+                                        (devicenode.start_ns,
+                                         devicenode.end_ns))
         self.cpu_calls = len(set(self.cpu_communication_range))
         self.gpu_calls = len(set(self.gpu_communication_range))
         self.cpu_communication_range = merge_self_ranges(
             self.cpu_communication_range, is_sorted=False)
         self.gpu_communication_range = merge_self_ranges(
             self.gpu_communication_range, is_sorted=False)
-        self.communication_range = merge_ranges(
-            self.cpu_communication_range,
-            self.gpu_communication_range,
-            is_sorted=True)
-        self.computation_range = merge_self_ranges(
-            self.computation_range, is_sorted=False)
-        self.overlap_range = intersection_ranges(
-            self.communication_range, self.computation_range, is_sorted=True)
+        self.communication_range = merge_ranges(self.cpu_communication_range,
+                                                self.gpu_communication_range,
+                                                is_sorted=True)
+        self.computation_range = merge_self_ranges(self.computation_range,
+                                                   is_sorted=False)
+        self.overlap_range = intersection_ranges(self.communication_range,
+                                                 self.computation_range,
+                                                 is_sorted=True)
 
 
 class EventSummary:
@@ -337,6 +334,7 @@ class EventSummary:
     """
 
     class DeviceItem:
+
         def __init__(self, name):
             self.name = name
             self.call = 0
@@ -360,6 +358,7 @@ class EventSummary:
             self.add_gpu_time(node.end_ns - node.start_ns)
 
     class OperatorItem:
+
         def __init__(self, name):
             self.name = name
             self.call = 0
@@ -417,10 +416,11 @@ class EventSummary:
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
             for child in node.children_node:
-                if child.name not in self.operator_inners:
-                    self.operator_inners[
-                        child.name] = EventSummary.OperatorItem(child.name)
-                self.operator_inners[child.name].add_item(child)
+                if child.type != TracerEventType.Operator:
+                    if child.name not in self.operator_inners:
+                        self.operator_inners[
+                            child.name] = EventSummary.OperatorItem(child.name)
+                    self.operator_inners[child.name].add_item(child)
 
             for runtimenode in node.runtime_node:
                 for devicenode in runtimenode.device_node:
@@ -430,6 +430,7 @@ class EventSummary:
                     self.devices[name].add_item(devicenode)
 
     class GeneralItem:
+
         def __init__(self, name):
             self.name = name
             self.call = 0
@@ -532,8 +533,6 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
-        if operator_node.is_terminal_operator_node == False:
-            return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)
@@ -598,6 +597,83 @@ class EventSummary:
                 self.kernel_items[name].add_item(device_node)
 
 
+class MemorySummary:
+    r"""
+    Analyse memory events in profiling data.
+    """
+
+    class MemoryItem:
+
+        def __init__(self, event_name, place, memory_type='Allocated'):
+            self.event_name = event_name
+            self.place = place
+            self.allocation_count = 0
+            self.free_count = 0
+            self.allocation_size = 0
+            self.free_size = 0
+            self.increase_size = 0
+            self.memory_type = memory_type
+
+        def add_memory_record(self, size, allocation_type):
+            if allocation_type == TracerMemEventType.Allocate or allocation_type == TracerMemEventType.ReservedAllocate:
+                self.allocation_count += 1
+                self.allocation_size += size
+
+            elif allocation_type == TracerMemEventType.Free or allocation_type == TracerMemEventType.ReservedFree:
+                self.free_count += 1
+                self.free_size -= size  # size is sign(-) when free.
+
+            else:
+                print("No corresponding type.")
+            self.increase_size = self.allocation_size - self.free_size
+
+    def __init__(self):
+        self.allocated_items = collections.defaultdict(
+            dict)  # for memory summary, device type: event
+        self.reserved_items = collections.defaultdict(
+            dict)  # for memory summary, device type: event
+        self.peak_allocation_values = collections.defaultdict(int)
+        self.peak_reserved_values = collections.defaultdict(int)
+
+    def _analyse_node_memory(self, event_name, node):
+        for memnode in node.mem_node:  # self mem node
+            if memnode.type == TracerMemEventType.Allocate or memnode.type == TracerMemEventType.Free:
+                if event_name not in self.allocated_items[memnode.place]:
+                    self.allocated_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Allocated')
+                self.allocated_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            elif memnode.type == TracerMemEventType.ReservedAllocate or memnode.type == TracerMemEventType.ReservedFree:
+                if event_name not in self.reserved_items[memnode.place]:
+                    self.reserved_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Reserved')
+                self.reserved_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            self.peak_allocation_values[memnode.place] = max(
+                self.peak_allocation_values[memnode.place],
+                memnode.peak_allocated)
+            self.peak_reserved_values[memnode.place] = max(
+                self.peak_reserved_values[memnode.place], memnode.peak_reserved)
+
+    def parse(self, nodetrees):
+        r"""
+        Analyse memory event in the nodetress.
+        """
+        thread2hostnodes = traverse_tree(nodetrees)
+        for threadid, host_nodes in thread2hostnodes.items():
+            for host_node in host_nodes[1:]:  #skip root node
+                if host_node.type == TracerEventType.OperatorInner:
+                    continue
+                if host_node.type == TracerEventType.Operator:
+                    for child in host_node.children_node:
+                        self._analyse_node_memory(host_node.name, child)
+                self._analyse_node_memory(host_node.name, host_node)
+
+
 class StatisticData:
     r"""
     Hold all analysed results.
@@ -609,9 +685,11 @@ class StatisticData:
         self.time_range_summary = TimeRangeSummary()
         self.event_summary = EventSummary()
         self.distributed_summary = DistributedSummary()
+        self.memory_summary = MemorySummary()
         self.time_range_summary.parse(node_trees)
         self.event_summary.parse(node_trees)
         self.distributed_summary.parse(node_trees)
+        self.memory_summary.parse(node_trees)
 
 
 def _build_table(statistic_data,
@@ -688,13 +766,14 @@ def _build_table(statistic_data,
     append(row_format.format(*headers))
     append(header_sep)
     row_values = [
-        'CPU(Process)', format_ratio(
-            float(statistic_data.extra_info['Process Cpu Utilization']))
+        'CPU(Process)',
+        format_ratio(float(
+            statistic_data.extra_info['Process Cpu Utilization']))
     ]
     append(row_format.format(*row_values))
     row_values = [
-        'CPU(System)', format_ratio(
-            float(statistic_data.extra_info['System Cpu Utilization']))
+        'CPU(System)',
+        format_ratio(float(statistic_data.extra_info['System Cpu Utilization']))
     ]
     append(row_format.format(*row_values))
     for gpu_name in statistic_data.time_range_summary.get_gpu_devices():
@@ -783,20 +862,22 @@ def _build_table(statistic_data,
             TracerEventType.
             Communication] = statistic_data.distributed_summary.gpu_calls
 
-    sorted_items = sorted(
-        cpu_type_time.items(), key=lambda x: x[1], reverse=True)
+    sorted_items = sorted(cpu_type_time.items(),
+                          key=lambda x: x[1],
+                          reverse=True)
     event_type, time = sorted_items[0]
     row_values = [
         '{}'.format(str(event_type).split('.')[1]), cpu_call_times[event_type],
-        format_time(
-            time, unit=time_unit), format_ratio(float(time) / total_time)
+        format_time(time, unit=time_unit),
+        format_ratio(float(time) / total_time)
     ]
     append(row_format.format(*row_values))
     for event_type, time in sorted_items[1:]:
         row_values = [
             '  {}'.format(str(event_type).split('.')[1]),
-            cpu_call_times[event_type], format_time(
-                time, unit=time_unit), format_ratio(float(time) / total_time)
+            cpu_call_times[event_type],
+            format_time(time, unit=time_unit),
+            format_ratio(float(time) / total_time)
         ]
         append(row_format.format(*row_values))
     append(header_sep)
@@ -806,8 +887,9 @@ def _build_table(statistic_data,
     for event_type, time in gpu_type_time.items():
         row_values = [
             '  {}'.format(str(event_type).split('.')[1]),
-            gpu_call_times[event_type], format_time(
-                time, unit=time_unit), format_ratio(float(time) / total_time)
+            gpu_call_times[event_type],
+            format_time(time, unit=time_unit),
+            format_ratio(float(time) / total_time)
         ]
         append(row_format.format(*row_values))
 
@@ -851,24 +933,16 @@ def _build_table(statistic_data,
                 row_values = [
                     '{}'.format(name), item.call,
                     '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.cpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_cpu_time, unit=time_unit),
-                        format_time(
-                            item.max_cpu_time, unit=time_unit),
-                        format_time(
-                            item.min_cpu_time, unit=time_unit),
+                        format_time(item.cpu_time, unit=time_unit),
+                        format_time(item.avg_cpu_time, unit=time_unit),
+                        format_time(item.max_cpu_time, unit=time_unit),
+                        format_time(item.min_cpu_time, unit=time_unit),
                         format_ratio(float(item.cpu_time) / total_time)),
                     '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.gpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_gpu_time, unit=time_unit),
-                        format_time(
-                            item.max_gpu_time, unit=time_unit),
-                        format_time(
-                            item.min_gpu_time, unit=time_unit),
+                        format_time(item.gpu_time, unit=time_unit),
+                        format_time(item.avg_gpu_time, unit=time_unit),
+                        format_time(item.max_gpu_time, unit=time_unit),
+                        format_time(item.min_gpu_time, unit=time_unit),
                         format_ratio(gpu_ratio))
                 ]
                 all_row_values.append(row_values)
@@ -884,12 +958,10 @@ def _build_table(statistic_data,
             gpu_ratio = float(other_gpu_time) / gpu_total_time
         row_values = [
             '  Others', '-', '{} / - / - / - / {}'.format(
-                format_time(
-                    other_time, unit=time_unit),
+                format_time(other_time, unit=time_unit),
                 format_ratio(float(other_time) / total_time)),
             '{} / - / - / - / {}'.format(
-                format_time(
-                    other_gpu_time, unit=time_unit),
+                format_time(other_gpu_time, unit=time_unit),
                 format_ratio(gpu_ratio))
         ]
         all_row_values.append(row_values)
@@ -971,28 +1043,28 @@ def _build_table(statistic_data,
         overlap_time = sum_ranges(
             statistic_data.distributed_summary.overlap_range)
         row_values = [
-            'ProfileStep', format_time(
-                total_time, unit=time_unit),
+            'ProfileStep',
+            format_time(total_time, unit=time_unit),
             format_ratio(float(total_time) / total_time)
         ]
         append(row_format.format(*row_values))
         row_values = [
-            '  Communication', format_time(
-                communication_time, unit=time_unit),
+            '  Communication',
+            format_time(communication_time, unit=time_unit),
             format_ratio(float(communication_time) / total_time)
         ]
         append(row_format.format(*row_values))
 
         row_values = [
-            '  Computation', format_time(
-                computation_time, unit=time_unit),
+            '  Computation',
+            format_time(computation_time, unit=time_unit),
             format_ratio(float(computation_time) / total_time)
         ]
         append(row_format.format(*row_values))
 
         row_values = [
-            '  Overlap', format_time(
-                overlap_time, unit=time_unit),
+            '  Overlap',
+            format_time(overlap_time, unit=time_unit),
             format_ratio(float(overlap_time) / total_time)
         ]
         append(row_format.format(*row_values))
@@ -1026,39 +1098,35 @@ def _build_table(statistic_data,
         for thread_id, items in thread_items.items():
             all_row_values.append("Thread: {}".format(thread_id))
             if sorted_by == SortedKeys.CPUTotal:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].cpu_time, reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUAvg:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].avg_cpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].avg_cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUMax:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].max_cpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].max_cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUMin:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].min_cpu_time)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].min_cpu_time)
             elif sorted_by == SortedKeys.GPUTotal:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUAvg:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].avg_general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].avg_general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUMax:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].max_general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].max_general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUMin:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].min_general_gpu_time)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].min_general_gpu_time)
             total_op_cpu_time = 0
             total_op_gpu_time = 0
 
@@ -1077,24 +1145,16 @@ def _build_table(statistic_data,
                     gpu_ratio = float(item.general_gpu_time) / total_op_gpu_time
                 row_values = [
                     name, item.call, '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.cpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_cpu_time, unit=time_unit),
-                        format_time(
-                            item.max_cpu_time, unit=time_unit),
-                        format_time(
-                            item.min_cpu_time, unit=time_unit),
+                        format_time(item.cpu_time, unit=time_unit),
+                        format_time(item.avg_cpu_time, unit=time_unit),
+                        format_time(item.max_cpu_time, unit=time_unit),
+                        format_time(item.min_cpu_time, unit=time_unit),
                         format_ratio(cpu_ratio)),
                     '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.max_general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.min_general_gpu_time, unit=time_unit),
+                        format_time(item.general_gpu_time, unit=time_unit),
+                        format_time(item.avg_general_gpu_time, unit=time_unit),
+                        format_time(item.max_general_gpu_time, unit=time_unit),
+                        format_time(item.min_general_gpu_time, unit=time_unit),
                         format_ratio(gpu_ratio))
                 ]
                 all_row_values.append(row_values)
@@ -1117,28 +1177,24 @@ def _build_table(statistic_data,
                         row_values = [
                             '  {}'.format(innerop_name), innerop_node.call,
                             '{} / {} / {} / {} / {}'.format(
-                                format_time(
-                                    innerop_node.cpu_time, unit=time_unit),
-                                format_time(
-                                    innerop_node.avg_cpu_time, unit=time_unit),
-                                format_time(
-                                    innerop_node.max_cpu_time, unit=time_unit),
-                                format_time(
-                                    innerop_node.min_cpu_time, unit=time_unit),
+                                format_time(innerop_node.cpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.avg_cpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.max_cpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.min_cpu_time,
+                                            unit=time_unit),
                                 format_ratio(cpu_ratio)),
                             '{} / {} / {} / {} / {}'.format(
-                                format_time(
-                                    innerop_node.general_gpu_time,
-                                    unit=time_unit),
-                                format_time(
-                                    innerop_node.avg_general_gpu_time,
-                                    unit=time_unit),
-                                format_time(
-                                    innerop_node.max_general_gpu_time,
-                                    unit=time_unit),
-                                format_time(
-                                    innerop_node.min_general_gpu_time,
-                                    unit=time_unit),
+                                format_time(innerop_node.general_gpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.avg_general_gpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.max_general_gpu_time,
+                                            unit=time_unit),
+                                format_time(innerop_node.min_general_gpu_time,
+                                            unit=time_unit),
                                 format_ratio(gpu_ratio))
                         ]
                         all_row_values.append(row_values)
@@ -1148,8 +1204,8 @@ def _build_table(statistic_data,
                                 gpu_ratio = 0
                             else:
                                 gpu_ratio = float(
-                                    device_node.
-                                    gpu_time) / innerop_node.general_gpu_time
+                                    device_node.gpu_time
+                                ) / innerop_node.general_gpu_time
                             if len(device_node_name) + 4 > name_column_width:
                                 device_node_name = device_node_name[:
                                                                     name_column_width
@@ -1159,17 +1215,14 @@ def _build_table(statistic_data,
                                 '    {}'.format(device_node_name),
                                 device_node.call, '- / - / - / - / -',
                                 '{} / {} / {} / {} / {}'.format(
-                                    format_time(
-                                        device_node.gpu_time, unit=time_unit),
-                                    format_time(
-                                        device_node.avg_gpu_time,
-                                        unit=time_unit),
-                                    format_time(
-                                        device_node.max_gpu_time,
-                                        unit=time_unit),
-                                    format_time(
-                                        device_node.min_gpu_time,
-                                        unit=time_unit),
+                                    format_time(device_node.gpu_time,
+                                                unit=time_unit),
+                                    format_time(device_node.avg_gpu_time,
+                                                unit=time_unit),
+                                    format_time(device_node.max_gpu_time,
+                                                unit=time_unit),
+                                    format_time(device_node.min_gpu_time,
+                                                unit=time_unit),
                                     format_ratio(gpu_ratio))
                             ]
                             all_row_values.append(row_values)
@@ -1188,14 +1241,14 @@ def _build_table(statistic_data,
                             '  {}'.format(device_node_name), device_node.call,
                             '- / - / - / - / -',
                             '{} / {} / {} / {} / {}'.format(
-                                format_time(
-                                    device_node.gpu_time, unit=time_unit),
-                                format_time(
-                                    device_node.avg_gpu_time, unit=time_unit),
-                                format_time(
-                                    device_node.max_gpu_time, unit=time_unit),
-                                format_time(
-                                    device_node.min_gpu_time, unit=time_unit),
+                                format_time(device_node.gpu_time,
+                                            unit=time_unit),
+                                format_time(device_node.avg_gpu_time,
+                                            unit=time_unit),
+                                format_time(device_node.max_gpu_time,
+                                            unit=time_unit),
+                                format_time(device_node.min_gpu_time,
+                                            unit=time_unit),
                                 format_ratio(gpu_ratio))
                         ]
                         all_row_values.append(row_values)
@@ -1249,21 +1302,20 @@ def _build_table(statistic_data,
         all_row_values = []
         kernel_items = statistic_data.event_summary.kernel_items
         if sorted_by == SortedKeys.GPUAvg:
-            sorted_items = sorted(
-                kernel_items.items(),
-                key=lambda x: x[1].avg_gpu_time,
-                reverse=True)
+            sorted_items = sorted(kernel_items.items(),
+                                  key=lambda x: x[1].avg_gpu_time,
+                                  reverse=True)
         elif sorted_by == SortedKeys.GPUMax:
-            sorted_items = sorted(
-                kernel_items.items(),
-                key=lambda x: x[1].max_gpu_time,
-                reverse=True)
+            sorted_items = sorted(kernel_items.items(),
+                                  key=lambda x: x[1].max_gpu_time,
+                                  reverse=True)
         elif sorted_by == SortedKeys.GPUMin:
-            sorted_items = sorted(
-                kernel_items.items(), key=lambda x: x[1].min_gpu_time)
+            sorted_items = sorted(kernel_items.items(),
+                                  key=lambda x: x[1].min_gpu_time)
         else:
-            sorted_items = sorted(
-                kernel_items.items(), key=lambda x: x[1].gpu_time, reverse=True)
+            sorted_items = sorted(kernel_items.items(),
+                                  key=lambda x: x[1].gpu_time,
+                                  reverse=True)
 
         total_kernel_gpu_time = 0
         for name, item in sorted_items:
@@ -1277,14 +1329,10 @@ def _build_table(statistic_data,
                 name,
                 item.call,
                 '{} / {} / {} / {} / {}'.format(
-                    format_time(
-                        item.gpu_time, unit=time_unit),
-                    format_time(
-                        item.avg_gpu_time, unit=time_unit),
-                    format_time(
-                        item.max_gpu_time, unit=time_unit),
-                    format_time(
-                        item.min_gpu_time, unit=time_unit),
+                    format_time(item.gpu_time, unit=time_unit),
+                    format_time(item.avg_gpu_time, unit=time_unit),
+                    format_time(item.max_gpu_time, unit=time_unit),
+                    format_time(item.min_gpu_time, unit=time_unit),
                     format_ratio(gpu_ratio)),
             ]
             all_row_values.append(row_values)
@@ -1349,24 +1397,16 @@ def _build_table(statistic_data,
                 name,
                 item.call,
                 '{} / {} / {} / {} / {}'.format(
-                    format_time(
-                        item.cpu_time, unit=time_unit),
-                    format_time(
-                        item.avg_cpu_time, unit=time_unit),
-                    format_time(
-                        item.max_cpu_time, unit=time_unit),
-                    format_time(
-                        item.min_cpu_time, unit=time_unit),
+                    format_time(item.cpu_time, unit=time_unit),
+                    format_time(item.avg_cpu_time, unit=time_unit),
+                    format_time(item.max_cpu_time, unit=time_unit),
+                    format_time(item.min_cpu_time, unit=time_unit),
                     format_ratio(float(item.cpu_time) / total_time)),
                 '{} / {} / {} / {} / {}'.format(
-                    format_time(
-                        item.general_gpu_time, unit=time_unit),
-                    format_time(
-                        item.avg_general_gpu_time, unit=time_unit),
-                    format_time(
-                        item.max_general_gpu_time, unit=time_unit),
-                    format_time(
-                        item.min_general_gpu_time, unit=time_unit),
+                    format_time(item.general_gpu_time, unit=time_unit),
+                    format_time(item.avg_general_gpu_time, unit=time_unit),
+                    format_time(item.max_general_gpu_time, unit=time_unit),
+                    format_time(item.min_general_gpu_time, unit=time_unit),
                     format_ratio(gpu_ratio)),
             ]
             all_row_values.append(row_values)
@@ -1429,39 +1469,35 @@ def _build_table(statistic_data,
         for thread_id, items in userdefined_thread_items.items():
             all_row_values.append("Thread: {}".format(thread_id))
             if sorted_by == SortedKeys.CPUTotal:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].cpu_time, reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUAvg:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].avg_cpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].avg_cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUMax:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].max_cpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].max_cpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.CPUMin:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].min_cpu_time)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].min_cpu_time)
             elif sorted_by == SortedKeys.GPUTotal:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUAvg:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].avg_general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].avg_general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUMax:
-                sorted_items = sorted(
-                    items.items(),
-                    key=lambda x: x[1].max_general_gpu_time,
-                    reverse=True)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].max_general_gpu_time,
+                                      reverse=True)
             elif sorted_by == SortedKeys.GPUMin:
-                sorted_items = sorted(
-                    items.items(), key=lambda x: x[1].min_general_gpu_time)
+                sorted_items = sorted(items.items(),
+                                      key=lambda x: x[1].min_general_gpu_time)
 
             for name, item in sorted_items:
                 if gpu_total_time == 0:
@@ -1472,24 +1508,16 @@ def _build_table(statistic_data,
                     name,
                     item.call,
                     '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.cpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_cpu_time, unit=time_unit),
-                        format_time(
-                            item.max_cpu_time, unit=time_unit),
-                        format_time(
-                            item.min_cpu_time, unit=time_unit),
+                        format_time(item.cpu_time, unit=time_unit),
+                        format_time(item.avg_cpu_time, unit=time_unit),
+                        format_time(item.max_cpu_time, unit=time_unit),
+                        format_time(item.min_cpu_time, unit=time_unit),
                         format_ratio(float(item.cpu_time) / total_time)),
                     '{} / {} / {} / {} / {}'.format(
-                        format_time(
-                            item.general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.avg_general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.max_general_gpu_time, unit=time_unit),
-                        format_time(
-                            item.min_general_gpu_time, unit=time_unit),
+                        format_time(item.general_gpu_time, unit=time_unit),
+                        format_time(item.avg_general_gpu_time, unit=time_unit),
+                        format_time(item.max_general_gpu_time, unit=time_unit),
+                        format_time(item.min_general_gpu_time, unit=time_unit),
                         format_ratio(gpu_ratio)),
                 ]
                 all_row_values.append(row_values)
@@ -1542,5 +1570,77 @@ def _build_table(statistic_data,
                 append(row_format.format(*row_values))
         append('')
         append('')
+
+    ###### Print Memory Summary Report ######
+    if statistic_data.memory_summary.allocated_items or statistic_data.memory_summary.reserved_items:
+        for device_type, memory_events in statistic_data.memory_summary.allocated_items.items(
+        ):
+            all_row_values = []
+            sorted_items = sorted(memory_events.items(),
+                                  key=lambda x: x[1].increase_size,
+                                  reverse=True)
+
+            for event_name, item in sorted_items:
+                row_values = [
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
+                ]
+                all_row_values.append(row_values)
+
+            sorted_reserved_items = sorted(statistic_data.memory_summary.
+                                           reserved_items[device_type].items(),
+                                           key=lambda x: x[1].increase_size,
+                                           reverse=True)
+            for event_name, item in sorted_reserved_items:
+                row_values = [
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
+                ]
+                all_row_values.append(row_values)
+
+            # Calculate the column width
+            headers = [
+                'Name', 'Type', 'Allocation Count', 'Free Count',
+                'Allocation Size', 'Free Size', 'Increased Size'
+            ]
+            row_format_list = [""]
+            header_sep_list = [""]
+            line_length_list = [-SPACING_SIZE]
+            name_column_width = 50
+            number_column_width = 15
+            add_column(name_column_width)
+            add_column(12)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+
+            row_format = row_format_list[0]
+            header_sep = header_sep_list[0]
+            line_length = line_length_list[0]
+
+            # construct table string
+            append(
+                add_title(line_length,
+                          "Memory Summary - {}".format(device_type)))
+            append('Peak Allocated Memory: {}'.format(
+                statistic_data.memory_summary.
+                peak_allocation_values[device_type]))
+            append('Peak Reserved Memory: {}'.format(
+                statistic_data.memory_summary.peak_reserved_values[device_type])
+                   )
+            append(header_sep)
+            append(row_format.format(*headers))
+            append(header_sep)
+            for row_values in all_row_values:
+                if isinstance(row_values, str):
+                    append(add_title(line_length, row_values))
+                else:
+                    append(row_format.format(*row_values))
+            append('')
+            append('')
 
     return ''.join(result)

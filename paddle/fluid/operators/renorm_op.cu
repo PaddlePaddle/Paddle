@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/renorm_op.h"
-
 #include <algorithm>
 #include <cstdio>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/fluid/operators/renorm_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
@@ -49,7 +48,9 @@ struct UnsignedPowFunctor {
 };
 
 template <typename T>
-__global__ void RenormKernelFunc3(int64_t size, T* dim_value, float p,
+__global__ void RenormKernelFunc3(int64_t size,
+                                  T* dim_value,
+                                  float p,
                                   float max_norm) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
   if (i < size) {
@@ -60,8 +61,11 @@ __global__ void RenormKernelFunc3(int64_t size, T* dim_value, float p,
 }
 
 template <typename T>
-__global__ void RenormKernelFunc4(const T* x_data, T* out_data, int64_t size,
-                                  T* dim_value, int64_t dimension_each,
+__global__ void RenormKernelFunc4(const T* x_data,
+                                  T* out_data,
+                                  int64_t size,
+                                  T* dim_value,
+                                  int64_t dimension_each,
                                   int64_t dim_divisor) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
   auto dim_index = i / dim_divisor % dimension_each;
@@ -74,9 +78,13 @@ __global__ void RenormKernelFunc4(const T* x_data, T* out_data, int64_t size,
 }
 
 template <typename T>
-__global__ void RenormGradKernelFunc1(const T* x_data, const T* dout_data,
-                                      T* pow_value, T* mul_value, int64_t size,
-                                      int64_t dimension_each, float p,
+__global__ void RenormGradKernelFunc1(const T* x_data,
+                                      const T* dout_data,
+                                      T* pow_value,
+                                      T* mul_value,
+                                      int64_t size,
+                                      int64_t dimension_each,
+                                      float p,
                                       int64_t dim_divisor) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
   auto dim_index = i / dim_divisor % dimension_each;
@@ -87,11 +95,17 @@ __global__ void RenormGradKernelFunc1(const T* x_data, const T* dout_data,
 }
 
 template <typename T>
-__global__ void RenormGradKernelFunc2(const T* x_data, const T* dout_data,
-                                      T* dx_data, int64_t size, T* dim_value,
-                                      T* dim_power_sum, T* weight_derivative,
-                                      int64_t dimension_each, float p,
-                                      float max_norm, int64_t dim_divisor) {
+__global__ void RenormGradKernelFunc2(const T* x_data,
+                                      const T* dout_data,
+                                      T* dx_data,
+                                      int64_t size,
+                                      T* dim_value,
+                                      T* dim_power_sum,
+                                      T* weight_derivative,
+                                      int64_t dimension_each,
+                                      float p,
+                                      float max_norm,
+                                      int64_t dim_divisor) {
   int64_t i = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x;
   auto dim_index = i / dim_divisor % dimension_each;
   if (i < dimension_each) {
@@ -107,10 +121,10 @@ __global__ void RenormGradKernelFunc2(const T* x_data, const T* dout_data,
   __syncthreads();
   if (i < size) {
     dx_data[i] = dim_value[dim_index] * dout_data[i];
-    dx_data[i] = dx_data[i] +
-                 weight_derivative[dim_index] * dim_power_sum[dim_index] *
-                     pow(abs(x_data[i]), T(p - 1.0)) *
-                     (x_data[i] >= 0 ? 1 : -1);
+    dx_data[i] = dx_data[i] + weight_derivative[dim_index] *
+                                  dim_power_sum[dim_index] *
+                                  pow(abs(x_data[i]), T(p - 1.0)) *
+                                  (x_data[i] >= 0 ? 1 : -1);
   }
 }
 
@@ -150,17 +164,25 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const auto& cuda_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(cuda_ctx, ins,
-                                                              &outs, func);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        cuda_ctx, ins, &outs, func);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        cuda_ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis,
+        cuda_ctx,
+        pow_value,
+        &dim_value,
+        kps::IdentityFunctor<T>(),
+        reduce_axis,
         stream);
     RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
         numel, dim_value.mutable_data<T>(context.GetPlace()), p, max_norm);
     RenormKernelFunc4<T><<<grid, block, 0, stream>>>(
-        x_data, out_data, numel, dim_value.mutable_data<T>(context.GetPlace()),
-        dimension_each, dim_divisor);
+        x_data,
+        out_data,
+        numel,
+        dim_value.mutable_data<T>(context.GetPlace()),
+        dimension_each,
+        dim_divisor);
     // platform::GpuStreamSync(stream);
   }
 };
@@ -204,23 +226,42 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
     dim_value.mutable_data<T>(ctx.GetPlace());
     dim_power_sum.mutable_data<T>(ctx.GetPlace());
     weight_derivative.mutable_data<T>(ctx.GetPlace());
-    RenormGradKernelFunc1<T><<<grid, block, 0, stream>>>(
-        x_data, dout_data, pow_value.mutable_data<T>(ctx.GetPlace()),
-        mul_value.mutable_data<T>(ctx.GetPlace()), numel, dimension_each, p,
-        dim_divisor);
+    RenormGradKernelFunc1<T>
+        <<<grid, block, 0, stream>>>(x_data,
+                                     dout_data,
+                                     pow_value.mutable_data<T>(ctx.GetPlace()),
+                                     mul_value.mutable_data<T>(ctx.GetPlace()),
+                                     numel,
+                                     dimension_each,
+                                     p,
+                                     dim_divisor);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx.cuda_device_context(), pow_value, &dim_value,
-        kps::IdentityFunctor<T>(), reduce_axis, stream);
+        ctx.cuda_device_context(),
+        pow_value,
+        &dim_value,
+        kps::IdentityFunctor<T>(),
+        reduce_axis,
+        stream);
     TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx.cuda_device_context(), mul_value, &weight_derivative,
-        kps::IdentityFunctor<T>(), reduce_axis, stream);
+        ctx.cuda_device_context(),
+        mul_value,
+        &weight_derivative,
+        kps::IdentityFunctor<T>(),
+        reduce_axis,
+        stream);
     RenormGradKernelFunc2<T><<<grid, block, 0, stream>>>(
-        x_data, dout_data, dx_data, numel,
+        x_data,
+        dout_data,
+        dx_data,
+        numel,
         dim_value.mutable_data<T>(ctx.GetPlace()),
         dim_power_sum.mutable_data<T>(ctx.GetPlace()),
-        weight_derivative.mutable_data<T>(ctx.GetPlace()), dimension_each, p,
-        max_norm, dim_divisor);
+        weight_derivative.mutable_data<T>(ctx.GetPlace()),
+        dimension_each,
+        p,
+        max_norm,
+        dim_divisor);
     // platform::GpuStreamSync(stream);
   }
 };
@@ -229,8 +270,10 @@ class CUDAGradRenormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(renorm, ops::CUDARenormKernel<float>,
+REGISTER_OP_CUDA_KERNEL(renorm,
+                        ops::CUDARenormKernel<float>,
                         ops::CUDARenormKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(renorm_grad, ops::CUDAGradRenormKernel<float>,
+REGISTER_OP_CUDA_KERNEL(renorm_grad,
+                        ops::CUDAGradRenormKernel<float>,
                         ops::CUDAGradRenormKernel<double>);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
+
 #include <memory>
 #include <string>
 
@@ -30,18 +31,20 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // Check the lod_level for compile-time.
       auto in_lod_level = ctx->GetLoDLevel("X");
-      PADDLE_ENFORCE_GT(in_lod_level, 0, platform::errors::InvalidArgument(
-                                             "The LoD level of Input(X) should "
-                                             "be larger than 0, but received: "
-                                             "lod level %u.",
-                                             in_lod_level));
+      PADDLE_ENFORCE_GT(
+          in_lod_level,
+          0,
+          platform::errors::InvalidArgument("The LoD level of Input(X) should "
+                                            "be larger than 0, but received: "
+                                            "lod level %u.",
+                                            in_lod_level));
       ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      OP_INOUT_CHECK(ctx->HasOutput("MaxIndex"), "Output", "MaxIndex",
-                     "SequencePool");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("MaxIndex"), "Output", "MaxIndex", "SequencePool");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -113,26 +116,34 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SequencePoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SequencePoolGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequencePoolGrad");
 
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
+    PADDLE_ENFORCE_EQ(og_dims.size(),
+                      x_dims.size(),
                       platform::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
-                          og_dims.size(), og_dims));
+                          og_dims.size(),
+                          og_dims));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          og_dims[i], x_dims[i],
+          og_dims[i],
+          x_dims[i],
           platform::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
               "input shape [%s].",
-              og_dims.size(), og_dims, x_dims.size(), x_dims));
+              og_dims.size(),
+              og_dims,
+              x_dims.size(),
+              x_dims));
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
@@ -174,17 +185,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
+REGISTER_OPERATOR(sequence_pool,
+                  ops::SequencePoolOp,
+                  ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+REGISTER_OPERATOR(sequence_pool_grad,
+                  ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_pool,
+                       ops::SequencePoolKernel<phi::CPUContext, float>,
+                       ops::SequencePoolKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_pool_grad,
+                       ops::SequencePoolGradKernel<phi::CPUContext, float>,
+                       ops::SequencePoolGradKernel<phi::CPUContext, double>);

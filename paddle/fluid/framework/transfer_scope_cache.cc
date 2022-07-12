@@ -27,7 +27,8 @@ std::unordered_set<Scope*>& global_transfer_scope_cache() {
   return *x;
 }
 
-Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
+Scope* TryCreateTransferScope(OpKernelType type0,
+                              OpKernelType type1,
                               const Scope* scope) {
   Scope* new_scope{nullptr};
   size_t infer_cache_key =

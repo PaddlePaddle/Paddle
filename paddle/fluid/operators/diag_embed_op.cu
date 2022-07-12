@@ -14,13 +14,15 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/diag_embed_op.h"
 
 namespace ops = paddle::operators;
 namespace platform = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    diag_embed, ops::DiagEmbedKernel<paddle::platform::CUDADeviceContext, int>,
+    diag_embed,
+    ops::DiagEmbedKernel<paddle::platform::CUDADeviceContext, int>,
     ops::DiagEmbedKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::DiagEmbedKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DiagEmbedKernel<paddle::platform::CUDADeviceContext,

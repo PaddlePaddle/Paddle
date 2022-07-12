@@ -14,10 +14,12 @@
 
 #pragma once
 #include <glog/logging.h>
+
 #include <memory>
 #include <unordered_set>
+
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/compat/type_defs.h"
 
 namespace paddle {
 namespace imperative {
@@ -39,6 +41,10 @@ class LayoutAutoTune {
 
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
+  bool IsHeavilyLayoutSensitive(const std::string& op_type) const {
+    return heavily_layout_sensitive_ops_.count(op_type) != 0;
+  }
+
   bool IsLightlyLayoutSensitive(const std::string& op_type) const {
     return lightly_layout_sensitive_ops_.count(op_type) != 0;
   }
@@ -58,9 +64,10 @@ class LayoutAutoTune {
 
   std::unordered_set<std::string> layout_agnostic_ops_{};
 
-  std::unordered_set<std::string> heavily_layout_sensitive_ops_{};
+  std::unordered_set<std::string> heavily_layout_sensitive_ops_{"batch_norm"};
 
-  std::unordered_set<std::string> lightly_layout_sensitive_ops_{};
+  std::unordered_set<std::string> lightly_layout_sensitive_ops_{
+      "instance_norm", "softmax", "transpose", "transpose2", "reshape2"};
 
   DataLayout layout_{DataLayout::UNDEFINED};
 };

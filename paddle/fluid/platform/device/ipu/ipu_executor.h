@@ -63,6 +63,9 @@ class Executor {
   // Detach IPU
   void Detach();
 
+  // Reset session
+  void Reset();
+
   // Scope
   void SetScope(const Scope *scope) { scope_ = scope; }
 

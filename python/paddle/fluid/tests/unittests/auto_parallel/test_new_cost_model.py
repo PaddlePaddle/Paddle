@@ -13,12 +13,18 @@
 # limitations under the License.
 
 import unittest
+import os
+import json
+import tempfile
 
 import paddle
 import paddle.distributed.auto_parallel.cost as cost_model
 from paddle.distributed.auto_parallel.cost.base_cost import parse_to_desc
 from paddle.distributed.auto_parallel.cost.base_cost import parse_desc_to_str
 from paddle.distributed.auto_parallel.cost.base_cost import calc_time_by_modeling
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.cost import CommContext
+from test_cluster import cluster_json, multi_cluster_json
 
 paddle.enable_static()
 
@@ -30,6 +36,13 @@ def check_cost(cost):
 
 
 class TestCost(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_base_cost(self):
         cost = cost_model.Cost(memory=100, flops=200, time=0.5)
         self.assertTrue(check_cost(cost))
@@ -58,12 +71,25 @@ class TestCost(unittest.TestCase):
         self.assertEqual(tensor_cost.cost.memory, 1600)
 
     def test_comm_cost(self):
+        # Build cluster
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+        cluster_json_object = json.loads(cluster_json)
+        with open(cluster_json_path, "w") as cluster_json_file:
+            json.dump(cluster_json_object, cluster_json_file)
+        cluster = Cluster()
+        cluster.build_from_file(cluster_json_path)
+
+        # Build CommConetxt
+        CommContext._has_instance = None
+        CommContext._instance = None
+        comm_context = CommContext(cluster)
         desc = {}
         desc["op"] = "c_allreduce_sum"
-        desc["inputs"] = {"X": [([100, 200], paddle.float32)]}
+        desc["inputs"] = {"X": [(paddle.float32, [100, 200])]}
         desc["group_ranks"] = [0, 1]
         allreduce_cost = cost_model._g_op_cost_factory["c_allreduce_sum"](
-            op_desc=desc)
+            op_desc=desc, comm_context=CommContext(cluster))
         self.assertTrue(check_cost(allreduce_cost.cost))
 
     def test_cost_estimator(self):

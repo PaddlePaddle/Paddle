@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
@@ -117,7 +118,7 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
                                                  attr_desc.type()));
   }
-  return boost::blank();
+  return paddle::blank();
 }
 
 }  // namespace framework

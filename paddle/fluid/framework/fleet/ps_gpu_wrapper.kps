@@ -28,9 +28,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-__global__ void PullCopy(float** dest, const FeatureValue* src,
+__global__ void PullCopy(float* dest, const FeatureValue* src,
                          const long long* len, int hidden, int slot_num,
-                         int total_len, unsigned long long** keys) {
+                         int total_len, unsigned long long* keys) {
   int cid = core_id();
   int ncores = core_num();
   if (cid >= ncores) {
@@ -41,11 +41,21 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
   __local__ int64_t local_len[slot_num];
   GM2LM(len, local_len, slot_num * sizeof(int64_t));
 
+  __global_ptr__ unsigned long long* local_keys[slot_num];
+  GM2LM(keys, local_keys,
+        slot_num * sizeof(__global_ptr__ unsigned long long*));
+
+  __global_ptr__ float* local_dest[slot_num];
+  GM2LM(dest, local_dest, slot_num * sizeof(__global_ptr__ float*));
+
+  int read_len = 30;
+
   for (int i = thread_id; i < slot_num; i += nthreads) {
     // max core local memory = 8KB
     // slot's max memory size = slot_len * sizeof(FeatureValue)
     int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
-    int read_len = min(roundup_div(1024 * 8, sizeof(FeatureValue)), slot_len);
+    // int read_len = min(roundup_div(1024 * 8, sizeof(FeatureValue)),
+    // slot_len);
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ FeatureValue local_slot_vals[read_len];
     __local__ float local_dest_vals[read_len * hidden];
@@ -56,7 +66,8 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
       int real_read_len = min(read_len, slot_len - k);
       GM2LM(src + dest_len + k, local_slot_vals,
             real_read_len * sizeof(FeatureValue));
-      GM2LM(keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      GM2LM(local_keys[i] + k, local_slot_keys,
+            real_read_len * sizeof(uint64_t));
       for (int j = 0; j < real_read_len; j++) {
         if (local_slot_keys[j] == 0) {
           local_dest_vals[j * hidden] = 0;
@@ -78,13 +89,13 @@ __global__ void PullCopy(float** dest, const FeatureValue* src,
           }
         }
       }
-      LM2GM(local_dest_vals, dest[i] + k * hidden,
+      LM2GM(local_dest_vals, local_dest[i] + k * hidden,
             real_read_len * hidden * sizeof(float));
     }
   }
 }
 
-__global__ void CopyKeysKernel(unsigned long long** src_keys,
+__global__ void CopyKeysKernel(unsigned long long* src_keys,
                                unsigned long long* dest_total_keys,
                                const long long* len, int slot_num,
                                int total_len) {
@@ -95,26 +106,32 @@ __global__ void CopyKeysKernel(unsigned long long** src_keys,
   }
   int thread_id = ncores * cluster_id() + cid;
   int nthreads = ncores * cluster_num();
-  __local__ int64_t local_len[slot_num];
-  GM2LM(len, local_len, slot_num * sizeof(int64_t));
+  __local__ long long local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(long long));
+
+  __global_ptr__ unsigned long long* local_keys[slot_num];
+  GM2LM(src_keys, local_keys,
+        slot_num * sizeof(__global_ptr__ unsigned long long*));
 
   for (int i = thread_id; i < slot_num; i += nthreads) {
     // max core local memory = 8KB
     int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
-    int read_len = min(slot_len, 1024);
+    // int read_len = min(slot_len, 1024);
+    int read_len = 100;
     int dest_len = i ? local_len[i - 1] : 0;
-    __local__ uint64_t local_slot_keys[read_len];
+    __local__ unsigned long long local_slot_keys[read_len];
 
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
-      GM2LM(src_keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      GM2LM(local_keys[i] + k, local_slot_keys,
+            real_read_len * sizeof(unsigned long long));
       LM2GM(local_slot_keys, dest_total_keys + dest_len + k,
-            real_read_len * sizeof(uint64_t));
+            real_read_len * sizeof(unsigned long long));
     }
   }
 }
 
-__global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
+__global__ void PushCopy(FeaturePushValue* dest, float* src, long long* len,
                          int hidden, int slot_num, int total_len, int bs,
                          int* slot_vector) {
   int cid = core_id();
@@ -129,12 +146,16 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
   GM2LM(len, local_len, slot_num * sizeof(int64_t));
   GM2LM(slot_vector, local_slot, slot_num * sizeof(int));
 
+  __global_ptr__ float* local_src[slot_num];
+  GM2LM(src, local_src, slot_num * sizeof(__global_ptr__ float*));
+
   for (int i = thread_id; i < slot_num; i += nthreads) {
     int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
 
     // max core local memory = 8KB
     // slot's max memory size = slot_len * hidden * 8
-    int read_len = min(roundup_div(1024, hidden), slot_len);
+    // int read_len = min(roundup_div(1024, hidden), slot_len);
+    int read_len = 40;
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ float local_slot_grads[read_len * hidden];
     __local__ FeaturePushValue local_dest_grads[read_len];
@@ -142,7 +163,7 @@ __global__ void PushCopy(FeaturePushValue* dest, float** src, long long* len,
     // copy read_len(length) of slots' grad to LM
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
-      GM2LM(src[i] + k * hidden, local_slot_grads,
+      GM2LM(local_src[i] + k * hidden, local_slot_grads,
             real_read_len * hidden * sizeof(float));
       // copy from slots' grad to total grad
       for (int j = 0; j < real_read_len; j++) {
@@ -175,14 +196,18 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  float* buf_value = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&buf_value),
+  // float* buf_value = nullptr;
+  // xpu_malloc(reinterpret_cast<void**>(&buf_value),
+  //            values.size() * sizeof(float*));
+  // float** gpu_values = reinterpret_cast<float**>(&buf_value);
+  float* gpu_values = nullptr;
+  xpu_malloc(reinterpret_cast<void**>(&gpu_values),
              values.size() * sizeof(float*));
-  float** gpu_values = reinterpret_cast<float**>(&buf_value);
   xpu_memcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              XPU_HOST_TO_DEVICE);
 
-  unsigned long long** c_keys = (unsigned long long**)gpu_keys;
+  // unsigned long long** c_keys = (unsigned long long**)gpu_keys;
+  unsigned long long* c_keys = reinterpret_cast<unsigned long long*>(gpu_keys);
   const long long* c_len = (const long long*)gpu_len;
   PullCopy<<<2, 64, stream>>>(gpu_values, total_values_gpu, c_len, hidden_size,
                               slot_num, total_length, c_keys);
@@ -199,7 +224,8 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
-  unsigned long long** o_keys = (unsigned long long**)origin_keys;
+  unsigned long long* o_keys =
+      reinterpret_cast<unsigned long long*>(origin_keys);
   unsigned long long* t_keys = (unsigned long long*)total_keys;
   const long long* c_len = (const long long*)gpu_len;
   CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
@@ -223,20 +249,17 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
 
-  float* buf_grad_value = nullptr;
-  int64_t* buf_length = nullptr;
-  int* buf_slot_vector = nullptr;
+  float* gpu_values = nullptr;
+  int64_t* gpu_len = nullptr;
+  int* d_slot_vector = nullptr;
 
-  xpu_malloc(reinterpret_cast<void**>(&buf_grad_value),
+  xpu_malloc(reinterpret_cast<void**>(&gpu_values),
              grad_values.size() * sizeof(float*));
-  xpu_malloc(reinterpret_cast<void**>(&buf_length),
+  xpu_malloc(reinterpret_cast<void**>(&gpu_len),
              slot_lengths.size() * sizeof(int64_t));
-  xpu_malloc(reinterpret_cast<void**>(&buf_slot_vector),
+  xpu_malloc(reinterpret_cast<void**>(&d_slot_vector),
              slot_lengths_lod.size() * sizeof(int));
 
-  float** gpu_values = reinterpret_cast<float**>(&buf_grad_value);
-  int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length);
-  int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector);
   xpu_memcpy(gpu_values, grad_values.data(),
              grad_values.size() * sizeof(float*), XPU_HOST_TO_DEVICE);
   xpu_memcpy(gpu_len, slot_lengths_lod.data(),

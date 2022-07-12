@@ -26,6 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestSquaredMatSubFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -52,95 +53,94 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        matmul_op1 = OpConfig(
-            type="matmul",
-            inputs={"X": ["input_data1"],
-                    "Y": ["input_data2"]},
-            outputs={"Out": ["matmul1_output"]},
-            attrs={
-                "transpose_X": transpose_X,
-                "transpose_Y": transpose_Y,
-                "alpha": alpha1,
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": []
-            })
+        matmul_op1 = OpConfig(type="matmul",
+                              inputs={
+                                  "X": ["input_data1"],
+                                  "Y": ["input_data2"]
+                              },
+                              outputs={"Out": ["matmul1_output"]},
+                              attrs={
+                                  "transpose_X": transpose_X,
+                                  "transpose_Y": transpose_Y,
+                                  "alpha": alpha1,
+                                  "fused_reshape_X": [],
+                                  "fused_reshape_Y": [],
+                                  "fused_transpose_X": [],
+                                  "fused_transpose_Y": [],
+                                  "fused_reshape_Out": [],
+                                  "fused_transpose_Out": []
+                              })
 
-        square_op1 = OpConfig(
-            type="square",
-            inputs={"X": ["matmul1_output"]},
-            outputs={"Out": ["square1_output"]},
-            attrs={})
+        square_op1 = OpConfig(type="square",
+                              inputs={"X": ["matmul1_output"]},
+                              outputs={"Out": ["square1_output"]},
+                              attrs={})
 
-        square_op2 = OpConfig(
-            type="square",
-            inputs={"X": ["input_data1"]},
-            outputs={"Out": ["square2_output"]},
-            attrs={})
+        square_op2 = OpConfig(type="square",
+                              inputs={"X": ["input_data1"]},
+                              outputs={"Out": ["square2_output"]},
+                              attrs={})
 
-        square_op3 = OpConfig(
-            type="square",
-            inputs={"X": ["input_data2"]},
-            outputs={"Out": ["square3_output"]},
-            attrs={})
+        square_op3 = OpConfig(type="square",
+                              inputs={"X": ["input_data2"]},
+                              outputs={"Out": ["square3_output"]},
+                              attrs={})
 
-        matmul_op2 = OpConfig(
-            type="matmul",
-            inputs={"X": ["square2_output"],
-                    "Y": ["square3_output"]},
-            outputs={"Out": ["matmul2_output"]},
-            attrs={
-                "transpose_X": transpose_X,
-                "transpose_Y": transpose_Y,
-                "alpha": alpha2,
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": []
-            })
+        matmul_op2 = OpConfig(type="matmul",
+                              inputs={
+                                  "X": ["square2_output"],
+                                  "Y": ["square3_output"]
+                              },
+                              outputs={"Out": ["matmul2_output"]},
+                              attrs={
+                                  "transpose_X": transpose_X,
+                                  "transpose_Y": transpose_Y,
+                                  "alpha": alpha2,
+                                  "fused_reshape_X": [],
+                                  "fused_reshape_Y": [],
+                                  "fused_transpose_X": [],
+                                  "fused_transpose_Y": [],
+                                  "fused_reshape_Out": [],
+                                  "fused_transpose_Out": []
+                              })
 
-        elt_sub_op = OpConfig(
-            type="elementwise_sub",
-            inputs={"X": ["square1_output"],
-                    "Y": ["matmul2_output"]},
-            outputs={"Out": ["sub_out"]},
-            attrs={"axis": axis1})
+        elt_sub_op = OpConfig(type="elementwise_sub",
+                              inputs={
+                                  "X": ["square1_output"],
+                                  "Y": ["matmul2_output"]
+                              },
+                              outputs={"Out": ["sub_out"]},
+                              attrs={"axis": axis1})
 
         if has_str_value:
-            fill_constant_op = OpConfig(
-                type="fill_constant",
-                inputs={},
-                outputs={"Out": ["constant_out"]},
-                attrs={
-                    "dtype": 5,
-                    "place_type": place_type,
-                    "str_value": str_value,
-                    "value": value,
-                    "shape": shape
-                })
+            fill_constant_op = OpConfig(type="fill_constant",
+                                        inputs={},
+                                        outputs={"Out": ["constant_out"]},
+                                        attrs={
+                                            "dtype": 5,
+                                            "place_type": place_type,
+                                            "str_value": str_value,
+                                            "value": value,
+                                            "shape": shape
+                                        })
         else:
-            fill_constant_op = OpConfig(
-                type="fill_constant",
-                inputs={},
-                outputs={"Out": ["constant_out"]},
-                attrs={
-                    "dtype": 5,
-                    "place_type": place_type,
-                    "value": value,
-                    "shape": shape
-                })
+            fill_constant_op = OpConfig(type="fill_constant",
+                                        inputs={},
+                                        outputs={"Out": ["constant_out"]},
+                                        attrs={
+                                            "dtype": 5,
+                                            "place_type": place_type,
+                                            "value": value,
+                                            "shape": shape
+                                        })
 
-        elt_mul_op = OpConfig(
-            type="elementwise_mul",
-            inputs={"X": ["sub_out"],
-                    "Y": ["constant_out"]},
-            outputs={"Out": ["mul_out"]},
-            attrs={"axis": axis2})
+        elt_mul_op = OpConfig(type="elementwise_mul",
+                              inputs={
+                                  "X": ["sub_out"],
+                                  "Y": ["constant_out"]
+                              },
+                              outputs={"Out": ["mul_out"]},
+                              attrs={"axis": axis2})
 
         model_net = [
             matmul_op1, square_op1, square_op2, square_op3, matmul_op2,

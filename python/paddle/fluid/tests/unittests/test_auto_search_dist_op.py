@@ -30,11 +30,13 @@ from paddle.distributed.auto_parallel.operators.common import get_distributed_op
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+
 paddle.enable_static()
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -42,14 +44,18 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
         bias_attr = None
 
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -76,17 +82,16 @@ def mlp_forward(train_program, start_program):
         input = embedding(input)
         input = paddle.reshape(input, [hidden_size, batch_size])
         input = paddle.transpose(input, perm=[1, 0])
-        matmulinput = static.data(
-            name="matmulinput",
-            shape=[hidden_size, hidden_size],
-            dtype='float32')
+        matmulinput = static.data(name="matmulinput",
+                                  shape=[hidden_size, hidden_size],
+                                  dtype='float32')
         input = layers.matmul(x=input, y=matmulinput)
-        label = static.data(
-            name="label", shape=[batch_size, 1], dtype='float32')
-        mlp = MLPLayer(
-            hidden_size=hidden_size,
-            intermediate_size=4 * hidden_size,
-            initializer_range=0.02)
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
@@ -97,6 +102,7 @@ def mlp_forward(train_program, start_program):
 
 
 class TestCompatible(unittest.TestCase):
+
     def test_reshape_remove_compatible(self):
         valid_op_dist_attr_list = []
         program = paddle.static.Program()

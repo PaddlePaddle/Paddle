@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+
 #include "paddle/phi/backends/dynload/lapack.h"
 #include "paddle/phi/common/complex.h"
 
@@ -496,6 +497,44 @@ void lapackCholeskySolve<float>(char uplo,
                                 int ldb,
                                 int *info) {
   dynload::spotrs_(&uplo, &n, &nrhs, a, &lda, b, &ldb, info);
+}
+
+template <>
+void lapackSvd<double>(char jobz,
+                       int m,
+                       int n,
+                       double *a,
+                       int lda,
+                       double *s,
+                       double *u,
+                       int ldu,
+                       double *vt,
+                       int ldvt,
+                       double *work,
+                       int lwork,
+                       int *iwork,
+                       int *info) {
+  dynload::dgesdd_(
+      &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
+}
+
+template <>
+void lapackSvd<float>(char jobz,
+                      int m,
+                      int n,
+                      float *a,
+                      int lda,
+                      float *s,
+                      float *u,
+                      int ldu,
+                      float *vt,
+                      int ldvt,
+                      float *work,
+                      int lwork,
+                      int *iwork,
+                      int *info) {
+  dynload::sgesdd_(
+      &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
 }
 
 }  // namespace funcs

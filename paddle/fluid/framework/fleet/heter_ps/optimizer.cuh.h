@@ -19,6 +19,7 @@ limitations under the License. */
 #include <curand_kernel.h>
 #endif
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
@@ -36,8 +37,9 @@ class Optimizer {
   void initialize() {}
 
   __device__ void update_lr(const OptimizerConfig& optimizer_config,
-                            float& w,               // NOLINT
-                            float& g2sum, float g,  // NOLINT
+                            float& w,  // NOLINT
+                            float& g2sum,
+                            float g,  // NOLINT
                             float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config.learning_rate *
@@ -55,10 +57,12 @@ class Optimizer {
     g2sum += add_g2sum;
   }
 
-  __device__ void update_mf(const OptimizerConfig& optimizer_config, int n,
+  __device__ void update_mf(const OptimizerConfig& optimizer_config,
+                            int n,
                             float* w,
                             float& g2sum,  // NOLINT
-                            const float* g, float scale) {
+                            const float* g,
+                            float scale) {
     double add_g2sum = 0;
     double ratio = optimizer_config.mf_learning_rate *
                    sqrt(optimizer_config.mf_initial_g2sum /
@@ -104,13 +108,18 @@ class Optimizer {
         }
       }
     } else {
-      update_mf(optimizer_config, MF_DIM, &val.mf[1], val.mf[0], grad.mf_g,
+      update_mf(optimizer_config,
+                MF_DIM,
+                &val.mf[1],
+                val.mf[0],
+                grad.mf_g,
                 grad.show);
     }
   }
 
   __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
-                                     ValType* ptr, const GradType& grad) {
+                                     ValType* ptr,
+                                     const GradType& grad) {
     ptr->slot = grad.slot;
     ptr->show += grad.show;
     ptr->clk += grad.clk;
@@ -125,20 +134,24 @@ class Optimizer {
       if (optimizer_config.mf_create_thresholds <=
           optimizer_config.nonclk_coeff * (ptr->show - ptr->clk) +
               optimizer_config.clk_coeff * ptr->clk) {
-        // ptr->mf_size = ptr->mf_dim + 1;
+        ptr->mf_size = ptr->mf_dim + 1;
 
-        ptr->mf_size = MF_DIM + 1;
+        // ptr->mf_size = MF_DIM + 1;
         ptr->mf[0] = 0;
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
         curandState state;
         curand_init(clock64(), tid_x, 0, &state);
-        for (int i = 0; i < MF_DIM; ++i) {
+        for (int i = 0; i < ptr->mf_dim; ++i) {
           ptr->mf[i + 1] =
               (curand_uniform(&state)) * optimizer_config.mf_initial_range;
         }
       }
     } else {
-      update_mf(optimizer_config, MF_DIM, &(ptr->mf[1]), ptr->mf[0], grad.mf_g,
+      update_mf(optimizer_config,
+                ptr->mf_dim,
+                &(ptr->mf[1]),
+                ptr->mf[0],
+                grad.mf_g,
                 grad.show);  // for local test
     }
   }

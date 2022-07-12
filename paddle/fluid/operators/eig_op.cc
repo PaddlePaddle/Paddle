@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/eig_op.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -25,22 +27,26 @@ class EigOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eig");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
-                   "Eig");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
-                   "Eig");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues", "Eig");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors", "Eig");
 
     auto x_dims = ctx->GetInputDim("X");
     int rank = x_dims.size();
-    PADDLE_ENFORCE_GE(rank, 2, platform::errors::InvalidArgument(
-                                   "Expects input tensor x to be not less than "
-                                   "2 dimentions, but got dimention %d",
-                                   rank));
-    PADDLE_ENFORCE_EQ(x_dims[rank - 2], x_dims[rank - 1],
+    PADDLE_ENFORCE_GE(rank,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "Expects input tensor x to be not less than "
+                          "2 dimentions, but got dimention %d",
+                          rank));
+    PADDLE_ENFORCE_EQ(x_dims[rank - 2],
+                      x_dims[rank - 1],
                       platform::errors::InvalidArgument(
                           "The input matrix must be a square matrix, "
                           "but receive a matrix with %d rows and %d colums",
-                          x_dims[rank - 2], x_dims[rank - 1]));
+                          x_dims[rank - 2],
+                          x_dims[rank - 1]));
 
     std::vector<int> batch_dims_vec{};
     for (int i = 0; i < rank - 1; ++i) {
@@ -95,14 +101,18 @@ class EigGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues",
-                   "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
-                   "EigGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues", "EigGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EigGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
-                   "Input", "Eigenvalues@GRAD", "EigGrad");
+                   "Input",
+                   "Eigenvalues@GRAD",
+                   "EigGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvectors")),
-                   "Input", "Eigenvectors@GRAD", "EigGrad");
+                   "Input",
+                   "Eigenvectors@GRAD",
+                   "EigGrad");
 
     auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
@@ -146,23 +156,23 @@ using complex64 = paddle::platform::complex<float>;
 using complex128 = paddle::platform::complex<double>;
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(eig, ops::EigOp, ops::EigOpMaker,
+REGISTER_OPERATOR(eig,
+                  ops::EigOp,
+                  ops::EigOpMaker,
                   ops::EigGradOpMaker<paddle::framework::OpDesc>,
                   ops::EigGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(eig_grad, ops::EigGradOp);
 
-REGISTER_OP_CPU_KERNEL(
-    eig, ops::EigKernel<paddle::platform::CPUDeviceContext, float, complex64>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, double, complex128>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex64, complex64>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex128, complex128>);
+REGISTER_OP_CPU_KERNEL(eig,
+                       ops::EigKernel<phi::CPUContext, float, complex64>,
+                       ops::EigKernel<phi::CPUContext, double, complex128>,
+                       ops::EigKernel<phi::CPUContext, complex64, complex64>,
+                       ops::EigKernel<phi::CPUContext, complex128, complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     eig_grad,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, float, complex64>,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, double, complex128>,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, complex64,
-                       complex64>,
-    ops::EigGradKernel<paddle::platform::CPUDeviceContext, complex128,
-                       complex128>);
+    ops::EigGradKernel<phi::CPUContext, float, complex64>,
+    ops::EigGradKernel<phi::CPUContext, double, complex128>,
+    ops::EigGradKernel<phi::CPUContext, complex64, complex64>,
+    ops::EigGradKernel<phi::CPUContext, complex128, complex128>);

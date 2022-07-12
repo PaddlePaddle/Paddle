@@ -12,8 +12,8 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -172,8 +172,8 @@ TEST(TensorIsfinite, GPU) {
     Tensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
-    hipLaunchKernelGGL(FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(),
-                       buf);
+    hipLaunchKernelGGL(
+        FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
     FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
 #endif
@@ -184,8 +184,8 @@ TEST(TensorIsfinite, GPU) {
     Tensor tensor;
     float16* buf = tensor.mutable_data<float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
-    hipLaunchKernelGGL(FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(),
-                       buf);
+    hipLaunchKernelGGL(
+        FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
     FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
 #endif
@@ -312,8 +312,8 @@ TEST(TensorIsfinite, GPUWithoutWait) {
     Tensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
-    hipLaunchKernelGGL(FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(),
-                       buf);
+    hipLaunchKernelGGL(
+        FillFinite, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
 #else
     FillFinite<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
 #endif

@@ -33,7 +33,8 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-void CopyToCPUHelper(std::vector<T> *cpu_, paddle::memory::AllocationPtr *gpu_,
+void CopyToCPUHelper(std::vector<T> *cpu_,
+                     paddle::memory::AllocationPtr *gpu_,
                      size_t *gpu_memory_size_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // COPY GPU Data To CPU
@@ -42,8 +43,11 @@ void CopyToCPUHelper(std::vector<T> *cpu_, paddle::memory::AllocationPtr *gpu_,
   auto stream = dev_ctx->stream();
   void *src = (*gpu_)->ptr();
   void *dst = cpu_->data();
-  paddle::memory::Copy(platform::CPUPlace(), dst,
-                       OptionalCUDAPlace(*gpu_).get(), src, *gpu_memory_size_,
+  paddle::memory::Copy(platform::CPUPlace(),
+                       dst,
+                       OptionalCUDAPlace(*gpu_).get(),
+                       src,
+                       *gpu_memory_size_,
                        stream);
   dev_ctx->Wait();
 #endif
@@ -62,8 +66,12 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
       platform::DeviceContextPool::Instance().Get(place));
   auto stream = dev_ctx->stream();
-  paddle::memory::Copy(OptionalCUDAPlace(*gpu_).get(), dst,
-                       platform::CPUPlace(), src, *gpu_memory_size_, stream);
+  paddle::memory::Copy(OptionalCUDAPlace(*gpu_).get(),
+                       dst,
+                       platform::CPUPlace(),
+                       src,
+                       *gpu_memory_size_,
+                       stream);
   dev_ctx->Wait();
 #endif
 }

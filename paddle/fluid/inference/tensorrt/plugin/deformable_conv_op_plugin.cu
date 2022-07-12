@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
+
 #include <algorithm>
 #include <cstdio>
 
@@ -32,8 +33,8 @@ static inline int NumBlocks(const int N) {
                   kNumMaximumNumBlocks);
 }
 
-static inline int ConvOutputSize(int input_size, int filter_size, int dilation,
-                                 int padding, int stride) {
+static inline int ConvOutputSize(
+    int input_size, int filter_size, int dilation, int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   return output_size;
@@ -44,17 +45,18 @@ nvinfer1::Weights DeformableConvPlugin::copyToDevice(const void* hostData,
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
   void* deviceData;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&deviceData, count * num_bytes));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(deviceData, hostData, count * num_bytes,
-                                        cudaMemcpyHostToDevice));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(
+      deviceData, hostData, count * num_bytes, cudaMemcpyHostToDevice));
   return nvinfer1::Weights{data_type_, deviceData, int64_t(count)};
 }
 
 void DeformableConvPlugin::serializeFromDevice(
     void** hostBuffer, const nvinfer1::Weights& deviceWeights) const {
   int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemcpy(static_cast<char*>(*hostBuffer), deviceWeights.values,
-                 deviceWeights.count * num_bytes, cudaMemcpyDeviceToHost));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(static_cast<char*>(*hostBuffer),
+                                        deviceWeights.values,
+                                        deviceWeights.count * num_bytes,
+                                        cudaMemcpyDeviceToHost));
   *hostBuffer =
       reinterpret_cast<char*>(*hostBuffer) + deviceWeights.count * num_bytes;
 }
@@ -68,52 +70,65 @@ nvinfer1::Weights DeformableConvPlugin::deserializeToDevice(
   return w;
 }
 
-DeformableConvPlugin::DeformableConvPlugin(
-    const nvinfer1::DataType data_type, const nvinfer1::Weights& weights,
-    const std::vector<int>& kernel_dims, const std::vector<int>& strides,
-    const std::vector<int>& paddings, const std::vector<int>& dilations,
-    const int groups, const int deformable_groups, const int im2col_step,
-    const bool with_fp16)
+DeformableConvPlugin::DeformableConvPlugin(const nvinfer1::DataType data_type,
+                                           const nvinfer1::Weights& weights,
+                                           const std::vector<int>& kernel_dims,
+                                           const std::vector<int>& strides,
+                                           const std::vector<int>& paddings,
+                                           const std::vector<int>& dilations,
+                                           const int groups,
+                                           const int deformable_groups,
+                                           const int im2col_step,
+                                           const bool with_fp16)
     : data_type_(data_type),
       groups_(groups),
       deformable_groups_(deformable_groups),
       im2col_step_(im2col_step),
       with_fp16_(with_fp16) {
   weights_ = copyToDevice(weights.values, weights.count);
-  kernel_dims_.insert(kernel_dims_.end(), kernel_dims.cbegin(),
-                      kernel_dims.cend());
+  kernel_dims_.insert(
+      kernel_dims_.end(), kernel_dims.cbegin(), kernel_dims.cend());
 
   strides_.insert(strides_.end(), strides.cbegin(), strides.cend());
   paddings_.insert(paddings_.end(), paddings.cbegin(), paddings.cend());
   dilations_.insert(dilations_.end(), dilations.cbegin(), dilations.cend());
   PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
                         data_type_ == nvinfer1::DataType::kHALF,
-                    true, platform::errors::InvalidArgument(
-                              "The DeformableConv TRT Plugin's input type "
-                              "should be float or half."));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
-      paddings_.size(), strides_.size(),
+      paddings_.size(),
+      strides_.size(),
       platform::errors::InvalidArgument(
           "The size of paddings (%d) is not equal to the size of strides (%d).",
-          paddings_.size(), strides_.size()));
+          paddings_.size(),
+          strides_.size()));
 }
 
-DeformableConvPlugin::DeformableConvPlugin(
-    const nvinfer1::DataType data_type, const nvinfer1::Weights& weights,
-    const std::vector<int>& kernel_dims, const std::vector<int>& strides,
-    const std::vector<int>& paddings, const std::vector<int>& dilations,
-    const int groups, const int deformable_groups, const int im2col_step,
-    const std::vector<int>& input_dim, const std::vector<int>& offset_dim,
-    const std::vector<int>& mask_dim, const std::vector<int>& output_dim,
-    const bool with_fp16)
+DeformableConvPlugin::DeformableConvPlugin(const nvinfer1::DataType data_type,
+                                           const nvinfer1::Weights& weights,
+                                           const std::vector<int>& kernel_dims,
+                                           const std::vector<int>& strides,
+                                           const std::vector<int>& paddings,
+                                           const std::vector<int>& dilations,
+                                           const int groups,
+                                           const int deformable_groups,
+                                           const int im2col_step,
+                                           const std::vector<int>& input_dim,
+                                           const std::vector<int>& offset_dim,
+                                           const std::vector<int>& mask_dim,
+                                           const std::vector<int>& output_dim,
+                                           const bool with_fp16)
     : data_type_(data_type),
       groups_(groups),
       deformable_groups_(deformable_groups),
       im2col_step_(im2col_step),
       with_fp16_(with_fp16) {
   weights_ = copyToDevice(weights.values, weights.count);
-  kernel_dims_.insert(kernel_dims_.end(), kernel_dims.cbegin(),
-                      kernel_dims.cend());
+  kernel_dims_.insert(
+      kernel_dims_.end(), kernel_dims.cbegin(), kernel_dims.cend());
 
   strides_.insert(strides_.end(), strides.cbegin(), strides.cend());
   paddings_.insert(paddings_.end(), paddings.cbegin(), paddings.cend());
@@ -124,14 +139,17 @@ DeformableConvPlugin::DeformableConvPlugin(
   output_dim_.insert(output_dim_.end(), output_dim.cbegin(), output_dim.cend());
   PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
                         data_type_ == nvinfer1::DataType::kHALF,
-                    true, platform::errors::InvalidArgument(
-                              "The DeformableConv TRT Plugin's input type "
-                              "should be float or half."));
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
-      paddings_.size(), strides_.size(),
+      paddings_.size(),
+      strides_.size(),
       platform::errors::InvalidArgument(
           "The size of paddings (%d) is not equal to the size of strides (%d).",
-          paddings_.size(), strides_.size()));
+          paddings_.size(),
+          strides_.size()));
 }
 
 DeformableConvPlugin::DeformableConvPlugin(const void* data, size_t length) {
@@ -172,17 +190,24 @@ int DeformableConvPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
 nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_input_dims, 3,
+  PADDLE_ENFORCE_EQ(nb_input_dims,
+                    3,
                     platform::errors::InvalidArgument(
                         "The number of inputs should be equal to 3, but got %d",
                         nb_input_dims));
   nvinfer1::Dims ret;
   ret.nbDims = inputs[0].nbDims;
   ret.d[0] = kernel_dims_[0];
-  ret.d[1] = ConvOutputSize(inputs[0].d[1], kernel_dims_[2], dilations_[0],
-                            paddings_[0], strides_[0]);
-  ret.d[2] = ConvOutputSize(inputs[0].d[2], kernel_dims_[3], dilations_[1],
-                            paddings_[1], strides_[1]);
+  ret.d[1] = ConvOutputSize(inputs[0].d[1],
+                            kernel_dims_[2],
+                            dilations_[0],
+                            paddings_[0],
+                            strides_[0]);
+  ret.d[2] = ConvOutputSize(inputs[0].d[2],
+                            kernel_dims_[3],
+                            dilations_[1],
+                            paddings_[1],
+                            strides_[1]);
   return ret;
 }
 
@@ -213,11 +238,14 @@ size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const
   return data_col_size;
 }
 
-int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
+int DeformableConvPlugin::enqueue(int batch_size,
+                                  const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
-                                  void** outputs, void* workspace,
+                                  void** outputs,
+                                  void* workspace,
 #else
-                                  void* const* outputs, void* workspace,
+                                  void* const* outputs,
+                                  void* workspace,
 #endif
                                   cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
@@ -252,14 +280,20 @@ __device__ float kFloor<float>(float x) {
 }
 
 template <typename T>
-__device__ T DmcnIm2colBilinear(const T* bottom_data, const int data_width,
-                                const int height, const int width, T h, T w);
+__device__ T DmcnIm2colBilinear(const T* bottom_data,
+                                const int data_width,
+                                const int height,
+                                const int width,
+                                T h,
+                                T w);
 
 template <>
 __device__ float DmcnIm2colBilinear<float>(const float* bottom_data,
                                            const int data_width,
-                                           const int height, const int width,
-                                           float h, float w) {
+                                           const int height,
+                                           const int width,
+                                           float h,
+                                           float w) {
   int h_low = kFloor<float>(h);
   int w_low = kFloor<float>(w);
   int h_high = h_low + 1;
@@ -290,8 +324,11 @@ __device__ float DmcnIm2colBilinear<float>(const float* bottom_data,
 
 template <>
 __device__ half DmcnIm2colBilinear<half>(const half* bottom_data,
-                                         const int data_width, const int height,
-                                         const int width, half h, half w) {
+                                         const int data_width,
+                                         const int height,
+                                         const int width,
+                                         half h,
+                                         half w) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int h_low = kFloor<half>(h);
   int w_low = kFloor<half>(w);
@@ -324,23 +361,51 @@ __device__ half DmcnIm2colBilinear<half>(const half* bottom_data,
 
 template <typename T>
 __global__ void ModulatedDeformableIm2colGpuKernel(
-    const int nthreads, const T* data_im, const T* data_offset,
-    const T* data_mask, const int height, const int width, const int kernel_h,
-    const int kernel_w, const int pad_h, const int pad_w, const int stride_h,
-    const int stride_w, const int dilation_h, const int dilation_w,
-    const int channel_per_deformable_group, const int batch_size,
-    const int num_channels, const int deformable_group, const int height_col,
-    const int width_col, T* data_col);
+    const int nthreads,
+    const T* data_im,
+    const T* data_offset,
+    const T* data_mask,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int num_channels,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
+    T* data_col);
 
 template <>
 __global__ void ModulatedDeformableIm2colGpuKernel<float>(
-    const int nthreads, const float* data_im, const float* data_offset,
-    const float* data_mask, const int height, const int width,
-    const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
-    const int stride_h, const int stride_w, const int dilation_h,
-    const int dilation_w, const int channel_per_deformable_group,
-    const int batch_size, const int num_channels, const int deformable_group,
-    const int height_col, const int width_col, float* data_col) {
+    const int nthreads,
+    const float* data_im,
+    const float* data_offset,
+    const float* data_mask,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int num_channels,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
+    float* data_col) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
 
@@ -363,13 +428,11 @@ __global__ void ModulatedDeformableIm2colGpuKernel<float>(
     const float* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const float* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const float* data_mask_ptr =
-        data_mask +
-        (b_col * deformable_group + deformable_group_index) * kernel_h *
-            kernel_w * height_col * width_col;
+        data_mask + (b_col * deformable_group + deformable_group_index) *
+                        kernel_h * kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -390,8 +453,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel<float>(
         const float w_im = w_im_t + offset_w;
         if (h_im > minus_one && w_im > minus_one && h_im < height_t &&
             w_im < width_t) {
-          val = DmcnIm2colBilinear<float>(data_im_ptr, width, height, width,
-                                          h_im, w_im);
+          val = DmcnIm2colBilinear<float>(
+              data_im_ptr, width, height, width, h_im, w_im);
         }
         *data_col_ptr = val * mask;
         data_col_ptr += batch_size * height_col * width_col;
@@ -402,13 +465,27 @@ __global__ void ModulatedDeformableIm2colGpuKernel<float>(
 
 template <>
 __global__ void ModulatedDeformableIm2colGpuKernel<half>(
-    const int nthreads, const half* data_im, const half* data_offset,
-    const half* data_mask, const int height, const int width,
-    const int kernel_h, const int kernel_w, const int pad_h, const int pad_w,
-    const int stride_h, const int stride_w, const int dilation_h,
-    const int dilation_w, const int channel_per_deformable_group,
-    const int batch_size, const int num_channels, const int deformable_group,
-    const int height_col, const int width_col, half* data_col) {
+    const int nthreads,
+    const half* data_im,
+    const half* data_offset,
+    const half* data_mask,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int num_channels,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
+    half* data_col) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
@@ -432,13 +509,11 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
     const half* data_im_ptr =
         data_im + (b_col * num_channels + c_im) * height * width;
     const half* data_offset_ptr =
-        data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
-            kernel_w * height_col * width_col;
+        data_offset + (b_col * deformable_group + deformable_group_index) * 2 *
+                          kernel_h * kernel_w * height_col * width_col;
     const half* data_mask_ptr =
-        data_mask +
-        (b_col * deformable_group + deformable_group_index) * kernel_h *
-            kernel_w * height_col * width_col;
+        data_mask + (b_col * deformable_group + deformable_group_index) *
+                        kernel_h * kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {
       for (int j = 0; j < kernel_w; ++j) {
@@ -459,8 +534,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
         const half w_im = w_im_t + offset_w;
         if (h_im > minus_one && w_im > minus_one && h_im < height_t &&
             w_im < width_t) {
-          val = DmcnIm2colBilinear<half>(data_im_ptr, width, height, width,
-                                         h_im, w_im);
+          val = DmcnIm2colBilinear<half>(
+              data_im_ptr, width, height, width, h_im, w_im);
         }
         *data_col_ptr = val * mask;
         data_col_ptr += batch_size * height_col * width_col;
@@ -471,29 +546,58 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
 }
 
 template <typename T>
-void gemm_impl(cublasHandle_t handle, cublasOperation_t transa,
-               cublasOperation_t transb, int m, int n, int k, const T* alpha,
-               const T* A, int lda, const T* B, int ldb, const T* beta, T* C,
+void gemm_impl(cublasHandle_t handle,
+               cublasOperation_t transa,
+               cublasOperation_t transb,
+               int m,
+               int n,
+               int k,
+               const T* alpha,
+               const T* A,
+               int lda,
+               const T* B,
+               int ldb,
+               const T* beta,
+               T* C,
                int ldc);
 
 template <>
-void gemm_impl<float>(cublasHandle_t handle, cublasOperation_t transa,
-                      cublasOperation_t transb, int m, int n, int k,
-                      const float* alpha, const float* A, int lda,
-                      const float* B, int ldb, const float* beta, float* C,
+void gemm_impl<float>(cublasHandle_t handle,
+                      cublasOperation_t transa,
+                      cublasOperation_t transb,
+                      int m,
+                      int n,
+                      int k,
+                      const float* alpha,
+                      const float* A,
+                      int lda,
+                      const float* B,
+                      int ldb,
+                      const float* beta,
+                      float* C,
                       int ldc) {
-  platform::dynload::cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda,
-                                 B, ldb, beta, C, ldc);
+  platform::dynload::cublasSgemm(
+      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 template <>
-void gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
-                     cublasOperation_t transb, int m, int n, int k,
-                     const half* alpha, const half* A, int lda, const half* B,
-                     int ldb, const half* beta, half* C, int ldc) {
+void gemm_impl<half>(cublasHandle_t handle,
+                     cublasOperation_t transa,
+                     cublasOperation_t transb,
+                     int m,
+                     int n,
+                     int k,
+                     const half* alpha,
+                     const half* A,
+                     int lda,
+                     const half* B,
+                     int ldb,
+                     const half* beta,
+                     half* C,
+                     int ldc) {
 #if TRT_PLUGIN_FP16_AVALIABLE
-  platform::dynload::cublasHgemm(handle, transa, transb, m, n, k, alpha, A, lda,
-                                 B, ldb, beta, C, ldc);
+  platform::dynload::cublasHgemm(
+      handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Current CUDA arch dose not support fp16. Please use fp32 instead."));
@@ -503,7 +607,8 @@ void gemm_impl<half>(cublasHandle_t handle, cublasOperation_t transa,
 template <typename T>
 int DeformableConvPlugin::enqueue_impl(int batch_size,
                                        const void* const* inputs,
-                                       void* const* outputs, void* workspace,
+                                       void* const* outputs,
+                                       void* workspace,
                                        cudaStream_t stream) {
   const T* input = reinterpret_cast<const T*>(inputs[0]);
   const T* offset = reinterpret_cast<const T*>(inputs[1]);
@@ -541,18 +646,47 @@ int DeformableConvPlugin::enqueue_impl(int batch_size,
     const T* data_mask = mask + i * im2col_step_ * mask_stride;
     T* data_col = reinterpret_cast<T*>(workspace);
 
-    ModulatedDeformableIm2colGpuKernel<T><<<blocks, threads, 0, stream>>>(
-        num_kernels, data_im, data_offset, data_mask, h_i, w_i, k_h, k_w,
-        paddings_[0], paddings_[1], strides_[0], strides_[1], dilations_[0],
-        dilations_[1], channel_per_deformable_group, im2col_step_, c_i,
-        deformable_groups_, h_o, w_o, data_col);
+    ModulatedDeformableIm2colGpuKernel<T>
+        <<<blocks, threads, 0, stream>>>(num_kernels,
+                                         data_im,
+                                         data_offset,
+                                         data_mask,
+                                         h_i,
+                                         w_i,
+                                         k_h,
+                                         k_w,
+                                         paddings_[0],
+                                         paddings_[1],
+                                         strides_[0],
+                                         strides_[1],
+                                         dilations_[0],
+                                         dilations_[1],
+                                         channel_per_deformable_group,
+                                         im2col_step_,
+                                         c_i,
+                                         deformable_groups_,
+                                         h_o,
+                                         w_o,
+                                         data_col);
 
     for (int g = 0; g < groups_; ++g) {
       const T* weight = filter + g * M * K;
       const T* col = data_col + g * K * N;
       T* out = output + i * im2col_step_ * output_stride + g * M * N;
-      gemm_impl<T>(cublasHandle_, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha,
-                   col, N, weight, K, &beta, out, N);
+      gemm_impl<T>(cublasHandle_,
+                   CUBLAS_OP_N,
+                   CUBLAS_OP_N,
+                   N,
+                   M,
+                   K,
+                   &alpha,
+                   col,
+                   N,
+                   weight,
+                   K,
+                   &beta,
+                   out,
+                   N);
     }
   }
   return 0;
@@ -613,13 +747,15 @@ const char* DeformableConvPlugin::getPluginNamespace() const TRT_NOEXCEPT {
 }
 
 nvinfer1::DataType DeformableConvPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_type,
+    int index,
+    const nvinfer1::DataType* input_type,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_type[0];
 }
 
 bool DeformableConvPlugin::isOutputBroadcastAcrossBatch(
-    int output_index, const bool* input_is_broadcast,
+    int output_index,
+    const bool* input_is_broadcast,
     int nb_inputs) const TRT_NOEXCEPT {
   return false;
 }
@@ -630,24 +766,31 @@ bool DeformableConvPlugin::canBroadcastInputAcrossBatch(int input_index) const
 }
 
 void DeformableConvPlugin::attachToContext(
-    cudnnContext* cudnnContext, cublasContext* cublasContext,
+    cudnnContext* cudnnContext,
+    cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {
   cublasHandle_ = cublasContext;
 }
 
 void DeformableConvPlugin::configurePlugin(
-    const nvinfer1::Dims* input_dims, int nb_inputs,
-    const nvinfer1::Dims* output_dims, int nb_outputs,
+    const nvinfer1::Dims* input_dims,
+    int nb_inputs,
+    const nvinfer1::Dims* output_dims,
+    int nb_outputs,
     const nvinfer1::DataType* input_types,
-    const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
-    const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
+    const nvinfer1::DataType* output_types,
+    const bool* input_is_broadcast,
+    const bool* output_is_broadcast,
+    nvinfer1::PluginFormat float_format,
     int max_batct_size) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      nb_inputs, 3,
+      nb_inputs,
+      3,
       platform::errors::InvalidArgument(
           "The number of inputs should be equal to 3, but got %d", nb_inputs));
   PADDLE_ENFORCE_EQ(
-      nb_outputs, 1,
+      nb_outputs,
+      1,
       platform::errors::InvalidArgument(
           "The number of inputs should be equal to 1, but got %d", nb_outputs));
 
@@ -666,10 +809,20 @@ void DeformableConvPlugin::configurePlugin(
 }
 
 nvinfer1::IPluginV2Ext* DeformableConvPlugin::clone() const TRT_NOEXCEPT {
-  return new DeformableConvPlugin(
-      data_type_, weights_, kernel_dims_, strides_, paddings_, dilations_,
-      groups_, deformable_groups_, im2col_step_, input_dim_, offset_dim_,
-      mask_dim_, output_dim_, with_fp16_);
+  return new DeformableConvPlugin(data_type_,
+                                  weights_,
+                                  kernel_dims_,
+                                  strides_,
+                                  paddings_,
+                                  dilations_,
+                                  groups_,
+                                  deformable_groups_,
+                                  im2col_step_,
+                                  input_dim_,
+                                  offset_dim_,
+                                  mask_dim_,
+                                  output_dim_,
+                                  with_fp16_);
 }
 
 void DeformableConvPluginCreator::setPluginNamespace(const char* lib_namespace)
@@ -745,13 +898,21 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
     }
   }
   weights.type = data_type;
-  return new DeformableConvPlugin(data_type, weights, kernel_dims, strides,
-                                  paddings, dilations, groups,
-                                  deformable_groups, im2col_step, with_fp16);
+  return new DeformableConvPlugin(data_type,
+                                  weights,
+                                  kernel_dims,
+                                  strides,
+                                  paddings,
+                                  dilations,
+                                  groups,
+                                  deformable_groups,
+                                  im2col_step,
+                                  with_fp16);
 }
 
 nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(
-    const char* name, const void* serial_data,
+    const char* name,
+    const void* serial_data,
     size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new DeformableConvPlugin(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());

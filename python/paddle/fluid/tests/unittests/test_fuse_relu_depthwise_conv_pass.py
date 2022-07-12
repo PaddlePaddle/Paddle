@@ -28,21 +28,25 @@ def norm(*args, **kargs):
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     # with scope('depthwise'):
-    input = fluid.layers.conv2d(
-        input,
-        input.shape[1],
-        filter,
-        stride,
-        groups=input.shape[1],
-        padding=(filter // 2) * dilation,
-        dilation=dilation,
-        use_cudnn=False,
-        bias_attr=False)
+    input = fluid.layers.conv2d(input,
+                                input.shape[1],
+                                filter,
+                                stride,
+                                groups=input.shape[1],
+                                padding=(filter // 2) * dilation,
+                                dilation=dilation,
+                                use_cudnn=False,
+                                bias_attr=False)
     input = norm(input)
     if act: input = act(input)
     # with scope('pointwise'):
-    input = fluid.layers.conv2d(
-        input, channel, 1, 1, groups=1, padding=0, bias_attr=False)
+    input = fluid.layers.conv2d(input,
+                                channel,
+                                1,
+                                1,
+                                groups=1,
+                                padding=0,
+                                bias_attr=False)
     input = norm(input)
     if act: input = act(input)
     return input
@@ -58,11 +62,12 @@ def simple_depthwise_net(use_feed):
         hidden = fluid.layers.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
 class TestMNIST(TestParallelExecutorBase):
+
     def _init_data(self, random=True):
         np.random.seed(5)
         if random:
@@ -86,18 +91,22 @@ class TestMNIST(TestParallelExecutorBase):
         if only_forward:
             _optimizer = None
 
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={
+                "image": img,
+                "label": label
+            },
             use_device=use_device,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
             optimizer=_optimizer)
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={
+                "image": img,
+                "label": label
+            },
             use_device=use_device,
             fuse_relu_depthwise_conv=False,
             optimizer=_optimizer)

@@ -128,7 +128,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    equal, ops::EqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    equal,
+    ops::EqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -139,7 +140,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::EqualNPUKernel<plat::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(
-    not_equal, ops::NotEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    not_equal,
+    ops::NotEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -149,7 +151,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int64_t>);
 
 REGISTER_OP_NPU_KERNEL(
-    less_than, ops::LessThanNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    less_than,
+    ops::LessThanNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, float>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, double>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -159,7 +162,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int64_t>);
 
 REGISTER_OP_NPU_KERNEL(
-    less_equal, ops::LessEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    less_equal,
+    ops::LessEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int8_t>,

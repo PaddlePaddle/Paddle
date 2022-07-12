@@ -29,7 +29,10 @@ int CommonGraphSampler::load_from_ssd(std::string path) {
       neighbor_data.push_back(std::stoll(x));
     }
     auto src_id = std::stoll(values[0]);
-    _db->put(0, (char *)&src_id, sizeof(uint64_t), (char *)neighbor_data.data(),
+    _db->put(0,
+             (char *)&src_id,
+             sizeof(uint64_t),
+             (char *)neighbor_data.data(),
              sizeof(int64_t) * neighbor_data.size());
     int gpu_shard = src_id % gpu_num;
     if (gpu_edges_count[gpu_shard] + neighbor_data.size() <=
@@ -156,6 +159,6 @@ void AllInGpuGraphSampler::init(GpuPsGraphTable *g,
   this->gpu_num = g->gpu_num;
   graph_table = g->cpu_graph_table.get();
 }
-}
-};
+}  // namespace framework
+};  // namespace paddle
 #endif

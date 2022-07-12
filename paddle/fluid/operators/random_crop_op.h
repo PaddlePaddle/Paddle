@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -29,7 +30,7 @@ template <typename DeviceContext>
 struct Random;
 
 template <>
-struct Random<platform::CPUDeviceContext> {
+struct Random<phi::CPUContext> {
   using Engine = std::minstd_rand;
 
   template <typename T>
@@ -47,8 +48,12 @@ struct Random<platform::CUDADeviceContext> {
 #endif
 
 template <typename T>
-HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
-                                     const size_t* out_dims, int i, int rank,
+HOSTDEVICE inline void StridedMemcpy(const T* x,
+                                     const size_t* x_dims,
+                                     T* out,
+                                     const size_t* out_dims,
+                                     int i,
+                                     int rank,
                                      size_t prod_x_remain,
                                      size_t prod_out_remain,
                                      const size_t* offsets) {
@@ -66,8 +71,8 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   } else {
     x += offset_i * x_stride;
     for (size_t j = 0; j < out_dim_i; ++j) {
-      StridedMemcpy<T>(x, x_dims, out, out_dims, i + 1, rank, x_stride,
-                       out_stride, offsets);
+      StridedMemcpy<T>(
+          x, x_dims, out, out_dims, i + 1, rank, x_stride, out_stride, offsets);
       x += x_stride;
       out += out_stride;
     }
@@ -88,8 +93,11 @@ struct RandomCropFunctor {
   size_t prod_x_ins_dims_;
   size_t prod_out_ins_dims_;
 
-  RandomCropFunctor(const T* x, T* out, const framework::DDim& x_dims,
-                    const framework::DDim& out_dims, int num_batchsize_dims,
+  RandomCropFunctor(const T* x,
+                    T* out,
+                    const framework::DDim& x_dims,
+                    const framework::DDim& out_dims,
+                    int num_batchsize_dims,
                     int64_t seed)
       : x_(x),
         out_(out),
@@ -97,20 +105,24 @@ struct RandomCropFunctor {
         rank_(x_dims.size()),
         seed_(seed) {
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), out_dims.size(),
+        x_dims.size(),
+        out_dims.size(),
         platform::errors::InvalidArgument(
             "The dimensions of Input(X) must equal to be the dimensions"
             "of Output(Out), but received dimensions of Input(X) is [%d],"
             "received dimensions of Output(Out) is [%d].",
-            x_dims.size(), out_dims.size()));
+            x_dims.size(),
+            out_dims.size()));
     PADDLE_ENFORCE_GT(
-        rank_, num_batchsize_dims_,
+        rank_,
+        num_batchsize_dims_,
         platform::errors::InvalidArgument(
             "The dimensions of Input(X) must be greater than the diff"
             "value of Input(X)'s dimensions minus Atrr(shape)'s dimensions,"
             "But received Input(X)'s dimensions is [%d], received value of"
             "Input(X)'s dimensions minus Attr(shape)'s dimensions is [%d].",
-            rank_, num_batchsize_dims_));
+            rank_,
+            num_batchsize_dims_));
     prod_batchsize_dims_ = 1;
     prod_x_ins_dims_ = 1;
     prod_out_ins_dims_ = 1;
@@ -121,12 +133,16 @@ struct RandomCropFunctor {
       out_dims_[i] = out_dim_i;
       if (i < static_cast<size_t>(num_batchsize_dims_)) {
         PADDLE_ENFORCE_EQ(
-            x_dim_i, out_dim_i,
+            x_dim_i,
+            out_dim_i,
             platform::errors::InvalidArgument(
                 "The first [%d] dimension value of Input(X) and Output(Out)"
                 "must be equal, but received the [%d] dimension value of"
                 "Input(X) and Output(Out) respectively are [%d] and [%d].",
-                num_batchsize_dims_, i, x_dim_i, out_dim_i));
+                num_batchsize_dims_,
+                i,
+                x_dim_i,
+                out_dim_i));
         prod_batchsize_dims_ *= x_dim_i;
       } else {
         prod_x_ins_dims_ *= x_dim_i;
@@ -148,10 +164,15 @@ struct RandomCropFunctor {
     const T* x = x_ + ins_idx * prod_x_ins_dims_;
     T* out = out_ + ins_idx * prod_out_ins_dims_;
 
-    StridedMemcpy<T>(x, x_dims_ + num_batchsize_dims_, out,
-                     out_dims_ + num_batchsize_dims_, 0,
-                     rank_ - num_batchsize_dims_, prod_x_ins_dims_,
-                     prod_out_ins_dims_, offsets);
+    StridedMemcpy<T>(x,
+                     x_dims_ + num_batchsize_dims_,
+                     out,
+                     out_dims_ + num_batchsize_dims_,
+                     0,
+                     rank_ - num_batchsize_dims_,
+                     prod_x_ins_dims_,
+                     prod_out_ins_dims_,
+                     offsets);
   }
 };
 
@@ -160,8 +181,8 @@ class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     int64_t seed = 0;
-    auto& seed_tensor = GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Seed"),
-                                        "Input", "Seed", "RandomCrop");
+    auto& seed_tensor = GET_DATA_SAFELY(
+        ctx.Input<framework::LoDTensor>("Seed"), "Input", "Seed", "RandomCrop");
     if (seed_tensor.IsInitialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
         seed = *seed_tensor.template data<int64_t>();
@@ -178,22 +199,26 @@ class RandomCropKernel : public framework::OpKernel<T> {
       seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    auto& x = GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("X"), "Input",
-                              "X", "RandomCrop");
-    auto& out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
-                                "Output", "Out", "RandomCrop");
+    auto& x = GET_DATA_SAFELY(
+        ctx.Input<framework::LoDTensor>("X"), "Input", "X", "RandomCrop");
+    auto& out = GET_DATA_SAFELY(
+        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "RandomCrop");
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(
-        x.template data<T>(), out.template mutable_data<T>(ctx.GetPlace()),
-        x.dims(), out.dims(), num_batchsize_dims, seed);
+        x.template data<T>(),
+        out.template mutable_data<T>(ctx.GetPlace()),
+        x.dims(),
+        out.dims(),
+        num_batchsize_dims,
+        seed);
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),
         functor.prod_batchsize_dims_);
 
     for_range(functor);
 
-    Random<platform::CPUDeviceContext>::Engine engine(seed);
+    Random<phi::CPUContext>::Engine engine(seed);
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
     *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(

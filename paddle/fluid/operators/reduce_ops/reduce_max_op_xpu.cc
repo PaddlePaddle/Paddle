@@ -15,6 +15,7 @@
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/reduce_ops/reduce_op_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
@@ -42,7 +43,8 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
 
     int in_dtype = context.Attr<int>("in_dtype");
     PADDLE_ENFORCE_EQ(
-        in_dtype == -1, true,
+        in_dtype == -1,
+        true,
         platform::errors::InvalidArgument(
             "XPU only support in_dtype == -1 in reduce_sum_grad op."));
 
@@ -90,41 +92,56 @@ class ReduceMaxGradXPUKernel : public framework::OpKernel<T> {
         platform::errors::ResourceExhausted("XPU has no enough memory"));
 
     // step 1. brocast out and out_grad
-    int r = xpu::broadcast<T>(dev_ctx.x_context(), out_data, brocast1, ydims,
-                              xdims);
+    int r = xpu::broadcast<T>(
+        dev_ctx.x_context(), out_data, brocast1, ydims, xdims);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU broadcast in reduce_max_grad op return"
                                    " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
-    r = xpu::broadcast<T>(dev_ctx.x_context(), out_grad_data, brocast2, ydims,
-                          xdims);
+                                   r,
+                                   XPUAPIErrorMsg[r]));
+    r = xpu::broadcast<T>(
+        dev_ctx.x_context(), out_grad_data, brocast2, ydims, xdims);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU broadcast in reduce_max_grad op return"
                                    " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
     // step 2. comparse out_brocast and x
     r = xpu::equal<T>(dev_ctx.x_context(), x_data, brocast1, equal, x->numel());
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU equal in reduce_max_grad "
                                    "op return wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
     // step 3. get x_grad
     r = xpu::constant<T>(dev_ctx.x_context(), brocast1, x->numel(), 0);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU constant in reduce_max_grad op return"
                                    " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
-    r = xpu::select<T>(dev_ctx.x_context(), equal, brocast2, brocast1,
-                       x_grad_data, xdims, xdims);
+                                   r,
+                                   XPUAPIErrorMsg[r]));
+    r = xpu::select<T>(dev_ctx.x_context(),
+                       equal,
+                       brocast2,
+                       brocast1,
+                       x_grad_data,
+                       xdims,
+                       xdims);
     PADDLE_ENFORCE_EQ(
-        r == xpu::Error_t::SUCCESS, true,
+        r == xpu::Error_t::SUCCESS,
+        true,
         platform::errors::External("XPU select in reduce_max_grad op return"
                                    " wrong value[%d %s].",
-                                   r, XPUAPIErrorMsg[r]));
+                                   r,
+                                   XPUAPIErrorMsg[r]));
 
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();

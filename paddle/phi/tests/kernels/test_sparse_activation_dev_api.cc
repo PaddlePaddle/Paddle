@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/place.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/activation_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/activation_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -42,7 +42,6 @@ TEST(DEV_API, sparse_relu) {
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   DenseTensor dense_x =
       phi::Empty(dev_ctx_cpu,
@@ -70,7 +69,7 @@ TEST(DEV_API, sparse_relu) {
 
   SparseCooTensor sparse_out_grad(
       sparse_coo.non_zero_indices(), dense_out, {3, 4});
-  sparse::SparseReluGradKernel<float>(
+  sparse::SparseCooReluGradKernel<float>(
       dev_ctx_cpu, sparse_coo, sparse_out_grad, &sparse_grad_x);
 
   cmp = memcmp(dense_grad_x.data<float>(),

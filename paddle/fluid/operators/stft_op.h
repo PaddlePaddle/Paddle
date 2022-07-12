@@ -17,7 +17,6 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/frame_op.h"
 #include "paddle/fluid/operators/spectral_op.h"
@@ -61,8 +60,14 @@ class StftKernel : public framework::OpKernel<T> {
     framework::DDim frames_dims(out->dims());
     frames_dims.at(axes.back()) = n_fft;
     frames.mutable_data<T>(frames_dims, ctx.GetPlace());
-    FrameFunctor<DeviceContext, T>()(dev_ctx, x, &frames, seq_length, n_fft,
-                                     n_frames, hop_length, /*is_grad*/ false);
+    FrameFunctor<DeviceContext, T>()(dev_ctx,
+                                     x,
+                                     &frames,
+                                     seq_length,
+                                     n_fft,
+                                     n_frames,
+                                     hop_length,
+                                     /*is_grad*/ false);
 
     // Window
     Tensor frames_w;
@@ -87,8 +92,8 @@ class StftKernel : public framework::OpKernel<T> {
       onesided_dims.at(axes.back()) = onesided_axis_size;
       Tensor onesided_out;
       onesided_out.mutable_data<C>(onesided_dims, ctx.GetPlace());
-      fft_r2c_func(dev_ctx, &frames_w, &onesided_out, axes, normalization,
-                   true);
+      fft_r2c_func(
+          dev_ctx, &frames_w, &onesided_out, axes, normalization, true);
       fill_conj<DeviceContext, C>(dev_ctx, &onesided_out, out, axes);
     }
   }
@@ -135,8 +140,8 @@ class StftGradKernel : public framework::OpKernel<T> {
     FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
 
     if (!onesided) {
-      fft_c2c_func(dev_ctx, dy, &complex_d_frames_w, axes, normalization,
-                   false);
+      fft_c2c_func(
+          dev_ctx, dy, &complex_d_frames_w, axes, normalization, false);
     } else {
       Tensor full_dy;
       full_dy.mutable_data<C>(d_frames_dims, ctx.GetPlace());
@@ -148,15 +153,20 @@ class StftGradKernel : public framework::OpKernel<T> {
       pads[axes.back() * 2 + 1] = zero_length;
 
       phi::funcs::PaddingFunctor<DeviceContext, C>(
-          rank, ctx.template device_context<DeviceContext>(), pads,
-          static_cast<C>(0), *dy, &full_dy);
-      fft_c2c_func(dev_ctx, &full_dy, &complex_d_frames_w, axes, normalization,
-                   false);
+          rank,
+          ctx.template device_context<DeviceContext>(),
+          pads,
+          static_cast<C>(0),
+          *dy,
+          &full_dy);
+      fft_c2c_func(
+          dev_ctx, &full_dy, &complex_d_frames_w, axes, normalization, false);
     }
     framework::TransComplexToReal(
         framework::TransToProtoVarType(d_frames_w.dtype()),
         framework::TransToProtoVarType(complex_d_frames_w.dtype()),
-        complex_d_frames_w, &d_frames_w);
+        complex_d_frames_w,
+        &d_frames_w);
 
     // d_frames_w -> d_frames
     Tensor d_frames;
@@ -165,8 +175,14 @@ class StftGradKernel : public framework::OpKernel<T> {
         ctx, &d_frames_w, window, axes.back(), MulFunctor<T>(), &d_frames);
 
     // d_frames -> dx
-    FrameFunctor<DeviceContext, T>()(dev_ctx, &d_frames, dx, seq_length, n_fft,
-                                     n_frames, hop_length, /*is_grad*/ true);
+    FrameFunctor<DeviceContext, T>()(dev_ctx,
+                                     &d_frames,
+                                     dx,
+                                     seq_length,
+                                     n_fft,
+                                     n_frames,
+                                     hop_length,
+                                     /*is_grad*/ true);
   }
 };
 

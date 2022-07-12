@@ -64,6 +64,7 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
 
 
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
+
     def test_check_output(self):
         self.check_output()
 

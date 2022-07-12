@@ -43,8 +43,8 @@ struct SkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
   PATTERN_DECL_NODE(
-      elementwise_out);  // (elementwise_input_x,elementwise_input_y) ->
-                         // elementwise_out
+      elementwise_out);  // (elementwise_input_x,elementwise_input_y)
+                         // -> elementwise_out
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
   PATTERN_DECL_NODE(layer_norm_out);
@@ -139,12 +139,12 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 

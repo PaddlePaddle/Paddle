@@ -28,10 +28,16 @@ from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
 from .passes import fuse_resnet_unit_pass
-import paddle.incubate.autograd
-import paddle.incubate.autotune
 
+from . import autograd  #noqa: F401
+from . import autotune  #noqa: F401
+from . import sparse  #noqa: F401
 from . import nn  #noqa: F401
+from . import asp  #noqa: F401
+
+from ..fluid.layers.loss import identity_loss
+
+from ..fluid.incubate import fleet
 
 __all__ = [
     'LookAhead',
@@ -46,4 +52,5 @@ __all__ = [
     'segment_mean',
     'segment_max',
     'segment_min',
+    'identity_loss',
 ]

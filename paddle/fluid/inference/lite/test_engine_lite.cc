@@ -14,14 +14,12 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/inference/utils/singleton.h"
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/lite/ut_helper.h"
 
 namespace paddle {
@@ -29,9 +27,9 @@ namespace inference {
 namespace lite {
 
 using inference::lite::AddTensorToBlockDesc;
-using paddle::inference::lite::AddFetchListToBlockDesc;
 using inference::lite::CreateTensor;
 using inference::lite::serialize_params;
+using paddle::inference::lite::AddFetchListToBlockDesc;
 
 void make_fake_model(std::string* model, std::string* param) {
   framework::ProgramDesc program;
@@ -83,7 +81,7 @@ void make_fake_model(std::string* model, std::string* param) {
   ctx.PartialInitWithAllocator();
 #else
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  phi::CPUContext ctx(place);
 #endif
   // Prepare variables.
   std::vector<std::string> repetitive_params{"x", "y"};

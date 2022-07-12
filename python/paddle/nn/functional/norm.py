@@ -86,8 +86,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.p_norm(x, 'axis', axis, 'porder',
-                            float(p), 'keepdim', True, 'epsilon', epsilon)
+        out = _C_ops.p_norm(x, 'axis', axis, 'porder', float(p), 'keepdim',
+                            True, 'epsilon', epsilon)
         return x / _C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
@@ -96,8 +96,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
                              'normalize')
     if len(x.shape) == 1 and axis != 0 and axis != -1:
         raise ValueError(
-            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".
-            format(axis))
+            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}"
+            .format(axis))
 
     attrs = {
         'axis': axis,
@@ -107,8 +107,10 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     }
     helper = LayerHelper('p_norm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='p_norm',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs=attrs)
     eps = out.block.create_var(dtype=out.dtype)
     eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
     return paddle.divide(x, paddle.maximum(out, eps), name=name)
@@ -192,8 +194,8 @@ def batch_norm(x,
             data_format, not training, use_global_stats, trainable_statistics,
             False)
 
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None)
+        return dygraph_utils._append_activation_in_dygraph(batch_norm_out,
+                                                           act=None)
 
     elif _in_legacy_dygraph():
         # for dygraph need tuple
@@ -206,8 +208,8 @@ def batch_norm(x,
             x, weight, bias, running_mean, running_var, None, mean_out,
             variance_out, *attrs)
 
-        return dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=None)
+        return dygraph_utils._append_activation_in_dygraph(batch_norm_out,
+                                                           act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'BatchNorm')
@@ -235,8 +237,8 @@ def batch_norm(x,
     helper = LayerHelper('batch_norm', **locals())
 
     param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=param_dtype, stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(dtype=param_dtype,
+                                                           stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=param_dtype, stop_gradient=True)
     batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
@@ -255,8 +257,10 @@ def batch_norm(x,
             dtype=x.dtype, stop_gradient=True)
         outputs["ReserveSpace"] = [reserve_space]
 
-    helper.append_op(
-        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+    helper.append_op(type="batch_norm",
+                     inputs=inputs,
+                     outputs=outputs,
+                     attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
@@ -315,8 +319,8 @@ def layer_norm(x,
         str_normalized_shape = str(normalized_shape)
         raise ValueError('Given normalized_shape is ' + str_normalized_shape +
                          ', expected input with shape [*, ' +
-                         str_normalized_shape[
-                             1:] + ', but got input shape ' + str(input_shape))
+                         str_normalized_shape[1:] + ', but got input shape ' +
+                         str(input_shape))
 
     if in_dygraph_mode():
         pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
@@ -344,22 +348,23 @@ def layer_norm(x,
     helper = LayerHelper('layer_norm', **locals())
 
     dtype = x.dtype
-    mean_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    variance_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
+    mean_out = helper.create_variable_for_type_inference(dtype=dtype,
+                                                         stop_gradient=True)
+    variance_out = helper.create_variable_for_type_inference(dtype=dtype,
+                                                             stop_gradient=True)
     layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(
-        type="layer_norm",
-        inputs=inputs,
-        outputs={
-            "Y": layer_norm_out,
-            "Mean": mean_out,
-            "Variance": variance_out,
-        },
-        attrs={"epsilon": epsilon,
-               "begin_norm_axis": begin_norm_axis})
+    helper.append_op(type="layer_norm",
+                     inputs=inputs,
+                     outputs={
+                         "Y": layer_norm_out,
+                         "Mean": mean_out,
+                         "Variance": variance_out,
+                     },
+                     attrs={
+                         "epsilon": epsilon,
+                         "begin_norm_axis": begin_norm_axis
+                     })
 
     return helper.append_activation(layer_norm_out)
 
@@ -407,8 +412,10 @@ def instance_norm(x,
           print(instance_norm_out)
 
     """
-
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        out = _C_ops.final_state_instance_norm(x, weight, bias, eps)
+        return out
+    if _in_legacy_dygraph():
         out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
                                          "momentum", momentum, "data_format",
                                          data_format)
@@ -424,8 +431,8 @@ def instance_norm(x,
         inputs = {"X": [x]}
 
     helper = LayerHelper('instance_norm', **locals())
-    saved_mean = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                           stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     instance_norm_out = helper.create_variable_for_type_inference(x.dtype)
@@ -436,8 +443,10 @@ def instance_norm(x,
         "SavedVariance": [saved_variance]
     }
 
-    helper.append_op(
-        type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+    helper.append_op(type="instance_norm",
+                     inputs=inputs,
+                     outputs=outputs,
+                     attrs=attrs)
     return instance_norm_out
 
 
@@ -514,8 +523,8 @@ def local_response_norm(x,
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
             raise ValueError("Expected every dim's size to be larger than 0, "
-                             "but the size of the {}-th dim is {}".format(i,
-                                                                          sz))
+                             "but the size of the {}-th dim is {}".format(
+                                 i, sz))
 
     channel_last = True if data_format[-1] == "C" else False
 
@@ -536,24 +545,26 @@ def local_response_norm(x,
         pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
         pool2d_shape = (1, size)
         reshape_shape = [
-            sizes[0], 1, sizes[1], int(sum_sizes / (sizes[1] * sizes[-1])),
-            sizes[-1]
+            sizes[0], 1, sizes[1],
+            int(sum_sizes / (sizes[1] * sizes[-1])), sizes[-1]
         ]
         pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
         pool3d_shape = (1, 1, size)
 
     if dim == 3:
         div = paddle.nn.functional.pad(div, pad=pad4d_shape)
-        div = paddle.nn.functional.avg_pool2d(
-            div, kernel_size=pool2d_shape, stride=1)
+        div = paddle.nn.functional.avg_pool2d(div,
+                                              kernel_size=pool2d_shape,
+                                              stride=1)
         div = paddle.squeeze(div, axis=1)
     else:
         div = paddle.reshape(div, shape=reshape_shape)
         div = paddle.nn.functional.pad(div,
                                        pad=pad5d_shape,
                                        data_format='NCDHW')
-        div = paddle.nn.functional.avg_pool3d(
-            div, kernel_size=pool3d_shape, stride=1)
+        div = paddle.nn.functional.avg_pool3d(div,
+                                              kernel_size=pool3d_shape,
+                                              stride=1)
         div = paddle.reshape(paddle.squeeze(div, axis=1), sizes)
 
     div = paddle.scale(div, scale=alpha, bias=k)

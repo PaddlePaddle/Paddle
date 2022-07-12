@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
+
 #include <Eigen/Dense>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
@@ -33,8 +35,9 @@ namespace scatter = paddle::operators::math::scatter;
 
 template <typename T, bool IsMultiPrecision>
 struct LambMomentREGUpdateFunctor {
-  using MT = typename std::conditional<
-      IsMultiPrecision, typename details::MPTypeTrait<T>::Type, T>::type;
+  using MT = typename std::conditional<IsMultiPrecision,
+                                       typename details::MPTypeTrait<T>::Type,
+                                       T>::type;
 
   MT weight_decay_;
   MT beta1_;
@@ -54,11 +57,20 @@ struct LambMomentREGUpdateFunctor {
   MT* trust_ratio_div_;
   const bool* skip_update_;
 
-  LambMomentREGUpdateFunctor(MT weight_decay, MT beta1, MT beta2, MT epsilon,
-                             MT beta1_pow, MT beta2_pow, const MT* mom1,
-                             MT* mom1_out, const MT* mom2, MT* mom2_out,
-                             const T* grad, const MT* param,
-                             MT* trust_ratio_div, const bool* skip_update)
+  LambMomentREGUpdateFunctor(MT weight_decay,
+                             MT beta1,
+                             MT beta2,
+                             MT epsilon,
+                             MT beta1_pow,
+                             MT beta2_pow,
+                             const MT* mom1,
+                             MT* mom1_out,
+                             const MT* mom2,
+                             MT* mom2_out,
+                             const T* grad,
+                             const MT* param,
+                             MT* trust_ratio_div,
+                             const bool* skip_update)
       : weight_decay_(weight_decay),
         beta1_(beta1),
         beta2_(beta2),
@@ -100,8 +112,9 @@ struct LambMomentREGUpdateFunctor {
 
 template <typename T, bool IsMultiPrecision>
 struct LambMomentMENUpdateFunctor {
-  using MT = typename std::conditional<
-      IsMultiPrecision, typename details::MPTypeTrait<T>::Type, T>::type;
+  using MT = typename std::conditional<IsMultiPrecision,
+                                       typename details::MPTypeTrait<T>::Type,
+                                       T>::type;
 
   MT weight_decay_;
   MT beta1_;
@@ -119,11 +132,20 @@ struct LambMomentMENUpdateFunctor {
   MT* trust_ratio_div_;
   const bool* skip_update_;
 
-  LambMomentMENUpdateFunctor(MT weight_decay, MT beta1, MT beta2, MT epsilon,
-                             const MT* beta1_pow, const MT* beta2_pow,
-                             const MT* mom1, MT* mom1_out, const MT* mom2,
-                             MT* mom2_out, const T* grad, const MT* param,
-                             MT* trust_ratio_div, const bool* skip_update)
+  LambMomentMENUpdateFunctor(MT weight_decay,
+                             MT beta1,
+                             MT beta2,
+                             MT epsilon,
+                             const MT* beta1_pow,
+                             const MT* beta2_pow,
+                             const MT* mom1,
+                             MT* mom1_out,
+                             const MT* mom2,
+                             MT* mom2_out,
+                             const T* grad,
+                             const MT* param,
+                             MT* trust_ratio_div,
+                             const bool* skip_update)
       : weight_decay_(weight_decay),
         beta1_(beta1),
         beta2_(beta2),
@@ -185,12 +207,22 @@ struct SparseLambMomentREGUpdateFunctor {
 
   const bool* skip_update_;
 
-  SparseLambMomentREGUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
-                                   T beta1_pow, T beta2_pow, const T* mom1,
-                                   T* mom1_out, const T* mom2, T* mom2_out,
-                                   const T* grad, const T* param,
-                                   T* trust_ratio_div, const int64_t* rows,
-                                   int64_t row_numel, int64_t row_count,
+  SparseLambMomentREGUpdateFunctor(T weight_decay,
+                                   T beta1,
+                                   T beta2,
+                                   T epsilon,
+                                   T beta1_pow,
+                                   T beta2_pow,
+                                   const T* mom1,
+                                   T* mom1_out,
+                                   const T* mom2,
+                                   T* mom2_out,
+                                   const T* grad,
+                                   const T* param,
+                                   T* trust_ratio_div,
+                                   const int64_t* rows,
+                                   int64_t row_numel,
+                                   int64_t row_count,
                                    const bool* skip_update)
       : weight_decay_(weight_decay),
         beta1_(beta1),
@@ -264,12 +296,22 @@ struct SparseLambMomentMENUpdateFunctor {
 
   const bool* skip_update_;
 
-  SparseLambMomentMENUpdateFunctor(T weight_decay, T beta1, T beta2, T epsilon,
-                                   const T* beta1_pow, const T* beta2_pow,
-                                   const T* mom1, T* mom1_out, const T* mom2,
-                                   T* mom2_out, const T* grad, const T* param,
-                                   T* trust_ratio_div, const int64_t* rows,
-                                   int64_t row_numel, int64_t row_count,
+  SparseLambMomentMENUpdateFunctor(T weight_decay,
+                                   T beta1,
+                                   T beta2,
+                                   T epsilon,
+                                   const T* beta1_pow,
+                                   const T* beta2_pow,
+                                   const T* mom1,
+                                   T* mom1_out,
+                                   const T* mom2,
+                                   T* mom2_out,
+                                   const T* grad,
+                                   const T* param,
+                                   T* trust_ratio_div,
+                                   const int64_t* rows,
+                                   int64_t row_numel,
+                                   int64_t row_count,
                                    const bool* skip_update)
       : weight_decay_(weight_decay),
         beta1_(beta1),
@@ -322,8 +364,12 @@ struct SparseLambMomentMENUpdateFunctor {
 
 template <typename MT, bool NeedUpdateBetaPow /*=true*/>
 struct LambBetaPowUpdateFunctor {
-  void SetBetaPows(const MT* beta1pow, const MT* beta2pow, MT* beta1pow_out,
-                   MT* beta2pow_out, MT beta1, MT beta2) {
+  void SetBetaPows(const MT* beta1pow,
+                   const MT* beta2pow,
+                   MT* beta1pow_out,
+                   MT* beta2pow_out,
+                   MT beta1,
+                   MT beta2) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
     beta1pow_out_ = beta1pow_out;
@@ -350,8 +396,12 @@ struct LambBetaPowUpdateFunctor {
 
 template <typename MT>
 struct LambBetaPowUpdateFunctor<MT, /*NeedUpdateBetaPow=*/false> {
-  void SetBetaPows(const MT* beta1pow, const MT* beta2pow, MT* beta1pow_out,
-                   MT* beta2pow_out, MT beta1, MT beta2) {}
+  void SetBetaPows(const MT* beta1pow,
+                   const MT* beta2pow,
+                   MT* beta1pow_out,
+                   MT* beta2pow_out,
+                   MT beta1,
+                   MT beta2) {}
   HOSTDEVICE void UpdateBetaPow(size_t) const {}
 };
 
@@ -369,10 +419,15 @@ struct LambParamUpateFunctor
 
   const bool* skip_update_;
 
-  LambParamUpateFunctor(const MT* lr, const T* param, const MT* master_param,
-                        const MT* param_norm, const MT* trust_ratio_div,
-                        const MT* trust_ratio_div_norm, T* param_out,
-                        MT* master_param_out, const bool* skip_update)
+  LambParamUpateFunctor(const MT* lr,
+                        const T* param,
+                        const MT* master_param,
+                        const MT* param_norm,
+                        const MT* trust_ratio_div,
+                        const MT* trust_ratio_div_norm,
+                        T* param_out,
+                        MT* master_param_out,
+                        const bool* skip_update)
       : lr_(lr),
         param_(param),
         master_param_(master_param),
@@ -422,7 +477,8 @@ class LambOpKernel : public framework::OpKernel<T> {
     if (!IsMultiPrecision) {
       constexpr auto kIsSameType = std::is_same<T, MT>::value;
       PADDLE_ENFORCE_EQ(
-          kIsSameType, true,
+          kIsSameType,
+          true,
           platform::errors::InvalidArgument(
               "When multi_precision=False, T and MT must be the same type."));
     }
@@ -448,30 +504,46 @@ class LambOpKernel : public framework::OpKernel<T> {
         ctx.Input<framework::LoDTensor>("Moment2"), "Input", "Moment2", "Lamb");
     const auto& lr =
         GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("LearningRate"),
-                        "Input", "LearningRate", "Lamb");
+                        "Input",
+                        "LearningRate",
+                        "Lamb");
 
     const auto& beta1_pow =
-        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta1Pow"), "Input",
-                        "Beta1Pow", "Lamb");
+        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta1Pow"),
+                        "Input",
+                        "Beta1Pow",
+                        "Lamb");
     const auto& beta2_pow =
-        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta2Pow"), "Input",
-                        "Beta2Pow", "Lamb");
+        GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Beta2Pow"),
+                        "Input",
+                        "Beta2Pow",
+                        "Lamb");
 
     auto& param_out =
-        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("ParamOut"), "Output",
-                        "ParamOut", "Lamb");
+        GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("ParamOut"),
+                        "Output",
+                        "ParamOut",
+                        "Lamb");
     auto& mom1_out =
         GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment1Out"),
-                        "Output", "Moment1Out", "Lamb");
+                        "Output",
+                        "Moment1Out",
+                        "Lamb");
     auto& mom2_out =
         GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Moment2Out"),
-                        "Output", "Moment2Out", "Lamb");
+                        "Output",
+                        "Moment2Out",
+                        "Lamb");
     auto& beta1_pow_out =
         GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta1PowOut"),
-                        "Output", "Beta1PowOut", "Lamb");
+                        "Output",
+                        "Beta1PowOut",
+                        "Lamb");
     auto& beta2_pow_out =
         GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Beta2PowOut"),
-                        "Output", "Beta2PowOut", "Lamb");
+                        "Output",
+                        "Beta2PowOut",
+                        "Lamb");
     const auto* master_param =
         IsMultiPrecision ? ctx.Input<framework::LoDTensor>("MasterParam")
                          : nullptr;
@@ -518,15 +590,21 @@ class LambOpKernel : public framework::OpKernel<T> {
           beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
         LambMomentREGUpdateFunctor<T, IsMultiPrecision> moment_update_functor(
-            weight_decay, beta1, beta2, epsilon, *beta1_pow.template data<MT>(),
-            *beta2_pow.template data<MT>(), mom1.template data<MT>(),
+            weight_decay,
+            beta1,
+            beta2,
+            epsilon,
+            *beta1_pow.template data<MT>(),
+            *beta2_pow.template data<MT>(),
+            mom1.template data<MT>(),
             mom1_out.template mutable_data<MT>(ctx.GetPlace()),
             mom2.template data<MT>(),
             mom2_out.template mutable_data<MT>(ctx.GetPlace()),
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div_ptr, skip_update_flag);
+            trust_ratio_div_ptr,
+            skip_update_flag);
         for_range(moment_update_functor);
         beta1_pow_out.template mutable_data<MT>(platform::CPUPlace())[0] =
             beta1 * beta1_pow.template data<MT>()[0];
@@ -541,30 +619,37 @@ class LambOpKernel : public framework::OpKernel<T> {
             beta2_pow_out.template mutable_data<MT>(ctx.GetPlace());
         should_update_beta_pow_later = true;
         LambMomentMENUpdateFunctor<T, IsMultiPrecision> moment_update_functor(
-            weight_decay, beta1, beta2, epsilon,
+            weight_decay,
+            beta1,
+            beta2,
+            epsilon,
             static_cast<const MT*>(beta1_pow_ptr),
-            static_cast<const MT*>(beta2_pow_ptr), mom1.template data<MT>(),
+            static_cast<const MT*>(beta2_pow_ptr),
+            mom1.template data<MT>(),
             mom1_out.template mutable_data<MT>(ctx.GetPlace()),
             mom2.template data<MT>(),
             mom2_out.template mutable_data<MT>(ctx.GetPlace()),
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div_ptr, skip_update_flag);
+            trust_ratio_div_ptr,
+            skip_update_flag);
         for_range(moment_update_functor);
       }
     } else if (grad_var->IsType<phi::SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(IsMultiPrecision, false,
+      PADDLE_ENFORCE_EQ(IsMultiPrecision,
+                        false,
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
                             "multi_precision=True."));
       constexpr bool kIsSameType = std::is_same<T, MT>::value;
-      PADDLE_ENFORCE_EQ(kIsSameType, true,
+      PADDLE_ENFORCE_EQ(kIsSameType,
+                        true,
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
                             "multi_precision=True."));
-      auto& grad = GET_DATA_SAFELY(ctx.Input<phi::SelectedRows>("Grad"),
-                                   "Input", "Grad", "Lamb");
+      auto& grad = GET_DATA_SAFELY(
+          ctx.Input<phi::SelectedRows>("Grad"), "Input", "Grad", "Lamb");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -603,15 +688,23 @@ class LambOpKernel : public framework::OpKernel<T> {
           beta1_pow.place() == platform::CPUPlace() &&
           beta2_pow.place() == platform::CPUPlace()) {
         SparseLambMomentREGUpdateFunctor<T> moment_update_functor(
-            static_cast<T>(weight_decay), static_cast<T>(beta1),
-            static_cast<T>(beta2), static_cast<T>(epsilon),
-            *beta1_pow.template data<T>(), *beta2_pow.template data<T>(),
+            static_cast<T>(weight_decay),
+            static_cast<T>(beta1),
+            static_cast<T>(beta2),
+            static_cast<T>(epsilon),
+            *beta1_pow.template data<T>(),
+            *beta2_pow.template data<T>(),
             mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
-            param.template data<T>(), trust_ratio_div.template data<T>(), rows,
-            row_numel, grad_merge.rows().size(), skip_update_flag);
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            grad_data,
+            param.template data<T>(),
+            trust_ratio_div.template data<T>(),
+            rows,
+            row_numel,
+            grad_merge.rows().size(),
+            skip_update_flag);
         for_range(moment_update_functor);
         beta1_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
             static_cast<T>(beta1) * beta1_pow.template data<T>()[0];
@@ -626,15 +719,23 @@ class LambOpKernel : public framework::OpKernel<T> {
             beta2_pow_out.template mutable_data<MT>(ctx.GetPlace());
         should_update_beta_pow_later = true;
         SparseLambMomentMENUpdateFunctor<T> moment_update_functor(
-            static_cast<T>(weight_decay), static_cast<T>(beta1),
-            static_cast<T>(beta2), static_cast<T>(epsilon),
+            static_cast<T>(weight_decay),
+            static_cast<T>(beta1),
+            static_cast<T>(beta2),
+            static_cast<T>(epsilon),
             reinterpret_cast<const T*>(beta1_pow_ptr),
-            reinterpret_cast<const T*>(beta2_pow_ptr), mom1.template data<T>(),
+            reinterpret_cast<const T*>(beta2_pow_ptr),
+            mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
             mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()), grad_data,
-            param.template data<T>(), trust_ratio_div.template data<T>(), rows,
-            row_numel, grad_merge.rows().size(), skip_update_flag);
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            grad_data,
+            param.template data<T>(),
+            trust_ratio_div.template data<T>(),
+            rows,
+            row_numel,
+            grad_merge.rows().size(),
+            skip_update_flag);
         for_range(moment_update_functor);
       }
     } else {
@@ -655,12 +756,14 @@ class LambOpKernel : public framework::OpKernel<T> {
     // TODO(zengjinle): remove the following Eigen operations when
     // *skip_update == true.
     memory::Buffer buffer(dev_ctx.GetPlace());
+    math::SquaredL2Norm(dev_ctx,
+                        reinterpret_cast<const MT*>(
+                            IsMultiPrecision ? master_param_ptr : param_ptr),
+                        p_norm_ptr,
+                        numel,
+                        &buffer);
     math::SquaredL2Norm(
-        dev_ctx, reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
-                                                              : param_ptr),
-        p_norm_ptr, numel, &buffer);
-    math::SquaredL2Norm(dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr,
-                        numel, &buffer);
+        dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
 
     if (VLOG_IS_ON(1)) {
       const auto& name = ctx.GetOp().Input("Param");
@@ -675,16 +778,22 @@ class LambOpKernel : public framework::OpKernel<T> {
 #define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
   do {                                                                       \
     LambParamUpateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
-    param_update_functor(                                                    \
-        lr.template data<MT>(), static_cast<const T*>(param_ptr),            \
-        static_cast<const MT*>(master_param_ptr), p_norm_ptr,                \
-        trust_ratio_div_ptr, trust_ratio_div_norm_ptr,                       \
-        static_cast<T*>(param_out_ptr),                                      \
-        static_cast<MT*>(master_param_out_ptr), skip_update_flag);           \
+        param_update_functor(lr.template data<MT>(),                         \
+                             static_cast<const T*>(param_ptr),               \
+                             static_cast<const MT*>(master_param_ptr),       \
+                             p_norm_ptr,                                     \
+                             trust_ratio_div_ptr,                            \
+                             trust_ratio_div_norm_ptr,                       \
+                             static_cast<T*>(param_out_ptr),                 \
+                             static_cast<MT*>(master_param_out_ptr),         \
+                             skip_update_flag);                              \
     if (__should_update_beta_pow) {                                          \
-      param_update_functor.SetBetaPows(beta1_pow_ptr, beta2_pow_ptr,         \
-                                       beta1_pow_out_ptr, beta2_pow_out_ptr, \
-                                       beta1, beta2);                        \
+      param_update_functor.SetBetaPows(beta1_pow_ptr,                        \
+                                       beta2_pow_ptr,                        \
+                                       beta1_pow_out_ptr,                    \
+                                       beta2_pow_out_ptr,                    \
+                                       beta1,                                \
+                                       beta2);                               \
     }                                                                        \
     for_range(param_update_functor);                                         \
   } while (0)

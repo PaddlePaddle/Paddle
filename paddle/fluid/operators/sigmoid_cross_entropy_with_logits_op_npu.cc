@@ -22,18 +22,21 @@ using Tensor = framework::Tensor;
 const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
-  // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits
+  // Add this check is due to Ascend SigmoidCrossEntropyWithLogits
   // and SigmoidCrossEntropyWithLogitsGrad does't supoort
   // attr normalize and ignore_index
   bool normalize = ctx.Attr<bool>("normalize");
   int ignore_index = ctx.Attr<int>("ignore_index");
-  PADDLE_ENFORCE_EQ(normalize, false,
+  PADDLE_ENFORCE_EQ(normalize,
+                    false,
                     platform::errors::InvalidArgument(
                         "attr normalize must be false, but got true"));
-  PADDLE_ENFORCE_EQ(ignore_index, kIgnoreIndex,
+  PADDLE_ENFORCE_EQ(ignore_index,
+                    kIgnoreIndex,
                     platform::errors::InvalidArgument(
                         "attr ignore_index must be default %d, but got %d",
-                        kIgnoreIndex, ignore_index));
+                        kIgnoreIndex,
+                        ignore_index));
 }
 
 template <typename DeviceContext, typename T>
@@ -82,8 +85,8 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner_dx = NpuOpRunner("SigmoidCrossEntropyWithLogitsGrad",
-                                        {*x, *label, *dout}, {*dx}, {});
+    const auto& runner_dx = NpuOpRunner(
+        "SigmoidCrossEntropyWithLogitsGrad", {*x, *label, *dout}, {*dx}, {});
     runner_dx.Run(stream);
   }
 };

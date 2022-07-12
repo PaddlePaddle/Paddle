@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -116,7 +118,8 @@ static void InitWhiteListFormEnv() {
     while (std::getline(ss, op_var, ',')) {
       auto pos = op_var.find(":");
       PADDLE_ENFORCE_EQ(
-          pos != std::string::npos, true,
+          pos != std::string::npos,
+          true,
           platform::errors::InvalidArgument(
               "Skip var format must be op:var, instead of %s", op_var));
       std::string op = op_var.substr(0, pos);
@@ -128,8 +131,11 @@ static void InitWhiteListFormEnv() {
 }
 
 template <typename T>
-static void PrintNanInf(const T* value, const size_t numel, int print_num,
-                        const std::string& op_type, const std::string& var_name,
+static void PrintNanInf(const T* value,
+                        const size_t numel,
+                        int print_num,
+                        const std::string& op_type,
+                        const std::string& var_name,
                         bool abort = true) {
   T min_value = std::numeric_limits<T>::max();
   T max_value = std::numeric_limits<T>::min();
@@ -150,19 +156,24 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
     }
 
     if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%lu index:%lu value:%f\n", static_cast<uint64_t>(numel),
-             static_cast<uint64_t>(i), static_cast<float>(value[i]));
+      printf("numel:%lu index:%lu value:%f\n",
+             static_cast<uint64_t>(numel),
+             static_cast<uint64_t>(i),
+             static_cast<float>(value[i]));
     }
   }
   printf(
       "In cpu, there has %lu,%lu,%lu nan,inf,num. "
       "And in num, min_value is %f, max_value is %f\n",
-      static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
-      static_cast<uint64_t>(num_count), static_cast<double>(min_value),
+      static_cast<uint64_t>(nan_count),
+      static_cast<uint64_t>(inf_count),
+      static_cast<uint64_t>(num_count),
+      static_cast<double>(min_value),
       static_cast<double>(max_value));
   if (abort) {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
+        var_name,
         op_type));
   }
 }
@@ -182,7 +193,9 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 #endif
 
 template <typename T>
-static void CheckNanInf(const T* value, const size_t numel, int print_num,
+static void CheckNanInf(const T* value,
+                        const size_t numel,
+                        int print_num,
                         const std::string& op_type,
                         const std::string& var_name) {
   T sum = static_cast<T>(0.0);
@@ -205,8 +218,11 @@ static void CheckNanInf(const T* value, const size_t numel, int print_num,
 #elif defined _OPENMP
 template <>
 void CheckNanInf<paddle::platform::float16>(
-    const paddle::platform::float16* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
+    const paddle::platform::float16* value,
+    const size_t numel,
+    int print_num,
+    const std::string& op_type,
+    const std::string& var_name) {
   float sum = 0.0f;
 #pragma omp parallel for reduction(+ : sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -220,8 +236,11 @@ void CheckNanInf<paddle::platform::float16>(
 
 template <>
 void CheckNanInf<paddle::platform::bfloat16>(
-    const paddle::platform::bfloat16* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
+    const paddle::platform::bfloat16* value,
+    const size_t numel,
+    int print_num,
+    const std::string& op_type,
+    const std::string& var_name) {
   float sum = 0.0f;
 #pragma omp parallel for reduction(+ : sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -235,8 +254,11 @@ void CheckNanInf<paddle::platform::bfloat16>(
 
 template <>
 void CheckNanInf<paddle::platform::complex<float>>(
-    const paddle::platform::complex<float>* value, const size_t numel,
-    int print_num, const std::string& op_type, const std::string& var_name) {
+    const paddle::platform::complex<float>* value,
+    const size_t numel,
+    int print_num,
+    const std::string& op_type,
+    const std::string& var_name) {
   float real_sum = 0.0f;
 #pragma omp parallel for reduction(+ : real_sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -254,15 +276,19 @@ void CheckNanInf<paddle::platform::complex<float>>(
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
+        var_name,
         op_type));
   }
 }
 
 template <>
-    void CheckNanInf<paddle::platform::complex<double>>>
-    (const paddle::platform::complex<double>* value, const size_t numel,
-     int print_num, const std::string& op_type, const std::string& var_name) {
+    void CheckNanInf < paddle::platform::complex < double >>>
+    (const paddle::platform::complex<double>* value,
+     const size_t numel,
+     int print_num,
+     const std::string& op_type,
+     const std::string& var_name) {
   double real_sum = 0.0;
 #pragma omp parallel for reduction(+ : real_sum)
   for (size_t i = 0; i < numel; ++i) {
@@ -280,7 +306,8 @@ template <>
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
+        "There are `nan` or `inf` in tensor (%s) of operator (%s).",
+        var_name,
         op_type));
   }
 }
@@ -289,7 +316,7 @@ template <>
 
 template <>
 template <typename T>
-void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
+void TensorCheckerVisitor<phi::CPUContext>::apply(
     typename std::enable_if<
         std::is_floating_point<T>::value ||
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
@@ -297,17 +324,17 @@ void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
     const {
   // use env strategy control in future, -1=print_all.
   int print_num = 3;
-  CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
-              var_name_);
+  CheckNanInf(
+      tensor_.data<T>(), tensor_.numel(), print_num, op_type_, var_name_);
 }
 
 template <>
-void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
-                                              const std::string& var_name,
-                                              const framework::Tensor& tensor,
-                                              const platform::Place& place) {
-  TensorCheckerVisitor<platform::CPUDeviceContext> vistor(op_type, var_name,
-                                                          tensor, place);
+void tensor_check<phi::CPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const framework::Tensor& tensor,
+                                   const platform::Place& place) {
+  TensorCheckerVisitor<phi::CPUContext> vistor(
+      op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
@@ -316,8 +343,9 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Variable* var,
                          const platform::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Cannot find var: `%s` in op `%s`.",
-                                      var_name, op_type));
+      var,
+      platform::errors::NotFound(
+          "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
@@ -339,8 +367,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
-                                              place);
+    tensor_check<platform::CUDADeviceContext>(
+        op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
@@ -355,7 +383,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    memory::Copy(platform::CPUPlace(), static_cast<void*>(cpu_data),
+    memory::Copy(platform::CPUPlace(),
+                 static_cast<void*>(cpu_data),
                  tensor->place(),
                  static_cast<const void*>(tensor->data<float>()),
                  tensor->numel() * sizeof(float));
@@ -368,9 +397,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
     delete[] cpu_data;
     PADDLE_ENFORCE_NE(
-        flag, true,
-        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
-                                op_type, var_name));
+        flag,
+        true,
+        platform::errors::Fatal(
+            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
@@ -398,9 +428,10 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       }
     }
     PADDLE_ENFORCE_NE(
-        flag, true,
-        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
-                                op_type, var_name));
+        flag,
+        true,
+        platform::errors::Fatal(
+            "Operator %s output Tensor %s contains Inf.", op_type, var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
@@ -408,7 +439,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 #endif
     return;
   }
-  tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
+  tensor_check<phi::CPUContext>(op_type, var_name, *tensor, place);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
@@ -468,7 +499,8 @@ void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
   NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
 }
 
-void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
+void PrintNpuVarInfo(const std::string& op_type,
+                     const std::string& var_name,
                      const framework::Variable* var,
                      const platform::Place& place) {
   const Tensor* tensor{nullptr};
@@ -562,8 +594,10 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
 
-  PADDLE_ENFORCE_LT(sum, 1.0, platform::errors::PreconditionNotMet(
-                                  "Operator %s contains Nan/Inf.", op.Type()));
+  PADDLE_ENFORCE_LT(sum,
+                    1.0,
+                    platform::errors::PreconditionNotMet(
+                        "Operator %s contains Nan/Inf.", op.Type()));
 }
 #endif
 

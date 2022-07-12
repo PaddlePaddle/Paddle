@@ -171,11 +171,21 @@ DDim stride_numel(const DDim& ddim) {
   return strides;
 }
 
-DDim DDim::reshape(const std::vector<int>& shape) const {
+DDim DDim::reshape(std::vector<int>& shape) const {
   const int64_t copy_dim_val = 0;
   const DDim& in_dims = *this;
   DDim out_dims;
   out_dims.rank_ = shape.size();
+
+  // Dim marked as "-1" must be inferred
+  auto it = std::find(shape.begin(), shape.end(), -1);
+  if (it != shape.end()) {
+    int index = std::distance(shape.begin(), it);
+    int reshape_out_product =
+        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
+    shape[index] = product(in_dims) / reshape_out_product;
+  }
+
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i] == copy_dim_val) {
       PADDLE_ENFORCE_LT(static_cast<int>(i),

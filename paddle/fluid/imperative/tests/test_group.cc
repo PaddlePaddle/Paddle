@@ -14,8 +14,8 @@
 
 #include <sstream>
 #include <string>
-#include "gtest/gtest.h"
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/imperative/reducer.h"
 
 namespace paddle {
@@ -76,12 +76,12 @@ void GroupConcatSplit(Place place, size_t size) {
         std::is_same<Place, platform::MLUPlace>::value) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_CNCL)
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size(), 0);
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size(), 0);
 #endif
     } else {
-      paddle::memory::Copy(place, data, cpu_place, value.data(),
-                           sizeof(T) * value.size());
+      paddle::memory::Copy(
+          place, data, cpu_place, value.data(), sizeof(T) * value.size());
     }
 
     framework::Tensor tmp;

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/batch_norm_act_fuse_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -81,9 +82,10 @@ FuseBatchNormActOneDNNPass::FuseBatchNormActOneDNNPass() {
 void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of "
-                 "FuseBatchNormActOneDNNPass should not be nullptr."));
+      graph,
+      platform::errors::InvalidArgument(
+          "The input graph of "
+          "FuseBatchNormActOneDNNPass should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;

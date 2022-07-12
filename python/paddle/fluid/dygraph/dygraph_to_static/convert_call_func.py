@@ -96,8 +96,8 @@ def is_unsupported(func):
             if func_in_dict:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed.".
-                    format(func))
+                    "Whitelist: {} is part of built-in module and does not have to be transformed."
+                    .format(func))
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
@@ -107,8 +107,8 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed.".
-            format(func))
+            "Whitelist: {} is part of Paddle module and does not have to be transformed."
+            .format(func))
         return True
 
 
@@ -161,8 +161,8 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".
-            format(func))
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'."
+            .format(func))
         return func
 
     if is_builtin_len(func):
@@ -175,7 +175,7 @@ def convert_call(func):
         return func
 
     if inspect.isgeneratorfunction(func):
-        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function. 
+        # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
         # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
@@ -243,6 +243,7 @@ def convert_call(func):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
+                func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
                 # Bound mothod will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to

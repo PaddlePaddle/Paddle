@@ -18,11 +18,11 @@ limitations under the License. */
 
 namespace {
 
-using paddle::framework::Tensor;
-using phi::vectorize;
-using paddle::framework::GradVarName;
 using paddle::framework::ExecutionContext;
+using paddle::framework::GradVarName;
+using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
+using phi::vectorize;
 
 template <typename T>
 class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
@@ -45,19 +45,23 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
       out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
     }
 
-    dnnl::memory::desc x_mem_desc = x->mem_desc();
     if (x_vec_dims.size() != out_new_dims.size()) {
-      x_mem_desc = GetExtendedMemoryDescriptor(x_mem_desc, x_vec_dims,
-                                               out_new_dims.size());
+      x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
     }
 
     out->Resize(phi::make_ddim(out_new_dims));
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
-        0.0f, 1.0f, x_mem_desc);
+        dnnl::algorithm::binary_add,
+        onednn_engine,
+        ctx.GetPlace(),
+        x,
+        out,
+        0.0f,
+        1.0f,
+        x_vec_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = handler.AcquireDstMemory(out);  // acquires zeroed mem
+    auto dst_memory_p = handler.AcquireZeroedDstMemory(out);
     auto binary_p = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -73,14 +77,14 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  dnnl::memory::desc GetExtendedMemoryDescriptor(
-      const dnnl::memory::desc& x_mem_desc,
-      const std::vector<int64_t>& x_vec_dims, int new_size) const {
-    std::vector<int64_t> new_dims(new_size, 1);
-    std::copy(x_vec_dims.begin(), x_vec_dims.end(),
-              new_dims.begin() + new_size - x_vec_dims.size());
+  std::vector<int64_t> GetExtendedXDims(const std::vector<int64_t>& x_vec_dims,
+                                        int new_size) const {
+    std::vector<int64_t> extended_x_dims(new_size, 1);
+    std::copy(x_vec_dims.begin(),
+              x_vec_dims.end(),
+              extended_x_dims.begin() + new_size - x_vec_dims.size());
 
-    return x_mem_desc.reshape(new_dims);
+    return extended_x_dims;
   }
 };
 
@@ -102,8 +106,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto dout_vec_dims = vectorize(dout->dims());
 
     if (dx_vec_dims.size() != dout_vec_dims.size()) {
-      dx_vec_dims.insert(dx_vec_dims.begin(),
-                         dout_vec_dims.size() - dx_vec_dims.size(), 1);
+      dx_vec_dims.insert(
+          dx_vec_dims.begin(), dout_vec_dims.size() - dx_vec_dims.size(), 1);
     }
 
     auto& astream = MKLDNNDeviceContext::tls().get_stream();
@@ -111,14 +115,17 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       dnnl::memory::data_type dout_type = paddle::framework::ToMKLDNNDataType(
           paddle::framework::TransToProtoVarType(dout->dtype()));
       paddle::platform::ReorderMKLDNNHandler reorder_handler(
-          dout_vec_dims, paddle::framework::TransToProtoVarType(dout->dtype()),
-          dout_type, onednn_engine);
+          dout_vec_dims,
+          paddle::framework::TransToProtoVarType(dout->dtype()),
+          dout_type,
+          onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           dout->mem_desc(), paddle::platform::to_void_cast(dout->data<T>()));
 
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          dx, paddle::platform::GetPlainMKLDNNFormat(dx_vec_dims.size()),
+          dx,
+          paddle::platform::GetPlainMKLDNNFormat(dx_vec_dims.size()),
           ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
@@ -130,8 +137,14 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
-          dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
-          ctx.GetPlace(), dout, dx, dx_vec_dims);
+          dnnl::algorithm::reduction_sum,
+          0.0f,
+          0.0f,
+          onednn_engine,
+          ctx.GetPlace(),
+          dout,
+          dx,
+          dx_vec_dims);
 
       auto src_memory_p = handler.AcquireSrcMemory(dout);
       auto dst_memory_p = handler.AcquireDstMemory(dx);
@@ -151,10 +164,14 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 };
 }  // anonymous namespace
 
-REGISTER_OP_KERNEL(expand_v2, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(expand_v2,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ExpandMKLDNNKernel<float>,
                    ExpandMKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(expand_v2_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(expand_v2_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ExpandGradMKLDNNKernel<float>,
                    ExpandGradMKLDNNKernel<paddle::platform::bfloat16>);

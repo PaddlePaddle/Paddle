@@ -33,6 +33,14 @@ void AddKernel(const Context& dev_ctx,
   AddRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void GradAddKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  AddKernel<T>(dev_ctx, x, y, out);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -62,6 +70,20 @@ PD_REGISTER_KERNEL(add,
                    KPS,
                    ALL_LAYOUT,
                    phi::AddKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(grad_add,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::GradAddKernel,
                    float,
                    double,
                    int16_t,

@@ -107,7 +107,8 @@ for _OP in set(__inplace_unary_func__):
     _func = generate_inplace_fn(_OP)
     globals()[_OP] = _func
 
-add_sample_code(globals()["sigmoid"], r"""
+add_sample_code(
+    globals()["sigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -121,7 +122,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["silu"], r"""
+add_sample_code(
+    globals()["silu"], r"""
 Examples:
     .. code-block:: python
 
@@ -135,7 +137,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["logsigmoid"], r"""
+add_sample_code(
+    globals()["logsigmoid"], r"""
 Examples:
     .. code-block:: python
 
@@ -149,7 +152,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["exp"], r"""
+add_sample_code(
+    globals()["exp"], r"""
 Examples:
     .. code-block:: python
 
@@ -162,7 +166,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["expm1"], r"""
+add_sample_code(
+    globals()["expm1"], r"""
 Examples:
     .. code-block:: python
 
@@ -175,7 +180,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh"], r"""
+add_sample_code(
+    globals()["tanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -188,7 +194,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atan"], r"""
+add_sample_code(
+    globals()["atan"], r"""
 Examples:
     .. code-block:: python
 
@@ -201,7 +208,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tanh_shrink"], r"""
+add_sample_code(
+    globals()["tanh_shrink"], r"""
 Examples:
     .. code-block:: python
 
@@ -215,7 +223,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sqrt"], r"""
+add_sample_code(
+    globals()["sqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -228,7 +237,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["rsqrt"], r"""
+add_sample_code(
+    globals()["rsqrt"], r"""
 Examples:
     .. code-block:: python
 
@@ -241,7 +251,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["abs"], r"""
+add_sample_code(
+    globals()["abs"], r"""
 Examples:
     .. code-block:: python
 
@@ -254,7 +265,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["ceil"], r"""
+add_sample_code(
+    globals()["ceil"], r"""
 Examples:
     .. code-block:: python
 
@@ -267,7 +279,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["floor"], r"""
+add_sample_code(
+    globals()["floor"], r"""
 Examples:
     .. code-block:: python
 
@@ -280,7 +293,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cos"], r"""
+add_sample_code(
+    globals()["cos"], r"""
 Examples:
     .. code-block:: python
 
@@ -293,7 +307,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["tan"], r"""
+add_sample_code(
+    globals()["tan"], r"""
 Examples:
     .. code-block:: python
 
@@ -306,7 +321,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acos"], r"""
+add_sample_code(
+    globals()["acos"], r"""
 Examples:
     .. code-block:: python
 
@@ -319,7 +335,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sin"], r"""
+add_sample_code(
+    globals()["sin"], r"""
 Examples:
     .. code-block:: python
 
@@ -332,7 +349,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asin"], r"""
+add_sample_code(
+    globals()["asin"], r"""
 Examples:
     .. code-block:: python
 
@@ -345,7 +363,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["cosh"], r"""
+add_sample_code(
+    globals()["cosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -358,7 +377,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["sinh"], r"""
+add_sample_code(
+    globals()["sinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -371,7 +391,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["asinh"], r"""
+add_sample_code(
+    globals()["asinh"], r"""
 Examples:
     .. code-block:: python
 
@@ -384,7 +405,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["acosh"], r"""
+add_sample_code(
+    globals()["acosh"], r"""
 Examples:
     .. code-block:: python
 
@@ -397,7 +419,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["atanh"], r"""
+add_sample_code(
+    globals()["atanh"], r"""
 Examples:
     .. code-block:: python
 
@@ -410,7 +433,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["round"], r"""
+add_sample_code(
+    globals()["round"], r"""
 Examples:
     .. code-block:: python
 
@@ -423,7 +447,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["reciprocal"], r"""
+add_sample_code(
+    globals()["reciprocal"], r"""
 Examples:
     .. code-block:: python
 
@@ -436,7 +461,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["square"], r"""
+add_sample_code(
+    globals()["square"], r"""
 Examples:
     .. code-block:: python
 
@@ -449,7 +475,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["lgamma"], r"""
+add_sample_code(
+    globals()["lgamma"], r"""
 Examples:
     .. code-block:: python
 
@@ -462,7 +489,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["softplus"], r"""
+add_sample_code(
+    globals()["softplus"], r"""
 Examples:
     .. code-block:: python
 
@@ -476,7 +504,8 @@ Examples:
 
 """)
 
-add_sample_code(globals()["softsign"], r"""
+add_sample_code(
+    globals()["softsign"], r"""
 Examples:
     .. code-block:: python
 
@@ -506,25 +535,27 @@ def erf(x, name=None):
 
 erf.__doc__ = r"""
 :strong:`Erf Operator`
-For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
+For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
 
 Equation:
     ..  math::
-        out = \\frac{2}{\\sqrt{\\pi}} \\int_{0}^{x}e^{- \\eta^{2}}d\\eta
+        out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
 
 Args:
 
     x (Tensor): The input tensor, it's data type should be float32, float64.
+    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 Returns:
 
-    Tensor: The output of Erf op, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
     .. code-block:: python
     
         import paddle
+        
         x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
         out = paddle.erf(x)
         print(out)

@@ -85,11 +85,13 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
+
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         with fluid.device_guard("gpu:0"):
-            images = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype=DTYPE)
+            images = fluid.layers.data(name='pixel',
+                                       shape=[1, 28, 28],
+                                       dtype=DTYPE)
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
             if dist_strategy:
@@ -102,13 +104,14 @@ class TestDistMnist2x2(TestDistRunnerBase):
             predict = cnn_model(images)
         with fluid.device_guard("gpu:1"):
             cost = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_cost = fluid.layers.mean(x=cost)
+            avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         with fluid.device_guard("gpu:1"):
             batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
-                input=predict, label=label, total=batch_size_tensor)
+            batch_acc = fluid.layers.accuracy(input=predict,
+                                              label=label,
+                                              total=batch_size_tensor)
 
         inference_program = fluid.default_main_program().clone()
         base_lr = self.lr
@@ -125,10 +128,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
         acc_steps = 2  # accumulated steps for pipeline
         if dist_strategy:
             # Reader
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=batch_size)
-            test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=batch_size)
+            train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                        batch_size=batch_size)
+            test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                       batch_size=batch_size)
             fleet.init(is_collective=True)
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
@@ -138,16 +141,16 @@ class TestDistMnist2x2(TestDistRunnerBase):
                 'schedule_mode': 'F-then-B',
                 'accumulate_steps': acc_steps
             }
-            dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(optimizer=opt,
+                                                   strategy=strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
             # Reader
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=batch_size * acc_steps)
-            test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=batch_size * acc_steps)
+            train_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                        batch_size=batch_size * acc_steps)
+            test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                                       batch_size=batch_size * acc_steps)
 
         if dist_strategy:
             return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict, data_loader

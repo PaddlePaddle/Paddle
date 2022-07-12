@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/graph_send_recv_kernel.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
+
 #include <algorithm>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 
 namespace phi {
 
@@ -93,20 +94,14 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   int64_t input_size = src_dims[0];
   if (pool_type == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
-    GraphSendRecvCUDAKernel<
-        T,
-        IndexT,
-        GraphSendRecvSumCUDAFunctor<T,
-                                    IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, functor);
+    GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
+        <<<grid, block, 0, ctx.stream()>>>(
+            p_src, s_index, d_index, p_output, index_size, slice_size, functor);
   } else if (pool_type == "MAX") {
     GraphSendRecvMaxCUDAFunctor<T, IndexT> functor;
-    GraphSendRecvCUDAKernel<
-        T,
-        IndexT,
-        GraphSendRecvMaxCUDAFunctor<T,
-                                    IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, functor);
+    GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMaxCUDAFunctor<T, IndexT>>
+        <<<grid, block, 0, ctx.stream()>>>(
+            p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
     if (out_size > 0) {
       input_size = out_size;
@@ -118,12 +113,9 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         p_output, input_size, slice_size);
   } else if (pool_type == "MIN") {
     GraphSendRecvMinCUDAFunctor<T, IndexT> functor;
-    GraphSendRecvCUDAKernel<
-        T,
-        IndexT,
-        GraphSendRecvMinCUDAFunctor<T,
-                                    IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, functor);
+    GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvMinCUDAFunctor<T, IndexT>>
+        <<<grid, block, 0, ctx.stream()>>>(
+            p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
     if (out_size > 0) {
       input_size = out_size;
@@ -135,12 +127,9 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         p_output, input_size, slice_size);
   } else if (pool_type == "MEAN") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
-    GraphSendRecvCUDAKernel<
-        T,
-        IndexT,
-        GraphSendRecvSumCUDAFunctor<T,
-                                    IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, functor);
+    GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
+        <<<grid, block, 0, ctx.stream()>>>(
+            p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
     ctx.template Alloc<int32_t>(dst_count);
     int32_t* p_dst_count = dst_count->data<int32_t>();

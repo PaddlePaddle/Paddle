@@ -20,6 +20,7 @@ paddle.enable_static()
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -30,16 +31,17 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
+        input_x = paddle.fluid.layers.data(name="x",
+                                           shape=[32],
+                                           dtype='float32')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
 
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                 label=input_y)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.without_graph_optimization = True

@@ -18,8 +18,6 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
-#include "paddle/fluid/pybind/fleet_py.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -35,17 +33,18 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include "paddle/fluid/pybind/fleet_py.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
 using paddle::distributed::Communicator;
-using paddle::distributed::FleetWrapper;
-using paddle::distributed::HeterClient;
-using paddle::distributed::GraphPyService;
-using paddle::distributed::GraphNode;
-using paddle::distributed::GraphPyServer;
-using paddle::distributed::GraphPyClient;
 using paddle::distributed::FeatureNode;
+using paddle::distributed::FleetWrapper;
+using paddle::distributed::GraphNode;
+using paddle::distributed::GraphPyClient;
+using paddle::distributed::GraphPyServer;
+using paddle::distributed::GraphPyService;
+using paddle::distributed::HeterClient;
 
 namespace paddle {
 namespace pybind {
@@ -91,11 +90,19 @@ void BindPSHost(py::module* m) {
 
 void BindCommunicatorContext(py::module* m) {
   py::class_<CommContext>(*m, "CommContext")
-      .def(
-          py::init<const std::string&, const std::vector<std::string>&,
-                   const std::vector<std::string>&, const std::vector<int64_t>&,
-                   const std::vector<std::string>&, int, bool, bool, bool, int,
-                   bool, bool, int64_t>())
+      .def(py::init<const std::string&,
+                    const std::vector<std::string>&,
+                    const std::vector<std::string>&,
+                    const std::vector<int64_t>&,
+                    const std::vector<std::string>&,
+                    int,
+                    bool,
+                    bool,
+                    bool,
+                    int,
+                    bool,
+                    bool,
+                    int64_t>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
@@ -132,9 +139,11 @@ void BindDistCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const std::string& mode, const std::string& dist_desc,
+      .def(py::init([](const std::string& mode,
+                       const std::string& dist_desc,
                        const std::vector<std::string>& host_sign_list,
-                       const RpcCtxMap& send_ctx, const RecvCtxMap& recv_ctx,
+                       const RpcCtxMap& send_ctx,
+                       const RecvCtxMap& recv_ctx,
                        Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
         if (mode == "ASYNC") {
@@ -169,8 +178,8 @@ void BindHeterClient(py::module* m) {
       .def(py::init([](const std::vector<std::string>& endpoints,
                        const std::vector<std::string>& previous_endpoints,
                        const int& trainer_id) {
-        return HeterClient::GetInstance(endpoints, previous_endpoints,
-                                        trainer_id);
+        return HeterClient::GetInstance(
+            endpoints, previous_endpoints, trainer_id);
       }))
       .def("stop", &HeterClient::Stop);
 }
@@ -216,27 +225,29 @@ void BindGraphPyClient(py::module* m) {
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::StopServer)
       .def("get_node_feat",
-           [](GraphPyClient& self, std::string node_type,
+           [](GraphPyClient& self,
+              std::string node_type,
               std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
              std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
-             for (int i = 0; i < feats.size(); ++i) {
-               for (int j = 0; j < feats[i].size(); ++j) {
+             for (size_t i = 0; i < feats.size(); ++i) {
+               for (size_t j = 0; j < feats[i].size(); ++j) {
                  bytes_feats[i].push_back(py::bytes(feats[i][j]));
                }
              }
              return bytes_feats;
            })
       .def("set_node_feat",
-           [](GraphPyClient& self, std::string node_type,
+           [](GraphPyClient& self,
+              std::string node_type,
               std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
-             for (int i = 0; i < bytes_feats.size(); ++i) {
-               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+             for (size_t i = 0; i < bytes_feats.size(); ++i) {
+               for (size_t j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }
@@ -246,13 +257,13 @@ void BindGraphPyClient(py::module* m) {
       .def("bind_local_server", &GraphPyClient::bind_local_server);
 }
 
-using paddle::distributed::TreeIndex;
-using paddle::distributed::IndexWrapper;
 using paddle::distributed::IndexNode;
+using paddle::distributed::IndexWrapper;
+using paddle::distributed::TreeIndex;
 #ifdef PADDLE_WITH_HETERPS
 using paddle::framework::GraphGpuWrapper;
-using paddle::framework::NeighborSampleResult;
 using paddle::framework::NeighborSampleQuery;
+using paddle::framework::NeighborSampleResult;
 using paddle::framework::NodeQueryResult;
 #endif
 
@@ -327,16 +338,14 @@ void BindNeighborSampleResult(py::module* m) {
       .def("initialize", &NeighborSampleResult::initialize)
       .def("get_len", &NeighborSampleResult::get_len)
       .def("get_val", &NeighborSampleResult::get_actual_val)
+      .def("get_sampled_graph", &NeighborSampleResult::get_sampled_graph)
       .def("display", &NeighborSampleResult::display);
 }
 
 void BindGraphGpuWrapper(py::module* m) {
-  py::class_<GraphGpuWrapper>(*m, "GraphGpuWrapper")
-      // nit<>())
-      //.def("test", &GraphGpuWrapper::test)
-      //.def(py::init([]() { return framework::GraphGpuWrapper::GetInstance();
-      //}))
-      .def(py::init<>())
+  py::class_<GraphGpuWrapper, std::shared_ptr<GraphGpuWrapper>>(
+      *m, "GraphGpuWrapper")
+      .def(py::init([]() { return GraphGpuWrapper::GetInstance(); }))
       .def("neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample_v3)
       .def("graph_neighbor_sample", &GraphGpuWrapper::graph_neighbor_sample)
       .def("set_device", &GraphGpuWrapper::set_device)
@@ -347,6 +356,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
       .def("upload_batch", &GraphGpuWrapper::upload_batch)
       .def("get_all_id", &GraphGpuWrapper::get_all_id)
+      .def("init_sample_status", &GraphGpuWrapper::init_sample_status)
+      .def("free_sample_status", &GraphGpuWrapper::free_sample_status)
       .def("load_next_partition", &GraphGpuWrapper::load_next_partition)
       .def("make_partitions", &GraphGpuWrapper::make_partitions)
       .def("make_complementary_graph",
@@ -355,6 +366,8 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("init_search_level", &GraphGpuWrapper::init_search_level)
       .def("get_partition_num", &GraphGpuWrapper::get_partition_num)
       .def("get_partition", &GraphGpuWrapper::get_partition)
+      .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
+      .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
       .def("load_node_file", &GraphGpuWrapper::load_node_file);
 }
 #endif

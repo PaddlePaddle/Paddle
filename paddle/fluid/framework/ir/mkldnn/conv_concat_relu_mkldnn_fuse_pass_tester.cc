@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type,
+void SetOp(ProgramDesc* prog,
+           const std::string& type,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs, bool use_mkldnn = true) {
+           const std::vector<std::string>& outputs,
+           bool use_mkldnn = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   if (type == "conv2d") {
@@ -64,9 +66,18 @@ void SetOp(ProgramDesc* prog, const std::string& type,
 ProgramDesc BuildProgramDesc(bool put_only_convs_before_concat,
                              bool all_convs_use_mkldnn) {
   ProgramDesc prog;
-  for (auto& v :
-       std::initializer_list<std::string>({"a1", "w1", "c1", "a2", "w2", "b2",
-                                           "c2", "a3", "w3", "c3", "d", "e"})) {
+  for (auto& v : std::initializer_list<std::string>({"a1",
+                                                     "w1",
+                                                     "c1",
+                                                     "a2",
+                                                     "w2",
+                                                     "b2",
+                                                     "c2",
+                                                     "a3",
+                                                     "w3",
+                                                     "c3",
+                                                     "d",
+                                                     "e"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v.find("w") == 0 || v.find("b") == 0) {

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit, erf
@@ -26,6 +27,7 @@ import paddle.nn.functional as functional
 
 
 class TestNNSigmoidAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
 
@@ -71,6 +73,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
 
 
 class TestNNFunctionalSigmoidAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
 

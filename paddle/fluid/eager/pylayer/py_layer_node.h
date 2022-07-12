@@ -26,7 +26,8 @@ namespace egr {
 
 class GradNodePyLayer : public GradNodeBase {
  public:
-  GradNodePyLayer(PyObject* ctx, size_t bwd_in_slot_num,
+  GradNodePyLayer(PyObject* ctx,
+                  size_t bwd_in_slot_num,
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;

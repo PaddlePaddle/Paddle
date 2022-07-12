@@ -24,20 +24,21 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTSubgraphPassConvTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                act=None)
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           act=None)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -62,6 +63,7 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
 
 
 class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -71,6 +73,7 @@ class TensorRTSubgraphPassConvValidPaddingTest(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -80,6 +83,7 @@ class TensorRTSubgraphPassConvSamePaddingTest(InferencePassTest):
 
 
 class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -89,6 +93,7 @@ class TensorRTSubgraphPassDepthwiseConvTest(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 12
         self.conv_filter_size = 6
@@ -98,11 +103,13 @@ class TensorRTSubgraphPassDepthwiseConv2Test(TensorRTSubgraphPassConvTest):
 
 
 class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 6, 64, 64],
+                              dtype="float32")
             conv_out = fluid.layers.conv2d_transpose(
                 input=data,
                 num_filters=self.conv_num_filters,
@@ -137,6 +144,7 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
 
 class TensorRTSubgraphPassConvTransposeValidPaddingTest(
         TensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -147,6 +155,7 @@ class TensorRTSubgraphPassConvTransposeValidPaddingTest(
 
 class TensorRTSubgraphPassConvTransposeSamePaddingTest(
         TensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -157,6 +166,7 @@ class TensorRTSubgraphPassConvTransposeSamePaddingTest(
 
 class TensorRTSubgraphPassConvTransposeMultiGroupTest(
         TensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -167,6 +177,7 @@ class TensorRTSubgraphPassConvTransposeMultiGroupTest(
 
 class TensorRTSubgraphPassConvTranspose2Test(
         TensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 12
         self.conv_filter_size = 4
@@ -177,6 +188,7 @@ class TensorRTSubgraphPassConvTranspose2Test(
 
 class TensorRTSubgraphPassDepthwiseConvTransposeTest(
         TensorRTSubgraphPassConvTransposeTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 4
@@ -186,21 +198,22 @@ class TensorRTSubgraphPassDepthwiseConvTransposeTest(
 
 
 class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, -1, -1], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                padding=self.conv_padding,
-                bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                stride=self.stride,
-                act=None)
+            data = fluid.data(name="data",
+                              shape=[-1, 6, -1, -1],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           stride=self.stride,
+                                           act=None)
         self.feeds = {
             "data": np.random.random([32, 6, 64, 64]).astype("float32"),
         }
@@ -241,6 +254,7 @@ class DynamicShapeTensorRTSubgraphPassConvTest(InferencePassTest):
 
 class DynamicShapeTensorRTSubgraphPassDepthwiseConvTransposeTest(
         DynamicShapeTensorRTSubgraphPassConvTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6

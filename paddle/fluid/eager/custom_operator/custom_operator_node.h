@@ -25,7 +25,8 @@ namespace egr {
 class RunCustomOpNode : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  explicit RunCustomOpNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num,
+  explicit RunCustomOpNode(size_t bwd_in_slot_num,
+                           size_t bwd_out_slot_num,
                            const std::string& op_type)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num), op_type_(op_type) {
     VLOG(6) << "Construct RunCustomOpNode for op: " << op_type;
@@ -67,13 +68,88 @@ class RunCustomOpNode : public GradNodeBase {
     return res;
   }
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override {
+    fwd_outs.clear();
+    fwd_ins.clear();
+    grads2grad_in_map.clear();
+  }
 
   void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
 
   std::shared_ptr<GradNodeBase> Copy() const override {
     auto copied_node =
         std::shared_ptr<RunCustomOpNode>(new RunCustomOpNode(*this));
+    return copied_node;
+  }
+
+ public:
+  std::unordered_map<int, std::vector<egr::TensorWrapper>> fwd_outs;
+  std::unordered_map<int, std::vector<egr::TensorWrapper>> fwd_ins;
+  std::unordered_map<int, int> grads2grad_in_map;
+
+ private:
+  std::vector<paddle::any> attrs_;
+  std::string op_type_{""};
+};
+
+class RunCustomOpDoubleGradNode : public GradNodeBase {
+ public:
+  // Constructor: configure fwd input tensors to grad node
+  explicit RunCustomOpDoubleGradNode(size_t bwd_in_slot_num,
+                                     size_t bwd_out_slot_num,
+                                     const std::string& op_type)
+      : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num), op_type_(op_type) {
+    VLOG(6) << "Construct RunCustomOpDoubleGradNode for op: " << op_type;
+  }
+
+  ~RunCustomOpDoubleGradNode() override {
+    VLOG(6) << "Destruct RunCustomOpDoubleGradNode for op: " << op_type_;
+  }
+
+  // Functor: perform backward computations
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>
+  operator()(  // NOLINT
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                           kSlotSmallVectorSize>& grads,  // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false)  // NOLINT
+      override;
+
+  std::string name() {
+    return paddle::string::Sprintf("RunCustomOpDoubleGradNode: %s_grad_grad",
+                                   op_type_);
+  }
+
+  static std::vector<egr::TensorWrapper> ConstructTensorWrapper(
+      const std::vector<paddle::experimental::Tensor>& fwd_var) {
+    std::vector<egr::TensorWrapper> res;
+    for (auto const& var : fwd_var) {
+      res.emplace_back(var);
+    }
+    return res;
+  }
+
+  static std::vector<paddle::experimental::Tensor> Recover(
+      std::vector<egr::TensorWrapper>* fwd_var) {
+    std::vector<paddle::experimental::Tensor> res;
+    for (size_t i = 0; i < fwd_var->size(); i++) {
+      res.emplace_back(fwd_var->at(i).recover());
+    }
+    return res;
+  }
+
+  void ClearTensorWrappers() override {
+    fwd_outs.clear();
+    fwd_ins.clear();
+    grads2grad_in_map.clear();
+  }
+
+  void SetAttrs(const std::vector<paddle::any>& attr) { attrs_ = attr; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<RunCustomOpDoubleGradNode>(
+        new RunCustomOpDoubleGradNode(*this));
     return copied_node;
   }
 
