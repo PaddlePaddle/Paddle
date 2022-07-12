@@ -1404,8 +1404,8 @@ class Executor(object):
                     return False
 
                 # Unsupported case 3: data parallel
-                if program._is_data_parallel == True and (program._get_places(
-                        place, program._places)) != 1:
+                if program._is_data_parallel == True and len(
+                        program._get_places(place, program._places)) != 1:
                     return False
 
                 return True
