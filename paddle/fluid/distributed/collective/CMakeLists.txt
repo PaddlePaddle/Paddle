@@ -20,7 +20,7 @@ if(WITH_DISTRIBUTE)
   cc_library(
     processgroup_gloo
     SRCS ProcessGroupGloo.cc
-    DEPS gloo_wrapper)
+    DEPS gloo_wrapper phi_api)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
