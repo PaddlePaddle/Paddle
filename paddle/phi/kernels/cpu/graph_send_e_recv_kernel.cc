@@ -38,7 +38,7 @@ void GraphSendERecvSumCpuKernel(const BroadCastInfo& bcast,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < index_size; i++) {
+  for (int64_t i = 0; i < index_size; i++) {
     IndexT src = src_indices[i];
     IndexT dst = dst_indices[i];
     T* out_off = output + dst * bcast.out_len;
@@ -58,8 +58,51 @@ void GraphSendERecvSumCpuKernel(const BroadCastInfo& bcast,
   }
 }
 
-// template <typename T, typename IndexT, typename ComputeFunctor>
-// void GraphSendERecvMaxCpuKernel()
+template <typename T,
+          typename IndexT,
+          typename ComputeFunctor,
+          typename CmpFunctor>
+void GraphSendERecvMinMaxCpuKernel(const BroadCastInfo& bcast,
+                                   const T* x_data,
+                                   const T* e_data,
+                                   const IndexT* src_indices,
+                                   const IndexT* dst_indices,
+                                   T* output,
+                                   int64_t index_size,
+                                   ComputeFunctor cfunctor,
+                                   CmpFunctor pfunctor) {
+  std::set<IndexT> existed_dst;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t i = 0; i < index_size; i++) {
+    IndexT src = src_indices[i];
+    IndexT dst = dst_indices[i];
+    T* out_off = output + dst * bcast.out_len;
+    const T* x_off = x_data + src * bcast.l_len;
+    const T* e_off = e_data + i * bcast.r_len;
+    bool in_set = existed_dst.find(dst) != existed_dst.end();
+    for (int64_t j = 0; j < bcast.out_len; j++) {
+      int64_t x_add = bcast.use_bcast ? bcast.l_offset[j] : j;
+      int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
+      T val = cfunctor(x_off[x_add], e_off[e_add]);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp critical
+#endif
+      if (!in_set) {
+        out_off[j] += val;
+      } else {
+        out_off[j] = pfunctor(out_off[j], val);
+      }
+    }
+#ifdef PADDLE_WITH_MKLML
+#pragma omp critical
+#endif
+    if (!in_set) {
+      existed_dst.emplace(dst);
+    }
+  }
+}
 
 template <typename Context, typename T, typename IndexT>
 void GraphSendERecvOpKernelLaunchHelper(const Context& ctx,
@@ -125,12 +168,68 @@ void GraphSendERecvOpKernelLaunchHelper(const Context& ctx,
         eigen_out = eigen_out / static_cast<T>(dst_count_data[i]);
       }
     }
-  } else if (pool_type == "MIN" || pool_type == "MAX") {
-    /*if (compute_type == "ADD") {
-      GraphAddFunctor<T> add_funtor;
+  } else if (pool_type == "MIN") {
+    GraphMinFunctor<T> min_functor;
+    if (compute_type == "ADD") {
+      GraphAddFunctor<T> add_functor;
+      GraphSendERecvMinMaxCpuKernel<T,
+                                    IndexT,
+                                    GraphAddFunctor<T>,
+                                    GraphMinFunctor<T>>(bcast_info,
+                                                        x_data,
+                                                        e_data,
+                                                        s_index,
+                                                        d_index,
+                                                        out_data,
+                                                        index_size,
+                                                        add_functor,
+                                                        min_functor);
     } else if (compute_type == "MUL") {
       GraphMulFunctor<T> mul_functor;
-    }*/
+      GraphSendERecvMinMaxCpuKernel<T,
+                                    IndexT,
+                                    GraphMulFunctor<T>,
+                                    GraphMinFunctor<T>>(bcast_info,
+                                                        x_data,
+                                                        e_data,
+                                                        s_index,
+                                                        d_index,
+                                                        out_data,
+                                                        index_size,
+                                                        mul_functor,
+                                                        min_functor);
+    }
+  } else if (pool_type == "MAX") {
+    GraphMaxFunctor<T> max_functor;
+    if (compute_type == "ADD") {
+      GraphAddFunctor<T> add_functor;
+      GraphSendERecvMinMaxCpuKernel<T,
+                                    IndexT,
+                                    GraphAddFunctor<T>,
+                                    GraphMaxFunctor<T>>(bcast_info,
+                                                        x_data,
+                                                        e_data,
+                                                        s_index,
+                                                        d_index,
+                                                        out_data,
+                                                        index_size,
+                                                        add_functor,
+                                                        max_functor);
+    } else if (compute_type == "MUL") {
+      GraphMulFunctor<T> mul_functor;
+      GraphSendERecvMinMaxCpuKernel<T,
+                                    IndexT,
+                                    GraphMulFunctor<T>,
+                                    GraphMaxFunctor<T>>(bcast_info,
+                                                        x_data,
+                                                        e_data,
+                                                        s_index,
+                                                        d_index,
+                                                        out_data,
+                                                        index_size,
+                                                        mul_functor,
+                                                        max_functor);
+    }
   }
 }
 

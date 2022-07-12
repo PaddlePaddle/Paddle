@@ -34,7 +34,7 @@ struct GraphMulFunctor {
 };
 
 template <typename T>
-struct GraphMaxfunctor {
+struct GraphMaxFunctor {
   inline T operator()(const T a, const T b) const { return a < b ? b : a; }
 };
 

@@ -141,7 +141,9 @@ def compute_graph_send_e_recv_for_mean(inputs, attributes):
     for index, s_id in enumerate(dst_index):
         results[s_id, :] += x_compute_e[index, :]
         count[s_id] += 1
-    results = results / count.reshape([-1, 1])
+    count_shape = [out_shp[0]]
+    count_shape.extend([1] * len(out_shp[1:]))
+    results = results / count.reshape(count_shape)
     results[np.isnan(results)] = 0
     return results, count
 
@@ -368,7 +370,7 @@ class TestGraphSendERecvMeanOp(OpTest):
         self.check_grad(['X', 'E'], 'Out')
 
 
-def TestMeanCase1(TestGraphSendERecvMeanOp):
+class TestMeanCase1(TestGraphSendERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -379,7 +381,7 @@ def TestMeanCase1(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-def TestMeanCase2(TestGraphSendERecvMeanOp):
+class TestMeanCase2(TestGraphSendERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -387,10 +389,10 @@ def TestMeanCase2(TestGraphSendERecvMeanOp):
         index = np.random.randint(0, 10, (150, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'SUM'
+        self.compute_type = 'ADD'
 
 
-def TestMeanCase3(TestGraphSendERecvMeanOp):
+class TestMeanCase3(TestGraphSendERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -401,7 +403,7 @@ def TestMeanCase3(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-def TestMeanCase4(TestGraphSendERecvMeanOp):
+class TestMeanCase4(TestGraphSendERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -409,10 +411,10 @@ def TestMeanCase4(TestGraphSendERecvMeanOp):
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
-        self.compute_type = 'SUM'
+        self.compute_type = 'ADD'
 
 
-def TestMeanCase5(TestGraphSendERecvMeanOp):
+class TestMeanCase5(TestGraphSendERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
