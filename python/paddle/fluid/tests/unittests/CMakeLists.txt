@@ -60,7 +60,9 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_sharding_parallel)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_optimizer_stage2)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage2)
 list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage3)
+list(APPEND DIST_TEST_OPS test_dygraph_sharding_stage3_for_eager)
 list(APPEND DIST_TEST_OPS test_dygraph_group_sharded_api)
+list(APPEND DIST_TEST_OPS test_dygraph_group_sharded_api_for_eager)
 list(APPEND DIST_TEST_OPS test_auto_parallel_parallelizer)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mp_layers)
 list(APPEND DIST_TEST_OPS test_hybrid_parallel_inference_helper)
@@ -70,7 +72,10 @@ list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 list(APPEND DIST_TEST_OPS test_collective_process_group)
+list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
+list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
+list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -129,6 +134,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -231,7 +237,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_fleet_utils)
   list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
-
+  list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_fake_init_op)
 endif()
@@ -244,6 +250,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
@@ -303,13 +310,17 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_optimizer_stage2)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage2)
   list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage3)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_sharding_stage3_for_eager)
   list(REMOVE_ITEM TEST_OPS test_dygraph_group_sharded_api)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_group_sharded_api_for_eager)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_parallelizer)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mp_layers)
   list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
+  list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision_for_eager)
   list(REMOVE_ITEM TEST_OPS test_mixed_precision)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
+  list(REMOVE_ITEM TEST_OPS test_dygraph_recompute_for_eager)
   list(REMOVE_ITEM TEST_OPS test_hybrid_parallel_inference_helper)
   list(REMOVE_ITEM TEST_OPS test_parallel_class_center_sample)
   list(REMOVE_ITEM TEST_OPS test_parallel_margin_cross_entropy)
@@ -326,7 +337,11 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
   list(REMOVE_ITEM TEST_OPS test_collective_process_group)
+  list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
+  list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
     list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -367,7 +382,7 @@ if(APPLE)
   if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_desc_clone)
     list(REMOVE_ITEM TEST_OPS test_program_code)
-  endif(NOT WITH_DISTRIBUTE)
+  endif()
   message(
     WARNING
       "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext_*"
@@ -683,7 +698,8 @@ endif()
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-endforeach(TEST_OP)
+endforeach()
+set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
@@ -780,11 +796,17 @@ if(WITH_DISTRIBUTE)
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
+  if(NOT WITH_HETERPS)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+  endif()
+
   py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
                   ${dist_ENVS})
-  py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
-                  ENVS ${dist_ENVS})
+  # py_test_modules(test_communicator_ps_gpu MODULES test_communicator_ps_gpu
+  #                 ENVS ${dist_ENVS})
   py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
                   ${dist_ENVS})
   py_test_modules(
@@ -860,6 +882,7 @@ if(WITH_DISTRIBUTE)
                       test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_cost_model MODULES
                       test_auto_parallel_cost_model ENVS ${dist_ENVS})
+
       if(WITH_GPU
          OR WITH_XPU
          OR WITH_ASCEND
@@ -872,8 +895,8 @@ if(WITH_DISTRIBUTE)
                         test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
 
       endif()
-    endif(NOT WIN32)
-  endif(NOT APPLE)
+    endif()
+  endif()
   if(WITH_DGC)
     # if with dgc, test all dgc tests.
     # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -887,6 +910,21 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
   endif()
+
+  # port range (20000, 23000) is reserved for dist-ops
+  set(dist_ut_port 20001)
+  if(NOT WIN32)
+    bash_test_modules(
+      test_tcp_store
+      START_BASH
+      dist_test.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+    math(EXPR dist_ut_port "${dist_ut_port}+1")
+  endif()
+
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       bash_test_modules(test_c_comm_init_op START_BASH test_c_comm_init_op.sh
@@ -922,7 +960,6 @@ if(WITH_DISTRIBUTE)
     endif()
 
     # port range (20000, 23000) is reserved for dist-ops
-    set(dist_ut_port 20001)
     foreach(TEST_OP ${DIST_TEST_OPS})
       bash_test_modules(
         ${TEST_OP}
@@ -937,7 +974,7 @@ if(WITH_DISTRIBUTE)
         message(
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
-    endforeach(TEST_OP)
+    endforeach()
     # solve it later.
     bash_test_modules(
       test_fleet_launch_ps
@@ -973,15 +1010,15 @@ if(WITH_DISTRIBUTE)
         "PADDLE_DIST_UT_PORT=${dist_ut_port}+20"
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
-  endif(NOT APPLE)
+  endif()
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-# Coverage pipeline use cuda 10.1 now, profiler will random hang in cuda 10.1,
+# profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11 (py3 pipeline) now.
-if(NOT WITH_COVERAGE)
+# We guess there are some bugs in linux cuda 10.1 or 10.2,
+# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
+if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
   py_test_modules(test_parallel_executor_profiler MODULES
                   test_parallel_executor_profiler)
   set_tests_properties(test_parallel_executor_profiler
@@ -1171,6 +1208,11 @@ if(WITH_XPU_BKCL)
           SRCS "test_collective_allreduce_api.py")
 endif()
 
+if(WITH_HETERPS)
+  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+endif()
+
 if(WIN32)
   cc_test(
     cc_imp_py_test
@@ -1343,7 +1385,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1518,7 +1560,11 @@ if(WITH_DISTRIBUTE
                                                                          120)
   set_tests_properties(test_dygraph_sharding_stage2 PROPERTIES TIMEOUT 200)
   set_tests_properties(test_dygraph_sharding_stage3 PROPERTIES TIMEOUT 350)
+  set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
+                                                                         350)
   set_tests_properties(test_dygraph_group_sharded_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_dygraph_group_sharded_api_for_eager
+                       PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT 120)
   set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
@@ -1530,8 +1576,10 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT 60)
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
-
+  set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1608,6 +1656,8 @@ endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
                                                                        300)
+  set_tests_properties(test_imperative_auto_mixed_precision_for_eager
+                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
                                                                         120)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
@@ -1645,4 +1695,23 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
   set_tests_properties(test_imperative_mnist_sorted_gradient
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
+endif()
+
+if(WITH_CINN AND WITH_TESTING)
+  set_tests_properties(
+    test_resnet50_with_cinn
+    PROPERTIES
+      LABELS
+      "RUN_TYPE=CINN"
+      ENVIRONMENT
+      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
+  )
+  set_tests_properties(
+    test_parallel_executor_run_cinn
+    PROPERTIES
+      LABELS
+      "RUN_TYPE=CINN"
+      ENVIRONMENT
+      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
+  )
 endif()

@@ -130,6 +130,10 @@ def _conv_nd(x,
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
+            if isinstance(x, tuple):
+                x = x[0]
+            if isinstance(bias, tuple):
+                bias = bias[0]
             if len(bias.shape) < len(x.shape):
                 tmp_bias = _C_ops.final_state_reshape(
                     bias, bias.shape +
@@ -143,7 +147,7 @@ def _conv_nd(x,
     if in_dygraph_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.final_state_depthwise_conv2d(
             x, weight, stride, padding, padding_algorithm, groups, dilation,
-            data_format, False, -1, False, False)
+            data_format, False, -1, False, False, use_cudnn)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim

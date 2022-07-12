@@ -18,6 +18,7 @@ import unittest
 
 import os
 import six
+import tempfile
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -46,8 +47,9 @@ class InferModel(object):
 class TestBook(unittest.TestCase):
 
     def test_fit_line_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model"
-        UNI_MODEL_DIR = "./tmp/inference_model1"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model")
+        UNI_MODEL_DIR = os.path.join(root_path.name, "inference_model1")
 
         init_program = Program()
         program = Program()
@@ -59,7 +61,7 @@ class TestBook(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -118,6 +120,8 @@ class TestBook(unittest.TestCase):
             print("fetch %s" % str(model.fetch_vars[0]))
             self.assertEqual(expected, actual)
 
+        root_path.cleanup()
+
         self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
                           model_str, None)
 
@@ -125,7 +129,8 @@ class TestBook(unittest.TestCase):
 class TestSaveInferenceModel(unittest.TestCase):
 
     def test_save_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model2"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model2")
         init_program = Program()
         program = Program()
 
@@ -137,16 +142,18 @@ class TestSaveInferenceModel(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        root_path.cleanup()
 
     def test_save_inference_model_with_auc(self):
-        MODEL_DIR = "./tmp/inference_model4"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model4")
         init_program = Program()
         program = Program()
 
@@ -159,7 +166,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                                   label=y)
             cost = fluid.layers.cross_entropy(input=predict, label=y)
-            avg_cost = fluid.layers.mean(x=cost)
+            avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -168,6 +175,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             warnings.simplefilter("always")
             save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
                                  program)
+            root_path.cleanup()
             expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[0].message))
@@ -176,7 +184,8 @@ class TestSaveInferenceModel(unittest.TestCase):
 class TestInstance(unittest.TestCase):
 
     def test_save_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model3"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model3")
         init_program = Program()
         program = Program()
 
@@ -188,7 +197,7 @@ class TestInstance(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -202,12 +211,14 @@ class TestInstance(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+        root_path.cleanup()
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
 
     def test_save_and_load_inference_model(self):
-        MODEL_DIR = "./tmp/inference_model5"
+        root_path = tempfile.TemporaryDirectory()
+        MODEL_DIR = os.path.join(root_path.name, "inference_model5")
         init_program = fluid.default_startup_program()
         program = fluid.default_main_program()
 
@@ -219,7 +230,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -303,6 +314,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         model = InferModel(paddle.static.io.load_inference_model(
             MODEL_DIR, exe))
+        root_path.cleanup()
 
         outs = exe.run(model.program,
                        feed={
@@ -338,7 +350,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -381,7 +393,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)

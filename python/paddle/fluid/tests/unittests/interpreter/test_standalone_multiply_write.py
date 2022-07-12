@@ -36,8 +36,8 @@ class TestMultiplyWrite(TestCompatibility):
         return None
 
     def build_program(self):
-        main_program = paddle.static.default_main_program()
-        startup_program = paddle.static.default_startup_program()
+        main_program = Program()
+        startup_program = Program()
         with paddle.static.program_guard(main_program, startup_program):
             out = paddle.full((1, ), 1)
             inp1 = paddle.full((1, ), 2)

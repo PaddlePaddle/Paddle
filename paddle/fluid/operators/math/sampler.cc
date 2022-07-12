@@ -60,8 +60,10 @@ float LogUniformSampler::Probability(int64_t value) const {
   return (log((value + 2.0) / (value + 1.0))) / log_range_;
 }
 
-CustomSampler::CustomSampler(int64_t range, const float *probabilities,
-                             const int *alias, const float *alias_probabilities,
+CustomSampler::CustomSampler(int64_t range,
+                             const float *probabilities,
+                             const int *alias,
+                             const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
   random_engine_ = framework::GetCPURandomEngine(seed_);

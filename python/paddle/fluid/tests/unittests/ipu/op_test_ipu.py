@@ -216,42 +216,54 @@ class IPUOpTest(IPUTest):
             raise ValueError("output_dict is empty")
         cpu_fp32 = output_dict[ExecutionMode.CPU_FP32]
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
-        cpu_fp32 = np.asarray(cpu_fp32).astype(np.float32).flatten()
-        ipu_fp32 = np.asarray(ipu_fp32).astype(np.float32).flatten()
-        pass_check = np.allclose(ipu_fp32,
-                                 cpu_fp32,
-                                 rtol=self.rtol,
-                                 atol=self.atol)
-        if not pass_check:
-            max_atol = np.abs(ipu_fp32 - cpu_fp32).max()
-            cpu_fp32_abs = np.abs(cpu_fp32)
-            cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
-            max_rtol = (np.abs(ipu_fp32 - cpu_fp32) / cpu_fp32_abs).max()
-            raise AssertionError(
-                f"ipu_fp32 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
-            )
-
-        if check_shape:
-            self.assertTrue(cpu_fp32.shape == ipu_fp32.shape)
-
-        if ExecutionMode.IPU_FP16 in output_dict.keys():
-            ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
-            ipu_fp16 = np.asarray(ipu_fp16).astype(np.float32).flatten()
-            pass_check = np.allclose(ipu_fp16,
-                                     cpu_fp32,
-                                     rtol=self.rtol_fp16,
-                                     atol=self.atol_fp16)
+        if len(cpu_fp32) != len(ipu_fp32):
+            raise ValueError("different outputs number between ipu and cpu.")
+        for cpu_fp32_res, ipu_fp32_res in zip(cpu_fp32, ipu_fp32):
+            cpu_fp32_res = np.asarray(cpu_fp32_res).astype(np.float32).flatten()
+            ipu_fp32_res = np.asarray(ipu_fp32_res).astype(np.float32).flatten()
+            pass_check = np.allclose(ipu_fp32_res,
+                                     cpu_fp32_res,
+                                     rtol=self.rtol,
+                                     atol=self.atol)
             if not pass_check:
-                max_atol = np.abs(ipu_fp16 - cpu_fp32).max()
-                cpu_fp32_abs = np.abs(cpu_fp32)
+                max_atol = np.abs(ipu_fp32_res - cpu_fp32_res).max()
+                cpu_fp32_abs = np.abs(cpu_fp32_res)
                 cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
-                max_rtol = (np.abs(ipu_fp16 - cpu_fp32) / cpu_fp32_abs).max()
+                max_rtol = (np.abs(ipu_fp32_res - cpu_fp32_res) /
+                            cpu_fp32_abs).max()
                 raise AssertionError(
-                    f"ipu_fp16 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
+                    f"ipu_fp32 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
                 )
 
             if check_shape:
-                self.assertTrue(ipu_fp16.shape == cpu_fp32.shape)
+                self.assertTrue(cpu_fp32_res.shape == ipu_fp32_res.shape)
+
+        if ExecutionMode.IPU_FP16 in output_dict.keys():
+            ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
+            if len(cpu_fp32) != len(ipu_fp16):
+                raise ValueError(
+                    "different outputs number between ipu and cpu.")
+            for cpu_fp32_res, ipu_fp16_res in zip(cpu_fp32, ipu_fp16):
+                cpu_fp32_res = np.asarray(cpu_fp32_res).astype(
+                    np.float32).flatten()
+                ipu_fp16_res = np.asarray(ipu_fp16_res).astype(
+                    np.float32).flatten()
+                pass_check = np.allclose(ipu_fp16_res,
+                                         cpu_fp32_res,
+                                         rtol=self.rtol_fp16,
+                                         atol=self.atol_fp16)
+                if not pass_check:
+                    max_atol = np.abs(ipu_fp16_res - cpu_fp32_res).max()
+                    cpu_fp32_abs = np.abs(cpu_fp32_res)
+                    cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
+                    max_rtol = (np.abs(ipu_fp16_res - cpu_fp32_res) /
+                                cpu_fp32_abs).max()
+                    raise AssertionError(
+                        f"ipu_fp16 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
+                    )
+
+                if check_shape:
+                    self.assertTrue(ipu_fp16_res.shape == cpu_fp32_res.shape)
 
     # Execution Mode
     class ExecutionMode(IntEnum):

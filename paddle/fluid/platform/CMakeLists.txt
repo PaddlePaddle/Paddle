@@ -2,7 +2,7 @@ proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
-endif(WITH_GPU)
+endif()
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -19,7 +19,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/fluid/proto/profiler."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  else(NOT WIN32)
+  else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler/")
     add_custom_command(
@@ -31,7 +31,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/fluid/proto/profiler."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif(NOT WIN32)
+  endif()
 endif()
 
 cc_library(
@@ -270,6 +270,25 @@ cc_library(
 set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
+if(WITH_XPU)
+  cc_library(
+    device_event_xpu
+    SRCS device_event_xpu.cc
+    DEPS device_event_base xpu_info)
+  set(DEVICE_EVENT_LIBS
+      device_event_xpu
+      CACHE INTERNAL "device event libs")
+endif()
+
+if(WITH_ASCEND_CL)
+  cc_library(
+    device_event_npu
+    SRCS device_event_npu.cc
+    DEPS device_event_base npu_resource_pool)
+  set(DEVICE_EVENT_LIBS
+      device_event_npu
+      CACHE INTERNAL "device event libs")
+endif()
 
 if(WITH_GPU)
   nv_library(
@@ -288,6 +307,10 @@ if(WITH_GPU)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
+  nv_test(
+    device_context_test_cuda_graph
+    SRCS device_context_test_cuda_graph.cu
+    DEPS device_context gpu_info cuda_graph_with_memory_pool)
   nv_test(
     transform_test
     SRCS transform_test.cu
@@ -354,7 +377,9 @@ if(WITH_GPU)
          enforce
          dynload_cuda
          new_profiler
-         stats)
+         stats
+         op_proto_maker
+         shape_inference)
   nv_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc
@@ -363,7 +388,14 @@ elseif(WITH_ROCM)
   hip_library(
     profiler
     SRCS profiler.cc profiler.cu
-    DEPS os_info device_tracer gpu_info enforce new_profiler stats)
+    DEPS os_info
+         device_tracer
+         gpu_info
+         enforce
+         new_profiler
+         stats
+         op_proto_maker
+         shape_inference)
   hip_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc
@@ -372,7 +404,13 @@ else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS os_info device_tracer enforce new_profiler stats)
+    DEPS os_info
+         device_tracer
+         enforce
+         new_profiler
+         stats
+         op_proto_maker
+         shape_inference)
   cc_library(
     device_memory_aligment
     SRCS device_memory_aligment.cc

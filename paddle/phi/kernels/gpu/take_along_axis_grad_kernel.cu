@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/take_along_axis_grad_kernel.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/take_along_axis_grad_kernel.h"
 
 namespace phi {
 

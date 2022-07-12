@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#define LITE_WITH_CUDA 1
-#endif
-
 #ifdef LITE_SUBGRAPH_WITH_XPU
 #define LITE_WITH_XPU 1
 #endif
@@ -50,8 +46,8 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
     const std::string& name, const EngineConfig& cfg) {
   // config info for predictor.
   paddle::lite_api::CxxConfig lite_cxx_config;
-  lite_cxx_config.set_model_buffer(cfg.model.c_str(), cfg.model.size(),
-                                   cfg.param.c_str(), cfg.param.size());
+  lite_cxx_config.set_model_buffer(
+      cfg.model.c_str(), cfg.model.size(), cfg.param.c_str(), cfg.param.size());
   lite_cxx_config.set_valid_places(cfg.valid_places);
 #ifdef PADDLE_WITH_ARM
   lite_cxx_config.set_threads(cfg.cpu_math_library_num_threads);

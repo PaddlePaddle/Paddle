@@ -20,12 +20,6 @@ namespace paddle {
 namespace framework {
 class OpDesc;
 }  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -99,26 +93,31 @@ REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
+    elementwise_add_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_add_grad_grad, ops::ElementwiseOpDoubleGradWithoutDXDY,
+    elementwise_add_grad_grad,
+    ops::ElementwiseOpDoubleGradWithoutDXDY,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseDoubleGradNoBufVarsInferer,
     ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
+REGISTER_OPERATOR(elementwise_add_triple_grad,
+                  ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
 REGISTER_OPERATOR(
-    grad_add, paddle::operators::ElementwiseOp,
+    grad_add,
+    paddle::operators::ElementwiseOp,
     paddle::operators::ElementwiseAddOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

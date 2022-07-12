@@ -55,8 +55,12 @@ class FSPOpKernel : public framework::OpKernel<T> {
     y_mat_desc.stride_ = y_channel * height * width;
     y_mat_desc.trans_ = true;
 
-    blas.MatMul(*x, x_mat_desc, *y, y_mat_desc,
-                static_cast<T>(1.0 / (height * width)), output,
+    blas.MatMul(*x,
+                x_mat_desc,
+                *y,
+                y_mat_desc,
+                static_cast<T>(1.0 / (height * width)),
+                output,
                 static_cast<T>(0.0));
   }
 };
@@ -82,7 +86,8 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     if (d_x != nullptr) {
       d_x->mutable_data<T>(context.GetPlace());
-      set_zero(context.template device_context<DeviceContext>(), d_x,
+      set_zero(context.template device_context<DeviceContext>(),
+               d_x,
                static_cast<T>(0));
       auto* y = context.Input<Tensor>("Y");
       auto y_dims = y->dims();
@@ -103,13 +108,19 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       y_mat_desc.stride_ = y_channel * h * w;
       y_mat_desc.trans_ = false;
 
-      blas.MatMul(*d_out, d_out_mat_desc, *y, y_mat_desc,
-                  static_cast<T>(1.0 / (h * w)), d_x, static_cast<T>(0.0));
+      blas.MatMul(*d_out,
+                  d_out_mat_desc,
+                  *y,
+                  y_mat_desc,
+                  static_cast<T>(1.0 / (h * w)),
+                  d_x,
+                  static_cast<T>(0.0));
     }
 
     if (d_y != nullptr) {
       d_y->mutable_data<T>(context.GetPlace());
-      set_zero(context.template device_context<DeviceContext>(), d_y,
+      set_zero(context.template device_context<DeviceContext>(),
+               d_y,
                static_cast<T>(0));
       auto* x = context.Input<Tensor>("X");
       auto x_dims = x->dims();
@@ -130,8 +141,13 @@ class FSPGradOpKernel : public framework::OpKernel<T> {
       x_mat_desc.stride_ = x_channel * h * w;
       x_mat_desc.trans_ = false;
 
-      blas.MatMul(*d_out, d_out_mat_desc, *x, x_mat_desc,
-                  static_cast<T>(1.0 / (h * w)), d_y, static_cast<T>(0.0));
+      blas.MatMul(*d_out,
+                  d_out_mat_desc,
+                  *x,
+                  x_mat_desc,
+                  static_cast<T>(1.0 / (h * w)),
+                  d_y,
+                  static_cast<T>(0.0));
     }
   }
 };

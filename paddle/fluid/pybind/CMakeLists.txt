@@ -38,7 +38,8 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     tcp_store
-    new_profiler)
+    new_profiler
+    jit_layer)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -91,7 +92,7 @@ if(NOT WIN32)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
   endif()
-endif(NOT WIN32)
+endif()
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
@@ -100,11 +101,16 @@ endif()
 
 set(PYBIND_SRCS
     pybind.cc
-    exception.cc
+    imperative.cc
+    op_function.cc
+    inference_api.cc
+    ir.cc
+    bind_fleet_executor.cc
+    reader_py.cc
     protobuf.cc
+    exception.cc
     const_value.cc
     global_value_getter_setter.cc
-    reader_py.cc
     fleet_wrapper_py.cc
     heter_wrapper_py.cc
     ps_gpu_wrapper_py.cc
@@ -112,20 +118,27 @@ set(PYBIND_SRCS
     box_helper_py.cc
     metrics_py.cc
     data_set_py.cc
-    imperative.cc
-    ir.cc
     bind_cost_model.cc
-    bind_fleet_executor.cc
-    inference_api.cc
     compatible.cc
     io.cc
     generator_py.cc
     communication.cc
-    cuda_streams_py.cc)
+    cuda_streams_py.cc
+    jit.cc)
+
+execute_process(
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/generate_file_structures.py"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/")
+
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
+endif()
 
 if(NOT ON_INFER)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
-  if(WITH_NCCL)
+  if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
@@ -153,12 +166,12 @@ if(WITH_GLOO)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
   set(PYBIND_DEPS ${PYBIND_DEPS} imperative_gloo_context)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif(WITH_GLOO)
+endif()
 
 if(WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
-endif(WITH_CRYPTO)
+endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
@@ -169,7 +182,7 @@ if(WITH_PSLIB)
   endif()
   set_source_files_properties(
     heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-endif(WITH_PSLIB)
+endif()
 if(WITH_PSCORE)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
@@ -183,7 +196,8 @@ if(WITH_PSCORE)
   set_source_files_properties(
     fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
-  list(APPEND PYBIND_SRCS fleet_py.cc)
+  list(APPEND PYBIND_SRCS)
+  set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -223,15 +237,15 @@ if(WITH_PYTHON)
 
   if(WITH_XPU_BKCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
-  endif(WITH_XPU_BKCL)
+  endif()
 
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
-  endif(WITH_ASCEND_CL)
+  endif()
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
-  endif(WITH_CNCL)
+  endif()
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
@@ -253,10 +267,10 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
+  set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function.cc)
   set(tmp_impl_file ${impl_file}.tmp)
   set(eager_impl_file
-      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function_impl.h)
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
@@ -316,7 +330,7 @@ if(WITH_PYTHON)
         DEPENDS mklml)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
-    else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+    else()
       add_custom_command(
         OUTPUT ${op_impl_path}/openblas.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_impl_path}
@@ -370,23 +384,16 @@ if(WITH_PYTHON)
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
         DEPENDS ${EAGER_OP_IMPL_DEPS})
     endif()
-  else(WIN32)
+  else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      if(APPLE)
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
-      else()
-        set(PADDLE2ONNX_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
-        set(ONNXRUNTIME_PYBIND_OUT
-            ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
-      endif()
+      set(PADDLE2ONNX_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${PADDLE2ONNX_LIB_NAME})
+      set(ONNXRUNTIME_PYBIND_OUT
+          ${CMAKE_CURRENT_BINARY_DIR}/${ONNXRUNTIME_LIB_NAME})
 
       add_custom_command(
         OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
@@ -446,7 +453,7 @@ if(WITH_PYTHON)
         DEPENDS ${EAGER_OP_IMPL_DEPS}
         VERBATIM)
     endif()
-  endif(WIN32)
+  endif()
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_op_function_generator_cmd ALL
@@ -462,40 +469,46 @@ if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS op_function_common)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    cc_library(
-      paddle_eager
-      SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc
-           eager_utils.cc eager_py_layer.cc
-      DEPS eager_api
-           autograd_meta
-           backward
-           grad_node_info
-           phi
-           op_function_common
-           final_dygraph_function
-           final_dygraph_node
-           dygraph_function
-           dygraph_node
-           accumulation_node
-           py_layer_node
-           global_utils
-           utils
-           python
-           custom_operator
-           custom_operator_node)
-    add_dependencies(paddle_eager eager_codegen)
-    add_dependencies(paddle_eager eager_op_function_generator_cmd)
-    list(APPEND PYBIND_DEPS paddle_eager)
+    set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_functions.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_method.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_properties.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_utils.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_py_layer.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_final_state_op_function.cc ${PYBIND_SRCS})
+    list(APPEND PYBIND_DEPS eager_api)
+    list(APPEND PYBIND_DEPS autograd_meta)
+    list(APPEND PYBIND_DEPS backward)
+    list(APPEND PYBIND_DEPS grad_node_info)
+    list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS op_function_common)
+    list(APPEND PYBIND_DEPS final_dygraph_function)
+    list(APPEND PYBIND_DEPS final_dygraph_node)
+    list(APPEND PYBIND_DEPS dygraph_function)
+    list(APPEND PYBIND_DEPS dygraph_node)
+    list(APPEND PYBIND_DEPS accumulation_node)
+    list(APPEND PYBIND_DEPS py_layer_node)
+    list(APPEND PYBIND_DEPS global_utils)
+    list(APPEND PYBIND_DEPS utils)
+    list(APPEND PYBIND_DEPS python)
+    list(APPEND PYBIND_DEPS custom_operator)
+    list(APPEND PYBIND_DEPS custom_operator_node)
   endif()
 
   cc_library(
     paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+    add_dependencies(paddle_pybind eager_codegen)
+    add_dependencies(paddle_pybind eager_op_function_generator_cmd)
+  endif()
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
-  endif(NOT APPLE AND NOT WIN32)
+  endif()
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
@@ -504,4 +517,4 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
   add_dependencies(paddle_pybind op_function_generator_cmd)
-endif(WITH_PYTHON)
+endif()

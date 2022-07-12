@@ -28,14 +28,16 @@ class VarDesc;
 }  // namespace paddle
 
 PADDLE_DEFINE_EXPORTED_double(
-    fuse_parameter_memory_size, -1.0,  // MBytes
+    fuse_parameter_memory_size,
+    -1.0,  // MBytes
     "fuse_parameter_memory_size is up limited memory size(MB)"
     "of one group parameters' gradient which is the input "
     "of communication calling(e.g NCCLAllReduce). "
     "The default value is 0, it means that "
     "not set group according to memory_size.");
 PADDLE_DEFINE_EXPORTED_int32(
-    fuse_parameter_groups_size, 1,
+    fuse_parameter_groups_size,
+    1,
     "fuse_parameter_groups_size is the up limited size of one group "
     "parameters' gradient. "
     "The default value is a experimental result. If the "
@@ -119,14 +121,16 @@ class CoalesceGradTensorPass : public ir::Pass {
     p_g_dense_grad.clear();
     p_g_dense_grad.reserve(num_of_p_g_dense_grad);
     for (auto &group_p_g : group_params_grads) {
-      p_g_dense_grad.insert(p_g_dense_grad.end(), group_p_g.begin(),
-                            group_p_g.end());
+      p_g_dense_grad.insert(
+          p_g_dense_grad.end(), group_p_g.begin(), group_p_g.end());
     }
-    PADDLE_ENFORCE_EQ(p_g_dense_grad.size(), num_of_p_g_dense_grad,
+    PADDLE_ENFORCE_EQ(p_g_dense_grad.size(),
+                      num_of_p_g_dense_grad,
                       platform::errors::InvalidArgument(
                           "The number of dense grads is not consistent with "
                           "previous. Previous(%d), now(%d).",
-                          p_g_dense_grad.size(), num_of_p_g_dense_grad));
+                          p_g_dense_grad.size(),
+                          num_of_p_g_dense_grad));
 
     auto &pinned_var_set =
         graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
@@ -137,7 +141,8 @@ class CoalesceGradTensorPass : public ir::Pass {
       for (auto &sub_param_grad : group_params_grads) {
         RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
         PADDLE_ENFORCE_EQ(
-            IsUnifiedDtype(sub_param_grad, vars_info), true,
+            IsUnifiedDtype(sub_param_grad, vars_info),
+            true,
             platform::errors::InvalidArgument("All gradient variable in "
                                               "kGroupParamsAndDenseGrads, must "
                                               "have same type."));
@@ -153,11 +158,13 @@ class CoalesceGradTensorPass : public ir::Pass {
     // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
-      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true,
+      PADDLE_ENFORCE_EQ(iter != vars_info.end(),
+                        true,
                         platform::errors::NotFound(
                             "Parameter@Grad %s is not found.", p_g.second));
       PADDLE_ENFORCE_EQ(
-          !iter->second.empty(), true,
+          !iter->second.empty(),
+          true,
           platform::errors::InvalidArgument(
               "Parameter@Grad %s's var node is empty.", p_g.second));
       for (auto it : iter->second) {
@@ -192,7 +199,8 @@ class CoalesceGradTensorPass : public ir::Pass {
 
   void CoalesceTensors(
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
-      const details::ParamsAndGrads &params_grads, Graph *result) const {
+      const details::ParamsAndGrads &params_grads,
+      Graph *result) const {
     // Create a FusedVarsSet to avoid duplicating names for fused_var in other
     // pass.
     if (!result->Has(details::kFusedVars)) {
@@ -233,7 +241,8 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     auto &fused_var_set = result->Get<details::FusedVars>(details::kFusedVars);
     PADDLE_ENFORCE_EQ(
-        fused_var_set.count(fused_grad_var_name), 0,
+        fused_var_set.count(fused_grad_var_name),
+        0,
         platform::errors::AlreadyExists("Var(%s) is duplicate in FusedVars.",
                                         fused_grad_var_name));
     fused_var_set.insert({fused_grad_var_name, var_info});
@@ -241,8 +250,8 @@ class CoalesceGradTensorPass : public ir::Pass {
     result->Get<details::FusedGrads>(details::kFusedGrads)
         .emplace_back(fused_grad_var_name);
 
-    InitFusedVarsAndAllocSpaceForVars(vars_info, fused_grad_var_name,
-                                      params_grads, result);
+    InitFusedVarsAndAllocSpaceForVars(
+        vars_info, fused_grad_var_name, params_grads, result);
   }
 
   template <typename AttrType>
@@ -319,8 +328,9 @@ class CoalesceGradTensorPass : public ir::Pass {
         auto var_desc = GetVarDescFromVarsInfo(vars_info, p_g.first);
         auto shape = var_desc->GetShape();
         size_t size = framework::SizeOfType(var_desc->GetDataType());
-        std::for_each(shape.begin(), shape.end(),
-                      [&size](const int64_t &n) { size *= n; });
+        std::for_each(shape.begin(), shape.end(), [&size](const int64_t &n) {
+          size *= n;
+        });
         gps_size += size;
         out << string::Sprintf("(%s(%d), %s)", p_g.first, size, p_g.second);
       }
@@ -354,12 +364,14 @@ class CoalesceGradTensorPass : public ir::Pass {
           auto var_desc = GetVarDescFromVarsInfo(vars_info, p_g_iter.second);
           size_t size = framework::SizeOfType(var_desc->GetDataType());
           auto shape = var_desc->GetShape();
-          std::for_each(shape.begin(), shape.end(),
-                        [&size](const int64_t &n) { size *= n; });
+          std::for_each(shape.begin(), shape.end(), [&size](const int64_t &n) {
+            size *= n;
+          });
           local_group_memory_size += size;
         }
 
-        group_p_g.insert(group_p_g.end(), group_params_grads->at(j).begin(),
+        group_p_g.insert(group_p_g.end(),
+                         group_params_grads->at(j).begin(),
                          group_params_grads->at(j).end());
 
         ++j;
@@ -478,9 +490,11 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::string &var_name) const {
     auto grad_iter = vars_info.find(var_name);
     PADDLE_ENFORCE_EQ(
-        grad_iter != vars_info.end(), true,
+        grad_iter != vars_info.end(),
+        true,
         platform::errors::NotFound("Variable %s is not found.", var_name));
-    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true,
+    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Variable %s's node is empty.", var_name));
     PADDLE_ENFORCE_NOT_NULL(
@@ -514,7 +528,8 @@ class CoalesceGradTensorPass : public ir::Pass {
   void InitFusedVarsAndAllocSpaceForVars(
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &fused_var_name,
-      const details::ParamsAndGrads &params_grads, ir::Graph *result) const {
+      const details::ParamsAndGrads &params_grads,
+      ir::Graph *result) const {
     // Alloc continuous space for vars.
     std::vector<std::string> grads_name;
     std::vector<std::string> params_name;
@@ -526,12 +541,13 @@ class CoalesceGradTensorPass : public ir::Pass {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
       auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
-      PADDLE_ENFORCE_EQ(
-          next_dtype, dtype,
-          platform::errors::InvalidArgument(
-              "All Parameter@Grad should have same dtype, but "
-              "there are two different type: %s, %s.",
-              DataTypeToString(next_dtype), DataTypeToString(dtype)));
+      PADDLE_ENFORCE_EQ(next_dtype,
+                        dtype,
+                        platform::errors::InvalidArgument(
+                            "All Parameter@Grad should have same dtype, but "
+                            "there are two different type: %s, %s.",
+                            DataTypeToString(next_dtype),
+                            DataTypeToString(dtype)));
     }
 
     bool any_persistable = false;
@@ -553,8 +569,12 @@ class CoalesceGradTensorPass : public ir::Pass {
           result->Get<details::ProgramDescs>(details::kStartupProgramDescs)
               .back();
       auto *global_block = program_desc.MutableBlock(0);
-      AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
-                                all_persistable, global_block);
+      AppendAllocSpaceForVarsOp(params_name,
+                                grads_name,
+                                fused_var_name,
+                                dtype,
+                                all_persistable,
+                                global_block);
     } else {
       // NOTE. In scope_buffered_ssa_graph_executor, after each execution of
       // DropScope(), non persistable vars will be Erase or Clear. So
@@ -564,8 +584,12 @@ class CoalesceGradTensorPass : public ir::Pass {
       ProgramDesc &program_desc =
           result->Get<details::ProgramDescs>(details::kProgramDescs).back();
       auto *global_block = program_desc.MutableBlock(0);
-      AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
-                                any_persistable, global_block);
+      AppendAllocSpaceForVarsOp(params_name,
+                                grads_name,
+                                fused_var_name,
+                                dtype,
+                                any_persistable,
+                                global_block);
     }
   }
 

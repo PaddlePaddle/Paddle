@@ -195,7 +195,8 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
-  explicit ZeroCopyTensor(void* scope) : paddle_infer::Tensor{scope} {}
+  explicit ZeroCopyTensor(void* scope, const void* device_contexts)
+      : paddle_infer::Tensor{scope, device_contexts} {}
 };
 
 /// \brief A Predictor for executing inference on a model.
@@ -286,7 +287,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
   /// \return unique_ptr which contains the pointer of predictor
-  virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
+  virtual std::unique_ptr<PaddlePredictor> Clone(void* stream = nullptr) = 0;
 
   /// \brief Destroy the Predictor.
   virtual ~PaddlePredictor() = default;
@@ -300,6 +301,11 @@ class PD_INFER_DECL PaddlePredictor {
   struct Config {
     std::string model_dir; /*!< path to the model directory. */
   };
+
+  virtual void* GetExecStream() const { return nullptr; }
+
+ protected:
+  virtual const void* GetDeviceContexts() const { return nullptr; }
 };
 
 ///
@@ -447,10 +453,12 @@ class PD_INFER_DECL InternalUtils {
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);
   template <typename T>
-  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t, const T* data,
+  static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t,
+                                      const T* data,
                                       cudaStream_t stream);
   template <typename T>
-  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t, T* data,
+  static void CopyToCpuWithIoStream(paddle_infer::Tensor* t,
+                                    T* data,
                                     cudaStream_t stream);
 };
 }  // namespace experimental

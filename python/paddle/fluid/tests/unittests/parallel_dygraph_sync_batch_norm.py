@@ -94,7 +94,7 @@ class TestSyncBatchNorm(TestParallelDyGraphRunnerBase):
 
         out = model(img)
 
-        out = fluid.layers.mean(out)
+        out = paddle.mean(out)
 
         return out
 

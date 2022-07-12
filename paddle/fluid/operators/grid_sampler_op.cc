@@ -42,8 +42,10 @@ class GridSampleOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        framework::DataLayout::kAnyLayout, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout,
+        library_);
   }
 };
 
@@ -151,8 +153,10 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        framework::DataLayout::kAnyLayout, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout,
+        library_);
   }
 };
 
@@ -179,15 +183,20 @@ class GridSampleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler, GridSamplerInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler,
+                            GridSamplerInferShapeFunctor,
                             PD_INFER_META(phi::GridSampleBaseInferMeta));
-REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
+REGISTER_OPERATOR(grid_sampler,
+                  ops::GridSampleOp,
+                  ops::GridSampleOpMaker,
                   ops::GridSampleGradMaker<paddle::framework::OpDesc>,
                   ops::GridSampleGradMaker<paddle::imperative::OpBase>,
                   GridSamplerInferShapeFunctor);
-DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler_grad, GridSamplerGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(grid_sampler_grad,
+                            GridSamplerGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
-REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad,
+REGISTER_OPERATOR(grid_sampler_grad,
+                  ops::GridSampleOpGrad,
                   GridSamplerGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(grid_sampler)

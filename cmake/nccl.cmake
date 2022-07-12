@@ -50,10 +50,8 @@ if(WITH_NCCL)
     endif()
     add_definitions("-DNCCL_VERSION_CODE=$NCCL_VERSION")
 
-    message(
-      STATUS
-        "Current NCCL header is ${NCCL_INCLUDE_DIR}/nccl.h. "
-        "Current NCCL version is v${NCCL_MAJOR_VERSION}.${NCCL_MINOR_VERSION}.${NCCL_PATCH_VERSION} "
-    )
+    message(STATUS "Current NCCL header is ${NCCL_INCLUDE_DIR}/nccl.h. "
+                   "Current NCCL version is \
+        v${NCCL_MAJOR_VERSION}.${NCCL_MINOR_VERSION}.${NCCL_PATCH_VERSION} ")
   endif()
 endif()

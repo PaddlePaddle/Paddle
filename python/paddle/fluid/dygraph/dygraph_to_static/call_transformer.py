@@ -18,11 +18,12 @@ from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 PDB_SET = "pdb.set_trace"
 
 
-class CallTransformer(gast.NodeTransformer):
+class CallTransformer(BaseTransformer):
     """
     This class transforms function calls into Static Graph Ast.
     """
@@ -71,7 +72,7 @@ class CallTransformer(gast.NodeTransformer):
         if PDB_SET in func_str:
             return node
 
-        new_func_str = "_jst.convert_call({})".format(func_str)
+        new_func_str = "_jst.Call({})".format(func_str)
         new_func_ast = gast.parse(new_func_str).body[0].value
         node.func = new_func_ast
 

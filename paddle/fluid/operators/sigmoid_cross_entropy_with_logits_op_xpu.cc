@@ -33,7 +33,8 @@ class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::Unavailable("This kernel only runs on XPU."));
 
     // input and output data
@@ -54,9 +55,13 @@ class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {
         hit, platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
 
     int r = xpu::sigmoid_cross_entropy_with_logits(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input->data<T>()),
         reinterpret_cast<const XPUType*>(label->data<T>()),
-        reinterpret_cast<XPUType*>(output->data<T>()), 1, input->numel(), hit,
+        reinterpret_cast<XPUType*>(output->data<T>()),
+        1,
+        input->numel(),
+        hit,
         ignore_index);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
     if (normalize) {
@@ -66,17 +71,22 @@ class SigmoidCrossEntropyWithLogitsXPUKernel : public framework::OpKernel<T> {
           platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
       int r = xpu::nonzero_count(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(hit),
-                                 non_zero, input->numel());
+                                 non_zero,
+                                 input->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
       int non_zero_cpu = 0;
-      memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
-                   context.GetPlace(), static_cast<void*>(non_zero),
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&non_zero_cpu),
+                   context.GetPlace(),
+                   static_cast<void*>(non_zero),
                    sizeof(int));
       r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(output->data<T>()),
                      reinterpret_cast<XPUType*>(output->data<T>()),
-                     input->numel(), false,
-                     1.0f / static_cast<float>(non_zero_cpu), 0.0f);
+                     input->numel(),
+                     false,
+                     1.0f / static_cast<float>(non_zero_cpu),
+                     0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
@@ -90,7 +100,8 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(context.GetPlace()), true,
+        platform::is_xpu_place(context.GetPlace()),
+        true,
         platform::errors::Unavailable("This kernel only runs on XPU."));
 
     // input and output data
@@ -112,10 +123,14 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
         hit, platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
 
     int r = xpu::sigmoid_cross_entropy_with_logits_grad(
-        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(input->data<T>()),
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input->data<T>()),
         reinterpret_cast<const XPUType*>(label->data<T>()),
         reinterpret_cast<const XPUType*>(dy->data<T>()),
-        reinterpret_cast<XPUType*>(dx->data<T>()), 1, input->numel(), hit,
+        reinterpret_cast<XPUType*>(dx->data<T>()),
+        1,
+        input->numel(),
+        hit,
         ignore_index);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
     if (normalize) {
@@ -125,16 +140,22 @@ class SigmoidCrossEntropyWithLogitsGradXPUKernel
           platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
       int r = xpu::nonzero_count(dev_ctx.x_context(),
                                  reinterpret_cast<const XPUType*>(hit),
-                                 non_zero, input->numel());
+                                 non_zero,
+                                 input->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
       int non_zero_cpu = 0;
-      memory::Copy(platform::CPUPlace(), static_cast<void*>(&non_zero_cpu),
-                   context.GetPlace(), static_cast<void*>(non_zero),
+      memory::Copy(platform::CPUPlace(),
+                   static_cast<void*>(&non_zero_cpu),
+                   context.GetPlace(),
+                   static_cast<void*>(non_zero),
                    sizeof(int));
       r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(dx->data<T>()),
-                     reinterpret_cast<XPUType*>(dx->data<T>()), input->numel(),
-                     false, 1.0f / static_cast<float>(non_zero_cpu), 0.0f);
+                     reinterpret_cast<XPUType*>(dx->data<T>()),
+                     input->numel(),
+                     false,
+                     1.0f / static_cast<float>(non_zero_cpu),
+                     0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
@@ -147,10 +168,12 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(sigmoid_cross_entropy_with_logits,
                        ops::SigmoidCrossEntropyWithLogitsXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+                           paddle::platform::XPUDeviceContext,
+                           float>);
 
 REGISTER_OP_XPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradXPUKernel<
-                           paddle::platform::XPUDeviceContext, float>);
+                           paddle::platform::XPUDeviceContext,
+                           float>);
 
 #endif

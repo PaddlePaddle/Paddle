@@ -49,9 +49,16 @@ int test_predictor(const AnalysisConfig& config_in,
 
   std::vector<PaddleTensor> outputs;
   predictor->Run(inputs, &outputs);
-  const std::vector<float> truth_values = {
-      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
-      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
+  const std::vector<float> truth_values = {-0.00621776f,
+                                           -0.00620937f,
+                                           0.00990623f,
+                                           -0.0039817f,
+                                           -0.00074315f,
+                                           0.61229795f,
+                                           -0.00491806f,
+                                           -0.00068755f,
+                                           0.18409646f,
+                                           0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
@@ -88,9 +95,16 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
   std::vector<float> data_o(10);
   out_tensor->copy_to_cpu(data_o.data());
 
-  const std::vector<float> truth_values = {
-      -0.00621776f, -0.00620937f, 0.00990623f,  -0.0039817f, -0.00074315f,
-      0.61229795f,  -0.00491806f, -0.00068755f, 0.18409646f, 0.30090684f};
+  const std::vector<float> truth_values = {-0.00621776f,
+                                           -0.00620937f,
+                                           0.00990623f,
+                                           -0.0039817f,
+                                           -0.00074315f,
+                                           0.61229795f,
+                                           -0.00491806f,
+                                           -0.00068755f,
+                                           0.18409646f,
+                                           0.30090684f};
   const size_t expected_size = 1;
   EXPECT_EQ(predictor->GetOutputNames().size(), expected_size);
   for (size_t j = 0; j < truth_values.size(); ++j) {
@@ -120,35 +134,13 @@ TEST(AnalysisPredictor, lite_xpu) {
 }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(AnalysisPredictor, thread_local_stream) {
-  const size_t thread_num = 5;
-  std::vector<std::thread> threads(thread_num);
-  Barrier barrier(thread_num);
-  for (size_t i = 0; i < threads.size(); ++i) {
-    threads[i] = std::thread([&barrier, i]() {
-      AnalysisConfig config;
-      config.EnableUseGpu(100, 0);
-      config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-      config.EnableGpuMultiStream();
-      test_predictor(config, &barrier);
-      test_predictor_zero_copy(config);
-    });
-  }
-  for (auto& th : threads) {
-    th.join();
-  }
-}
-
 TEST(AnalysisPredictor, lite_engine) {
   AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(FLAGS_infer_model + "/" + "mul_model");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
   test_predictor(config);
   test_predictor_zero_copy(config);
 }
-#endif
 
 }  // namespace inference
 }  // namespace paddle

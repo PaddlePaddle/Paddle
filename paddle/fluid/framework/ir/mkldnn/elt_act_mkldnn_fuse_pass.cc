@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -26,61 +27,40 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {
-      "relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt",
-      "abs",  "clip", "gelu",       "relu6", "sigmoid"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
-                                        "elementwise_mul"};
+  auto act_types = paddle::platform::GetSupportedActivations();
+  std::vector<std::string> elt_types = {
+      "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
-      std::unordered_map<std::string, std::string> attr_map;
-
-      if (act_type == "swish")
-        attr_map.emplace("beta", "activation_alpha");
-      else if (act_type == "relu6")
-        attr_map.emplace("threshold", "activation_alpha");
-      else if (act_type == "clip") {
-        attr_map.emplace("min", "activation_alpha");
-        attr_map.emplace("max", "activation_beta");
-      } else {
-        attr_map.emplace("alpha", "activation_alpha");
-        attr_map.emplace("beta", "activation_beta");
-      }
-      FuseElementwiseAct(graph, elt_type, act_type, attr_map);
+      FuseElementwiseAct(graph, elt_type, act_type);
     }
 }
 
 void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
-    Graph *graph, const std::string &elt_type, const std::string &act_type,
-    const std::unordered_map<std::string, std::string> &attr_map) const {
+    Graph *graph,
+    const std::string &elt_type,
+    const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("elementwise_act", graph);
+  FusePassBase::Init(elt_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
-  auto *elementwise_input = gpd.mutable_pattern()
-                                ->NewNode(elt_type + "_act/elementwise_input")
-                                ->AsInput()
-                                ->assert_is_op_input(elt_type, "X");
-  patterns::ElementwiseActivation elementwise_act_pattern(gpd.mutable_pattern(),
-                                                          elt_type + "_act");
-  elementwise_act_pattern(elementwise_input, elt_type, act_type);
+  patterns::OperatorActivation elementwise_act_pattern(gpd.mutable_pattern(),
+                                                       elt_type + "_act");
+  elementwise_act_pattern(elt_type, act_type);
 
   int found_elementwise_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
-    // Elementwise output
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
-                              elementwise_act_pattern);
-    // ACT output
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out,
-                              elementwise_act_pattern);
-    // ops
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise,
-                              elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise, preceding_op, elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_out, preceding_op_out, elementwise_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        activation_out, activation_out, elementwise_act_pattern);
 
     auto *elementwise_op = elementwise->Op();
 
@@ -88,13 +68,15 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
       const std::string wo_elt_type =
           "The " + elt_type;  // Workaround for PP error message checking.
       PADDLE_ENFORCE_EQ(
-          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")), true,
+          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
+          true,
           platform::errors::PreconditionNotMet(
               wo_elt_type + "+Act fusion may happen only when oneDNN library "
                             "is used."));
     }
 
     auto *activation_op = activation->Op();
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         elementwise_op->SetAttr(attr.second,
@@ -104,9 +86,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
     if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
         BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
-      elementwise_op->SetAttr("activation_type", std::string("gelu_tanh"));
+      elementwise_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
-      elementwise_op->SetAttr("activation_type", act_type);
+      elementwise_op->SetAttr("fuse_activation", act_type);
 
     elementwise_op->SetOutput("Out", {activation_out->Name()});
 
@@ -118,7 +100,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
   PrettyLogDetail("---    fused %d %s with %s activation",
-                  found_elementwise_activation_count, elt_type, act_type);
+                  found_elementwise_activation_count,
+                  elt_type,
+                  act_type);
 }
 
 }  // namespace ir
@@ -133,14 +117,16 @@ REGISTER_PASS_CAPABILITY(elt_act_mkldnn_fuse_pass)
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)
             .LE("elementwise_mul", 1)
-            .LE("relu", 0)
-            .LE("tanh", 0)
-            .LE("leaky_relu", 1)
-            .LE("swish", 0)
-            .LE("hard_swish", 0)
-            .LE("sqrt", 0)
-            .LE("abs", 0)
+            .EQ("abs", 0)
             .LE("clip", 1)
-            .LE("gelu", 0)
-            .LE("relu6", 0)
-            .LE("sigmoid", 0));
+            .EQ("gelu", 0)
+            .EQ("hard_sigmoid", 0)
+            .LE("hard_swish", 0)
+            .LE("leaky_relu", 1)
+            .LE("mish", 1)
+            .EQ("relu", 0)
+            .EQ("relu6", 0)
+            .EQ("sigmoid", 0)
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));

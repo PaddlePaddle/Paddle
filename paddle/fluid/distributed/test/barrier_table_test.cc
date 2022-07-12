@@ -26,7 +26,6 @@ namespace paddle {
 namespace distributed {
 
 TEST(BarrierTable, Barrier) {
-  int emb_dim = 10;
   int trainers = 2;
   bool sync = true;
 

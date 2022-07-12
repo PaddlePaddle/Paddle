@@ -100,9 +100,10 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(merged_momentum, ops::MergedMomentumOp,
+REGISTER_OP_WITHOUT_GRADIENT(merged_momentum,
+                             ops::MergedMomentumOp,
                              ops::MergedMomentumOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    merged_momentum, ops::MergedMomentumOpKernel<plat::CPUDeviceContext, float>,
-    ops::MergedMomentumOpKernel<plat::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(merged_momentum,
+                       ops::MergedMomentumOpKernel<phi::CPUContext, float>,
+                       ops::MergedMomentumOpKernel<phi::CPUContext, double>);

@@ -32,21 +32,24 @@ class OverlapAddOp : public framework::OperatorWithKernel {
     const int x_rank = x_dims.size();
 
     PADDLE_ENFORCE_GE(
-        x_rank, 2,
+        x_rank,
+        2,
         platform::errors::InvalidArgument(
             "Input(X) of OverlapAddOp should be a tensor which contains "
             "at least 2 dimensions, but got rank %s.",
             x_rank));
 
     PADDLE_ENFORCE_GT(
-        hop_length, 0,
+        hop_length,
+        0,
         platform::errors::InvalidArgument(
             "Attribute(hop_length) of OverlapAddOp should be greater "
             "than 0, but got %s.",
             hop_length));
 
     PADDLE_ENFORCE_EQ(
-        (axis == 0 || axis == -1), true,
+        (axis == 0 || axis == -1),
+        true,
         platform::errors::InvalidArgument(
             "Attribute(axis) of OverlapAddOp should 0 or -1, but got %s.",
             axis));
@@ -74,11 +77,13 @@ class OverlapAddOp : public framework::OperatorWithKernel {
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_LE(
-          hop_length, frame_length,
+          hop_length,
+          frame_length,
           platform::errors::InvalidArgument(
               "Attribute(hop_length) of OverlapAddOp should be less or equal "
               "than frame_length, but got hop_length(%s) > frame_length(%s).",
-              hop_length, frame_length));
+              hop_length,
+              frame_length));
     }
 
     if (n_frames == -1) {
@@ -134,8 +139,10 @@ class OverlapAddOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "overlap_add_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "overlap_add_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "overlap_add_grad");
     const auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -169,29 +176,30 @@ class OverlapAddOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(overlap_add, ops::OverlapAddOp, ops::OverlapAddOpMaker,
+REGISTER_OPERATOR(overlap_add,
+                  ops::OverlapAddOp,
+                  ops::OverlapAddOpMaker,
                   ops::OverlapAddOpGradMaker<paddle::framework::OpDesc>,
                   ops::OverlapAddOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(overlap_add_grad, ops::OverlapAddOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    overlap_add, ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::OverlapAddKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex<double>>);
+    overlap_add,
+    ops::OverlapAddKernel<phi::CPUContext, int>,
+    ops::OverlapAddKernel<phi::CPUContext, int64_t>,
+    ops::OverlapAddKernel<phi::CPUContext, float>,
+    ops::OverlapAddKernel<phi::CPUContext, double>,
+    ops::OverlapAddKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::OverlapAddKernel<phi::CPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     overlap_add_grad,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext,
+    ops::OverlapAddGradKernel<phi::CPUContext, int>,
+    ops::OverlapAddGradKernel<phi::CPUContext, int64_t>,
+    ops::OverlapAddGradKernel<phi::CPUContext, float>,
+    ops::OverlapAddGradKernel<phi::CPUContext, double>,
+    ops::OverlapAddGradKernel<phi::CPUContext,
                               paddle::platform::complex<float>>,
-    ops::OverlapAddGradKernel<paddle::platform::CPUDeviceContext,
+    ops::OverlapAddGradKernel<phi::CPUContext,
                               paddle::platform::complex<double>>);

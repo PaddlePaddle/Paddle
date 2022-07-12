@@ -109,7 +109,7 @@ if(WIN32)
     COMMENT "Packing whl packages------>>>"
     DEPENDS copy_paddle_pybind ${FLUID_CORE} framework_py_proto
             profiler_py_proto pass_desc_py_proto ${PY_FILES})
-else(WIN32)
+else()
   add_custom_command(
     OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc

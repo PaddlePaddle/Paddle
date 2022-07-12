@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import numpy as np
+import tempfile
+import unittest
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 import paddle.nn as nn
-import os
 
 
 class SimpleFCLayer(nn.Layer):
@@ -54,6 +56,10 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         self.fc_size = 2
         self.layer = self._train_simple_net()
         self.type_str = 'class'
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_trace_err(self):
         if fluid.framework.in_dygraph_mode():
@@ -122,7 +128,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x])
 
-            path = './traced_layer_err_msg'
+            path = os.path.join(self.temp_dir.name, './traced_layer_err_msg')
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model([0])
             self.assertEqual(
@@ -193,10 +199,14 @@ class TestTracedLayerSaveInferenceModel(unittest.TestCase):
     """test save_inference_model will automaticlly create non-exist dir"""
 
     def setUp(self):
-        self.save_path = "./nonexist_dir/fc"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.save_path = os.path.join(self.temp_dir.name, "./nonexist_dir/fc")
         import shutil
         if os.path.exists(os.path.dirname(self.save_path)):
             shutil.rmtree(os.path.dirname(self.save_path))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_mkdir_when_input_path_non_exist(self):
         if fluid.framework.in_dygraph_mode():

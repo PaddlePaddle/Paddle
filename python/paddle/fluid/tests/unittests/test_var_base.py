@@ -1776,7 +1776,7 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             b = a**2
             self.assertEqual(a._grad_value(), None)
             b.backward()
-            self.assertEqual('eager_tmp' in a._grad_name(), True)
+            self.assertEqual('eager_in_tmp' in a._grad_name(), True)
             self.assertNotEqual(a._grad_value(), None)
 
 

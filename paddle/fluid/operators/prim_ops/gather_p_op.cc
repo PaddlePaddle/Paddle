@@ -68,7 +68,8 @@ class GatherPrimOpShapeInference : public framework::InferShapeBase {
       framework::VarDesc *index_var =
           BOOST_GET(framework::VarDesc *, index_var_ptr);
       auto index_shape = index_var->GetShape();
-      PADDLE_ENFORCE_EQ(index_shape.size(), 1,
+      PADDLE_ENFORCE_EQ(index_shape.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The index tensor should be a 1D tensor,"
                             "but get rank %d",
@@ -97,11 +98,13 @@ class GatherPrimOpVarTypeInference
       auto index_name = Input(ctx, "IndexTensor")[0];
       auto index_dtype = GetDataType(ctx, index_name);
       PADDLE_ENFORCE_EQ(
-          index_dtype, framework::proto::VarType_Type_INT32,
+          index_dtype,
+          framework::proto::VarType_Type_INT32,
           platform::errors::InvalidArgument(
               "The datatype of input tensor should be VarType_Type_INT32(%d), "
               "but get %d",
-              framework::proto::VarType_Type_INT32, index_dtype));
+              framework::proto::VarType_Type_INT32,
+              index_dtype));
     }
     SetType(ctx, y_name, GetType(ctx, x_name));
     SetDataType(ctx, y_name, GetDataType(ctx, x_name));
@@ -111,7 +114,8 @@ class GatherPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(gather_p, paddle::operators::GatherPrimOp,
+REGISTER_OPERATOR(gather_p,
+                  paddle::operators::GatherPrimOp,
                   paddle::operators::GatherPrimOpMaker,
                   paddle::operators::GatherPrimOpShapeInference,
                   paddle::operators::GatherPrimOpVarTypeInference);

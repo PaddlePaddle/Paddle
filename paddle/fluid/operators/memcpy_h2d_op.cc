@@ -45,7 +45,8 @@ class MemcpyH2DOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -74,7 +75,8 @@ class MemcpyH2DKernel {
     if (x == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of memcpy_d2h_op is not found."));
     auto *out = ctx.OutputVar("Out");
@@ -92,13 +94,13 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor) The type of output "
               "is the same as input X.");
-    AddAttr<int>(
-        "dst_place_type",
-        "Determine the dst place of tensor copy. "
-        "By Now it ONLY support CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace "
-        "Other place type is Unimplemented and will cause ERROR."
-        "0: dst is on CUDAPlace. "
-        "1: dst is on NPUPlace. ");
+    AddAttr<int>("dst_place_type",
+                 "Determine the dst place of tensor copy. "
+                 "By Now it support:"
+                 "0. CUDAPinnedPlace/CPU <->CUDAPlace"
+                 "1. NPUPinnedPlace/CPU <-> NPUPlace"
+                 "2. CPU <->XPUPlace"
+                 "Other place type is Unimplemented and will cause ERROR.");
     AddComment(R"DOC(
     MemcpyD2H Operator.
     By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
@@ -115,38 +117,119 @@ raise error if the type is not listed above.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
-    memcpy_h2d, ops::MemcpyH2DOp, ops::MemcpyH2DOpProtoMaker,
+    memcpy_h2d,
+    ops::MemcpyH2DOp,
+    ops::MemcpyH2DOpProtoMaker,
     ops::MemcpyH2DInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(memcpy_h2d,
+                               float,
+                               ops::MemcpyH2DKernel,
+                               double,
+                               ops::MemcpyH2DKernel,
+                               int8_t,
+                               ops::MemcpyH2DKernel,
+                               uint8_t,
+                               ops::MemcpyH2DKernel,
+                               int,
+                               ops::MemcpyH2DKernel,
+                               int64_t,
+                               ops::MemcpyH2DKernel,
+                               bool,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyH2DKernel,
+                               plat::float16,
+                               ops::MemcpyH2DKernel,
+                               int16_t,
+                               ops::MemcpyH2DKernel);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(memcpy_h2d,
+                                float,
+                                ops::MemcpyH2DKernel,
+                                double,
+                                ops::MemcpyH2DKernel,
+                                int8_t,
+                                ops::MemcpyH2DKernel,
+                                uint8_t,
+                                ops::MemcpyH2DKernel,
+                                int,
+                                ops::MemcpyH2DKernel,
+                                int64_t,
+                                ops::MemcpyH2DKernel,
+                                bool,
+                                ops::MemcpyH2DKernel,
+                                paddle::platform::bfloat16,
+                                ops::MemcpyH2DKernel,
+                                paddle::platform::complex<float>,
+                                ops::MemcpyH2DKernel,
+                                paddle::platform::complex<double>,
+                                ops::MemcpyH2DKernel,
+                                plat::float16,
+                                ops::MemcpyH2DKernel,
+                                int16_t,
+                                ops::MemcpyH2DKernel);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+REGISTER_OP_XPU_KERNEL_FUNCTOR(memcpy_h2d,
+                               float,
+                               ops::MemcpyH2DKernel,
+                               double,
+                               ops::MemcpyH2DKernel,
+                               int8_t,
+                               ops::MemcpyH2DKernel,
+                               uint8_t,
+                               ops::MemcpyH2DKernel,
+                               int,
+                               ops::MemcpyH2DKernel,
+                               int64_t,
+                               ops::MemcpyH2DKernel,
+                               bool,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyH2DKernel,
+                               plat::float16,
+                               ops::MemcpyH2DKernel,
+                               int16_t,
+                               ops::MemcpyH2DKernel);
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
+REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy_h2d,
+                               float,
+                               ops::MemcpyH2DKernel,
+                               double,
+                               ops::MemcpyH2DKernel,
+                               int8_t,
+                               ops::MemcpyH2DKernel,
+                               uint8_t,
+                               ops::MemcpyH2DKernel,
+                               int,
+                               ops::MemcpyH2DKernel,
+                               int64_t,
+                               ops::MemcpyH2DKernel,
+                               bool,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyH2DKernel,
+                               plat::float16,
+                               ops::MemcpyH2DKernel,
+                               int16_t,
+                               ops::MemcpyH2DKernel);
 #endif

@@ -73,13 +73,13 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 3, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_AxisTensor(attrs: List[Dict[str, Any]]):
             return np.ones([1]).astype(np.int32)
@@ -162,25 +162,33 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
-                    "split_input": [1, 3, 3, 24]
+                    "split_input": [1, 3 - 1, 3 - 1, 24 - 1]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "split_input": [9, 3, 3, 24]
+                    "split_input": [9, 3 + 1, 3 + 1, 24 + 1]
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "split_input": [1, 3, 3, 24]
                 }
             elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"split_input": [1, 3, 24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [9, 3, 24]}
+                self.dynamic_shape.min_input_shape = {
+                    "split_input": [1, 3 - 1, 24 - 1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "split_input": [9, 3 + 1, 24 + 1]
+                }
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 3, 24]}
             elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"split_input": [1, 24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [9, 24]}
+                self.dynamic_shape.min_input_shape = {
+                    "split_input": [1, 24 - 1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "split_input": [9, 24 + 1]
+                }
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 24]}
             elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"split_input": [24]}
-                self.dynamic_shape.max_input_shape = {"split_input": [24]}
+                self.dynamic_shape.min_input_shape = {"split_input": [24 - 1]}
+                self.dynamic_shape.max_input_shape = {"split_input": [24 + 1]}
                 self.dynamic_shape.opt_input_shape = {"split_input": [24]}
 
         def clear_dynamic_shape():

@@ -2970,7 +2970,7 @@ class TestBook(LayerTest):
             y_predict = layers.fc(input=x, size=1, act=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return (avg_cost)
 
     def make_recognize_digits_mlp(self):
@@ -2986,7 +2986,7 @@ class TestBook(LayerTest):
                                 act='softmax',
                                 param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return (avg_cost)
 
     def make_conv2d_transpose(self):
@@ -3019,7 +3019,7 @@ class TestBook(LayerTest):
 
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
             cost = layers.cross_entropy(input=predict, label=label)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return avg_cost
 
     def make_word_embedding(self):
@@ -3062,7 +3062,7 @@ class TestBook(LayerTest):
                                      size=dict_size,
                                      act='softmax')
             cost = layers.cross_entropy(input=predict_word, label=next_word)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return (avg_cost)
 
     def make_sigmoid_cross_entropy(self):
@@ -3235,7 +3235,7 @@ class TestBook(LayerTest):
                           num_total_classes=dict_size,
                           param_attr='nce.w',
                           bias_attr='nce.b')
-        avg_loss = layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return (avg_loss)
 
     def make_multiplex(self):

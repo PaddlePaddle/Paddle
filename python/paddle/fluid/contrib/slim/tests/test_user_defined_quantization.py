@@ -18,6 +18,7 @@ import json
 import random
 import numpy as np
 import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -54,7 +55,7 @@ def conv_net(img, label):
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
@@ -110,18 +111,20 @@ class TestUserDefinedQuantization(unittest.TestCase):
         def get_optimizer():
             return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
 
-        def load_dict():
-            with open('mapping_table_for_saving_inference_model', 'r') as file:
+        def load_dict(mapping_table_path):
+            with open(mapping_table_path, 'r') as file:
                 data = file.read()
                 data = json.loads(data)
                 return data
 
-        def save_dict(Dict):
-            with open('mapping_table_for_saving_inference_model', 'w') as file:
+        def save_dict(Dict, mapping_table_path):
+            with open(mapping_table_path, 'w') as file:
                 file.write(json.dumps(Dict))
 
         random.seed(0)
         np.random.seed(0)
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(tempdir.name, 'inference')
 
         main = fluid.Program()
         startup = fluid.Program()
@@ -162,7 +165,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             executor=exe)
 
         test_transform_pass.apply(test_graph)
-        save_dict(test_graph.out_node_mapping_table)
+        save_dict(test_graph.out_node_mapping_table, mapping_table_path)
 
         add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
         add_quant_dequant_pass.apply(main_graph)
@@ -203,10 +206,11 @@ class TestUserDefinedQuantization(unittest.TestCase):
             activation_bits=8,
             weight_quantize_type=weight_quant_type)
 
-        mapping_table = load_dict()
+        mapping_table = load_dict(mapping_table_path)
         test_graph.out_node_mapping_table = mapping_table
         if act_quantize_func == None and weight_quantize_func == None:
             freeze_pass.apply(test_graph)
+        tempdir.cleanup()
 
     def test_act_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():

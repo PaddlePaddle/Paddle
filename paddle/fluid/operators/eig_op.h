@@ -59,8 +59,10 @@ inline int MatrixStride(const Tensor& matrix) {
 
 // Transpose two axis of a Tensor
 template <typename DeviceContext, typename T>
-void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
-                      const int axis1, const int axis2,
+void TransposeTwoAxis(const Tensor& input,
+                      Tensor* transposed_input,
+                      const int axis1,
+                      const int axis2,
                       const framework::ExecutionContext& context) {
   std::vector<int> permute(input.dims().size());
   std::iota(permute.begin(), permute.end(), 0);
@@ -68,16 +70,19 @@ void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
   permute[axis2] = axis1;
 
   transposed_input->mutable_data<T>(input.dims(), context.GetPlace());
-  auto& dev_ctx = context.template device_context<platform::CPUDeviceContext>();
+  auto& dev_ctx = context.template device_context<phi::CPUContext>();
 
-  TransCompute<DeviceContext, T>(input.dims().size(), dev_ctx, input,
-                                 transposed_input, permute);
+  TransCompute<DeviceContext, T>(
+      input.dims().size(), dev_ctx, input, transposed_input, permute);
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
 // tensor) info are overritten
 template <typename T>
-void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
+void LapackEig(Tensor* input,
+               Tensor* values,
+               Tensor* vectors,
+               int info,
                const framework::ExecutionContext& context) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
@@ -105,9 +110,20 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
-      jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
-      rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
+  phi::funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
+                                                jobvr,
+                                                order,
+                                                input_data,
+                                                lda,
+                                                values_data,
+                                                lvector_data,
+                                                ldvl,
+                                                rvector_data,
+                                                ldvr,
+                                                &computed_work_size,
+                                                lwork,
+                                                rwork_data,
+                                                &info);
 
   lwork = std::max<int>(
       1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
@@ -120,11 +136,23 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
-        jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
-        ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
+    phi::funcs::lapackEig<T, phi::dtype::Real<T>>(jobvl,
+                                                  jobvr,
+                                                  order,
+                                                  current_matrix,
+                                                  lda,
+                                                  current_values,
+                                                  lvector_data,
+                                                  ldvl,
+                                                  current_rvectors,
+                                                  ldvr,
+                                                  work_data,
+                                                  lwork,
+                                                  rwork_data,
+                                                  &info);
     PADDLE_ENFORCE_EQ(
-        info, 0,
+        info,
+        0,
         platform::errors::PreconditionNotMet(
             "current info is not 0, computation failed. "
             "= 0:  successful exit."
@@ -137,7 +165,9 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
 }
 
 template <typename DeviceContext, typename T>
-void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
+void ApplyEigKernel(const Tensor& input,
+                    Tensor* values,
+                    Tensor* vectors,
                     const framework::ExecutionContext& context) {
   Tensor input_column_major;
   Tensor vectors_row_major;
@@ -145,8 +175,8 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
 
   // transfer to column-major memory layout i.e. make_ddim from tranposed_input:
   // [batch,row,col]->[batch,col,row]
-  TransposeTwoAxis<DeviceContext, T>(input, &input_column_major, num_dims - 1,
-                                     num_dims - 2, context);
+  TransposeTwoAxis<DeviceContext, T>(
+      input, &input_column_major, num_dims - 1, num_dims - 2, context);
   // make sure 'vectors_row_major' holds memory before passed to LapackEig()
   vectors_row_major.Resize(input.dims());
   int info = 0;
@@ -155,15 +185,17 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
   // transfer column-major layout back
   // vectors_row_major: column-major layout
   // vector: original layout
-  TransposeTwoAxis<DeviceContext, T>(vectors_row_major, vectors, num_dims - 1,
-                                     num_dims - 2, context);
+  TransposeTwoAxis<DeviceContext, T>(
+      vectors_row_major, vectors, num_dims - 1, num_dims - 2, context);
 }
 
 template <typename T, typename Tout>
-void ConstructComplexVectors(Tensor* c_vectors, const Tensor& c_values,
+void ConstructComplexVectors(Tensor* c_vectors,
+                             const Tensor& c_values,
                              const Tensor& r_vectors,
                              const framework::ExecutionContext& ctx,
-                             int batch_count, int order) {
+                             int batch_count,
+                             int order) {
   int matrix_stride = MatrixStride(r_vectors);
 
   auto* c_vectors_data = c_vectors->mutable_data<Tout>(ctx.GetPlace());
@@ -234,8 +266,8 @@ class EigKernel : public framework::OpKernel<T> {
       // 1. extract real part & imag part from real_values
       Tensor real_part =
           phi::funcs::Slice<T>(dev_ctx, real_values, {-1}, {0}, {order});
-      Tensor imag_part = phi::funcs::Slice<T>(dev_ctx, real_values, {-1},
-                                              {order}, {order * 2});
+      Tensor imag_part = phi::funcs::Slice<T>(
+          dev_ctx, real_values, {-1}, {order}, {order * 2});
 
       // 2. construct complex values
       auto* real_part_data = real_part.data<phi::dtype::Real<T>>();
@@ -244,8 +276,10 @@ class EigKernel : public framework::OpKernel<T> {
       platform::ForRange<DeviceContext> for_range(
           context.template device_context<DeviceContext>(), out_values_numel);
       phi::funcs::RealImagToComplexFunctor<Tout> functor(
-          real_part_data, imag_part_data,
-          out_values->mutable_data<Tout>(context.GetPlace()), out_values_numel);
+          real_part_data,
+          imag_part_data,
+          out_values->mutable_data<Tout>(context.GetPlace()),
+          out_values_numel);
       for_range(functor);
 
       // 3. construct complex vectors
@@ -253,12 +287,17 @@ class EigKernel : public framework::OpKernel<T> {
           phi::TransposeLast2Dim<T>(dev_ctx, real_vectors);
       Tensor out_vectors_trans;
       out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
-      ConstructComplexVectors<phi::dtype::Real<T>, Tout>(
-          &out_vectors_trans, *out_values, real_vector_trans, context,
-          batch_count, order);
-      TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, out_vectors,
+      ConstructComplexVectors<phi::dtype::Real<T>, Tout>(&out_vectors_trans,
+                                                         *out_values,
+                                                         real_vector_trans,
+                                                         context,
+                                                         batch_count,
+                                                         order);
+      TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans,
+                                            out_vectors,
                                             x->dims().size() - 1,
-                                            x->dims().size() - 2, context);
+                                            x->dims().size() - 2,
+                                            context);
     } else {
       out_values->mutable_data<T>(context.GetPlace());
       out_vectors->mutable_data<T>(context.GetPlace());
@@ -270,8 +309,13 @@ class EigKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 void ComputeBackwardForComplexInput(
-    const Tensor& V, const Tensor& L, const Tensor& gL, const Tensor& gV,
-    T* x_grad_data, int batch_count, int order,
+    const Tensor& V,
+    const Tensor& L,
+    const Tensor& gL,
+    const Tensor& gV,
+    T* x_grad_data,
+    int batch_count,
+    int order,
     const framework::ExecutionContext& context) {
   auto& orig_dev_ctx = context.template device_context<DeviceContext>();
   auto& dev_ctx = static_cast<
@@ -281,7 +325,8 @@ void ComputeBackwardForComplexInput(
   Tensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
   Tensor Vh = phi::Conj<T>(dev_ctx, trans_v);
   Tensor Lconj = phi::Conj<T>(dev_ctx, L);
-  Tensor Econj = phi::Subtract<T>(dev_ctx, phi::funcs::Unsqueeze(Lconj, -2),
+  Tensor Econj = phi::Subtract<T>(dev_ctx,
+                                  phi::funcs::Unsqueeze(Lconj, -2),
                                   phi::funcs::Unsqueeze(Lconj, -1));
   Tensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV);
   Tensor diag_real = phi::Real<T>(dev_ctx, VhgV);
@@ -293,12 +338,13 @@ void ComputeBackwardForComplexInput(
   Tensor diag_unsqueezed_complex;
   auto* data_diag_un = diag_unsqueezed.data<phi::dtype::Real<T>>();
   auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<T>(
-      diag_unsqueezed.dims(), context.GetPlace(),
+      diag_unsqueezed.dims(),
+      context.GetPlace(),
       static_cast<size_t>(numel * sizeof(T)));
 
   platform::ForRange<DeviceContext> for_range(orig_dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<T> functor(data_diag_un, data_diag_un_com,
-                                              numel);
+  phi::funcs::RealToComplexFunctor<T> functor(
+      data_diag_un, data_diag_un_com, numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
   Tensor res1 = phi::Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
@@ -320,8 +366,8 @@ void ComputeBackwardForComplexInput(
   int k = rhs.dims()[rhs.dims().size() - 1];
   auto* matrix_data = Vh.data<T>();
   auto* rhs_data = rhs.data<T>();
-  math::SolveLinearSystem<T>(matrix_data, rhs_data, x_grad_data, m, k,
-                             batch_count);
+  math::SolveLinearSystem<T>(
+      matrix_data, rhs_data, x_grad_data, m, k, batch_count);
 }
 
 template <typename DeviceContext, typename T, typename Tout>

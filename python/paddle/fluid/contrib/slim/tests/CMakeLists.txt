@@ -102,7 +102,8 @@ function(inference_quant_int8_image_classification_test target quant_model_dir
          0.1)
 endfunction()
 
-# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25
+# set batch_size 10 for UT only (avoid OOM).
+# For whole dataset, use batch_size 25
 function(inference_quant2_int8_image_classification_test target quant_model_dir
          fp32_model_dir dataset_path)
   py_test(
@@ -127,7 +128,8 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir
          0.1)
 endfunction()
 
-# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20
+# set batch_size 10 for UT only (avoid OOM).
+# For whole dataset, use batch_size 20
 function(
   inference_quant2_int8_nlp_test
   target
@@ -284,7 +286,10 @@ if(LINUX AND WITH_MKLDNN)
   download_quant_model(
     ${QUANT_RESNET101_MODEL_DIR} ${QUANT_RESNET101_MODEL_ARCHIVE}
     95c6d01e3aeba31c13efb2ba8057d558)
-  # inference_quant_int8_image_classification_test(test_quant_int8_resnet101_mkldnn ${QUANT_RESNET101_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+  # inference_quant_int8_image_classification_test( \
+  #   test_quant_int8_resnet101_mkldnn \
+  #   ${QUANT_RESNET101_MODEL_DIR}/model \
+  #   ${IMAGENET_DATA_PATH})
 
   # Quant GoogleNet
   set(QUANT_GOOGLENET_MODEL_DIR "${QUANT_INSTALL_DIR}/GoogleNet_quant")
@@ -321,18 +326,24 @@ if(LINUX AND WITH_MKLDNN)
   set(QUANT_VGG16_MODEL_ARCHIVE "VGG16_qat_model.tar.gz")
   download_quant_model(${QUANT_VGG16_MODEL_DIR} ${QUANT_VGG16_MODEL_ARCHIVE}
                        c37e63ca82a102f47be266f8068b0b55)
-  # inference_quant_int8_image_classification_test(test_quant_int8_vgg16_mkldnn ${QUANT_VGG16_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+  # inference_quant_int8_image_classification_test( \
+  #   test_quant_int8_vgg16_mkldnn \
+  #   ${QUANT_VGG16_MODEL_DIR}/model \
+  #   ${IMAGENET_DATA_PATH})
 
   # Quant VGG19
   set(QUANT_VGG19_MODEL_DIR "${QUANT_INSTALL_DIR}/VGG19_quant")
   set(QUANT_VGG19_MODEL_ARCHIVE "VGG19_qat_model.tar.gz")
   download_quant_model(${QUANT_VGG19_MODEL_DIR} ${QUANT_VGG19_MODEL_ARCHIVE}
                        62bcd4b6c3ca2af67e8251d1c96ea18f)
-  # inference_quant_int8_image_classification_test(test_quant_int8_vgg19_mkldnn ${QUANT_VGG19_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
+  # inference_quant_int8_image_classification_test( \
+  #   test_quant_int8_vgg19_mkldnn ${QUANT_VGG19_MODEL_DIR}/model \
+  #   ${IMAGENET_DATA_PATH})
 
   ### Quant2 for image classification
 
-  # Quant2 ResNet50 with input/output scales in `fake_quantize_moving_average_abs_max` operators,
+  # Quant2 ResNet50 with input/output scales in
+  # `fake_quantize_moving_average_abs_max` operators,
   # with weight scales in `fake_dequantize_max_abs` operators
   set(QUANT2_RESNET50_MODEL_DIR "${QUANT_INSTALL_DIR}/ResNet50_quant2")
   set(QUANT2_RESNET50_MODEL_ARCHIVE "ResNet50_qat_perf.tar.gz")
@@ -345,7 +356,8 @@ if(LINUX AND WITH_MKLDNN)
     ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float
     ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max`
+  # operators and the `out_threshold` attributes,
   # with weight scales in `fake_dequantize_max_abs` operators
   set(QUANT2_RESNET50_RANGE_MODEL_DIR
       "${QUANT_INSTALL_DIR}/ResNet50_quant2_range")
@@ -358,7 +370,8 @@ if(LINUX AND WITH_MKLDNN)
     ${QUANT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range
     ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
-  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+  # Quant2 ResNet50 with input/output scales in `fake_quantize_range_abs_max`
+  # operators and the `out_threshold` attributes,
   # with weight scales in `fake_channel_wise_dequantize_max_abs` operators
   set(QUANT2_RESNET50_CHANNELWISE_MODEL_DIR
       "${QUANT_INSTALL_DIR}/ResNet50_quant2_channelwise")
@@ -545,7 +558,7 @@ if(LINUX AND WITH_MKLDNN)
                                                                      120)
   set_tests_properties(test_quant2_int8_ernie_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
 endif()
 

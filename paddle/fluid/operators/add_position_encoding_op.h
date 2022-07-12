@@ -39,7 +39,8 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     int enc_size = 0;
 
     if (x_lod.empty()) {
-      PADDLE_ENFORCE_EQ(x_dim.size(), 3,
+      PADDLE_ENFORCE_EQ(x_dim.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
@@ -49,13 +50,15 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       max_seq_len = x_dim[1];
       enc_size = x_dim[2];
     } else {
-      PADDLE_ENFORCE_EQ(x_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(x_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "2, but received %d. ",
                             x_dim.size()));
-      PADDLE_ENFORCE_EQ(x_lod.size(), 1,
+      PADDLE_ENFORCE_EQ(x_lod.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The input(X)'s lod level of AddPositionEncodingOp "
                             "should be equal to "
@@ -67,7 +70,8 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       enc_size = x_dim[1];
     }
 
-    PADDLE_ENFORCE_EQ(enc_size % 2, 0,
+    PADDLE_ENFORCE_EQ(enc_size % 2,
+                      0,
                       platform::errors::InvalidArgument(
                           "The input(X)'s feature size of "
                           "AddPositionEncodingOp only support even, "

@@ -129,7 +129,8 @@ class TestNPUReduceProdWithOutDtype_bool(TestNPUReduceProd):
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.BOOL)}
         self.outputs = {
             'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(np.bool)
+            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
+                np.bool_)
         }
 
 

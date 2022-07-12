@@ -113,10 +113,10 @@ check_type_size(pthread_spinlock_t SPINLOCK_FOUND)
 check_type_size(pthread_barrier_t BARRIER_FOUND)
 if(SPINLOCK_FOUND)
   add_definitions(-DPADDLE_USE_PTHREAD_SPINLOCK)
-endif(SPINLOCK_FOUND)
+endif()
 if(BARRIER_FOUND)
   add_definitions(-DPADDLE_USE_PTHREAD_BARRIER)
-endif(BARRIER_FOUND)
+endif()
 set(CMAKE_EXTRA_INCLUDE_FILES "")
 
 # Only one sanitizer is allowed in compile time
@@ -154,6 +154,7 @@ if(NOT WIN32)
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
       ${fsanitize})
 
   if(WITH_IPU)
@@ -180,7 +181,7 @@ if(NOT WIN32)
           -Wno-parentheses # Warning in Eigen gcc 8.3
       )
     endif()
-  endif(NOT APPLE)
+  endif()
 
   set(GPU_COMMON_FLAGS
       -fPIC
@@ -200,21 +201,21 @@ if(NOT WIN32)
      AND NOT WITH_MIPS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
   endif()
-endif(NOT WIN32)
+endif()
 
 if(APPLE)
   if(WITH_ARM)
     set(CMAKE_OSX_ARCHITECTURES
         "arm64"
         CACHE STRING "Build architectures for OSX" FORCE)
-  else(WITH_ARM)
+  else()
     set(CMAKE_OSX_ARCHITECTURES
         "x86_64"
         CACHE STRING "Build architectures for OSX" FORCE)
-  endif(WITH_ARM)
+  endif()
   # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
   set(COMMON_FLAGS -Wno-deprecated-register)
-endif(APPLE)
+endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
   set(COMMON_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${COMMON_FLAGS})
@@ -224,7 +225,7 @@ endif()
 
 if(LINUX)
   set(GPU_COMMON_FLAGS -Wall -Wextra -Werror ${GPU_COMMON_FLAGS})
-endif(LINUX)
+endif()
 
 foreach(flag ${COMMON_FLAGS})
   safe_set_cflag(CMAKE_C_FLAGS ${flag})

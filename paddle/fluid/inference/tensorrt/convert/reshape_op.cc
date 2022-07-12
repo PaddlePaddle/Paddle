@@ -30,7 +30,8 @@ namespace tensorrt {
 class ReshapeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -61,3 +62,4 @@ class ReshapeOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(reshape, ReshapeOpConverter);
+REGISTER_TRT_OP_CONVERTER(reshape2, ReshapeOpConverter);

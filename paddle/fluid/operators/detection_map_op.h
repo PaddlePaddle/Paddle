@@ -80,15 +80,18 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto& label_lod = in_label->lod();
     auto& detect_lod = in_detect->lod();
     PADDLE_ENFORCE_EQ(
-        label_lod.size(), 1UL,
+        label_lod.size(),
+        1UL,
         platform::errors::InvalidArgument("Only support LodTensor of lod_level "
                                           "with 1 in label, but received %d.",
                                           label_lod.size()));
-    PADDLE_ENFORCE_EQ(label_lod[0].size(), detect_lod[0].size(),
+    PADDLE_ENFORCE_EQ(label_lod[0].size(),
+                      detect_lod[0].size(),
                       platform::errors::InvalidArgument(
                           "The batch_size of input(Label) and input(Detection) "
                           "must be the same, but received %d:%d",
-                          label_lod[0].size(), detect_lod[0].size()));
+                          label_lod[0].size(),
+                          detect_lod[0].size()));
 
     std::vector<std::map<int, std::vector<Box>>> gt_boxes;
     std::vector<std::map<int, std::vector<std::pair<T, Box>>>> detect_boxes;
@@ -106,20 +109,35 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
 
     if (in_pos_count != nullptr && state) {
-      GetInputPos(*in_pos_count, *in_true_pos, *in_false_pos, &label_pos_count,
-                  &true_pos, &false_pos, class_num);
+      GetInputPos(*in_pos_count,
+                  *in_true_pos,
+                  *in_false_pos,
+                  &label_pos_count,
+                  &true_pos,
+                  &false_pos,
+                  class_num);
     }
 
-    CalcTrueAndFalsePositive(gt_boxes, detect_boxes, evaluate_difficult,
-                             overlap_threshold, &label_pos_count, &true_pos,
+    CalcTrueAndFalsePositive(gt_boxes,
+                             detect_boxes,
+                             evaluate_difficult,
+                             overlap_threshold,
+                             &label_pos_count,
+                             &true_pos,
                              &false_pos);
 
     int background_label = ctx.Attr<int>("background_label");
-    T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos,
-                    background_label);
+    T map = CalcMAP(
+        ap_type, label_pos_count, true_pos, false_pos, background_label);
 
-    GetOutputPos(ctx, label_pos_count, true_pos, false_pos, out_pos_count,
-                 out_true_pos, out_false_pos, class_num);
+    GetOutputPos(ctx,
+                 label_pos_count,
+                 true_pos,
+                 false_pos,
+                 out_pos_count,
+                 out_true_pos,
+                 out_false_pos,
+                 class_num);
 
     T* map_data = out_map->mutable_data<T>(ctx.GetPlace());
     map_data[0] = map;
@@ -192,7 +210,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
           boxes[label].push_back(box);
         } else {
           PADDLE_ENFORCE_EQ(
-              input_label.dims()[1], 5,
+              input_label.dims()[1],
+              5,
               platform::errors::InvalidArgument(
                   "The input label width"
                   " must be 5, but received %d, please check your input data",
@@ -224,7 +243,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
       framework::Tensor* output_pos_count,
       framework::LoDTensor* output_true_pos,
-      framework::LoDTensor* output_false_pos, const int class_num) const {
+      framework::LoDTensor* output_false_pos,
+      const int class_num) const {
     int true_pos_count = 0;
     int false_pos_count = 0;
     for (auto it = true_pos.begin(); it != true_pos.end(); ++it) {
@@ -321,7 +341,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::vector<std::map<int, std::vector<Box>>>& gt_boxes,
       const std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
           detect_boxes,
-      bool evaluate_difficult, float overlap_threshold,
+      bool evaluate_difficult,
+      float overlap_threshold,
       std::map<int, int>* label_pos_count,
       std::map<int, std::vector<std::pair<T, int>>>* true_pos,
       std::map<int, std::vector<std::pair<T, int>>>* false_pos) const {
@@ -384,8 +405,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         auto matched_bboxes = image_gt_boxes.find(label)->second;
         std::vector<bool> visited(matched_bboxes.size(), false);
         // Sort detections in descend order based on scores
-        std::sort(pred_boxes.begin(), pred_boxes.end(),
-                  SortScorePairDescend<Box>);
+        std::sort(
+            pred_boxes.begin(), pred_boxes.end(), SortScorePairDescend<Box>);
         for (size_t i = 0; i < pred_boxes.size(); ++i) {
           T max_overlap = -1.0;
           size_t max_idx = 0;
@@ -422,7 +443,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  T CalcMAP(APType ap_type, const std::map<int, int>& label_pos_count,
+  T CalcMAP(APType ap_type,
+            const std::map<int, int>& label_pos_count,
             const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
             const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
             const int background_label) const {

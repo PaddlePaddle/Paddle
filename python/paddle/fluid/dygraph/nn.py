@@ -1144,8 +1144,8 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out, _, _, = _C_ops.final_state_instance_norm(
-                input, self.scale, self.bias, self._epsilon)
+            out = _C_ops.final_state_instance_norm(input, self.scale, self.bias,
+                                                   self._epsilon)
             return out
         if _in_legacy_dygraph():
             out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
@@ -3031,8 +3031,14 @@ class GroupNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
+        if in_dygraph_mode():
+            out = _C_ops.final_state_group_norm(input, self.weight, self.bias,
+                                                self._epsilon, self._groups,
+                                                "NCHW")
 
-        if _non_static_mode():
+            return dygraph_utils._append_activation_in_dygraph(out, self._act)
+
+        elif _in_legacy_dygraph():
             attrs = ('epsilon', self._epsilon, 'groups', self._groups)
             out, _, _ = _C_ops.group_norm(input, self.weight, self.bias,
                                           mean_out, variance_out, *attrs)

@@ -19,6 +19,7 @@ import random
 import math
 import functools
 import contextlib
+import tempfile
 import numpy as np
 from PIL import Image, ImageEnhance
 import paddle
@@ -150,16 +151,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.infer_iterations = 50000 if os.environ.get(
             'DATASET') == 'full' else 2
 
-        self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-        self.int8_model = os.path.join(os.getcwd(),
-                                       "post_training_" + self.timestamp)
+        self.root_path = tempfile.TemporaryDirectory()
+        self.int8_model = os.path.join(self.root_path.name,
+                                       "post_training_quantization")
 
     def tearDown(self):
-        try:
-            os.system("rm -rf {}".format(self.int8_model))
-        except Exception as e:
-            print("Failed to delete {} due to {}".format(
-                self.int8_model, str(e)))
+        self.root_path.cleanup()
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -428,7 +425,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
 
     def test_post_training_onnx_format_mobilenetv1(self):
         model = "MobileNet-V1"
-        algo = "avg"
+        algo = "emd"
         round_type = "round"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'

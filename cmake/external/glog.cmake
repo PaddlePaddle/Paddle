@@ -28,12 +28,12 @@ if(WIN32)
       CACHE FILEPATH "glog library." FORCE)
   set(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
-else(WIN32)
+else()
   set(GLOG_LIBRARIES
       "${GLOG_INSTALL_DIR}/lib/libglog.a"
       CACHE FILEPATH "glog library." FORCE)
   set(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-endif(WIN32)
+endif()
 
 include_directories(${GLOG_INCLUDE_DIR})
 
@@ -45,7 +45,7 @@ if(WITH_ARM_BRPC)
   file(
     WRITE ${GLOG_SOURCE_DIR}/CMakeLists.txt
     "PROJECT(ARM_GLOGS)\n" "cmake_minimum_required(VERSION 3.0)\n"
-    "install(DIRECTORY arm_glog/include arm_glog/lib \n"
+    "install(DIRECTORY arm_glog/include arm_glog/lib\n"
     "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
   ExternalProject_Add(
     extern_glog

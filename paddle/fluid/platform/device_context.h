@@ -57,7 +57,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout.h"
 #endif
 
@@ -134,21 +134,12 @@ constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
-
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -645,7 +636,6 @@ class CUDADeviceContext : public phi::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
-  std::unique_ptr<phi::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -784,7 +774,7 @@ class MKLDNNDeviceContextThreadLocals {
   }
 };
 
-class MKLDNNDeviceContext : public CPUDeviceContext {
+class MKLDNNDeviceContext : public phi::CPUContext {
  public:
   template <class T>
   using BlobPtr_t = std::shared_ptr<T>;
@@ -883,11 +873,15 @@ struct DefaultDeviceContextType<platform::CustomPlace> {
 };
 #endif
 
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<platform::Place>& places,
+    bool disable_setting_default_stream_for_allocator);
+
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
-
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool,
                             platform::errors::PreconditionNotMet(
@@ -903,6 +897,8 @@ class DeviceContextPool {
     return *pool;
   }
 
+  static bool IsInitialized() { return pool != nullptr; }
+
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
@@ -915,17 +911,24 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t size() const { return device_contexts_.size(); }
+  size_t size() const;
 
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const {
-    return device_contexts_;
-  }
+  device_contexts() const;
+
+  static void SetDeviceContexts(
+      const std::map<Place,
+                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
 
  private:
+  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+
   static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
+  static thread_local const std::
+      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+          external_device_contexts_;  // not owned
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 

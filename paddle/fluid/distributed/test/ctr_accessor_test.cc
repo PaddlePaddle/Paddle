@@ -222,15 +222,15 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.embed_w = value[i][5];
 
     int idx = 6;
-    for (auto j = 0u; j < acc->common_feature_value.embed_sgd_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embed_sgd_dim; ++j) {
       v.embed_g2sum.push_back(value[i][idx + j]);
     }
     idx += acc->common_feature_value.embed_sgd_dim;
-    for (auto j = 0u; j < acc->common_feature_value.embedx_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embedx_dim; ++j) {
       v.embedx_w.push_back(value[i][idx + j]);
     }
     idx += acc->common_feature_value.embedx_dim;
-    for (auto j = 0u; j < acc->common_feature_value.embedx_sgd_dim; ++j) {
+    for (int j = 0; j < acc->common_feature_value.embedx_sgd_dim; ++j) {
       v.embedx_g2sum.push_back(value[i][idx + j]);
     }
 
@@ -239,7 +239,7 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     push_v.show = grad[i][1];
     push_v.click = grad[i][2];
     push_v.embed_g = grad[i][3];
-    for (auto j = 0; j < parameter.embedx_dim(); ++j) {
+    for (unsigned int j = 0; j < parameter.embedx_dim(); ++j) {
       push_v.embedx_g.push_back(grad[i][4 + j]);
     }
 
@@ -249,10 +249,10 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     v.click += push_v.click;
     v.delta_score += acc->ShowClickScore(push_v.show, push_v.click);
 
-    acc->_embed_sgd_rule->UpdateValue(&v.embed_w, &v.embed_g2sum[0],
-                                      &push_v.embed_g, push_v.show);
-    acc->_embedx_sgd_rule->UpdateValue(&v.embedx_w[0], &v.embedx_g2sum[0],
-                                       &push_v.embedx_g[0], push_v.show);
+    acc->_embed_sgd_rule->UpdateValue(
+        &v.embed_w, &v.embed_g2sum[0], &push_v.embed_g, push_v.show);
+    acc->_embedx_sgd_rule->UpdateValue(
+        &v.embedx_w[0], &v.embedx_g2sum[0], &push_v.embedx_g[0], push_v.show);
 
     float* ptr = new float[acc->GetAccessorInfo().dim];
     v.to_array(ptr, parameter.embedx_dim());

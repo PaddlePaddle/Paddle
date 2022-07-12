@@ -34,7 +34,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+std::vector<std::string> JoinInputs(Node* op1,
+                                    Node* op2,
                                     std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
@@ -50,8 +51,9 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
-                                             "Scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(),
+      platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::MultiGruSeq pattern{gpd.mutable_pattern(), name_scope_};

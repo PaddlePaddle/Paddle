@@ -199,7 +199,7 @@ class TestNPUTrilTriu_bool(TestNPUTrilTriu):
         self.check_output_with_place(self.place)
 
     def init_dtype(self):
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])

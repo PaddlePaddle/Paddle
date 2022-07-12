@@ -23,10 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(AnalysisPredictor, use_gpu) {
+TEST(AnalysisPredictor, use_cpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 
@@ -64,8 +63,8 @@ TEST(AnalysisPredictor, use_gpu) {
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                12e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 12e-5);
   }
 }
 
@@ -74,10 +73,9 @@ TEST(AnalysisPredictor, use_gpu) {
 
 namespace paddle_infer {
 
-TEST(Predictor, use_gpu) {
+TEST(Predictor, use_cpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   Config config;
-  config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableLiteEngine(PrecisionType::kFloat32);
 
@@ -100,8 +98,8 @@ TEST(Predictor, use_gpu) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputHandle(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  size_t out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                   std::multiplies<int>());
+  size_t out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> out_data;
   out_data.resize(out_num);
@@ -120,8 +118,8 @@ TEST(Predictor, use_gpu) {
 
   float* data_o = out_data.data();
   for (size_t j = 0; j < out_num; j += 10) {
-    EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                10e-5);
+    EXPECT_NEAR(
+        (data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0., 10e-5);
   }
 }
 

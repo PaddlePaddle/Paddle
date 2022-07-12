@@ -90,6 +90,10 @@ from .loss import margin_cross_entropy  # noqa: F401
 from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
+from .loss import cosine_embedding_loss  # noqa: F401
+from .loss import multi_label_soft_margin_loss
+from .loss import triplet_margin_with_distance_loss
+from .loss import triplet_margin_loss
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -124,7 +128,7 @@ from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
 
-__all__ = [  #noqa
+__all__ = [  # noqa
     'celu',
     'conv1d',
     'conv1d_transpose',
@@ -203,6 +207,7 @@ __all__ = [  #noqa
     'log_loss',
     'mse_loss',
     'margin_ranking_loss',
+    'multi_label_soft_margin_loss',
     'nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
@@ -229,5 +234,8 @@ __all__ = [  #noqa
     'class_center_sample',
     'sparse_attention',
     'fold',
+    'cosine_embedding_loss',
     'rrelu',
+    'triplet_margin_with_distance_loss',
+    'triplet_margin_loss',
 ]
