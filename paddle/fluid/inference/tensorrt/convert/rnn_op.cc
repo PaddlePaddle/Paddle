@@ -102,8 +102,8 @@ class RnnOpConverter : public OpConverter {
         auto* filter_t = filter_v->GetMutable<framework::LoDTensor>();
         auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
         float* weight_data =
-            engine_->GetWeightCPUData(filter_var_name, filter_t);
-        float* bias_data = engine_->GetWeightCPUData(bias_var_name, bias_t);
+            (float *)(engine_->GetTrtWeight(filter_var_name, *filter_t).get().values);
+        float* bias_data = (float *)(engine_->GetTrtWeight(bias_var_name, *bias_t).get().values);
         auto filter_dims = filter_t->dims();
         auto bias_dims = bias_t->dims();
         auto vol = filter_dims[0] * filter_dims[1] / 4;
@@ -205,8 +205,8 @@ class RnnNativeOpConverter : public OpConverter {
             auto* var1_v = scope.FindVar(var1_name);
             auto* var0_t = var0_v->GetMutable<framework::LoDTensor>();
             auto* var1_t = var1_v->GetMutable<framework::LoDTensor>();
-            float* data0_ptr = engine_->GetWeightCPUData(var0_name, var0_t);
-            float* data1_ptr = engine_->GetWeightCPUData(var1_name, var1_t);
+            float* data0_ptr = (float *)(engine_->GetTrtWeight(var0_name, *var0_t).get().values);
+            float* data1_ptr = (float *)(engine_->GetTrtWeight(var1_name, *var1_t).get().values);
             float* data_ptr = new float[K * var0_t->numel()];
             // remember free
             memcpy(data_ptr, data0_ptr, sizeof(float) * var0_t->numel());
@@ -223,7 +223,7 @@ class RnnNativeOpConverter : public OpConverter {
             std::string var_name = op_desc.Input("WeightList")[k + start];
             auto* var_v = scope.FindVar(var_name);
             auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-            float* data_ptr = engine_->GetWeightCPUData(var_name, var_t);
+            float* data_ptr = (float *)(engine_->GetTrtWeight(var_name, *var_t).get().values);
             weight_bias_vec.push_back(data_ptr);
           }
         };
