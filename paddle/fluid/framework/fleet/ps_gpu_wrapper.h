@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_HETERPS
 
 #include <atomic>
@@ -27,6 +26,7 @@ limitations under the License. */
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
+
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
@@ -50,10 +50,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
@@ -96,6 +96,55 @@ class AfsWrapper {
 #endif
 
 class PSGPUWrapper {
+  class DCacheBuffer {
+   public:
+    DCacheBuffer() : buf_(nullptr) {}
+    ~DCacheBuffer() {}
+    /**
+     * @Brief get data
+     */
+    template <typename T>
+    T* mutable_data(const size_t total_bytes,
+                    const paddle::platform::Place& place) {
+      if (buf_ == nullptr) {
+        buf_ = memory::AllocShared(place, total_bytes);
+      } else if (buf_->size() < total_bytes) {
+        buf_.reset();
+        buf_ = memory::AllocShared(place, total_bytes);
+      }
+      return reinterpret_cast<T*>(buf_->ptr());
+    }
+    template <typename T>
+    T* data() {
+      return reinterpret_cast<T*>(buf_->ptr());
+    }
+    size_t memory_size() {
+      if (buf_ == nullptr) {
+        return 0;
+      }
+      return buf_->size();
+    }
+    bool IsInitialized(void) { return (buf_ != nullptr); }
+
+   private:
+    std::shared_ptr<memory::Allocation> buf_ = nullptr;
+  };
+  struct PSDeviceData {
+    DCacheBuffer keys_tensor;
+    DCacheBuffer dims_tensor;
+    DCacheBuffer keys_ptr_tensor;
+    DCacheBuffer values_ptr_tensor;
+    DCacheBuffer pull_push_tensor;
+
+    DCacheBuffer slot_lens;
+    DCacheBuffer d_slot_vector;
+    DCacheBuffer keys2slot;
+
+    int64_t total_key_length = 0;
+    int64_t dedup_key_length = 0;
+  };
+  PSDeviceData* device_caches_ = nullptr;
+
  public:
   ~PSGPUWrapper();
 
@@ -130,6 +179,9 @@ class PSGPUWrapper {
   void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
                 int total_len);
+  void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
+                uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
+                int total_len, int* key2slot);
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
                    const std::vector<float*>& values,
                    const FeatureValue* total_values_gpu, const int64_t* gpu_len,
@@ -140,6 +192,12 @@ class PSGPUWrapper {
                    const float* total_values_gpu, const int64_t* gpu_len,
                    const int slot_num, const int hidden_size,
                    const int64_t total_length, int* gpu_dim);
+  void CopyForPull(const paddle::platform::Place& place,
+                   const uint64_t* total_keys, float** gpu_values,
+                   const float* total_values_gpu, const int64_t* slot_lens,
+                   const int* key2slot, const int hidden_size,
+                   const int64_t total_length, const int* slot_dims,
+                   const uint32_t* gpu_restore_idx);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
@@ -152,6 +210,25 @@ class PSGPUWrapper {
                    const std::vector<int64_t>& slot_lengths,
                    const uint64_t total_length, const int batch_size,
                    size_t grad_value_size);
+  void CopyForPush(const paddle::platform::Place& place,
+                   const uint64_t* total_keys, float** grad_values,
+                   float* total_grad_values_gpu, const int* slots,
+                   const int64_t* slot_lens, const int hidden_size,
+                   const int64_t total_length, const int64_t dedup_length,
+                   const int batch_size, const int* slot_dims,
+                   const int* key2slot, const uint32_t* d_restore_idx,
+                   const size_t grad_value_size);
+  void CopyForPush(const paddle::platform::Place& place,
+                 const uint64_t* total_keys, float** grad_values,
+                 float* total_grad_values_gpu, const int* slots,
+                 const int64_t* slot_lens, const int hidden_size,
+                 const int64_t total_length, const int64_t dedup_length,
+                 const int batch_size, const int* slot_dims,
+                 const int* key2slot,
+                 const uint32_t* gpu_sort_idx,
+                 const uint32_t* gpu_sort_offset,
+                 const uint32_t* gpu_sort_lens,
+                 const size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -177,6 +254,10 @@ class PSGPUWrapper {
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
     HeterPs_->show_table_collisions();
+    if (device_caches_ != nullptr) {
+      delete[] device_caches_;
+      device_caches_ = nullptr;
+    }
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
@@ -186,6 +267,7 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_device());
+      device_caches_ = new PSDeviceData[resource_->total_device()];
 #ifdef PADDLE_WITH_GLOO
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
@@ -259,7 +341,7 @@ class PSGPUWrapper {
                     float mf_min_bound, float mf_max_bound,
                     float mf_beta1_decay_rate, float mf_beta2_decay_rate,
                     float mf_ada_epsilon);
-  
+
 #ifdef PADDLE_WITH_PSCORE
   void add_sparse_optimizer(
       std::unordered_map<std::string, float>& config,  // NOLINT
@@ -309,7 +391,7 @@ class PSGPUWrapper {
 
   void InitializeGPUServer(paddle::distributed::PSParameter ps_param) {
     auto sparse_table =
-      ps_param.server_param().downpour_server_param().downpour_table_param(0);
+        ps_param.server_param().downpour_server_param().downpour_table_param(0);
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
         sparse_table_accessor.ctr_accessor_param();
@@ -325,13 +407,13 @@ class PSGPUWrapper {
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
       add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
-                          "mf_");
+                           "mf_");
     }
 
     feature_value_accessor_.Configure(config);
     InitializeGPUServer(config);
   }
-  #endif
+#endif
 
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
@@ -342,9 +424,8 @@ class PSGPUWrapper {
     float min_bound = (config.find("min_bound") == config.end())
                           ? -10.0
                           : config["min_bound"];
-    float max_bound = (config.find("max_bound") == config.end())
-                          ? 10.0
-                          : config["max_bound"];
+    float max_bound =
+        (config.find("max_bound") == config.end()) ? 10.0 : config["max_bound"];
     float learning_rate = (config.find("learning_rate") == config.end())
                               ? 0.05
                               : config["learning_rate"];
@@ -361,8 +442,8 @@ class PSGPUWrapper {
                                  ? 0.999
                                  : config["beta2_decay_rate"];
     float ada_epsilon = (config.find("ada_epsilon") == config.end())
-                                 ? 1e-8
-                                 : config["ada_epsilon"];
+                            ? 1e-8
+                            : config["ada_epsilon"];
     // mf config settings
     float mf_create_thresholds =
         (config.find("mf_create_thresholds") == config.end())
@@ -383,35 +464,37 @@ class PSGPUWrapper {
     float mf_max_bound = (config.find("mf_max_bound") == config.end())
                              ? 10.0
                              : config["mf_max_bound"];
-    float mf_beta1_decay_rate = (config.find("mf_beta1_decay_rate") == config.end())
-                                 ? 0.9
-                                 : config["mf_beta1_decay_rate"];
-    float mf_beta2_decay_rate = (config.find("mf_beta2_decay_rate") == config.end())
-                                 ? 0.999
-                                 : config["mf_beta2_decay_rate"];
+    float mf_beta1_decay_rate =
+        (config.find("mf_beta1_decay_rate") == config.end())
+            ? 0.9
+            : config["mf_beta1_decay_rate"];
+    float mf_beta2_decay_rate =
+        (config.find("mf_beta2_decay_rate") == config.end())
+            ? 0.999
+            : config["mf_beta2_decay_rate"];
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
-                                 ? 1e-8
-                                 : config["mf_ada_epsilon"];
+                               ? 1e-8
+                               : config["mf_ada_epsilon"];
 
     this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
-                        learning_rate, initial_g2sum, initial_range,
-                        beta1_decay_rate, beta2_decay_rate, ada_epsilon);
-    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate,
-                        mf_initial_g2sum, mf_initial_range, mf_min_bound,
-                        mf_max_bound, mf_beta1_decay_rate, mf_beta2_decay_rate,
-                        mf_ada_epsilon);
+                       learning_rate, initial_g2sum, initial_range,
+                       beta1_decay_rate, beta2_decay_rate, ada_epsilon);
+    this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
+                       mf_initial_range, mf_min_bound, mf_max_bound,
+                       mf_beta1_decay_rate, mf_beta2_decay_rate,
+                       mf_ada_epsilon);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
-                                ? 1
-                                : int(config["optimizer_type"]);
+                          ? 1
+                          : int(config["optimizer_type"]);
     embedx_dim_ = (config.find("embedx_dim") == config.end())
-                                ? 8
-                                : int(config["embedx_dim"]);
-    if (optimizer_type_ == 3) { //adam
+                      ? 8
+                      : int(config["embedx_dim"]);
+    if (optimizer_type_ == 3) {  // adam
       embed_sgd_dim_ = 4;
       embedx_sgd_dim_ = embedx_dim_ * 2 + 2;
-    } else if (optimizer_type_ == 4) { //shared_adam
+    } else if (optimizer_type_ == 4) {  // shared_adam
       embed_sgd_dim_ = 4;
       embedx_sgd_dim_ = 4;
     } else {
@@ -419,8 +502,9 @@ class PSGPUWrapper {
       embedx_sgd_dim_ = 1;
     }
 
-    VLOG(0) << "InitializeGPUServer embed_sgd_dim_:" << embed_sgd_dim_ << " embedx_sgd_dim_:"
-            << embedx_sgd_dim_ << "  embedx_dim_:" << embedx_dim_
+    VLOG(0) << "InitializeGPUServer embed_sgd_dim_:" << embed_sgd_dim_
+            << " embedx_sgd_dim_:" << embedx_sgd_dim_
+            << "  embedx_dim_:" << embedx_dim_
             << " optimizer_type_:" << optimizer_type_;
   }
 
@@ -507,9 +591,14 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
     }
-    val_type_size_ = TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
-    grad_type_size_ = TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
-    VLOG(0) << "InitSlotInfo: val_type_size_" << val_type_size_ << " grad_type_size_:" << grad_type_size_;
+    val_type_size_ = TYPEALIGN(
+        8, feature_value_accessor_.common_feature_value.Size(max_mf_dim_));
+    grad_type_size_ = TYPEALIGN(
+        8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
+    pull_type_size_ = feature_value_accessor_.common_pull_value.Size(max_mf_dim_);
+    VLOG(0) << "InitSlotInfo: val_type_size_" << val_type_size_
+            << " grad_type_size_:" << grad_type_size_
+            << " pull_type_size_:" << pull_type_size_;
     slot_info_initialized_ = true;
   }
 #endif
@@ -530,11 +619,13 @@ class PSGPUWrapper {
 
 #ifdef PADDLE_WITH_PSCORE
   void SetTableAccessor(paddle::distributed::ValueAccessor* accessor) {
-    cpu_table_accessor_ = dynamic_cast<paddle::distributed::CtrDymfAccessor*>(accessor);
+    cpu_table_accessor_ =
+        dynamic_cast<paddle::distributed::CtrDymfAccessor*>(accessor);
   }
 #endif
 
   CommonFeatureValueAccessor feature_value_accessor_;
+
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
@@ -558,6 +649,7 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
+  size_t pull_type_size_{0};
 
   double time_1 = 0.0;
   double time_2 = 0.0;
@@ -619,6 +711,7 @@ class PSGPUWrapper {
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
   OptimizerConfig optimizer_config_;
+
  protected:
   static bool is_initialized_;
 };

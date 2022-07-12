@@ -117,44 +117,12 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals, ValType* d_vals,
   }
 }
 
-template <typename KeyType, typename T>
-__global__ void dy_mf_fill_shard_grads_kernel(
-    KeyType* d_shard_keys, KeyType* d_keys, float* d_shard_grads,
-    float* d_grads, T* idx, size_t len, size_t grad_value_size,
-    CommonFeatureValueAccessor feature_value_accessor) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
-    d_shard_keys[i] = d_keys[idx[i]];
-    float* cur = (float*)((char*)d_shard_grads + i * grad_value_size);
-    float* shard_val = (float*)((char*)d_grads + uint64_t(idx[i]) * grad_value_size);
-
-    cur[feature_value_accessor.common_push_value.SlotIndex()] =
-      shard_val[feature_value_accessor.common_push_value.SlotIndex()];
-    cur[feature_value_accessor.common_push_value.ShowIndex()] =
-      shard_val[feature_value_accessor.common_push_value.ShowIndex()];
-    cur[feature_value_accessor.common_push_value.ClickIndex()] =
-      shard_val[feature_value_accessor.common_push_value.ClickIndex()];
-    cur[feature_value_accessor.common_push_value.MfDimIndex()] =
-      shard_val[feature_value_accessor.common_push_value.MfDimIndex()];
-    cur[feature_value_accessor.common_push_value.EmbedGIndex()] =
-      shard_val[feature_value_accessor.common_push_value.EmbedGIndex()];
-
-    for (int x = 0; x < int(shard_val[feature_value_accessor.common_push_value.MfDimIndex()]); x++) {
-      cur[feature_value_accessor.common_push_value.EmbedxGIndex() + x] = 
-        shard_val[feature_value_accessor.common_push_value.EmbedxGIndex() + x];
-    }
-  }
-}
-
 template <typename KeyType>
-__global__ void merge_gradients_basic_kernel(const KeyType* d_keys,
-                                       const uint32_t* offset,
-                                       const uint32_t* fea_num,
-                                       const uint32_t* index, const char* input,
-                                       char* output, int n,
-                                       size_t grad_value_size,
-                                       DynamicGradMerger& merger,
-                                      CommonFeatureValueAccessor& feature_value_accessor) {
+__global__ void merge_gradients_basic_kernel(
+    const KeyType* d_keys, const uint32_t* offset, const uint32_t* fea_num,
+    const uint32_t* index, const char* input, char* output, int n,
+    size_t grad_value_size, DynamicGradMerger& merger,
+    CommonFeatureValueAccessor& feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < n) {
@@ -162,8 +130,7 @@ __global__ void merge_gradients_basic_kernel(const KeyType* d_keys,
     uint32_t num = fea_num[i];
     int ori_index = index[start];
     float* out = (float*)(output + i * grad_value_size);
-    float* in =
-        (float*)(input + size_t(ori_index) * grad_value_size);
+    float* in = (float*)(input + size_t(ori_index) * grad_value_size);
     merger.update_basic(out, in, feature_value_accessor);
     KeyType key = d_keys[i];
     if (key != 0) {
@@ -177,15 +144,11 @@ __global__ void merge_gradients_basic_kernel(const KeyType* d_keys,
 }
 
 template <typename KeyType>
-__global__ void merge_gradients_embedx_kernel(const KeyType* d_keys,
-                                       const uint32_t* offset,
-                                       const uint32_t* fea_num,
-                                       const uint32_t* index, const char* input,
-                                       char* output, int n,
-                                       size_t grad_dim,
-                                       size_t grad_value_size,
-                                       DynamicGradMerger& merger,
-                                      CommonFeatureValueAccessor& feature_value_accessor) {
+__global__ void merge_gradients_embedx_kernel(
+    const KeyType* d_keys, const uint32_t* offset, const uint32_t* fea_num,
+    const uint32_t* index, const char* input, char* output, int n,
+    size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger,
+    CommonFeatureValueAccessor& feature_value_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < n) {
@@ -208,10 +171,10 @@ __global__ void merge_gradients_embedx_kernel(const KeyType* d_keys,
   }
 }
 
-__global__ void split_segments_kernel(
-        const uint32_t* d_fea_num_info, size_t n,
-        uint32_t* d_segments, uint32_t* d_segments_num,
-        uint32_t segment_size) {
+__global__ void split_segments_kernel(const uint32_t* d_fea_num_info, size_t n,
+                                      uint32_t* d_segments,
+                                      uint32_t* d_segments_num,
+                                      uint32_t segment_size) {
   const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tx >= n) {
     return;
@@ -222,10 +185,11 @@ __global__ void split_segments_kernel(
   d_segments[tx] = seg_num;
 }
 
-__global__ void expand_segments_kernel(
-        const uint32_t* d_fea_num_info,
-        const uint32_t* d_segments_offset, size_t n,
-        uint32_t* d_segments_fea_num_info, uint32_t segment_size) {
+__global__ void expand_segments_kernel(const uint32_t* d_fea_num_info,
+                                       const uint32_t* d_segments_offset,
+                                       size_t n,
+                                       uint32_t* d_segments_fea_num_info,
+                                       uint32_t segment_size) {
   const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tx >= n) {
     return;
@@ -248,9 +212,9 @@ __global__ void expand_segments_kernel(
 }
 
 template <typename KeyType>
-__global__ void shrink_keys_kernel(
-        const KeyType* d_keys, const uint32_t* d_segments_offset,
-        KeyType* d_segments_keys, size_t n) {
+__global__ void shrink_keys_kernel(const KeyType* d_keys,
+                                   const uint32_t* d_segments_offset,
+                                   KeyType* d_segments_keys, size_t n) {
   const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tx >= n) {
     return;
@@ -259,38 +223,12 @@ __global__ void shrink_keys_kernel(
   d_segments_keys[tx] = d_keys[d_segments_offset[tx]];
 }
 
-template<typename KeyType, typename T>
-__global__ void fill_restore_idx_kernel(
-        const T *d_sorted_idx,
-        const T *d_offset,
-        const T *d_merged_cnts,
-        const KeyType *d_merged_keys,
-        T *d_restore_idx,
-        size_t n) {
-  const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tx >= n) {
-    return;
-  }
-
-  const KeyType & key = d_merged_keys[tx];
-  if (key == 0) {
-    return;
-  }
-
-  const T &off = d_offset[tx];
-  const T &num = d_merged_cnts[tx];
-  for (size_t k = 0; k < num; ++k) {
-    d_restore_idx[d_sorted_idx[off + k]] = tx;
-  }
-}
-
 template<typename KeyType>
 __global__ void unpack_merged_vals_kernel(
         const KeyType* d_keys,
         const float* d_merged_vals,
         const uint32_t* d_restored_idx,
-        float* d_out, size_t val_size, const size_t n,
-        CommonFeatureValueAccessor feature_value_accessor) {
+        float* d_out, size_t val_size, const size_t n) {
   const size_t tx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tx >= n) {
     return;
@@ -305,69 +243,33 @@ __global__ void unpack_merged_vals_kernel(
   uint64_t dst_offset = uint64_t(tx) * val_size;
   float* dst = (float*)((char*)d_out + dst_offset);
   float* src_val = (float*)((char*)d_merged_vals + uint64_t(src_val_idx) * val_size);
-  int mf_dim = int(src_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
-
-  *(reinterpret_cast<uint64_t*>(dst + feature_value_accessor.common_feature_value.CpuPtrIndex())) =
-      *(reinterpret_cast<uint64_t*>(src_val + feature_value_accessor.common_feature_value.CpuPtrIndex()));
-  dst[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
-      src_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
-  dst[feature_value_accessor.common_feature_value.ShowIndex()] =
-      src_val[feature_value_accessor.common_feature_value.ShowIndex()];
-  dst[feature_value_accessor.common_feature_value.ClickIndex()] =
-      src_val[feature_value_accessor.common_feature_value.ClickIndex()];
-  dst[feature_value_accessor.common_feature_value.EmbedWIndex()] =
-      src_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
-  for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
-      dst[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
-          src_val[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
-  }
-  dst[feature_value_accessor.common_feature_value.SlotIndex()] =
-      src_val[feature_value_accessor.common_feature_value.SlotIndex()];
-  dst[feature_value_accessor.common_feature_value.MfDimIndex()] = mf_dim;
-  dst[feature_value_accessor.common_feature_value.MfSizeIndex()] =
-      src_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
-
-  for (int x = feature_value_accessor.common_feature_value.EmbedxG2SumIndex();
-          x < int(feature_value_accessor.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-    dst[x] = src_val[x];
+  
+  size_t n_float = val_size / sizeof(float);
+  for (size_t k = 0; k < n_float; ++k) {
+      dst[k] = src_val[k];
   }
 }
 
-template <typename T>
-__global__ void dy_mf_fill_dvals_kernel(float* d_shard_vals, float* d_vals,
-                                        T* idx, size_t len, size_t val_size,
-                                       CommonFeatureValueAccessor feature_value_accessor) {
+template <typename TUnit, typename T>
+__global__ void scatter_dvals_by_unit_kernel(TUnit* d_dest_vals,
+                                     const TUnit* d_src_vals, T* idx,
+                                     size_t len, size_t val_size_unit) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
-    uint64_t new_offset = uint64_t(idx[i]) * val_size;
-    float* cur = (float*)((char*)d_vals + new_offset);
-    float* shard_val = (float*)((char*)d_shard_vals + uint64_t(i) * val_size);
-    int mf_dim = int(shard_val[feature_value_accessor.common_feature_value.MfDimIndex()]);
+    size_t pos = idx[i / val_size_unit] * val_size_unit + (i % val_size_unit);
+    d_dest_vals[i] = d_src_vals[pos];
+  }
+}
 
-    *(reinterpret_cast<uint64_t*>(cur + feature_value_accessor.common_feature_value.CpuPtrIndex())) =
-      *(reinterpret_cast<uint64_t*>(shard_val + feature_value_accessor.common_feature_value.CpuPtrIndex()));
-    cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
-    cur[feature_value_accessor.common_feature_value.ShowIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.ShowIndex()];
-    cur[feature_value_accessor.common_feature_value.ClickIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.ClickIndex()];
-    cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.EmbedWIndex()];
-    for (int i = 0; i < feature_value_accessor.common_feature_value.EmbedDim(); i++) {
-      cur[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i] = 
-        shard_val[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + i];
-    }
-    cur[feature_value_accessor.common_feature_value.SlotIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.SlotIndex()];
-    cur[feature_value_accessor.common_feature_value.MfDimIndex()] = mf_dim;
-    cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
-      shard_val[feature_value_accessor.common_feature_value.MfSizeIndex()];
-
-    for (int x = feature_value_accessor.common_feature_value.EmbedxG2SumIndex();
-            x < int(feature_value_accessor.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-      cur[x] = shard_val[x];
-    }
+template <typename TUnit, typename T>
+__global__ void gather_dvals_by_unit_kernel(TUnit* d_dest_vals,
+                                            const TUnit* d_src_vals, T* idx,
+                                            size_t len,
+                                            const size_t val_size_unit) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    size_t pos = idx[i / val_size_unit] * val_size_unit + (i % val_size_unit);
+    d_dest_vals[pos] = d_src_vals[i];
   }
 }
 
@@ -468,26 +370,34 @@ void HeterCommKernel::dy_mf_fill_shard_grads(
     const StreamType& stream) {
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
-  dy_mf_fill_shard_grads_kernel<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_keys, d_keys, d_shard_grads, d_grads, idx, c_len,
-      grad_value_size, feature_value_accessor_);
+  
+  const size_t grad_value_size_float = grad_value_size / sizeof(float);
+  // d_keys to d_shard_keys
+  fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
+       d_shard_keys, d_keys, idx, c_len);
+      
+  CHECK((grad_value_size % sizeof(float)) == 0);
+  size_t N = len * grad_value_size_float;
+  grid_size = (N - 1) / block_size_ + 1;
+  scatter_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+          d_shard_grads, d_grads, idx, N, grad_value_size_float);
 }
 
 template <typename KeyType, typename StreamType>
 void HeterCommKernel::merge_gradient(
-    const KeyType* d_keys,
-    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
-    const char* input, char* output, int n, size_t grad_dim, size_t grad_value_size,
-    DynamicGradMerger& merger, const StreamType& stream) {
+    const KeyType* d_keys, const uint32_t* offset, const uint32_t* fea_num,
+    const uint32_t* index, const char* input, char* output, int n,
+    size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger,
+    const StreamType& stream) {
   int grid_size1 = (n - 1) / block_size_ + 1;
   merge_gradients_basic_kernel<<<grid_size1, block_size_, 0, stream>>>(
-      d_keys,
-      offset, fea_num, index, input, output, n, grad_value_size, merger, feature_value_accessor_);
+      d_keys, offset, fea_num, index, input, output, n, grad_value_size, merger,
+      feature_value_accessor_);
   if (grad_dim > 0) {
     int grid_size2 = (n * grad_dim - 1) / block_size_ + 1;
     merge_gradients_embedx_kernel<<<grid_size2, block_size_, 0, stream>>>(
-            d_keys,
-            offset, fea_num, index, input, output, n * grad_dim, grad_dim, grad_value_size, merger, feature_value_accessor_);
+        d_keys, offset, fea_num, index, input, output, n * grad_dim, grad_dim,
+        grad_value_size, merger, feature_value_accessor_);
   }
 }
 
@@ -495,30 +405,37 @@ template <typename T, typename StreamType>
 void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals, float* d_vals,
                                        T* idx, long long len, size_t val_size,
                                        const StreamType& stream) {
-  int grid_size = (len - 1) / block_size_ + 1;
-  size_t c_len = (size_t)len;
-  dy_mf_fill_dvals_kernel<<<grid_size, block_size_, 0, stream>>>(
-      d_shard_vals, d_vals, idx, c_len, val_size, feature_value_accessor_);
+  const size_t val_size_float = val_size / sizeof(float);
+  CHECK((val_size % sizeof(float)) == 0);
+  size_t N = len * val_size_float;
+  const int grid_size = (N - 1) / block_size_ + 1;
+  // fill by float, d_shard_vals to d_vals
+  gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+         d_vals, d_shard_vals, idx, N, val_size_float);
 }
 
 template <typename StreamType>
 void HeterCommKernel::split_segments(const uint32_t* d_fea_num_info, size_t n,
-        uint32_t* d_segments, uint32_t* d_segments_num, size_t segment_size, const StreamType& stream) {
+                                     uint32_t* d_segments,
+                                     uint32_t* d_segments_num,
+                                     size_t segment_size,
+                                     const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   split_segments_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_fea_num_info, n, d_segments, d_segments_num, segment_size);
+      d_fea_num_info, n, d_segments, d_segments_num, segment_size);
 }
 
 template <typename StreamType>
 void HeterCommKernel::expand_segments(const uint32_t* d_fea_num_info,
-          const uint32_t* d_segments_offset, size_t n,
-          uint32_t* d_segments_fea_num_info, uint32_t segment_size,
-          const StreamType& stream) {
+                                      const uint32_t* d_segments_offset,
+                                      size_t n,
+                                      uint32_t* d_segments_fea_num_info,
+                                      uint32_t segment_size,
+                                      const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   expand_segments_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_fea_num_info,
-          d_segments_offset, n,
-          d_segments_fea_num_info, segment_size);
+      d_fea_num_info, d_segments_offset, n, d_segments_fea_num_info,
+      segment_size);
 }
 
 template <typename KeyType, typename StreamType>
@@ -526,19 +443,85 @@ void HeterCommKernel::shrink_keys(const KeyType* d_keys, const uint32_t* d_segme
           KeyType* d_segments_keys, size_t n, const StreamType& stream) {
   int grid_size = (n - 1) / block_size_ + 1;
   shrink_keys_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_keys, d_segments_offset, d_segments_keys, n);
+      d_keys, d_segments_offset, d_segments_keys, n);
 }
-
+template <typename T>
+__global__ void kernel_fill_restore_idx(
+    const size_t N, const T* d_sorted_idx,
+    const T* d_offset, const T* d_merged_cnts, T* d_restore_idx) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    const T& off = d_offset[i];
+    const T& num = d_merged_cnts[i];
+    for (size_t k = 0; k < num; ++k) {
+      d_restore_idx[d_sorted_idx[off + k]] = i;
+    }
+  }
+}
+template <typename KeyType, typename T>
+__global__ void kernel_fill_restore_idx_filter_zero(
+    const size_t N, const KeyType *d_keys, const T* d_sorted_idx,
+    const T* d_offset, const T* d_merged_cnts, T* d_restore_idx) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    if (d_keys[i] == 0) {
+      return;
+    }
+    const T& off = d_offset[i];
+    const T& num = d_merged_cnts[i];
+    for (size_t k = 0; k < num; ++k) {
+      d_restore_idx[d_sorted_idx[off + k]] = i;
+    }
+  }
+}
+template <typename T>
+__global__ void kernel_fill_restore_idx_by_search(
+    const size_t N, const T* d_sorted_idx,
+    const size_t merge_num, const T* d_offset, T* d_restore_idx) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    if (i < d_offset[1]) {
+        d_restore_idx[d_sorted_idx[i]] = 0;
+        return;
+    }
+    int high = merge_num - 1;
+    int low = 1;
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (i < d_offset[mid + 1]) {
+         high = mid;
+      } else {
+         low = mid + 1;
+      }
+    }
+    d_restore_idx[d_sorted_idx[i]] = low;
+  }
+}
 template <typename KeyType, typename StreamType>
 void HeterCommKernel::fill_restore_idx(
-        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
-        const uint32_t* d_merged_cnts, const KeyType* d_merged_keys,
-        const size_t n, uint32_t *d_restore_idx, const StreamType& stream) {
-  int grid_size = (n - 1) / block_size_ + 1;
-  fill_restore_idx_kernel<<<grid_size, block_size_, 0, stream>>>(
-          d_sorted_idx, d_offset, d_merged_cnts, d_merged_keys, d_restore_idx, n);
+    bool filter_zero, const size_t total_num, 
+    const size_t merge_size, const KeyType *d_keys, 
+    const uint32_t* d_sorted_idx,
+    const uint32_t* d_offset, const uint32_t* d_merged_cnts,
+    uint32_t* d_restore_idx, const StreamType& stream) {
+  // fill restore idx [1,3,5,2,4,6] = [1,2,1,3,2,1]
+  if (merge_size * 3 > total_num) {
+      // repetition rate is not very high
+      size_t grid_size = (merge_size - 1) / block_size_ + 1;
+      if (filter_zero) {
+          kernel_fill_restore_idx_filter_zero<<<grid_size, block_size_, 0, stream>>>(
+                  merge_size, d_keys, d_sorted_idx, d_offset, d_merged_cnts, d_restore_idx);
+      } else {
+          kernel_fill_restore_idx<<<grid_size, block_size_, 0, stream>>>(
+                  merge_size, d_sorted_idx, d_offset, d_merged_cnts, d_restore_idx);
+      }
+  } else {
+      size_t grid_size = (total_num - 1) / block_size_ + 1;
+      // mid search
+      kernel_fill_restore_idx_by_search<<<grid_size, block_size_, 0, stream>>>(
+              total_num, d_sorted_idx, merge_size, d_offset, d_restore_idx);
+  }
 }
-
 template <typename KeyType, typename StreamType>
 void HeterCommKernel::unpack_merged_vals(size_t n, const KeyType* d_keys,
         const void* d_merged_vals, const uint32_t* d_restore_idx,
@@ -546,7 +529,7 @@ void HeterCommKernel::unpack_merged_vals(size_t n, const KeyType* d_keys,
   int grid_size = (n - 1) / block_size_ + 1;
   unpack_merged_vals_kernel<<<grid_size, block_size_, 0, stream>>>(
           d_keys, (const float *)d_merged_vals, d_restore_idx,
-          (float *)d_vals, val_size, n, feature_value_accessor_);
+          (float *)d_vals, val_size, n);
 }
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
@@ -557,10 +540,10 @@ template void HeterCommKernel::fill_idx<uint32_t, cudaStream_t>(
 template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     int* idx, int* left, int* right, long long len, int total_devs,
     const cudaStream_t& stream);
-template void HeterCommKernel::calc_shard_index<
-    unsigned long, int, cudaStream_t>(unsigned long* d_keys, long long len,
-                                      int* shard_index, int total_devs,
-                                      const cudaStream_t& stream);
+template void
+HeterCommKernel::calc_shard_index<unsigned long, int, cudaStream_t>(
+    unsigned long* d_keys, long long len, int* shard_index, int total_devs,
+    const cudaStream_t& stream);
 
 template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
     long* d_keys, long long len, int* shard_index, int total_devs,
@@ -574,12 +557,10 @@ template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
     unsigned long* d_shard_keys, unsigned long* d_keys, int* idx, long long len,
     const cudaStream_t& stream);
 
-template void HeterCommKernel::fill_shard_grads<
-    unsigned long, float, int, cudaStream_t>(
-    unsigned long* d_shard_keys, unsigned long* d_keys,
-    float* d_shard_grads,
-    float* d_grads, int* idx, long long len,
-    const cudaStream_t& stream);
+template void
+HeterCommKernel::fill_shard_grads<unsigned long, float, int, cudaStream_t>(
+    unsigned long* d_shard_keys, unsigned long* d_keys, float* d_shard_grads,
+    float* d_grads, int* idx, long long len, const cudaStream_t& stream);
 
 template void
 HeterCommKernel::fill_dvals<paddle::framework::FeatureValue, int, cudaStream_t>(
@@ -614,57 +595,54 @@ template void HeterCommKernel::reduce_by_key<
     paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
     int num_items, cudaStream_t stream, bool debug_synchronous);
 
-template void HeterCommKernel::dy_mf_fill_shard_grads<
-    unsigned long, int, cudaStream_t>(
-    unsigned long* d_shard_keys, unsigned long* d_keys,
-    float* d_shard_grads, float* d_grads, int* idx, long long len,
-    size_t grad_value_size, const cudaStream_t& stream);
+template void
+HeterCommKernel::dy_mf_fill_shard_grads<unsigned long, int, cudaStream_t>(
+    unsigned long* d_shard_keys, unsigned long* d_keys, float* d_shard_grads,
+    float* d_grads, int* idx, long long len, size_t grad_value_size,
+    const cudaStream_t& stream);
 
 template void HeterCommKernel::merge_gradient<uint32_t, cudaStream_t>(
-    const uint32_t* d_keys,
-    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
-    const char* input, char* output, int n, size_t grad_dim, size_t grad_value_size,
-    DynamicGradMerger& merger_, const cudaStream_t& stream);
+    const uint32_t* d_keys, const uint32_t* offset, const uint32_t* fea_num,
+    const uint32_t* index, const char* input, char* output, int n,
+    size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger_,
+    const cudaStream_t& stream);
 
 template void HeterCommKernel::merge_gradient<uint64_t, cudaStream_t>(
-    const uint64_t* d_keys,
-    const uint32_t* offset, const uint32_t* fea_num, const uint32_t* index,
-    const char* input, char* output, int n, size_t grad_dim, size_t grad_value_size,
-    DynamicGradMerger& merger_, const cudaStream_t& stream);
+    const uint64_t* d_keys, const uint32_t* offset, const uint32_t* fea_num,
+    const uint32_t* index, const char* input, char* output, int n,
+    size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger_,
+    const cudaStream_t& stream);
 
 template void HeterCommKernel::dy_mf_fill_dvals<int, cudaStream_t>(
-    float* d_shard_vals,
-    float* d_vals, int* idx, long long len,
+    float* d_shard_vals, float* d_vals, int* idx, long long len,
     size_t val_size, const cudaStream_t& stream);
 
 template void HeterCommKernel::split_segments<cudaStream_t>(
-    const uint32_t* d_fea_num_info, size_t n,
-    uint32_t* d_segment, uint32_t* d_segments_num, size_t segment_size,
-    const cudaStream_t& stream);
+    const uint32_t* d_fea_num_info, size_t n, uint32_t* d_segment,
+    uint32_t* d_segments_num, size_t segment_size, const cudaStream_t& stream);
 
 template void HeterCommKernel::expand_segments<cudaStream_t>(
-    const uint32_t* d_fea_num_info,
-    const uint32_t* d_segments_offset, size_t n,
+    const uint32_t* d_fea_num_info, const uint32_t* d_segments_offset, size_t n,
     uint32_t* d_segments_fea_num_info, uint32_t segment_size,
     const cudaStream_t& stream);
 
 template void HeterCommKernel::shrink_keys<uint32_t, cudaStream_t>(
-        const uint32_t* d_keys, const uint32_t* d_segments_offset,
-        uint32_t* d_segments_keys, size_t segment_num, const cudaStream_t& stream);
+    const uint32_t* d_keys, const uint32_t* d_segments_offset,
+    uint32_t* d_segments_keys, size_t segment_num, const cudaStream_t& stream);
 
 template void HeterCommKernel::shrink_keys<uint64_t, cudaStream_t>(
-        const uint64_t* d_keys, const uint32_t* d_segments,
-        uint64_t* d_segments_keys, size_t total_segment_num, const cudaStream_t& stream);
+    const uint64_t* d_keys, const uint32_t* d_segments,
+    uint64_t* d_segments_keys, size_t total_segment_num, const cudaStream_t& stream);
 
 template void HeterCommKernel::fill_restore_idx<uint64_t, cudaStream_t>(
-        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
-        const uint32_t* d_merged_cnts, const uint64_t* d_merged_keys,
-        const size_t n, uint32_t* d_restore_idx, const cudaStream_t& stream);
+    bool filter_zero, const size_t total_num, const size_t merge_size, const uint64_t *d_keys, 
+    const uint32_t* d_sorted_idx, const uint32_t* d_offset, const uint32_t* d_merged_cnts,
+    uint32_t* d_restore_idx, const cudaStream_t& stream);
 
 template void HeterCommKernel::fill_restore_idx<uint32_t, cudaStream_t>(
-        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
-        const uint32_t* d_merged_cnts, const uint32_t* d_merged_keys,
-        const size_t n, uint32_t* d_restore_idx, const cudaStream_t& stream);
+    bool filter_zero, const size_t total_num, const size_t merge_size, const uint32_t *d_keys, 
+    const uint32_t* d_sorted_idx, const uint32_t* d_offset, const uint32_t* d_merged_cnts,
+    uint32_t* d_restore_idx, const cudaStream_t& stream);
 
 template void HeterCommKernel::unpack_merged_vals<uint64_t, cudaStream_t>(
         size_t n, const uint64_t* d_keys, const void* d_merged_vals,

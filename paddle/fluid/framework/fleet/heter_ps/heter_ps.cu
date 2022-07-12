@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
 
 #ifdef PADDLE_WITH_HETERPS
@@ -22,17 +23,16 @@ namespace framework {
 
 HeterPsBase* HeterPsBase::get_instance(
     size_t capacity, std::shared_ptr<HeterPsResource> resource,
-    CommonFeatureValueAccessor feature_value_accessor,
-    int optimizer_type) {
-  return new HeterPs(capacity, resource, feature_value_accessor, optimizer_type);
+    CommonFeatureValueAccessor feature_value_accessor, int optimizer_type) {
+  return new HeterPs(capacity, resource, feature_value_accessor,
+                     optimizer_type);
 }
 
-HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource, 
-                  CommonFeatureValueAccessor feature_value_accessor,
-                  int optimizer_type) {
-  comm_ =
-      std::make_shared<HeterComm<FeatureKey, float*, float*>>(
-          capacity, resource, feature_value_accessor);
+HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource,
+                 CommonFeatureValueAccessor feature_value_accessor,
+                 int optimizer_type) {
+  comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*>>(
+      capacity, resource, feature_value_accessor);
   feature_value_accessor_ = feature_value_accessor;
   optimizer_type_ = optimizer_type;
 }
@@ -67,19 +67,22 @@ void HeterPs::end_pass() { comm_->end_pass(); }
 
 void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
-void HeterPs::push_sparse(int num, FeatureKey* d_keys,
-                          float* d_grads, size_t len) {
-  if (optimizer_type_ == 3) { //adam
+void HeterPs::push_sparse(int num, FeatureKey* d_keys, float* d_grads,
+                          size_t len) {
+  if (optimizer_type_ == 3) {  // adam
     auto optimizer = SparseAdamOptimizer(feature_value_accessor_);
-    VLOG(5) << "INTO push_sparse SparseAdamOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    VLOG(5) << "INTO push_sparse SparseAdamOptimizer, EmbedDim():"
+            << optimizer.EmbedDim();
     comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
-  } else if (optimizer_type_ == 4) { //shared_adam
+  } else if (optimizer_type_ == 4) {  // shared_adam
     auto optimizer = SparseAdamSharedOptimizer(feature_value_accessor_);
-    VLOG(5) << "INTO push_sparse SparseAdamSharedOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    VLOG(5) << "INTO push_sparse SparseAdamSharedOptimizer, EmbedDim():"
+            << optimizer.EmbedDim();
     comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
   } else {
     auto optimizer = SparseAdagradOptimizer(feature_value_accessor_);
-    VLOG(5) << "INTO push_sparse SparseAdagradOptimizer, EmbedDim():" << optimizer.EmbedDim();
+    VLOG(5) << "INTO push_sparse SparseAdagradOptimizer, EmbedDim():"
+            << optimizer.EmbedDim();
     comm_->push_sparse(num, d_keys, d_grads, len, optimizer);
   }
 }
@@ -98,8 +101,28 @@ void HeterPs::set_accessor(CommonFeatureValueAccessor& accessor) {
   comm_->set_accessor(accessor);
 }
 
-void HeterPs::show_table_collisions() {
-  comm_->show_table_collisions();
+void HeterPs::show_table_collisions() { comm_->show_table_collisions(); }
+
+int HeterPs::dedup_keys_and_fillidx(const int gpu_id, 
+        const int total_fea_num,
+        const FeatureKey* d_keys,   // input
+        FeatureKey* d_merged_keys,  // output
+        FeatureKey* d_sorted_keys,
+        uint32_t* d_restore_idx,
+        uint32_t* d_sorted_idx, 
+        uint32_t* d_offset,
+        uint32_t* d_merged_cnts,
+        bool filter_zero) {
+  return comm_->dedup_keys_and_fillidx(gpu_id, 
+           total_fea_num,
+           d_keys,         // input
+           d_merged_keys,  // output
+           d_sorted_keys, 
+           d_restore_idx,
+           d_sorted_idx, 
+           d_offset, 
+           d_merged_cnts,
+           filter_zero);
 }
 
 }  // end namespace framework

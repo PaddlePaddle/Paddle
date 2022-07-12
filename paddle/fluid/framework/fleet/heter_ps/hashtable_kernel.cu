@@ -90,37 +90,24 @@ __global__ void dy_mf_search_kernel(Table* table,
   // return;
   if (i < len) {
     auto it = table->find(keys[i]);
-
     if (it != table->end()) {
       uint64_t offset = i * pull_feature_value_size;
       float* cur = (float*)(vals + offset);
       float* input = it->second;
-      int mf_dim = int(input[feature_value_accessor.common_feature_value.MfDimIndex()]);
-
-      *(reinterpret_cast<uint64_t*>(cur + feature_value_accessor.common_feature_value.CpuPtrIndex())) =
-          *(reinterpret_cast<uint64_t*>(input + feature_value_accessor.common_feature_value.CpuPtrIndex()));
-      cur[feature_value_accessor.common_feature_value.DeltaScoreIndex()] =
-        input[feature_value_accessor.common_feature_value.DeltaScoreIndex()];
-      cur[feature_value_accessor.common_feature_value.ShowIndex()] =
-        input[feature_value_accessor.common_feature_value.ShowIndex()];
-      cur[feature_value_accessor.common_feature_value.ClickIndex()] =
-        input[feature_value_accessor.common_feature_value.ClickIndex()];
-      cur[feature_value_accessor.common_feature_value.EmbedWIndex()] =
-        input[feature_value_accessor.common_feature_value.EmbedWIndex()];
-      for (int x = 0; x < feature_value_accessor.common_feature_value.EmbedDim(); x++) {
-        cur[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + x] = 
-          input[feature_value_accessor.common_feature_value.EmbedG2SumIndex() + x];
-      }
-      cur[feature_value_accessor.common_feature_value.SlotIndex()] =
-        input[feature_value_accessor.common_feature_value.SlotIndex()];
-      cur[feature_value_accessor.common_feature_value.MfDimIndex()] =
-        input[feature_value_accessor.common_feature_value.MfDimIndex()];
-      cur[feature_value_accessor.common_feature_value.MfSizeIndex()] =
-        input[feature_value_accessor.common_feature_value.MfSizeIndex()];
-
-      for (int x = feature_value_accessor.common_feature_value.EmbedxG2SumIndex();
-              x < int(feature_value_accessor.common_feature_value.Size(mf_dim) / sizeof(float)); x++){
-        cur[x] = input[x];
+      
+      cur[feature_value_accessor.common_pull_value.ShowIndex()] =
+         input[feature_value_accessor.common_feature_value.ShowIndex()];
+      cur[feature_value_accessor.common_pull_value.ClickIndex()] =
+         input[feature_value_accessor.common_feature_value.ClickIndex()];
+      cur[feature_value_accessor.common_pull_value.EmbedWIndex()] =
+         input[feature_value_accessor.common_feature_value.EmbedWIndex()];
+      int embedx_dim = int(input[feature_value_accessor.common_feature_value.MfSizeIndex()]);
+      cur[feature_value_accessor.common_pull_value.MfSizeIndex()] = embedx_dim;
+       
+      int embedx_off = feature_value_accessor.common_pull_value.EmbedxWIndex();
+      int value_off = feature_value_accessor.common_feature_value.EmbedxWOffsetIndex(input);
+      for (int i = 0; i < embedx_dim; ++i) {
+          cur[embedx_off + i] = input[value_off + i];
       }
     }
   }

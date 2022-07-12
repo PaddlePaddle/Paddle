@@ -145,6 +145,24 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     int optimizer_type_;
   };
 
+  struct CommonPullValue {
+      /*
+        float show;
+        float click;
+        float embed_w;
+        float mf_size
+        std::vector<float> embedx_w;
+      */
+      __host__ __device__ int ShowIndex() { return 0; }
+      __host__ __device__ int ClickIndex() { return 1; }
+      __host__ __device__ int EmbedWIndex() { return 2; }
+      __host__ __device__ int MfSizeIndex() { return 3; } // actual mf size (ex. 0)
+      __host__ __device__ int EmbedxWIndex() { return 4; }
+      __host__ __device__ int Size(const int mf_dim) {
+          return (4 + mf_dim) * sizeof(float);
+      }
+  };
+
   struct CommonPushValue {
     /*
        float slot;
@@ -251,6 +269,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
  public:
   CommonFeatureValue common_feature_value;
   CommonPushValue common_push_value;
+  CommonPullValue common_pull_value;
 };
 
 

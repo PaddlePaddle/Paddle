@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #if defined(PADDLE_WITH_CUDA)
@@ -29,8 +30,8 @@ class HeterPs : public HeterPsBase {
  public:
   HeterPs() {}
   HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource,
-         CommonFeatureValueAccessor feature_value_accessor,
-         int optimizer_type);
+          CommonFeatureValueAccessor feature_value_accessor,
+          int optimizer_type);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
@@ -56,10 +57,21 @@ class HeterPs : public HeterPsBase {
   void end_pass() override;
   int get_index_by_devid(int devid) override;
   void show_one_table(int gpu_num) override;
-  void push_sparse(int num, FeatureKey* d_keys, float* d_grads,
-                   size_t len);
+  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len);
   void show_table_collisions() override;
-
+#if defined(PADDLE_WITH_CUDA)
+  // dedup
+  int dedup_keys_and_fillidx(const int gpu_id,
+                             const int total_fea_num,
+                             const FeatureKey* d_keys,   // input
+                             FeatureKey* d_merged_keys,  // output
+                             FeatureKey* d_sorted_keys,
+                             uint32_t* d_restore_idx,
+                             uint32_t* d_sorted_idx,
+                             uint32_t* d_offset,
+                             uint32_t* d_merged_cnts,
+                             bool filter_zero);
+#endif
  private:
   std::shared_ptr<HeterComm<FeatureKey, float*, float*>> comm_;
 #if defined(PADDLE_WITH_CUDA)

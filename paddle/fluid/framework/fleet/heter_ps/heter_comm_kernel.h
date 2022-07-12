@@ -41,40 +41,47 @@ struct DynamicGradMerger {
     return out;
   }
 
-  __device__ __forceinline__ void update_one(float* output, const float* input,
-                                            CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.SlotIndex()] = 
+  __device__ __forceinline__ void update_one(
+      float* output, const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.SlotIndex()] =
         input[feature_value_accessor.common_push_value.SlotIndex()];
-    output[feature_value_accessor.common_push_value.ShowIndex()] = 
+    output[feature_value_accessor.common_push_value.ShowIndex()] =
         input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] = 
+    output[feature_value_accessor.common_push_value.ClickIndex()] =
         input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.MfDimIndex()] = 
+    output[feature_value_accessor.common_push_value.MfDimIndex()] =
         input[feature_value_accessor.common_push_value.MfDimIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] = 
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] =
         input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] = 
+    for (int j = 0;
+         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
+         j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] =
           input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
 
-  __device__ __forceinline__ void merge_one(float* output, const float* input,
-                                          CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.ShowIndex()] += 
+  __device__ __forceinline__ void merge_one(
+      float* output, const float* input,
+      CommonFeatureValueAccessor& feature_value_accessor) {
+    output[feature_value_accessor.common_push_value.ShowIndex()] +=
         input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] += 
+    output[feature_value_accessor.common_push_value.ClickIndex()] +=
         input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] += 
+    output[feature_value_accessor.common_push_value.EmbedGIndex()] +=
         input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]); j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] += 
+    for (int j = 0;
+         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
+         j++) {
+      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] +=
           input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
     }
   }
 
-  __device__ __forceinline__ void update_basic(float* output, const float* input,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void update_basic(
+      float* output, const float* input,
+      CommonFeatureValueAccessor& fv_accessor) {
     output[fv_accessor.common_push_value.SlotIndex()] =
         input[fv_accessor.common_push_value.SlotIndex()];
     output[fv_accessor.common_push_value.ShowIndex()] =
@@ -87,8 +94,9 @@ struct DynamicGradMerger {
         input[fv_accessor.common_push_value.EmbedGIndex()];
   }
 
-  __device__ __forceinline__ void merge_basic(float* output, const float* input,
-                                          CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void merge_basic(
+      float* output, const float* input,
+      CommonFeatureValueAccessor& fv_accessor) {
     output[fv_accessor.common_push_value.ShowIndex()] +=
         input[fv_accessor.common_push_value.ShowIndex()];
     output[fv_accessor.common_push_value.ClickIndex()] +=
@@ -97,16 +105,18 @@ struct DynamicGradMerger {
         input[fv_accessor.common_push_value.EmbedGIndex()];
   }
 
-  __device__ __forceinline__ void update_embedx(float* output, const float* input, size_t embedx_idx,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void update_embedx(
+      float* output, const float* input, size_t embedx_idx,
+      CommonFeatureValueAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
   }
 
-  __device__ __forceinline__ void merge_embedx(float* output, const float* input, size_t embedx_idx,
-                                            CommonFeatureValueAccessor& fv_accessor) {
+  __device__ __forceinline__ void merge_embedx(
+      float* output, const float* input, size_t embedx_idx,
+      CommonFeatureValueAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
@@ -119,7 +129,10 @@ class HeterCommKernel {
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
-  explicit HeterCommKernel(const int block_size, CommonFeatureValueAccessor& feature_value_accessor) : block_size_(block_size), feature_value_accessor_(feature_value_accessor) {}
+  explicit HeterCommKernel(const int block_size,
+                           CommonFeatureValueAccessor& feature_value_accessor)
+      : block_size_(block_size),
+        feature_value_accessor_(feature_value_accessor) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -171,14 +184,15 @@ class HeterCommKernel {
 
   template <typename KeyType, typename T, typename StreamType>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys, KeyType* d_keys,
-                              float* d_shard_grads, float* d_grads,
-                              T* idx, long long len, size_t grad_value_size,
+                              float* d_shard_grads, float* d_grads, T* idx,
+                              long long len, size_t grad_value_size,
                               const StreamType& stream);
 
   template <typename KeyType, typename StreamType>
-  void merge_gradient(const KeyType* d_shard_keys, const uint32_t* offset, const uint32_t* fea_num,
-                      const uint32_t* index, const char* input, char* output,
-                      int n, size_t grad_dim, size_t grad_value_size, DynamicGradMerger& merger,
+  void merge_gradient(const KeyType* d_shard_keys, const uint32_t* offset,
+                      const uint32_t* fea_num, const uint32_t* index,
+                      const char* input, char* output, int n, size_t grad_dim,
+                      size_t grad_value_size, DynamicGradMerger& merger,
                       const StreamType& stream);
 
   template <typename T, typename StreamType>
@@ -187,24 +201,27 @@ class HeterCommKernel {
                         const StreamType& stream);
 
   template <typename StreamType>
-  void split_segments(const uint32_t* d_fea_num_info,
-          size_t len, uint32_t* d_segments, uint32_t* d_segments_num,
-          size_t segment_size, const StreamType& stream);
+  void split_segments(const uint32_t* d_fea_num_info, size_t len,
+                      uint32_t* d_segments, uint32_t* d_segments_num,
+                      size_t segment_size, const StreamType& stream);
 
   template <typename StreamType>
   void expand_segments(const uint32_t* d_fea_num_info,
-          const uint32_t* d_segments_offset, size_t segments_num,
-          uint32_t* d_segments_fea_num_info, uint32_t segment_size,
-          const StreamType& stream);
+                       const uint32_t* d_segments_offset, size_t segments_num,
+                       uint32_t* d_segments_fea_num_info, uint32_t segment_size,
+                       const StreamType& stream);
 
   template <typename KeyType, typename StreamType>
   void shrink_keys(const KeyType* d_keys, const uint32_t* d_segments_offset,
-          KeyType* d_segments_keys, size_t segments_num, const StreamType& stream);
+                   KeyType* d_segments_keys, size_t segments_num,
+                   const StreamType& stream);
 
   template <typename KeyType, typename StreamType>
-  void fill_restore_idx(const uint32_t* d_sorted_idx, const uint32_t* d_offset,
-          const uint32_t* d_merged_cnts, const KeyType* d_merged_keys,
-          const size_t len, uint32_t* d_restore_idx, const StreamType& stream);
+  void fill_restore_idx(bool filter_zero, const size_t total_num,
+                        const size_t merge_size, const KeyType *d_keys,
+                        const uint32_t* d_sorted_idx, const uint32_t* d_offset,
+                        const uint32_t* d_merged_cnts, uint32_t* d_restore_idx,
+                        const StreamType& stream);
 
   template <typename KeyType, typename StreamType>
   void unpack_merged_vals(size_t n,

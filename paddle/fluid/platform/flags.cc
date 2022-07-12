@@ -866,6 +866,9 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size, 128,
     "segment size with segment gradient merge, default 128");
+PADDLE_DEFINE_EXPORTED_int32(
+    gpugraph_dedup_pull_push_mode, 0,
+    "enable dedup keys while pull push sparse, default 0");
 
 /**
  * ProcessGroupNCCL related FLAG
