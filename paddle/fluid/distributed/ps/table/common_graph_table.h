@@ -680,6 +680,7 @@ class GraphTable : public Table {
   int cache_size_limit;
   int cache_ttl;
   mutable std::mutex mutex_;
+  bool build_sampler_on_cpu;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;

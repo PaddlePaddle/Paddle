@@ -1444,12 +1444,14 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
   }
 #endif
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+if(!build_sampler_on_cpu){
   // To reduce memory overhead, CPU samplers won't be created in gpugraph.
   // In order not to affect the sampler function of other scenario,
   // this optimization is only performed in load_edges function.
   VLOG(0) << "run in gpugraph mode!";
-#else
+}
+else {
+  std::string sample_type = "random";
   VLOG(0) << "build sampler ... ";
   for (auto &shard : edge_shards[idx]) {
     auto bucket = shard->get_bucket();
@@ -1457,7 +1459,8 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge,
       bucket[i]->build_sampler(sample_type);
     }
   }
-#endif
+}
+
   return 0;
 }
 
@@ -2062,6 +2065,7 @@ void GraphTable::load_node_weight(int type_id, int idx, std::string path) {
 }
 int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
+  build_sampler_on_cpu = graph.build_sampler_on_cpu();
 
 #ifdef PADDLE_WITH_HETERPS
   _db = NULL;
