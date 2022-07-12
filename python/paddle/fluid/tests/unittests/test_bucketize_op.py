@@ -122,7 +122,7 @@ class TestBucketizeAPI(unittest.TestCase):
                     'InputTensor': self.x,
                     'SortedSequence': self.sorted_sequence,
                 },
-                            fetch_list=out)
+                              fetch_list=out)
                 out_ref = np.searchsorted(self.sorted_sequence, self.x)
                 self.assertTrue(np.allclose(out_ref, res))
 
