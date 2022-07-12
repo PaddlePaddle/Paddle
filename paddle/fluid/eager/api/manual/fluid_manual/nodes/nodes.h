@@ -329,3 +329,205 @@ class fused_feedforwardGradNodeCompat : public egr::GradNodeBase {
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+
+class fused_attentionGradNodeCompat : public egr::GradNodeBase {
+ public:
+  fused_attentionGradNodeCompat() : egr::GradNodeBase() {
+    VLOG(7) << " Construct fused_attentionGradNodeCompat ";
+  }
+  fused_attentionGradNodeCompat(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
+    VLOG(7) << " Construct fused_attentionGradNodeCompat ";
+  }
+  ~fused_attentionGradNodeCompat() override {
+    VLOG(6) << " Destruct fused_attentionGradNodeCompat ";
+  }
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
+                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false) override;
+
+  void ClearTensorWrappers() override {
+    AttnDropoutMaskOut_.clear();
+    AttnDropoutOut_.clear();
+    BiasDropoutResidualOut_.clear();
+    DropoutMaskOut_.clear();
+    FMHAOut_.clear();
+    Ln2Bias_.clear();
+    Ln2Mean_.clear();
+    Ln2Scale_.clear();
+    Ln2Variance_.clear();
+    OutLinearBias_.clear();
+    OutLinearOut_.clear();
+    OutLinearW_.clear();
+    QKOut_.clear();
+    QKTVOut_.clear();
+    QKVBias_.clear();
+    QKVBiasOut_.clear();
+    QKVOut_.clear();
+    QKVW_.clear();
+    SoftmaxOut_.clear();
+    SrcMask_.clear();
+    SrcMaskOut_.clear();
+    TransposeOut2_.clear();
+    X_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+  std::string name() override { return "fused_attentionGradNodeCompat"; }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node = std::shared_ptr<fused_attentionGradNodeCompat>(
+          new fused_attentionGradNodeCompat(*this));
+      return copied_node;
+    }
+  }
+
+  // SetX, SetY, ...
+  void SetTensorWrapperAttnDropoutMaskOut(
+      const paddle::experimental::Tensor& AttnDropoutMaskOut) {
+    AttnDropoutMaskOut_ = egr::TensorWrapper(AttnDropoutMaskOut, false);
+  }
+  void SetTensorWrapperAttnDropoutOut(
+      const paddle::experimental::Tensor& AttnDropoutOut) {
+    AttnDropoutOut_ = egr::TensorWrapper(AttnDropoutOut, false);
+  }
+  void SetTensorWrapperBiasDropoutResidualOut(
+      const paddle::experimental::Tensor& BiasDropoutResidualOut) {
+    BiasDropoutResidualOut_ = egr::TensorWrapper(BiasDropoutResidualOut, false);
+  }
+  void SetTensorWrapperDropoutMaskOut(
+      const paddle::experimental::Tensor& DropoutMaskOut) {
+    DropoutMaskOut_ = egr::TensorWrapper(DropoutMaskOut, false);
+  }
+  void SetTensorWrapperFMHAOut(const paddle::experimental::Tensor& FMHAOut) {
+    FMHAOut_ = egr::TensorWrapper(FMHAOut, false);
+  }
+  void SetTensorWrapperLn2Bias(const paddle::experimental::Tensor& Ln2Bias) {
+    Ln2Bias_ = egr::TensorWrapper(Ln2Bias, false);
+  }
+  void SetTensorWrapperLn2Mean(const paddle::experimental::Tensor& Ln2Mean) {
+    Ln2Mean_ = egr::TensorWrapper(Ln2Mean, false);
+  }
+  void SetTensorWrapperLn2Scale(const paddle::experimental::Tensor& Ln2Scale) {
+    Ln2Scale_ = egr::TensorWrapper(Ln2Scale, false);
+  }
+  void SetTensorWrapperLn2Variance(
+      const paddle::experimental::Tensor& Ln2Variance) {
+    Ln2Variance_ = egr::TensorWrapper(Ln2Variance, false);
+  }
+  void SetTensorWrapperOutLinearBias(
+      const paddle::experimental::Tensor& OutLinearBias) {
+    OutLinearBias_ = egr::TensorWrapper(OutLinearBias, false);
+  }
+  void SetTensorWrapperOutLinearOut(
+      const paddle::experimental::Tensor& OutLinearOut) {
+    OutLinearOut_ = egr::TensorWrapper(OutLinearOut, false);
+  }
+  void SetTensorWrapperOutLinearW(
+      const paddle::experimental::Tensor& OutLinearW) {
+    OutLinearW_ = egr::TensorWrapper(OutLinearW, false);
+  }
+  void SetTensorWrapperQKOut(const paddle::experimental::Tensor& QKOut) {
+    QKOut_ = egr::TensorWrapper(QKOut, false);
+  }
+  void SetTensorWrapperQKTVOut(const paddle::experimental::Tensor& QKTVOut) {
+    QKTVOut_ = egr::TensorWrapper(QKTVOut, false);
+  }
+  void SetTensorWrapperQKVBias(const paddle::experimental::Tensor& QKVBias) {
+    QKVBias_ = egr::TensorWrapper(QKVBias, false);
+  }
+  void SetTensorWrapperQKVBiasOut(
+      const paddle::experimental::Tensor& QKVBiasOut) {
+    QKVBiasOut_ = egr::TensorWrapper(QKVBiasOut, false);
+  }
+  void SetTensorWrapperQKVOut(const paddle::experimental::Tensor& QKVOut) {
+    QKVOut_ = egr::TensorWrapper(QKVOut, false);
+  }
+  void SetTensorWrapperQKVW(const paddle::experimental::Tensor& QKVW) {
+    QKVW_ = egr::TensorWrapper(QKVW, false);
+  }
+  void SetTensorWrapperSoftmaxOut(
+      const paddle::experimental::Tensor& SoftmaxOut) {
+    SoftmaxOut_ = egr::TensorWrapper(SoftmaxOut, false);
+  }
+  void SetTensorWrapperSrcMask(const paddle::experimental::Tensor& SrcMask) {
+    SrcMask_ = egr::TensorWrapper(SrcMask, false);
+  }
+  void SetTensorWrapperSrcMaskOut(
+      const paddle::experimental::Tensor& SrcMaskOut) {
+    SrcMaskOut_ = egr::TensorWrapper(SrcMaskOut, false);
+  }
+  void SetTensorWrapperTransposeOut2(
+      const paddle::experimental::Tensor& TransposeOut2) {
+    TransposeOut2_ = egr::TensorWrapper(TransposeOut2, false);
+  }
+  void SetTensorWrapperX(const paddle::experimental::Tensor& X) {
+    X_ = egr::TensorWrapper(X, false);
+  }
+  void SetTensorWrapperLnScale(const paddle::experimental::Tensor& LnScale) {
+    LnScale_ = egr::TensorWrapper(LnScale, false);
+  }
+  void SetTensorWrapperLnBias(const paddle::experimental::Tensor& LnBias) {
+    LnBias_ = egr::TensorWrapper(LnBias, false);
+  }
+  void SetTensorWrapperLnOut(const paddle::experimental::Tensor& LnOut) {
+    LnOut_ = egr::TensorWrapper(LnOut, false);
+  }
+  void SetTensorWrapperLnMean(const paddle::experimental::Tensor& LnMean) {
+    LnMean_ = egr::TensorWrapper(LnMean, false);
+  }
+  void SetTensorWrapperLnVariance(
+      const paddle::experimental::Tensor& LnVariance) {
+    LnVariance_ = egr::TensorWrapper(LnVariance, false);
+  }
+
+  // SetAttrMap
+  void SetAttrMap(paddle::framework::AttributeMap&& attr_map) {
+    attr_map_ = std::move(attr_map);
+  }
+  void SetDefaultAttrMap(paddle::framework::AttributeMap&& default_attr_map) {
+    default_attr_map_ = std::move(default_attr_map);
+  }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper AttnDropoutMaskOut_;
+  egr::TensorWrapper AttnDropoutOut_;
+  egr::TensorWrapper BiasDropoutResidualOut_;
+  egr::TensorWrapper DropoutMaskOut_;
+  egr::TensorWrapper FMHAOut_;
+  egr::TensorWrapper Ln2Bias_;
+  egr::TensorWrapper Ln2Mean_;
+  egr::TensorWrapper Ln2Scale_;
+  egr::TensorWrapper Ln2Variance_;
+  egr::TensorWrapper OutLinearBias_;
+  egr::TensorWrapper OutLinearOut_;
+  egr::TensorWrapper OutLinearW_;
+  egr::TensorWrapper QKOut_;
+  egr::TensorWrapper QKTVOut_;
+  egr::TensorWrapper QKVBias_;
+  egr::TensorWrapper QKVBiasOut_;
+  egr::TensorWrapper QKVOut_;
+  egr::TensorWrapper QKVW_;
+  egr::TensorWrapper SoftmaxOut_;
+  egr::TensorWrapper SrcMask_;
+  egr::TensorWrapper SrcMaskOut_;
+  egr::TensorWrapper TransposeOut2_;
+  egr::TensorWrapper X_;
+
+  egr::TensorWrapper LnScale_;
+  egr::TensorWrapper LnBias_;
+  egr::TensorWrapper LnOut_;
+  egr::TensorWrapper LnMean_;
+  egr::TensorWrapper LnVariance_;
+
+  // Attribute Map
+  paddle::framework::AttributeMap attr_map_;
+  paddle::framework::AttributeMap default_attr_map_;
+};

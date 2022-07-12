@@ -21,7 +21,17 @@ namespace phi {
 namespace kps {
 namespace details {
 
-int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+static inline int RoundUpDiv(int n, int k) { return (n + k - 1) / k; }
+
+static inline int GetXpuReadLens(int numel, int block_num, int grid_num) {
+  const int buf_size = 256;
+  int nthreads = block_num * grid_num;
+  if (numel / nthreads == 1) {
+    return numel / nthreads * 4;
+  }
+  int read_lens = std::min(buf_size, RoundUpDiv(numel, 32 * nthreads) * 32);
+  return read_lens;
+}
 
 enum class OptType {    // Optimize type of calc after input shape compressed
   CanNotOptimize = -1,  // can not optimize, broadcast first
@@ -98,8 +108,10 @@ struct BroadcastConfig {
       strides_out_tmp[i] = strides_out_tmp[i - 1] * out_dims[i - 1];
     }
 
+    int numel_out = 1;
     for (int i = 0; i < dim_size; i++) {
       dim_tmp[i] = in_dims[i];
+      numel_out = out_dims[i] * numel_out;
     }
     kDims = dim_size;
     memcpy(strides_in, strides_in_tmp.data(), kDims * sizeof(int));
@@ -108,12 +120,24 @@ struct BroadcastConfig {
 
     cmp_res = get_mnk_for_broadcast_ops(in_dims, y_in_dims);
     get_opt_type();
-    buf_len = get_buf_len();
+    buf_len = get_buf_len(numel_out);
+    int numel_x = 1;
+    int numel_y = 1;
+    for (int i = 0; i < dim_size; i++) {
+      numel_x = in_dims[i] * numel_x;
+      numel_y = y_in_dims[i] * numel_y;
+    }
+    if (numel_out == numel_x && numel_out == numel_y) {
+      buf_len = GetXpuReadLens(numel_out, 8, 64);
+    }
   }
 
-  int get_buf_len() {
+  int get_buf_len(int numel) {
     if (cmp_type == OptType::CanNotOptimize) {
       return 256;
+    }
+    if (cmp_type == OptType::N_1) {
+      return kps::details::GetXpuReadLens(numel, 8, 64);
     }
     int max_buf_len = 512;
     int buf_len = m / 16 * 16;

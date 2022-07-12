@@ -138,6 +138,59 @@ const ONNXDataType GetOutputVarDType(const Node *node,
   return GetVarDType(out_node);
 }
 
+bool IsLastVarNode(Node *node) {
+  return node->IsVar() && node->outputs.size() == 0;
+}
+
+void MarkNodeForDeletion(Node *node) { node->Op()->SetAttr("delete_node", 1); }
+
+bool IsMarkedForDeletion(Node *node) {
+  return node->Op()->HasAttr("delete_node") &&
+         BOOST_GET_CONST(int, node->Op()->GetAttr("delete_node")) > 0;
+}
+
+int RemoveTailReduction(Graph *graph,
+                        Node *loss_op,
+                        const std::string &output_var_name) {
+  // Sum: 0. Mean: 1. None: 2
+  int reduction = 2;
+  Node *reduction_op;
+  auto loss_output = GetOutputVarNode(output_var_name, loss_op);
+  for (auto sub_node : loss_output->outputs) {
+    if (!sub_node->IsOp()) continue;
+    if (sub_node->Op()->Type() == "reduce_sum") {
+      reduction = 0;
+      reduction_op = sub_node;
+    } else if (sub_node->Op()->Type() == "reduce_mean") {
+      reduction = 1;
+      reduction_op = sub_node;
+    }
+  }
+  if (reduction == 2) return reduction;
+  auto reduction_out = reduction_op->outputs[0];
+  loss_op->Op()->SetOutput(output_var_name,
+                           std::vector<std::string>({reduction_out->Name()}));
+  MarkNodeForDeletion(reduction_op);
+  DisConnectNodes(loss_output, reduction_op);
+  DisConnectNodes(reduction_op, reduction_out);
+  ConnectNodes(loss_op, reduction_out);
+
+  return reduction;
+}
+
+int ConvertToPopartReduction(const std::string &reduction) {
+  // Sum: 0. Mean: 1. None: 2
+  if (reduction == "sum") {
+    return 0;
+  } else if (reduction == "mean") {
+    return 1;
+  } else if (reduction == "none") {
+    return 2;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "reduction %s is not supported on ipu.", reduction));
+}
+
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

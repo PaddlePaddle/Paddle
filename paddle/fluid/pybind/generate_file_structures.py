@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
+import sys
+import os
 
-from paddle.fluid import framework
+if __name__ == "__main__":
+    assert len(sys.argv) == 2
+    pybind_dir = sys.argv[1]
 
+    empty_files = [os.path.join(pybind_dir, "eager_final_state_op_function.cc")]
+    empty_files.append(os.path.join(pybind_dir, "eager_op_function.cc"))
+    empty_files.append(os.path.join(pybind_dir, "op_function.cc"))
 
-def as_tensors(xs):
-    if isinstance(xs, framework.Variable):
-        return (xs, )
-    elif isinstance(xs, typing.Sequence):
-        return tuple(xs)
-    else:
-        return xs
+    for path in empty_files:
+        if not os.path.exists(path):
+            open(path, 'a').close()

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 from paddle.fluid import framework as framework
@@ -170,3 +171,12 @@ def flatten(inp):
 def flatten_and_remove_none(inp):
     flattened = flatten(inp)
     return [var for var in flattened if var is not None]
+
+
+def as_tensors(xs):
+    if isinstance(xs, framework.Variable):
+        return (xs, )
+    elif isinstance(xs, typing.Sequence):
+        return tuple(xs)
+    else:
+        return xs

@@ -1216,7 +1216,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
 
+  // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
+  argument_.SetMixedBlackList(config_.mixed_black_list_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

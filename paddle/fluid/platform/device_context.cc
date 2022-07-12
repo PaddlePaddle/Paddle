@@ -123,6 +123,10 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::CUDA;
   } else if (platform::is_xpu_place(place)) {
     return platform::DeviceType::XPU;
+  } else if (platform::is_ipu_place(place)) {
+    return platform::DeviceType::IPU;
+  } else if (platform::is_npu_place(place)) {
+    return platform::DeviceType::NPU;
   } else if (platform::is_mlu_place(place)) {
     return platform::DeviceType::MLU;
   } else {

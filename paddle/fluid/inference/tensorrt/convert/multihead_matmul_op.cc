@@ -48,9 +48,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
       in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
-    weight_data = engine_->GetWeightCPUData(weight_name, weight_t);
+    weight_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(weight_name, *weight_t).get().values));
 
-    float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t);
+    float* bias_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(bias_name, *bias_t).get().values));
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_t->numel());
     memcpy(
