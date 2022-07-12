@@ -991,6 +991,7 @@ def searchsorted(sorted_sequence,
 
     return out
 
+
 def bucketize(x,
               sorted_sequence,
               out_int32=False,

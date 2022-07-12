@@ -502,6 +502,7 @@ tensor_method_func = [  #noqa
     'put_along_axis_',
     'exponential_',
     'heaviside',
+    'bucketize'
 ]
 
 #this list used in math_op_patch.py for magic_method bind
