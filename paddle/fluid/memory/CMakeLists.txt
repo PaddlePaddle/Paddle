@@ -1,4 +1,3 @@
-add_subdirectory(detail)
 add_subdirectory(allocation)
 
 if(WITH_MKLDNN)

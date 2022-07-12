@@ -1,8 +1,10 @@
+include(ExternalProject)
+
 set(ALLOCATION_DEPS place stats profiler)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
-    plocked_allocator.cc
+    locked_allocator.cc
     aligned_allocator.cc
     buffered_allocator.cc
     best_fit_allocator.cc
@@ -11,9 +13,14 @@ set(ALLOCATOR_SRCS
     allocator_facade.cc
     auto_growth_best_fit_allocator.cc
     virtual_memory_auto_growth_best_fit_allocator.cc
-    retry_allocator.cc)
+    retry_allocator.cc
+    memory_block.cc
+    memory_block_desc.cc
+    meta_cache.cc
+    buddy_allocator.cc
+    system_allocator.cc)
 
-if(WITH_GPU or WITH_ROCM)
+if(WITH_GPU OR WITH_ROCM)
   list(
     APPEND
     ALLOCATOR_SRCS
@@ -54,8 +61,8 @@ if(WITH_IPU)
   list(APPEND ALLOCATOR_DEPS ipu_info)
 endif()
 
-add_library(allocator "${CPU_ALLOCATOR_SRCS}")
-target_link_libraries(allocation ${ALLOCATION_DEPS})
+add_library(allocator "${ALLOCATOR_SRCS}")
+target_link_libraries(allocator ${ALLOCATOR_DEPS})
 
 cc_test(
   naive_best_fit_allocator_test
@@ -134,4 +141,45 @@ if(NOT WIN32)
     mmap_allocator_test
     SRCS mmap_allocator_test.cc
     DEPS allocator)
+endif()
+
+cc_test(
+  system_allocator_test
+  SRCS system_allocator_test.cc
+  DEPS allocator)
+
+cc_test(
+  buddy_allocator_test
+  SRCS buddy_allocator_test.cc
+  DEPS allocator)
+
+function(file_download_and_uncompress URL NAME)
+  message(STATUS "Download dependence[${NAME}] from ${URL}")
+  set(${NAME}_INCLUDE_DIR
+      ${THIRD_PARTY_PATH}/${NAME}
+      PARENT_SCOPE)
+  ExternalProject_Add(
+    extern_download_${NAME}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    PREFIX ${THIRD_PARTY_PATH}/${NAME}
+    URL ${URL}
+    DOWNLOAD_DIR ${THIRD_PARTY_PATH}/${NAME}
+    SOURCE_DIR ${THIRD_PARTY_PATH}/${NAME}
+    DOWNLOAD_NO_PROGRESS 1
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    UPDATE_COMMAND ""
+    INSTALL_COMMAND "")
+  set(third_party_deps
+      ${third_party_deps} extern_download_${NAME}
+      PARENT_SCOPE)
+endfunction()
+
+if(WITH_TESTING)
+  if(TEST buddy_allocator_test)
+    set_tests_properties(buddy_allocator_test PROPERTIES LABELS
+                                                         "RUN_TYPE=EXCLUSIVE")
+  endif()
+  set(URL "https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar")
+  file_download_and_uncompress(URL "buddy_allocator")
 endif()
