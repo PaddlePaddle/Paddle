@@ -50,7 +50,8 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("StatNeg", "Statistic value when label = 0");
     AddInput("InsTagWeight",
              "(Tensor, optional) If provided, auc Op will use this "
-             "1 means real data, 0 means false data");
+             "1 means real data, 0 means false data")
+        .AsDispensable();
 
     AddOutput("AUC",
               "A scalar representing the "
