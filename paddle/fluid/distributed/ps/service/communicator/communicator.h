@@ -283,10 +283,10 @@ class Communicator {
                               int batches,
                               Scope *send_scope);
 
-  virtual std::unordered_map<uint32_t, std::string> QueryFlClientsInfo() {
+  virtual std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
     return {};
   }
-  virtual void SaveFlStrategy(
+  virtual void SaveFLStrategy(
       const std::unordered_map<uint32_t, std::string> &fl_strategy) {}
   virtual void StartCoordinator(
       const std::string &self_endpoint,
@@ -665,16 +665,16 @@ class GeoCommunicator : public AsyncCommunicator {
       sparse_id_queues_;
 };
 
-class FlCommunicator : public GeoCommunicator {
+class FLCommunicator : public GeoCommunicator {
  public:
-  FlCommunicator() : GeoCommunicator() {}
+  FLCommunicator() : GeoCommunicator() {}
 
-  ~FlCommunicator() {
+  ~FLCommunicator() {
     is_running_ = false;
     async_send_thread_->join();
   }
 
-  explicit FlCommunicator(const std::map<std::string, std::string> &envs)
+  explicit FLCommunicator(const std::map<std::string, std::string> &envs)
       : GeoCommunicator(envs) {}
 
   void InitEnvs() override {}
@@ -695,13 +695,13 @@ class FlCommunicator : public GeoCommunicator {
       const std::string &self_endpoint,
       const std::vector<std::string> &trainer_endpoints) override;
 
-  std::unordered_map<uint32_t, std::string> QueryFlClientsInfo();
-  void SaveFlStrategy(
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo();
+  void SaveFLStrategy(
       const std::unordered_map<uint32_t, std::string> &fl_strategy);
 
   void SendThreadAsync();
-  void SendToFlClient();
-  void RPCSendFlStrategy(const uint32_t &client_id);
+  void SendToFLClient();
+  void RPCSendFLStrategy(const uint32_t &client_id);
 
  private:
   int thread_pool_size_ = 1;

@@ -30,12 +30,13 @@ DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
 namespace paddle {
 namespace distributed {
 
-void CoordinatorService::FlService(
+void CoordinatorService::FLService(
     ::google::protobuf::RpcController* controller,
-    const CoordinatorReqMessage* request, CoordinatorResMessage* response,
+    const CoordinatorReqMessage* request,
+    CoordinatorResMessage* response,
     ::google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
-  VLOG(0) << ">>> entering CoordinatorService::FlService";
+  VLOG(0) << ">>> entering CoordinatorService::FLService";
   response->set_err_code(0);
   response->set_err_msg("");
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
@@ -120,8 +121,8 @@ int32_t CoordinatorClient::Initialize(
     uint32_t rank = fl_client_list[i].rank;
     VLOG(0) << ">>> coordinator connect to fl_client: " << rank;
     _fl_client_channels[rank].reset(new brpc::Channel());
-    if (_fl_client_channels[rank]->Init(fl_client_ip_port.c_str(), "",
-                                        &options) != 0) {
+    if (_fl_client_channels[rank]->Init(
+            fl_client_ip_port.c_str(), "", &options) != 0) {
       LOG(ERROR) << "CoordinatorClient connect to FlClient:"
                  << fl_client_ip_port << " Failed! Try again.";
       std::string int_ip_port =
@@ -167,8 +168,8 @@ int32_t CoordinatorClient::StartClientService() {
   return 0;
 }
 
-void CoordinatorClient::SendFlStrategy(const uint32_t& client_id) {
-  VLOG(0) << ">>> entering CoordinatorClient::SendFlStrategy! peer client id: "
+void CoordinatorClient::SendFLStrategy(const uint32_t& client_id) {
+  VLOG(0) << ">>> entering CoordinatorClient::SendFLStrategy! peer client id: "
           << client_id;
   size_t request_call_num = 1;
   FlClientBrpcClosure* closure =
@@ -176,7 +177,7 @@ void CoordinatorClient::SendFlStrategy(const uint32_t& client_id) {
         auto* closure = reinterpret_cast<FlClientBrpcClosure*>(done);
         int ret = 0;
         if (closure->check_response(0, FL_PUSH_FL_STRATEGY) != 0) {
-          LOG(ERROR) << "SendFlStrategy response from coordinator is failed";
+          LOG(ERROR) << "SendFLStrategy response from coordinator is failed";
           ret = -1;
         }
         closure->set_promise_value(ret);
@@ -196,10 +197,10 @@ void CoordinatorClient::SendFlStrategy(const uint32_t& client_id) {
     LOG(ERROR) << "_fl_client_channels is null";
   }
   PsService_Stub rpc_stub(rpc_channel);  // DownpourPsClientService
-  rpc_stub.FlService(closure->cntl(0), closure->request(0),
-                     closure->response(0), closure);
+  rpc_stub.FLService(
+      closure->cntl(0), closure->request(0), closure->response(0), closure);
   fut.wait();
-  VLOG(0) << "<<< CoordinatorClient::SendFlStrategy finished";
+  VLOG(0) << "<<< CoordinatorClient::SendFLStrategy finished";
   return;
 }
 

@@ -77,8 +77,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
       .def("save_cache", &FleetWrapper::SaveCache)
       .def("init_fl_worker", &FleetWrapper::InitFlWorker)
-      .def("push_fl_state_sync", &FleetWrapper::PushFlStateSync)
-      .def("get_fl_strategy", &FleetWrapper::PullFlStrategy);
+      .def("push_fl_client_info_sync", &FleetWrapper::PushFlClientInfoSync)
+      .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy);
 }
 
 void BindPSHost(py::module* m) {
@@ -132,7 +132,7 @@ void BindCommunicatorContext(py::module* m) {
 }
 
 using paddle::distributed::AsyncCommunicator;
-using paddle::distributed::FlCommunicator;
+using paddle::distributed::FLCommunicator;
 using paddle::distributed::GeoCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
@@ -160,7 +160,7 @@ void BindDistCommunicator(py::module* m) {
           Communicator::InitInstance<GeoCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else if (mode == "WITH_COORDINATOR") {
-          Communicator::InitInstance<FlCommunicator>(
+          Communicator::InitInstance<FLCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -179,8 +179,8 @@ void BindDistCommunicator(py::module* m) {
       .def("get_client_info", &Communicator::GetClientInfo)
       .def("set_clients", &Communicator::SetClients)
       .def("start_coordinator", &Communicator::StartCoordinator)
-      .def("query_fl_clients_info", &Communicator::QueryFlClientsInfo)
-      .def("save_fl_strategy", &Communicator::SaveFlStrategy);
+      .def("query_fl_clients_info", &Communicator::QueryFLClientsInfo)
+      .def("save_fl_strategy", &Communicator::SaveFLStrategy);
 }
 
 void BindHeterClient(py::module* m) {

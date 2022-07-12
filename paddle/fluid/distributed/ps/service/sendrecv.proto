@@ -146,7 +146,7 @@ message MultiVariableMessage {
 
 service PsService {
   rpc service(PsRequestMessage) returns (PsResponseMessage);
-  rpc FlService(CoordinatorReqMessage) returns (CoordinatorResMessage);
+  rpc FLService(CoordinatorReqMessage) returns (CoordinatorResMessage);
   rpc SendAndRecvVariable(MultiVariableMessage) returns (MultiVariableMessage);
   rpc SendToWorker(MultiVariableMessage) returns (PsResponseMessage);
   rpc SendToSwitch(MultiVariableMessage) returns (PsResponseMessage);

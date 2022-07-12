@@ -34,7 +34,7 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 from . import core
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
-__all__ = ['Communicator', 'FlCommunicator', 'LargeScaleKV']
+__all__ = ['Communicator', 'FLCommunicator', 'LargeScaleKV']
 
 
 class Communicator(object):
@@ -208,11 +208,11 @@ class Communicator(object):
         self.communicator_.push_sparse_param(var_name, table_id, scope)
 
 
-class FlCommunicator(Communicator):
+class FLCommunicator(Communicator):
 
     def __init__(self, ps_hosts, kwargs=None):
         mode = None
-        super(FlCommunicator, self).__init__(mode, kwargs)
+        super(FLCommunicator, self).__init__(mode, kwargs)
         send_ctx = {}
         dense_map = {}
         prototxt = ""

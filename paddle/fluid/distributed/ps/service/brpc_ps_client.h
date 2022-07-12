@@ -63,11 +63,11 @@ class DownpourPsClientService : public PsService {
                        PsResponseMessage *response,
                        ::google::protobuf::Closure *done);
 
-  virtual void FlService(::google::protobuf::RpcController *controller,
+  virtual void FLService(::google::protobuf::RpcController *controller,
                          const CoordinatorReqMessage *request,
                          CoordinatorResMessage *response,
                          ::google::protobuf::Closure *done) {
-    VLOG(0) << ">>> entering CoordinatorService::FlService";
+    VLOG(0) << ">>> entering CoordinatorService::FLService";
     brpc::ClosureGuard done_guard(done);
     size_t client_id = request->client_id();
     CHECK(_client->_client_id == client_id)
@@ -325,7 +325,7 @@ class BrpcPsClient : public PSClient {
  public:
   virtual int32_t InitializeFlWorker(const std::string &self_endpoint);
   int32_t StartFlClientService(const std::string &self_endpoint);
-  virtual void PushFlStateSync(const std::string &fl_params);
+  virtual void PushFlClientInfoSync(const std::string &fl_params);
   std::string PullFlStrategy();
   // for fl
 

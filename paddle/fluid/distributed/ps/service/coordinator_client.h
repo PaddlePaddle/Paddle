@@ -39,9 +39,10 @@ DECLARE_uint32(coordinator_wait_all_clients_max_time);
 namespace paddle {
 namespace distributed {
 
-using CoordinatorServiceFunc = std::function<int32_t(
-    const CoordinatorReqMessage& request, CoordinatorResMessage* response,
-    brpc::Controller* cntl)>;
+using CoordinatorServiceFunc =
+    std::function<int32_t(const CoordinatorReqMessage& request,
+                          CoordinatorResMessage* response,
+                          brpc::Controller* cntl)>;
 
 class ClientReportedInfo {
  public:
@@ -58,7 +59,7 @@ class CoordinatorServiceHandle {
 
   virtual ~CoordinatorServiceHandle() {}
 
-  void SaveFlClientReportedInfo(const CoordinatorReqMessage& request) {
+  void SaveFLClientInfo(const CoordinatorReqMessage& request) {
     auto client_id = request.client_id();
     const std::string& str_params = request.str_params();
     VLOG(0) << ">>> recved client: " << client_id << ", info: " << str_params;
@@ -67,7 +68,7 @@ class CoordinatorServiceHandle {
     std::unique_lock<std::mutex> lk(mtx_);
     if (str_params.size() != 0) {
       _client_info_mp[client_id] =
-          str_params;  // each client send empty message to maintain,
+          str_params;  // each client send empty message to maintain
                        // heartbeat(i.e. use staleness msg)
     }
     fl_client_ids.insert(client_id);
@@ -84,8 +85,8 @@ class CoordinatorServiceHandle {
     return;
   }
 
-  std::unordered_map<uint32_t, std::string> QueryFlClientsInfo() {
-    VLOG(0) << ">>> Entering QueryFlClientsInfo!";
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
+    VLOG(0) << ">>> Entering QueryFLClientsInfo!";
     platform::Timer timeline;
     timeline.Start();
     double coordinator_wait_time = 0.0;
@@ -113,9 +114,9 @@ class CoordinatorServiceHandle {
     return;
   }
 
-  void SaveFlStrategy(
+  void SaveFLStrategy(
       const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    VLOG(0) << ">>> Entering SaveFlStrategy!";
+    VLOG(0) << ">>> Entering SaveFLStrategy!";
     for (auto it = fl_strategy.begin(); it != fl_strategy.end(); it++) {
       uint32_t client_id = it->first;
       _fl_strategy_mp[client_id] = it->second;
@@ -147,20 +148,23 @@ class CoordinatorService : public PsService {
   virtual ~CoordinatorService() {}
 
   virtual void Initialize() {
-    _service_handle_map[FL_PUSH_PARAMS_SYNC] = std::bind(
-        &CoordinatorService::SaveFlClientReportedInfo, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+    _service_handle_map[FL_PUSH_PARAMS_SYNC] =
+        std::bind(&CoordinatorService::SaveFLClientInfo,
+                  this,
+                  std::placeholders::_1,
+                  std::placeholders::_2,
+                  std::placeholders::_3);
   }
 
-  virtual void FlService(::google::protobuf::RpcController* controller,
+  virtual void FLService(::google::protobuf::RpcController* controller,
                          const CoordinatorReqMessage* request,
                          CoordinatorResMessage* response,
                          ::google::protobuf::Closure* done);
 
-  int32_t SaveFlClientReportedInfo(const CoordinatorReqMessage& request,
-                                   CoordinatorResMessage* response,
-                                   brpc::Controller* cntl) {
-    _coordinator_service_handle->SaveFlClientReportedInfo(request);
+  int32_t SaveFLClientInfo(const CoordinatorReqMessage& request,
+                           CoordinatorResMessage* response,
+                           brpc::Controller* cntl) {
+    _coordinator_service_handle->SaveFLClientInfo(request);
     return 0;
   }
 
@@ -191,13 +195,13 @@ class CoordinatorService : public PsService {
     return _coordinator_service_handle->fl_client_ids;
   }
 
-  std::unordered_map<uint32_t, std::string> QueryFlClientsInfo() {
-    return _coordinator_service_handle->QueryFlClientsInfo();
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
+    return _coordinator_service_handle->QueryFLClientsInfo();
   }
 
-  void SaveFlStrategy(
+  void SaveFLStrategy(
       const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    _coordinator_service_handle->SaveFlStrategy(fl_strategy);
+    _coordinator_service_handle->SaveFLStrategy(fl_strategy);
     return;
   }
 
@@ -231,7 +235,7 @@ class CoordinatorClient : public BrpcPsClient {
 
   int32_t StartClientService();
 
-  void SendFlStrategy(const uint32_t& client_id);
+  void SendFLStrategy(const uint32_t& client_id);
 
   void SetFlStrategyReady(bool flag) { _service.SetFlStrategyReady(flag); }
 
@@ -239,13 +243,13 @@ class CoordinatorClient : public BrpcPsClient {
 
   std::set<uint32_t> GetFlClientIds() { return _service.GetFlClientIds(); }
 
-  std::unordered_map<uint32_t, std::string> QueryFlClientsInfo() {
-    return _service.QueryFlClientsInfo();
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
+    return _service.QueryFLClientsInfo();
   }
 
-  void SaveFlStrategy(
+  void SaveFLStrategy(
       const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    _service.SaveFlStrategy(fl_strategy);
+    _service.SaveFLStrategy(fl_strategy);
     return;
   }
 

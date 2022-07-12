@@ -233,7 +233,7 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
   return 0;
 }
 
-void BrpcPsClient::PushFlStateSync(const std::string &fl_params) {
+void BrpcPsClient::PushFlClientInfoSync(const std::string &fl_params) {
   size_t request_call_num = _coordinator_channels.size();
   VLOG(0) << "fl client to coordinator channel size is: " << request_call_num;
   FlClientBrpcClosure *closure =
@@ -242,7 +242,8 @@ void BrpcPsClient::PushFlStateSync(const std::string &fl_params) {
         int ret = 0;
         for (size_t i = 0; i < request_call_num; i++) {
           if (closure->check_response(i, FL_PUSH_PARAMS_SYNC) != 0) {
-            LOG(ERROR) << "PushFlStateSync response from coordinator is failed";
+            LOG(ERROR)
+                << "PushFlClientInfoSync response from coordinator is failed";
             ret = -1;
             break;
           }
@@ -261,11 +262,11 @@ void BrpcPsClient::PushFlStateSync(const std::string &fl_params) {
       LOG(ERROR) << "_coordinator_channels is null";
     }
     PsService_Stub rpc_stub(rpc_channel);  // CoordinatorService
-    rpc_stub.FlService(
+    rpc_stub.FLService(
         closure->cntl(i), closure->request(i), closure->response(i), closure);
     fut.wait();
   }
-  VLOG(0) << ">>> PushFlStateSync finished！";
+  VLOG(0) << ">>> PushFlClientInfoSync finished！";
   return;
 }
 

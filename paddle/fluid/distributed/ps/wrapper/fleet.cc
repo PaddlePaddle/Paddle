@@ -150,7 +150,7 @@ void FleetWrapper::InitFlWorker(const std::vector<std::string>& host_list,
   return;
 }
 
-void FleetWrapper::PushFlStateSync(const std::string& fl_params) {
+void FleetWrapper::PushFlClientInfoSync(const std::string& fl_params) {
   VLOG(0) << "fl_params in fleet.cc: " << fl_params;
   // paddle::distributed::FLParameter fl_param;
   // google::protobuf::TextFormat::ParseFromString(fl_params, &fl_param);
@@ -159,7 +159,7 @@ void FleetWrapper::PushFlStateSync(const std::string& fl_params) {
   if (typeid(ptr).name() != typeid(BrpcPsClient).name()) {
     LOG(ERROR) << "fl_client_ptr type error";
   }
-  ptr->PushFlStateSync(fl_params);
+  ptr->PushFlClientInfoSync(fl_params);
   return;
 }
 
