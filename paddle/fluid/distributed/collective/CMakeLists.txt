@@ -1,7 +1,7 @@
 cc_library(
   processgroup
   SRCS ProcessGroup.cc
-  DEPS)
+  DEPS phi_api eager_api)
 cc_library(
   eager_reducer
   SRCS reducer.cc
