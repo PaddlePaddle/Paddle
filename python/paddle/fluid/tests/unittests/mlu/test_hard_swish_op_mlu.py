@@ -25,7 +25,8 @@ import sys
 sys.path.append("..")
 
 paddle.enable_static()
-SEED = 2020
+SEED = 2021
+np.random.seed(SEED)
 
 
 def scalarToType(val, data_type):
