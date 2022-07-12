@@ -52,12 +52,6 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
-void ComplexGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          const MetaTensor& dout,
-                          MetaTensor* dx,
-                          MetaTensor* dy);
-
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
