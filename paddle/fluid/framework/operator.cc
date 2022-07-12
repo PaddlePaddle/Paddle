@@ -2173,11 +2173,17 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Do transfer
       Tensor out;
-      TransformData(new_expected_kernel_key ? *new_expected_kernel_key
-                                            : expected_kernel_key,
-                    kernel_type_for_var,
-                    *tensor_in,
-                    &out);
+      if ((new_expected_kernel_key
+               ? *new_expected_kernel_key
+               : expected_kernel_key) == kernel_type_for_var) {
+        out.ShareDataWith(*tensor_in);
+      } else {
+        TransformData(new_expected_kernel_key ? *new_expected_kernel_key
+                                              : expected_kernel_key,
+                      kernel_type_for_var,
+                      *tensor_in,
+                      &out);
+      }
       SetTensorToVariable(*var, out, trans_var);
     }
   };
