@@ -212,7 +212,10 @@ class GroupShardedStage2(nn.Layer):
         # Scale grads of params
         for param in self._trainable_params:
             if param.name in self._param_grads and param.grad is not None:
+                orig_state = param.grad.stop_gradient
+                param.grad.stop_gradient = True
                 param.grad.scale_(scale=self._world_size_scaling)
+                param.grad.stop_gradient = orig_state
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
