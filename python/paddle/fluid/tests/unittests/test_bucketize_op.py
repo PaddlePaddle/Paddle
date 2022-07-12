@@ -123,7 +123,7 @@ class TestBucketizeError(unittest.TestCase):
                                        shape=[2, 5],
                                        dtype="int16")
                 sorted_sequence = paddle.static.data('SortedSequence',
-                                                     shape=[2, 3],
+                                                     shape=[3],
                                                      dtype="int16")
                 out = paddle.bucketize(x, sorted_sequence)
 
