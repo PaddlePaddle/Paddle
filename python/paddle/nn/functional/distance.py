@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 import paddle
-from .. import Layer
-from ..functional import pairwise_distance
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from paddle import _C_ops
-from paddle import in_dynamic_mode
+from paddle import _C_ops, Tensor
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-
 
 __all__ = []
 
 
-class PairwiseDistance(Layer):
+def pairwise_distance(x: Tensor, 
+                      y: Tensor,
+                      p: float=2.0,
+                      epsilon: float=1e-6,
+                      keepdim: bool=False,
+                      name: str=None):
     r"""
     This operator computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
@@ -69,23 +68,38 @@ class PairwiseDistance(Layer):
             print(distance.numpy()) # [5. 5.]
 
     """
+    check_type(p, 'porder', (float, int), 'PairwiseDistance')
+    check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
+    check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
 
-    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
-        self.p = p
-        self.epsilon = epsilon
-        self.keepdim = keepdim
-        self.name = name
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                'PairwiseDistance')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                'PairwiseDistance')
 
-    def forward(self, x, y):
-        return pairwise_distance(x, y, self.p, self.epsilon, self.keepdim, self.name)
+    if in_dygraph_mode():
+        sub = _C_ops.elementwise_sub(x, y)
+        return _C_ops.final_state_p_norm(sub, p, 1, epsilon,
+                                         keepdim, False)
 
-    def extra_repr(self):
-        main_str = 'p={p}'
-        if self.epsilon != 1e-6:
-            main_str += ', epsilon={epsilon}'
-        if self.keepdim != False:
-            main_str += ', keepdim={keepdim}'
-        if self.name != None:
-            main_str += ', name={name}'
-        return main_str.format(**self.__dict__)
+    if _in_legacy_dygraph():
+        sub = _C_ops.elementwise_sub(x, y)
+        return _C_ops.p_norm(sub, 'axis', 1, 'porder', p, 'keepdim',
+                             keepdim, 'epsilon', epsilon)
+
+    sub = paddle.subtract(x, y)
+
+    helper = LayerHelper("PairwiseDistance", name=name)
+    attrs = {
+        'axis': 1,
+        'porder': p,
+        'keepdim': keepdim,
+        'epsilon': epsilon,
+    }
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='p_norm',
+                     inputs={'X': sub},
+                     outputs={'Out': out},
+                     attrs=attrs)
+
+    return out
