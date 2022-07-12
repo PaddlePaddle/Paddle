@@ -390,6 +390,13 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
       } else if (out_iter != var_quant_scales->end()) {
         (*var_quant_scales)[input_name] = out_iter->second;
       }
+    } else if (op_name == "concat") {
+      auto out_iter = var_quant_scales->find(op_node->Op()->Output("Out")[0]);
+      if (out_iter != var_quant_scales->end()) {
+        std::vector<std::string> input_names = op_node->Op()->Input("X");
+        for (auto input_name : input_names)
+          (*var_quant_scales)[input_name] = out_iter->second;
+      }
     } else if (op_name == "scale") {
       const std::string output_name = op_node->Op()->Output("Out")[0];
       auto out_iter = var_quant_scales->find(output_name);
