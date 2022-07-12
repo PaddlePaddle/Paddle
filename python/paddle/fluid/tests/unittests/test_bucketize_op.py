@@ -32,10 +32,11 @@ class TestBucketize(OpTest):
             "InputTensor": self.x,
             "SortedSequence": self.sorted_sequence
         }
-        self.attrs = {"out_int32": False, "right": True if self.side == 'right' else False}
+        self.attrs = {
+            "out_int32": False,
+            "right": True if self.side == 'right' else False}
         self.outputs = {
-            'Out':
-                np.searchsorted(self.sorted_sequence, self.x, side=self.side)
+            'Out': np.searchsorted(self.sorted_sequence, self.x, side=self.side)
         }
 
     def test_check_output(self):
@@ -66,7 +67,8 @@ class TestBucketizeOp2(TestBucketize):
 class TestBucketizeOp3(TestBucketize):
 
     def init_test_case(self):
-        self.x = np.array([[np.nan, np.nan, np.nan], [-1, 2, 8, 4]]).astype("float64")
+        self.x = np.array([[np.nan, np.nan, np.nan], [-1, 2, 8,
+                                                      4]]).astype("float64")
         self.sorted_sequence = np.array([2, 4, 8, 16]).astype("float64")
         self.side = "left"
 
@@ -74,8 +76,8 @@ class TestBucketizeOp3(TestBucketize):
 class TestBucketizeOp4(TestBucketize):
 
     def init_test_case(self):
-        self.x = np.array([[np.inf, np.inf, np.inf],
-                           [-1, 2, 8, 4]]).astype("float64")
+        self.x = np.array([[np.inf, np.inf, np.inf], [-1, 2, 8,
+                                                      4]]).astype("float64")
         self.sorted_sequence = np.array([2, 4, 8, 16]).astype("float64")
         self.side = "right"
 
@@ -118,7 +120,8 @@ class TestBucketizeAPI(unittest.TestCase):
                 res = exe.run(feed={
                     'InputTensor': self.x,
                     'SortedSequence': self.sorted_sequence,
-                }, fetch_list=out)
+                    },
+                                fetch_list=out)
                 out_ref = np.searchsorted(self.sorted_sequence, self.x)
                 self.assertTrue(np.allclose(out_ref, res))
 

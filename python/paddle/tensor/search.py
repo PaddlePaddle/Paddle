@@ -992,11 +992,7 @@ def searchsorted(sorted_sequence,
     return out
 
 
-def bucketize(x,
-              sorted_sequence,
-              out_int32=False,
-              right=False,
-              name=None):
+def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
     """
     Computes the interval index of each element in `x` based on the `sorted_sequence`.
 
