@@ -63,7 +63,7 @@ TEST(Backend, StringToBackend) {
   EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
   EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
   EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
-  EXPECT_EQ(phi::Backend::ONEDNN, pexp::StringToBackend("ONEDNN"));
+  EXPECT_EQ(phi::Backend::ONEDNN, pexp::StringToBackend("OneDNN"));
   EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("KPS"));
