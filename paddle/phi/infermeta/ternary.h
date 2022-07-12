@@ -52,6 +52,12 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void ComplexGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dout,
+                          MetaTensor* dx,
+                          MetaTensor* dy);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
@@ -167,11 +173,5 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* scores,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
-
-void ComplexGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          const MetaTensor& dout,
-                          MetaTensor* dx,
-                          MetaTensor* dy);
 
 }  // namespace phi

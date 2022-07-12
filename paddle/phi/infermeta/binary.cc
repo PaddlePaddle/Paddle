@@ -357,6 +357,37 @@ void CompareAllInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
+void ComplexInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      MetaTensor* out) {
+  if (x.dims() == y.dims()) {
+    auto sizes = vectorize(x.dims());
+    out->set_dims(phi::make_ddim(sizes));
+    out->set_dtype(dtype::ToComplex(x.dtype()));
+    // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
+    // so tensors with lod are not supported here
+  } else {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+
+    // start align axis
+    int axis = std::abs(x_dims.size() - y_dims.size());
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    phi::funcs::GetBroadcastDimsArrays(x_dims,
+                                       y_dims,
+                                       x_dims_array.data(),
+                                       y_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    out->set_dims(phi::make_ddim(out_dims_array));
+    out->set_dtype(dtype::ToComplex(x.dtype()));
+  }
+}
+
 void ConvInferMeta(const MetaTensor& input,
                    const MetaTensor& filter,
                    const std::vector<int>& strides,
@@ -2047,37 +2078,6 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
-}
-
-void ComplexInferMeta(const MetaTensor& x,
-                      const MetaTensor& y,
-                      MetaTensor* out) {
-  if (x.dims() == y.dims()) {
-    auto sizes = vectorize(x.dims());
-    out->set_dims(phi::make_ddim(sizes));
-    out->set_dtype(dtype::ToComplex(x.dtype()));
-    // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
-    // so tensors with lod are not supported here
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    int max_dim = std::max(x_dims.size(), y_dims.size());
-
-    // start align axis
-    int axis = std::abs(x_dims.size() - y_dims.size());
-    std::vector<int> x_dims_array(max_dim);
-    std::vector<int> y_dims_array(max_dim);
-    std::vector<int> out_dims_array(max_dim);
-    phi::funcs::GetBroadcastDimsArrays(x_dims,
-                                       y_dims,
-                                       x_dims_array.data(),
-                                       y_dims_array.data(),
-                                       out_dims_array.data(),
-                                       max_dim,
-                                       axis);
-    out->set_dims(phi::make_ddim(out_dims_array));
-    out->set_dtype(dtype::ToComplex(x.dtype()));
-  }
 }
 
 }  // namespace phi
