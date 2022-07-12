@@ -33,6 +33,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T epsilon = ctx.Attr<float>("epsilon");
+    T rescale_grad = ctx.Attr<float>("rescale_grad");
 
     int op_num = param.size();
     for (int i = 0; i < op_num; ++i) {
@@ -54,15 +55,16 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       g_norm_t.mutable_data<T>(ctx.GetPlace());
       auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
       auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
+      auto gg = rescale_grad * g;
       ep_norm = p.square().sum().sqrt();
-      eg_norm = g.square().sum().sqrt();
+      eg_norm = gg.square().sum().sqrt();
 
       T local_lr = lr[0];
       if (lars_weight_decay > 0 && ep_norm(0) > 0 && eg_norm(0) > 0) {
         local_lr = lr[0] * lars_coeff * ep_norm(0) /
                    (eg_norm(0) + lars_weight_decay * ep_norm(0) + epsilon);
       }
-      v_out = v * mu + local_lr * (g + lars_weight_decay * p);
+      v_out = v * mu + local_lr * (gg + lars_weight_decay * p);
       p_out = p - v_out;
     }
   }
