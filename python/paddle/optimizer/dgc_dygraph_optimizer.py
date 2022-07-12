@@ -36,26 +36,7 @@ from paddle.distributed.collective import _get_default_group
 from paddle.optimizer.lr import LRScheduler
 from .optimizer import Optimizer
 
-__all__ = ["dgc_data_parallel", "DGCMomentumOptimizer"]
-
-
-def dgc_data_parallel(model,
-                      optimizer,
-                      rampup_begin_step=10,
-                      rampup_step=1,
-                      sparsity=[0.999]):
-    dgc_optimizer = DGCMomentumOptimizer(
-        parameters=optimizer._parameter_list,
-        learning_rate=optimizer._learning_rate,
-        momentum=optimizer._momentum,
-        rampup_begin_step=rampup_begin_step,
-        rampup_step=rampup_step,
-        sparsity=sparsity,
-        use_nesterov=optimizer._use_nesterov,
-        weight_decay=optimizer._regularization_coeff,
-        grad_clip=optimizer._grad_clip)
-
-    return model, dgc_optimizer
+__all__ = ["DGCMomentumOptimizer"]
 
 
 @imperative_base.no_grad
@@ -128,10 +109,7 @@ class DGCMomentumOptimizer(Optimizer):
         self._reduce_var_index = {}
         self._index_to_param = {}
 
-        self._dgc_comm_param = []
         self._reduce_grad_res = {}
-        self._reduce_dgc_grad_res = {}
-        self._name_param = {}
         self.helper = LayerHelper(self.__class__.__name__)
 
         ranks = list(range(paddle.distributed.get_world_size())
@@ -140,7 +118,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         # reuse some attrs in dgc_op and dgc_momentum_op
         self._accumulators = defaultdict(lambda: dict())
-        self._opti_name_list = []
 
         if grad_clip is not None:
             if not isinstance(grad_clip, paddle.nn.ClipGradByNorm):
@@ -182,26 +159,6 @@ class DGCMomentumOptimizer(Optimizer):
             "  dgc working: rampup_begin_step{}  rampup_step{}  sparsity{}...".
             format(rampup_begin_step, rampup_step, sparsity))
 
-    def _get_regularization_param(self, regularization):
-        regular_type = 0
-        regular_coeff = 0.0
-
-        if regularization is not None:
-            if isinstance(regularization, float):
-                regular_type = 2
-                regular_coeff = regularization
-                return regular_type, regular_coeff
-            else:
-                regular_coeff = regularization._regularization_coeff
-                if isinstance(regularization, L1Decay):
-                    regular_type = 1
-                elif isinstance(regularization, L2Decay):
-                    regular_type = 2
-                else:
-                    assert False, 'regularization must be None|L1Decay|L2Deacy'
-
-        return regular_type, regular_coeff
-
     def register_bw_hooks(self):
         for param in self.trainable_params:
             #NOTE: clip grad and add dgc op in backward hook.
@@ -241,7 +198,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         @imperative_base.no_grad
         def reduce_grad(gg):
-            #NOTE: 1:ready, 0: not ready
             self._reduce_var_ready[pp.name] = 1
 
             comm_grad = gg.scale(1.0 / self.new_group.nranks)
@@ -372,7 +328,6 @@ class DGCMomentumOptimizer(Optimizer):
         num_trainable_params = len(self.trainable_params)
 
         for index, param in enumerate(self.trainable_params):
-            self._name_param[param.name] = param
             self._reduce_var_ready[param.name] = 0
             self._reduce_var_index[
                 param.name] = num_trainable_params - index - 1
@@ -441,31 +396,32 @@ class DGCMomentumOptimizer(Optimizer):
             return False
         return True
 
-    def _get_device_for_param(self, param_name):
-        device = None
-        if param_name in self._param_device_map:
-            device = self._param_device_map[param_name]
-        return device
+    def _get_regularization_param(self, regularization):
+        regular_type = 0
+        regular_coeff = 0.0
+
+        if regularization is not None:
+            if isinstance(regularization, float):
+                regular_type = 2
+                regular_coeff = regularization
+                return regular_type, regular_coeff
+            else:
+                regular_coeff = regularization._regularization_coeff
+                if isinstance(regularization, L1Decay):
+                    regular_type = 1
+                elif isinstance(regularization, L2Decay):
+                    regular_type = 2
+                else:
+                    assert False, 'regularization must be None|L1Decay|L2Deacy'
+
+        return regular_type, regular_coeff
 
     def _get_auxiliary_var(self, param):
         if param.name in self._dgc_vars.keys():
             return self._dgc_vars[param.name]
         k_var = self._add_cpu_var(name="k", value=0)
-        encoded_var = tensor.create_global_var(shape=[1],
-                                               dtype=param.dtype,
-                                               persistable=True,
-                                               name=param.name +
-                                               core.dgc.kDGCEncodedName(),
-                                               value=0.0,
-                                               force_cpu=False)
-
-        gather_var = tensor.create_global_var(shape=[1],
-                                              dtype=param.dtype,
-                                              persistable=True,
-                                              name=param.name +
-                                              core.dgc.kDGCGatherName(),
-                                              value=0.0,
-                                              force_cpu=False)
+        encoded_var = paddle.to_tensor([0.0], dtype=param.dtype)
+        gather_var = paddle.to_tensor([0.0], dtype=param.dtype)
         self._dgc_vars[param.name] = [k_var, encoded_var, gather_var]
 
         return k_var, encoded_var, gather_var
@@ -500,7 +456,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         var_name = param.name + "_" + name
         var_name = unique_name.generate(var_name)
-        self._opti_name_list.append(var_name)
 
         var = self.helper.create_global_variable(
             name=var_name,
