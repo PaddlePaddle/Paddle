@@ -2068,8 +2068,7 @@ def unique_consecutive(x,
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
         out, inverse, counts = _C_ops.final_state_unique_consecutive(
-            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
-            'return_counts', return_counts, 'axis', axis)
+            x, return_inverse, return_counts, axis, attr_dtype)
         outs = [out]
         if return_inverse:
             outs.append(inverse)
