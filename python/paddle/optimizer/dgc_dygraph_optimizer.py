@@ -13,23 +13,18 @@
 # limitations under the License.
 
 import os
-import six
+import paddle
 import numpy as np
-import warnings
 from collections import OrderedDict, defaultdict
 from functools import reduce
-
-import paddle
-from paddle.fluid import core
-from paddle.fluid import framework
+from paddle.fluid import core, framework
 from paddle.fluid.dygraph import parallel_helper, layers
 from paddle.regularizer import L1Decay, L2Decay
 from paddle.utils import deprecated, unique_name
-from paddle.fluid.layers import collective
+from paddle.fluid.layers import collective, tensor
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.initializer import Constant
-from paddle.fluid.layers import tensor
 from paddle import _C_ops
 from paddle.fluid.framework import ParamBase, _in_legacy_dygraph, in_dygraph_mode, Variable, device_guard
 from paddle.distributed.collective import _get_default_group
@@ -42,7 +37,6 @@ __all__ = ["DGCMomentumOptimizer"]
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(params, group=None, src_rank=0):
-
     if len(params) == 0:
         return
 
@@ -50,7 +44,6 @@ def sync_params_buffers(params, group=None, src_rank=0):
         if not isinstance(param, core.VarBase):
             raise TypeError("The data type of '%s' must be VarBase" %
                             param.name)
-
     for param in params:
         paddle.distributed.broadcast(param,
                                      src=src_rank,
@@ -82,7 +75,6 @@ class DGCMomentumOptimizer(Optimizer):
                                                    weight_decay=None,
                                                    grad_clip=grad_clip,
                                                    name=name)
-
         self._parameters = parameters
         self._momentum = momentum
         self._use_nesterov = use_nesterov
@@ -97,7 +89,6 @@ class DGCMomentumOptimizer(Optimizer):
             if isinstance(self._learning_rate, float) else learning_rate()
         ],
                                                           dtype="float32")
-
         self._not_ready_param = {}
         self._reduce_var_ready = {}
 
@@ -108,14 +99,12 @@ class DGCMomentumOptimizer(Optimizer):
 
         self._reduce_var_index = {}
         self._index_to_param = {}
-
         self._reduce_grad_res = {}
         self.helper = LayerHelper(self.__class__.__name__)
 
         ranks = list(range(paddle.distributed.get_world_size())
                      ) if group is None else group.ranks
         self._num_trainers = len(ranks)
-
         # reuse some attrs in dgc_op and dgc_momentum_op
         self._accumulators = defaultdict(lambda: dict())
 
@@ -129,7 +118,6 @@ class DGCMomentumOptimizer(Optimizer):
 
             self._dgc_clip_norm = grad_clip.clip_norm * (self._num_trainers**
                                                          -0.5)
-
         self.regular_type, self.regular_coeff = self._get_regularization_param(
             weight_decay)
 
@@ -199,7 +187,6 @@ class DGCMomentumOptimizer(Optimizer):
         @imperative_base.no_grad
         def reduce_grad(gg):
             self._reduce_var_ready[pp.name] = 1
-
             comm_grad = gg.scale(1.0 / self.new_group.nranks)
             order = self._reduce_var_index[pp.name]
             if order == self.reduce_order:
@@ -317,13 +304,11 @@ class DGCMomentumOptimizer(Optimizer):
             regularization_term = param.regularizer(param, grad, grad.block)
         elif regularization is not None:
             regularization_term = regularization(param, grad, grad.block)
-
         assert regularization_term is not None
 
         return _C_ops.sum([grad, regularization_term])
 
     def init_params(self):
-
         self.trainable_params = [p for p in self._parameters if p.trainable]
         num_trainable_params = len(self.trainable_params)
 
@@ -353,7 +338,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         self._nranks_var = self._add_cpu_var(name="nranks",
                                              value=self._num_trainers)
-
         for param_var in self.trainable_params:
             # reuse velocity in dgc_op and dgc_momentum_op
             self._add_accumulator(self._u_velocity_acc_str, param_var)
@@ -375,7 +359,6 @@ class DGCMomentumOptimizer(Optimizer):
                                                 value=float(value),
                                                 force_cpu=True))
             counter.stop_gradient = True
-
         return counter
 
     @imperative_base.no_grad
@@ -496,7 +479,6 @@ class DGCMomentumOptimizer(Optimizer):
         """
            execute after loss.backward.
         """
-
         for param in self.trainable_params:
             grad = self._reduce_grad_res[param.name]
             velocity_acc = self._accumulators[self._u_velocity_acc_str][
@@ -562,7 +544,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         self._global_step_var = _C_ops.increment(self._global_step_var, 'step',
                                                  1)
-
         self._clear_counters()
 
     @framework.dygraph_only
@@ -579,7 +560,6 @@ class DGCMomentumOptimizer(Optimizer):
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
-
         if isinstance(self._learning_rate, LRScheduler):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
