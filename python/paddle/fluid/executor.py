@@ -1453,6 +1453,11 @@ class Executor(object):
                         ir_graph = framework.IrGraph(compiled_graph,
                                                      for_test=True)
                         inner_program = ir_graph.to_program()
+                    else:
+                        from ..incubate.autograd import prim_enabled, prim2orig
+                        if prim_enabled() and program == default_main_program():
+                            prim2orig()
+
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,
