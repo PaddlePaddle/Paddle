@@ -240,6 +240,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"grid_sampler",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"hard_swish_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
