@@ -461,6 +461,13 @@ def unstack(x, axis=0, num=None):
             return []
         return _C_ops.final_state_unstack(x, axis, num)
 
+    if _non_static_mode():
+        if num == None:
+            num = x.shape[axis]
+        if num == 0:
+            return []
+        return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
+
     helper = LayerHelper('unstack', **locals())
     if num is None:
         if axis is None or x.shape[axis] <= 0:
