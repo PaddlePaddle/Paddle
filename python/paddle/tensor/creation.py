@@ -1701,6 +1701,9 @@ def complex(real, imag, name=None):
             # [[0.+0.j 0.+1.j 0.+2.j]
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_complex(real, imag)
+
     if paddle.in_dynamic_mode():
         return paddle._C_ops.complex(real, imag)
 
