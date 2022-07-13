@@ -122,7 +122,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/pybind/pe.h"
+#include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT

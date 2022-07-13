@@ -109,7 +109,7 @@ set(PYBIND_SRCS
     protobuf.cc
     exception.cc
     op_function_common.cc
-    pe.cc
+    parallel_executor.cc
     tensor.cc
     place.cc
     const_value.cc
