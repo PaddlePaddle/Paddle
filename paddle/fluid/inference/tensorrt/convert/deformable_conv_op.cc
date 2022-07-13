@@ -49,8 +49,6 @@ class DeformableConvOpConverter : public OpConverter {
     auto* filter_var = scope.FindVar(filter_name);
     auto* filter_tensor = filter_var->GetMutable<framework::LoDTensor>();
 
-    float* filter_data = engine_->GetWeightCPUData(filter_name, filter_tensor);
-
     const int c_o = filter_tensor->dims()[0];
     const int c_i = filter_tensor->dims()[1];
     const int k_h = filter_tensor->dims()[2];
@@ -73,15 +71,20 @@ class DeformableConvOpConverter : public OpConverter {
     weights.count = filter_tensor->numel();
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (with_fp16) {
-      auto half_filter_data = new half[filter_tensor->numel()];
-      for (int i = 0; i < filter_tensor->numel(); i++) {
-        half_filter_data[i] = static_cast<half>(filter_data[i]);
+      auto filter_weight = engine_->GetTrtWeight(filter_name, *filter_tensor);
+      if (filter_weight.get().type == nvinfer1::DataType::kFLOAT) {
+        auto half_filter_data = new half[filter_tensor->numel()];
+        for (int i = 0; i < filter_tensor->numel(); i++) {
+          half_filter_data[i] = static_cast<half>(
+              static_cast<const float*>(filter_weight.get().values)[i]);
+        }
+        weights.type = nvinfer1::DataType::kHALF;
+        weights.values = half_filter_data;
+      } else if (filter_weight.get().type == nvinfer1::DataType::kHALF) {
+        weights = filter_weight.get();
       }
-      weights.type = nvinfer1::DataType::kHALF;
-      weights.values = half_filter_data;
     } else {
-      weights.type = nvinfer1::DataType::kFLOAT;
-      weights.values = filter_data;
+      weights = engine_->GetFp32TrtWeight(filter_name, *filter_tensor).get();
     }
     auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
         with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,

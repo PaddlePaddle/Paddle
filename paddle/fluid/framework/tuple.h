@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

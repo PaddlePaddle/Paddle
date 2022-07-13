@@ -3,7 +3,15 @@ if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   return()
 endif()
 
-set(INFERENCE_EXTRA_DEPS paddle_inference_shared)
+# In Windows, c_api test link must link both 2 shared to avoid symbols redefinition,
+# in Linux, c_api test cant do like this or graph_to_program register more than once.
+# Both Windows and Linux can only use paddle_inference_c, but this will increase size
+# of build folder by 30G.
+if(WIN32)
+  set(INFERENCE_C_EXTRA_DEPS paddle_inference_shared paddle_inference_c_shared)
+else()
+  set(INFERENCE_C_EXTRA_DEPS paddle_inference_shared paddle_inference_c)
+endif()
 
 function(download_data install_dir data_file check_sum)
   string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
@@ -103,7 +111,7 @@ function(inference_analysis_api_test target install_dir filename)
     SRCS
     ${filename}
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${install_dir}/model
     --infer_data=${install_dir}/data.txt
@@ -116,7 +124,7 @@ function(inference_analysis_api_int8_test target install_dir filename)
     SRCS
     ${filename}
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${install_dir}/model
     --infer_data=${install_dir}/data.txt
@@ -133,7 +141,7 @@ function(inference_multiple_models_analysis_api_test target install_dir
     SRCS
     ${filename}
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${install_dir}/mobilenet_v2_models/1
     --infer_model2=${install_dir}/mobilenet_v2_models/xx
@@ -142,7 +150,7 @@ endfunction()
 
 function(inference_analysis_api_test_build TARGET_NAME filename)
   inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                ${INFERENCE_EXTRA_DEPS})
+                                paddle_inference_shared)
 endfunction()
 
 function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir
@@ -201,7 +209,7 @@ endfunction()
 
 function(inference_analysis_api_test_with_fake_data_build TARGET_NAME filename)
   inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                ${INFERENCE_EXTRA_DEPS})
+                                paddle_inference_shared)
 endfunction()
 
 function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary
@@ -369,7 +377,7 @@ inference_analysis_test(
   SRCS
   analyzer_dam_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${DAM_SMALL_INSTALL_DIR}/model
   --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
@@ -430,7 +438,7 @@ inference_analysis_test(
   SRCS
   analyzer_ernie_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${ERNIE_INSTALL_DIR}/model
   --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -474,7 +482,7 @@ inference_analysis_test(
   SRCS
   analyzer_transformer_compare_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${TRANSFORMER_INSTALL_DIR}/model
   --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -485,7 +493,7 @@ inference_analysis_test(
   SRCS
   analyzer_transformer_fuse_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${TRANSFORMER_INSTALL_DIR}/model
   --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -496,7 +504,7 @@ inference_analysis_test(
   SRCS
   analyzer_transformer_profile_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${TRANSFORMER_INSTALL_DIR}/model
   --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -514,7 +522,7 @@ inference_analysis_test(
   SRCS
   analyzer_vit_ocr_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
   --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
@@ -537,7 +545,7 @@ inference_analysis_test(
   SRCS
   analyzer_detect_functional_mkldnn_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${DENSEBOX_INSTALL_DIR}/model
   --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -895,7 +903,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_mobilenet_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
@@ -903,7 +911,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_resnet50_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
@@ -911,7 +919,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_resnext_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
@@ -919,7 +927,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_fc_prelu_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
@@ -927,7 +935,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_cascade_rcnn_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   inference_analysis_test(
@@ -935,7 +943,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_split_converter_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
   inference_analysis_test(
@@ -943,7 +951,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     analyzer_capi_exp_gpu_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    ${INFERENCE_C_EXTRA_DEPS}
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   if(WIN32)
@@ -956,7 +964,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     analyzer_capi_exp_xpu_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    ${INFERENCE_C_EXTRA_DEPS}
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
   if(WIN32)
@@ -977,7 +985,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_quant_int8_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
@@ -993,7 +1001,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_quant_int8_yolov3_r50_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
 
@@ -1016,7 +1024,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_dynamic_shape_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TRT_MODEL_INSTALL_DIR})
 
@@ -1032,7 +1040,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_dynamic_shape_ernie_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 
@@ -1049,7 +1057,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_dynamic_shape_transformer_prune_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
@@ -1064,7 +1072,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_dynamic_shape_ernie_serialize_deserialize_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
@@ -1079,7 +1087,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     SRCS
     trt_dynamic_shape_ernie_fp16_serialize_deserialize_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_fp16_unserialized)
 
@@ -1093,7 +1101,7 @@ inference_analysis_test(
   SRCS
   lite_mul_model_test.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${LITE_MODEL_INSTALL_DIR})
 inference_analysis_test(
@@ -1101,7 +1109,7 @@ inference_analysis_test(
   SRCS
   lite_resnet50_test.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1110,7 +1118,7 @@ inference_analysis_test(
   SRCS
   analyzer_capi_exp_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  ${INFERENCE_C_EXTRA_DEPS}
   ARGS
   --infer_model=${RESNET50_MODEL_DIR}/model)
 if(WIN32)
@@ -1124,7 +1132,7 @@ inference_analysis_test(
   SRCS
   analyzer_capi_exp_pd_config_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  ${INFERENCE_C_EXTRA_DEPS}
   ARGS
   --infer_model=${MOBILENET_INSTALL_DIR}/model)
 if(WIN32)
@@ -1139,7 +1147,7 @@ inference_analysis_test(
   SRCS
   analyzer_capi_exp_pd_tensor_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  ${INFERENCE_C_EXTRA_DEPS}
   ARGS
   --infer_model=${MOBILENET_INSTALL_DIR}/model)
 if(WIN32)
@@ -1155,7 +1163,7 @@ if(NOT APPLE AND NOT WIN32)
     SRCS
     analyzer_capi_exp_pd_threads_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    ${INFERENCE_C_EXTRA_DEPS}
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1171,7 +1179,7 @@ inference_analysis_test(
   SRCS
   analyzer_zerocopy_tensor_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${OCR_INSTALL_DIR}/model)
 
@@ -1183,7 +1191,7 @@ if(WITH_DISTRIBUTE
     SRCS
     analyzer_dist_model_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
 endif()
@@ -1193,7 +1201,7 @@ inference_analysis_test(
   SRCS
   analyzer_paddle_tensor_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  paddle_inference_shared
   ARGS
   --infer_model=${OCR_INSTALL_DIR}/model
   --infer_data=${OCR_INSTALL_DIR}/data.txt
@@ -1205,7 +1213,7 @@ if(WITH_MKLDNN)
     SRCS
     analyzer_capi_exp_int_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    ${INFERENCE_C_EXTRA_DEPS}
     ARGS
     --infer_model=${INT8_DATA_DIR}/resnet50/model)
   if(WIN32)
@@ -1220,7 +1228,7 @@ inference_analysis_test(
   SRCS
   analyzer_capi_exp_ner_tester.cc
   EXTRA_DEPS
-  ${INFERENCE_EXTRA_DEPS}
+  ${INFERENCE_C_EXTRA_DEPS}
   ARGS
   --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 if(WIN32)
@@ -1235,7 +1243,7 @@ if(WITH_GPU)
     SRCS
     paddle_infer_api_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1244,7 +1252,7 @@ if(WITH_GPU)
     SRCS
     paddle_infer_api_copy_tensor_tester.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
   set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT
@@ -1316,7 +1324,7 @@ if(WITH_IPU)
     SRCS
     ipu_word2vec_sample.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${WORD2VEC_INSTALL_DIR})
 
@@ -1335,7 +1343,7 @@ if(WITH_IPU)
     SRCS
     ipu_resnet50_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}
     --warmup=true
@@ -1345,7 +1353,7 @@ if(WITH_IPU)
     SRCS
     ipu_resnet50_fp16_test.cc
     EXTRA_DEPS
-    ${INFERENCE_EXTRA_DEPS}
+    paddle_inference_shared
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}
     --warmup=true

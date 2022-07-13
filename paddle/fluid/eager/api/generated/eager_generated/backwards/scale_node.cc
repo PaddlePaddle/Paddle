@@ -117,20 +117,20 @@ void ScaleAPI(const paddle::experimental::Tensor& x,
       paddle::platform::DeviceContextPool::Instance();
 
   if (expected_kernel_place == paddle::platform::CPUPlace()) {
-    auto* dev_ctx = dynamic_cast<paddle::platform::CPUDeviceContext*>(
-        pool.Get(expected_kernel_place));
+    auto* dev_ctx =
+        dynamic_cast<phi::CPUContext*>(pool.Get(expected_kernel_place));
     if (!dev_ctx) {
       PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Cannot convert device_context to CPUDeviceContext."
+          "Cannot convert device_context to phi::CPUContext."
           "This indicates backend mismatch."
           "Pleas double check your expected place"));
     }
-    ScaleDeviceDispatch<paddle::platform::CPUDeviceContext>(*dense_tensor.get(),
-                                                            *dev_ctx,
-                                                            scale,
-                                                            bias,
-                                                            bias_after_scale,
-                                                            dense_out.get());
+    ScaleDeviceDispatch<phi::CPUContext>(*dense_tensor.get(),
+                                         *dev_ctx,
+                                         scale,
+                                         bias,
+                                         bias_after_scale,
+                                         dense_out.get());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (expected_kernel_place == paddle::platform::CUDAPlace()) {

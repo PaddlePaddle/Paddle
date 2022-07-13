@@ -138,8 +138,6 @@ const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, M
 // These operators will skip automatical code generatrion and
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
 std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
-const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
-  "#include \"paddle/fluid/pybind/eager_custom_python_api.h\"\n";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -413,7 +411,6 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-  bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -423,7 +420,6 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
-      append_custom_head_file = true;
       continue;
     }
     // Skip operator which is not inherit form OperatorWithKernel, like while,
@@ -480,9 +476,7 @@ GenerateOpFunctions() {
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
     }
   }
-  if (append_custom_head_file) {
-    op_function_list.emplace_back(CUSTOM_HANDWRITE_OP_FUNC_FILE);
-  }
+
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
@@ -498,17 +492,18 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::vector<std::string> headers{
-      "\"pybind11/detail/common.h\"",
-      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
-      "\"paddle/fluid/pybind/op_function_common.h\"",
+      "<Python.h>",
+      "\"paddle/fluid/platform/enforce.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
+      "\"paddle/fluid/pybind/eager_utils.h\"",
+      "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"",
-      "<Python.h>"};
+      "\"paddle/fluid/pybind/op_function_common.h\"",
+      "\"paddle/fluid/pybind/eager_custom_python_api.h\"",
+      "\"paddle/fluid/pybind/eager.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
-
-  out << "#pragma once\n\n";
 
   for (auto& header : headers) {
     out << "#include  " + header + "\n";
@@ -542,22 +537,20 @@ int main(int argc, char* argv[]) {
       << core_ops_infos_registry << "\n  {nullptr,nullptr,0,nullptr}"
       << "};\n\n";
 
-  out << "inline void BindEagerOpFunctions(pybind11::module *module) {\n"
+  out << "void BindEagerOpFunctions(pybind11::module *module) {\n"
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
-         "core.eager.ops failed!\"));\n"
-      << "  }\n\n"
-      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerFinalStateMethods) < "
+      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerMethods) < "
          "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
+
+      << "  BindFinalStateEagerOpFunctions(&m);\n\n"
       << "}\n\n"
       << "} // namespace pybind\n"
       << "} // namespace paddle\n";

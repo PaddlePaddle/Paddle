@@ -26,10 +26,8 @@ import unittest
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from test_sparse_attention_op import get_cuda_version
 from paddle import _C_ops
-from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
+from paddle.fluid.framework import default_main_program
 from paddle.fluid import core
-
-_enable_legacy_dygraph()
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

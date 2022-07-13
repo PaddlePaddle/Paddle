@@ -274,6 +274,7 @@ class TestNearestInterpOp(OpTest):
         self.align_corners = True
 
 
+# comment out since 5-D input not supported now
 # class TestNearestNeighborInterpCase1(TestNearestInterpOp):
 #     def init_test_case(self):
 #         self.interp_method = 'nearest'
@@ -537,56 +538,66 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-#TODO: comment this test for now until nearest_interp_op added.
-# class TestNearestAPI(unittest.TestCase):
-#     def test_case(self):
-#         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-#         y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
+class TestNearestAPI(unittest.TestCase):
 
-#         dim = fluid.data(name="dim", shape=[1], dtype="int32")
-#         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-#         actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-#         scale_tensor = fluid.data(
-#             name="scale_tensor", shape=[1], dtype="float32")
+    def test_case(self):
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
 
-#         out1 = fluid.layers.resize_nearest(
-#             y, out_shape=[12, 12], data_format='NHWC', align_corners=False)
-#         out2 = fluid.layers.resize_nearest(
-#             x, out_shape=[12, dim], align_corners=False)
-#         out3 = fluid.layers.resize_nearest(
-#             x, out_shape=shape_tensor, align_corners=False)
-#         out4 = fluid.layers.resize_nearest(
-#             x, out_shape=[4, 4], actual_shape=actual_size, align_corners=False)
-#         out5 = fluid.layers.resize_nearest(
-#             x, scale=scale_tensor, align_corners=False)
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(name="scale_tensor",
+                                  shape=[1],
+                                  dtype="float32")
 
-#         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-#         dim_data = np.array([12]).astype("int32")
-#         shape_data = np.array([12, 12]).astype("int32")
-#         actual_size_data = np.array([12, 12]).astype("int32")
-#         scale_data = np.array([2.0]).astype("float32")
+        out1 = fluid.layers.resize_nearest(y,
+                                           out_shape=[12, 12],
+                                           data_format='NHWC',
+                                           align_corners=False)
+        out2 = fluid.layers.resize_nearest(x,
+                                           out_shape=[12, dim],
+                                           align_corners=False)
+        out3 = fluid.layers.resize_nearest(x,
+                                           out_shape=shape_tensor,
+                                           align_corners=False)
+        out4 = fluid.layers.resize_nearest(x,
+                                           out_shape=[4, 4],
+                                           actual_shape=actual_size,
+                                           align_corners=False)
+        out5 = fluid.layers.resize_nearest(x,
+                                           scale=scale_tensor,
+                                           align_corners=False)
 
-#         place = paddle.MLUPlace(0)
-#         exe = fluid.Executor(place)
-#         exe.run(fluid.default_startup_program())
-#         results = exe.run(fluid.default_main_program(),
-#                           feed={
-#                               "x": x_data,
-#                               "y": np.transpose(x_data, (0, 2, 3, 1)),
-#                               "dim": dim_data,
-#                               "shape_tensor": shape_data,
-#                               "actual_size": actual_size_data,
-#                               "scale_tensor": scale_data
-#                           },
-#                           fetch_list=[out1, out2, out3, out4, out5],
-#                           return_numpy=True)
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        dim_data = np.array([12]).astype("int32")
+        shape_data = np.array([12, 12]).astype("int32")
+        actual_size_data = np.array([12, 12]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
 
-#         expect_res = nearest_neighbor_interp_np(
-#             x_data, out_h=12, out_w=12, align_corners=False)
-#         self.assertTrue(
-#             np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
-#         for i in range(len(results) - 1):
-#             self.assertTrue(np.allclose(results[i + 1], expect_res))
+        place = paddle.MLUPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "x": x_data,
+                              "y": np.transpose(x_data, (0, 2, 3, 1)),
+                              "dim": dim_data,
+                              "shape_tensor": shape_data,
+                              "actual_size": actual_size_data,
+                              "scale_tensor": scale_data
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5],
+                          return_numpy=True)
+
+        expect_res = nearest_neighbor_interp_np(x_data,
+                                                out_h=12,
+                                                out_w=12,
+                                                align_corners=False)
+        self.assertTrue(
+            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+        for i in range(len(results) - 1):
+            self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
 class TestNearestInterpException(unittest.TestCase):

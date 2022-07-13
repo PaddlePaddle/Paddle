@@ -61,7 +61,6 @@ class TestBase(IPUOpTest):
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()
         ipu_strategy.set_graph_config(is_training=self.is_training)
-        ipu_strategy.set_options({'onnx_dump_path': 'onnx_dump_path.onnx'})
         self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
     def test(self):

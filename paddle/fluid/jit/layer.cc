@@ -42,5 +42,13 @@ void Layer::SetFunction(const std::string& name,
   unit_.SetFunction(name, function);
 }
 
+std::vector<std::string> Layer::FunctionNames() const {
+  return unit_.FunctionNames();
+}
+
+const Name2FunctionMap& Layer::FunctionMap() const {
+  return unit_.FunctionMap();
+}
+
 }  // namespace jit
 }  // namespace paddle

@@ -103,7 +103,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
           @dygraph_to_static_func
           def func(x):
-              if fluid.layers.mean(x) < 0:
+              if paddle.mean(x) < 0:
                   x_v = x - 1
               else:
                   x_v = x + 1
