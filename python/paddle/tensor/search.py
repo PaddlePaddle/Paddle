@@ -1020,7 +1020,7 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
             # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [[0, 2, 1, 3],
             #        [0, 0, 2, 1]])
-            out2 = paddle.bucketize(sorted_sequence, values, right=True)
+            out2 = paddle.bucketize(x, sorted_sequence, right=True)
             print(out2)
             # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [[0, 3, 2, 4],
