@@ -2999,6 +2999,66 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void UniqueConsecutiveInferMeta(const MetaTensor& x,
+                                bool return_inverse,
+                                bool return_counts,
+                                const std::vector<int>& axis,
+                                int dtype,
+                                MetaTensor* out,
+                                MetaTensor* index,
+                                MetaTensor* counts) {
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "unique_consecutive should have output tensor out."));
+
+  auto in_dims = x.dims();
+  if (return_inverse) {
+    PADDLE_ENFORCE_NE(
+        index,
+        nullptr,
+        phi::errors::InvalidArgument("Tensor index should not be null if "
+                                     "return_inverse is set to True."));
+  }
+  if (return_counts) {
+    PADDLE_ENFORCE_NE(
+        counts,
+        nullptr,
+        phi::errors::InvalidArgument("Tensor counts should not be null if "
+                                     "return_counts is set to True."));
+  }
+
+  if (axis.empty()) {
+    out->set_dims({-1});
+    out->set_dtype(x.dtype());
+    if (return_inverse) {
+      index->set_dims({phi::product(in_dims)});
+    }
+  } else {
+    int axis_value = axis[0];
+    if (axis_value < 0) {
+      axis_value += in_dims.size();
+    }
+    PADDLE_ENFORCE_LT(
+        axis_value,
+        in_dims.size(),
+        phi::errors::InvalidArgument("The axis(%d) should be less than "
+                                     "the dimension size(%d) of x.",
+                                     axis_value,
+                                     in_dims.size()));
+    auto out_dims = in_dims;
+    out_dims[axis_value] = -1;
+    out->set_dims(out_dims);
+    out->set_dtype(x.dtype());
+    if (return_inverse) {
+      index->set_dims({in_dims[axis_value]});
+    }
+  }
+  if (return_counts) {
+    counts->set_dims({-1});
+  }
+}
+
 void UniqueInferMeta(const MetaTensor& x,
                      bool return_index,
                      bool return_inverse,

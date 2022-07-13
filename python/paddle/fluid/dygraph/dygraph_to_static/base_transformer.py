@@ -24,6 +24,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TUPLE_INDEX_PR
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_VAR_LEN_PREFIX
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_VAR_NAME_PREFIX
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_ZIP_TO_LIST_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TARGET_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_ITERATOR_PREFIX
 
 
 class BaseTransformer(gast.NodeTransformer):
@@ -119,32 +121,20 @@ class NameNodeReplaceTransformer(BaseTransformer):
 
 
 class ForLoopTuplePreTransformer(BaseTransformer):
-    """
-    ForNodeVisitor parses 3 type statements (Here var is VarBase(Tensor) or python variable):
-        1). for x in range(var[*]|var.numpy()[*])
-        2). for x in var|var.numpy()
-        3). for i, x in enumerate(var|var.numpy())
+    """ pre-process of for loop.
+    >>> for A in B: 
+    >>>    C
 
-        We chose these 3 types because they are easier (x can be variable name iterating in var).
-        However, users can write tuples in Python for loop, such as
-        1). for var1, var2 in var|var.numpy()
-        2). for t in enumerate(var|var.numpy())
-        2). for i, (var1, var2, va3) in enumerate(var|var.numpy())
+    will be changed into : 
 
-        To handle these case, this method will do the rewrite tuple pre-process:
-        1). Non-enumerate case: for var1, var2 in var|var.numpy() will be re-written as:
-          for FOR_ITER_TUPLE_PREFIX_x in var | var.numpy():
-            var1 = FOR_ITER_TUPLE_PREFIX_x[0]
-            var2 = FOR_ITER_TUPLE_PREFIX_x[1]
-        2). Enumerate out tuple case: for t in enumerate(var|var.numpy) will be rewritten as:
-          for FOR_ITER_TUPLE_INDEX_PREFIX_x, FOR_ITER_TUPLE_PREFIX_x in enumerate(var|var.numpy):
-            t = (FOR_ITER_TUPLE_INDEX_PREFIX_x, FOR_ITER_TUPLE_PREFIX_x)
-        3). Enumerate inner tuple case: for i, (var1, (var2, va3)) in enumerate(var|var.numpy()) will
-        be re-written as:
-          for i, FOR_ITER_TUPLE_PREFIX_x in var | var.numpy():
-            var1 = FOR_ITER_TUPLE_PREFIX_x[0]
-            var2 = FOR_ITER_TUPLE_PREFIX_x[1][0]
-            var3 = FOR_ITER_TUPLE_PREFIX_x[1][1]
+    >>> UUID_iterator = _jst.Indexable(B)  # make iterator-only to indexable list.
+    >>> for UUID_target in UUID_iterator:
+    >>>     A = _jst.Unpack(UUID_target, structure)
+    >>>     C
+
+    make the later loop_transform have unified type:
+    >>> for target in iter:
+    >>>     body
     """
 
     def __init__(self, wrapper_root):
@@ -155,104 +145,45 @@ class ForLoopTuplePreTransformer(BaseTransformer):
         self.visit(self.root)
 
     def visit_For(self, node):
-        if self.is_for_enumerate_iter(node):
-            if isinstance(node.target, (gast.Name, gast.Attribute)):
-                # Out tuple case
-                out_tuple_name = ast_to_source_code(node.target).strip()
-                tuple_iter_name = unique_name.generate(
-                    FOR_ITER_TUPLE_INDEX_PREFIX)
-                tuple_var_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
-                node.target = gast.Tuple(elts=[
-                    gast.Name(id=tuple_iter_name,
-                              ctx=gast.Store(),
-                              annotation=None,
-                              type_comment=None),
-                    gast.Name(id=tuple_var_name,
-                              ctx=gast.Store(),
+        self.generic_visit(node)
+        tuple_target = unique_name.generate(FOR_ITER_TARGET_PREFIX)
+        tuple_iterator = unique_name.generate(FOR_ITER_ITERATOR_PREFIX)
+        origin_tuple_node = node.target
+        assign_iterator_node = gast.parse(
+            f"{tuple_iterator} = _jst.Indexable({ast_to_source_code(node.iter).strip()})"
+        ).body[0]
+        node.target = gast.Name(id=tuple_target,
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+        node.iter = gast.Name(id=tuple_iterator,
+                              ctx=gast.Load(),
                               annotation=None,
                               type_comment=None)
-                ],
-                                         ctx=gast.Store())
-                node.body.insert(
-                    0,
-                    gast.Assign(targets=[
-                        gast.Name(id=out_tuple_name,
-                                  ctx=gast.Store(),
-                                  annotation=None,
-                                  type_comment=None)
-                    ],
-                                value=gast.Tuple(elts=[
-                                    gast.Name(id=tuple_iter_name,
-                                              ctx=gast.Load(),
-                                              annotation=None,
-                                              type_comment=None),
-                                    gast.Name(id=tuple_var_name,
-                                              ctx=gast.Load(),
-                                              annotation=None,
-                                              type_comment=None)
-                                ],
-                                                 ctx=gast.Load())))
-            elif isinstance(node.target, (gast.List, gast.Tuple)) and len(
-                    node.target.elts) >= 2 and isinstance(
-                        node.target.elts[1], (gast.List, gast.Tuple)):
-                # Inner tuple case
-                inner_tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
-                origin_inner_tuple_node = node.target.elts[1]
-                node.target.elts[1] = gast.Name(id=inner_tuple_name,
-                                                ctx=gast.Store(),
-                                                annotation=None,
-                                                type_comment=None)
-                node.body[0:0] = self.tuple_to_stmts(origin_inner_tuple_node,
-                                                     inner_tuple_name)
-        elif self.is_for_iter(node) and isinstance(node.target,
-                                                   (gast.List, gast.Tuple)):
-            # Non-enumrate case:
-            tuple_name = unique_name.generate(FOR_ITER_TUPLE_PREFIX)
-            origin_tuple_node = node.target
-            node.target = gast.Name(id=tuple_name,
-                                    ctx=gast.Store(),
-                                    annotation=None,
-                                    type_comment=None)
-            node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_name)
-        return node
+        node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_target)
+        # return a list will insert a list of node replace the original for node.
+        return [assign_iterator_node, node]
 
-    def tuple_to_stmts(self, node, tuple_name, idx=[]):
-        if not isinstance(node, (gast.Tuple, gast.List)):
-            value_node_str = tuple_name
-            for i in idx:
-                value_node_str = value_node_str + "[{}]".format(i)
-
-            node_str = ast_to_source_code(node).strip()
-            assign_node_str = "{} = {}".format(node_str, value_node_str)
-            assign_node = gast.parse(assign_node_str).body[0]
-            return [assign_node]
-
-        # isinstance(node, (gast.Tuple, gast.List))
+    def tuple_node_to_unpack_structure(self, node):
+        """ Create a sequence to represents the structure of nest.
+            For example: `a, (b,c), [d,e,f]` is represented by 
+            `[1, [1,1], [1,1,1]]`. the `1` is just a notation.
+            
+            Specially, `a` is represented by `1`.
+        """
         ret = []
-        for i, element in enumerate(node.elts):
-            ret += self.tuple_to_stmts(node.elts[i], tuple_name, idx + [i])
+        if not isinstance(node, (gast.Tuple, gast.List)):
+            return 1
+        for element in node.elts:
+            ret.append(self.tuple_node_to_unpack_structure(element))
         return ret
 
-    def is_for_iter(self, for_node):
-        assert isinstance(for_node,
-                          gast.For), "Input node is not gast.For node."
-        if isinstance(for_node.iter, (gast.Name, gast.Attribute)):
-            return True
-        elif isinstance(for_node.iter, gast.Call) and isinstance(
-                for_node.iter.func,
-                gast.Attribute) and for_node.iter.func.attr == 'numpy':
-            return True
-        elif isinstance(for_node.iter, gast.Subscript):
-            return True
-        else:
-            return False
-
-    def is_for_enumerate_iter(self, for_node):
-        assert isinstance(for_node,
-                          gast.For), "Input node is not gast.For node."
-        return isinstance(for_node.iter, gast.Call) and isinstance(
-            for_node.iter.func,
-            gast.Name) and for_node.iter.func.id == "enumerate"
+    def tuple_to_stmts(self, node, tuple_name):
+        structure_str = str(self.tuple_node_to_unpack_structure(node))
+        node_str = ast_to_source_code(node).strip()
+        assign_node_str = f"{node_str} = _jst.Unpack({tuple_name}, {structure_str})"
+        assign_node = gast.parse(assign_node_str).body[0]
+        return [assign_node]
 
 
 class SplitAssignTransformer(BaseTransformer):

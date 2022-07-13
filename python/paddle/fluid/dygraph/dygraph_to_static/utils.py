@@ -82,6 +82,8 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
+FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
+FOR_ITER_ITERATOR_PREFIX = '__for_loop_iter_iterator'
 FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
@@ -1099,6 +1101,18 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             if isinstance(node, gast.FunctionDef):
                 return self._get_name_scope(node)
 
+    def visit_ListComp(self, node):
+        """ [ i for i in range(10) ]
+            In this case, `i` will not created in FunctionScope. 
+            We don't collect `i` by not calling generic_visit.
+        """
+        pass
+
+    def visit_DictComp(self, node):
+        """ the same as ListComp.
+        """
+        pass
+
     def visit_Name(self, node):
         self.generic_visit(node)
         write_context = (gast.Store, gast.AugStore, gast.Del)
@@ -1149,8 +1163,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
         def post_func():
             self._father_name_scope().merge_from(self._current_name_scope())
+            self._nearest_function_scope().merge_from(
+                self._current_name_scope())
             self._current_name_scope().created = self._nearest_function_scope(
             ).existed_vars() - node.before_created
+            # gather created vars into father and used in CreateUndefinedVarTransform
+            self._nearest_function_scope().created |= self._current_name_scope(
+            ).created
 
         def pre_func():
             setattr(node, "before_created",
