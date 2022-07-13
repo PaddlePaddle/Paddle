@@ -110,6 +110,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -213,6 +214,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "equal",
       "dropout",
       "prelu",
       "conv2d_transpose",
@@ -321,6 +323,28 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
 #endif
+    }
+
+    // In static shape mode in TRT, we can't allow that op's input is a
+    // 1D-tensor So we filter it here. Some op like elementwise having "Y" too,
+    // but that is dealt with in the specified op, here just the common case
+    if (!with_dynamic_shape) {
+      std::string X_name;
+      auto inputs = desc.Inputs();
+      if (inputs.count("X")) {
+        X_name = desc.Input("X")[0];
+      } else if (inputs.count("Input")) {
+        X_name = desc.Input("Input")[0];
+      }
+      auto* block = desc.Block();
+      if (block) {
+        auto* x_var_desc = block->FindVar(X_name);
+        // Can't get feed op's TensorDesc
+        if (op_type != "feed" && x_var_desc && !x_var_desc->Persistable()) {
+          const auto x_shape = x_var_desc->GetShape();
+          if (x_shape.size() == 1) return false;
+        }
+      }
     }
 
     if (op_type == "pool2d") {
@@ -1215,14 +1239,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }
@@ -1312,14 +1331,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() == 1 && y_shape.size() == 1) {
-        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
+
+      // The case when x_shape.size() == 1 is dealt with in common case
+      if (!with_dynamic_shape && (!y_var_desc->Persistable()) &&
+          y_shape.size() == 1) {
+        VLOG(3) << "Static shape in trt not support y is  a 1D intermediate "
+                   "tensor in "
+                   "elementwise op.";
         return false;
       }
-      if (x_var_desc->Persistable()) {
-        VLOG(3) << "Input X is a parameter which is not supported for "
-                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                   "y will work";
+      if (x_var_desc->Persistable() && !with_dynamic_shape) {
+        VLOG(3)
+            << "Input X is a parameter which is not supported for "
+               "elementwise in tensorrt's static shape, swap x and y will work";
         return false;
       }
     }
@@ -1915,6 +1939,21 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
+    // conv2d_transpose, conv3d_transpose, depthwise_conv2d_transpose
+    if (op_type.find("d_transpose") > 0) {
+      // trt doen't support output_padding,
+      // output_padding is set when stride > 1
+      if (desc.HasAttr("output_padding")) {
+        const std::vector<int> output_padding =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+        if (output_padding.size() > 0) {
+          int max_padding =
+              *std::max_element(output_padding.begin(), output_padding.end());
+          if (max_padding > 0) return false;
+        }
+      }
+    }
+
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
       if (desc.HasAttr("padding_algorithm")) {
         std::string padding_algorithm =
@@ -2048,6 +2087,25 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 #endif
+
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }

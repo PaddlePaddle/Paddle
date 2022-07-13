@@ -299,4 +299,19 @@ void PD_TensorShareLoDWith(PD_Tensor* dst,
   meta_dst.share_lod(meta_src);
 }
 
+PD_Tensor* PD_OptionalTensorGetPointer(PD_Tensor* tensor) {
+  auto cc_tensor =
+      reinterpret_cast<paddle::optional<phi::DenseTensor>*>(tensor);
+  return reinterpret_cast<PD_Tensor*>(cc_tensor->get_ptr());
+}
+
+PD_List PD_TensorVectorToList(PD_Tensor* tensor) {
+  auto cc_tensor =
+      reinterpret_cast<std::vector<const phi::DenseTensor*>*>(tensor);
+  PD_List list;
+  list.size = cc_tensor->size();
+  list.data = cc_tensor->data();
+  return list;
+}
+
 PD_REGISTER_CAPI(tensor);

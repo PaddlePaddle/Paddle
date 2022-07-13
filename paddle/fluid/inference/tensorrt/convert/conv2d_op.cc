@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -48,7 +50,7 @@ void ConvertConv2d(TensorRTEngine* engine,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-  float* weight_data = nullptr;
+
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
@@ -57,7 +59,6 @@ void ConvertConv2d(TensorRTEngine* engine,
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
   }
-  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                     4UL,
@@ -104,21 +105,19 @@ void ConvertConv2d(TensorRTEngine* engine,
     nv_post_paddings.d[1] = paddings[3];
   }
 
-  TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_data),
-                                static_cast<size_t>(Y_t->numel())};
-  float* bias_data = nullptr;
-  size_t bias_size = 0;
+  auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
+
+  TensorRTEngine::Weight bias;
+  bias.SetDataType(weight.get().type);
+  bias.SetCount(0);
+  bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
-    bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         bias_tensor_data);
-    bias_size = static_cast<size_t>(bias_tensor_data->numel());
+    bias =
+        engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }
 
-  TensorRTEngine::Weight bias{
-      nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_data), bias_size};
   // In conv2d_transpose and depthwise_conv2d_transpose,
   // output channels = filter_dims[1] * groups
   auto* layer = (op_desc.Type() == "conv2d_transpose" ||

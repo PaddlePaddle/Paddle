@@ -19,7 +19,7 @@
 #include <popart/optimizer.hpp>
 #include <popart/sgd.hpp>
 
-#include "boost/blank.hpp"
+#include "paddle/utils/blank.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -32,7 +32,7 @@ namespace ipu {
 
 namespace {
 
-struct CustomOpAttrVisitor : public boost::static_visitor<void> {
+struct CustomOpAttrVisitor {
   CustomOpAttrVisitor(std::map<std::string, popart::any>* attr,
                       const std::string& attr_name)
       : attrs_(attr), attr_name_(attr_name) {}
@@ -75,14 +75,14 @@ struct CustomOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<double>& v) const {
     attrs_->emplace(attr_name_, v);
   }
-  void operator()(boost::blank) const {
+  void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method for `boost::blank` type when extracting "
+        "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
   }
 };
 
-struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
+struct ConstantOpAttrVisitor {
   ConstantOpAttrVisitor(framework::LoDTensor* tensor, VarType::Type dtype)
       : tensor_(tensor), dtype_(dtype) {}
 
@@ -111,7 +111,13 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
     framework::TensorFromVector<int64_t>(vec, tensor_);
   }
   void operator()(const std::vector<double>& vec) const {
-    framework::TensorFromVector<double>(vec, tensor_);
+    // popart do not support float64 constant
+    std::vector<float> vec_fp32;
+    std::transform(vec.begin(),
+                   vec.end(),
+                   std::back_inserter(vec_fp32),
+                   [](double f) -> float { return static_cast<float>(f); });
+    framework::TensorFromVector<float>(vec_fp32, tensor_);
   }
 #define RAISE_ERROR \
   PADDLE_THROW(     \
@@ -124,7 +130,7 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(BlockDesc* desc) const { RAISE_ERROR; }
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
-  void operator()(boost::blank) const { RAISE_ERROR; }
+  void operator()(paddle::blank) const { RAISE_ERROR; }
 #undef RAISE_ERROR
 };
 
@@ -416,7 +422,7 @@ void Compiler::LowerWeights(const Scope* scope) {
     auto* node = graph_helper_->nodes_id_map[id];
     // Weights are var node and Persistable
     if (node->IsVar() && !node->IsCtrlVar() && node->Var() &&
-        node->Var()->Persistable()) {
+        node->Var()->Persistable() && node->inputs.empty()) {
       // Weights are Parameter in training mode
       if (ipu_strategy_->is_training && !node->Var()->IsParameter()) {
         continue;
@@ -439,6 +445,7 @@ void Compiler::LowerWeights(const Scope* scope) {
       for (size_t i = 0; i < tensor.dims().size(); ++i) {
         shape.push_back(tensor.dims().at(i));
       }
+
       popart::TensorInfo tensor_info(dtype, shape);
       popart::ConstVoidData const_data{tensor.data(), tensor_info};
       if (!node->outputs.empty()) {
@@ -524,19 +531,26 @@ void Compiler::LowerOptimizer(const Scope* scope) {
       auto raw_type =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
       resources_->optimizer_type = raw_type;
-      auto loss_var =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
-      resources_->loss_var = resources_->tensors[loss_var];
       resources_->with_lr_sched =
           BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
-      if (op_desc->HasAttr("lr_var")) {
-        auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
-        resources_->lr_var = lr_var;
-        resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
+      if (ipu_strategy_->is_dynamic) {
+        // loss_var in dy2static is set by identity_loss. And lr is
+        // passed by ipu_strategy.
+        resources_->lr = ipu_strategy_->lr;
       } else {
-        // adadelta has no lr
-        resources_->lr = 0.01f;
-        resources_->with_lr_sched = false;
+        auto loss_var =
+            BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
+        resources_->loss_var = resources_->tensors[loss_var];
+        if (op_desc->HasAttr("lr_var")) {
+          auto lr_var =
+              BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
+          resources_->lr_var = lr_var;
+          resources_->lr = GetSingleVarFromScope<float>(scope, lr_var);
+        } else {
+          // adadelta has no lr
+          resources_->lr = 0.01f;
+          resources_->with_lr_sched = false;
+        }
       }
       VLOG(10) << "Set initial lr: " << resources_->lr;
 
@@ -758,6 +772,19 @@ void Compiler::LowerOptimizer(const Scope* scope) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "optimizer %s is not implemented", type));
       }
+    } else if (op_type == "popart_identity_loss") {
+      auto outputs = op_desc->Outputs();
+      PADDLE_ENFORCE_EQ(
+          outputs.size(),
+          1,
+          platform::errors::InvalidArgument("Can only support one loss key"));
+      auto losses = outputs.begin()->second;
+      PADDLE_ENFORCE_EQ(
+          losses.size(),
+          1,
+          platform::errors::InvalidArgument("Can only support one loss name"));
+      auto loss_var = losses.front();
+      resources_->loss_var = resources_->tensors[loss_var];
     }
   }
 }

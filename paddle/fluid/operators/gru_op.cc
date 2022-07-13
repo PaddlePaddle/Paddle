@@ -318,7 +318,7 @@ template <typename T>
 class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     using LodTensorPtr = LoDTensor*;
     bool is_test = context.Attr<bool>("is_test");
 
@@ -588,7 +588,6 @@ REGISTER_OPERATOR(gru_grad,
 REGISTER_OP_CPU_KERNEL(gru,
                        ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);
-REGISTER_OP_CPU_KERNEL(
-    gru_grad,
-    ops::GRUGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GRUGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(gru_grad,
+                       ops::GRUGradKernel<phi::CPUContext, float>,
+                       ops::GRUGradKernel<phi::CPUContext, double>);

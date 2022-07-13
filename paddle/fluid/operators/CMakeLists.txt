@@ -149,6 +149,10 @@ if (WITH_ASCEND_CL)
   op_library(sync_batch_norm_op)
 endif()
 
+if (WITH_MLU)
+  op_library(sync_batch_norm_op)
+endif()
+
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})

@@ -38,6 +38,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
 namespace paddle {
 namespace framework {

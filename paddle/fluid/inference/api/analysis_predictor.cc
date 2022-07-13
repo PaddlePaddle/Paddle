@@ -36,12 +36,15 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/infer_context.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -50,6 +53,8 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/string/split.h"
 
@@ -101,6 +106,43 @@ bool IsPersistable(const framework::VarDesc *var) {
     return true;
   }
   return false;
+}
+
+phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
+  switch (precision) {
+    case AnalysisConfig::Precision::kFloat32:
+      return phi::DataType::FLOAT32;
+    case AnalysisConfig::Precision::kHalf:
+      return phi::DataType::FLOAT16;
+    case AnalysisConfig::Precision::kBf16:
+      return phi::DataType::BFLOAT16;
+    case AnalysisConfig::Precision::kInt8:
+      return phi::DataType::INT8;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Paddle Inference not support precision. We now only support "
+          "Float32, Half, Bfloat16 and Int8"));
+      return phi::DataType::FLOAT32;
+  }
+}
+
+phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+  switch (backend) {
+    case AnalysisConfig::Backend::kGPU:
+      // NOTE: phi also support phi::Backend::GPUDNN.
+      return phi::Backend::GPU;
+    case AnalysisConfig::Backend::kNPU:
+      return phi::Backend::NPU;
+    case AnalysisConfig::Backend::kXPU:
+      return phi::Backend::XPU;
+    case AnalysisConfig::Backend::kCPU:
+      return phi::Backend::CPU;
+    default:
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Paddle Inference not support backend, we now only support GPU, XPU, "
+          "NPU and CPU."));
+      return phi::Backend::CPU;
+  }
 }
 }  // namespace
 
@@ -476,6 +518,8 @@ bool AnalysisPredictor::PrepareProgram(
     // if enable_ir_optim_ is false,
     // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
     // not be executed.
+    model_precision_ =
+        paddle::inference::GetModelPrecision(*inference_program_);
     OptimizeInferenceProgram();
   } else {
     // If the program is passed from external, no need to optimize it, this
@@ -1129,6 +1173,40 @@ void AnalysisPredictor::PrepareArgument() {
 #endif
 
   auto passes = config_.pass_builder()->AllPasses();
+  if (model_precision_ != phi::DataType::FLOAT32) {
+    LOG(INFO) << "Model is mixed precision type with " << model_precision_
+              << ", we will use a new PassStrategy. Note that only the GPU "
+                 "backend is supported for now.";
+    passes.clear();
+    if (config_.tensorrt_engine_enabled()) {
+      for (const auto &pass : kTrtLowerPrecisionPasses) {
+        passes.push_back(pass);
+      }
+    } else if (config_.use_gpu()) {
+      for (const auto &pass : kGpuLowerPrecisionPasses) {
+        passes.push_back(pass);
+      }
+    }
+
+    const auto &deleted_passes = config_.pass_builder()->GetAllDeletedPasses();
+    for (const auto &it : deleted_passes) {
+      auto iterator = std::find(passes.begin(), passes.end(), it);
+      if (iterator != passes.end()) {
+        passes.erase(iterator);
+      }
+    }
+
+    if (config_.ir_debug_) {
+      auto it = std::begin(passes);
+      while (it != std::end(passes)) {
+        if (*it != "graph_viz_pass") {
+          it = passes.insert(it + 1, "graph_viz_pass");
+        } else {
+          ++it;
+        }
+      }
+    }
+  }
   if (!config_.ir_optim()) {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
@@ -1137,6 +1215,10 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
+
+  // mixed precison.
+  argument_.SetModelPrecision(static_cast<int>(model_precision_));
+  argument_.SetMixedBlackList(config_.mixed_black_list_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -1279,6 +1361,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   // Each config can only be used for one predictor.
   config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
+
+#ifdef PADDLE_WITH_TENSORRT
+  paddle::framework::ir::patterns::KeyCounter::Instance().CleanCounter();
+#endif
 
   if (!predictor_p->Init(nullptr)) {
     return nullptr;
@@ -1998,6 +2084,7 @@ USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
 USE_TRT_CONVERTER(remove_padding)
+USE_TRT_CONVERTER(equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(squeeze2)
@@ -2110,6 +2197,26 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);
+}
+
+void ConvertToMixedPrecision(const std::string &model_file,
+                             const std::string &params_file,
+                             const std::string &mixed_model_file,
+                             const std::string &mixed_params_file,
+                             PrecisionType mixed_precision,
+                             BackendType backend,
+                             bool keep_io_types,
+                             std::unordered_set<std::string> black_list) {
+  auto phi_backend = paddle::ConvertBackend(backend);
+  auto phi_precision = paddle::ConvertPrecision(mixed_precision);
+  paddle::inference::analysis::ConvertToMixedPrecision(model_file,
+                                                       params_file,
+                                                       mixed_model_file,
+                                                       mixed_params_file,
+                                                       phi_precision,
+                                                       phi_backend,
+                                                       keep_io_types,
+                                                       black_list);
 }
 
 }  // namespace paddle_infer

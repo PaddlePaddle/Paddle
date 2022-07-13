@@ -403,7 +403,7 @@ class LexNet(fluid.dygraph.Layer):
         crf_cost = self.linear_chain_crf(input=emission,
                                          label=target,
                                          length=length)
-        avg_cost = fluid.layers.mean(x=crf_cost)
+        avg_cost = paddle.mean(x=crf_cost)
         crf_decode = self.crf_decoding(input=emission, length=length)
         return avg_cost, crf_decode
 

@@ -12,15 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/sparse/copy_kernel.h"
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 
 namespace phi {
@@ -56,16 +59,16 @@ void ElementWiseAddCsrGradCPUKernel(const Context& dev_ctx,
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   } else {
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
@@ -78,12 +81,12 @@ void ElementWiseSubtractCsrGradCPUKernel(const Context& dev_ctx,
                                          SparseCsrTensor* dy) {
   if (dx) {
     AllocCsrPtr<T, IntT>(dev_ctx, x, dx);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   }
 
   if (dy) {
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
   }
@@ -126,7 +129,7 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
   if (dy) {
     //    -dout * out / y
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCsr(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
     auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, *dy, out);
@@ -145,16 +148,16 @@ void ElementWiseAddCooGradCPUKernel(const Context& dev_ctx,
   if (dx != nullptr && dy == nullptr) {
     VLOG(4) << "Special case when dy is not needed";
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   } else if (dx == nullptr && dy != nullptr) {
     VLOG(4) << "Special case when dx is not needed";
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   } else {
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
   }
 }
 
@@ -167,12 +170,12 @@ void ElementWiseSubtractCooGradCPUKernel(const Context& dev_ctx,
                                          SparseCooTensor* dy) {
   if (dx) {
     AllocCooPtr<T, IntT>(dev_ctx, x, dx);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
   }
 
   if (dy) {
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
   }
@@ -215,7 +218,7 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
   if (dy) {
     //    -dout * out / y
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
-    CopyCoo(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
         dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
     auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, *dy, out);

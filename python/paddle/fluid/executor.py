@@ -25,6 +25,7 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
 from .framework import convert_np_dtype_to_dtype_
+
 from . import core
 from . import unique_name
 from . import compiler
@@ -397,15 +398,12 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-
     from ..distributed.fleet import fleet
-    if fleet._role_maker is not None:
-        warnings.warn("do not use standalone executor in fleet by default")
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
-    else:
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
+    # use standalone_executor by default if not distributed
+    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
+        framework._enable_standalone_executor_ = 1
 
-    if env_val in [1, '1', True, 'True', 'true']:
+    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
         flag = True
 
     return flag
@@ -537,7 +535,7 @@ class _StandaloneExecutor(object):
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, fetch_list, return_numpy=True):
+    def run(self, scope, feed_names, fetch_list, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -549,17 +547,15 @@ class _StandaloneExecutor(object):
         """
         fetch_list = self._check_fetch(fetch_list)
 
-        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
+        tensors = self._new_exe.run(scope, feed_names,
+                                    fetch_list)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
             return tensors
 
     def _create_new_executor(self):
-        # NOTE: It's a trick to set empty start_up program.
-        startup_program = Program()
-        new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
-                                          self._main_program.desc, self._scope)
+        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
 
         return new_exe
 
@@ -1392,21 +1388,27 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_npu() or core.is_compiled_with_mlu(
-            ) or core.is_compiled_with_ipu() or isinstance(
-                    place, core.CustomPlace):
+            if core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
+            ) or isinstance(place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
-            # print("compiled is : {}".format(compiled))
-            # NOTE(zhiqiu): do not support compiled program now
             if compiled:
-                return False
-                # if program._is_data_parallel and len(
-                #         program._get_places(place, program._places)) == 1:
-                #     return True
-                # else:
-                #     return False
+                # Unsupported case 1 : the CompiledProgram is constructed by Graph
+                if program._program is None:
+                    return False
+
+                # Unsupported case 2 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
+                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                                  None) not in [1, '1', True, 'True', 'true']:
+                    return False
+
+                # Unsupported case 3: data parallel
+                if program._is_data_parallel == True and len(
+                        program._get_places(place, program._places)) != 1:
+                    return False
+
+                return True
             else:
                 if isinstance(program._graph, compiler.CompiledProgram):
                     return False
@@ -1437,6 +1439,11 @@ class Executor(object):
                 # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
                 # while use program to geet _StandaloneExecutor
                 if key not in self._executor_cache._cached_executors:
+                    # To apply IR pass, compile the Program to IrGraph and convert it back to Program
+                    if isinstance(program, compiler.CompiledProgram):
+                        program._compile(scope, self.place)
+                        ir_graph = framework.IrGraph(program._graph)
+                        inner_program = ir_graph.to_program()
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,
@@ -1470,7 +1477,8 @@ class Executor(object):
                     cpu_tensor = _as_lodtensor(data, core.CPUPlace())
                     tensor._copy_from(cpu_tensor, self.place)
 
-                return new_exe.run(list(feed.keys()), fetch_list, return_numpy)
+                return new_exe.run(scope, list(feed.keys()), fetch_list,
+                                   return_numpy)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

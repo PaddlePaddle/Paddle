@@ -18,9 +18,9 @@ namespace paddle {
 namespace operators {
 namespace math {
 template <typename T>
-class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
+class Unpool2dMaxFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
@@ -61,9 +61,9 @@ class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
   }
 };
 template <class T>
-class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, T> {
+class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -107,9 +107,9 @@ class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <typename T>
-class Unpool3dMaxFunctor<platform::CPUDeviceContext, T> {
+class Unpool3dMaxFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
@@ -153,9 +153,9 @@ class Unpool3dMaxFunctor<platform::CPUDeviceContext, T> {
   }
 };
 template <class T>
-class Unpool3dMaxGradFunctor<platform::CPUDeviceContext, T> {
+class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const phi::CPUContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -201,14 +201,14 @@ class Unpool3dMaxGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, float>;
-template class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, double>;
-template class Unpool2dMaxFunctor<platform::CPUDeviceContext, float>;
-template class Unpool2dMaxFunctor<platform::CPUDeviceContext, double>;
-template class Unpool3dMaxGradFunctor<platform::CPUDeviceContext, float>;
-template class Unpool3dMaxGradFunctor<platform::CPUDeviceContext, double>;
-template class Unpool3dMaxFunctor<platform::CPUDeviceContext, float>;
-template class Unpool3dMaxFunctor<platform::CPUDeviceContext, double>;
+template class Unpool2dMaxGradFunctor<phi::CPUContext, float>;
+template class Unpool2dMaxGradFunctor<phi::CPUContext, double>;
+template class Unpool2dMaxFunctor<phi::CPUContext, float>;
+template class Unpool2dMaxFunctor<phi::CPUContext, double>;
+template class Unpool3dMaxGradFunctor<phi::CPUContext, float>;
+template class Unpool3dMaxGradFunctor<phi::CPUContext, double>;
+template class Unpool3dMaxFunctor<phi::CPUContext, float>;
+template class Unpool3dMaxFunctor<phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

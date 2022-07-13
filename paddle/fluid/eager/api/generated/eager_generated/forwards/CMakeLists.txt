@@ -7,6 +7,6 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     final_dygraph_function
     SRCS dygraph_functions.cc
-    DEPS ${eager_deps})
+    DEPS ${eager_deps} ${eager_manual_functions})
   add_dependencies(final_dygraph_function eager_final_state_codegen)
 endif()

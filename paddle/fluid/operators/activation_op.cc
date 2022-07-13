@@ -1469,20 +1469,16 @@ namespace plat = paddle::platform;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(                             \
-    act_type, op_name, functor, grad_functor)                       \
-  REGISTER_OP_CPU_KERNEL(                                           \
-      act_type,                                                     \
-      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
-                            ops::functor<float>>,                   \
-      ops::ActivationKernel<paddle::platform::CPUDeviceContext,     \
-                            ops::functor<double>>);                 \
-  REGISTER_OP_CPU_KERNEL(                                           \
-      act_type##_grad,                                              \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
-                                ops::grad_functor<float>>,          \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext, \
-                                ops::grad_functor<double>>);
+#define REGISTER_ACTIVATION_CPU_KERNEL(                                     \
+    act_type, op_name, functor, grad_functor)                               \
+  REGISTER_OP_CPU_KERNEL(                                                   \
+      act_type,                                                             \
+      ops::ActivationKernel<phi::CPUContext, ops::functor<float>>,          \
+      ops::ActivationKernel<phi::CPUContext, ops::functor<double>>);        \
+  REGISTER_OP_CPU_KERNEL(                                                   \
+      act_type##_grad,                                                      \
+      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<float>>, \
+      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<double>>);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
@@ -1503,6 +1499,7 @@ REGISTER_ACTIVATION_OP(thresholded_relu,
                        ThresholdedRelu,
                        ThresholdedReluFunctor,
                        ThresholdedReluGradFunctor);
+REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(hard_shrink,
                        HardShrink,
                        HardShrinkFunctor,

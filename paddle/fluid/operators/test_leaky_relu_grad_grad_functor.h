@@ -103,10 +103,9 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
     for_range(actual_functor);
   } else {
 #endif
-    auto &cpu_dev_ctx = dynamic_cast<platform::CPUDeviceContext &>(dev_ctx);
+    auto &cpu_dev_ctx = dynamic_cast<phi::CPUContext &>(dev_ctx);
     functor(cpu_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
-    platform::ForRange<platform::CPUDeviceContext> for_range(cpu_dev_ctx,
-                                                             limit);
+    platform::ForRange<phi::CPUContext> for_range(cpu_dev_ctx, limit);
     for_range(actual_functor);
 #if defined(__NVCC__) || defined(__HIPCC__)
   }
