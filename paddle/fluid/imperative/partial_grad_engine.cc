@@ -98,6 +98,7 @@ static void GetGraphInfoBetweenTargets(
     auto &grad_node = output_target->GradVarBase()->GradNode();
     if (visited.count(grad_node.get()) == 0) {
       for (auto &op : *grad_node) {
+        VLOG(10) << "Pushed op: " << op.Type();
         q.emplace(&op, grad_node.get());
       }
     }
@@ -141,6 +142,8 @@ static void GetGraphInfoBetweenTargets(
     for (auto &pending_node : node->GradPendingNodes()) {
       for (auto &pending_op : *pending_node) {
         preceding_ops[&pending_op].insert(op);
+        VLOG(10) << "Find preceding op of: " << pending_op.Type()
+                 << " is: " << op->Type();
       }
       if (visited.count(pending_node.get()) == 0) {
         visited.insert(pending_node.get());
@@ -175,6 +178,7 @@ static void GetGraphInfoBetweenTargets(
   std::queue<std::pair<OpBase * /*op*/, OpBase * /*pending op*/>> op_queue;
   std::unordered_set<std::pair<OpBase *, OpBase *>, HashPair> op_base_visited;
   for (auto &endpoint_op : endpoint_ops) {
+    VLOG(10) << "Emplaced endpoint op: " << endpoint_op->Type();
     op_queue.emplace(endpoint_op, nullptr);
     op_base_visited.emplace(endpoint_op, nullptr);
   }
@@ -186,14 +190,18 @@ static void GetGraphInfoBetweenTargets(
 
     op_queue.pop();
 
+    VLOG(10) << "Get op: " << op->Type();
+
     bool is_valid = false;
     for (auto &output_pair : op->GetOutsMap()) {
       if (!output_pair.second.IsGrad()) {
+        VLOG(10) << "Continueded output for : " << op->Type();
         continue;
       }
 
       for (auto &out_var : output_pair.second) {
         if (out_var && target_vars.count(out_var.get()) > 0) {
+          VLOG(10) << "Find target output for : " << op->Type();
           is_valid = true;
           break;
         }
@@ -211,11 +219,13 @@ static void GetGraphInfoBetweenTargets(
     is_valid = false;
     for (auto &input_pair : op->GetInsMap()) {
       if (!input_pair.second.IsGrad()) {
+        VLOG(10) << "Continueded input for : " << op->Type();
         continue;
       }
 
       for (auto &in_var : input_pair.second) {
         if (in_var && no_grad_var_grad.count(in_var.get()) == 0) {
+          VLOG(10) << "Find not no grad var in input for : " << op->Type();
           target_vars.insert(in_var.get());
           is_valid = true;
         }
@@ -240,7 +250,10 @@ static void GetGraphInfoBetweenTargets(
     auto iter = preceding_ops.find(op);
     if (iter != preceding_ops.end()) {
       for (auto &preceding_op : iter->second) {
+        VLOG(10) << "Scan preceding op: " << preceding_op->Type() << " for "
+                 << op->Type();
         if (op_base_visited.count(std::make_pair(preceding_op, op)) == 0) {
+          VLOG(10) << "Emplace op: " << preceding_op->Type();
           op_queue.emplace(preceding_op, op);
           op_base_visited.emplace(preceding_op, op);
         }
@@ -648,6 +661,7 @@ PartialGradTask::PartialGradTask(
                     platform::errors::Unimplemented(
                         "only_inputs=False is not supported yet"));
 
+  VLOG(10) << "no_grad_vars size: " << no_grad_vars.size();
   for (auto &var : no_grad_vars) {
     if (var && var->GradVarBase()) {
       no_grad_var_grad_.insert(var->GradVarBase()->SharedVar().get());
@@ -853,6 +867,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
     }
 
     for (auto &pending_op : iter->second) {
+      VLOG(10) << "Find pending op" << pending_op->Type();
       auto dep_iter = op_deps_.find(pending_op);
       PADDLE_ENFORCE_EQ(
           dep_iter != op_deps_.end(),
@@ -862,6 +877,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
       if (--(dep_iter->second) == 0) {
         q.push(pending_op);
       }
+      VLOG(10) << "Pending op deps: " << dep_iter->second;
     }
   }
 

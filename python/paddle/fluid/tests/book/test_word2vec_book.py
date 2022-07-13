@@ -85,7 +85,7 @@ def train(target,
                                        size=dict_size,
                                        act='softmax')
         cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         return avg_cost, predict_word
 
     word_dict = paddle.dataset.imikolov.build_dict()

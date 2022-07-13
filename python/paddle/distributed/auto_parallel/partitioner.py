@@ -264,10 +264,12 @@ class Partitioner(object):
                     self._dist_context, **kinputs, **koutputs,
                     **{"grad_var_to_var": grad_var_to_var})
             elif is_optimize_op(op):
+                # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
-                dist_op_impl = get_distributed_operator_impl_container(
-                    "default").get_impl(0)
-                dist_op_impl.backward(self._dist_context, **kinputs, **koutputs)
+                dist_op_opt_impl = _get_dist_op_backward_implement(
+                    op, self._dist_context, forward_op_id2forward_op)
+                dist_op_opt_impl.backward(self._dist_context, **kinputs,
+                                          **koutputs)
             else:
                 raise NotImplementedError(
                     "partitioner only support forward and backward, optimize ops, but got {}"

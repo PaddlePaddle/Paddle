@@ -576,8 +576,6 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
-            input_data = np.load('input.npy').astype("float32")
-            # print(input_data)
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(input_data,
                                             out_h=12,

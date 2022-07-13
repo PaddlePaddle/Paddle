@@ -80,6 +80,10 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void EigvalsInferMeta(const MetaTensor& x,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out,
@@ -420,6 +424,15 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void UniqueConsecutiveInferMeta(const MetaTensor& x,
+                                bool return_inverse,
+                                bool return_counts,
+                                const std::vector<int>& axis,
+                                int dtype,
+                                MetaTensor* out,
+                                MetaTensor* index,
+                                MetaTensor* counts);
+
 void UniqueInferMeta(const MetaTensor& x,
                      bool return_index,
                      bool return_inverse,
@@ -468,5 +481,7 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
                              MetaTensor* out);
+
+void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 }  // namespace phi

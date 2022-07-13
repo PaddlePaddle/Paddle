@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only
 
 

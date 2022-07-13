@@ -57,6 +57,8 @@ def restruct_io(api):
 # replace name of op and params for OpMaker
 def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
     for api_args in api_op_map:
+        if api_args['api'] not in forward_api_dict:
+            continue
         forward_api_item = forward_api_dict[api_args['api']]
         has_backward = True if forward_api_item['backward'] else False
         if has_backward:

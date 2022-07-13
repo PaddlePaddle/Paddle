@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy
 import os
@@ -33,7 +34,7 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             data = fluid.layers.data(name='X', shape=[1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             test_program = fluid.default_main_program().clone(for_test=True)
             fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 

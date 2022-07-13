@@ -180,7 +180,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
                               void *p,
                               size_t size) {
 #ifdef PADDLE_WITH_XPU
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
   platform::XPUDeviceGuard gurad(place.device);

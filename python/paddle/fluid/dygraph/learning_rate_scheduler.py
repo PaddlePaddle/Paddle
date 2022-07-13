@@ -897,7 +897,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
         assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
             "should be (1L,), but the current loss.shape is {}. Maybe that "  \
-            "you should call fluid.layers.mean to process it first.".format(loss.shape)
+            "you should call paddle.mean to process it first.".format(loss.shape)
 
         self.epoch_num += 1
         if self.cooldown_counter > 0:

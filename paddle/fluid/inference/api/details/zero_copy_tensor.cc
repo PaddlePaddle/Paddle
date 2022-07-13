@@ -179,13 +179,6 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
-#ifdef PADDLE_WITH_ONNXRUNTIME
-  if (is_ort_tensor_) {
-    ORTCopyFromCpu<T>(data);
-    return;
-  }
-#endif
-
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GE(tensor->numel(),
                     0,
@@ -731,112 +724,6 @@ void Tensor::SetOrtBuffer(const std::shared_ptr<std::vector<int8_t>> buffer) {
   buffer_ = buffer;
 }
 
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       float *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor<float>(
-      memory_info, data, size, shape, shape_len);
-}
-
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       int64_t *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor<int64_t>(
-      memory_info, data, size, shape, shape_len);
-}
-
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       int32_t *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor<int32_t>(
-      memory_info, data, size, shape, shape_len);
-}
-
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       uint8_t *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor<uint8_t>(
-      memory_info, data, size, shape, shape_len);
-}
-
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       int8_t *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor<int8_t>(
-      memory_info, data, size, shape, shape_len);
-}
-
-Ort::Value GetOrtVaule(const Ort::MemoryInfo &memory_info,
-                       float16 *data,
-                       size_t size,
-                       const int64_t *shape,
-                       size_t shape_len) {
-  return Ort::Value::CreateTensor(memory_info,
-                                  static_cast<void *>(data),
-                                  size * sizeof(float16),
-                                  shape,
-                                  shape_len,
-                                  ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
-}
-
-template <typename T>
-void Tensor::ORTCopyFromCpu(const T *data) {
-  auto binding = binding_.lock();
-  PADDLE_ENFORCE_NOT_NULL(binding,
-                          paddle::platform::errors::PreconditionNotMet(
-                              "input tensor [%s] no binding ptr", name_));
-  const char *device_name = place_ == PlaceType::kCPU ? "Cpu" : "Cuda";
-  Ort::MemoryInfo memory_info(
-      device_name, OrtDeviceAllocator, device_, OrtMemTypeDefault);
-  size_t size = std::accumulate(
-      begin(shape_), end(shape_), 1UL, std::multiplies<size_t>());
-  auto buffer = buffer_.lock();
-  size_t buffer_size = size * sizeof(T);
-  if (buffer_size > buffer->size()) {
-    buffer->resize(buffer_size);
-  }
-  std::memcpy(static_cast<void *>(buffer->data()), data, buffer_size);
-
-  auto onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
-  if (std::is_same<T, float>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT;
-  } else if (std::is_same<T, double>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE;
-  } else if (std::is_same<T, int64_t>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
-  } else if (std::is_same<T, int32_t>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32;
-  } else if (std::is_same<T, uint8_t>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8;
-  } else if (std::is_same<T, int8_t>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8;
-  } else if (std::is_same<T, float16>::value) {
-    onnx_dtype = ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16;
-  } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Found undefined data type for onnxruntime, only supports "
-        "float16/float32/float64/int8/uint8/int32/int64."));
-  }
-
-  auto ort_value = Ort::Value::CreateTensor(memory_info,
-                                            buffer->data(),
-                                            buffer_size,
-                                            shape_.data(),
-                                            shape_.size(),
-                                            onnx_dtype);
-  binding->BindInput(name_.c_str(), ort_value);
-}
-
 template <typename T>
 void Tensor::ORTCopyToCpu(T *data) const {
   auto binding = binding_.lock();
@@ -856,13 +743,6 @@ void Tensor::ORTCopyToCpu(T *data) const {
         "GPU."));
   }
 }
-
-template void Tensor::ORTCopyFromCpu<float>(const float *data);
-template void Tensor::ORTCopyFromCpu<int64_t>(const int64_t *data);
-template void Tensor::ORTCopyFromCpu<int32_t>(const int32_t *data);
-template void Tensor::ORTCopyFromCpu<uint8_t>(const uint8_t *data);
-template void Tensor::ORTCopyFromCpu<int8_t>(const int8_t *data);
-template void Tensor::ORTCopyFromCpu<float16>(const float16 *data);
 
 template void Tensor::ORTCopyToCpu<float>(float *data) const;
 template void Tensor::ORTCopyToCpu<int32_t>(int32_t *data) const;
