@@ -665,7 +665,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& x,
                           int axis,
                           MetaTensor* x_grad) {
   std::vector<phi::DDim> input_dims(x.size());
-  for(int i = 0; i < x.size(); ++i){
+  for(size_t i = 0; i < x.size(); ++i){
     input_dims[i] = x[i]->dims();
   }
   for (size_t i = 1; i < input_dims.size(); ++i) {
