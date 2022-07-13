@@ -160,6 +160,7 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
                                              strides,
                                              &d_rulebook,
                                              &d_counter);
+
   SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());

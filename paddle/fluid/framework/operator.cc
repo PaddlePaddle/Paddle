@@ -2103,7 +2103,9 @@ Scope* OperatorWithKernel::PrepareData(
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              (in_def->backend != phi::Backend::GPUDNN ||
-              tensor_backend != phi::Backend::GPU)) ||
+              tensor_backend != phi::Backend::GPU) &&
+             (in_def->backend != phi::Backend::KPS ||
+              tensor_backend != phi::Backend::XPU)) ||
             tensor_in->place().GetType() == AllocationType::GPUPINNED) {
           new_expected_kernel_key = std::make_unique<OpKernelType>(
               expected_kernel_key.data_type_,

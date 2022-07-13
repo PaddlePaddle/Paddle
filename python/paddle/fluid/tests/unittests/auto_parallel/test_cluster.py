@@ -19,6 +19,7 @@ import json
 
 import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.cluster import get_default_cluster
 
 cluster_json = """
 { 
@@ -1997,6 +1998,10 @@ class TestCluster(unittest.TestCase):
         self.assertTrue(devices == [0, 1, 2, 3])
         self.assertTrue(involved_machine_count == 1)
 
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
+
     def test_multi_machine(self):
         # Build cluster
         cluster_json_path = os.path.join(self.temp_dir.name,
@@ -2021,6 +2026,17 @@ class TestCluster(unittest.TestCase):
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):
             os.remove(cluster_json_path)
+
+    def test_default_config_cluster(self):
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=8)
+        # check machines and devices
+        self.assertTrue(cluster.get_num_machines() == 1)
+        self.assertTrue(cluster.get_num_devices_per_machine() == 8)
+
+    def test_default_cluster(self):
+        cluster = get_default_cluster()
+        self.assertTrue(isinstance(cluster, Cluster))
 
 
 if __name__ == "__main__":
