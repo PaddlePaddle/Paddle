@@ -21,6 +21,7 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/graph_send_e_recv_funcs.h"
+#include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
 
 namespace phi {
@@ -37,17 +38,77 @@ void CalculateXGrad(const T* out_grad,
                     const std::string& compute_type,
                     const std::string& pool_type,
                     int64_t index_size,
-                    int64_t slice_size,
                     T* x_grad,
+                    const DenseTensor& out_grad_tensor,
+                    DenseTensor* x_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
+      GraphSendRecvSumFunctor<T> sum_functor;
+      for (int64_t i = 0; i < index_size; i++) {
+        IndexT src = s_index[i];
+        IndexT dst = d_index[i];
+        ElementwiseInnerOperation<T, IndexT, GraphSendRecvSumFunctor<T>>(
+            out_grad_tensor, x_grad_tensor, src, dst, false, sum_functor);
+      }
     } else if (compute_type == "MUL") {
+      const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+      for (int64_t i = 0; i < index_size; i++) {
+        IndexT src = s_index[i];
+        IndexT dst = d_index[i];
+        T* x_grad_off = x_grad + dst * bcast.out_len;
+        const T* out_grad_off = out_grad + src * bcast.l_len;
+        const T* e_off = e_data + i * bcast.r_len;
+        for (int j = 0; j < bcast.out_len; j++) {
+          int64_t o_add = bcast.use_bcast ? bcast.l_offset[j] : j;
+          int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
+          T val = out_grad_off[o_add] * e_off[e_add];
+          if (val != 0) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp atomic
+#endif
+            x_grad_off[j] += val;
+          }
+        }
+      }
     }
   } else if (pool_type == "MEAN") {
+    const int* s_count = dst_count->data<int>();
     if (compute_type == "ADD") {
+      for (int64_t i = 0; i < index_size; i++) {
+        IndexT src = s_index[i];
+        IndexT dst = d_index[i];
+        auto out_grad_slice = out_grad_tensor.Slice(src, src + 1);
+        auto x_grad_slice = x_grad_tensor->Slice(dst, dst + 1);
+        auto eigen_out_grad = phi::EigenVector<T>::Flatten(out_grad_slice);
+        auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad_slice);
+        eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
+      }
     } else if (compute_type == "MUL") {
+      const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+      for (int64_t i = 0; i < index_size; i++) {
+        IndexT src = s_index[i];
+        IndexT dst = d_index[i];
+        const T* out_grad_off = out_grad + src * bcast.l_len;
+        const T* e_off = e_data + i * bcast.r_len;
+        T* x_grad_off = x_grad + dst * bcast.out_len;
+        for (int64_t j = 0; j < bcast.out_len; j++) {
+          int64_t o_add = bcast.use_bcast ? bcast.l_offset[j] : j;
+          int64_t e_add = bcast.use_bcast ? bcast.r_offset[j] : j;
+          T val = out_grad_off[o_add] * e_off[e_add];
+#ifdef PADDLE_WITH_MKLML
+#pragma omp atomic
+#endif
+          x_grad_off[j] += (val / s_count[src]);
+        }
+      }
     }
   }
 }
@@ -219,6 +280,22 @@ void GraphSendERecvGradOpKernelLaunchHelper(
   const IndexT* d_index = dst_index.data<IndexT>();
 
   if (pool_type == "SUM" || pool_type == "MEAN") {
+    CalculateXGrad<T, IndexT>(out_grad_data,
+                              x_data,
+                              e_data,
+                              out_grad.dims(),
+                              x_dims,
+                              e_dims,
+                              d_index,
+                              s_index,
+                              compute_type,
+                              pool_type,
+                              index_size,
+                              x_grad_data,
+                              out_grad,
+                              x_grad,
+                              dst_count,
+                              out);
     CalculateEGrad<T, IndexT>(out_grad_data,
                               x_data,
                               e_data,
