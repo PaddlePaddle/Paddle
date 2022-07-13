@@ -66,6 +66,7 @@ target_link_libraries(allocator ${ALLOCATOR_DEPS})
 # note: why only add dependency for framework_proto.
 # Because it is needed to generate framework.pb.h used in some header files.
 add_dependencies(allocator framework_proto)
+set_property(GLOBAL PROPERTY FLUID_MODULES allocator)
 
 cc_test(
   naive_best_fit_allocator_test
