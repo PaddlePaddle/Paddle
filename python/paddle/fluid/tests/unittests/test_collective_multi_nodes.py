@@ -97,7 +97,7 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "FLAGS_call_stack_level": "2",
-            "GLOG_v": "3",
+            "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
             "PADDLE_WITH_GLOO": "0",
             "BACKEND": backend,
@@ -106,7 +106,7 @@ class TestDistBase(unittest.TestCase):
         }
         required_envs.update(need_envs)
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_v"] = "0"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
 

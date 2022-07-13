@@ -45,7 +45,7 @@ def init_parallel_env(mode, global_batch_size, seed=1024):
         "sharding_degree": SH
     }
 
-    accumulate_steps = 4 if PP <= 4 else PP
+    accumulate_steps = 1
 
     if PP > 1:
         strategy.pipeline_configs = {
