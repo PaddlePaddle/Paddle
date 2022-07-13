@@ -144,7 +144,6 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
                                                           false,
                                                           attn_accu.dtype(),
                                                           &attn_accu);
-
     // 3. Prepare token indices
     phi::backends::gpu::GpuLaunchConfig config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * max_seq_len);
@@ -208,7 +207,6 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
             0,
             sizeof(T) * 8,
             dev_ctx.stream()));
-
     // 5. Slice
     auto slimmed_indices_tmp =
         phi::funcs::Slice<int64_t>(dev_ctx,

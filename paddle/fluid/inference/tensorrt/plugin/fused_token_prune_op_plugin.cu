@@ -105,6 +105,9 @@ __global__ void ReduceSum2(
       res_float[tid] += res_float[tid + offset];
     }
     __syncthreads();
+    if (offset % 2 == 1 && tid == offset - 2) {
+      res_float[tid] += res_float[tid + 1];
+    }
   }
 
   if (tid == 0) {
@@ -132,6 +135,10 @@ __global__ void ReduceSum2<half>(
   for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
     if (tid < offset) {
       res_half[tid] += res_half[tid + offset];
+    }
+    __syncthreads();
+    if (offset % 2 == 1 && tid == offset - 2) {
+      res_half[tid] += res_half[tid + 1];
     }
     __syncthreads();
   }
@@ -202,7 +209,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
-  if (pos < 4) {
+  if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
@@ -216,7 +223,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
-  } else if (pos == 4) {
+  } else if (pos <= 4) {
     const nvinfer1::PluginTensorDesc& prev = in_out[pos - 1];
     return in.type == prev.type && in.format == prev.format;
   } else {
@@ -313,6 +320,11 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   ElementwiseMask<T>
       <<<grid, block, 0, stream>>>(attn_data, mask_data, attn_tmp_data, total);
 
+  total = bsz * max_seq_len;
+  block = operators::ComputeBlockSize(max_seq_len);
+  grid = operators::CeilDivide(total, block);
+  FillZero<T><<<grid, block, 0, stream>>>(attn_accu_data, total);
+
   // 2. Reduce sum
   total = bsz * nb_head * max_seq_len * max_seq_len;
   int block_tmp = max_seq_len;
@@ -374,7 +386,6 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
       0,
       sizeof(T) * 8,
       stream));
-
   // 5. Slice
   total = bsz * slimmed_x_len;
   block = operators::ComputeBlockSize(slimmed_x_len);
