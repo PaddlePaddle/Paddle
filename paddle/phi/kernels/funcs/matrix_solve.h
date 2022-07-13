@@ -112,7 +112,7 @@ void compute_solve_eigen(const Context& context,
   const T* b_ptr = b.data<T>();
   out->Resize(b_mat_dims);  // make sure the out dims is right
 
-  T* out_ptr = out->mutable_data<T>(context.GetPlace());
+  T* out_ptr = context.template Alloc<T>(out);
   if (a_batch_size == b_batch_size) {
     for (int i = 0; i < a_batch_size; ++i) {
       ConstEigenMatrixMap a_mat(a_ptr + i * n * n, n, n);
