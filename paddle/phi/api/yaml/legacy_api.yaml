@@ -531,10 +531,10 @@
   args : (Tensor[] x, str equation)
   output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
   infer_meta :
-    func : EinsumInferMeta
+    func : EinsumRawInferMeta
     param : [x, equation]
   kernel :
-    func : einsum
+    func : einsum_raw
   backward : einsum_grad
 
 - api : elementwise_pow
@@ -1985,9 +1985,9 @@
   args : (Tensor x, int[] axes)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : SqueezeInferMeta
+    func : SqueezeWithXShapeInferMeta
   kernel :
-    func : squeeze
+    func : squeeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
@@ -2209,9 +2209,9 @@
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : UnsqueezeInferMeta
+    func : UnsqueezeWithXShapeInferMeta
   kernel :
-    func : unsqueeze
+    func : unsqueeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad

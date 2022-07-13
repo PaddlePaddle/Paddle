@@ -82,9 +82,13 @@ void EighInferMeta(const MetaTensor& x,
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
-                     MetaTensor* out,
-                     std::vector<MetaTensor*> inner_cache,
-                     std::vector<MetaTensor*> xshape);
+                     MetaTensor* out);
+
+void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
+                        const std::string& equation,
+                        MetaTensor* out,
+                        std::vector<MetaTensor*> inner_cache,
+                        std::vector<MetaTensor*> xshape);
 
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
@@ -326,8 +330,12 @@ void SplitInferMeta(const MetaTensor& x_meta,
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
-                      MetaTensor* out,
-                      MetaTensor* xshape);
+                      MetaTensor* out);
+
+void SqueezeWithXShapeInferMeta(const MetaTensor& x,
+                                const std::vector<int>& axes,
+                                MetaTensor* out,
+                                MetaTensor* xshape);
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
                               const std::vector<int>& axes,
@@ -446,8 +454,13 @@ void UniqueRawInferMeta(const MetaTensor& x,
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* out,
-                        MetaTensor* xshape,
                         MetaConfig config = MetaConfig());
+
+void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,
+                                  const IntArray& axes,
+                                  MetaTensor* out,
+                                  MetaTensor* xshape,
+                                  MetaConfig config = MetaConfig());
 
 void UnStackInferMeta(const MetaTensor& x,
                       int axis,
