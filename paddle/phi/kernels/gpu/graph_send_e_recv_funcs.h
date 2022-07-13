@@ -33,6 +33,16 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
                          thrust::device_vector<int64_t>& r_bcastoff) {
   l_bcastoff.resize(bcast_info.out_len);
   r_bcastoff.resize(bcast_info.out_len);
+#ifdef PADDLE_WITH_HIP
+  hipMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
+            bcast_info.l_offset.data(),
+            sizeof(int64_t) * bcast_info.out_len,
+            hipMemcpyHostToDevice);
+  hipMemcpy(thrust::raw_pointer_cast(r_bcastoff.data()),
+            bcast_info.r_offset.data(),
+            sizeof(int64_t) * bcast_info.out_len,
+            hipMemcpyHostToDevice);
+#else
   cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff.data()),
              bcast_info.l_offset.data(),
              sizeof(int64_t) * bcast_info.out_len,
@@ -41,6 +51,7 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
              bcast_info.r_offset.data(),
              sizeof(int64_t) * bcast_info.out_len,
              cudaMemcpyHostToDevice);
+#endif
 }
 
 inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
