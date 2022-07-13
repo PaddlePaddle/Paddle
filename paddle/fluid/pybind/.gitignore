@@ -1,5 +1,4 @@
 pybind.h
-op_function_impl.h
-eager_op_function_impl.h
-eager_final_state_op_function_impl.h
-tmp_eager_final_state_op_function_impl.h
+op_function.cc
+eager_op_function.cc
+eager_final_state_op_function.cc
