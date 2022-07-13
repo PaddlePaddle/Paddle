@@ -325,7 +325,7 @@ if __name__ == '__main__':
             all_api_names_to_k[api_name] = k
         all_api_names_sorted = sorted(all_api_names_to_k.keys())
         for api_name in all_api_names_sorted:
-            if api_name.find(args.skipped) >= 0:
+            if args.skipped != '' and api_name.find(args.skipped) >= 0:
                 continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
             print("{0} ({2}, ('document', '{1}'))".format(
