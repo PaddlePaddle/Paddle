@@ -15,6 +15,7 @@
 from op_test import OpTest
 import numpy as np
 import unittest
+import paddle
 
 
 class TestUnStackOpBase(OpTest):
@@ -37,7 +38,7 @@ class TestUnStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'unstack'
-        self.python_api = paddle.fluid.layers.unstack
+        self.python_api = paddle.unstack
         self.x = np.random.random(size=self.input_dim).astype(self.dtype)
 
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)

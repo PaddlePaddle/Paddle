@@ -2203,11 +2203,11 @@
 
 - backward_api : unstack_grad
   forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
-  args : (Tensor[] x, int axis)
+  args : (Tensor[] out_grad, int axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnStackGradInferMeta
-    param : [x, axis]
+    param : [out_grad, axis]
   kernel :
     func : unstack_grad
 
