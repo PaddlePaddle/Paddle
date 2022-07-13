@@ -951,6 +951,57 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DistributeFpnProposalsInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<MetaTensor*> multi_fpn_rois,
+    MetaTensor* restore_index,
+    std::vector<MetaTensor*> multi_level_roisnum,
+    MetaConfig config) {
+  PADDLE_ENFORCE_GE(multi_fpn_rois.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Outputs(multi_fpn_rois) of "
+                        "DistributeFpnProposalsOp should not be empty"));
+  size_t new_min_level = static_cast<size_t>(min_level);
+  size_t new_max_level = static_cast<size_t>(max_level);
+  PADDLE_ENFORCE_GE(
+      new_max_level,
+      new_min_level,
+      phi::errors::InvalidArgument(
+          "new_max_level must not lower than "
+          "new_min_level. But received new_max_level = %d, new_min_level = %d",
+          new_max_level,
+          new_min_level));
+  // Set the output shape
+  size_t num_out_rois = new_max_level - new_min_level + 1;
+  std::vector<DDim> outs_dims;
+  outs_dims.reserve(num_out_rois);
+  for (size_t i = 0; i < num_out_rois; ++i) {
+    DDim out_dim = {-1, 4};
+    outs_dims.push_back(out_dim);
+    multi_fpn_rois[i]->set_dims(out_dim);
+  }
+  restore_index->set_dims(phi::make_ddim({-1, 1}));
+  // if (multi_level_roisnum.initialized()) {
+  if (multi_level_roisnum.size() > 0) {
+    std::vector<DDim> outs_num_dims;
+    for (size_t i = 0; i < num_out_rois; ++i) {
+      multi_level_roisnum[i]->set_dims({-1});
+    }
+  }
+  if (!config.is_runtime) {
+    for (size_t i = 0; i < num_out_rois; ++i) {
+      multi_fpn_rois[i]->share_lod(x);
+    }
+  }
+}
+
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
                       const Scalar& p,

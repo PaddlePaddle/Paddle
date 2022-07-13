@@ -139,6 +139,19 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void DistributeFpnProposalsInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<MetaTensor*> multi_fpn_rois,
+    MetaTensor* restore_index,
+    std::vector<MetaTensor*> multi_level_roisnum,
+    MetaConfig config = MetaConfig());
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
