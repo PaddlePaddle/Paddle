@@ -75,9 +75,9 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(unstack,
                             UnStackInferMetaFunctor,
                             PD_INFER_META(phi::UnStackInferMeta));
-DELCARE_INFER_SHAPE_FUNCTOR(unstack_grad,
+DECLARE_INFER_SHAPE_FUNCTOR(unstack_grad,
                             UnStackGradInferMetaFunctor,
-                            PT_INFER_META(phi::UnStackGradInferMeta));
+                            PD_INFER_META(phi::UnStackGradInferMeta));
 REGISTER_OPERATOR(unstack,
                   ops::UnStackOp,
                   ops::UnStackOpMaker,
