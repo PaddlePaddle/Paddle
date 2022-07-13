@@ -22,20 +22,21 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MergedMomentumKernel(const Context& dev_ctx,
-                          const std::vector<const DenseTensor*>& param,
-                          const std::vector<const DenseTensor*>& grad,
-                          const std::vector<const DenseTensor*>& velocity,
-                          const std::vector<const DenseTensor*>& learning_rate,
-                          const std::vector<const DenseTensor*>& master_param,
-                          float mu,
-                          bool use_nesterov,
-                          const std::vector<std::string>& regularization_method,
-                          const std::vector<float>& regularization_coeff,
-                          bool multi_precision,
-                          float rescale_grad,
-                          std::vector<DenseTensor*> param_out,
-                          std::vector<DenseTensor*> velocity_out,
-                          std::vector<DenseTensor*> master_param_out);
+void MergedMomentumKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
+    const std::vector<const DenseTensor*>& velocity,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    float mu,
+    bool use_nesterov,
+    const std::vector<std::string>& regularization_method,
+    const std::vector<float>& regularization_coeff,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> velocity_out,
+    std::vector<DenseTensor*> master_param_out);
 
 }  // namespace phi
