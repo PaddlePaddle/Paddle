@@ -109,11 +109,11 @@ void MergedMomentumInnerCompute(
                         params_out.size(),
                         n));
   for (size_t i = 0; i < n; ++i) {
-    PADDLE_ENFORCE_EQ(params[i],
-                      params_out[i],
-                      phi::errors::InvalidArgument(
-                          "The size of Input(Param) and Output(ParamOut) "
-                          "must be the same Tensors."));
+    PADDLE_ENFORCE_EQ(
+        params[i],
+        params_out[i],
+        phi::errors::InvalidArgument("Input(Param) and Output(ParamOut) "
+                                     "must be the same Tensors."));
   }
 
   PADDLE_ENFORCE_EQ(
