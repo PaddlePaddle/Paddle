@@ -153,7 +153,7 @@ class Model(nn.Layer):
         return self.layers(x)
 
 
-class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
+class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
 
     def __init__(self):
         pass
@@ -186,11 +186,6 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
                                     level='O2',
                                     save_dtype='float32')
 
-        # scaler_base = paddle.amp.GradScaler(init_loss_scaling=4096)
-        # model_base = paddle.amp.decorate(models=model_base,
-        #                             level='O2',
-        #                             save_dtype='float32')
-
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
 
@@ -218,17 +213,13 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
                 output_base = model_base(x)
                 loss_base = crit(output_base, y)
             loss_base.backward()
-            # scaler_base.scale(loss_base).backward()
-            # scaler_base.minimize(optimizer_base, loss_base)
             optimizer_base.step()
             optimizer_base.clear_grad()
 
             loss_base_arr.append(loss_base.numpy())
             loss_hybrid_arr.append(loss)
-        print("base arr: ", loss_base_arr, file=sys.stderr)
-        print("fp arr: ", loss_hybrid_arr, file=sys.stderr)
         assert np.allclose(loss_base_arr, loss_hybrid_arr, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":
-    runtime_main(TestDygrapgHybridDPPPMP, "dpppmp")
+    runtime_main(TestDygraphHybridFp16, "dpppmp")
