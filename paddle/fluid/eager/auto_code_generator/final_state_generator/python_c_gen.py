@@ -50,7 +50,44 @@ atype_to_parsing_function = {
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
-no_amp_list = ['adam_', 'momentum', 'sgd_']
+# This list contains ops that do not need to generate amp logic
+# All optimizer ops in this list
+no_amp_list = [
+    'adam_',
+    'adam',
+    'adamw_',
+    'adamw',
+    'decayed_adagrad_',
+    'decayed_adagrad',
+    'dgc_momentum_',
+    'dgc_momentum',
+    'distributed_fused_lamb_',
+    'distributed_fused_lamb',
+    'dpsgd_',
+    'dpsgd',
+    'ftrl_',
+    'ftrl',
+    'lamb_',
+    'lamb',
+    'lars_momentum_',
+    'lars_momentum',
+    'merged_adam_',
+    'merged_adam',
+    'merged_momentum_',
+    'merged_momentum',
+    'momentum_',
+    'momentum',
+    'proximal_adagrad_',
+    'proximal_adagrad',
+    'proximal_gd_',
+    'proximal_gd',
+    'rmsprop_',
+    'rmsprop',
+    'sgd_',
+    'sgd',
+    'sparse_momentum_',
+    'sparse_momentum',
+]
 
 
 def FindParsingFunctionFromAttributeType(atype):
@@ -480,6 +517,18 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     "::", namespace,
                     GetForwardFunctionName(inplaced_forward_api_name))
 
+            inplace_noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                inplaced_fwd_function_name, dygraph_function_call_str,
+                inplaced_fwd_function_name, dygraph_function_call_str)
+
+            inplace_amp_dygraph_function_str = AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                inplaced_fwd_function_name, dygraph_function_call_str,
+                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+                amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
+                amp_autocast_list_str, inplaced_fwd_function_name,
+                amp_dygraph_function_call_str, inplaced_fwd_function_name,
+                dygraph_function_call_str)
+
             return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
             for inplace_input, inplace_output in forward_inplace_map.items():
                 return_str += RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
@@ -489,18 +538,18 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
             # Generate Python-C Function Definetion
             if (is_forward_only) and (len(amp_tensors_vector_list) > 0) and (
-                    forward_api_name not in no_amp_list):
+                    inplaced_forward_api_name not in no_amp_list):
                 python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                     inplaced_forward_api_name, pythonc_record_event_str,
                     inplaced_forward_api_name, get_eager_tensor_str,
                     parse_attributes_str, set_device_str,
-                    amp_dygraph_function_str, return_str)
+                    inplace_amp_dygraph_function_str, return_str)
             else:
                 python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                     inplaced_forward_api_name, pythonc_record_event_str,
                     inplaced_forward_api_name, get_eager_tensor_str,
                     parse_attributes_str, set_device_str,
-                    noamp_dygraph_function_str, return_str)
+                    inplace_noamp_dygraph_function_str, return_str)
 
             python_c_inplace_func_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                 forward_api_name_prefix, inplaced_forward_api_name, namespace,
