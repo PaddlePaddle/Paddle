@@ -5,11 +5,9 @@ set(STANDALONE_EXECUTOR_SRCS
     data_transfer.cc
     new_executor_defs.cc
     interpretercore_util.cc
-    interpretercore.cc
     event_manager.cc
     stream_analyzer.cc
     interpretercore.cc
-    SRCS
     standalone_executor.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
@@ -42,6 +40,7 @@ set(STANDALONE_EXECUTOR_DEPS
     glog
     scope
     workqueue
+    interpretercore_event_garbage_collector
     ${DEVICE_EVENT_LIBS}
     glog)
 
@@ -50,8 +49,10 @@ if(WITH_GPU OR WITH_ROCM)
                                interpretercore_fast_garbage_collector)
 endif()
 
-cc_library(standalone_executor ${STANDALONE_EXECUTOR_SRCS}
-           DEPS ${STANDALONE_EXECUTOR_DEPS})
+cc_library(
+  standalone_executor
+  SRCS ${STANDALONE_EXECUTOR_SRCS}
+  DEPS ${STANDALONE_EXECUTOR_DEPS})
 
 cc_library(
   staticgraph_executor_statistics
