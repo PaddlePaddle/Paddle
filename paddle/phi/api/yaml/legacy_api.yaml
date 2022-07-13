@@ -1751,7 +1751,7 @@
   backward : prelu_grad
 
 - api : prior_box
-  args : (Tensor x, Tensor y, floatArray min_sizes, floatArray max_sizes, floatArray aspect_ratios, floatArray variances, bool flip, bool clip, float step_w, float step_h, float offset, bool min_max_aspect_ratios_order, bool use_mkldnn, bool use_quantizer, str mkldnn_data_type)
+  args : (Tensor x, Tensor y, float[] min_sizes, float[] max_sizes, float[] aspect_ratios, float[] variances, bool flip, bool clip, float step_w, float step_h, float offset, bool min_max_aspect_ratios_order, bool use_mkldnn, bool use_quantizer, str mkldnn_data_type)
   output : Tensor(out), Tensor(var)
   infer_meta :
     func : PriorBoxInferMeta
