@@ -62,17 +62,13 @@ class Criterion(nn.Layer):
         self.loss_func = nn.MSELoss(reduction="mean")
 
     def forward(self, pred, label):
-        # assert False
         loss = self.loss_func(pred, label)
-        print("loss: ", loss, file=sys.stderr)
-        # assert False
         return loss
 
 
 class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
     def __init__(self, hcg):
-        # super(Model, self).__init__()
         paddle.seed(1024)
         dp_linear = nn.Linear(32, 128)
         self.layers_pp = []
@@ -108,7 +104,6 @@ class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
         out = nn.Linear(128, 32)
         self.layers_pp.append(out)
-        # self.layers = fleet.meta_parallel.parallel_layers.PipelineLayer(layers_pp, num_stages=2)
         super(ModelPipeline, self).__init__(layers=self.layers_pp,
                                             loss_fn=Criterion(),
                                             topology=self.topology)
