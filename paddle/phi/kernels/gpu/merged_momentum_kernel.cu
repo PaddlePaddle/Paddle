@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/merged_momentum_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/merged_momentum_impl.h"
 
@@ -75,8 +74,9 @@ void MergedMomentumKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(merged_momentum,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::MergedMomentumKernel,
+                   phi::dtype::float16,
                    float,
                    double) {}

@@ -103,7 +103,3 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(merged_momentum,
                              ops::MergedMomentumOp,
                              ops::MergedMomentumOpMaker);
-
-REGISTER_OP_CPU_KERNEL(merged_momentum,
-                       ops::MergedMomentumOpKernel<phi::CPUContext, float>,
-                       ops::MergedMomentumOpKernel<phi::CPUContext, double>);

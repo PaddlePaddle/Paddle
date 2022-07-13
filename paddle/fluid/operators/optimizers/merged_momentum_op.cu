@@ -16,9 +16,3 @@
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
-REGISTER_OP_CUDA_KERNEL(
-    merged_momentum,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, float>,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, double>);

@@ -84,25 +84,5 @@ struct MergedMomentumKernelParam
   }
 };
 
-template <typename DeviceContext, typename T>
-class MergedMomentumOpKernel : public framework::OpKernel<T> {
-  using MPType = typename operators::details::MPTypeTrait<T>::Type;
-
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    if (multi_precision) {
-      InnerCompute<MPType>(ctx, multi_precision);
-    } else {
-      InnerCompute<T>(ctx, multi_precision);
-    }
-  }
-
- private:
-  template <typename MT>
-  void InnerCompute(const framework::ExecutionContext &ctx,
-                    const bool multi_precision) const {}
-};
-
 }  // namespace operators
 }  // namespace paddle
