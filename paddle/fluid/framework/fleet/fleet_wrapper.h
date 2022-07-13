@@ -381,10 +381,11 @@ class FleetWrapper {
   void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::FleetWrapper());
-    }
-    return s_instance_;
+    static FleetWrapper s_instance;
+    // if (NULL == s_instance_) {
+    //  s_instance_.reset(new paddle::framework::FleetWrapper());
+    // }
+    return &s_instance;
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
