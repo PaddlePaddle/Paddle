@@ -227,7 +227,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   VLOG(3) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(6) << "GradNode " << node->name() << " is ready.";
+    VLOG(3) << "Running GradNode:" << node->name() << " addr:" << node;
 
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
@@ -298,8 +298,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with the same rank(i, j)
         auto next_node_shared = edge.GetMutableGradNode();
-        VLOG(3) << "Found pending node: " << next_node_shared->name() << ": "
-                << next_node_shared.get();
+        VLOG(3) << "Node: " << node->name() << " addr:" << node
+                << ", Found pending node: " << next_node_shared->name()
+                << " addr: " << next_node_shared.get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs

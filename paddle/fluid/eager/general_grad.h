@@ -284,7 +284,7 @@ class GeneralGrad {
   // endding node in backward graph. If input's grad node is an endding node in
   // backward graph, use grad node's output as inputs' gradients and no need to
   // register Hook. Please note that endding node must be GradNodeAccumulation
-  // after ReConstructBackwardGraph function.
+  // after ModifyBackwardGraph function.
   void RegisterFetchGradHook(
       const std::vector<paddle::experimental::Tensor>& inputs) {
     VLOG(6) << "Running in RegisterFetchGradHook.";
@@ -377,7 +377,7 @@ class GeneralGrad {
     }
   }
 
-  void ReConstructBackwardGraph(std::deque<GradNodeBase*>* queue) {
+  void ModifyBackwardGraph(std::deque<GradNodeBase*>* queue) {
     std::deque<GradNodeBase*> queue_ = *queue;
     std::unordered_set<GradNodeBase*> visited;
 
@@ -414,25 +414,24 @@ class GeneralGrad {
                     << next_node.get() << " with output rank info: "
                     << edge.GetEdgeRankInfo().first << ", "
                     << edge.GetEdgeRankInfo().second;
-            // Stop no grad var's preceding node
+            // no_grad_var's grad no need to be computed
             meta[i][j].SetStopGradient(true);
             edge.Clear();
             continue;
           }
 
-          if (IsInputTargetNodes(node)) {
-            if (meta.size() != 1 && !IsNeededNodes(next_node.get()) &&
-                IsNeededNodes(node) && !IsEnddingNodes(node)) {
-              VLOG(3) << "Get stop edge from grad_node: " << node->name()
-                      << " : " << node << " to:" << next_node->name() << ", "
-                      << next_node.get() << " with output rank info: "
-                      << edge.GetEdgeRankInfo().first << ", "
-                      << edge.GetEdgeRankInfo().second;
-              meta[i][j].SetStopGradient(true);
-              edge.Clear();
-              continue;
-            }
+          if (meta.size() != 1 && IsNeededNodes(node) &&
+              !IsNeededNodes(next_node.get()) && !IsEnddingNodes(node)) {
+            VLOG(3) << "Get stop edge from grad_node: " << node->name() << " : "
+                    << node << " to:" << next_node->name() << ", "
+                    << next_node.get() << " with output rank info: " << i
+                    << ", " << j;
+            // No need to compute grad from needed Nodes to no need Nodes
+            meta[i][j].SetStopGradient(true);
+            edge.Clear();
+            continue;
           }
+
           // Update BFS queue
           queue_.push_back(next_node.get());
         }
@@ -542,7 +541,7 @@ class GeneralGrad {
       PADDLE_ENFORCE(
           orig_to_copied_node_map_.count(orig_node),
           paddle::platform::errors::Fatal(
-              "Cannot reconstruct backward graph,"
+              "Cannot copy backward graph,"
               "unable to find copied target for certain grad node."));
       GradNodeBase* copied_node = orig_to_copied_node_map_[orig_node].get();
 
@@ -611,7 +610,9 @@ class GeneralGrad {
     if (queue->empty()) {
       SetResultForInputTargetVar(node_input_buffers_dict);
     } else {
-      ReConstructBackwardGraph(queue);
+      // TODO(wuweilong): Find a better design here.
+      ModifyBackwardGraph(queue);
+      // Register Hook to fetch input's gradients
       RegisterFetchGradHook(inputs);
     }
   }
