@@ -82,6 +82,10 @@ void PD_TensorShareLoDWith(PD_Tensor *dst,
                            const PD_Tensor *src,
                            PD_Status *status);
 
+PD_Tensor *PD_OptionalTensorGetPointer(PD_Tensor *tensor);
+
+PD_List PD_TensorVectorToList(PD_Tensor *tensor);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
