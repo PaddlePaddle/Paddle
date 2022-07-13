@@ -39,7 +39,9 @@ class GemmConvXPUKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         context.Attr<std::string>("padding_algorithm");
 
-    if (1) {
+    if (data_format == "NCHW") {
+      VLOG(10) << "data_format=" << data_format;
+    } else if (data_format == "NHWC") {
       VLOG(10) << "data_format=" << data_format;
     } else {
       VLOG(10) << "should not reach here";
