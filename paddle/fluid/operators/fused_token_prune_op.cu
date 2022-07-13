@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused_token_prune_op.h"
+#include "paddle/fluid/operators/fused_token_prune_op.cu.h"
 
 namespace paddle {
 namespace operators {

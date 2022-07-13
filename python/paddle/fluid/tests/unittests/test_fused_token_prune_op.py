@@ -45,8 +45,11 @@ class TestFusedTokenPruneOp(OpTest):
         new_mask = np.expand_dims(new_mask, axis=0)
         self.new_mask = np.expand_dims(new_mask, axis=0)  #[1, 1, 1, 1]
 
-        out_py = [[[1, 2, 3]]]
-        self.out_py = np.array(out_py, dtype=self.dtype)
+        out_slimmedx_py = [[[1, 2, 3]]]
+        self.out_slimmedx_py = np.array(out_slimmedx_py, dtype=self.dtype)
+
+        out_cls_inds_py = [[0]]
+        self.out_cls_inds_py = np.array(out_cls_inds_py, dtype='int64')
 
     def setUp(self):
         self.op_type = 'fused_token_prune'
@@ -59,7 +62,10 @@ class TestFusedTokenPruneOp(OpTest):
             'NewMask': self.new_mask
         }
 
-        self.outputs = {'SlimmedX': self.out_py}
+        self.outputs = {
+            'SlimmedX': self.out_slimmedx_py,
+            'CLSInds': self.out_cls_inds_py
+        }
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
@@ -95,8 +101,11 @@ class TestFusedTokenPruneOp2(TestFusedTokenPruneOp):
         self.new_mask = np.random.rand(1, 2, 2,
                                        2).astype(self.dtype)  #[1, 2, 2, 2]
 
-        out_py = [[[1.1, 1.1, 1.1], [4.4, 4.4, 4.4]]]  #[1, 2, 3]
-        self.out_py = np.array(out_py, dtype=self.dtype)
+        out_slimmedx_py = [[[1.1, 1.1, 1.1], [4.4, 4.4, 4.4]]]  #[1, 2, 3]
+        self.out_slimmedx_py = np.array(out_slimmedx_py, dtype=self.dtype)
+
+        out_cls_inds_py = [[0, 3]]
+        self.out_cls_inds_py = np.array(out_cls_inds_py, dtype='int64')
 
 
 if __name__ == "__main__":

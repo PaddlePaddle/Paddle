@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
-#include "paddle/fluid/operators/fused_token_prune_op.h"
+#include "paddle/fluid/operators/fused_token_prune_op.cu.h"
 
 namespace paddle {
 namespace inference {
