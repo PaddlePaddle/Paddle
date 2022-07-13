@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/auc_kernel.h"
-
+#include <glog/logging.h>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -141,7 +141,7 @@ void AucKernel(const Context &dev_ctx,
                const DenseTensor &label,
                const DenseTensor &stat_pos,
                const DenseTensor &stat_neg,
-               const DenseTensor &ins_tag_weight,
+               const paddle::optional<DenseTensor> &ins_tag_weight,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
@@ -159,10 +159,13 @@ void AucKernel(const Context &dev_ctx,
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();
   auto *neg_in_data = stat_neg.data<int64_t>();
-  const auto *ins_tag_weight_data = ins_tag_weight.data<float>();
   bool is_fake_data = false;
-  if (ins_tag_weight_data[0] == 0) {
-    is_fake_data = true;
+  if (ins_tag_weight.get_ptr() != nullptr) {
+    const auto *ins_tag_weight_data = ins_tag_weight->data<float>();
+    VLOG(4) << "auc ins_tag_weight = " << ins_tag_weight_data[0];
+    if (ins_tag_weight_data[0] == 0) {
+      is_fake_data = true;
+    }
   }
   if (stat_pos_in_tensor != stat_pos_out) {
     memcpy(

@@ -189,7 +189,7 @@ void AucKernel(const Context &dev_ctx,
                const DenseTensor &label,
                const DenseTensor &stat_pos,
                const DenseTensor &stat_neg,
-               const DenseTensor &ins_tag_weight,
+               const paddle::optional<DenseTensor> &ins_tag_weight,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,
@@ -206,7 +206,14 @@ void AucKernel(const Context &dev_ctx,
   auto *stat_neg_in_tensor = &stat_neg;
   auto *pos_in_data = stat_pos.data<int64_t>();
   auto *neg_in_data = stat_neg.data<int64_t>();
-  const auto *ins_tag_weight_data = ins_tag_weight.data<float>();
+  bool is_fake_data = false;
+  if (ins_tag_weight.get_ptr() != nullptr) {
+    const auto *ins_tag_weight_data = ins_tag_weight.data<float>();
+    if (ins_tag_weight_data[0] == 0) {
+      is_fake_data = true;
+    }
+  }
+
 #ifdef PADDLE_WITH_CUDA
   if (stat_pos_in_tensor != stat_pos_out) {
     cudaMemcpy(
@@ -242,7 +249,6 @@ void AucKernel(const Context &dev_ctx,
         hipMemcpyDeviceToDevice);
   }
 #endif
-  bool is_fake_data = false;
 
   // when calculate global_auc && is fake data, just do nothing
   if (slide_steps == 0 && is_fake_data) {

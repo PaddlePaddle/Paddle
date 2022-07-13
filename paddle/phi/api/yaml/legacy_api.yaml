@@ -237,6 +237,7 @@
     func : AucInferMeta
   kernel :
     func : auc
+  optional : ins_tag_weight 
 
 # batch_norm
 - api : batch_norm
