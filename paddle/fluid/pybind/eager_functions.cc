@@ -357,6 +357,19 @@ static std::vector<paddle::any> CastAttrsToTragetType(
   return res;
 }
 
+static PyObject* eager_api_jit_function_call(PyObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  std::shared_ptr<jit::BaseFunction> function =
+      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
+  std::vector<paddle::experimental::Tensor> ins =
+      CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
+  std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
+  return ToPyObject(outs);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_run_costum_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -833,19 +846,6 @@ static PyObject* eager_api_async_write(PyObject* self,
     src_offset += c;
   }
   RETURN_PY_NONE
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* eager_api_jit_function_call(PyObject* self,
-                                             PyObject* args,
-                                             PyObject* kwargs) {
-  EAGER_TRY
-  std::shared_ptr<jit::BaseFunction> function =
-      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
-  std::vector<paddle::experimental::Tensor> ins =
-      CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
-  return ToPyObject(outs);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
