@@ -111,9 +111,8 @@ class SparseAPI(ForwardAPI):
         for param in kernel_param:
             if param in input_names:
                 if param in self.optional_vars:
-                    raise ValueError(
-                        f"{self.api} : Unsupport optional input({param}) for sparse api."
-                    )
+                    kernel_context_code = kernel_context_code + f"""
+    kernel_context.EmplaceBackInput({param} ? {param}->impl().get() : nullptr);"""
                 else:
                     kernel_context_code = kernel_context_code + f"""
     kernel_context.EmplaceBackInput({param}.impl().get());"""
@@ -170,9 +169,14 @@ class SparseAPI(ForwardAPI):
         condition_list = []
         for i, in_type in enumerate(input_types):
             if in_type == "dense":
-                condition_list.append(
-                    f"phi::DenseTensor::classof({self.inputs['names'][i]}.impl().get())"
-                )
+                if self.inputs['names'][i] in self.optional_vars:
+                    condition_list.append(
+                        f"(!{self.inputs['names'][i]} || phi::DenseTensor::classof({self.inputs['names'][i]}->impl().get()))"
+                    )
+                else:
+                    condition_list.append(
+                        f"phi::DenseTensor::classof({self.inputs['names'][i]}.impl().get())"
+                    )
             else:
                 condition_list.append(
                     f"{self.inputs['names'][i]}.layout() == {sparse_type_map[in_type]}"

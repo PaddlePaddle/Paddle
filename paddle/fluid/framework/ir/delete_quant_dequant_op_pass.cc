@@ -89,6 +89,7 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
       std::string quantized_op_type = op_desc->Type();
       op_desc->SetAttr("Input_scale", input_scale);
       op_desc->SetAttr("bit_length", bit_length);
+      op_desc->SetAttr("enable_int8", true);
       op_desc->RenameInput(quant_dequant_output_name, input_name);
       op_desc->Flush();
       IR_NODE_LINK_TO(input, quantized_node);

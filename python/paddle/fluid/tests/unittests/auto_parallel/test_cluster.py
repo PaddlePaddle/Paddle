@@ -2018,6 +2018,10 @@ class TestCluster(unittest.TestCase):
         self.assertTrue(devices == [5, 6, 7, 10])
         self.assertTrue(involved_machine_count == 2)
 
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
+
 
 if __name__ == "__main__":
     unittest.main()

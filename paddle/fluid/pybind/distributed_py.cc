@@ -226,6 +226,30 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "alltoall_single",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor,
+                 std::vector<int64_t> in_sizes,
+                 std::vector<int64_t> out_sizes) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
+                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
+                return self.AllToAll_Single(
+                    in_tensors, out_tensors, in_sizes, out_sizes);
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("in_sizes"),
+              py::arg("out_sizes"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "reduce",
               [](distributed::ProcessGroup &self,
                  py::handle py_in_tensor,
@@ -244,7 +268,6 @@ void BindDistributed(py::module *m) {
               py::arg("dst"),
               py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>())
-
           .def(
               "scatter",
               [](distributed::ProcessGroup &self,
@@ -266,23 +289,50 @@ void BindDistributed(py::module *m) {
               py::arg("in"),
               py::arg("out"),
               py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "_reduce_scatter_base",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_out_tensor,
+                 py::handle py_in_tensor,
+                 distributed::ReduceOp op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                distributed::ReduceScatterOptions opts;
+                opts.reduce_op = op;
+                auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                auto dense_in = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                return self._ReduceScatterBase(*dense_out, *dense_in, opts);
+              },
+              py::arg("out_tensor"),
+              py::arg("in_tensor"),
+              py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
-  py::class_<distributed::ProcessGroupNCCL,
-             std::shared_ptr<distributed::ProcessGroupNCCL>>(
-      *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    int,
-                    int,
-                    const platform::CUDAPlace &,
-                    int>(),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("place"),
-           py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>());
+  auto processGroupNCCL =
+      py::class_<distributed::ProcessGroupNCCL,
+                 std::shared_ptr<distributed::ProcessGroupNCCL>>(
+          *m, "ProcessGroupNCCL", ProcessGroup)
+          .def(py::init<const std::shared_ptr<distributed::Store> &,
+                        int,
+                        int,
+                        const platform::CUDAPlace &,
+                        int>(),
+               py::arg("store"),
+               py::arg("rank"),
+               py::arg("world_size"),
+               py::arg("place"),
+               py::arg("group_id") = 0,
+               py::call_guard<py::gil_scoped_release>());
+
+  processGroupNCCL.def_static(
+      "group_start", []() { distributed::ProcessGroupNCCL::GroupStart(); });
+  processGroupNCCL.def_static(
+      "group_end", []() { distributed::ProcessGroupNCCL::GroupEnd(); });
+
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \

@@ -545,8 +545,8 @@ int ProductRuleBook(const Context& dev_ctx,
                     DenseTensor* out_index,
                     DenseTensor* unique_value,
                     SparseCooTensor* out,
-                    std::vector<int>* h_counter,
-                    std::vector<int>* h_offsets) {
+                    int* h_counter,
+                    int* h_offsets) {
   auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
@@ -633,16 +633,11 @@ int ProductRuleBook(const Context& dev_ctx,
 
     out->SetMember(out_indices, out_values, out_dims, false);
 
-    CallThrustScan(dev_ctx,
-                   counter_ptr,
-                   kernel_size,
-                   offsets_ptr,
-                   h_counter->data(),
-                   h_offsets->data());
+    CallThrustScan(
+        dev_ctx, counter_ptr, kernel_size, offsets_ptr, h_counter, h_offsets);
 
     dev_ctx.Wait();
-    int rulebook_len =
-        (*h_offsets)[kernel_size - 1] + (*h_counter)[kernel_size - 1];
+    int rulebook_len = h_offsets[kernel_size - 1] + h_counter[kernel_size - 1];
     DenseTensor out_rulebook =
         phi::Empty<IntT>(dev_ctx, {rulebook_rows, rulebook_len});
     IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
@@ -691,12 +686,8 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT rulebook_len = (last - rulebook_ptr) / 2;
 
-    CallThrustScan(dev_ctx,
-                   counter_ptr,
-                   kernel_size,
-                   offsets_ptr,
-                   h_counter->data(),
-                   h_offsets->data());
+    CallThrustScan(
+        dev_ctx, counter_ptr, kernel_size, offsets_ptr, h_counter, h_offsets);
 
     rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
     // 3. sorted or merge the out index

@@ -65,7 +65,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
-  std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
+  DenseTensor h_counter, h_offsets;
+  h_counter.Resize({kernel_size});
+  h_offsets.Resize({kernel_size + 1});
+  int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
+  int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
 
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
@@ -86,8 +90,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         key,
         out_dims,
         out,
-        &h_counter,
-        &offsets,
+        h_counter.data<int>(),
+        h_offsets.data<int>(),
         &rulebook_len,
         &need_product_rulebook);
   }
@@ -108,8 +112,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                                         &out_index,
                                                         &unique_value,
                                                         out,
-                                                        &h_counter,
-                                                        &offsets);
+                                                        h_counter_ptr,
+                                                        h_offsets_ptr);
     rulebook_ptr = tmp_rulebook.data<IntT>();
 
     phi::funcs::sparse::SaveToTable(
@@ -161,17 +165,17 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (h_counter[i] <= 0) {
+    if (h_counter_ptr[i] <= 0) {
       continue;
     }
 
     // call gemm: (n, in_channels) * (in_channels, out_channels)
-    const int M = h_counter[i];
+    const int M = h_counter_ptr[i];
     const int K = in_channels;
     const int N = out_channels;
-    T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
+    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-    T* tmp_out_ptr = out_features_ptr + offsets[i] * out_channels;
+    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
 
     blas.GEMM(CblasNoTrans,
               CblasNoTrans,

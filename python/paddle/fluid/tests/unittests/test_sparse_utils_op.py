@@ -38,7 +38,6 @@ class TestSparseCreate(unittest.TestCase):
                                                            dense_shape,
                                                            stop_gradient=False)
             # test the to_string.py
-            print(coo)
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
 
@@ -49,6 +48,7 @@ class TestSparseCreate(unittest.TestCase):
             dense_shape = [3, 3]
             coo = paddle.incubate.sparse.sparse_coo_tensor(
                 indices, values, dense_shape)
+            assert np.array_equal(3, coo.nnz())
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
 
@@ -78,7 +78,7 @@ class TestSparseCreate(unittest.TestCase):
             csr = paddle.incubate.sparse.sparse_csr_tensor(
                 crows, cols, values, dense_shape)
             # test the to_string.py
-            print(csr)
+            assert np.array_equal(5, csr.nnz())
             assert np.array_equal(crows, csr.crows().numpy())
             assert np.array_equal(cols, csr.cols().numpy())
             assert np.array_equal(values, csr.values().numpy())
@@ -298,7 +298,7 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values, dtype='float32')
                     sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                         indices, values)
-                    sparse_x = paddle.incubate.sparse.coalesced(sparse_x)
+                    sparse_x = paddle.incubate.sparse.coalesce(sparse_x)
                     indices_sorted = [[0, 1], [1, 0]]
                     values_sorted = [5.0, 1.0]
                     assert np.array_equal(indices_sorted,
@@ -311,7 +311,7 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values, dtype='float32')
                     sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
                         indices, values)
-                    sparse_x = paddle.incubate.sparse.coalesced(sparse_x)
+                    sparse_x = paddle.incubate.sparse.coalesce(sparse_x)
                     values_sorted = [[5.0, 5.0], [1.0, 1.0]]
                     assert np.array_equal(indices_sorted,
                                           sparse_x.indices().numpy())

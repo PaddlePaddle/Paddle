@@ -17,6 +17,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"

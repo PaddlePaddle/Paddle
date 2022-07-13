@@ -125,7 +125,10 @@ void MasterDaemon::CloseControlFd() {
 void MasterDaemon::StopByControlFd() {
   VLOG(4) << ("begin to run StopByControlFd");
   if (_control_fd[1] != -1) {
-    ::write(_control_fd[1], "\0", 1);
+    PADDLE_ENFORCE_NE(::write(_control_fd[1], "\0", 1),
+                      -1,
+                      platform::errors::Fatal(
+                          "failed to write control pipe errno:%d", errno));
     // close the write end of the pipe
     ::close(_control_fd[1]);
     _control_fd[1] = -1;

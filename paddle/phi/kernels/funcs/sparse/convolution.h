@@ -195,9 +195,9 @@ inline const IntT* GetRulebookPtr(const SparseCooTensor& coo,
                                   const std::string& key,
                                   int* rulebook_len) {
   if (!key.empty()) {
-    const auto* table = coo.table(key);
-    if (table != nullptr) {
-      const DenseTensor& tmp_rulebook = table->first;
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      const DenseTensor& tmp_rulebook = indices_pairs->first;
       *rulebook_len = tmp_rulebook.dims()[1];
       return tmp_rulebook.data<IntT>();
     }
@@ -210,9 +210,9 @@ inline const int* GetCounterPtr(const SparseCooTensor& coo,
                                 const DenseTensor& counter,
                                 const std::string& key) {
   if (!key.empty()) {
-    const auto* table = coo.table(key);
-    if (table != nullptr) {
-      return table->second.data();
+    const auto* indices_pairs = coo.IndicesPairs(key);
+    if (indices_pairs != nullptr) {
+      return indices_pairs->second.data<int>();
     }
   }
   return counter.data<int>();
@@ -224,18 +224,18 @@ inline const IntT* PrepareSubm(const Context& dev_ctx,
                                const std::string& key,
                                const DDim& out_dims,
                                SparseCooTensor* out,
-                               std::vector<int>* counter,
-                               std::vector<int>* offsets,
+                               int* counter,
+                               int* offsets,
                                int* rulebook_len,
                                bool* need_product_rulebook) {
-  const auto* table = x.table(key);
-  if (table != nullptr) {
+  const auto* indices_pairs = x.IndicesPairs(key);
+  if (indices_pairs != nullptr) {
     *need_product_rulebook = false;
-    const DenseTensor& rulebook = table->first;
-    memcpy(counter->data(),
-           table->second.data(),
-           table->second.size() * sizeof(int));
-    out->SetTablePtr(x.GetTablePtr());
+    const DenseTensor& rulebook = indices_pairs->first;
+    const int counter_size = indices_pairs->second.numel();
+    memcpy(
+        counter, indices_pairs->second.data<int>(), counter_size * sizeof(int));
+    out->SetIndicesDict(x.GetIndicesDict());
 
     *rulebook_len = rulebook.dims()[1];
 
@@ -245,7 +245,7 @@ inline const IntT* PrepareSubm(const Context& dev_ctx,
     phi::Copy(
         dev_ctx, x.non_zero_indices(), dev_ctx.GetPlace(), false, &out_indices);
     out->SetMember(out_indices, out_values, out_dims, false);
-    PrefixSum<int>(counter->data(), offsets->data(), counter->size());
+    PrefixSum<int>(counter, offsets, counter_size);
     return rulebook.data<IntT>();
   }
   return nullptr;
@@ -256,18 +256,18 @@ inline void SaveToTable(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const std::string& key,
                         const DenseTensor& in_rulebook,
-                        const std::vector<int>& counter_vec,
+                        const DenseTensor& h_counter,
                         SparseCooTensor* out,
                         DenseTensor* out_rulebook,
                         DenseTensor* counter) {
-  out->SetTablePtr(x.GetTablePtr());
+  out->SetIndicesDict(x.GetIndicesDict());
   if (!key.empty()) {
-    out->SetTable(key, std::make_pair(in_rulebook, counter_vec));
+    out->SaveIndicesPairs(key, std::make_pair(in_rulebook, h_counter));
   } else {
     *out_rulebook = in_rulebook;
-    counter->Resize({static_cast<int>(counter_vec.size())});
+    counter->Resize({h_counter.numel()});
     int* counter_ptr = dev_ctx.template HostAlloc<int>(counter);
-    memcpy(counter_ptr, counter_vec.data(), counter_vec.size() * sizeof(int));
+    memcpy(counter_ptr, h_counter.data<int>(), h_counter.numel() * sizeof(int));
   }
 }
 
