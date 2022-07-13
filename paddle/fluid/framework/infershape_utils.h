@@ -77,11 +77,13 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
-    PADDLE_ENFORCE_EQ(is_runtime_, true,
+    PADDLE_ENFORCE_EQ(is_runtime_,
+                      true,
                       platform::errors::Unavailable(
                           "Only can get Tensor from MetaTensor in rumtime."));
     auto* var = BOOST_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
+                      true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
     return var->Get<phi::SelectedRows>();

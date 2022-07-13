@@ -57,12 +57,15 @@ TEST(FCElementwiseLayerNormFusePass, basic) {
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(
-      num_nodes_before, num_nodes_after + 6,
+      num_nodes_before,
+      num_nodes_after + 6,
       platform::errors::InvalidArgument(
           "After pass, the number of nodes should be reduced by 6, but the "
           "number before pass is %d, after pass is %d.",
-          num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+          num_nodes_before,
+          num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after,
+                    1,
                     platform::errors::InvalidArgument(
                         "After pass, the number of nodes of type "
                         "'fused_fc_elementwise_layernorm' should be 1, not %d.",

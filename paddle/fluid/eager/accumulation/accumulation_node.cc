@@ -87,7 +87,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 GradNodeAccumulation::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph, bool is_new_grad) {
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -98,7 +99,8 @@ GradNodeAccumulation::operator()(
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d in slot %d .",
-                     grads[0].size(), 0));
+                     grads[0].size(),
+                     0));
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {

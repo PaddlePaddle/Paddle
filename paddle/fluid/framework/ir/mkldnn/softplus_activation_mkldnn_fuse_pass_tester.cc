@@ -26,17 +26,22 @@ namespace ir {
 void MainTest(const std::string& activation_type) {
   auto prog =
       test::BuildProgramDesc({"softplus_x", "softplus_out", "activation_out"});
-  test::CreateOp(&prog, "softplus", {{"X", "softplus_x"}},
-                 {{"Out", "softplus_out"}});
-  test::CreateOp(&prog, activation_type, {{"X", "softplus_out"}},
-                 {{"Out", "activation_out"}}, false);
+  test::CreateOp(
+      &prog, "softplus", {{"X", "softplus_x"}}, {{"Out", "softplus_out"}});
+  test::CreateOp(&prog,
+                 activation_type,
+                 {{"X", "softplus_out"}},
+                 {{"Out", "activation_out"}},
+                 false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
 
-  EXPECT_TRUE(test::RunPassAndAssert(
-      &graph, "softplus_activation_mkldnn_fuse_pass", "softplus_x",
-      "activation_out", removed_nodes_count));
+  EXPECT_TRUE(test::RunPassAndAssert(&graph,
+                                     "softplus_activation_mkldnn_fuse_pass",
+                                     "softplus_x",
+                                     "activation_out",
+                                     removed_nodes_count));
   EXPECT_TRUE(
       test::AssertOpsCount(graph, {{"softplus", 1}, {activation_type, 0}}));
 
@@ -45,9 +50,9 @@ void MainTest(const std::string& activation_type) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto activation_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation_type"));
+          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(activation_type.compare(activation_type), 0);
     }
   }

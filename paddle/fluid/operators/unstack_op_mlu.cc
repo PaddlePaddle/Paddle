@@ -35,15 +35,20 @@ class UnStackMLUKernel : public framework::OpKernel<T> {
     new_dims[axis] = 1;
     for (int i = 0; i < num; i++) {
       out[i]->mutable_data<T>(ctx.GetPlace());
-      out_descs.emplace_back(MLUCnnlTensorDesc(new_dims.size(), new_dims.data(),
-                                               ToCnnlDataType<T>()));
+      out_descs.emplace_back(MLUCnnlTensorDesc(
+          new_dims.size(), new_dims.data(), ToCnnlDataType<T>()));
       out_raw_descs.push_back(out_descs.back().get());
       out_ptrs.push_back(GetBasePtr(out[i]));
     }
 
     MLUCnnlTensorDesc x_desc(*x);
-    MLUCnnl::Split(ctx, num, axis, x_desc.get(), GetBasePtr(x),
-                   out_raw_descs.data(), out_ptrs.data());
+    MLUCnnl::Split(ctx,
+                   num,
+                   axis,
+                   x_desc.get(),
+                   GetBasePtr(x),
+                   out_raw_descs.data(),
+                   out_ptrs.data());
   }
 };
 
@@ -64,8 +69,8 @@ class UnStackGradMLUKernel : public framework::OpKernel<T> {
       if (x[i]->dims().size() != 0) {
         std::vector<int64_t> in_dims = phi::vectorize(x[i]->dims());
         in_dims.insert(in_dims.begin() + axis, 1);
-        x_descs.emplace_back(MLUCnnlTensorDesc(in_dims.size(), in_dims.data(),
-                                               ToCnnlDataType<T>()));
+        x_descs.emplace_back(MLUCnnlTensorDesc(
+            in_dims.size(), in_dims.data(), ToCnnlDataType<T>()));
       } else {
         int input_dims = 1;
         x_descs.emplace_back(
@@ -77,8 +82,13 @@ class UnStackGradMLUKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc y_desc(*y);
-    MLUCnnl::Concat(ctx, num, axis, x_raw_descs.data(), x_ptrs.data(),
-                    y_desc.get(), GetBasePtr(y));
+    MLUCnnl::Concat(ctx,
+                    num,
+                    axis,
+                    x_raw_descs.data(),
+                    x_ptrs.data(),
+                    y_desc.get(),
+                    GetBasePtr(y));
   }
 };
 
@@ -88,8 +98,10 @@ class UnStackGradMLUKernel : public framework::OpKernel<T> {
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(unstack, ops::UnStackMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(unstack,
+                       ops::UnStackMLUKernel<float>,
                        ops::UnStackMLUKernel<plat::float16>);
 
-REGISTER_OP_MLU_KERNEL(unstack_grad, ops::UnStackGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(unstack_grad,
+                       ops::UnStackGradMLUKernel<float>,
                        ops::UnStackGradMLUKernel<plat::float16>);

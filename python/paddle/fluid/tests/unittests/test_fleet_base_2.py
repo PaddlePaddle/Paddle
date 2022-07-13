@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 import paddle
 
@@ -54,7 +55,7 @@ class TestFleetBase(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         role = fleet.PaddleCloudRoleMaker(is_collective=False)
         fleet.init(role)
@@ -74,15 +75,19 @@ class TestFleetBase(unittest.TestCase):
         compiled_prog = fluid.compiler.CompiledProgram(
             fluid.default_main_program())
 
+        temp_dir = tempfile.TemporaryDirectory()
         fleet.init_worker()
-        fleet.fleet.save(dirname="/tmp", feed=['x', 'y'], fetch=[avg_cost])
-        fleet.fleet.save(dirname="/tmp",
+        fleet.fleet.save(dirname=temp_dir.name,
+                         feed=['x', 'y'],
+                         fetch=[avg_cost])
+        fleet.fleet.save(dirname=temp_dir.name,
                          feed=[input_x, input_y],
                          fetch=[avg_cost])
-        fleet.fleet.save(dirname="/tmp")
+        fleet.fleet.save(dirname=temp_dir.name)
 
-        fleet.load_model(path="/tmp", mode=0)
-        fleet.load_model(path="/tmp", mode=1)
+        fleet.load_model(path=temp_dir.name, mode=0)
+        fleet.load_model(path=temp_dir.name, mode=1)
+        temp_dir.cleanup()
 
 
 if __name__ == "__main__":

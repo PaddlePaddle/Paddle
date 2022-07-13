@@ -26,7 +26,9 @@ class AllocFloatStatusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("FloatStatus"), "Output", "FloatStatus",
+    OP_INOUT_CHECK(ctx->HasOutput("FloatStatus"),
+                   "Output",
+                   "FloatStatus",
                    "alloc_float_status");
     ctx->SetOutputDim("FloatStatus", {8});
   }
@@ -63,10 +65,12 @@ class AllocFloatStatusKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
-    alloc_float_status, ops::AllocFloatStatusOp, ops::AllocFloatStatusMaker,
+    alloc_float_status,
+    ops::AllocFloatStatusOp,
+    ops::AllocFloatStatusMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

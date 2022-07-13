@@ -1,4 +1,4 @@
-# copyright (c) 2021 PaddlePaddle Authors. All Rights Reserve.
+# copyright (c) 2022 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,18 +74,28 @@ class ConvPoolLayer(nn.Layer):
 class AlexNet(nn.Layer):
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
-    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
-        num_classes (int): Output dim of last fc layer. Default: 1000.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+                            will not be defined. Default: 1000.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import AlexNet
 
             alexnet = AlexNet()
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = alexnet(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, num_classes=1000):
@@ -175,14 +185,22 @@ def _alexnet(arch, pretrained, **kwargs):
 
 
 def alexnet(pretrained=False, **kwargs):
-    """AlexNet model
+    """AlexNet model from
+    `"ImageNet Classification with Deep Convolutional Neural Networks"
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_AlexNet>`.
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
+    
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import alexnet
 
             # build model
@@ -190,5 +208,11 @@ def alexnet(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = alexnet(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _alexnet('alexnet', pretrained, **kwargs)

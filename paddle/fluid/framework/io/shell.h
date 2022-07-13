@@ -58,7 +58,8 @@ extern std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                          const std::string& mode);
 
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
-                                  const std::string& mode, int* err_no,
+                                  const std::string& mode,
+                                  int* err_no,
                                   int* status = NULL,
                                   bool redirect_stderr = false);
 

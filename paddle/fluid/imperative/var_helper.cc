@@ -307,7 +307,8 @@ void SetCachedValue<egr::EagerVariable>(
   //   is equal to self: " << key == key << " and res name is:" << res->Name().
 }
 template void SetCachedValue<VarBase>(
-    std::shared_ptr<VarBase> var, const paddle::framework::OpKernelType &key,
+    std::shared_ptr<VarBase> var,
+    const paddle::framework::OpKernelType &key,
     std::shared_ptr<VarBase> res);
 template void SetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var,

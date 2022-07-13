@@ -57,8 +57,8 @@ class InverseGradKernel : public framework::OpKernel<T> {
           phi::funcs::CreateMatrixDescriptor(a_inv_grad->dims(), 0, false);
       auto mat_dim_b0 =
           phi::funcs::CreateMatrixDescriptor(a_inv->dims(), 0, true);
-      blas.MatMul(*a_inv_grad, mat_dim_a0, *a_inv, mat_dim_b0, T(1), &tmp_out,
-                  T(0));
+      blas.MatMul(
+          *a_inv_grad, mat_dim_a0, *a_inv, mat_dim_b0, T(1), &tmp_out, T(0));
 
       auto mat_dim_a1 =
           phi::funcs::CreateMatrixDescriptor(a_inv->dims(), 0, true);

@@ -23,7 +23,8 @@ namespace paddle {
 namespace operators {
 template <typename T, typename UniformSamplerT, typename NormalSamplerT>
 struct GammaCPUFunctor {
-  GammaCPUFunctor(const T* alpha, T* gamma,
+  GammaCPUFunctor(const T* alpha,
+                  T* gamma,
                   BaseSampler<T, UniformSamplerT> uniform,
                   BaseSampler<T, NormalSamplerT> normal)
       : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
@@ -41,10 +42,11 @@ struct GammaCPUFunctor {
 };
 
 template <typename T>
-struct DirichletSampler<platform::CPUDeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor* alpha,
+struct DirichletSampler<phi::CPUContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const Tensor* alpha,
                   Tensor* out) {
-    auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
 
     auto p_gen = framework::DefaultCPUGenerator();
     auto generator = p_gen->GetCPUEngine();
@@ -65,10 +67,11 @@ struct DirichletSampler<platform::CPUDeviceContext, T> {
     framework::Tensor gamma_samples;
     gamma_samples.mutable_data<T>(alpha->dims(), dev_ctx.GetPlace());
     GammaCPUFunctor<T, decltype(uniform), decltype(normal)> gamma_functor(
-        alpha->data<T>(), gamma_samples.data<T>(), standard_uniform,
+        alpha->data<T>(),
+        gamma_samples.data<T>(),
+        standard_uniform,
         standard_normal);
-    platform::ForRange<platform::CPUDeviceContext> for_range(dev_ctx,
-                                                             alpha->numel());
+    platform::ForRange<phi::CPUContext> for_range(dev_ctx, alpha->numel());
     for_range(gamma_functor);
 
     // normalize them into a simplex, along the last axis
@@ -77,10 +80,10 @@ struct DirichletSampler<platform::CPUDeviceContext, T> {
     new_shape[new_shape.size() - 1] = 1;
     gamma_sum.mutable_data<T>(new_shape, dev_ctx.GetPlace());
 
-    ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
+    ReduceKernelFunctor<phi::CPUContext, T, SumFunctor>(
         &gamma_samples, &gamma_sum, {new_shape.size() - 1}, true, false, ctx)
         .template apply<T>();
-    ElementwiseComputeEx<DivFunctor<T>, platform::CPUDeviceContext, T, T>(
+    ElementwiseComputeEx<DivFunctor<T>, phi::CPUContext, T, T>(
         ctx, &gamma_samples, &gamma_sum, -1, DivFunctor<T>(), out);
   }
 };
@@ -102,7 +105,8 @@ class DirichletOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Alpha"), "Input", "Alpha", "dirichlet");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "dirichlet");
     const auto alpha_dim = ctx->GetInputDim("Alpha");
-    PADDLE_ENFORCE_GE(alpha_dim.size(), 1,
+    PADDLE_ENFORCE_GE(alpha_dim.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "ShapeError: The number of dimensions of 'Alpha' "
                           "must be greater than or euqal to 1. "
@@ -115,11 +119,10 @@ class DirichletOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(dirichlet, paddle::operators::DirichletOp,
+REGISTER_OP_WITHOUT_GRADIENT(dirichlet,
+                             paddle::operators::DirichletOp,
                              paddle::operators::DirichletOpMaker);
 REGISTER_OP_CPU_KERNEL(
     dirichlet,
-    paddle::operators::DirichletKernel<paddle::platform::CPUDeviceContext,
-                                       float>,
-    paddle::operators::DirichletKernel<paddle::platform::CPUDeviceContext,
-                                       double>);
+    paddle::operators::DirichletKernel<phi::CPUContext, float>,
+    paddle::operators::DirichletKernel<phi::CPUContext, double>);

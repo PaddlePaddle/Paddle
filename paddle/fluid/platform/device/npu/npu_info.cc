@@ -58,11 +58,13 @@ int NPUCanAccessPeer(int src, int dst) {
 
 // For example, "1.0.1"
 std::string GetNPURuntimeVersion(int id) {
-  PADDLE_ENFORCE_LT(id, GetNPUDeviceCount(),
+  PADDLE_ENFORCE_LT(id,
+                    GetNPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than NPU count, "
                         "but received id is: %d. NPU count is: %d.",
-                        id, GetNPUDeviceCount()));
+                        id,
+                        GetNPUDeviceCount()));
   int major = 0, minor = 0, patch = 0;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtGetVersion(&major, &minor, &patch));
   return string::Sprintf("%d.%d.%d", major, minor, patch);
@@ -97,28 +99,35 @@ std::vector<int> GetSelectedNPUDevices() {
 }
 
 void SetNPUDeviceId(int id) {
-  PADDLE_ENFORCE_LT(id, GetNPUDeviceCount(),
+  PADDLE_ENFORCE_LT(id,
+                    GetNPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than NPU count, "
                         "but received id is: %d. NPU count is: %d.",
-                        id, GetNPUDeviceCount()));
+                        id,
+                        GetNPUDeviceCount()));
   // NOTE(zihqiu): It is recommended to call aclrtSetDevice and aclrtResetDevice
   // pairly.
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSetDevice(id));
 }
 
 void ResetNPUDeviceId(int id) {
-  PADDLE_ENFORCE_LT(id, GetNPUDeviceCount(),
+  PADDLE_ENFORCE_LT(id,
+                    GetNPUDeviceCount(),
                     platform::errors::InvalidArgument(
                         "Device id must be less than NPU count, "
                         "but received id is: %d. NPU count is: %d.",
-                        id, GetNPUDeviceCount()));
+                        id,
+                        GetNPUDeviceCount()));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtResetDevice(id));
 }
 
 void NPUMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
-  RecordedNPUMemGetInfo(available, total, &actual_available, &actual_total,
+  RecordedNPUMemGetInfo(available,
+                        total,
+                        &actual_available,
+                        &actual_total,
                         platform::GetCurrentNPUDeviceId());
 }
 
@@ -146,7 +155,8 @@ size_t NPUMaxAllocSize() {
 static size_t NPUAllocSize(bool realloc) {
   size_t available_to_alloc = NPUAvailableMemToAlloc();
   PADDLE_ENFORCE_GT(
-      available_to_alloc, 0,
+      available_to_alloc,
+      0,
       platform::errors::ResourceExhausted("Not enough available NPU memory."));
   // If FLAGS_initial_gpu_memory_in_mb is 0, then initial memory will be
   // allocated by fraction
@@ -157,7 +167,8 @@ static size_t NPUAllocSize(bool realloc) {
            ? flag_mb << 20
            : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
-      available_to_alloc, alloc_bytes,
+      available_to_alloc,
+      alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available NPU memory."));
   VLOG(10) << "Alloc size is " << (alloc_bytes >> 20)
            << " MiB, is it Re-alloc: " << realloc;
@@ -182,8 +193,11 @@ size_t NPUMaxChunkSize() {
   return max_chunk_size;
 }
 
-void NPUMemcpyAsync(void *dst, const void *src, size_t count,
-                    enum aclrtMemcpyKind kind, aclrtStream stream,
+void NPUMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    enum aclrtMemcpyKind kind,
+                    aclrtStream stream,
                     size_t dst_max_count) {
   dst_max_count = dst_max_count ? dst_max_count : count;
   VLOG(4) << dst << " " << dst_max_count << " " << src << " " << count << " "
@@ -192,8 +206,11 @@ void NPUMemcpyAsync(void *dst, const void *src, size_t count,
       aclrtMemcpyAsync(dst, dst_max_count, src, count, kind, stream));
 }
 
-void NPUMemcpySync(void *dst, const void *src, size_t count,
-                   enum aclrtMemcpyKind kind, size_t dst_max_count) {
+void NPUMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
+                   enum aclrtMemcpyKind kind,
+                   size_t dst_max_count) {
   // NOTE(zhiqiu):  The default max_count is count
   dst_max_count = dst_max_count ? dst_max_count : count;
   VLOG(4) << dst << " " << dst_max_count << " " << src << " " << count << " "
@@ -205,16 +222,24 @@ void NPUMemcpySync(void *dst, const void *src, size_t count,
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
 }
 
-void NPUMemcpyPeerASync(void *dst, int dst_device, const void *src,
-                        size_t count, enum aclrtMemcpyKind kind,
-                        aclrtStream stream, size_t dst_max_count) {
+void NPUMemcpyPeerASync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        size_t count,
+                        enum aclrtMemcpyKind kind,
+                        aclrtStream stream,
+                        size_t dst_max_count) {
   dst_max_count = dst_max_count ? dst_max_count : count;
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclrtMemcpyAsync(dst, dst_max_count, src, count, kind, stream));
 }
 
-void NPUMemcpyPeerSync(void *dst, int dst_device, const void *src, size_t count,
-                       enum aclrtMemcpyKind kind, size_t dst_max_count) {
+void NPUMemcpyPeerSync(void *dst,
+                       int dst_device,
+                       const void *src,
+                       size_t count,
+                       enum aclrtMemcpyKind kind,
+                       size_t dst_max_count) {
   // NOTE(zhiqiu):  The default max_count is count
   dst_max_count = dst_max_count ? dst_max_count : count;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpy(dst, dst_max_count, src, count, kind));
@@ -225,8 +250,8 @@ void NPUMemsetSync(void *dst, int value, size_t count, size_t max_count) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemset(dst, max_count, value, count));
 }
 
-void NPUMemsetAsync(void *dst, int value, size_t count, aclrtStream stream,
-                    size_t max_count) {
+void NPUMemsetAsync(
+    void *dst, int value, size_t count, aclrtStream stream, size_t max_count) {
   max_count = max_count ? max_count : count;
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclrtMemsetAsync(dst, max_count, value, count, stream));
@@ -258,6 +283,10 @@ void NPUEventRecord(aclrtEvent event, aclrtStream stream) {
 
 void NPUEventQuery(aclrtEvent event, aclrtEventStatus *status) {
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtQueryEvent(event, status));
+}
+
+void NPUEventSynchronize(aclrtEvent event) {
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeEvent(event));
 }
 
 void NPUStreamWaitEvent(aclrtStream stream, aclrtEvent event) {
@@ -295,13 +324,16 @@ class RecordedNPUMallocHelper {
     });
 
     PADDLE_ENFORCE_GE(
-        dev_id, 0,
+        dev_id,
+        0,
         platform::errors::OutOfRange(
             "Device id must be not less than 0, but got %d.", dev_id));
     PADDLE_ENFORCE_LT(
-        dev_id, instances_.size(),
+        dev_id,
+        instances_.size(),
         platform::errors::OutOfRange("Device id %d exceeds npu card number %d.",
-                                     dev_id, instances_.size()));
+                                     dev_id,
+                                     instances_.size()));
     return instances_[dev_id].get();
   }
 
@@ -347,7 +379,9 @@ class RecordedNPUMallocHelper {
     STAT_INT_SUB("STAT_npu" + std::to_string(dev_id_) + "_mem_size", size);
   }
 
-  bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
+  bool GetMemInfo(size_t *avail,
+                  size_t *total,
+                  size_t *actual_avail,
                   size_t *actual_total) {
     {
       NPUDeviceGuard guard(dev_id_);
@@ -402,8 +436,11 @@ void RecordedNPUFree(void *p, size_t size, int dev_id) {
   return RecordedNPUMallocHelper::Instance(dev_id)->Free(p, size);
 }
 
-bool RecordedNPUMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id) {
+bool RecordedNPUMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id) {
   return RecordedNPUMallocHelper::Instance(dev_id)->GetMemInfo(
       avail, total, actual_avail, actual_total);
 }
@@ -422,8 +459,10 @@ aclError NPUHostMalloc(void **ptr, size_t size) {
 
 aclError NPUHostFree(void *ptr) { return aclrtFreeHost(ptr); }
 
-void NPULaunchCallback(aclrtCallback fn, void *userData,
-                       aclrtCallbackBlockType blockType, aclrtStream stream) {
+void NPULaunchCallback(aclrtCallback fn,
+                       void *userData,
+                       aclrtCallbackBlockType blockType,
+                       aclrtStream stream) {
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclrtLaunchCallback(fn, userData, blockType, stream));
 }

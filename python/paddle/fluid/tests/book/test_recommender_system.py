@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
+import tempfile
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -152,7 +153,7 @@ def model():
 
     label = layers.data(name='score', shape=[1], dtype='float32')
     square_cost = layers.square_error_cost(input=scale_infer, label=label)
-    avg_cost = layers.mean(square_cost)
+    avg_cost = paddle.mean(square_cost)
 
     return scale_infer, avg_cost
 
@@ -318,10 +319,13 @@ def main(use_cuda):
         return
 
     # Directory for saving the inference model
-    save_dirname = "recommender_system.inference.model"
+    temp_dir = tempfile.TemporaryDirectory()
+    save_dirname = os.path.join(temp_dir.name,
+                                "recommender_system.inference.model")
 
     train(use_cuda, save_dirname)
     infer(use_cuda, save_dirname)
+    temp_dir.cleanup()
 
 
 if __name__ == '__main__':

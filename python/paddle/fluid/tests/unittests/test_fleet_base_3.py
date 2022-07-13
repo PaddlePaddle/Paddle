@@ -42,7 +42,7 @@ class TestFleetBase_1(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -72,7 +72,7 @@ class TestFleetBase(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
 

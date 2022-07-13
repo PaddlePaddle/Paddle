@@ -402,7 +402,10 @@ struct GPUContext::Impl {
 
   void SetSolverHandle(solverHandle_t handle) { solver_handle_ = handle; }
 
-  sparseHandle_t GetSparseHandle() const {
+  sparseHandle_t GetSparseHandle() {
+    std::call_once(flag_sparse_, [=]() {
+      if (!sparse_handle_) phi::InitSparseHandle(&sparse_handle_, stream_);
+    });
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
     return sparse_handle_;
   }
@@ -519,7 +522,12 @@ struct GPUContext::Impl {
   }
 
   inline void CusparseCall(
-      const std::function<void(sparseHandle_t)>& callback) const {
+      const std::function<void(sparseHandle_t)>& callback) {
+    std::call_once(flag_sparse_, [=]() {
+      if (!sparse_handle_) {
+        phi::InitSparseHandle(&sparse_handle_, stream_);
+      }
+    });
     std::lock_guard<std::mutex> guard(sparse_mtx_);
     callback(sparse_handle_);
   }
@@ -598,6 +606,7 @@ struct GPUContext::Impl {
   sparseHandle_t sparse_handle_{nullptr};
   DnnWorkspaceHandle* workspace_{nullptr};
 
+  std::once_flag flag_sparse_;
   std::once_flag flag_blas_;
   std::once_flag flag_blaslt_;
   std::once_flag flag_dnn_;

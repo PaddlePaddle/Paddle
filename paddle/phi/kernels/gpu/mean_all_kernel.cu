@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/mean_all_kernel.h"
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/mean_all_kernel.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 namespace phi {

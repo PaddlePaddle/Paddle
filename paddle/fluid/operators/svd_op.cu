@@ -61,9 +61,17 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-    GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n),
-                  x_tmp.mutable_data<T>(context.GetPlace()), vh_data, u_data,
-                  s_data, info_ptr, !full_matrices);
+    GesvdjBatched(dev_ctx,
+                  batch_count,
+                  n,
+                  m,
+                  std::min(m, n),
+                  x_tmp.mutable_data<T>(context.GetPlace()),
+                  vh_data,
+                  u_data,
+                  s_data,
+                  info_ptr,
+                  !full_matrices);
 
     framework::DDim UT_dim = U->dims();
     std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
@@ -74,15 +82,31 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     auto tmp_U = dito.Transpose(*U);
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
   }
-  void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
-                     int m, int n, int k, T* A, T* U, T* V, T* S, int* info,
+  void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx,
+                     int batchSize,
+                     int m,
+                     int n,
+                     int k,
+                     T* A,
+                     T* U,
+                     T* V,
+                     T* S,
+                     int* info,
                      int thin_UV = 1) const;
 };
 
 template <>
 void SvdGPUKernel<float>::GesvdjBatched(
-    const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, float* A, float* U, float* V, float* S, int* info,
+    const platform::CUDADeviceContext& dev_ctx,
+    int batchSize,
+    int m,
+    int n,
+    int k,
+    float* A,
+    float* U,
+    float* V,
+    float* S,
+    int* info,
     int thin_UV) const {
   /* compute singular vectors */
   const cusolverEigMode_t jobz =
@@ -95,25 +119,55 @@ void SvdGPUKernel<float>::GesvdjBatched(
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgesvdj_bufferSize(
-      handle, jobz, thin_UV, m, n, A, lda, S, U, ldu, V, ldt, &lwork,
-      gesvdj_params));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cusolverDnSgesvdj_bufferSize(handle,
+                                                      jobz,
+                                                      thin_UV,
+                                                      m,
+                                                      n,
+                                                      A,
+                                                      lda,
+                                                      S,
+                                                      U,
+                                                      ldu,
+                                                      V,
+                                                      ldt,
+                                                      &lwork,
+                                                      gesvdj_params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgesvdj(
-        handle, jobz, thin_UV, m, n, A + stride_A * i, lda, S + k * i,
-        U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
-        info, gesvdj_params));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnSgesvdj(handle,
+                                             jobz,
+                                             thin_UV,
+                                             m,
+                                             n,
+                                             A + stride_A * i,
+                                             lda,
+                                             S + k * i,
+                                             U + stride_U * i,
+                                             ldu,
+                                             V + stride_V * i,
+                                             ldt,
+                                             workspace_ptr,
+                                             lwork,
+                                             info,
+                                             gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
-                 sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(),
+                 &error_info,
+                 dev_ctx.GetPlace(),
+                 info,
+                 sizeof(int),
+                 dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
-        error_info, 0,
+        error_info,
+        0,
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
@@ -123,8 +177,16 @@ void SvdGPUKernel<float>::GesvdjBatched(
 
 template <>
 void SvdGPUKernel<double>::GesvdjBatched(
-    const platform::CUDADeviceContext& dev_ctx, int batchSize, int m, int n,
-    int k, double* A, double* U, double* V, double* S, int* info,
+    const platform::CUDADeviceContext& dev_ctx,
+    int batchSize,
+    int m,
+    int n,
+    int k,
+    double* A,
+    double* U,
+    double* V,
+    double* S,
+    int* info,
     int thin_UV) const {
   /* compute singular vectors */
   const cusolverEigMode_t jobz =
@@ -137,25 +199,55 @@ void SvdGPUKernel<double>::GesvdjBatched(
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgesvdj_bufferSize(
-      handle, jobz, thin_UV, m, n, A, lda, S, U, ldu, V, ldt, &lwork,
-      gesvdj_params));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cusolverDnDgesvdj_bufferSize(handle,
+                                                      jobz,
+                                                      thin_UV,
+                                                      m,
+                                                      n,
+                                                      A,
+                                                      lda,
+                                                      S,
+                                                      U,
+                                                      ldu,
+                                                      V,
+                                                      ldt,
+                                                      &lwork,
+                                                      gesvdj_params));
   auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgesvdj(
-        handle, jobz, thin_UV, m, n, A + stride_A * i, lda, S + k * i,
-        U + stride_U * i, ldu, V + stride_V * i, ldt, workspace_ptr, lwork,
-        info, gesvdj_params));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnDgesvdj(handle,
+                                             jobz,
+                                             thin_UV,
+                                             m,
+                                             n,
+                                             A + stride_A * i,
+                                             lda,
+                                             S + k * i,
+                                             U + stride_U * i,
+                                             ldu,
+                                             V + stride_V * i,
+                                             ldt,
+                                             workspace_ptr,
+                                             lwork,
+                                             info,
+                                             gesvdj_params));
     // check the error info
     int error_info;
-    memory::Copy(platform::CPUPlace(), &error_info, dev_ctx.GetPlace(), info,
-                 sizeof(int), dev_ctx.stream());
+    memory::Copy(platform::CPUPlace(),
+                 &error_info,
+                 dev_ctx.GetPlace(),
+                 info,
+                 sizeof(int),
+                 dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
-        error_info, 0,
+        error_info,
+        0,
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
@@ -167,9 +259,11 @@ void SvdGPUKernel<double>::GesvdjBatched(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(svd, ops::SvdGPUKernel<float>,
+REGISTER_OP_CUDA_KERNEL(svd,
+                        ops::SvdGPUKernel<float>,
                         ops::SvdGPUKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
-    svd_grad, ops::SvdGradKernel<paddle::platform::CUDADeviceContext, float>,
+    svd_grad,
+    ops::SvdGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SvdGradKernel<paddle::platform::CUDADeviceContext, double>);
 #endif  // not PADDLE_WITH_HIP

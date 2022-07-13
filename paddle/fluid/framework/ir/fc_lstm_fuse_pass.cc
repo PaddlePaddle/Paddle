@@ -172,8 +172,10 @@ FCLstmFusePass::FCLstmFusePass() {
       .End();
 }
 
-int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
-                                Scope* scope, bool with_fc_bias) const {
+int FCLstmFusePass::BuildFusion(Graph* graph,
+                                const std::string& name_scope,
+                                Scope* scope,
+                                bool with_fc_bias) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -188,9 +190,16 @@ int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
   lstm_pattern(fc_out);
 
   // Create New OpDesc
-  auto lstm_creator = [&](Node* lstm, Node* input, Node* weight_x,
-                          Node* weight_h, Node* bias, Node* hidden, Node* cell,
-                          Node* xx, Node* fc_bias, const bool use_mkldnn) {
+  auto lstm_creator = [&](Node* lstm,
+                          Node* input,
+                          Node* weight_x,
+                          Node* weight_h,
+                          Node* bias,
+                          Node* hidden,
+                          Node* cell,
+                          Node* xx,
+                          Node* fc_bias,
+                          const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
@@ -310,16 +319,32 @@ int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
-      lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
-                   fc_bias, use_mkldnn);
+      lstm_creator(lstm,
+                   subgraph.at(x),
+                   w,
+                   Weight,
+                   Bias,
+                   Hidden,
+                   Cell,
+                   fc_out,
+                   fc_bias,
+                   use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, elementwise_add, mul_out, BatchGate, BatchCellPreAct});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
-      lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
-                   nullptr, use_mkldnn);
+      lstm_creator(lstm,
+                   subgraph.at(x),
+                   w,
+                   Weight,
+                   Bias,
+                   Hidden,
+                   Cell,
+                   fc_out,
+                   nullptr,
+                   use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, BatchGate, BatchCellPreAct});

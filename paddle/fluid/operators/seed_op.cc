@@ -67,11 +67,12 @@ Seed Operator.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    seed, ops::SeedOp, ops::SeedOpMaker,
+    seed,
+    ops::SeedOp,
+    ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    seed, ops::CPUSeedKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(seed, ops::CPUSeedKernel<phi::CPUContext, int>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(seed).AddCheckpoint(

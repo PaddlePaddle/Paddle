@@ -12,6 +12,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +30,8 @@ namespace tensorrt {
 class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -43,30 +45,20 @@ class GroupNormOpConverter : public OpConverter {
     std::string bias_name = op_desc.Input("Bias").front();
 
     // get the presistable var's data
-    auto get_persistable_data = [&](const std::string& var_name,
-                                    framework::DDim* dims) -> float* {
+    auto GetWeight = [&](const std::string& var_name,
+                         framework::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
-      return temp_data;
+      auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
+      return weight;
     };
 
     framework::DDim scale_dims;
     framework::DDim bias_dims;
-    float* scale_data = get_persistable_data(scale_name, &scale_dims);
-    float* bias_data = get_persistable_data(bias_name, &bias_dims);
-
-    int64_t scale_numel = phi::product(scale_dims);
-    int64_t bias_numel = phi::product(bias_dims);
-
-    TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(scale_data),
-                                         static_cast<size_t>(scale_numel)};
-    TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(bias_data),
-                                        static_cast<size_t>(bias_numel)};
+    auto scale_weights = GetWeight(scale_name, &scale_dims);
+    auto bias_weights = GetWeight(bias_name, &bias_dims);
 
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;
@@ -79,10 +71,10 @@ class GroupNormOpConverter : public OpConverter {
       bias_nv_dims.d[i] = bias_dims.at(i);
     }
 
-    auto* scale_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, scale_nv_dims,
-                                             scale_weights.get());
-    auto* bias_layer = TRT_ENGINE_ADD_LAYER(engine_, Constant, bias_nv_dims,
-                                            bias_weights.get());
+    auto* scale_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, scale_nv_dims, scale_weights.get());
+    auto* bias_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Constant, bias_nv_dims, bias_weights.get());
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(input_itensor);
@@ -111,8 +103,8 @@ class GroupNormOpConverter : public OpConverter {
         plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(group_norm_plugin_layer, "group_norm",
-                             {output_name}, test_mode);
+    RreplenishLayerAndOutput(
+        group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
   }
 };
 

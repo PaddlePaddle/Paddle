@@ -17,6 +17,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -160,6 +162,10 @@ void KLDivInferMeta(const MetaTensor& x,
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
+  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
+      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+    out->set_dtype(DataType::FLOAT64);
+  }
 }
 
 void BCELossInferMeta(const MetaTensor& input,

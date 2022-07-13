@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"
 
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 
@@ -61,11 +61,15 @@ std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     const std::vector<std::vector<size_t>> &group_indices,
     const std::vector<bool> &is_sparse_gradient,
     std::shared_ptr<distributed::ProcessGroup> process_group,
-    const std::vector<size_t> &group_size_limits, bool find_unused_parameters) {
+    const std::vector<size_t> &group_size_limits,
+    bool find_unused_parameters) {
   auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
-  return std::make_shared<distributed::EagerReducer>(
-      params, group_indices, is_sparse_gradient, process_group,
-      group_size_limits, find_unused_parameters);
+  return std::make_shared<distributed::EagerReducer>(params,
+                                                     group_indices,
+                                                     is_sparse_gradient,
+                                                     process_group,
+                                                     group_size_limits,
+                                                     find_unused_parameters);
 }
 
 #if defined(PADDLE_WITH_GLOO)
@@ -111,7 +115,8 @@ void BindDistributed(py::module *m) {
           .def("name", &distributed::ProcessGroup::GetBackendName)
           .def(
               "allreduce",
-              [](distributed::ProcessGroup &self, py::handle py_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
                  distributed::ReduceOp op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 distributed::AllreduceOptions opts;
@@ -121,12 +126,14 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> tensors = {*dense};
                 return self.AllReduce(tensors, tensors, opts);
               },
-              py::arg("tensor"), py::arg("op") = distributed::ReduceOp::SUM,
+              py::arg("tensor"),
+              py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "broadcast",
-              [](distributed::ProcessGroup &self, py::handle py_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
                  int source_rank) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 distributed::BroadcastOptions opts;
@@ -136,7 +143,8 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> tensors = {*dense};
                 return self.Broadcast(tensors, tensors, opts);
               },
-              py::arg("tensor"), py::arg("source_rank"),
+              py::arg("tensor"),
+              py::arg("source_rank"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -151,7 +159,8 @@ void BindDistributed(py::module *m) {
 
           .def(
               "send",
-              [](distributed::ProcessGroup &self, py::handle py_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
                  int dst) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
@@ -159,12 +168,14 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> tensors = {*dense};
                 return self.Send(tensors, dst);
               },
-              py::arg("tensor"), py::arg("dst"),
+              py::arg("tensor"),
+              py::arg("dst"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "recv",
-              [](distributed::ProcessGroup &self, py::handle py_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_tensor,
                  int src) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
@@ -172,12 +183,14 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> tensors = {*dense};
                 return self.Recv(tensors, src);
               },
-              py::arg("tensor"), py::arg("src"),
+              py::arg("tensor"),
+              py::arg("src"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "all_gather",
-              [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
                  py::handle py_out_tensor) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
@@ -189,12 +202,14 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> out_tensors = {*out_dense};
                 return self.AllGather(in_tensors, out_tensors);
               },
-              py::arg("in"), py::arg("out"),
+              py::arg("in"),
+              py::arg("out"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "alltoall",
-              [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
                  py::handle py_out_tensor) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
@@ -206,13 +221,40 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> out_tensors = {*out_dense};
                 return self.AllToAll(in_tensors, out_tensors);
               },
-              py::arg("in"), py::arg("out"),
+              py::arg("in"),
+              py::arg("out"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "alltoall_single",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor,
+                 std::vector<int64_t> in_sizes,
+                 std::vector<int64_t> out_sizes) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                std::vector<phi::DenseTensor> in_tensors = {*in_dense};
+                std::vector<phi::DenseTensor> out_tensors = {*out_dense};
+                return self.AllToAll_Single(
+                    in_tensors, out_tensors, in_sizes, out_sizes);
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("in_sizes"),
+              py::arg("out_sizes"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "reduce",
-              [](distributed::ProcessGroup &self, py::handle py_in_tensor,
-                 int dst, distributed::ReduceOp op) {
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 int dst,
+                 distributed::ReduceOp op) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 distributed::ReduceOptions opts;
                 opts.reduce_op = op;
@@ -222,14 +264,16 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> tensors = {*dense};
                 return self.Reduce(tensors, tensors, opts);
               },
-              py::arg("tensor"), py::arg("dst"),
+              py::arg("tensor"),
+              py::arg("dst"),
               py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>())
-
           .def(
               "scatter",
-              [](distributed::ProcessGroup &self, py::handle py_in_tensor,
-                 py::handle py_out_tensor, int src) {
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor,
+                 int src) {
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
                 distributed::ScatterOptions opts;
@@ -242,18 +286,53 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> out_tensors = {*out_dense};
                 return self.Scatter(in_tensors, out_tensors, opts);
               },
-              py::arg("in"), py::arg("out"), py::arg("src"),
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("src"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "_reduce_scatter_base",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_out_tensor,
+                 py::handle py_in_tensor,
+                 distributed::ReduceOp op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                distributed::ReduceScatterOptions opts;
+                opts.reduce_op = op;
+                auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                auto dense_in = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                return self._ReduceScatterBase(*dense_out, *dense_in, opts);
+              },
+              py::arg("out_tensor"),
+              py::arg("in_tensor"),
+              py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL)
-  py::class_<distributed::ProcessGroupNCCL,
-             std::shared_ptr<distributed::ProcessGroupNCCL>>(
-      *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
-                    const platform::CUDAPlace &, int>(),
-           py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::arg("place"), py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>());
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+  auto processGroupNCCL =
+      py::class_<distributed::ProcessGroupNCCL,
+                 std::shared_ptr<distributed::ProcessGroupNCCL>>(
+          *m, "ProcessGroupNCCL", ProcessGroup)
+          .def(py::init<const std::shared_ptr<distributed::Store> &,
+                        int,
+                        int,
+                        const platform::CUDAPlace &,
+                        int>(),
+               py::arg("store"),
+               py::arg("rank"),
+               py::arg("world_size"),
+               py::arg("place"),
+               py::arg("group_id") = 0,
+               py::call_guard<py::gil_scoped_release>());
+
+  processGroupNCCL.def_static(
+      "group_start", []() { distributed::ProcessGroupNCCL::GroupStart(); });
+  processGroupNCCL.def_static(
+      "group_end", []() { distributed::ProcessGroupNCCL::GroupEnd(); });
+
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
@@ -261,29 +340,53 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupHeter,
              std::shared_ptr<distributed::ProcessGroupHeter>>(
       *m, "ProcessGroupHeter", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
+      .def(py::init<const std::shared_ptr<distributed::Store> &,
+                    int,
+                    int,
 #if defined(PADDLE_WITH_ASCEND_CL)
                     const platform::NPUPlace &,
 #else
                     const platform::CUDAPlace &,
 #endif
-                    int, int, int, int, int, bool, std::string, int, int>(),
-           py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::arg("place"), py::arg("gid") = 0, py::arg("local_rank") = 0,
-           py::arg("local_size") = 1, py::arg("gloo_rank") = 0,
-           py::arg("gloo_size") = 1, py::arg("with_switch") = false,
-           py::arg("switch_endpoint") = "", py::arg("src_rank") = "",
-           py::arg("dst_rank") = "", py::call_guard<py::gil_scoped_release>());
+                    int,
+                    int,
+                    int,
+                    int,
+                    int,
+                    bool,
+                    std::string,
+                    int,
+                    int>(),
+           py::arg("store"),
+           py::arg("rank"),
+           py::arg("world_size"),
+           py::arg("place"),
+           py::arg("gid") = 0,
+           py::arg("local_rank") = 0,
+           py::arg("local_size") = 1,
+           py::arg("gloo_rank") = 0,
+           py::arg("gloo_size") = 1,
+           py::arg("with_switch") = false,
+           py::arg("switch_endpoint") = "",
+           py::arg("src_rank") = "",
+           py::arg("dst_rank") = "",
+           py::call_guard<py::gil_scoped_release>());
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
   py::class_<distributed::ProcessGroupHCCL,
              std::shared_ptr<distributed::ProcessGroupHCCL>>(
       *m, "ProcessGroupHCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int,
-                    const platform::NPUPlace &, int>(),
-           py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::arg("place"), py::arg("group_id") = 0,
+      .def(py::init<const std::shared_ptr<distributed::Store> &,
+                    int,
+                    int,
+                    const platform::NPUPlace &,
+                    int>(),
+           py::arg("store"),
+           py::arg("rank"),
+           py::arg("world_size"),
+           py::arg("place"),
+           py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>());
 
 #endif
@@ -291,22 +394,29 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroup::Task,
              std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
       .def("is_completed", &distributed::ProcessGroup::Task::IsCompleted)
-      .def("wait", &distributed::ProcessGroup::Task::Wait,
+      .def("wait",
+           &distributed::ProcessGroup::Task::Wait,
            py::arg("timeout") = kWaitTimeout,
            py::call_guard<py::gil_scoped_release>())
-      .def("synchronize", &distributed::ProcessGroup::Task::Synchronize,
+      .def("synchronize",
+           &distributed::ProcessGroup::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_GLOO)
   py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
       *m, "ProcessGroupGloo", ProcessGroup)
-      .def(py::init<const std::shared_ptr<paddle::distributed::Store> &, int,
-                    int, const platform::CPUPlace &, int,
+      .def(py::init<const std::shared_ptr<paddle::distributed::Store> &,
+                    int,
+                    int,
+                    const platform::CPUPlace &,
+                    int,
                     std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
       .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
-                       int rank, int world_size,
-                       const platform::CPUPlace &place, int gid) {
+                       int rank,
+                       int world_size,
+                       const platform::CPUPlace &place,
+                       int gid) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
              if (ifname && strlen(ifname) > 1) {
@@ -315,11 +425,14 @@ void BindDistributed(py::module *m) {
              } else {
                opts->device = ProcessGroupGloo::createDefaultDevice();
              }
-             return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
-                                                       place, gid, opts);
+             return std::make_shared<ProcessGroupGloo>(
+                 store, rank, world_size, place, gid, opts);
            }),
-           py::arg("store"), py::arg("rank"), py::arg("world_size"),
-           py::arg("place"), py::arg("group_id") = 0,
+           py::arg("store"),
+           py::arg("rank"),
+           py::arg("world_size"),
+           py::arg("place"),
+           py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
@@ -327,21 +440,23 @@ void BindDistributed(py::module *m) {
 
   m->def(
       "eager_assign_group_by_size",
-      [](py::handle py_tensors, std::vector<bool> is_sparse_gradient,
+      [](py::handle py_tensors,
+         std::vector<bool> is_sparse_gradient,
          std::vector<size_t> group_size_limits,
          std::vector<int64_t> tensor_indices) {
         auto tensors = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
         return distributed::Eager_AssignGroupBySize(
             tensors, is_sparse_gradient, group_size_limits, tensor_indices);
       },
-      py::arg("tensors"), py::arg("is_sparse_gradient"),
+      py::arg("tensors"),
+      py::arg("is_sparse_gradient"),
       py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
       py::arg("tensor_indices") = std::vector<int64_t>{},
       py::call_guard<py::gil_scoped_release>());
 
   py::class_<distributed::EagerReducer,
-             std::shared_ptr<distributed::EagerReducer>>(*m, "EagerReducer",
-                                                         R"DOC()DOC")
+             std::shared_ptr<distributed::EagerReducer>>(
+      *m, "EagerReducer", R"DOC()DOC")
       .def(py::init(&CreateEagerReducer))
       .def(
           "prepare_for_backward",
@@ -349,7 +464,8 @@ void BindDistributed(py::module *m) {
             auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
             self.PrepareForBackward(params);
           },
-          py::arg("tensors"), py::call_guard<py::gil_scoped_release>());
+          py::arg("tensors"),
+          py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind

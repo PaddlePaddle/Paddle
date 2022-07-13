@@ -1157,15 +1157,14 @@ def read_file(filename, name=None):
             import cv2
             import paddle
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')            
 
             cv2.imwrite('fake.jpg', fake_img)
 
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
+            # [142915]
     """
 
     if _non_static_mode():
@@ -1253,7 +1252,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         boxes_num (Tensor): The number of boxes contained in each picture in the batch.
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
-        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their 
                                input scale to the scale used when pooling. Default: 1.0
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
@@ -1265,12 +1264,15 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
+          
             import paddle
             x = paddle.uniform([2, 490, 28, 28], dtype='float32')
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
             boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             pool_out = paddle.vision.ops.psroi_pool(x, boxes, boxes_num, 7, 1.0)
+            print(pool_out.shape)
+            # [3, 10, 7, 7]
     """
 
     check_type(output_size, 'output_size', (int, tuple, list), 'psroi_pool')
@@ -1316,7 +1318,7 @@ class PSRoIPool(Layer):
     Args:
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
-        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their 
                                input scale to the scale used when pooling. Default: 1.0.
 
     Shape:
@@ -1327,11 +1329,11 @@ class PSRoIPool(Layer):
               The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
 
     Returns:
-        None
+        None.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             
             psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
@@ -1339,7 +1341,7 @@ class PSRoIPool(Layer):
             boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
             boxes_num = paddle.to_tensor([1, 2], dtype='int32')
             pool_out = psroi_module(x, boxes, boxes_num)
-
+            print(pool_out.shape) # [3, 10, 7, 7]
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
@@ -1489,7 +1491,7 @@ def roi_align(x,
               aligned=True,
               name=None):
     """
-    This operator implements the roi_align layer.
+    Implementing the roi_align layer.
     Region of Interest (RoI) Align operator (also known as RoI Align) is to
     perform bilinear interpolation on inputs of nonuniform sizes to obtain
     fixed-size feature maps (e.g. 7*7), as described in Mask R-CNN.
@@ -1513,31 +1515,31 @@ def roi_align(x,
             the batch, the data type is int32.
         output_size (int or Tuple[int, int]): The pooled output size(h, w), data
             type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float32): Multiplicative spatial scale factor to translate
+        spatial_scale (float32, optional): Multiplicative spatial scale factor to translate
             ROI coords from their input scale to the scale used when pooling.
-            Default: 1.0
-        sampling_ratio (int32): number of sampling points in the interpolation
+            Default: 1.0.
+        sampling_ratio (int32, optional): number of sampling points in the interpolation
             grid used to compute the output value of each pooled output bin.
             If > 0, then exactly ``sampling_ratio x sampling_ratio`` sampling
             points per bin are used.
             If <= 0, then an adaptive number of grid points are used (computed
             as ``ceil(roi_width / output_width)``, and likewise for height).
-            Default: -1
-        aligned (bool): If False, use the legacy implementation. If True, pixel
+            Default: -1.
+        aligned (bool, optional): If False, use the legacy implementation. If True, pixel
             shift the box coordinates it by -0.5 for a better alignment with the
             two neighboring pixel indices. This version is used in Detectron2.
-            Default: True
+            Default: True.
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
             default.
 
     Returns:
-        Tensor: The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import roi_align
 
@@ -1608,12 +1610,12 @@ class RoIAlign(Layer):
             when pooling. Default: 1.0
 
     Returns:
-        align_out (Tensor): The output of ROIAlign operator is a 4-D tensor with
+        The output of ROIAlign operator is a 4-D tensor with
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
         ..  code-block:: python
-
+          :name: code-example1
             import paddle
             from paddle.vision.ops import RoIAlign
 

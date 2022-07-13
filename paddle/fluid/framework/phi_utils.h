@@ -66,7 +66,7 @@ struct ConvertToPhiContext {
 };
 
 template <>
-struct ConvertToPhiContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<phi::CPUContext> {
   using TYPE = phi::CPUContext;
 };
 

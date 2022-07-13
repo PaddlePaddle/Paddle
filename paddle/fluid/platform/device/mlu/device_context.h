@@ -134,6 +134,7 @@ class MLUDeviceContext : public DeviceContext {
   int compute_capability_;
   int driver_version_;
   int runtime_version_;
+  int cnnl_version_;
   MLUPlace place_;
   std::shared_ptr<MLUContext> default_ctx_;
 

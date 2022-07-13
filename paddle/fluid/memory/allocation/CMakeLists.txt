@@ -1,7 +1,7 @@
 cc_library(
   allocator
   SRCS allocator.cc
-  DEPS place stats)
+  DEPS place stats profiler)
 cc_library(
   cpu_allocator
   SRCS cpu_allocator.cc
@@ -21,7 +21,7 @@ cc_library(
 cc_library(
   naive_best_fit_allocator
   SRCS naive_best_fit_allocator.cc
-  DEPS allocator buddy_allocator profiler)
+  DEPS allocator buddy_allocator)
 cc_test(
   naive_best_fit_allocator_test
   SRCS naive_best_fit_allocator_test.cc

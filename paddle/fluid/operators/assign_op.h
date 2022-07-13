@@ -62,7 +62,8 @@ class AssignFunctor {
   template <typename T>
   void operator()(const T &v) const {
     PADDLE_ENFORCE_EQ(
-        true, false,
+        true,
+        false,
         platform::errors::PermissionDenied(
             "Not support type for assign op with type %s", typeid(T).name()));
   }
@@ -70,7 +71,7 @@ class AssignFunctor {
  private:
   void copy_tensor(const framework::LoDTensor &lod_tensor,
                    framework::LoDTensor *out) const {
-    if (lod_tensor.numel() == 0) return;
+    if (!lod_tensor.IsInitialized()) return;
     auto &out_tensor = *out;
     paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());

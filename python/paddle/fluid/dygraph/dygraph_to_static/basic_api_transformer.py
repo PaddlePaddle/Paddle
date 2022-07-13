@@ -17,9 +17,10 @@ from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 
 
-class BasicApiTransformer(gast.NodeTransformer):
+class BasicApiTransformer(BaseTransformer):
     """
     Class to transform basic API from dygraph to static graph.
     """
@@ -98,7 +99,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         return False
 
 
-class ToTensorTransformer(gast.NodeTransformer):
+class ToTensorTransformer(BaseTransformer):
     """
     Class to transform paddle.to_tensor and paddle.to_variable to paddle.assign
     """

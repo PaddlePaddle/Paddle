@@ -23,6 +23,7 @@ import subprocess
 import traceback
 import functools
 import pickle
+import tempfile
 from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
@@ -144,6 +145,11 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
 
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def _find_free_port(self):
 
         def __free_port():
@@ -183,8 +189,10 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+        path0 = os.path.join(self.temp_dir.name, "/tmp/tr0_err.log")
+        path1 = os.path.join(self.temp_dir.name, "/tmp/tr1_err.log")
+        tr0_pipe = open(path0, "wb")
+        tr1_pipe = open(path1, "wb")
         #print(tr0_cmd)
         tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
                                     stdout=subprocess.PIPE,

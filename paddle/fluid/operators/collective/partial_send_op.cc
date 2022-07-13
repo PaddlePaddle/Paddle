@@ -29,19 +29,23 @@ class PartialSendOp : public framework::OperatorWithKernel {
     int id = ctx->Attrs().Get<int>("id");
 
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for partial_send op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for partial_send op must be non-negative.",
             ring_id));
-    PADDLE_ENFORCE_GE(num, 1,
+    PADDLE_ENFORCE_GE(num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The num (%d) for partial_send op must >=1", num));
     PADDLE_ENFORCE_EQ(
-        (id >= 0 && id < num), true,
+        (id >= 0 && id < num),
+        true,
         platform::errors::InvalidArgument(
             "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
   }
@@ -91,10 +95,12 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(partial_send, ops::PartialSendOp,
+REGISTER_OP_WITHOUT_GRADIENT(partial_send,
+                             ops::PartialSendOp,
                              ops::PartialSendMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_send, ops::PartialSendOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(partial_send,
+                       ops::PartialSendOpCPUKernel<float>,
                        ops::PartialSendOpCPUKernel<double>,
                        ops::PartialSendOpCPUKernel<int>,
                        ops::PartialSendOpCPUKernel<int64_t>,
