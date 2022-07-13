@@ -2215,6 +2215,15 @@
     func : unstack
   backward : unstack_grad
 
+- api : unique_consecutive
+  args : (Tensor x, bool return_inverse, bool return_counts, int[] axis, int dtype)
+  output : Tensor(out), Tensor(index), Tensor(counts)
+  infer_meta :
+      func : UniqueConsecutiveInferMeta
+  kernel :
+    func : unique_consecutive
+    data_type : x
+
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)

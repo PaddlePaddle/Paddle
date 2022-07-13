@@ -154,6 +154,10 @@ class TestCommOpCost(unittest.TestCase):
                                   comm_context=comm_context)
         self.assertTrue(recv_op_cost.time > 0)
 
+        # Remove unnecessary files
+        if os.path.exists(cluster_json_path):
+            os.remove(cluster_json_path)
+
 
 if __name__ == "__main__":
     unittest.main()

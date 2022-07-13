@@ -54,11 +54,10 @@ add_custom_target(
   VERBATIM)
 
 set(tmp_python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/tmp_eager_final_state_op_function_impl.h"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc.tmp"
 )
 set(python_c_output_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function_impl.h"
-)
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/eager_final_state_op_function.cc")
 
 add_custom_target(
   eager_final_state_python_c_codegen

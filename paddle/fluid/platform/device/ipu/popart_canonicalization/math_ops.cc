@@ -114,14 +114,29 @@ Node *matmul_handler(Graph *graph, Node *node) {
   auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("transpose_X"));
   auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("transpose_Y"));
   auto alpha = BOOST_GET_CONST(float, op->GetAttr("alpha"));
-  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
-  auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
+  Node *x_node = GetInputVarNode("X", node);
+  Node *y_node = GetInputVarNode("Y", node);
+  int x_rank = x_node->Var()->GetShape().size();
+  int y_rank = y_node->Var()->GetShape().size();
 
-  int x_rank = x_shape.size();
-  std::vector<int64_t> perm;
-  if (x_rank == 1) {
-    perm = std::vector<int64_t>{0};
-  } else if (x_rank == 2) {
+  auto gen_perm = [](const int rank) -> std::vector<int64_t> {
+    std::vector<int64_t> perm;
+    if (rank == 1) {
+      perm = std::vector<int64_t>{0};
+    } else if (rank == 2) {
+      perm = std::vector<int64_t>{1, 0};
+    } else if (rank == 3) {
+      perm = std::vector<int64_t>{0, 2, 1};
+    } else if (rank == 4) {
+      perm = std::vector<int64_t>{0, 1, 3, 2};
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "op matmul with input rank == %d", rank));
+    }
+    return perm;
+  };
+
+  if (x_rank == 2) {
     if (!transpose_x && !transpose_y && is_float_equal(alpha, 1.0f)) {
       return CreateBaseOp(
           graph,
@@ -137,18 +152,10 @@ Node *matmul_handler(Graph *graph, Node *node) {
                       transpose_x,
                       transpose_y,
                       alpha);
-  } else if (x_rank == 3) {
-    perm = std::vector<int64_t>{0, 2, 1};
-  } else if (x_rank == 4) {
-    perm = std::vector<int64_t>{0, 1, 3, 2};
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "op matmul with input rank == %d", x_rank));
   }
 
-  Node *x_node = GetInputVarNode("X", node);
-  Node *y_node = GetInputVarNode("Y", node);
   if (transpose_x) {
+    auto perm = gen_perm(x_rank);
     x_node = CreateBaseOp(graph,
                           node,
                           "popart_transpose",
@@ -158,6 +165,7 @@ Node *matmul_handler(Graph *graph, Node *node) {
     x_node = x_node->outputs[0];
   }
   if (transpose_y) {
+    auto perm = gen_perm(y_rank);
     y_node = CreateBaseOp(graph,
                           node,
                           "popart_transpose",
@@ -209,7 +217,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       CreateCast(graph, node, {GetInputVarNode("X", node)}, {}, VarType::FP32);
 
   Node *result = nullptr;
-  if (!op->Input("ScaleTensor").empty()) {
+  if (op->InputArgumentNames().size() > 1) {
     auto scale = GetInputVarNode("ScaleTensor", node);
     if (is_float_equal(bias_, 0.0)) {
       result = CreateBaseOp(
@@ -321,183 +329,6 @@ Node *scale_handler(Graph *graph, Node *node) {
   return result_after_cast;
 }
 
-Node *cross_entropy2_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
-  auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  Node *new_cast = nullptr;
-  if (GetInputVarNode("Label", node)->Var()->GetDataType() == VarType::INT32) {
-    new_cast = GetInputVarNode("Label", node);
-  } else {
-    auto new_cast = CreateCast(
-        graph, node, {GetInputVarNode("Label", node)}, {}, VarType::INT32);
-    new_cast = new_cast->outputs[0];
-  }
-  auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
-  if (label_shape_[label_shape_.size() - 1] != 1) {
-    auto log = CreateBaseOp(
-        graph, node, "popart_log", {GetInputVarNode("X", node)}, {}, {});
-    return CreateBaseOp(
-        graph,
-        node,
-        "popart_nllloss_v2",
-        {log->outputs[0], new_cast},
-        {GetOutputVarNode("Y", node)},
-        {
-            {"reduction", 2},  // popart::ReductionType::NoReduction
-            {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", true},
-        });
-  } else {
-    std::vector<int64_t> new_shape_{label_shape_[0]};
-    auto const_before_loss = CreateBaseOp(
-        graph,
-        node,
-        "popart_constant",
-        {},
-        {},
-        {{"value", new_shape_},
-         {"dims",
-          std::vector<int64_t>{static_cast<int64_t>(new_shape_.size())}},
-         {"dtype", ONNXDataType::INT64}});
-
-    auto reshape_before_loss =
-        CreateBaseOp(graph,
-                     node,
-                     "popart_reshape",
-                     {new_cast, const_before_loss->outputs[0]},
-                     {},
-                     {});
-
-    auto log = CreateBaseOp(
-        graph, node, "popart_log", {GetInputVarNode("X", node)}, {}, {});
-    auto nllloss = CreateBaseOp(
-        graph,
-        node,
-        "popart_nllloss_v2",
-        {log->outputs[0], reshape_before_loss->outputs[0]},
-        {},
-        {
-            {"reduction", 2},  // popart::ReductionType::NoReduction
-            {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", true},
-        });
-
-    auto const_after_loss = CreateBaseOp(
-        graph,
-        node,
-        "popart_constant",
-        {},
-        {},
-        {{"value", label_shape_},
-         {"dims",
-          std::vector<int64_t>{static_cast<int64_t>(label_shape_.size())}},
-         {"dtype", ONNXDataType::INT64}});
-
-    auto reshape_after_loss =
-        CreateBaseOp(graph,
-                     node,
-                     "popart_reshape",
-                     {nllloss->outputs[0], const_after_loss->outputs[0]},
-                     {GetOutputVarNode("Y", node)},
-                     {});
-    return reshape_after_loss;
-  }
-}
-
-Node *softmax_with_cross_entropy_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
-  auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto soft_label = BOOST_GET_CONST(bool, op->GetAttr("soft_label"));
-  if (soft_label) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "soft_label is not supported yet in IPU"));
-  }
-  Node *new_cast = nullptr;
-  if (GetInputVarNode("Label", node)->Var()->GetDataType() == VarType::INT32) {
-    new_cast = GetInputVarNode("Label", node);
-  } else {
-    auto new_cast = CreateCast(
-        graph, node, {GetInputVarNode("Label", node)}, {}, VarType::INT32);
-    new_cast = new_cast->outputs[0];
-  }
-  auto softmax_node = CreateSoftmaxOpset11(
-      graph, node, {GetInputVarNode("Logits", node)}, {}, axis);
-
-  auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
-  if (label_shape_[label_shape_.size() - 1] != 1) {
-    auto log = CreateBaseOp(
-        graph, node, "popart_log", {softmax_node->outputs[0]}, {}, {});
-    // softmax_with_cross_entropy is split to several ops in python.
-    // reduction is not needed here.
-    return CreateBaseOp(
-        graph,
-        node,
-        "popart_nllloss_v2",
-        {log->outputs[0], new_cast},
-        {GetOutputVarNode("Loss", node)},
-        {
-            {"reduction", 2},  // popart::ReductionType::NoReduction
-            {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", true},
-        });
-  } else {
-    std::vector<int64_t> new_shape_{label_shape_[0]};
-    auto const_before_loss = CreateBaseOp(
-        graph,
-        node,
-        "popart_constant",
-        {},
-        {},
-        {{"value", new_shape_},
-         {"dims",
-          std::vector<int64_t>{static_cast<int64_t>(new_shape_.size())}},
-         {"dtype", ONNXDataType::INT64}});
-
-    auto reshape_before_loss =
-        CreateBaseOp(graph,
-                     node,
-                     "popart_reshape",
-                     {new_cast, const_before_loss->outputs[0]},
-                     {},
-                     {});
-
-    auto log = CreateBaseOp(
-        graph, node, "popart_log", {softmax_node->outputs[0]}, {}, {});
-    auto nllloss = CreateBaseOp(
-        graph,
-        node,
-        "popart_nllloss_v2",
-        {log->outputs[0], reshape_before_loss->outputs[0]},
-        {},
-        {
-            {"reduction", 2},  // popart::ReductionType::NoReduction
-            {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", true},
-        });
-
-    auto const_after_loss = CreateBaseOp(
-        graph,
-        node,
-        "popart_constant",
-        {},
-        {},
-        {{"value", label_shape_},
-         {"dims",
-          std::vector<int64_t>{static_cast<int64_t>(label_shape_.size())}},
-         {"dtype", ONNXDataType::INT64}});
-
-    auto reshape_after_loss =
-        CreateBaseOp(graph,
-                     node,
-                     "popart_reshape",
-                     {nllloss->outputs[0], const_after_loss->outputs[0]},
-                     {GetOutputVarNode("Loss", node)},
-                     {});
-    return reshape_after_loss;
-  }
-}
-
 Node *cumsum_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto exclusive = BOOST_GET_CONST(bool, op->GetAttr("exclusive"));
@@ -512,41 +343,63 @@ Node *cumsum_handler(Graph *graph, Node *node) {
                                {{"value", std::vector<int64_t>{axis}},
                                 {"dims", std::vector<int64_t>{1}},
                                 {"dtype", ONNXDataType::INT64}});
-  return CreateBaseOp(
+  Node *input_x = nullptr;
+  auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
+  bool need_cast = data_type_ != VarType::FP32;
+  std::vector<Node *> cumsum_out;
+  if (need_cast) {
+    auto cast_x = CreateCast(
+        graph, node, {GetInputVarNode("X", node)}, {}, VarType::FP32);
+    input_x = cast_x->outputs[0];
+  } else {
+    input_x = GetInputVarNode("X", node);
+    cumsum_out.emplace_back(GetOutputVarNode("Out", node));
+  }
+  auto cumsum_node = CreateBaseOp(
       graph,
       node,
       "popart_cumsum",
-      {GetInputVarNode("X", node), axis_node->outputs[0]},
-      {GetOutputVarNode("Out", node)},
+      {input_x, axis_node->outputs[0]},
+      cumsum_out,
       {{"exclusive", popart_exclusive}, {"reverse", popart_reverse}});
+  if (need_cast) {
+    cumsum_node = CreateCast(graph,
+                             node,
+                             cumsum_node->outputs,
+                             {GetOutputVarNode("Out", node)},
+                             data_type_);
+  }
+  return cumsum_node;
 }
 
 Node *matmul_v2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("trans_x"));
   auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("trans_y"));
-  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
-  auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
-
-  std::vector<int64_t> perm;
-  int x_rank = x_shape.size();
-  if (x_rank == 1) {
-    perm = std::vector<int64_t>{0};
-  } else if (x_rank == 2) {
-    perm = std::vector<int64_t>{1, 0};
-  } else if (x_rank == 3) {
-    perm = std::vector<int64_t>{0, 2, 1};
-  } else if (x_rank == 4) {
-    perm = std::vector<int64_t>{0, 1, 3, 2};
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "op matmul with input rank == %d", x_rank));
-  }
-
   Node *x_node = GetInputVarNode("X", node);
   Node *y_node = GetInputVarNode("Y", node);
+  int x_rank = x_node->Var()->GetShape().size();
+  int y_rank = y_node->Var()->GetShape().size();
+
+  auto gen_perm = [](const int rank) -> std::vector<int64_t> {
+    std::vector<int64_t> perm;
+    if (rank == 1) {
+      perm = std::vector<int64_t>{0};
+    } else if (rank == 2) {
+      perm = std::vector<int64_t>{1, 0};
+    } else if (rank == 3) {
+      perm = std::vector<int64_t>{0, 2, 1};
+    } else if (rank == 4) {
+      perm = std::vector<int64_t>{0, 1, 3, 2};
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "op matmul with input rank == %d", rank));
+    }
+    return perm;
+  };
 
   if (transpose_x) {
+    auto perm = gen_perm(x_rank);
     x_node = CreateBaseOp(graph,
                           node,
                           "popart_transpose",
@@ -556,6 +409,7 @@ Node *matmul_v2_handler(Graph *graph, Node *node) {
     x_node = x_node->outputs[0];
   }
   if (transpose_y) {
+    auto perm = gen_perm(y_rank);
     y_node = CreateBaseOp(graph,
                           node,
                           "popart_transpose",
@@ -611,9 +465,6 @@ REGISTER_HANDLER(matmul, matmul_handler);
 REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
 REGISTER_HANDLER(scale, scale_handler);
-REGISTER_HANDLER(softmax_with_cross_entropy,
-                 softmax_with_cross_entropy_handler);
-REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 REGISTER_HANDLER(cumsum, cumsum_handler);
 REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
 REGISTER_HANDLER(bmm, bmm_handler);

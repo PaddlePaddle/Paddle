@@ -55,9 +55,20 @@ Node *MakeOpNode(Graph *graph,
   op_desc->SetType(type);
   auto op = graph->CreateOpNode(op_desc.get());
 
+  // inputs
+  std::vector<std::string> input_names;
   for (auto *in : inputs) {
-    ConnectNodes(in, op);
+    if (in != nullptr) {
+      ConnectNodes(in, op);
+      input_names.push_back(in->Name());
+    } else {
+      input_names.push_back(std::string(""));
+    }
   }
+  op->Op()->SetInput("__inputs__", input_names);
+
+  // outputs
+  std::vector<std::string> output_names;
   if (outputs.empty()) {
     auto var = MakeVarNode(graph, node);
     ConnectNodes(op, var);
@@ -66,14 +77,6 @@ Node *MakeOpNode(Graph *graph,
       ConnectNodes(op, out);
     }
   }
-
-  // i/o
-  std::vector<std::string> input_names;
-  for (auto node : op->inputs) {
-    input_names.push_back(node->Name());
-  }
-  op->Op()->SetInput("__inputs__", input_names);
-  std::vector<std::string> output_names;
   for (auto node : op->outputs) {
     output_names.push_back(node->Name());
   }
@@ -136,6 +139,19 @@ Node *CreateCast(Graph *graph,
   auto to = VarType2PopartStr(otype);
   return CreateBaseOp(
       graph, node, "popart_cast", inputs, outputs, {{"to", to}});
+}
+
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction) {
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_identity_loss",
+                      inputs,
+                      outputs,
+                      {{"reduction", reduction}});
 }
 
 Node *CreateGemm(Graph *graph,
