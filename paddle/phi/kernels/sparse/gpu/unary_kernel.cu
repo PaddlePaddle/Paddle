@@ -67,6 +67,7 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CooKernel,               \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO); \
@@ -76,6 +77,7 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CsrKernel,               \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
@@ -119,6 +121,7 @@ PD_REGISTER_KERNEL(cast_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCooKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
@@ -132,6 +135,7 @@ PD_REGISTER_KERNEL(cast_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCsrKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
