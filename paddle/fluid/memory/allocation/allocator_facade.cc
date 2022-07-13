@@ -1080,11 +1080,11 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined PADDLE_WITH_XPU
+#elif defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_ASCEND_CL)
   return GetAllocator(place)->Allocate(size);
 #else
-  PADDLE_THROW(
-      platform::errors::PreconditionNotMet("Not compiled with GPU or XPU."));
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "Not compiled with GPU or XPU or NPU."));
 #endif
 }
 

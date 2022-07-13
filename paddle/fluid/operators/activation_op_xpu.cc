@@ -158,15 +158,6 @@ struct XPUReciprocalGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct XPUReluFunctor : public BaseActivationFunctor<T> {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  void operator()(const framework::ExecutionContext &ctx) const {
-    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
-        ctx, xpu::relu<XPUType>);
-  }
-};
-
-template <typename T>
 struct XPUReluGradFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -413,6 +404,24 @@ struct XPUPowGradFunctor : public BaseActivationFunctor<T> {
     int r = xpu::pow_grad(
         xpu_context, x_data, y_grad, x_grad, x->numel(), pow_factor);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_grad");
+  }
+};
+
+template <typename T>
+struct XPUReluFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    const XPUType *x_data = reinterpret_cast<const XPUType *>(x->data<T>());
+    XPUType *y_data =
+        reinterpret_cast<XPUType *>(y->mutable_data<T>(ctx.GetPlace()));
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r =
+        xpu::relu(xpu_context, x_data, y_data, x->numel(), nullptr, nullptr);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu");
   }
 };
 

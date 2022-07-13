@@ -69,7 +69,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             elif self.dtype == np.bool_:
                 return
@@ -147,7 +147,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return
@@ -217,7 +217,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            if self.dtype in [np.float32, np.float64]:
+            if self.dtype in [np.float32, np.float64, np.float16]:
                 self.check_grad_with_place(place, ['X'], 'Out')
             else:
                 return

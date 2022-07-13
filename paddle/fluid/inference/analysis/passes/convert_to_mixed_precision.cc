@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -379,27 +380,21 @@ void ConvertToMixedPrecision(const std::string& model_file,
   };
 
   std::unordered_set<std::string> weights_should_be_fp32;
-  for (auto* node : paddle::framework::ir::TopologySortOperations(*graph)) {
-    if (!node->IsOp()) continue;
-    auto* op_desc = node->Op();
-    if (op_desc->Type() == "feed" || op_desc->Type() == "fetch") continue;
-
-    if (op_desc->Type() == "batch_norm") {
-      auto vecs = op_desc->Input("Bias");
-      for (auto s : vecs) {
-        weights_should_be_fp32.insert(s);
-      }
-      vecs = op_desc->Input("Mean");
-      for (auto s : vecs) {
-        weights_should_be_fp32.insert(s);
-      }
-      vecs = op_desc->Input("Scale");
-      for (auto s : vecs) {
-        weights_should_be_fp32.insert(s);
-      }
-      vecs = op_desc->Input("Variance");
-      for (auto s : vecs) {
-        weights_should_be_fp32.insert(s);
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsVar()) continue;
+    if (node->Var()->GetType() ==
+            paddle::framework::proto::VarType::SELECTED_ROWS ||
+        node->Var()->GetType() ==
+            paddle::framework::proto::VarType::LOD_TENSOR ||
+        node->Var()->GetType() ==
+            paddle::framework::proto::VarType::LOD_TENSOR_ARRAY ||
+        node->Var()->GetType() == paddle::framework::proto::VarType::STRINGS ||
+        node->Var()->GetType() == paddle::framework::proto::VarType::VOCAB) {
+      if (node->Var()->Persistable() &&
+          node->Var()->GetDataType() ==
+              paddle::framework::proto::VarType::FP32) {
+        VLOG(2) << "weights keep to fp32: " << node->Name();
+        weights_should_be_fp32.insert(node->Name());
       }
     }
   }
