@@ -30,6 +30,7 @@ from .unary import abs
 from .unary import pow
 from .unary import cast
 from .unary import neg
+from .unary import coalesce
 
 from .binary import mv
 from .binary import matmul
@@ -66,4 +67,5 @@ __all__ = [
     'subtract',
     'multiply',
     'divide',
+    'coalesce',
 ]

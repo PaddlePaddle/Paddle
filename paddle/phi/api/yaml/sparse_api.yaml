@@ -266,6 +266,13 @@
     layout : x
   backward : values_grad
 
+- api: coalesce
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func: coalesce{sparse_coo -> sparse_coo}
+    layout : x
+
 - api: full_like
   args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
