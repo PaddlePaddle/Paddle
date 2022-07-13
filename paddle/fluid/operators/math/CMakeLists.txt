@@ -54,7 +54,6 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
-math_library(matrix_solve)
 
 cc_test(
   selected_rows_functor_test
