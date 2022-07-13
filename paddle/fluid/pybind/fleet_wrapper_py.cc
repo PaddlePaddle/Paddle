@@ -41,7 +41,8 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 void BindFleetWrapper(py::module* m) {
-  py::class_<framework::FleetWrapper, std::shared_ptr<framework::FleetWrapper>>(*m, "Fleet")
+  py::class_<framework::FleetWrapper, std::shared_ptr<framework::FleetWrapper>>(
+      *m, "Fleet")
       .def(py::init([](){ return framework::FleetWrapper::GetInstance(); }))
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
