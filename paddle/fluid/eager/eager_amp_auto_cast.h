@@ -85,7 +85,12 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
-    return cast_final_state_dygraph_function(input, dst_dtype);
+    if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
+      return sparse::cast_final_state_dygraph_function(
+          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+    } else {
+      return cast_final_state_dygraph_function(input, dst_dtype);
+    }
   }
   return input;
 }
