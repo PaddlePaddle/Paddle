@@ -1454,7 +1454,7 @@ class Executor(object):
                                                      for_test=True)
                         inner_program = ir_graph.to_program()
                     else:
-                        from ..incubate.autograd import prim_enabled, prim2orig
+                        from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
                             prim2orig()
 
