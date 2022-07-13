@@ -1198,6 +1198,7 @@ struct OperatorWithKernel::CacheImpl {
     size_t inputs_size = kernel_ctx_->InputsSize();
     for (size_t i = 0; i < inputs_size; i++) {
       const std::string& in_name = infer_shape_ctx_->GetInputNameByIdx(i);
+      if (!infer_shape_ctx_->HasInput(in_name)) continue;
       if (!inputs_dim_caches.count(in_name) ||
           infer_shape_ctx_->GetInputDim(in_name) !=
               inputs_dim_caches[in_name]) {
