@@ -14,23 +14,23 @@
 
 #pragma once
 
-#include <ostream>
-#include <string>
-
-#include "paddle/phi/common/place.h"
-
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace jit {
 
-using Variable = paddle::framework::Variable;
+using Tensor = paddle::experimental::Tensor;
+using DenseTensor = phi::DenseTensor;
+
 class BaseFunction {
  public:
-  virtual std::vector<Variable> operator()(
-      const std::vector<Variable> &inputs) = 0;
+  virtual std::vector<DenseTensor> operator()(
+      const std::vector<DenseTensor> &inputs) = 0;
+
+  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
+
   virtual ~BaseFunction() {}
-  // virtual void SetPalce(const phi::Place &place);
 };
 
 }  // namespace jit

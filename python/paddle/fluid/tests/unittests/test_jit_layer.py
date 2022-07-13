@@ -22,7 +22,7 @@ from paddle.fluid.framework import _enable_legacy_dygraph
 from paddle.jit.layer import Layer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
-_enable_legacy_dygraph()
+# _enable_legacy_dygraph()
 paddle.seed(1)
 
 
@@ -72,6 +72,7 @@ class TestMultiLoad(unittest.TestCase):
         jit_layer.load(model_path, place)
         forward_out2 = jit_layer.forward(x)
         infer_out2 = jit_layer.infer(x)
+        print(forward_out2, infer_out2)
         self.assertEqual(np.allclose(forward_out1, forward_out2[0]), True)
         self.assertEqual(np.allclose(infer_out1, infer_out2[0]), True)
 
