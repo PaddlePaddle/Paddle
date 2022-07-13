@@ -272,7 +272,7 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
     const nvinfer1::PluginTensorDesc* output_desc,
     const void* const* inputs,
     void* const* outputs,
-    void* workspace,
+    void* workspace_ptr,
     cudaStream_t stream,
     int device_id,
     T max_value) {
@@ -300,21 +300,23 @@ int FusedTokenPrunePluginDynamic::enqueueImpl(
   int grid = operators::CeilDivide(total, block);
 
   // Workspace for intermediate variable
-  T* attn_tmp_data = static_cast<T*>(workspace);
+  char* workspace = static_cast<char*>(workspace_ptr);
+  T* attn_tmp_data = reinterpret_cast<T*>(workspace);
   size_t offset = total * sizeof(T);
-  T* attn_accu_data = static_cast<T*>(workspace + offset);
+  T* attn_accu_data = reinterpret_cast<T*>(workspace + offset);
   offset += bsz * max_seq_len * sizeof(T);
-  int32_t* attn_accu_indices_data = static_cast<int32_t*>(workspace + offset);
+  int32_t* attn_accu_indices_data =
+      reinterpret_cast<int32_t*>(workspace + offset);
   offset += bsz * max_seq_len * sizeof(int32_t);
-  T* sort_attn_accu_data = static_cast<T*>(workspace + offset);
+  T* sort_attn_accu_data = reinterpret_cast<T*>(workspace + offset);
   offset += bsz * max_seq_len * sizeof(T);
   int32_t* sort_attn_accu_indices_data =
-      static_cast<int32_t*>(workspace + offset);
+      reinterpret_cast<int32_t*>(workspace + offset);
   offset += bsz * max_seq_len * sizeof(int32_t);
-  int* offsets_data = static_cast<int*>(workspace + offset);
+  int* offsets_data = reinterpret_cast<int*>(workspace + offset);
   offset += (bsz + 1) * sizeof(int);
   int32_t* slimmed_sort_attn_accu_indices_data =
-      static_cast<int32_t*>(workspace + offset);
+      reinterpret_cast<int32_t*>(workspace + offset);
 
   // 1. Filter attn by mask
   ElementwiseMask<T>
