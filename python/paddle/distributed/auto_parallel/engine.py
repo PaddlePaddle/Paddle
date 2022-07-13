@@ -85,6 +85,11 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
         self._dygraph_mode = False
 
     def prepare(self,
@@ -101,6 +106,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -116,22 +122,23 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
+        self._prepare_single_mode("train")
 
-        # Build program and do auto parallel process
-        for mode in self._modes:
-            # Build forward program
-            self._build(mode)
+    def _prepare_single_mode(self, mode):
+        self._modes = [mode]
+        self._build(self._modes[0])
+        # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
         for mode in self._modes:
             # Do the parallel process
-            self._parallel(mode, all_ranks)
+            self._parallel(mode, self._all_ranks)
+
             # Init comm and startup program
             self._initialize(mode)
+            self._mode_init_states[mode] = True
 
     def _build(self, mode):
 
@@ -432,6 +439,12 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
@@ -467,6 +480,9 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
@@ -509,6 +525,9 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
