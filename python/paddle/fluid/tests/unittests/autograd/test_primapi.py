@@ -48,7 +48,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
 
     def test_forward_grad_without_program_guard(self):
 
-        def with_param_guard():
+        def with_program_guard():
             paddle.incubate.autograd.enable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
@@ -66,7 +66,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
             paddle.incubate.autograd.disable_prim()
             return out
 
-        def without_param_guard():
+        def without_program_guard():
             paddle.incubate.autograd.enable_prim()
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v, stop_gradient=False)
@@ -82,8 +82,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
             paddle.incubate.autograd.disable_prim()
             return out
 
-        expected = with_param_guard()
-        actual = without_param_guard()
+        expected = with_program_guard()
+        actual = without_program_guard()
         self.assertEqual(type(actual), type(expected))
         np.testing.assert_allclose(np.concatenate(actual),
                                    np.concatenate(expected),
@@ -92,7 +92,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
 
     def test_grad_without_program_guard(self):
 
-        def with_param_guard():
+        def with_program_guard():
             paddle.incubate.autograd.enable_prim()
             sp = paddle.static.Program()
             mp = paddle.static.Program()
@@ -109,7 +109,7 @@ class TestWithoutProgramGuard(unittest.TestCase):
             paddle.incubate.autograd.disable_prim()
             return out
 
-        def without_param_guard():
+        def without_program_guard():
             paddle.incubate.autograd.enable_prim()
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
                 self.xs, self.v, stop_gradient=False)
@@ -124,8 +124,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
             paddle.incubate.autograd.disable_prim()
             return out
 
-        expected = with_param_guard()
-        actual = without_param_guard()
+        expected = with_program_guard()
+        actual = without_program_guard()
         for i, j in zip(actual, expected):
             self.assertEqual(type(i), type(j))
             np.testing.assert_allclose(np.concatenate(i),
