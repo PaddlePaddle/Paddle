@@ -175,38 +175,59 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
         model_base = Model(None)
 
         optimizer = paddle.optimizer.Adam(learning_rate=0.01,
-                                          parameters=model.parameters())
+                                          parameters=model.parameters(),
+                                          multi_precision=True)
         optimizer_base = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=model_base.parameters())
 
+        scaler = paddle.amp.GradScaler(init_loss_scaling=4096)
+        scaler = fleet.distributed_scaler(scaler)
+        model = paddle.amp.decorate(models=model,
+                                    level='O2',
+                                    save_dtype='float32')
+
+        # scaler_base = paddle.amp.GradScaler(init_loss_scaling=4096)
+        # model_base = paddle.amp.decorate(models=model_base,
+        #                             level='O2',
+        #                             save_dtype='float32')
+
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
+
         loss_hybrid_arr = []
         loss_base_arr = []
-
         x = paddle.to_tensor(np.random.random((16, 32))).astype("float32")
         y = paddle.to_tensor(np.random.random((16, 32))).astype("float32")
 
-        for _ in range(5):
+        for _ in range(2):
             if pp_degree > 1:
-                loss = model.train_batch([x, y], optimizer=optimizer)
+                with paddle.amp.auto_cast(True, level='O2'):
+                    loss = model.train_batch([x, y],
+                                             optimizer=optimizer,
+                                             scaler=scaler)
             else:
-                output = model(x)
-                loss = crit(output, y)
-                loss.backward()
-                optimizer.step()
+                with paddle.amp.auto_cast(True, level='O2'):
+                    output = model(x)
+                    loss = crit(output, y)
+                scaler.scale(loss).backward()
+                scaler.minimize(optimizer, loss)
                 optimizer.clear_grad()
 
             # baseline loss
-            output_base = model_base(x)
-            loss_base = crit(output_base, y)
+            with paddle.amp.auto_cast(True, level='O2'):
+                output_base = model_base(x)
+                loss_base = crit(output_base, y)
             loss_base.backward()
+            # scaler_base.scale(loss_base).backward()
+            # scaler_base.minimize(optimizer_base, loss_base)
             optimizer_base.step()
             optimizer_base.clear_grad()
 
             loss_base_arr.append(loss_base.numpy())
             loss_hybrid_arr.append(loss)
-        assert np.allclose(loss_base_arr, loss_hybrid_arr, rtol=1e-5, atol=1e-5)
+        print("base arr: ", loss_base_arr, file=sys.stderr)
+        print("fp arr: ", loss_hybrid_arr, file=sys.stderr)
+        assert np.allclose(loss_base_arr, loss_hybrid_arr, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":

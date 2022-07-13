@@ -39,6 +39,8 @@ from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_mai
 from paddle import nn
 import numpy as np
 
+from paddle.distributed.fleet.utils import recompute
+
 
 def weight_init(mp, shape, col=True, seed=1024):
     np.random.seed(seed)
@@ -66,43 +68,61 @@ class Criterion(nn.Layer):
         return loss
 
 
+class RecomputeMatmulBlock(nn.Layer):
+
+    def __init__(self, mp, seed, m, n, k):
+        super(RecomputeMatmulBlock, self).__init__()
+        self.mp = mp
+        if mp is not None and mp.nranks > 1:
+            mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
+                m,
+                n,
+                weight_attr=weight_init(mp, (m, n), True, seed),
+                has_bias=True,
+                gather_output=False)
+            mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
+                n,
+                k,
+                weight_attr=weight_init(mp, (n, k), False, seed + 1),
+                has_bias=True,
+                input_is_parallel=True)
+        else:
+            mp_linear_1 = nn.Linear(m,
+                                    n,
+                                    weight_attr=weight_init(
+                                        None, (m, n), True, seed))
+            mp_linear_2 = nn.Linear(n,
+                                    k,
+                                    weight_attr=weight_init(
+                                        None, (n, k), True, seed + 1))
+        self.layers = nn.Sequential(mp_linear_1, mp_linear_2)
+
+    def forward(self, x):
+        if self.mp:
+            return recompute(self.layers, x)
+        else:
+            return self.layers(x)
+
+
+RecomputeBlock = RecomputeMatmulBlock
+
+
 class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
     def __init__(self, hcg):
         paddle.seed(1024)
-        dp_linear = nn.Linear(32, 128)
+        dp_linear = nn.Linear(32, 64)
         self.layers_pp = []
         self.topology = hcg.topology()
         self.layers_pp.append(dp_linear)
         mp = hcg.get_model_parallel_group()
         for i in range(6):
-            if mp is not None and mp.nranks > 1:
-                mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
-                    128,
-                    512,
-                    weight_attr=weight_init(mp, (128, 512), True, 1204 + i),
-                    has_bias=True,
-                    gather_output=False)
-                mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
-                    512,
-                    128,
-                    weight_attr=weight_init(mp, (512, 128), False, 2012 + i),
-                    has_bias=True,
-                    input_is_parallel=True)
-            else:
-                mp_linear_1 = nn.Linear(128,
-                                        512,
-                                        weight_attr=weight_init(
-                                            None, (128, 512), True, 1204 + i))
-                mp_linear_2 = nn.Linear(512,
-                                        128,
-                                        weight_attr=weight_init(
-                                            None, (512, 128), True, 2012 + i))
+            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64)
             act = nn.ReLU6()
-            layer_seq = nn.Sequential(mp_linear_1, mp_linear_2, act)
+            layer_seq = nn.Sequential(mp_layer, act)
             self.layers_pp.append(layer_seq)
 
-        out = nn.Linear(128, 32)
+        out = nn.Linear(64, 32)
         self.layers_pp.append(out)
         super(ModelPipeline, self).__init__(layers=self.layers_pp,
                                             loss_fn=Criterion(),
@@ -114,38 +134,17 @@ class Model(nn.Layer):
     def __init__(self, hcg):
         super(Model, self).__init__()
         paddle.seed(1024)
-        dp_linear = nn.Linear(32, 128)
+        dp_linear = nn.Linear(32, 64)
         self.layers_pp = []
         self.layers_pp.append(dp_linear)
         mp = hcg.get_model_parallel_group() if hcg else None
         for i in range(6):
-            if mp is not None and mp.nranks > 1:
-                mp_linear_1 = fleet.meta_parallel.ColumnParallelLinear(
-                    128,
-                    512,
-                    weight_attr=weight_init(mp, (128, 512), True, 1204 + i),
-                    has_bias=True,
-                    gather_output=False)
-                mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
-                    512,
-                    128,
-                    weight_attr=weight_init(mp, (512, 128), False, 2012 + i),
-                    has_bias=True,
-                    input_is_parallel=True)
-            else:
-                mp_linear_1 = nn.Linear(128,
-                                        512,
-                                        weight_attr=weight_init(
-                                            None, (128, 512), True, 1204 + i))
-                mp_linear_2 = nn.Linear(512,
-                                        128,
-                                        weight_attr=weight_init(
-                                            None, (512, 128), True, 2012 + i))
+            mp_layer = RecomputeBlock(mp, 1024 + i, 64, 128, 64)
             act = nn.ReLU6()
-            layer_seq = nn.Sequential(mp_linear_1, mp_linear_2, act)
+            layer_seq = nn.Sequential(mp_layer, act)
             self.layers_pp.append(layer_seq)
 
-        out = nn.Linear(128, 32)
+        out = nn.Linear(64, 32)
         self.layers_pp.append(out)
         self.layers = nn.Sequential(*self.layers_pp)
 
@@ -153,7 +152,7 @@ class Model(nn.Layer):
         return self.layers(x)
 
 
-class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
+class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
 
     def __init__(self):
         pass
@@ -210,4 +209,4 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestDygrapgHybridDPPPMP, "dpppmp")
+    runtime_main(TestDygrapgHybridRecompute, "dpppmp")
