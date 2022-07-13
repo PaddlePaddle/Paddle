@@ -1341,17 +1341,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
+
       // The case when x_shape.size() == 1 is dealt with in common case
       if (!with_dynamic_shape && (!y_var_desc->Persistable()) &&
           y_shape.size() == 1) {
-        VLOG(3) << "Static shape in trt not support y is  a 1D intermediate tensor in "
+        VLOG(3) << "Static shape in trt not support y is  a 1D intermediate "
+                   "tensor in "
                    "elementwise op.";
         return false;
       }
       if (x_var_desc->Persistable() && !with_dynamic_shape) {
-        VLOG(3) << "Input X is a parameter which is not supported for "
-                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                   "y will work";
+        VLOG(3)
+            << "Input X is a parameter which is not supported for "
+               "elementwise in tensorrt's static shape, swap x and y will work";
         return false;
       }
     }

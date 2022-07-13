@@ -25,6 +25,8 @@ from paddle.fluid import compiler, Program, program_guard
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
+paddle.enable_static()
+
 
 # Situation 1: shape is a list(without tensor)
 class TestExpandV2OpRank1(OpTest):
@@ -304,5 +306,4 @@ class TestExpandV2DygraphAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

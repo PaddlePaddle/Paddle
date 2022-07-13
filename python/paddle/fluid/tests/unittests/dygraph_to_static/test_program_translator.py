@@ -66,6 +66,9 @@ def get_source_code(func):
 class StaticCode1():
 
     def dyfunc_with_if_else(x_v, label=None):
+        loss = _jst.UndefinedVar('loss')
+        __return_1 = _jst.UndefinedVar('__return_1')
+        __return_0 = _jst.UndefinedVar('__return_0')
         __return_value_0 = None
 
         def get_args_0():
@@ -89,9 +92,6 @@ class StaticCode1():
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5, true_fn_0, false_fn_0, get_args_0,
             set_args_0, ('x_v', ))
-        __return_0 = _jst.UndefinedVar('__return_0')
-        __return_1 = _jst.UndefinedVar('__return_1')
-        loss = _jst.UndefinedVar('loss')
 
         def get_args_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
@@ -123,6 +123,9 @@ class StaticCode1():
 class StaticCode2():
     # TODO: Transform return statement
     def dyfunc_with_if_else(x_v, label=None):
+        loss = _jst.UndefinedVar('loss')
+        __return_3 = _jst.UndefinedVar('__return_3')
+        __return_2 = _jst.UndefinedVar('__return_2')
         __return_value_1 = None
 
         def get_args_2():
@@ -146,9 +149,6 @@ class StaticCode2():
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5, true_fn_2, false_fn_2, get_args_2,
             set_args_2, ('x_v', ))
-        __return_2 = _jst.UndefinedVar('__return_2')
-        __return_3 = _jst.UndefinedVar('__return_3')
-        loss = _jst.UndefinedVar('loss')
 
         def get_args_3():
             nonlocal __return_2, __return_3, __return_value_1, loss

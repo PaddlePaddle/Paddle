@@ -14,59 +14,84 @@
 
 from __future__ import print_function
 
-import numpy as np
-import unittest
-import sys
-import paddle
-import paddle.fluid as fluid
-from paddle.jit import to_static
-from paddle.utils.cpp_extension import load
-from paddle.optimizer.lr import LRScheduler
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
 import tempfile
+import unittest
+
+import numpy as np
+import paddle
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.jit import to_static
+from paddle.optimizer.lr import LRScheduler
+from functools import partial
 
 SEED = 2022
 
 
 class SimpleLayer(paddle.nn.Layer):
 
-    def __init__(self, use_ipu=False):
+    def __init__(self,
+                 loss_op=None,
+                 use_softmax=True,
+                 use_reduction=True,
+                 use_identity_loss=True):
         super(SimpleLayer, self).__init__()
-        self.use_ipu = use_ipu
+        self.loss_op = loss_op
         self.conv = paddle.nn.Conv2D(in_channels=3,
                                      out_channels=1,
                                      kernel_size=2,
                                      stride=1)
+        self.use_softmax = use_softmax
+        self.use_reduction = use_reduction
+        self.use_identity_loss = use_identity_loss
 
     @to_static()
     def forward(self, x, target=None):
         x = self.conv(x)
         x = paddle.fluid.layers.flatten(x, axis=1)
         if target is not None:
-            x = paddle.fluid.layers.softmax(x)
-            loss = paddle.fluid.layers.cross_entropy(x, target)
-            if self.use_ipu:
-                loss = paddle.incubate.identity_loss(loss, 1)
+            if self.use_softmax:
+                x = paddle.fluid.layers.softmax(x)
+            if self.loss_op:
+                loss = self.loss_op(x, target)
             else:
+                loss = paddle.fluid.layers.cross_entropy(x, target)
+            if self.use_reduction:
                 loss = paddle.mean(loss)
+            if self.use_identity_loss:
+                loss = paddle.incubate.identity_loss(loss, 1)
             return x, loss
         return x
 
 
-class TestBase(unittest.TestCase):
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestBase(IPUOpTest):
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         paddle.disable_static()
+        self.set_op_attrs()
+        self.set_data_feed()
+
+    def set_op_attrs(self):
+        self.loss_op = paddle.fluid.layers.cross_entropy
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[32], dtype='int64')
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=True,
+                           use_reduction=not use_ipu,
+                           use_identity_loss=use_ipu)
 
     def _test(self, use_ipu=False):
         paddle.seed(SEED)
         np.random.seed(SEED)
-        model = SimpleLayer(use_ipu)
+        model = self.create_model(use_ipu)
         optim = paddle.optimizer.Adam(learning_rate=0.01,
                                       parameters=model.parameters())
-        data = paddle.uniform((32, 3, 10, 10), dtype='float32')
-        label = paddle.randint(0, 10, shape=[32], dtype='int64')
 
         if use_ipu:
             device = paddle.set_device('ipu')
@@ -80,7 +105,7 @@ class TestBase(unittest.TestCase):
         result = []
         for epoch in range(100):
             # ipu only needs call model() to do forward/backward/grad_update
-            pred, loss = model(data, label)
+            pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
@@ -104,7 +129,6 @@ class TestSaveLoad(TestBase):
 
     @classmethod
     def setUpClass(cls):
-        paddle.disable_static()
         cls.save_path = tempfile.TemporaryDirectory()
 
     @classmethod
@@ -114,11 +138,9 @@ class TestSaveLoad(TestBase):
     def _test(self, use_ipu=False):
         paddle.seed(SEED)
         np.random.seed(SEED)
-        model = SimpleLayer(use_ipu)
+        model = self.create_model(use_ipu)
         optim = paddle.optimizer.Adam(learning_rate=0.01,
                                       parameters=model.parameters())
-        data = paddle.uniform((32, 3, 10, 10), dtype='float32')
-        label = paddle.randint(0, 10, shape=[32], dtype='int64')
         model_path = '{}/model_state_dict_{}.pdparams'.format(
             self.save_path, 'ipu' if use_ipu else 'cpu')
         optim_path = '{}/optim_state_dict_{}.pdopt'.format(
@@ -136,7 +158,7 @@ class TestSaveLoad(TestBase):
         result = []
         for epoch in range(100):
             # ipu only needs call model() to do forward/backward/grad_update
-            pred, loss = model(data, label)
+            pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
@@ -155,7 +177,7 @@ class TestSaveLoad(TestBase):
 
         for epoch in range(100):
             # ipu only needs call model() to do forward/backward/grad_update
-            pred, loss = model(data, label)
+            pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
@@ -169,10 +191,11 @@ class TestSaveLoad(TestBase):
         return np.array(result)
 
 
-class TestPatch(unittest.TestCase):
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestPatch(IPUOpTest):
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(cls):
         paddle.disable_static()
 
     def test(self, use_ipu=False):
@@ -187,6 +210,47 @@ class TestPatch(unittest.TestCase):
 
         self.assertTrue(reset_getter is old_getter)
         self.assertTrue(reset_step is old_step)
+
+
+class TestWithoutIdentityLoss1(TestBase):
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=True,
+                           use_reduction=True,
+                           use_identity_loss=False)
+
+
+class TestWithoutIdentityLoss2(TestBase):
+
+    def set_op_attrs(self):
+        self.loss_op = paddle.fluid.layers.softmax_with_cross_entropy
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[32, 1], dtype='int64')
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=False,
+                           use_reduction=True,
+                           use_identity_loss=False)
+
+
+class TestWithoutIdentityLoss3(TestBase):
+
+    def set_op_attrs(self):
+        self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
+        self.label = paddle.rand(shape=[32, 81], dtype='float32')
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=True,
+                           use_reduction=True,
+                           use_identity_loss=False)
 
 
 if __name__ == "__main__":

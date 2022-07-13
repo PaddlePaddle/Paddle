@@ -14,16 +14,12 @@
 
 from __future__ import print_function
 
-import numpy as np
-import unittest
-import sys
-import os
-import paddle
-import paddle.fluid as fluid
-from paddle.jit import to_static
-from paddle.utils.cpp_extension import load
-from paddle.optimizer.lr import LRScheduler
 import tempfile
+import unittest
+
+import numpy as np
+import paddle
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 SEED = 2022
 
@@ -52,7 +48,9 @@ class SimpleLayer(paddle.nn.Layer):
         return x
 
 
-class TestBase(unittest.TestCase):
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestBase(IPUOpTest):
 
     @classmethod
     def setUpClass(cls):
@@ -123,6 +121,9 @@ class TestBase(unittest.TestCase):
                 optim.clear_grad()
 
             result.append(loss)
+
+        if use_ipu:
+            ipu_strategy.release_patch()
 
         return np.array(result)
 

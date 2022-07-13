@@ -84,7 +84,9 @@ PD_REGISTER_KERNEL(dropout,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 PD_REGISTER_KERNEL(dropout_nd,
                    GPU,
@@ -93,4 +95,6 @@ PD_REGISTER_KERNEL(dropout_nd,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
+}
