@@ -19,6 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
+#include "paddle/phi/kernels/merged_momentum_kernel.h"
 
 namespace phi {
 
@@ -82,21 +83,22 @@ struct MergedMomentumKernelParam
 };
 
 template <typename MT, typename Context, typename MPType, typename T>
-void InnerCompute(const Context &ctx,
-                  const std::vector<const DenseTensor *> &params,
-                  const std::vector<const DenseTensor *> &grads,
-                  const std::vector<const DenseTensor *> &velocitys,
-                  const std::vector<const DenseTensor *> &lrs,
-                  std::vector<const DenseTensor *> master_params,
-                  float mu,
-                  bool use_nesterov,
-                  const std::vector<std::string> &regularization_methods,
-                  const std::vector<float> &regularization_coeffs,
-                  float rescale_grad,
-                  const bool multi_precision,
-                  std::vector<DenseTensor *> params_out,
-                  std::vector<DenseTensor *> velocitys_out,
-                  std::vector<DenseTensor *> master_params_out) {
+void MergedMomentumInnerCompute(
+    const Context &ctx,
+    const std::vector<const DenseTensor *> &params,
+    const std::vector<const DenseTensor *> &grads,
+    const std::vector<const DenseTensor *> &velocitys,
+    const std::vector<const DenseTensor *> &lrs,
+    std::vector<const DenseTensor *> master_params,
+    float mu,
+    bool use_nesterov,
+    const std::vector<std::string> &regularization_methods,
+    const std::vector<float> &regularization_coeffs,
+    float rescale_grad,
+    const bool multi_precision,
+    std::vector<DenseTensor *> params_out,
+    std::vector<DenseTensor *> velocitys_out,
+    std::vector<DenseTensor *> master_params_out) {
   size_t n = params.size();
   PADDLE_ENFORCE_EQ(n,
                     params_out.size(),
@@ -224,8 +226,6 @@ void InnerCompute(const Context &ctx,
           << ",  regularization_coeffs.size(): "
           << regularization_coeffs.size();
 
-  auto &dev_ctx = ctx.template device_context<DeviceContext>();
-
   if (lrs.size() == 1 && use_nesterov == false &&
       regularization_methods.size() == 0) {
 #define PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL(kMultiPrecision)            \
@@ -252,7 +252,7 @@ void InnerCompute(const Context &ctx,
           kMultiPrecision ? master_params_out[j + start]->data<MT>()     \
                           : nullptr);                                    \
     }                                                                    \
-    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, max_size);    \
+    phi::funcs::ForRange<DeviceContext> for_range(ctx, max_size);        \
     for_range(kernel_params);                                            \
     VLOG(10) << "Launch MergedMomentum kernel " << i << " "              \
              << kernel_params.param_num;                                 \
@@ -296,8 +296,7 @@ void InnerCompute(const Context &ctx,
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
       } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
         phi::funcs::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext &>(ctx.device_context()),
-            params[idx]->numel());
+            static_cast<const DeviceContext &>(ctx), params[idx]->numel());
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \
   phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(   \
       params[idx]->data<T>(),                                         \
@@ -340,6 +339,59 @@ void InnerCompute(const Context &ctx,
     }
     VLOG(10)
         << "Launch MergedMomentum kernel with multi_lr and regularization.";
+  }
+}
+
+template <typename T, typename Context>
+void MergedMomentumKernel(const Context &dev_ctx,
+                          const std::vector<const DenseTensor *> &param,
+                          const std::vector<const DenseTensor *> &grad,
+                          const std::vector<const DenseTensor *> &velocity,
+                          const std::vector<const DenseTensor *> &learning_rate,
+                          const std::vector<const DenseTensor *> &master_param,
+                          float mu,
+                          bool use_nesterov,
+                          const std::vector<std::string> &regularization_method,
+                          const std::vector<float> &regularization_coeff,
+                          bool multi_precision,
+                          float rescale_grad,
+                          std::vector<DenseTensor *> param_out,
+                          std::vector<DenseTensor *> velocity_out,
+                          std::vector<DenseTensor *> master_param_out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  if (multi_precision) {
+    MergedMomentumInnerCompute<MPType, Context, MPType, T>(
+        dev_ctx,
+        param,
+        grad,
+        velocity,
+        learning_rate,
+        master_param,
+        mu,
+        use_nesterov,
+        regularization_method,
+        regularization_coeff,
+        rescale_grad,
+        multi_precision,
+        param_out,
+        velocity_out,
+        master_param_out);
+  } else {
+    MergedMomentumInnerCompute<T, Context, MPType, T>(dev_ctx,
+                                                      param,
+                                                      grad,
+                                                      velocity,
+                                                      learning_rate,
+                                                      master_param,
+                                                      mu,
+                                                      use_nesterov,
+                                                      regularization_method,
+                                                      regularization_coeff,
+                                                      rescale_grad,
+                                                      multi_precision,
+                                                      param_out,
+                                                      velocity_out,
+                                                      master_param_out);
   }
 }
 
