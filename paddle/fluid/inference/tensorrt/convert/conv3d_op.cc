@@ -100,7 +100,6 @@ void ConvertConv3d(TensorRTEngine* engine,
                               " layer failed."));
   layer->setStrideNd(nv_strides);
   layer->setPaddingNd(nv_paddings);
-  layer->setPrePadding(nv_paddings);
   layer->setNbGroups(groups);
   if (padding_algorithm == "SAME") {
     layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
@@ -112,6 +111,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
+
   if (test_mode) {
     engine->DeclareOutput(output_name);
   }
