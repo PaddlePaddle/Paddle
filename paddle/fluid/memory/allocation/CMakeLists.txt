@@ -29,7 +29,11 @@ if(WITH_GPU OR WITH_ROCM)
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
     thread_local_allocator.cc)
-  list(APPEND ALLOCATOR_DEPS cuda_device_guard gpu_info cuda_graph dynload_cuda)
+  list(APPEND ALLOCATOR_DEPS cuda_device_guard gpu_info dynload_cuda)
+endif()
+
+if(WITH_GPU)
+  list(APPEND ALLOCATOR_DEPS cuda_graph)
 endif()
 
 if(CUDA_VERSION GREATER_EQUAL 10.2)
