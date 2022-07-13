@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -351,7 +351,7 @@ static void linalg_solve(const framework::ExecutionContext& context,
   out->mutable_data<T>(context.GetPlace());
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  math::MatrixSolveFunctor<DeviceContext, T> mat_solve;
+  phi::funcs::MatrixSolveFunctor<DeviceContext, T> mat_solve;
 
   // input y can be vector or matrix
   // but need to be unsqueezed if y is a vector
@@ -425,67 +425,6 @@ static void linalg_solve(const framework::ExecutionContext& context,
   }
 }
 
-// for TransposeNormal
-static std::vector<int> getNewAxis(const int b_rank) {
-  std::vector<int> axis_1 = {0};
-  std::vector<int> axis_2 = {1, 0};
-  std::vector<int> axis_3 = {0, 2, 1};
-  std::vector<int> axis_4 = {0, 1, 3, 2};
-  std::vector<int> axis_5 = {0, 1, 2, 4, 3};
-  std::vector<int> axis_6 = {0, 1, 2, 3, 5, 4};
-  std::vector<int> axis_7 = {0, 1, 2, 3, 4, 6, 5};
-  std::vector<int> axis_8 = {0, 1, 2, 3, 4, 5, 7, 6};
-  std::vector<int> axis_9 = {0, 1, 2, 3, 4, 5, 6, 8, 7};
-  switch (b_rank) {
-    case 1:
-      return axis_1;
-      break;
-    case 2:
-      return axis_2;
-      break;
-    case 3:
-      return axis_3;
-      break;
-    case 4:
-      return axis_4;
-      break;
-    case 5:
-      return axis_5;
-      break;
-    case 6:
-      return axis_6;
-      break;
-    case 7:
-      return axis_7;
-      break;
-    case 8:
-      return axis_8;
-      break;
-    default:
-      return axis_9;
-  }
-}
-
-// for Resize
-static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = phi::vectorize(b_dims);
-  int size = b_dims_vec.size();
-  if (size >= 2) {
-    // swap the last 2 elements in b_dims_vec
-    int64_t temp = b_dims_vec[size - 1];
-    b_dims_vec[size - 1] = b_dims_vec[size - 2];
-    b_dims_vec[size - 2] = temp;
-    return b_dims_vec;
-  }
-  PADDLE_ENFORCE_NE(
-      b_dims_vec.empty(),
-      true,
-      platform::errors::PreconditionNotMet(
-          "The size of tensor b must not be %d after getting new dims", 0));
-  // if b_dims_vec.size() == 1, just retun original vec
-  return b_dims_vec;
-}
-
 template <typename DeviceContext, typename T>
 class SolveKernel : public framework::OpKernel<T> {
  public:
@@ -553,11 +492,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
     tmp_dy.mutable_data<T>(ctx.GetPlace());
 
     Tensor tmp_input(input->dtype());
-    const auto& new_dims_vec = getNewDimsVec(input->dims());
+    const auto& new_dims_vec = phi::funcs::getNewDimsVec(input->dims());
     tmp_input.Resize(phi::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
     phi::funcs::TransposeNormal<DeviceContext, T> trans;
-    std::vector<int> new_axis = getNewAxis(input->dims().size());
+    std::vector<int> new_axis = phi::funcs::getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);
 
