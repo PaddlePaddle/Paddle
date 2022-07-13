@@ -14,18 +14,19 @@
 
 import numpy as np
 
-from line_search import strong_wolfe
-from utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+from .line_search import strong_wolfe
+from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
 from paddle.fluid.optimizer import Optimizer
+from paddle import _C_ops
 
 
 def minimize_bfgs(objective_func,
                   initial_position,
-                  max_iters=50,
+                  max_iters=10,
                   tolerance_grad=1e-7,
-                  tolerance_change=1e-9,
+                  tolerance_change=1e-20,
                   initial_inverse_hessian_estimate=None,
                   line_search_fn='strong_wolfe',
                   max_line_search_iters=50,
@@ -125,6 +126,8 @@ def minimize_bfgs(objective_func,
         #############    compute pk    #############
         pk = -paddle.matmul(Hk, g1)
 
+        initial_step_length = 1. / pk.abs().sum()
+        #print("initinitial_step_length: ", initial_step_length.item())
         #############    compute alpha by line serach    #############
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
@@ -137,13 +140,15 @@ def minimize_bfgs(objective_func,
             raise NotImplementedError(
                 "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
                 format(line_search_fn))
+        #print("value: ", value)
+        print("alpha: ", alpha)
         num_func_calls += ls_func_calls
-
         #############    update Hk    #############
         sk = alpha * pk
         yk = g2 - g1
 
         xk = xk + sk
+
         g1 = g2
 
         sk = paddle.unsqueeze(sk, 0)
@@ -161,13 +166,14 @@ def minimize_bfgs(objective_func,
         k += 1
 
         #############    check convergence    #############
+
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(done | (gnorm < tolerance_grad) |
                       (pk_norm < tolerance_change), done)
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
-        paddle.assign(done | (alpha == 0.), done)
+        paddle.assign(done | (alpha < tolerance_change), done)
         return [k, done, is_converge, num_func_calls, xk, value, g1, Hk]
 
     paddle.static.nn.while_loop(
@@ -184,22 +190,17 @@ class LossAndFlatGradient:
         build_loss: A function to build the loss function expression.
     """
 
-    def __init__(self, trainable_variables, build_loss):
-        self.trainable_variables = trainable_variables
-        print("trainable_variables[0].name", trainable_variables[0].name)
-        print("self.trainable_variable[0].name:",
-              self.trainable_variables[0].name)
+    def __init__(self, net, build_loss):
+        self.net = net
+        self.weights = self.net.parameters()
         self.build_loss = build_loss
 
         # Shapes of all trainable parameters
-        self.shapes = [
-            paddle.shape(trainable_variable)
-            for trainable_variable in trainable_variables
-        ]
+        self.shapes = [paddle.shape(weight) for weight in self.weights]
         self.n_tensors = len(self.shapes)
 
         # Information for tf.dynamic_stitch and tf.dynamic_partition later
-        count = 0
+        self.count = 0
         self.indices = []  # stitch indices
         self.partitions = []  # partition indices
         for i, shape in enumerate(self.shapes):
@@ -208,11 +209,11 @@ class LossAndFlatGradient:
             self.indices.append(
                 paddle.reshape(
                     paddle.arange(
-                        count, count + n, dtype='float32'), shape))
+                        self.count, self.count + n, dtype='float32'),
+                    shape))
             self.partitions.append(n)
-            count += n
+            self.count += n
 
-    # @tf.function(jit_compile=True) has an error.
     def __call__(self, weights_1d):
         """A function that can be used by tfp.optimizer.lbfgs_minimize.
         Args:
@@ -221,19 +222,13 @@ class LossAndFlatGradient:
             A scalar loss and the gradients w.r.t. the `weights_1d`.
         """
         # Set the weights
+        for weight in self.weights:
+            weight.clear_grad()
         self.set_flat_weights(weights_1d)
-
-        # Calculate the loss
         loss = self.build_loss()
-        print(loss)
-        print(self.trainable_variables)
-        grads = paddle.grad(
-            [loss],
-            self.trainable_variables,
-            create_graph=False,
-            allow_unused=True)[0]
-        grad = self.dynamic_stitch(grads)
-        print("grad:", grad)
+        loss.backward()
+        grad = self.dynamic_stitch([param.grad for param in self.weights])
+
         return loss, grad
 
     def dynamic_stitch(self, inputs):
@@ -254,12 +249,14 @@ class LossAndFlatGradient:
         Args:
             weights_1d: a 1D tf.Tensor representing the trainable variables.
         """
-        weights = self.dynamic_partition(weights_1d, self.partitions,
-                                         self.n_tensors)
-        for i, (shape, param) in enumerate(zip(self.shapes, weights)):
-            self.trainable_variables[i] = (paddle.reshape(param, shape))
-        print("self.trainable_variable[0].name:",
-              self.trainable_variables[0].name)
+        #weights = self.dynamic_partition(weights_1d, self.partitions,
+        #self.n_tensors)
+        #for i, (shape, param) in enumerate(zip(self.shapes, weights)):
+        #paddle.assign(self.net.parameters()[i], paddle.reshape(param, shape))
+
+        with paddle.no_grad():
+            for i in range(len(self._flat_weight)):
+                self._flat_weight[i] = weights_1d[i]
 
     def to_flat_weights(self, weights):
         """Returns a 1D tf.Tensor representing the `weights`.
@@ -268,24 +265,44 @@ class LossAndFlatGradient:
         Returns:
             A 1D tf.Tensor representing the `weights`.
         """
-        return self.dynamic_stitch(weights)
+        _all_weights = [None] * len(self.weights)
+        _all_weights = [w for w in self.weights]
+
+        self._flat_weight = paddle.create_parameter(
+            shape=[self.count], dtype='float32')
+        #if paddle.fluid.in_dygraph_mode():
+        with paddle.no_grad():
+            _C_ops.coalesce_tensor(
+                _all_weights, _all_weights, self._flat_weight, "copy_data",
+                True, "use_align", False, "dtype", self.weights[0].dtype)
+
+        # 计算loss后马上计算loss对flat_weight的梯度，仍然报错说无关
+        # loss = self.build_loss()
+        # gradient = paddle.grad([loss], [self._flat_weight], create_graph=False)[0]
+        # print("gradient: ", gradient)
+        return self._flat_weight
+        # for static-graph, append coalesce_tensor into startup program
+        # with program_guard(default_startup_program(),
+        #                     default_startup_program()):
+        #     with paddle.no_grad():
+        #         self._helper.append_op(
+        #             type="coalesce_tensor",
+        #             inputs={"Input": self._all_weights},
+        #             outputs={
+        #                 "Output": self._all_weights,
+        #                 "FusedOutput": self._flat_weight
+        #             },
+        #             attrs={
+        #                 "copy_data": True,
+        #                 "use_align": False,
+        #                 "dtype": params[0].dtype
+        #             })
+        #     return self._flat_weight
 
 
-def bfgs_minimize(trainable_variables,
-                  build_loss,
-                  previous_optimizer_results=None):
-    """TensorFlow interface for tfp.optimizer.lbfgs_minimize.
-    Args:
-        trainable_variables: Trainable variables, also used as the initial position.
-        build_loss: A function to build the loss function expression.
-        previous_optimizer_results
-    """
-    func = LossAndFlatGradient(trainable_variables, build_loss)
-    initial_position = None
-    if previous_optimizer_results is None:
-        initial_position = func.to_flat_weights(trainable_variables)
+def bfgs_minimize(net, build_loss, previous_optimizer_results=None):
+    func = LossAndFlatGradient(net, build_loss)
+    initial_position = func.to_flat_weights(net.parameters())
     results = minimize_bfgs(func, initial_position=initial_position)
-    # The final optimized parameters are in results.position.
-    # Set them back to the variables.
-    func.set_flat_weights(results.position)
+    func.set_flat_weights(results[2])
     return results

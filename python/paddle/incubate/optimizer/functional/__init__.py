@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bfgs import minimize_bfgs  # noqa: F401
+from .bfgs import minimize_bfgs, bfgs_minimize  # noqa: F401
 from .lbfgs import minimize_lbfgs  # noqa: F401
 
-__all__ = ['minimize_bfgs', 'minimize_lbfgs']
+__all__ = ['minimize_bfgs', 'minimize_lbfgs', 'bfgs_minimize']

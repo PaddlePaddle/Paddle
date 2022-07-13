@@ -188,33 +188,17 @@ paddle.disable_static()
 net = Net()
 optim = paddle.optimizer.Adam(parameters=net.parameters())
 loss_fn = paddle.nn.L1Loss()
-for epoch in range(1):
-    x_data = paddle.rand([16]).unsqueeze(1)  # 训练数据
-    y_data = paddle.multiply(x_data, x_data)  # 训练数据标签
-    predicts = net(x_data)  # 预测结果
+x_data = paddle.rand([16]).unsqueeze(1)  # 训练数据
+y_data = x_data + 2.0  # 训练数据标签
+for epoch in range(100):
 
-    # 计算损失 等价于 prepare 中loss的设置
     def loss():
-        return loss_fn(net(x_data), y_data)
+        predicts = net(x_data)  # 预测结果
+        loss = loss_fn(predicts, y_data)
+        return loss
 
-    bfgs_minimize(net.parameters(), loss)
-    # 计算准确率 等价于 prepare 中metrics的设置
-    acc = paddle.metric.accuracy(predicts, y_data)
-
-    # 下面的反向传播、打印训练信息、更新参数、梯度清零都被封装到 Model.fit() 中
-
-    # 反向传播
-    loss.backward()
-
-    if (batch_id + 1) % 900 == 0:
-        print("epoch: {}, batch_id: {}, loss is: {}, acc is: {}".format(
-            epoch, batch_id + 1, loss.numpy(), acc.numpy()))
-
-    # 更新参数
-    optim.step()
-
-    # 梯度清零
-    optim.clear_grad()
+    results = bfgs_minimize(net, loss)
+    print("loss: ", results[3])
 
 #if __name__ == '__main__':
 #unittest.main()

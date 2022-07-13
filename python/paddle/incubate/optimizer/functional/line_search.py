@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils import _value_and_gradient
+from .utils import _value_and_gradient
 import paddle
 
 
@@ -60,8 +60,8 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
 def strong_wolfe(f,
                  xk,
                  pk,
-                 max_iters=20,
-                 tolerance_change=1e-8,
+                 max_iters=200,
+                 tolerance_change=1e-20,
                  initial_step_length=1.0,
                  c1=1e-4,
                  c2=0.9,
@@ -191,7 +191,8 @@ def strong_wolfe(f,
                     paddle.assign(phi_lo, phi_hi)
                     paddle.assign(derphi_lo, derphi_hi)
 
-                pred4 = ~done_zoom & (derphi_j * (a_hi - a_lo) >= 0)
+                pred4 = ~done_zoom & (derphi_j *
+                                      (a_hi - a_lo) >= tolerance_change)
                 paddle.static.nn.cond(pred4, true_fn, None)
 
                 paddle.assign(aj, a_lo)
@@ -275,7 +276,7 @@ def strong_wolfe(f,
             paddle.assign(derf_2, derf_star)
             paddle.assign(ls_func_calls + j, ls_func_calls)
 
-        pred3 = ~done & (derphi_2 >= 0)
+        pred3 = ~done & (derphi_2 >= tolerance_change)
         paddle.assign(done | pred3, done)
         paddle.static.nn.cond(pred3, true_fn3, None)
 
@@ -283,7 +284,7 @@ def strong_wolfe(f,
             paddle.assign(a2, a1)
             paddle.assign(phi_2, phi_1)
             paddle.assign(derf_2, derf_1)
-            paddle.assign(paddle.minimum(2 * a2, alpha_max), a2)
+            paddle.assign(paddle.minimum(2. * a2, alpha_max), a2)
             paddle.assign(i + 1, i)
 
         paddle.static.nn.cond(done, None, false_fn)
