@@ -167,6 +167,24 @@ struct XPUReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct XPURelu6Functor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_forward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::relu6<XPUType>);
+  }
+};
+
+template <typename T>
+struct XPURelu6GradFunctor : public BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  void operator()(const framework::ExecutionContext &ctx) const {
+    xpu_activation_backward<paddle::platform::XPUDeviceContext, T, XPUType>(
+        ctx, xpu::relu6_grad<XPUType>);
+  }
+};
+
+template <typename T>
 struct XPUSigmoidFunctor : public BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -548,6 +566,10 @@ REGISTER_OP_XPU_KERNEL(
     ops::XPUActivationGradKernel<ops::XPUReluGradFunctor<float>>,
     ops::XPUActivationGradKernel<
         ops::XPUReluGradFunctor<paddle::platform::float16>>);
+REGISTER_OP_XPU_KERNEL(relu6,
+                       ops::XPUActivationKernel<ops::XPURelu6Functor<float>>);
+REGISTER_OP_XPU_KERNEL(
+    relu6_grad, ops::XPUActivationKernel<ops::XPURelu6GradFunctor<float>>);
 REGISTER_OP_XPU_KERNEL(
     tanh,
     ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,
