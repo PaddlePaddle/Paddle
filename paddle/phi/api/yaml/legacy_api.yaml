@@ -1254,6 +1254,14 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- api : lstsq
+  args : (Tensor x, Tensor y, float rcond, str driver)
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+  kernel :
+    func : lstsq
+
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
