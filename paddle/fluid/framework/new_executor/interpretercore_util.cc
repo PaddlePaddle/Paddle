@@ -20,6 +20,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -250,9 +251,10 @@ void build_variable_scope(const framework::BlockDesc& block,
 void create_all_ops(const framework::BlockDesc& block,
                     std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
-    VLOG(3) << "CreateOp from : " << op->Type();
+    auto op_type = op->Type();
+    VLOG(1) << "CreateOp from : " << op_type;
 
-    auto& info = OpInfoMap::Instance().Get(op->Type());
+    auto& info = OpInfoMap::Instance().Get(op_type);
 
     const VariableNameMap& inputs_names = op->Inputs();
     const VariableNameMap& outputs_names = op->Outputs();
@@ -263,8 +265,15 @@ void create_all_ops(const framework::BlockDesc& block,
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&op_attr_map);
     }
+
+    const auto& extra_attr_checkers =
+        operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(op_type);
+    for (const auto& checker : extra_attr_checkers) {
+      checker(&op_runtime_attr_map);
+    }
+
     auto op_base =
-        info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
+        info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_MKLDNN

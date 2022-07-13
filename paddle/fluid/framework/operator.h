@@ -304,15 +304,16 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    auto iter = op_.Attrs().find(name);
-    if (iter == op_.Attrs().end()) {
-      return BOOST_GET_CONST(T, op_.RuntimeAttrs().at(name));
-    } else {
-      return BOOST_GET_CONST(T, iter->second);
-    }
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      return op_.RuntimeAttrs().at(name);
+    } else {
+      return iter->second;
+    }
     return op_.Attrs().at(name);
   }
 

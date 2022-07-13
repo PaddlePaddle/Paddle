@@ -2817,6 +2817,7 @@ class Operator(object):
                                 arg.op = self
                     self.desc.set_output(out_proto.name, out_arg_names)
 
+            extra_attrs_map = core.get_op_extra_attrs(type)
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
                     raise TypeError("'attrs' should be a dict.")
@@ -2827,6 +2828,13 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+                for attr_name in extra_attrs_map.keys():
+                    if (attr_name
+                            not in op_attrs) or (op_attrs[attr_name] is None):
+                        self._update_desc_attr(attr_name,
+                                               extra_attrs_map[attr_name])
+                    else:
+                        self._update_desc_attr(attr_name, op_attrs[attr_name])
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():

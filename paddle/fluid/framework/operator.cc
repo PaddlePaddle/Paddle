@@ -2764,12 +2764,16 @@ void OperatorWithKernel::BuildPhiKernelContext(
         }
       } break;
       default: {
-        PADDLE_ENFORCE_NE(
-            attr_iter,
-            Attrs().end(),
-            platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind static KernelContext.",
-                                       attr_names[i]));
+        if (attr_iter == Attrs().end()) {
+          attr_iter = RuntimeAttrs().find(attr_names[i]);
+          PADDLE_ENFORCE_NE(attr_iter,
+                            RuntimeAttrs().end(),
+                            platform::errors::NotFound(
+                                "(%s) is not found in AttributeMap when "
+                                "buildind static KernelContext.",
+                                attr_names[i]));
+        }
+
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             pt_kernel_context->EmplaceBackAttr(

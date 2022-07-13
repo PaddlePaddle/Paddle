@@ -5,7 +5,7 @@ paddle/fluid/API_PR.spec
 paddle/fluid/eager/api/generated/*
 paddle/fluid/op_use_default_grad_maker_DEV.spec
 paddle/fluid/op_use_default_grad_maker_PR.spec
-paddle/fluid/operators/ops_extra_info.h
+paddle/fluid/operators/ops_extra_info.cc
 paddle/phi/api/backward/backward_api.h
 paddle/phi/api/backward/sparse_bw_api.h
 paddle/phi/api/include/api.h

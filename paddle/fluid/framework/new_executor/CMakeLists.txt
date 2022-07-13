@@ -36,7 +36,8 @@ cc_library(
 cc_library(
   interpretercore_util
   SRCS interpretercore_util.cc
-  DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer)
+  DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer
+       ops_extra_info)
 cc_library(
   event_manager
   SRCS event_manager.cc

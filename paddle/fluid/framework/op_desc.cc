@@ -412,12 +412,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
 static void InitRuntimeAttributeMapByOpExtraInfo(const std::string &op_type,
                                                  AttributeMap *runtime_attrs) {
-  auto iter = extra_attrs_map.find(op_type);
-  if (iter != extra_attrs_map.end()) {
-    const auto &extra_attr_map = iter->second;
-    VLOG(6) << "Found " << op_type << " extra info map.";
-    runtime_attrs->insert(extra_attr_map.begin(), extra_attr_map.end());
-  }
+  const auto &extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+  runtime_attrs->insert(extra_attr_map.begin(), extra_attr_map.end());
 }
 
 OpDesc::OpDesc(const std::string &type,
@@ -660,11 +657,26 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   }
 
   // In order to set bool attr properly
-  if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
-      GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-    attrs_ptr->operator[](name) = static_cast<bool>(BOOST_GET_CONST(int, v));
-    need_update_ = true;
-    return;
+  if (attr_type == proto::AttrType::INT) {
+    if (HasProtoAttr(name) &&
+        GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
+      attrs_ptr->operator[](name) = static_cast<bool>(BOOST_GET_CONST(int, v));
+      need_update_ = true;
+      return;
+    }
+    const auto &extra_attr_map =
+        operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
+    if (!extra_attr_map.empty()) {
+      auto attr_iter = extra_attr_map.find(name);
+      if (attr_iter != extra_attr_map.end() &&
+          static_cast<proto::AttrType>(attr_iter->second.index() - 1) ==
+              proto::AttrType::BOOLEAN) {
+        attrs_ptr->operator[](name) =
+            static_cast<bool>(BOOST_GET_CONST(int, v));
+        need_update_ = true;
+        return;
+      }
+    }
   }
 
   attrs_ptr->operator[](name) = v;
@@ -685,6 +697,12 @@ void OpDesc::SetBlocksAttr(const std::string &name,
 void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
+  need_update_ = true;
+}
+
+void OpDesc::SetRuntimeAttrMap(
+    const std::unordered_map<std::string, Attribute> &attr_map) {
+  runtime_attrs_ = attr_map;
   need_update_ = true;
 }
 

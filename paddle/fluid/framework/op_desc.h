@@ -121,6 +121,8 @@ class OpDesc {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
+  void SetRuntimeAttrMap(const AttributeMap &attr_map);
+
   const AttributeMap &GetRuntimeAttrMap() const;
 
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }

@@ -969,6 +969,7 @@ void InterpreterCore::Prepare(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors,
     bool prepare_feed) {
+  VLOG(1) << "################# InterpreterCore::Prepare";
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
                     platform::errors::PreconditionNotMet(
@@ -1014,6 +1015,7 @@ void InterpreterCore::Prepare(
   if (prepare_feed) {
     FeedInput();
   }
+  VLOG(1) << "################# InterpreterCore::Prepare Finish";
 }
 
 void InterpreterCore::SetFeedVarsInplaceSkip(

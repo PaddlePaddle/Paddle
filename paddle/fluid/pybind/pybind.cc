@@ -71,6 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -1984,6 +1985,12 @@ All parameter, weight, gradient are variables in Paddle.
           }
           return res;
         });
+  m.def(
+      "get_op_extra_attrs",
+      [](const std::string &op_type)
+          -> const paddle::framework::AttributeMap & {
+        return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+      });
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,

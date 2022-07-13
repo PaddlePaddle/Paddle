@@ -12,6 +12,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include <iostream>
+#include "paddle/fluid/operators/ops_extra_info.h"
 
 #include <string>
 
@@ -67,7 +69,16 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   op_checker_ = attr_checker;
   Make();
   op_checker_->RecordExplicitCheckerNum();
-  op_checker_->InitDefaultAttributeMap();
+
+  const AttributeMap* extra_attrs_ptr = nullptr;
+  const std::string& op_type = proto->type();
+
+  const auto& extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+  if (!extra_attr_map.empty()) {
+    extra_attrs_ptr = &extra_attr_map;
+  }
+  op_checker_->InitDefaultAttributeMap(extra_attrs_ptr);
 
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
