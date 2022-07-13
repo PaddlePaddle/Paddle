@@ -420,6 +420,15 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void UniqueConsecutiveInferMeta(const MetaTensor& x,
+                                bool return_inverse,
+                                bool return_counts,
+                                const std::vector<int>& axis,
+                                int dtype,
+                                MetaTensor* out,
+                                MetaTensor* index,
+                                MetaTensor* counts);
+
 void UniqueInferMeta(const MetaTensor& x,
                      bool return_index,
                      bool return_inverse,

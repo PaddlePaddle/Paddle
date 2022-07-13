@@ -19,7 +19,129 @@
 
 namespace phi {
 namespace capi {
+// eager mode
+inline std::vector<phi::capi::DenseTensor> PD_TensorVector(PD_Tensor *tensor) {
+  std::vector<phi::capi::DenseTensor> ret;
+  auto list = PD_TensorVectorToList(tensor);
+  auto data = reinterpret_cast<PD_Tensor **>(list.data);
+  for (size_t i = 0; i < list.size; ++i) {
+    ret.emplace_back(data[i]);
+  }
+  return ret;
+}
 
+inline paddle::optional<phi::capi::DenseTensor> PD_OptionalTensor(
+    PD_Tensor *tensor) {
+  auto ptr = PD_OptionalTensorGetPointer(tensor);
+  return ptr ? paddle::optional<phi::capi::DenseTensor>(
+                   phi::capi::DenseTensor(ptr))
+             : paddle::optional<phi::capi::DenseTensor>(paddle::none);
+}
+
+template <typename T>
+inline T PD_Attr(void *attr) {
+  return *reinterpret_cast<T *>(attr);
+}
+
+template <>
+inline std::string PD_Attr<std::string>(void *attr) {
+  return PD_StringAttr(attr);
+}
+
+template <>
+inline PD_DataType PD_Attr<PD_DataType>(void *attr) {
+  return PD_DatatTypeAttr(attr);
+}
+
+template <>
+inline PD_DataLayout PD_Attr<PD_DataLayout>(void *attr) {
+  return PD_DatatLayoutAttr(attr);
+}
+
+template <>
+inline std::vector<int32_t> PD_Attr<std::vector<int32_t>>(void *attr) {
+  auto list = PD_ListInt32Attr(attr);
+  auto data = reinterpret_cast<int32_t *>(list.data);
+  std::vector<int32_t> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<int64_t> PD_Attr<std::vector<int64_t>>(void *attr) {
+  auto list = PD_ListInt64Attr(attr);
+  auto data = reinterpret_cast<int64_t *>(list.data);
+  std::vector<int64_t> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<float> PD_Attr<std::vector<float>>(void *attr) {
+  auto list = PD_ListFloatAttr(attr);
+  auto data = reinterpret_cast<float *>(list.data);
+  std::vector<float> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<double> PD_Attr<std::vector<double>>(void *attr) {
+  auto list = PD_ListDoubleAttr(attr);
+  auto data = reinterpret_cast<double *>(list.data);
+  std::vector<double> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline phi::capi::Scalar PD_Attr<phi::capi::Scalar>(void *attr) {
+  return phi::capi::Scalar(reinterpret_cast<PD_Scalar *>(attr));
+}
+
+template <>
+inline phi::capi::IntArray PD_Attr<phi::capi::IntArray>(void *attr) {
+  return phi::capi::IntArray(reinterpret_cast<PD_IntArray *>(attr));
+}
+
+template <>
+inline phi::capi::Place PD_Attr<phi::capi::Place>(void *attr) {
+  return phi::capi::Place(reinterpret_cast<PD_Place *>(attr));
+}
+
+template <>
+inline std::vector<phi::capi::Scalar> PD_Attr<std::vector<phi::capi::Scalar>>(
+    void *attr) {
+  auto c_list = PD_ListScalarAttr(attr);
+  auto data = reinterpret_cast<PD_Scalar **>(c_list.data);
+  std::vector<phi::capi::Scalar> list;
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(c_list);
+  return list;
+}
+
+template <>
+inline std::vector<std::string> PD_Attr<std::vector<std::string>>(void *attr) {
+  auto c_list = PD_ListStringAttr(attr);
+  auto data = reinterpret_cast<char **>(c_list.data);
+  std::vector<std::string> list;
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(c_list);
+  return list;
+}
+
+template <>
+inline std::vector<bool> PD_Attr<std::vector<bool>>(void *attr) {
+  auto c_list = PD_ListBoolAttr(attr);
+  std::vector<bool> list;
+  auto data = reinterpret_cast<uint8_t *>(c_list.data);
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list[i] = static_cast<bool>(data[i]);
+  }
+  PD_DeleteUInt8List(c_list);
+  return list;
+}
+//
 inline phi::capi::DeviceContext PD_GetDeviceContext(PD_KernelContext *ctx) {
   return phi::capi::DeviceContext(PD_KernelContextGetDeviceContext(ctx));
 }
@@ -189,7 +311,7 @@ inline std::vector<phi::capi::Scalar> PD_AttrAt<std::vector<phi::capi::Scalar>>(
 template <>
 inline std::vector<std::string> PD_AttrAt<std::vector<std::string>>(
     PD_KernelContext *ctx, size_t index) {
-  auto c_list = PD_KernelContextListScalarAttrAt(ctx, index);
+  auto c_list = PD_KernelContextListStringAttrAt(ctx, index);
   auto data = reinterpret_cast<char **>(c_list.data);
   std::vector<std::string> list;
   for (size_t i = 0; i < c_list.size; ++i) {
