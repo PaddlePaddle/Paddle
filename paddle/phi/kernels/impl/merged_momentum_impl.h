@@ -252,7 +252,7 @@ void MergedMomentumInnerCompute(
           kMultiPrecision ? master_params_out[j + start]->data<MT>()     \
                           : nullptr);                                    \
     }                                                                    \
-    phi::funcs::ForRange<DeviceContext> for_range(ctx, max_size);        \
+    phi::funcs::ForRange<Context> for_range(ctx, max_size);              \
     for_range(kernel_params);                                            \
     VLOG(10) << "Launch MergedMomentum kernel " << i << " "              \
              << kernel_params.param_num;                                 \
@@ -295,8 +295,8 @@ void MergedMomentumInnerCompute(
                 velocitys_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
       } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
-        phi::funcs::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext &>(ctx), params[idx]->numel());
+        phi::funcs::ForRange<Context> for_range(
+            static_cast<const Context &>(ctx), params[idx]->numel());
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \
   phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(   \
       params[idx]->data<T>(),                                         \
