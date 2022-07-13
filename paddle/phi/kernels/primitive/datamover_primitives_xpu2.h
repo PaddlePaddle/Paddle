@@ -623,7 +623,7 @@ __device__ __inline__ void ReadDataBc(T* dst,
         }
       }
       index_src = config(index_output);
-      GM2LM(src + index_src, dst + nx + ny * Nx, sizeof(T));
+      GM2LM(src + index_src, dst + nx + ny * NX, sizeof(T));
     }
   }
 }
