@@ -108,7 +108,7 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
-
+    # Depthwise conv2d
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['groups'] = 3

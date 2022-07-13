@@ -139,22 +139,16 @@ PYTHON_C_FUNCTION_REG_TEMPLATE = \
 
 PYTHON_C_WRAPPER_TEMPLATE = \
 """
-#pragma once
-
-#include  "pybind11/detail/common.h"
-#include  "paddle/phi/api/all.h"
-#include  "paddle/phi/api/lib/dygraph_api.h"
-#include  "paddle/phi/common/backend.h"
-#include  "paddle/phi/common/data_type.h"
-#include  "paddle/phi/common/scalar.h"
-#include  "paddle/phi/common/int_array.h"
-#include  "paddle/phi/api/include/sparse_api.h"
-#include  "paddle/phi/api/include/strings_api.h"
-#include  "paddle/fluid/pybind/op_function_common.h"
-#include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include  "paddle/fluid/pybind/exception.h"
-#include  "paddle/fluid/platform/profiler/event_tracing.h"
-#include  <Python.h>
+#include <Python.h>
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/api/include/strings_api.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/pybind/eager_final_state_custom_python_api.h"
+#include "paddle/fluid/pybind/eager.h"
 
 namespace paddle {{
 namespace pybind {{
@@ -164,6 +158,16 @@ namespace pybind {{
 static PyMethodDef EagerFinalStateMethods[] = {{
     {}
 }};
+
+void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
+  if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
+    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+  }}
+
+  if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
+    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+  }}
+}}
 
 }} // namespace pybind
 }} // namespace paddle
@@ -449,8 +453,8 @@ class PythonCGenerator(GeneratorBase):
 
     def GeneratePythonCFunctions(self):
         namespace = self.namespace
-        forward_api_list = self.forward_api_list
 
+        forward_api_list = self.forward_api_list
         for forward_api_content in forward_api_list:
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace)
