@@ -18,6 +18,23 @@
 
 namespace phi {
 
+/**
+ * @brief If ``x`` is a vector (1-D tensor), a 2-D square tensor with the
+ * elements of ``x`` as the diagonal is returned. If ``x`` is a matrix (2-D
+ * tensor), a 1-D tensor with the diagonal elements of ``x`` is returned. The
+ * argument ``offset`` controls the diagonal offset: If ``offset`` = 0, it is
+ * the main diagonal. If ``offset`` > 0, it is superdiagonal. If ``offset`` < 0,
+ * it is subdiagonal.
+ * @param  ctx             device context
+ * @param  x               The input tensor. Its shape is either 1-D or 2-D.
+ * @param  offset          The diagonal offset. A positive value represents
+ *                         superdiagonal, 0 represents the main diagonal, and a
+ *                         negative value represents subdiagonal.
+ * @param  padding_value   Use this value to fill the area outside the specified
+ *                         diagonal band. Only takes effect when the input is a
+ * 1-D Tensor. The default value is 0.
+ * @param  out             The output tensor. A square matrix or a vector.
+ */
 template <typename T, typename Context>
 void DiagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
