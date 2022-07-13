@@ -50,8 +50,14 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
-      inputs_casted.emplace_back(
-          std::move(cast_final_state_dygraph_function(input, dst_dtype)));
+      if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
+        inputs_casted.emplace_back(
+            std::move(sparse::cast_final_state_dygraph_function(
+                input, paddle::experimental::DataType::UNDEFINED, dst_dtype)));
+      } else {
+        inputs_casted.emplace_back(
+            std::move(cast_final_state_dygraph_function(input, dst_dtype)));
+      }
     } else {
       inputs_casted.emplace_back(input);
     }
