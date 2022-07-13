@@ -90,7 +90,7 @@ void MergedMomentumInnerCompute(
     const std::vector<const DenseTensor *> &grads,
     const std::vector<const DenseTensor *> &velocitys,
     const std::vector<const DenseTensor *> &lrs,
-    paddle::optional<std::vector<const DenseTensor *>> master_params_opt,
+    const paddle::optional<std::vector<const DenseTensor *>> &master_params_opt,
     float mu,
     bool use_nesterov,
     const std::vector<std::string> &regularization_methods,
@@ -152,8 +152,8 @@ void MergedMomentumInnerCompute(
                           "the same Tensors."));
   }
 
-  auto master_params = master_params_opt.get();
   if (multi_precision) {
+    auto master_params = master_params_opt.get();
     PADDLE_ENFORCE_EQ(
         n,
         master_params.size(),
@@ -184,7 +184,6 @@ void MergedMomentumInnerCompute(
                                   "multi_precision=True."));
     }
   } else {
-    master_params.clear();
     master_params_out.clear();
   }
 
@@ -280,7 +279,7 @@ void MergedMomentumInnerCompute(
       auto lr_temp = lrs.size() > 1 ? lrs[idx] : lrs[0];
 
       const MT *master_in_data =
-          multi_precision ? master_params[idx]->data<MT>() : nullptr;
+          multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
       if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
