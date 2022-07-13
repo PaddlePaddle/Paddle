@@ -123,7 +123,7 @@ int32_t CoordinatorClient::Initialize(
     _fl_client_channels[rank].reset(new brpc::Channel());
     if (_fl_client_channels[rank]->Init(
             fl_client_ip_port.c_str(), "", &options) != 0) {
-      LOG(ERROR) << "CoordinatorClient connect to FlClient:"
+      LOG(ERROR) << "CoordinatorClient connect to FLClient:"
                  << fl_client_ip_port << " Failed! Try again.";
       std::string int_ip_port =
           GetIntTypeEndpoint(fl_client_list[i].ip, fl_client_list[i].port);

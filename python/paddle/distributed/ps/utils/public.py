@@ -1595,3 +1595,11 @@ def debug_program(file, program):
     os.makedirs(os.path.dirname(file), exist_ok=True)
     with open(file, 'w+') as f:
         f.write(str(program))
+
+
+def is_distributed_env():
+    node_role = os.getenv("TRAINING_ROLE")
+    if node_role is None:
+        return False
+    else:
+        return True
