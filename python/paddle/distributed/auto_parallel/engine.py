@@ -15,6 +15,7 @@
 import copy
 import logging
 from collections import defaultdict
+import socket
 
 import paddle
 import paddle.utils as utils
@@ -36,7 +37,8 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -60,8 +62,8 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
-        # if self.cluster is None:
-        #     self.cluster = get_default_cluster()
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
@@ -83,6 +85,11 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
         self._dygraph_mode = False
 
     def prepare(self,
@@ -99,6 +106,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -114,22 +122,23 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
+        self._prepare_single_mode("train")
 
-        # Build program and do auto parallel process
-        for mode in self._modes:
-            # Build forward program
-            self._build(mode)
+    def _prepare_single_mode(self, mode):
+        self._modes = [mode]
+        self._build(self._modes[0])
+        # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
         for mode in self._modes:
             # Do the parallel process
-            self._parallel(mode, all_ranks)
+            self._parallel(mode, self._all_ranks)
+
             # Init comm and startup program
             self._initialize(mode)
+            self._mode_init_states[mode] = True
 
     def _build(self, mode):
 
@@ -314,10 +323,66 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+
+            has_recv_by_socket = []
+            # This is a magic number and the rank number for training is usually less than 5000
+            magic_num = 5000
+            genv = _get_global_env()
+            cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
+            cur_rank_recv_port = int(cur_rank_port) + magic_num
+            server_socket = None
+            # Large enough for recv rank
+            buff_size = 1024
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind((cur_rank_ip, cur_rank_recv_port))
+            # The 10 is an empirical value
+            server_socket.listen(10)
+            client_sockets = {}
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
+                if len(process_group.ranks) == 2:
+                    index = process_group.ranks.index(self._cur_rank)
+                    is_send = True if index == 0 else False
+                    if is_send:
+                        recv_rank = process_group.ranks[1]
+                        recv_rank_ip, recv_rank_port = genv.trainer_endpoints[
+                            recv_rank].split(":")
+                        connect_port = int(recv_rank_port) + magic_num
+                        client_socket = socket.socket(socket.AF_INET,
+                                                      socket.SOCK_STREAM)
+                        client_socket.connect((recv_rank_ip, connect_port))
+                        client_socket.send(str(self._cur_rank).encode('utf-8'))
+                        rank = client_socket.recv(buff_size).decode('utf-8')
+                        rank = int(rank)
+                        if rank != recv_rank:
+                            raise ValueError(
+                                "Please check comm pair, the recv rank should be {} but got {}."
+                                .format(recv_rank, rank))
+                        else:
+                            print("It is able to instantiate {} as sender now.".
+                                  format(process_group.ranks))
+                        client_socket.close()
+                    else:
+                        send_rank = process_group.ranks[0]
+                        while True:
+                            if send_rank not in has_recv_by_socket:
+                                client_socket, recv_addr = server_socket.accept(
+                                )
+                                rank = int(
+                                    client_socket.recv(buff_size).decode())
+                                client_sockets[rank] = client_socket
+                                has_recv_by_socket.append(rank)
+                            else:
+                                client_sockets[send_rank].send(
+                                    str(self._cur_rank).encode("utf-8"))
+                                client_sockets[send_rank].close()
+                                print(
+                                    "It is able to instantiate {} as recver now."
+                                    .format(process_group.ranks))
+                                break
                 process_group.instantiate()
+            server_socket.close()
 
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
@@ -374,6 +439,12 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
@@ -409,6 +480,9 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
@@ -451,6 +525,9 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)

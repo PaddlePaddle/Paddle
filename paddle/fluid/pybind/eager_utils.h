@@ -19,6 +19,7 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/jit/executor_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -72,6 +73,8 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
                                                       ssize_t arg_pos);
 std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
+                                                          ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);

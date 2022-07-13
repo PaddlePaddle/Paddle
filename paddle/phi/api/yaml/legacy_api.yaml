@@ -342,6 +342,15 @@
     func : clip
   backward : clip_grad
 
+- api : complex
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+  backward : complex_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -526,6 +535,14 @@
   kernel :
     func : eigh
   backward : eigh_grad
+
+- api : eigvals
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : EigvalsInferMeta
+  kernel :
+    func : eigvals
 
 - api : einsum
   args : (Tensor[] x, str equation)

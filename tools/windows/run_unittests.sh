@@ -72,12 +72,6 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_matmul$|\
 ^test_trt_convert_scale$"
 
-# /*=============Fixed Disabled Windows CUDA11.x MKL(PR-CI-Windows-Inference) unittests=================*/
-# TODO: fix these unittest that is bound to fail
-disable_wingpu11_test="^test_autograd_functional_dynamic$|\
-^disable_wingpu_test$"
-
-
 # /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
 disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_dynamic_shape_ernie$|\
@@ -183,7 +177,9 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_unsqueeze2_eltwise_fuse_pass$|\
 ^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
-^test_api_impl$"
+^test_api_impl$|\
+^test_tensordot$|\
+^disable_wingpu_test$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -281,7 +277,7 @@ bash $PADDLE_ROOT/tools/check_added_ut_win.sh
 rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-    ctest -R "(${added_uts})" -E "$disable_wingpu11_test" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+    ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
     rm -f $PADDLE_ROOT/added_ut
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"

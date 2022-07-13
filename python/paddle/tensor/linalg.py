@@ -2339,7 +2339,9 @@ def eigvals(x, name=None):
             "The last two dimensions of Input(x) should be equal, but received x's shape = {}"
             .format(x_shape))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigvals(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())

@@ -14,24 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-namespace paddle {
-namespace jit {
+namespace phi {
 
-using Tensor = paddle::experimental::Tensor;
-using DenseTensor = phi::DenseTensor;
+template <typename T, typename Context>
+void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
-class BaseFunction {
- public:
-  virtual std::vector<DenseTensor> operator()(
-      const std::vector<DenseTensor> &inputs) = 0;
-
-  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
-
-  virtual ~BaseFunction() {}
-};
-
-}  // namespace jit
-}  // namespace paddle
+}  // namespace phi

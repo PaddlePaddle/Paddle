@@ -12,19 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 
 namespace phi {
-namespace sparse {
+namespace funcs {
 
-template <typename T, typename Context>
-void CoalescedKernel(const Context& dev_ctx,
-                     const SparseCooTensor& x,
-                     SparseCooTensor* out);
+template <typename Context, typename T>
+void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
+                                                const DenseTensor& a,
+                                                const DenseTensor& b,
+                                                DenseTensor* out) {
+  compute_solve_eigen<Context, T>(dev_ctx, a, b, out);
+}
 
-}  // namespace sparse
+template class MatrixSolveFunctor<CPUContext, float>;
+template class MatrixSolveFunctor<CPUContext, double>;
+
+}  // namespace funcs
 }  // namespace phi
