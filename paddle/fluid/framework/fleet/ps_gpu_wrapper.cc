@@ -28,6 +28,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 
 #include <algorithm>
 #include <deque>
@@ -821,7 +822,9 @@ void PSGPUWrapper::BeginPass() {
         platform::errors::Fatal("[BeginPass] current task is not ended."));
   }
 
+  debug_gpu_memory_info("befor build task");
   build_task();
+  debug_gpu_memory_info("after build task");
   timer.Pause();
 
   if (current_task_ == nullptr) {
