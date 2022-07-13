@@ -385,6 +385,7 @@ class BaseModel(fluid.dygraph.Layer):
                         dropout_implementation='upscale_in_train')
                 else:
                     step_input = new_hidden
+
             cell_outputs = self._split_batch_beams(step_input)
             cell_outputs = self.fc(cell_outputs)
 

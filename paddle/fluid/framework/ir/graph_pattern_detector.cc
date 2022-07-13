@@ -2243,8 +2243,12 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
+#if CUDNN_VERSION >= 8000
 std::unordered_set<std::string> conv_act_set(
     {"identity", "relu", "sigmoid", "tanh"});
+#else
+std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+#endif
 
 PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   conv_in->AsInput();
