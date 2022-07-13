@@ -381,11 +381,11 @@ class FleetWrapper {
   void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
-    static FleetWrapper s_instance;
-    // if (NULL == s_instance_) {
-    //  s_instance_.reset(new paddle::framework::FleetWrapper());
-    // }
-    return &s_instance;
+    std::unique_lock<std::mutex> lk(ins_mutex);
+    if (NULL == s_instance_) {
+      s_instance_.reset(new paddle::framework::FleetWrapper());
+    }
+    return s_instance_;
   }
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
@@ -398,6 +398,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  std::mutex ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
 #endif
