@@ -37,6 +37,7 @@ class TestUnStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'unstack'
+        self.python_api = paddle.fluid.layers.unstack
         self.x = np.random.random(size=self.input_dim).astype(self.dtype)
 
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)
@@ -52,10 +53,10 @@ class TestUnStackOpBase(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names())
+        self.check_grad(['X'], self.get_y_names(), check_eager=True)
 
 
 class TestStackOp3(TestUnStackOpBase):

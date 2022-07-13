@@ -2205,6 +2205,16 @@
     func : unique
     data_type : x
 
+# unstack
+- api : unstack
+  args : (Tensor x, int axis, int num)
+  output : Tensor[]{num}
+  infer_meta :
+    func : UnStackInferMeta
+  kernel :
+    func : unstack
+  backward : unstack_grad
+
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)

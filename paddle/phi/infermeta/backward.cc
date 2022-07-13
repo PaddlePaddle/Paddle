@@ -661,4 +661,45 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& x,
+                          int axis,
+                          MetaTensor* x_grad) {
+  std::vector<phi::DDim> input_dims(x.size());
+  for(int i = 0; i < x.size(); ++i){
+    input_dims[i] = x[i]->dims();
+  }
+  for (size_t i = 1; i < input_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        input_dims[i],
+        input_dims[0],
+        phi::errors::InvalidArgument(
+            "The dimensions of all Inputs(Y@Grad) must be the same,"
+            "but received Inputs(Y@Grad)'s %d-th dimension is %d, "
+            "Inputs(Y@Grad)'s 0-th to %d-th dimension is %d.",
+            i,
+            input_dims[i],
+            i - 1,
+            input_dims[0]));
+  }
+
+  int rank = input_dims[0].size();
+  PADDLE_ENFORCE_GE(axis,
+                    -(rank + 1),
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-(rank+1), rank+1), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank + 1,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-(rank+1), rank+1), where rank = %d",
+                        rank));
+  if (axis < 0) axis += (rank + 1);
+
+  auto vec = phi::vectorize<int>(input_dims[0]);
+  vec.insert(vec.begin() + axis, input_dims.size());
+  x_grad->set_dims(phi::make_ddim(vec));
+}
+
 }  // namespace phi

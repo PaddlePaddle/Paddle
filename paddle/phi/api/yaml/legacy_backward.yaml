@@ -2201,6 +2201,16 @@
     func : unfold_grad
   no_need_buffer : x
 
+- backward_api : unstack_grad
+  forward : unstack (Tensor x, int axis, int num) -> Tensor[](out)
+  args : (Tensor[] x, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnStackGradInferMeta
+    param : [x, axis]
+  kernel :
+    func : unstack_grad
+
 - backward_api : unsqueeze_double_grad
   forward : unsqueeze_grad(Tensor xshape, Tensor grad_out, IntArray axes) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axes)
