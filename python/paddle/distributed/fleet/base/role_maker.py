@@ -377,6 +377,7 @@ class RoleMakerBase(object):
     def __init__(self):
         self._worker_endpoints = []
         self._server_endpoints = []
+        self._cur_endpoint = ""
         self._role_is_generated = False
         self._role = None
         self._current_id = -1
