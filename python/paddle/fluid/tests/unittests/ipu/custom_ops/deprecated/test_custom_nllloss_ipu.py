@@ -14,12 +14,17 @@
 
 import os
 import unittest
+import sys
 
 import numpy as np
 import paddle
 import paddle.static
-from ...op_test_ipu import IPUOpTest
 from paddle.utils.cpp_extension import load
+
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))))
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 def load_custom_ops():

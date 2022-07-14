@@ -14,13 +14,16 @@
 
 import os
 import unittest
+import sys
 
 import numpy as np
 import paddle
 import paddle.optimizer
 import paddle.static
-from ..op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
 from paddle.utils.cpp_extension import load
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from op_test_ipu import (IPUOpTest, np_dtype_to_fluid_str)
 
 
 def load_custom_ops():
