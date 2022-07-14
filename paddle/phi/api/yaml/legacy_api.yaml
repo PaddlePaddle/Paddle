@@ -1374,16 +1374,6 @@
     func : mean_all
   backward : mean_all_grad
 
-- api : merged_momentum_
-  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov, str[] regularization_method, float[] regularization_coeff, bool multi_precision, float rescale_grad)
-  output : Tensor[]{param.size()}(param_out), Tensor[]{param.size()}(velocity_out), Tensor[]{param.size()}(master_param_out)
-  infer_meta :
-    func : MergedMomentumInferMeta
-  kernel :
-    func : merged_momentum
-  optional : master_param
-  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
-
 - api : meshgrid
   args : (Tensor[] inputs)
   output : Tensor[]{inputs.size()}

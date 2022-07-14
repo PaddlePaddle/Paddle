@@ -473,27 +473,17 @@ class Momentum(Optimizer):
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
 
                 if framework._non_static_mode():
-                    if in_dygraph_mode():
-                        _, _, _ = _C_ops.final_state_merged_momentum(
-                            self._param_dict[key], grad_dict[key],
-                            self._velocity_dict[key], lr_dict[key],
-                            self._master_weight_dict[key], self._momentum,
-                            self._use_nesterov,
-                            self._regularization_method_dict[key],
-                            self._regularization_coeff_dict[key], find_master)
-                    else:
-                        _, _, _ = _C_ops.merged_momentum(
-                            self._param_dict[key], grad_dict[key],
-                            self._velocity_dict[key], lr_dict[key],
-                            self._master_weight_dict[key],
-                            self._param_dict[key], self._velocity_dict[key],
-                            self._master_weight_dict[key], 'mu', self._momentum,
-                            'use_nesterov', self._use_nesterov,
-                            'regularization_method',
-                            self._regularization_method_dict[key],
-                            'regularization_coeff',
-                            self._regularization_coeff_dict[key],
-                            'multi_precision', find_master)
+                    _, _, _ = _C_ops.merged_momentum(
+                        self._param_dict[key], grad_dict[key],
+                        self._velocity_dict[key], lr_dict[key],
+                        self._master_weight_dict[key], self._param_dict[key],
+                        self._velocity_dict[key], self._master_weight_dict[key],
+                        'mu', self._momentum, 'use_nesterov',
+                        self._use_nesterov, 'regularization_method',
+                        self._regularization_method_dict[key],
+                        'regularization_coeff',
+                        self._regularization_coeff_dict[key], 'multi_precision',
+                        find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
