@@ -208,7 +208,7 @@ void AucKernel(const Context &dev_ctx,
   auto *neg_in_data = stat_neg.data<int64_t>();
   bool is_fake_data = false;
   if (ins_tag_weight.get_ptr() != nullptr) {
-    const auto *ins_tag_weight_data = ins_tag_weight.data<float>();
+    const auto *ins_tag_weight_data = ins_tag_weight->data<float>();
     if (ins_tag_weight_data[0] == 0) {
       is_fake_data = true;
     }
