@@ -14,8 +14,6 @@
 
 #pragma once
 
-#define GPU_ENABLE defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/optional.h"
@@ -26,7 +24,7 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#if defined(GPU_ENABLE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
@@ -84,7 +82,7 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
   }
 }
 
-#if defined(GPU_ENABLE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename DeviceContext, typename T>
 inline void BatchedOrmqr(const DeviceContext& dev_ctx,
                          bool left,
