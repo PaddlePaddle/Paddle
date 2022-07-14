@@ -46,9 +46,12 @@ class TestUnStackOpBase(OpTest):
         del new_shape[self.axis]
         y_names = self.get_y_names()
         tmp = []
+        tmp_names = []
         for i in range(self.input_dim[self.axis]):
             tmp.append((y_names[i], np.reshape(outs[i], new_shape)))
+            tmp_names.append(y_names[i])
 
+        self.python_out_sig = tmp_names
         self.inputs = {'X': self.x}
         self.outputs = {'Y': tmp}
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
