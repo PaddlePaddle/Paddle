@@ -264,11 +264,11 @@ void InitDevices(const std::vector<int> devices) {
 
       auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
       for (auto &dev_type : device_types) {
-        auto device_count = phi::DeviceManager::GetDeviceCount(dev_type);
+        auto device_list = phi::DeviceManager::GetSelectedDeviceList(dev_type);
         LOG(INFO) << "CustomDevice: " << dev_type
-                  << ", visible devices count: " << device_count;
-        for (size_t i = 0; i < device_count; i++) {
-          places.push_back(platform::CustomPlace(dev_type, i));
+                  << ", visible devices count: " << device_list.size();
+        for (auto &dev_id : device_list) {
+          places.push_back(platform::CustomPlace(dev_type, dev_id));
         }
       }
     } else {
