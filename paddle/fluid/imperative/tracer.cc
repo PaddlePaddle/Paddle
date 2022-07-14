@@ -219,7 +219,7 @@ void Tracer::TraceOpImpl(const std::string& type,
       attrs["use_mkldnn"] = !is_off;
     }
   }
-  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {});
+  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
