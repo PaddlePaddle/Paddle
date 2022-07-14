@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void LstsqKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float rcond,
+                 const Scalar& rcond,
                  const std::string& driver,
                  DenseTensor* solution,
                  DenseTensor* residuals,

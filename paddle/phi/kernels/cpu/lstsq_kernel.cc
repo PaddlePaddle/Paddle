@@ -31,7 +31,7 @@ template <typename T, typename Context>
 void LstsqKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float rcond,
+                 const Scalar& rcond_scaler,
                  const std::string& driver_string,
                  DenseTensor* solution,
                  DenseTensor* residuals,
@@ -45,6 +45,7 @@ void LstsqKernel(const Context& dev_ctx,
        {"gelsd", LapackDriverType::Gelsd},
        {"gelss", LapackDriverType::Gelss}});
   auto driver = driver_type[driver_string];
+  T rcond = rcond_scaler.to<T>();
 
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -287,7 +288,12 @@ void LstsqKernel(const Context& dev_ctx,
     }
   }
 
-  solution->Resize(solution_dim);
+  if (batch_count > 1) {
+    solution->Resize(solution_dim);
+  } else {
+    solution->Resize(phi::make_ddim({n, nrhs}));
+  }
+
   GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
 }
 

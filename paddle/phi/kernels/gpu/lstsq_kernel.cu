@@ -33,7 +33,7 @@ template <typename T, typename Context>
 void LstsqKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float rcond,
+                 const Scalar& rcond_scalar,
                  const std::string& driver_string,
                  DenseTensor* solution,
                  DenseTensor* residuals,
@@ -53,6 +53,8 @@ void LstsqKernel(const Context& dev_ctx,
   int y_stride = phi::GetMatrixStride(y_dims);
   int tau_stride = min_mn;
   int batch_count = phi::GetBatchCount(x_dims);
+
+  T rcond = rcond_scalar.to<T>();
 
   DenseTensor* new_x = new DenseTensor();
   new_x->Resize(phi::make_ddim({batch_count, m, n}));
@@ -154,6 +156,8 @@ void LstsqKernel(const Context& dev_ctx,
     phi::Copy<Context>(
         dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
+
+  if (batch_count == 1) solution->Resize(phi::make_ddim({n, nrhs}));
   GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
 }
 

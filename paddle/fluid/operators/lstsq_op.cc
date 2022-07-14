@@ -57,6 +57,8 @@ class LstsqOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("gels");
     AddOutput("Solution",
               "(Tensor), The output Solution tensor with shape (*, n, k).");
+    AddOutput("Residuals",
+              "(Tensor), The output Residuals tensor with shape (*, k).");
     AddOutput("Rank", "(Tensor), The output Rank tensor with shape (*).");
     AddOutput(
         "SingularValues",

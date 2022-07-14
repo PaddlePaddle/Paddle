@@ -3161,16 +3161,23 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if _non_static_mode():
+    if not isinstance(rcond, float):
+        raise TypeError("Attr rcond of lstsq must be a float number")
+
+    if in_dygraph_mode():
         solution, residuals, rank, singular_values = _C_ops.final_state_lstsq(
             x, y, rcond, driver)
-        if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype=paddle.int32)
-            singular_values = paddle.empty(shape=[0], dtype=x.dtype)
-        elif driver == "gelsy":
-            singular_values = paddle.empty(shape=[0], dtype=x.dtype)
+    elif paddle.in_dynamic_mode():
+        solution, residuals, rank, singular_values = _C_ops.lstsq(
+            x, y, 'rcond', rcond, 'driver', driver)
 
-        return solution, residuals, rank, singular_values
+    if driver == "gels":
+        rank = paddle.empty(shape=[0], dtype=paddle.int32)
+        singular_values = paddle.empty(shape=[0], dtype=x.dtype)
+    elif driver == "gelsy":
+        singular_values = paddle.empty(shape=[0], dtype=x.dtype)
+
+    return solution, residuals, rank, singular_values
 
     helper = LayerHelper('lstsq', **locals())
     check_variable_and_dtype(x, 'dtype',

@@ -44,7 +44,7 @@ DenseTensor Sum(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   SumInferMeta(x, axis, dtype, keep_dim, &meta_out);
-  SumKernel<T, Context>(dev_ctx, x, axis, dtype, false, &dense_out);
+  SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);
   return dense_out;
 }
 

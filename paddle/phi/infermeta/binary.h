@@ -288,7 +288,7 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
-                    float rcond,
+                    const Scalar& rcond,
                     std::string driver,
                     MetaTensor* solution,
                     MetaTensor* residuals,
