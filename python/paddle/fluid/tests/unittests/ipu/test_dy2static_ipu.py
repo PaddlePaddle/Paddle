@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 
 import numpy as np
 import paddle
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 from paddle.jit import to_static
 from paddle.optimizer.lr import LRScheduler
 from functools import partial
-
-SEED = 2022
 
 
 class SimpleLayer(paddle.nn.Layer):
@@ -64,12 +60,9 @@ class SimpleLayer(paddle.nn.Layer):
         return x
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestBase(IPUD2STest):
 
     def setUp(self):
-        paddle.disable_static()
         self.set_op_attrs()
         self.set_data_feed()
 
@@ -87,14 +80,14 @@ class TestBase(IPUOpTest):
                            use_identity_loss=use_ipu)
 
     def _test(self, use_ipu=False):
-        paddle.seed(SEED)
-        np.random.seed(SEED)
+        paddle.seed(self.SEED)
+        np.random.seed(self.SEED)
         model = self.create_model(use_ipu)
         optim = paddle.optimizer.Adam(learning_rate=0.01,
                                       parameters=model.parameters())
 
         if use_ipu:
-            device = paddle.set_device('ipu')
+            paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1,
                                           is_training=True,
@@ -102,15 +95,15 @@ class TestBase(IPUOpTest):
                                           enable_manual_shard=False)
             ipu_strategy.set_optimizer(optim)
 
+        epochs = 100
         result = []
-        for epoch in range(100):
+        for _ in range(epochs):
             # ipu only needs call model() to do forward/backward/grad_update
             pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
                 optim.clear_grad()
-
             result.append(loss)
 
         if use_ipu:
@@ -121,23 +114,22 @@ class TestBase(IPUOpTest):
     def test_training(self):
         ipu_loss = self._test(True).flatten()
         cpu_loss = self._test(False).flatten()
-
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
 
 
 class TestSaveLoad(TestBase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.save_path = tempfile.TemporaryDirectory()
+    def setUp(self):
+        super().setUp()
+        self.save_path = tempfile.TemporaryDirectory()
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.save_path.cleanup()
+    def tearDown(self):
+        super().tearDown()
+        self.save_path.cleanup()
 
     def _test(self, use_ipu=False):
-        paddle.seed(SEED)
-        np.random.seed(SEED)
+        paddle.seed(self.SEED)
+        np.random.seed(self.SEED)
         model = self.create_model(use_ipu)
         optim = paddle.optimizer.Adam(learning_rate=0.01,
                                       parameters=model.parameters())
@@ -147,7 +139,7 @@ class TestSaveLoad(TestBase):
             self.save_path, 'ipu' if use_ipu else 'cpu')
 
         if use_ipu:
-            device = paddle.set_device('ipu')
+            paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1,
                                           is_training=True,
@@ -155,15 +147,15 @@ class TestSaveLoad(TestBase):
                                           enable_manual_shard=False)
             ipu_strategy.set_optimizer(optim)
 
+        epochs = 100
         result = []
-        for epoch in range(100):
+        for _ in range(epochs):
             # ipu only needs call model() to do forward/backward/grad_update
             pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
                 optim.clear_grad()
-
             result.append(loss)
 
         if use_ipu:
@@ -171,18 +163,16 @@ class TestSaveLoad(TestBase):
 
         paddle.save(model.state_dict(), model_path)
         paddle.save(optim.state_dict(), optim_path)
-
         model.set_state_dict(paddle.load(model_path))
         optim.set_state_dict(paddle.load(optim_path))
 
-        for epoch in range(100):
+        for _ in range(epochs):
             # ipu only needs call model() to do forward/backward/grad_update
             pred, loss = model(self.data, self.label)
             if not use_ipu:
                 loss.backward()
                 optim.step()
                 optim.clear_grad()
-
             result.append(loss)
 
         if use_ipu:
@@ -191,9 +181,7 @@ class TestSaveLoad(TestBase):
         return np.array(result)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestPatch(IPUOpTest):
+class TestPatch(IPUD2STest):
 
     def setUp(cls):
         paddle.disable_static()

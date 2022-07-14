@@ -195,6 +195,7 @@ cc_library(
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
+
 cc_library(
   device_context
   SRCS device_context.cc
@@ -219,11 +220,16 @@ cc_library(
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
        eigen3
-       cpu_context
        generator)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context xpu_resource_pool)
 endif()
+
+if(WITH_MKLDNN)
+  target_link_libraries(device_context onednn_context)
+endif()
+
+target_link_libraries(device_context cpu_context)
 
 cc_library(
   collective_helper

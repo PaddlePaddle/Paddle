@@ -99,12 +99,11 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_elementwise_activation_count,
                     elt_type,
                     act_type);
-  }
 }
 
 }  // namespace ir
