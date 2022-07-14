@@ -48,8 +48,8 @@ class FillConstantOpConverter : public OpConverter {
       for (int64_t i = 0; i < out_tensor->numel(); i++)
         tmp_ptr[i] = std::stof(str_value);
       trt_data = static_cast<void*>(tmp_ptr);
-    } else {
     }
+
     trt_num = static_cast<size_t>(out_tensor->numel());
     engine_->SetWeights("fill_constant_value", std::move(out_tensor));
     TensorRTEngine::Weight weight{trt_dtype, trt_data, trt_num};
