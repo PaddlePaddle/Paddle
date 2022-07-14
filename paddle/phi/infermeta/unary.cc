@@ -2319,9 +2319,11 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
   for (int i = 0; i < x_dims.size(); ++i) {
     xshape_dims[i + 1] = x_dims[i];
   }
-  xshape->set_dims(phi::make_ddim(xshape_dims));
-  xshape->share_lod(x);
-  xshape->set_dtype(x.dtype());
+  if (xshape) {
+    xshape->set_dims(phi::make_ddim(xshape_dims));
+    xshape->share_lod(x);
+    xshape->set_dtype(x.dtype());
+  }
 }
 
 void StridedSliceRawInferMeta(const MetaTensor& x,
@@ -3137,9 +3139,11 @@ void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,
   for (int i = 0; i < x_dims.size(); ++i) {
     xshape_dims[i + 1] = x_dims[i];
   }
-  xshape->set_dims(phi::make_ddim(xshape_dims));
-  xshape->share_lod(x);
-  xshape->set_dtype(x.dtype());
+  if (xshape) {
+    xshape->set_dims(phi::make_ddim(xshape_dims));
+    xshape->share_lod(x);
+    xshape->set_dtype(x.dtype());
+  }
 }
 
 void UnStackInferMeta(const MetaTensor& x,
