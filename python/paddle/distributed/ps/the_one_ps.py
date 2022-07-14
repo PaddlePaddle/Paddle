@@ -814,7 +814,7 @@ class PsDescBuilder(object):
     def _get_fs_client(self):
         return fsClient(self.context["user_defined_strategy"].fs_client_param)
 
-    def build_fl_worker_desc(client_info):
+    def build_fl_client_desc(self, client_info):
         pass
 
     def build_worker_desc(self):
