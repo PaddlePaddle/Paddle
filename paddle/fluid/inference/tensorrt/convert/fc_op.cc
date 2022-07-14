@@ -47,18 +47,17 @@ class FcOpConverter : public OpConverter {
                                       nvinfer1::Dims x_dim,
                                       int x_num_col_dims,
                                       std::string output_name) {
-    // add shuffle before fc
+    // add shuffle before fc, 
+    // reshape_before_fc_dim only used in static shape mode
     nvinfer1::Dims reshape_before_fc_dim;
-    reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
-    // padding shape "* x q x 1 x 1"
+    reshape_before_fc_dim.nbDims = x_num_col_dims + 1;
+    // padding shape "* x q"
 
     nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor = nullptr;
 
     if (!engine_->with_dynamic_shape()) {
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_dim.d[i] = 1;
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
+      reshape_before_fc_dim.d[x_num_col_dims] = 1;
+      for (int i = 0; i < before_fc->getDimensions().nbDims; i++) {
         if (i < x_num_col_dims) {
           reshape_before_fc_dim.d[i] = 0;
         } else {
@@ -68,11 +67,10 @@ class FcOpConverter : public OpConverter {
     } else {
       std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
       nvinfer1::ITensor* input_shape_tensor = Shape(before_fc);
+      reshape_before_fc_shape_tensor.resize(x_num_col_dims + 1);
+      reshape_before_fc_shape_tensor[x_num_col_dims] = Add1DConstantLayer(1);
 
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
+      for (int i = 0; i < before_fc->getDimensions().nbDims; i++) {
         if (i < x_num_col_dims) {
           reshape_before_fc_shape_tensor[i] =
               GetEleTensorOfShape(input_shape_tensor, i);
@@ -245,17 +243,40 @@ class FcOpConverter : public OpConverter {
         }
       } else {
         // add fc layer
-        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
-                                                    FullyConnected,
+        // inputs is [ * x input_size]
+        nvinfer1::Dims trt_dims;
+        trt_dims.nbDims = inputs->getDimensions().nbDims;
+        for (int i = 0; i < trt_dims.nbDims; i++)
+        {
+          trt_dims.d[i] = 1;
+        }
+
+        trt_dims.d[trt_dims.nbDims - 2] = m;
+        trt_dims.d[trt_dims.nbDims - 1] = n;
+        auto* weight_tensor = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, weight.get())->getOutput(0);
+
+        for (int i = 0; i < trt_dims.nbDims; i++)
+        {
+          trt_dims.d[i] = 1;
+        }
+        trt_dims.d[trt_dims.nbDims - 1] = n;
+
+        auto* bias_tensor = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, bias.get())->getOutput(0);
+        auto* matmul_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
+                                                    MatrixMultiply,
                                                     *inputs,
-                                                    n_output,
-                                                    weight.get(),
-                                                    bias.get());
+                                                    nvinfer1::MatrixOperation::kNONE,
+                                                    *weight_tensor, nvinfer1::MatrixOperation::kNONE);
+
+        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
+                                                    ElementWise,
+                                                    *matmul_layer_float->getOutput(0),   *bias_tensor, nvinfer1::ElementWiseOperation::kSUM);
+
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
-        auto* fc_after_reshape_float = reshape_after_fc(
-            fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
+        auto* fc_after_reshape_float = fc_layer_float;
+
         if (activation_type == "relu") {
           fc_after_reshape_float->setName(
               ("float_reshape_after_fc: Shuffle (Output: " + output_name + ")")
@@ -383,6 +404,11 @@ class FcOpConverter : public OpConverter {
         // add fc layer
         auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
             engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
+
+
+      // auto* reshape_before_fc_layer =
+      //     reshape_before_fc(X, x_dim, x_num_col_dims, output_name);
+
         if (activation_type == "relu") {
           fc_layer_float->setName(
               ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
