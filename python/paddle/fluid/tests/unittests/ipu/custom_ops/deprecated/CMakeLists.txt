@@ -1,3 +1,3 @@
 if(WITH_IPU)
-  py_test_modules(test_custom_nllloss_ipu MODULES test_custom_nllloss_ipu)
+  py_test(test_custom_nllloss_ipu SRCS test_custom_nllloss_ipu.py)
 endif()
