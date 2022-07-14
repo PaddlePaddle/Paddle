@@ -53,3 +53,11 @@ if(WITH_TESTING
     DEPS ${JIT_DEPS})
   add_dependencies(layer_test jit_download_program)
 endif()
+
+
+proto_library(paddle_jit_property_proto SRCS property.proto)
+
+cc_library(
+  property
+  SRCS property.cc
+  DEPS paddle_jit_property_proto)
