@@ -630,7 +630,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
 
-    def test_padding_mode_no_eager_deletion(self):
+    def _test_padding_mode_no_eager_deletion(self):
         '''
         Test that train ppl of padding mode is same to that of static mode without eager deletion
         '''
@@ -638,7 +638,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
         # When parallel is True, use_program_cache does not make a difference.
         self.compare_padding_static_mode(parallel=True, use_program_cache=True)
 
-    def test_padding_mode_eager_deletion(self):
+    def _test_padding_mode_eager_deletion(self):
         '''
         Test that train ppl of padding mode is same to that of static mode under eager deletion
         '''
