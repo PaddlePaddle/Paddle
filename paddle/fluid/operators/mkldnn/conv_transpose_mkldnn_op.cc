@@ -205,27 +205,7 @@ class ConvTransposeMKLDNNHandlerT
   dnnl::primitive_attr CreateConvAttrs(const framework::ExecutionContext& ctx) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
-
-    const std::string fuse_activation =
-        ctx.Attr<std::string>("fuse_activation");
-    const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    const float fuse_beta = ctx.Attr<float>("fuse_beta");
-
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
-      constexpr float scale = 1.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_relu, fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "relu6") {
-      constexpr float scale = 1.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_bounded_relu, fuse_alpha, fuse_beta);
-    } else if (fuse_activation == "swish") {
-      constexpr float scale = 1.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_swish, fuse_alpha, fuse_beta);
-    }
+    platform::AppendActivation(ctx, post_operations);
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
