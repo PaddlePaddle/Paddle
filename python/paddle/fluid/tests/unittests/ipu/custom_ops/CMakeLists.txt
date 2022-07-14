@@ -5,7 +5,7 @@ if(WITH_IPU)
     "test_*.py")
   string(REPLACE ".py" "" CUSTOM_OP_TESTS "${CUSTOM_OP_TESTS}")
   foreach(CUSTOM_OP_TEST ${CUSTOM_OP_TESTS})
-    py_test_modules(${CUSTOM_OP_TEST} MODULES ${CUSTOM_OP_TEST})
+    py_test(${CUSTOM_OP_TEST} SRCS ${CUSTOM_OP_TEST}.py)
   endforeach()
 
   add_subdirectory(deprecated)
