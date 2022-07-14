@@ -764,7 +764,7 @@ class BuddyAllocatorList {
  private:
   explicit BuddyAllocatorList(const std::string &device_type)
       : device_type_(device_type) {
-    auto devices = phi::DeviceManager::GetDeviceList(device_type);
+    auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
     for (auto dev_id : devices) {
       init_flags_[dev_id].reset(new std::once_flag());
     }

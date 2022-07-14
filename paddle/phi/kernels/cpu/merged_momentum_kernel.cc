@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/merged_momentum_impl.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-REGISTER_OP_CUDA_KERNEL(
-    merged_momentum,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, float>,
-    ops::MergedMomentumOpKernel<plat::CUDADeviceContext, double>);
+PD_REGISTER_KERNEL(merged_momentum,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MergedMomentumKernel,
+                   float,
+                   double) {}

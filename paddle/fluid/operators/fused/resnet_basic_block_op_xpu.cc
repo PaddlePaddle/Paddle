@@ -959,12 +959,8 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(
-    resnet_basic_block,
-    ops::ResNetBasicBlockXPUKernel<float>,
-    ops::ResNetBasicBlockXPUKernel<paddle::platform::float16>);
-REGISTER_OP_XPU_KERNEL(
-    resnet_basic_block_grad,
-    ops::ResNetBasicBlockGradXPUKernel<float>,
-    ops::ResNetBasicBlockGradXPUKernel<paddle::platform::float16>);
+REGISTER_OP_XPU_KERNEL(resnet_basic_block,
+                       ops::ResNetBasicBlockXPUKernel<float>);
+REGISTER_OP_XPU_KERNEL(resnet_basic_block_grad,
+                       ops::ResNetBasicBlockGradXPUKernel<float>);
 #endif
