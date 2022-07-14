@@ -770,7 +770,6 @@ def fill_(x, value):
             (type(value)))
     return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
                             int(value))
-    return
 
 
 @dygraph_only
@@ -2364,10 +2363,7 @@ def unsqueeze_(x, axis, name=None):
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in axis
         ]
-    # limin-todo:
-    #print("limin: i am in unsqueeze_")
     out, _ = _C_ops.unsqueeze2_(x, 'axes', axis)
-    #out = _C_ops.final_state_unsqueeze(x, axis)
     return out
 
 
