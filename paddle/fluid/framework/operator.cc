@@ -1194,7 +1194,7 @@ struct OperatorWithKernel::CacheImpl {
   }
 
   bool updateInputsShapesDimCache() {
-    bool flag = true;
+    bool flag = false;
     size_t inputs_size = kernel_ctx_->InputsSize();
     for (size_t i = 0; i < inputs_size; i++) {
       const std::string& in_name = infer_shape_ctx_->GetInputNameByIdx(i);
@@ -1203,31 +1203,52 @@ struct OperatorWithKernel::CacheImpl {
           infer_shape_ctx_->GetInputDim(in_name) !=
               inputs_dim_caches[in_name]) {
         inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputDim(in_name);
-        flag = false;
+        discardCudaGraphCache();
+        flag = true;
       }
     }
     return flag;
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
- public:
-  void startCudaGraphCapture(gpuStream_t stream) {
+  void startCudaGraphCapture() {
+    platform::CUDADeviceContext* ctx =
+        static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
+    auto stream = ctx->stream();
     cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
   }
 
-  void endCudaGraphCapture(gpuStream_t stream) {
+  void endCudaGraphCapture() {
+    platform::CUDADeviceContext* ctx =
+        static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
+    auto stream = ctx->stream();
+
+    cudaGraph_t graph_;
     cudaStreamEndCapture(stream, &graph_);
     cudaGraphInstantiate(&graph_instance_, graph_, NULL, NULL, 0);
+    graph_generated = true;
   }
 
-  void runCudaGraph(gpuStream_t stream) {
+  void runCudaGraph() {
+    platform::CUDADeviceContext* ctx =
+        static_cast<platform::CUDADeviceContext*>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
+    auto stream = ctx->stream();
     cudaGraphLaunch(graph_instance_, stream);
   }
 
+  bool cudaGraphGenerated() { return graph_generated; }
+
+  void discardCudaGraphCache() { graph_generated = false; }
+
  private:
+  bool graph_generated{false};
   cudaGraphExec_t graph_instance_;
-  cudaGraph_t graph_;
 #endif
 
  private:
@@ -1377,7 +1398,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
 
 void OperatorWithKernel::InitOpCache(const Scope& scope,
                                      const platform::Place& place) const {
-  if (impl_) delete impl_;
   if (runtime_ctx_.get() == nullptr || pre_scope_ != &scope) {
     std::lock_guard<std::mutex> lock(cache_update_mutex_);
     if (runtime_ctx_.get() == nullptr || pre_scope_ != &scope) {
@@ -1385,33 +1405,22 @@ void OperatorWithKernel::InitOpCache(const Scope& scope,
       pre_scope_ = &scope;
     }
   }
+
   impl_ =
       new CacheImpl(new phi::KernelContext(),
                     new RuntimeInferShapeContext(*this, *runtime_ctx_.get()));
-  RunImpl(scope, place, runtime_ctx_.get());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDADeviceContext* ctx = static_cast<platform::CUDADeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
-  auto stream = ctx->stream();
 
-  if (std::count(graphed_ops.begin(), graphed_ops.end(), Type())) {
-    impl_->startCudaGraphCapture(stream);
-  }
-#endif
   RunImpl(scope, place, runtime_ctx_.get());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (std::count(graphed_ops.begin(), graphed_ops.end(), Type())) {
-    impl_->endCudaGraphCapture(stream);
+  if (cacheEnabled()) {
+    impl_->updateInputsShapesDimCache();
   }
-#endif
 }
 
 bool OperatorWithKernel::cacheEnabled() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (cudaGraphEnabled()) return true;
 #endif
-  return (run_phi_kernel_ && !need_prepare_data_ && !need_prepare_phi_data_ &&
-          impl_ != nullptr);
+  return (run_phi_kernel_ && !need_prepare_data_ && !need_prepare_phi_data_);
 }
 bool OperatorWithKernel::cudaGraphEnabled() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1447,39 +1456,39 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else {
-    if (!impl_) {
-      InitOpCache(scope, place);
-    } else {
-      if (cacheEnabled()) {
-        // 1. inferShape func
+    auto runOpCache = [&]() {
+      // common cache
+      if (!cudaGraphEnabled()) {
         if (!all_kernels_must_compute_runtime_shape_)
           this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-          // 2. run impl
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (cudaGraphEnabled()) {
-          if (impl_->updateInputsShapesDimCache()) {
-            // execute the cuda graph directly
-            platform::CUDADeviceContext* ctx =
-                static_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(
-                        platform::CUDAPlace(0)));
-            auto stream = ctx->stream();
-            impl_->runCudaGraph(stream);
-          } else {
-            // op's inputs shape has changed, cuda graph cache should be
-            // recaptured.
-            InitOpCache(scope, place);
-          }
-        } else {
-#endif
-          (*pt_kernel_)(impl_->getKernelContext());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        }
-#endif
-      } else {
-        checkRuntimeContext(scope);
-        RunImpl(scope, place, runtime_ctx_.get());
+        (*pt_kernel_)(impl_->getKernelContext());
       }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      // cudaGraph cache
+      if (cudaGraphEnabled()) {
+        if (impl_->updateInputsShapesDimCache()) {
+          if (!all_kernels_must_compute_runtime_shape_)
+            this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+          (*pt_kernel_)(impl_->getKernelContext());
+        } else if (!impl_->cudaGraphGenerated()) {
+          impl_->startCudaGraphCapture();
+          impl_->getKernelContext();
+          RunImpl(scope, place, runtime_ctx_.get());
+          impl_->endCudaGraphCapture();
+        } else {
+          impl_->runCudaGraph();
+        }
+      }
+#endif
+    };
+
+    if (!impl_) {
+      InitOpCache(scope, place);
+    } else if (cacheEnabled()) {
+      runOpCache();
+    } else {
+      checkRuntimeContext(scope);
+      RunImpl(scope, place, runtime_ctx_.get());
     }
   }
 }
