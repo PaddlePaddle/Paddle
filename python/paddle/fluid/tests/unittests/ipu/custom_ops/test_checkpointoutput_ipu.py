@@ -35,8 +35,6 @@ def load_custom_ops():
     return custom_ops
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestCheckpointoutput(IPUOpTest):
 
     def setUp(self):

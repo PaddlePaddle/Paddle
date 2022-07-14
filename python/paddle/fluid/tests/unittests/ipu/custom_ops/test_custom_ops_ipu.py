@@ -76,8 +76,6 @@ def build_ipu_strategy():
     return ipu_strategy
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
