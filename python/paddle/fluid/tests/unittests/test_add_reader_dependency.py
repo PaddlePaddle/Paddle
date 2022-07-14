@@ -35,7 +35,7 @@ class TestAddReaderDependency(unittest.TestCase):
         self.sleep_time = 2
         self.use_double_buffer = True
 
-    def test_main(self):
+    def _test_main(self):
         self.run_main(fluid.CPUPlace())
 
         if fluid.is_compiled_with_cuda():
