@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+# import numpy as np
 
-import paddle
+# import paddle
 from .. import Layer
-from ..functional import pairwise_distance
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
-from paddle import _C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from .. import functional as F
+# from ...fluid.data_feeder import check_variable_and_dtype, check_type
+# from ...fluid.layer_helper import LayerHelper
+# from paddle import _C_ops
+# from paddle import in_dynamic_mode
+# from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 
 
 __all__ = []
@@ -78,7 +78,7 @@ class PairwiseDistance(Layer):
         self.name = name
 
     def forward(self, x, y):
-        return pairwise_distance(x, y, self.p, self.epsilon, self.keepdim, self.name)
+        return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim, self.name)
 
     def extra_repr(self):
         main_str = 'p={p}'
