@@ -1375,12 +1375,13 @@
   backward : mean_all_grad
 
 - api : merged_momentum
-  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov, std::string[] regularization_method, float[] regularization_coeff, bool multi_precision, float rescale_grad)
+  args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov, str[] regularization_method, float[] regularization_coeff, bool multi_precision, float rescale_grad)
   output : Tensor[](param_out), Tensor[](velocity_out), Tensor[](master_param_out)
   infer_meta :
     func : MergedMomentumInferMeta
   kernel :
     func : merged_momentum
+  optional : master_param
 
 - api : meshgrid
   args : (Tensor[] inputs)
