@@ -769,7 +769,7 @@ def fill_(x, value):
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
     return _C_ops.fill_any_(x, "value_float", float(value), "value_int",
-                                int(value))
+                            int(value))
     return
 
 
