@@ -79,19 +79,19 @@ def pairwise_distance(x: Tensor,
 
     if in_dygraph_mode():
         sub = _C_ops.elementwise_sub(x, y)
-        return _C_ops.final_state_p_norm(sub, p, 1, epsilon,
+        return _C_ops.final_state_p_norm(sub, p, -1, epsilon,
                                          keepdim, False)
 
     if _in_legacy_dygraph():
         sub = _C_ops.elementwise_sub(x, y)
-        return _C_ops.p_norm(sub, 'axis', 1, 'porder', p, 'keepdim',
+        return _C_ops.p_norm(sub, 'axis', -1, 'porder', p, 'keepdim',
                              keepdim, 'epsilon', epsilon)
 
     sub = paddle.subtract(x, y)
 
     helper = LayerHelper("PairwiseDistance", name=name)
     attrs = {
-        'axis': 1,
+        'axis': -1,
         'porder': p,
         'keepdim': keepdim,
         'epsilon': epsilon,
