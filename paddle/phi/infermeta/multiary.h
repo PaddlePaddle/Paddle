@@ -256,20 +256,20 @@ void MergedAdamInferMeta(
     std::vector<MetaTensor*> master_param_out);
 
 void MergedMomentumInferMeta(
-    const std::vector<const DenseTensor*>& param,
-    const std::vector<const DenseTensor*>& grad,
-    const std::vector<const DenseTensor*>& velocity,
-    const std::vector<const DenseTensor*>& learning_rate,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
     float mu,
     bool use_nesterov,
     const std::vector<std::string>& regularization_method,
     const std::vector<float>& regularization_coeff,
     bool multi_precision,
     float rescale_grad,
-    std::vector<DenseTensor*> param_out,
-    std::vector<DenseTensor*> velocity_out,
-    std::vector<DenseTensor*> master_param_out);
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out);
 
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
