@@ -820,9 +820,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._worker_endpoints = []
 
         self._coordinator_endpoints = os.getenv("PADDLE_COORDINATOR_ENDPOINTS",
-                                                None)
+                                                "")
         if self._coordinator_endpoints == "":
-            print(">>> coordinator address is null!")
+            print("fl-ps > coordinator address is null!")
         else:
             self._with_coordinator = True
             self._coordinator_endpoints = self._coordinator_endpoints.split(",")
