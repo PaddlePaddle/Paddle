@@ -102,13 +102,16 @@ endif()
 set(PYBIND_SRCS
     pybind.cc
     imperative.cc
-    op_function.cc
     inference_api.cc
     ir.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
+    op_function_common.cc
+    parallel_executor.cc
+    tensor.cc
+    place.cc
     const_value.cc
     global_value_getter_setter.cc
     fleet_wrapper_py.cc
@@ -124,13 +127,15 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
-    jit.cc)
-
-execute_process(
-  COMMAND
-    "${PYTHON_EXECUTABLE}"
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/generate_file_structures.py"
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/")
+    jit.cc
+    op_function1.cc
+    op_function2.cc
+    op_function3.cc
+    op_function4.cc
+    op_function5.cc
+    op_function6.cc
+    op_function7.cc
+    op_function8.cc)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
@@ -267,11 +272,34 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function.cc)
-  set(tmp_impl_file ${impl_file}.tmp)
+  set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
+  set(impl_file1 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function1.cc)
+  set(tmp_impl_file1 ${impl_file1}.tmp)
+  set(impl_file2 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function2.cc)
+  set(tmp_impl_file2 ${impl_file2}.tmp)
+  set(impl_file3 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function3.cc)
+  set(tmp_impl_file3 ${impl_file3}.tmp)
+  set(impl_file4 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function4.cc)
+  set(tmp_impl_file4 ${impl_file4}.tmp)
+  set(impl_file5 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function5.cc)
+  set(tmp_impl_file5 ${impl_file5}.tmp)
+  set(impl_file6 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function6.cc)
+  set(tmp_impl_file6 ${impl_file6}.tmp)
+  set(impl_file7 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function7.cc)
+  set(tmp_impl_file7 ${impl_file7}.tmp)
+  set(impl_file8 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function8.cc)
+  set(tmp_impl_file8 ${impl_file8}.tmp)
+  set(CODE_GEN_SPLIT_FILE_COUNT "8")
   set(eager_impl_file
       ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
+
+  execute_process(
+    COMMAND
+      "${PYTHON_EXECUTABLE}"
+      "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/generate_file_structures.py"
+      "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/"
+      "${CODE_GEN_SPLIT_FILE_COUNT}")
 
   set(OP_IMPL_DEPS op_function_generator)
   set(EAGER_OP_IMPL_DEPS eager_op_function_generator
@@ -292,7 +320,7 @@ if(WITH_PYTHON)
       ":retry\n"
       "ECHO op_function_generator run %build_times% time\n"
       "taskkill /f /im op_function_generator.exe 2>NUL\n"
-      "${op_impl_path}/op_function_generator.exe ${tmp_impl_file}\n"
+      "${op_impl_path}/op_function_generator.exe ${op_function_output_path} ${CODE_GEN_SPLIT_FILE_COUNT}\n"
       "if %ERRORLEVEL% NEQ 0 (\n"
       "    set /a build_times=%build_times%+1\n"
       "    if %build_times% GEQ 10 (\n"
@@ -367,12 +395,33 @@ if(WITH_PYTHON)
     endif()
 
     add_custom_command(
-      OUTPUT ${impl_file}
+      OUTPUT op_function
       COMMAND
         ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file}
-              ${impl_file}
-      COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
+              ${impl_file1}
+      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
+              ${impl_file2}
+      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
+              ${impl_file3}
+      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
+              ${impl_file4}
+      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
+              ${impl_file5}
+      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
+              ${impl_file6}
+      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
+              ${impl_file7}
+      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
+              ${impl_file8}
+      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
       DEPENDS ${OP_IMPL_DEPS})
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(
@@ -431,13 +480,35 @@ if(WITH_PYTHON)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()
     add_custom_command(
-      OUTPUT ${impl_file}
+      OUTPUT op_function
       COMMAND
         ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-        "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator" "${tmp_impl_file}"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file}
-              ${impl_file}
-      COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
+        "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
+        "${op_function_output_path}" "${CODE_GEN_SPLIT_FILE_COUNT}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
+              ${impl_file1}
+      COMMENT "copy_if_different ${tmp_impl_file1} to ${impl_file1}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file2}
+              ${impl_file2}
+      COMMENT "copy_if_different ${tmp_impl_file2} to ${impl_file2}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file3}
+              ${impl_file3}
+      COMMENT "copy_if_different ${tmp_impl_file3} to ${impl_file3}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file4}
+              ${impl_file4}
+      COMMENT "copy_if_different ${tmp_impl_file4} to ${impl_file4}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file5}
+              ${impl_file5}
+      COMMENT "copy_if_different ${tmp_impl_file5} to ${impl_file5}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file6}
+              ${impl_file6}
+      COMMENT "copy_if_different ${tmp_impl_file6} to ${impl_file6}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file7}
+              ${impl_file7}
+      COMMENT "copy_if_different ${tmp_impl_file7} to ${impl_file7}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file8}
+              ${impl_file8}
+      COMMENT "copy_if_different ${tmp_impl_file8} to ${impl_file8}"
       DEPENDS ${OP_IMPL_DEPS}
       VERBATIM)
     if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
@@ -454,19 +525,13 @@ if(WITH_PYTHON)
         VERBATIM)
     endif()
   endif()
-  add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
+  add_custom_target(op_function_generator_cmd ALL DEPENDS op_function)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_op_function_generator_cmd ALL
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS interpretercore standalone_executor
-       staticgraph_executor_statistics)
-  cc_library(
-    op_function_common
-    SRCS op_function_common.cc
-    DEPS ${PYBIND_DEPS})
-  list(APPEND PYBIND_DEPS op_function_common)
+  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
@@ -482,7 +547,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
-    list(APPEND PYBIND_DEPS op_function_common)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)
