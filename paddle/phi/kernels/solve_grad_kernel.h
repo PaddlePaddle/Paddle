@@ -19,12 +19,12 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SolveKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const DenseTensor& y,
-                 const DenseTensor& out_grad,
-                 const DenseTensor& out,
-                 DenseTensor* x_grad,
-                 DenseTensor* y_grad);
+void SolveGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& dout,
+                     const DenseTensor& out,
+                     DenseTensor* dx,
+                     DenseTensor* dy);
 
 }  // namespace phi

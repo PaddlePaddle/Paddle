@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/solve_grad_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
+#include "paddle/phi/kernels/impl/solve_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    softmax, CPU, ALL_LAYOUT, phi::SoftmaxKernel, float, double) {}
+    solve_grad, GPU, ALL_LAYOUT, phi::SolveGradKernel, float, double) {}

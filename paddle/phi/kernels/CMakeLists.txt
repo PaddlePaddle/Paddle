@@ -62,6 +62,7 @@ set(COMMON_KERNEL_DEPS
     pooling
     maxouting
     matrix_inverse
+    matrix_solve
     phi_dynload_warpctc
     sequence_padding
     sequence_scale)
