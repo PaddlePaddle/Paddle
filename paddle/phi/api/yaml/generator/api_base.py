@@ -131,6 +131,7 @@ class BaseAPI(object):
             'long': 'long',
             'size_t': 'size_t',
             'float': 'float',
+            'float[]': 'const std::vector<float>&',
             'double': 'double',
             'bool': 'bool',
             'str': 'const std::string&',
