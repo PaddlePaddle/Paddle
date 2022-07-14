@@ -22,6 +22,7 @@ limitations under the License. */
 #include <ThreadPool.h>
 
 #include <atomic>
+#include <mutex>
 #include <ctime>
 #include <map>
 #include <random>
