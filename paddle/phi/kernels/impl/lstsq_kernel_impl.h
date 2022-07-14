@@ -14,9 +14,7 @@
 
 #pragma once
 
-#define GPU_ENABLE                                         \
-  defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-      defined(PADLDE_WITH_ROCM)
+#define GPU_ENABLE defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"

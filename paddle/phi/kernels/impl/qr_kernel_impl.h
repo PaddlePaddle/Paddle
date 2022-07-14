@@ -19,9 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
-#define GPU_ENABLE                                         \
-  defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-      defined(PADLDE_WITH_ROCM)
+#define GPU_ENABLE defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #if defined(GPU_ENABLE)
 #include "paddle/fluid/platform/dynload/cusolver.h"
