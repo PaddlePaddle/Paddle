@@ -22,7 +22,7 @@ import paddle.static
 from paddle.utils.cpp_extension import load
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from op_test_ipu import IPUOpTest
 
 
 # just load one custom-op for the data race issue under parallel mode
