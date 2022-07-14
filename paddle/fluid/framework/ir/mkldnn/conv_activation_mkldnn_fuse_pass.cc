@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
-  std::vector<std::string> conv_types = {"conv2d"};
+  std::vector<std::string> conv_types = {"conv2d", "conv2d_transpose"};
 
   for (const auto& conv_type : conv_types)
     for (auto& act_type : act_types) {
@@ -89,8 +89,9 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
   gpd(graph, handler);
   AddStatis(found_conv_activation_count);
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
-    PrettyLogDetail("---    fused %d conv with %s activation",
+    PrettyLogDetail("---    fused %d %s with %s activation",
                     found_conv_activation_count,
+                    conv_type,
                     act_type);
   }
 }
@@ -132,6 +133,48 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .End()
       .AddAttr("data_format")
       .IsOptional()
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
@@ -275,6 +318,7 @@ REGISTER_PASS_CAPABILITY(conv_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
+            .LE("conv2d_transpose", 2)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
