@@ -4,7 +4,7 @@
 
 reference
 
-https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/07_new_op/new_custom_op_cn.html
+https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/custom_op/new_cpp_op_cn.html
 
 ## Write custom op for PopART
 
