@@ -77,7 +77,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
             filter_tag = paddle.static.data(name='Filter_tag', shape=[-1,16], dtype='int64')
             predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(input=data, size=1))
-            ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            ins_tag = paddle.static.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
             label_after_filter, _ = fluid.layers.filter_by_instag(label, ins_tag, filter_tag, False)
             predict_after_filter, ins_tag_weight = fluid.layers.filter_by_instag(predict, ins_tag, filter_tag, False)
             auc_out = paddle.static.ctr_metric_bundle(input=predict_after_filter, label=label_after_filter, ins_tag_weight=ins_tag_weight)
