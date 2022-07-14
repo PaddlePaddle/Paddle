@@ -2015,6 +2015,9 @@ set -x
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
     wait;
+
+    #generate ut file map
+    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
     
 }
 
@@ -2093,12 +2096,6 @@ set -x
     parallel_card_test_single "$single_card_tests_1" 1
     parallel_card_test_single "$multiple_card_tests" 2
     parallel_card_test_single "$exclusive_tests"
-    
-    wait;
-    
-    #generate ut file map
-    python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-
 
     wait;
     #classify_case_by_cardNum
