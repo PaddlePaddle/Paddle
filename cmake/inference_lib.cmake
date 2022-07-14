@@ -427,10 +427,8 @@ copy(
 set(module "memory")
 copy(
   fluid_lib_dist
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/detail/*.h
-       ${src_dir}/${module}/allocation/*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
-       ${dst_dir}/${module}/allocation)
+  SRCS ${src_dir}/${module}/allocation/*.h
+  DSTS ${dst_dir}/${module}/allocation)
 
 set(module "platform")
 set(platform_lib_deps profiler_proto errors)
