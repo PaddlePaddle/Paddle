@@ -2093,6 +2093,7 @@ set -x
     parallel_card_test_single "$single_card_tests_1" 1
     parallel_card_test_single "$multiple_card_tests" 2
     parallel_card_test_single "$exclusive_tests"
+    
     wait;
     
     #generate ut file map
