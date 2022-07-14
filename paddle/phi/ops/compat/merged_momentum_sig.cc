@@ -16,19 +16,25 @@
 
 namespace phi {
 
-KernelSignature DiagOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("diag", {"X"}, {"offset", "padding_value"}, {"Out"});
-}
-
-KernelSignature DiagGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MergedMomentumOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "diag_grad", {"X", "Out@GRAD"}, {"offset"}, {"X@GRAD"});
+      "merged_momentum",
+      {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"},
+      {"mu",
+       "use_nesterov",
+       "regularization_method",
+       "regularization_coeff",
+       "multi_precision",
+       "rescale_grad"},
+      {
+          "ParamOut",
+          "VelocityOut",
+          "MasterParamOut",
+      });
 }
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(diag_v2, diag);
-PD_REGISTER_BASE_KERNEL_NAME(diag_v2_grad, diag_grad);
-
-PD_REGISTER_ARG_MAPPING_FN(diag_v2, phi::DiagOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(diag_v2_grad, phi::DiagGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(merged_momentum,
+                           phi::MergedMomentumOpArgumentMapping);

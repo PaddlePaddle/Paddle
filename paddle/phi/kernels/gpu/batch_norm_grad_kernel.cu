@@ -591,10 +591,12 @@ void BatchNormGradRawKernel(const Context &ctx,
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
 #else
-      // CUDNN PER_ACTIVATION mode only support small batch size
+      // CUDNN only support small batch size
       const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+      const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
       const bool use_native_kernel =
-          (x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD);
+          ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
       if (use_native_kernel) {
         if (compute_format == DataLayout::kNCHW) {
           BNBackward<T, block, DataLayout::kNCHW>

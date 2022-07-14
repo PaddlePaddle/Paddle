@@ -26,7 +26,6 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
-
   std::vector<std::string> conv_types = {"conv2d"};
 
   for (const auto& conv_type : conv_types)
