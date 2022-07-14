@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/detail/memory_block.h"
+#include "paddle/fluid/memory/allocation/memory_block.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
