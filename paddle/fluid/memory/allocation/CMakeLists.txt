@@ -36,7 +36,7 @@ if(WITH_GPU)
   list(APPEND ALLOCATOR_DEPS cuda_graph)
 endif()
 
-if(CUDA_VERSION GREATER_EQUAL 10.2)
+if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
   list(APPEND ALLOCATOR_SRCS cuda_virtual_mem_allocator.cc)
 endif()
 
@@ -178,9 +178,6 @@ function(file_download_and_uncompress URL NAME)
     BUILD_COMMAND ""
     UPDATE_COMMAND ""
     INSTALL_COMMAND "")
-  set(third_party_deps
-      ${third_party_deps} extern_download_${NAME}
-      PARENT_SCOPE)
 endfunction()
 
 if(WITH_TESTING)
