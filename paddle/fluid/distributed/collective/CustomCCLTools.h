@@ -17,7 +17,6 @@
 #include <error.h>
 #include <string>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"

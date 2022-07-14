@@ -176,7 +176,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group.add_argument(
         "--custom_device_type",
         type=str,
-        default=None,
+        default="",
         help="It's for custom device training. For example: "
         "--custom_device_type=\"custom_cpu\" will launch on custom_cpu.")
 

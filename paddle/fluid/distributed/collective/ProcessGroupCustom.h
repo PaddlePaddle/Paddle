@@ -21,22 +21,19 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
-#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace distributed {
-
 using Place = paddle::platform::Place;
 using CustomDeviceContext = paddle::platform::CustomDeviceContext;
-
 class ProcessGroupCustom : public ProcessGroup {
  public:
   class CustomTask : public ProcessGroup::Task,
@@ -48,15 +45,10 @@ class ProcessGroupCustom : public ProcessGroup {
                const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
-
     void SynchronizeStreams();
-
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-
     void Synchronize();
-
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
-
     virtual ~CustomTask();
 
     std::vector<CustomEventManager> control_events_;
@@ -107,14 +99,11 @@ class ProcessGroupCustom : public ProcessGroup {
   std::unordered_map<std::string,
                      std::vector<std::shared_ptr<CustomCCLCommManager>>>
       places_to_customcomm_;
-
   std::unordered_map<std::string, std::vector<CustomEventManager>>
       places_to_events_;
-
   std::unordered_map<std::string,
                      std::vector<std::unique_ptr<CustomDeviceContext>>>
       places_to_ctx_;
-
   std::set<int> used_place_ids_;
 
  private:
@@ -136,6 +125,5 @@ class ProcessGroupCustom : public ProcessGroup {
                                 const std::vector<Place>& places);
   const std::string device_type_;
 };
-
 }  //  namespace distributed
 }  //  namespace paddle

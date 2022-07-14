@@ -189,9 +189,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   }
 
   auto& ccl_comms = places_to_customcomm_[key];
-
   SyncDefaultStream(places, places_to_events_[key], places_to_ctx_[key]);
-
   auto task = CreateTask(places, rank_, op_type, inputs);
   task->SetOutputs(outputs);
 
@@ -272,13 +270,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
     const BarrierOptions& opts) {
   // Only support single card single process
   std::vector<phi::CustomPlace> places = {place_};
-
   std::vector<phi::DenseTensor> barrierTensors;
   barrierTensors.reserve(places.size());
 
   for (auto& place : places) {
     phi::DeviceGuard guard(place);
-
     auto dt = full({1}, 0, phi::DataType::FLOAT32, place);
     barrierTensors.push_back(
         *std::dynamic_pointer_cast<phi::DenseTensor>(dt.impl()));

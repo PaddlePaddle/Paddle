@@ -119,10 +119,10 @@ class ParallelEnv(object):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._device_type = str(
-            os.environ.get('PADDLE_DISTRI_CUSTOM_DEVICE_TYPE', None))
+            os.environ.get('PADDLE_DISTRI_CUSTOM_DEVICE_TYPE', ""))
 
         # imperative only support one gpu or xpu
-        if self._device_type is not None:
+        if self._device_type != "":
             FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
                 self._device_type)
             selected_custom_devices = os.getenv(FLAGS_selected_custom_devices,
