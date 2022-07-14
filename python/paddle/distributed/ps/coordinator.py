@@ -138,7 +138,7 @@ class FLClientBase(abc.ABC):
             self.train_dataset.load_into_memory()
 
     def release_dataset(self):
-        if reader_type == "InmemoryDataset":
+        if self.reader_type == "InmemoryDataset":
             self.train_dataset.release_memory()
 
     def set_executor(self):
@@ -323,7 +323,7 @@ class Coordinator(object):
         self._communicator.start_coordinator(self_endpoint, trainer_endpoints)
 
     def make_fl_strategy(self):
-        print("fl-ps > running make_fl_strategy(loop) in coordinator\n")
+        logger.info("fl-ps > running make_fl_strategy(loop) in coordinator\n")
         while True:
             # 1. get all fl clients reported info
             str_map = self._communicator.query_fl_clients_info(
