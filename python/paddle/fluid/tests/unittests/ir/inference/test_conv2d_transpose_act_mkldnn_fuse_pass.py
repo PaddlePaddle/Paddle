@@ -120,7 +120,7 @@ class TestConvTransposeActivationMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(quant=False,
-                            max_examples=30,
+                            max_examples=100,
                             passes=["conv_activation_mkldnn_fuse_pass"])
 
 
