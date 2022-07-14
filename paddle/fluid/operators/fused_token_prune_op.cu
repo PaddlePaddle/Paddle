@@ -11,6 +11,14 @@ limitations under the License. */
 
 #include <limits>
 
+#ifdef __NVCC__
+#include <cub/cub.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 #include "paddle/fluid/framework/op_registry.h"

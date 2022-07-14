@@ -14,6 +14,8 @@
 
 #include <vector>
 
+#include "cub/cub.cuh"
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/framework/tensor.h"
