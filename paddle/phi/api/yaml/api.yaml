@@ -1,12 +1,3 @@
-- api : as_real
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : AsRealInferMeta
-  kernel :
-    func : as_real
-#  backward : as_complex
-
 - api : atan2
   args : (Tensor x, Tensor y)
   output : Tensor
