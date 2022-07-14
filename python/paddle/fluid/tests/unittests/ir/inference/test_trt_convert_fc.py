@@ -35,7 +35,8 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, (int)(attrs[0]["m"]/2), 2]).astype(np.float32)
+            return np.ones([batch, 3, 64, (int)(attrs[0]["m"] / 2),
+                            2]).astype(np.float32)
 
         def generate_w(batch, attrs: List[Dict[str, Any]]):
             return np.ones([attrs[0]["m"], attrs[0]["n"]]).astype(np.float32)
@@ -43,39 +44,48 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
             return np.ones([attrs[0]["n"]]).astype(np.float32)
 
-
         for batch in [1, 4]:
-            for [m,n] in [[32, 23]]:
-                dics = [{
-                    "in_num_col_dims" : 3,
-                    # for my conveinence
-                    "m" : m,
-                    "n" : n,
-                }, {}]
+            for [m, n] in [[32, 23]]:
+                dics = [
+                    {
+                        "in_num_col_dims": 3,
+                        # for my conveinence
+                        "m": m,
+                        "n": n,
+                    },
+                    {}
+                ]
 
-                ops_config = [{
-                    "op_type": "fc",
-                    "op_inputs": {
-                        "Input": ["input_data"],
-                        "W": ["w_data"],
-                        "Bias": ["bias_data"]
+                ops_config = [
+                    {
+                        "op_type": "fc",
+                        "op_inputs": {
+                            "Input": ["input_data"],
+                            "W": ["w_data"],
+                            "Bias": ["bias_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
                     },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                },]
+                ]
 
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":TensorConfig(data_gen=partial(generate_bias, batch, dics))
-                        },
+                        "w_data":
+                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
+                        "bias_data":
+                        TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics))
+                    },
                     inputs={
-                        "input_data":TensorConfig(data_gen=partial(generate_input1, batch, dics)),
+                        "input_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)),
                     },
                     outputs=["output_data"])
 
@@ -139,6 +149,7 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
+
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
             return np.ones([batch, 3, 64, 14]).astype(np.float32)
 
@@ -148,39 +159,48 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
             return np.ones([attrs[0]["n"]]).astype(np.float32)
 
-
         for batch in [1, 4]:
-            for [m,n] in [[14, 43]]:
-                dics = [{
-                    "in_num_col_dims" : 3,
-                    # for my conveinence
-                    "m" : m,
-                    "n" : n,
-                }, {}]
+            for [m, n] in [[14, 43]]:
+                dics = [
+                    {
+                        "in_num_col_dims": 3,
+                        # for my conveinence
+                        "m": m,
+                        "n": n,
+                    },
+                    {}
+                ]
 
-                ops_config = [{
-                    "op_type": "fc",
-                    "op_inputs": {
-                        "Input": ["input_data"],
-                        "W": ["w_data"],
-                        "Bias": ["bias_data"]
+                ops_config = [
+                    {
+                        "op_type": "fc",
+                        "op_inputs": {
+                            "Input": ["input_data"],
+                            "W": ["w_data"],
+                            "Bias": ["bias_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
                     },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                },]
+                ]
 
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":TensorConfig(data_gen=partial(generate_bias, batch, dics))
-                        },
+                        "w_data":
+                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
+                        "bias_data":
+                        TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics))
+                    },
                     inputs={
-                        "input_data":TensorConfig(data_gen=partial(generate_input1, batch, dics)),
+                        "input_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)),
                     },
                     outputs=["output_data"])
 
@@ -226,6 +246,7 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
         self.run_test(quant=True)
 
 
+# this is the special case when x_dim.nbDims == 4 && x_num_col_dims == 1
 class TrtConvertFcTest2(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -233,6 +254,7 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
+
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
             return np.ones([batch, 1, 1, 14]).astype(np.float32)
 
@@ -242,39 +264,48 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
             return np.ones([attrs[0]["n"]]).astype(np.float32)
 
-
         for batch in [1, 4]:
-            for [m,n] in [[14, 43]]:
-                dics = [{
-                    "in_num_col_dims" : 1,
-                    # for my conveinence
-                    "m" : m,
-                    "n" : n,
-                }, {}]
+            for [m, n] in [[14, 43]]:
+                dics = [
+                    {
+                        "in_num_col_dims": 1,
+                        # for my conveinence
+                        "m": m,
+                        "n": n,
+                    },
+                    {}
+                ]
 
-                ops_config = [{
-                    "op_type": "fc",
-                    "op_inputs": {
-                        "Input": ["input_data"],
-                        "W": ["w_data"],
-                        "Bias": ["bias_data"]
+                ops_config = [
+                    {
+                        "op_type": "fc",
+                        "op_inputs": {
+                            "Input": ["input_data"],
+                            "W": ["w_data"],
+                            "Bias": ["bias_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
                     },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                },]
+                ]
 
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":TensorConfig(data_gen=partial(generate_bias, batch, dics))
-                        },
+                        "w_data":
+                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
+                        "bias_data":
+                        TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics))
+                    },
                     inputs={
-                        "input_data":TensorConfig(data_gen=partial(generate_input1, batch, dics)),
+                        "input_data":
+                        TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)),
                     },
                     outputs=["output_data"])
 
@@ -299,12 +330,12 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
-        # # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
+        # for static_shape
+        # clear_dynamic_shape()
+        # self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        # yield self.create_inference_config(), (1, 2), 1e-5
+        # self.trt_param.precision = paddle_infer.PrecisionType.Half
+        # yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
 
         # for dynamic_shape
         generate_dynamic_shape()
@@ -318,6 +349,10 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
 
     def test_quant(self):
         self.run_test(quant=True)
+
+
+if __name__ == "__main__":
+    unittest.main()
 
 if __name__ == "__main__":
     unittest.main()
