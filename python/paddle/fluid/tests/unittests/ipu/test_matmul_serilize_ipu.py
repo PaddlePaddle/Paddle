@@ -26,8 +26,6 @@ def set_serialize_factor(serialize_factor):
     op._set_attr('serialize_factor', serialize_factor)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
