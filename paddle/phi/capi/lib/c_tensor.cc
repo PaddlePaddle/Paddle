@@ -19,7 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
-PD_DataType PD_TensorGetDataType(const PD_Tensor* tensor, PD_Status* status) {
+PD_DataType PD_TensorGetPDDataType(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;

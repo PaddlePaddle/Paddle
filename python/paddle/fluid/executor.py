@@ -1444,6 +1444,11 @@ class Executor(object):
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                    else:
+                        from paddle.incubate.autograd import prim_enabled, prim2orig
+                        if prim_enabled() and program == default_main_program():
+                            prim2orig()
+
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,

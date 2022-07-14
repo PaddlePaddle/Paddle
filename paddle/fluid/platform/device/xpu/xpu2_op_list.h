@@ -323,6 +323,8 @@ XPUOpMap& get_kl2_ops() {
       {"one_hot_v2",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+      {"p_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"p_norm_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"pool2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -349,6 +351,8 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_sum_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"relu6", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"relu6_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"relu_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -517,11 +521,9 @@ XPUOpMap& get_kl2_ops() {
 
       // Fused op
       {"resnet_basic_block_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;

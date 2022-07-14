@@ -24,7 +24,7 @@ extern "C" {
 
 typedef struct PD_Tensor PD_Tensor;
 
-PD_DataType PD_TensorGetDataType(const PD_Tensor *tensor, PD_Status *status);
+PD_DataType PD_TensorGetPDDataType(const PD_Tensor *tensor, PD_Status *status);
 
 PD_DataLayout PD_TensorGetDataLayout(const PD_Tensor *tensor,
                                      PD_Status *status);
