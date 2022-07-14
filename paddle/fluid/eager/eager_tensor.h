@@ -209,6 +209,7 @@ class EagerVariable final {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
+        src_tensor_ = tensor.impl();
       } else if (tensor.is_selected_rows()) {
         ConstructVariableFromTensor<phi::SelectedRows>(tensor);
       } else if (IsVariableCompatTensor(tensor) &&
@@ -226,6 +227,14 @@ class EagerVariable final {
       }
     } else {
       VLOG(6) << "Build Empty EagerVariable with name " << name_;
+    }
+  }
+
+  ~EagerVariable() {
+    if (src_tensor_) {
+      auto* framework_tensor = var_.GetMutable<phi::DenseTensor>();
+      auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
+      tensor_dense->ShareDataWith(*framework_tensor);
     }
   }
 
@@ -304,5 +313,6 @@ class EagerVariable final {
  private:
   std::string name_{""};
   paddle::framework::Variable var_;
+  std::shared_ptr<phi::TensorBase> src_tensor_;
 };
 }  // namespace egr
