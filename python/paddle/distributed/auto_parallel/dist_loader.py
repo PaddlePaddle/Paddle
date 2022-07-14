@@ -36,7 +36,9 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
         self.data_parallel_rank = data_parallel_rank
         self.drop_lost = drop_last
         if data_parallel_world_size is not None and batch_size is not None:
-            assert batch_size % data_parallel_world_size == 0
+            for dp_world_size in data_parallel_world_size:
+                assert batch_size % dp_world_size == 0, \
+                    "batch_size must be divisible by dp_world_size value {}".format(str(dp_world_size))
 
     @abc.abstractmethod
     def __iter__(self):
@@ -62,8 +64,6 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
-        self.dp_world_size = 1 if data_parallel_world_size is None else data_parallel_world_size
-        self.dp_rank = 0 if data_parallel_rank is None else data_parallel_rank
 
         super(NonIterableGeneratorLoader,
               self).__init__(dataset, batch_size, epochs,
@@ -110,11 +110,12 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                     batch_data[idx].append(data[idx])
                 if (step + 1) % self.batch_size == 0:
                     partial_data = []
-                    for d in batch_data:
+                    for i, d in enumerate(batch_data[:len(self.feed_list)]):
                         array = np.array(d)
                         partial_data.append(
-                            np.split(array, self.dp_world_size)[self.dp_rank])
-                    yield partial_data[:len(self.feed_list)]
+                            np.split(array,
+                                     self.dp_world_size[i])[self.dp_rank[i]])
+                    yield partial_data
                     batch_data = None
 
         def batch_data_generator():
@@ -128,6 +129,12 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                         np.split(d, self.dp_world_size)[self.dp_rank])
                 yield partial_data[:len(self.feed_list)]
 
+        self.dp_world_size = [
+            1 for _ in range(len(self.feed_list))
+        ] if self.data_parallel_world_size is None else self.data_parallel_world_size
+        self.dp_rank = [
+            0 for _ in range(len(self.feed_list))
+        ] if self.data_parallel_rank is None else self.data_parallel_rank
         dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=self.feed_list, capacity=70, iterable=False)
         if self.batch_size is not None:

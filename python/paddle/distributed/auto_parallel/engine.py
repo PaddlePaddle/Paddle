@@ -569,8 +569,22 @@ class Engine:
         for var in inputs_var + labels_var:
             if var.name in dist_main_block.vars:
                 feed_list.append(dist_main_block.vars[var.name])
-        dp_world_size, dp_rank = self._get_data_parallel_info(
-            feed_list[0], dist_context)
+        dp_world_sizes = []
+        dp_ranks = []
+        dp_world_size = None
+        dp_rank = None
+        for feed_var in feed_list:
+            dp_world_size, dp_rank = self._get_data_parallel_info(
+                feed_var, dist_context)
+            dp_world_sizes.append(dp_world_size)
+            dp_ranks.append(dp_rank)
+
+        if not dp_world_size:
+            dp_world_sizes = None
+            dp_ranks = None
+
+        print(dp_world_sizes)
+        print(dp_ranks)
 
         # remove the first three ops if multi run fit/evaluate/predict
         op_size = len(dist_main_block.ops)
@@ -589,8 +603,8 @@ class Engine:
                 batch_size,
                 epochs,
                 steps_per_epoch,
-                data_parallel_world_size=dp_world_size,
-                data_parallel_rank=dp_rank)
+                data_parallel_world_size=dp_world_sizes,
+                data_parallel_rank=dp_ranks)
 
         # move read op from the end of program to the start of program
         new_op_size = len(dist_main_block.ops)
