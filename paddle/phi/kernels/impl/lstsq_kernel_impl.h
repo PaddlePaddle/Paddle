@@ -15,16 +15,19 @@
 #pragma once
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/optional.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 
 namespace phi {
 
@@ -79,6 +82,7 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
   }
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename DeviceContext, typename T>
 inline void BatchedOrmqr(const DeviceContext& dev_ctx,
                          bool left,
@@ -235,5 +239,6 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
 }
+#endif
 
 }  // namespace phi

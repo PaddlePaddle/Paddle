@@ -15,14 +15,18 @@
 #pragma once
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
+
 namespace phi {
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename DeviceContext, typename T>
 void BatchedGeqrf(const DeviceContext& dev_ctx,
                   int batch_size,
@@ -273,5 +277,6 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
+#endif
 
 }  // namespace phi
