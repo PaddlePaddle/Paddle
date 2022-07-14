@@ -105,8 +105,6 @@ class DGCMomentumOptimizer(Optimizer):
         ranks = list(range(paddle.distributed.get_world_size())
                      ) if group is None else group.ranks
         self._num_trainers = len(ranks)
-        # reuse some attrs in dgc_op and dgc_momentum_op
-        self._accumulators = defaultdict(lambda: dict())
 
         if grad_clip is not None:
             if not isinstance(grad_clip, paddle.nn.ClipGradByNorm):
@@ -271,7 +269,7 @@ class DGCMomentumOptimizer(Optimizer):
                 },
                 attrs={
                     "max_norm": max_norm,
-                    "rampup_begin_step": float(self._rampup_begin_step[0]),
+                    "rampup_begin_step": float(self._rampup_begin_step),
                 },
                 outputs={"Out": out})
         return out
@@ -409,68 +407,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         return k_var, encoded_var, gather_var
 
-    def _add_accumulator(self,
-                         name,
-                         param,
-                         dtype=None,
-                         fill_value=0.0,
-                         shape=None,
-                         type=None,
-                         device=None):
-        """Utility function to add an accumulator for a parameter
-
-        Args:
-            block: the block in which the loss tensor is present
-            name: name of the accumulator
-            param: parameter tensor for which accumulator is to be added
-            dtype: data type of the accumulator tensor
-            fill_value: value to initialize the accumulator tensor
-        """
-        if (name in self._accumulators
-                and param.name in self._accumulators[name]):
-            if _in_legacy_dygraph():
-                return self._accumulators[name][param.name]
-            raise Exception(
-                "Accumulator {} already exists for parameter {}".format(
-                    name, param.name))
-        if shape == None:
-            shape = param.shape
-        assert isinstance(self.helper, LayerHelper)
-
-        var_name = param.name + "_" + name
-        var_name = unique_name.generate(var_name)
-
-        var = self.helper.create_global_variable(
-            name=var_name,
-            persistable=True,
-            dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR if _in_legacy_dygraph() else
-            (param.type if type is None else type),
-            shape=shape,
-            belong_to_optimizer=True)
-
-        with device_guard(device):
-            self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value)))
-
-        self._accumulators[name][param.name] = var
-        return var
-
-    def _create_param_lr(self, param_and_grad):
-        # create learning rate tensor for every parameter
-        param = param_and_grad[0]
-        if hasattr(param, 'optimize_attr'):
-            param_lr = param.optimize_attr['learning_rate']
-            if type(param_lr) == paddle.fluid.framework.Variable:
-                return param_lr
-            else:
-                if param_lr == 1.0:
-                    return self._global_learning_rate()
-                else:
-                    return self._global_learning_rate() * param_lr
-        else:
-            return self._global_learning_rate()
-
     def clear_grad(self, set_to_zero=True):
         core.clear_gradients(self.trainable_params, set_to_zero)
 
@@ -479,13 +415,14 @@ class DGCMomentumOptimizer(Optimizer):
         """
            execute after loss.backward.
         """
+        lr = self._global_learning_rate()
+
         for param in self.trainable_params:
             grad = self._reduce_grad_res[param.name]
             velocity_acc = self._accumulators[self._u_velocity_acc_str][
                 param.name]
 
             assert velocity_acc is not None
-            lr = self._create_param_lr([param, grad])
 
             if not self._is_use_dgc(param, grad):
                 if self._grad_clip is not None:
@@ -532,7 +469,7 @@ class DGCMomentumOptimizer(Optimizer):
                 attrs = {
                     "mu": self._momentum,
                     "use_nesterov": self._use_nesterov,
-                    "rampup_begin_step": float(self._rampup_begin_step[0])
+                    "rampup_begin_step": float(self._rampup_begin_step)
                 }
 
                 with paddle.no_grad():
