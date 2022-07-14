@@ -1382,7 +1382,7 @@
   kernel :
     func : merged_momentum
   optional : master_param
-  inplace : (param -> param_out), (master_param -> master_param_out), (velocity -> velocity_out)
+  inplace : (param -> param_out), (velocity -> velocity_out), (master_param -> master_param_out)
 
 - api : meshgrid
   args : (Tensor[] inputs)
