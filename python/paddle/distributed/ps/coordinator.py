@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid.communicator import FLCommunicator
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 import paddle.distributed.fleet as fleet
 from google.protobuf import text_format
 from paddle.distributed.ps.utils.public import is_distributed_env
-import paddle
 import time
 import abc
 import os
