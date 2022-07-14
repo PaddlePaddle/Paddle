@@ -22,7 +22,6 @@ from paddle.fluid.framework import _enable_legacy_dygraph
 from paddle.jit.layer import Layer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
-_enable_legacy_dygraph()
 paddle.seed(1)
 
 
