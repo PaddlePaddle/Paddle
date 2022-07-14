@@ -168,21 +168,20 @@ def auc(input,
     Examples 1:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
             import numpy as np
             paddle.enable_static()
 
-            data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = fluid.data(name="label", shape=[-1], dtype="int")
-            fc_out = fluid.layers.fc(input=data, size=2)
-            predict = fluid.layers.softmax(input=fc_out)
-            result=fluid.layers.auc(input=predict, label=label)
+            data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
+            label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            fc_out = paddle.static.nn.fc(input=data, size=2)
+            predict = paddle.nn.functional.softmax(input=fc_out)
+            result=paddle.static.auc(input=predict, label=label)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
 
-            exe.run(fluid.default_startup_program())
+            exe.run(paddle.static.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
             output= exe.run(feed={"input": x,"label": y},
@@ -192,25 +191,25 @@ def auc(input,
     Examples 2:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
+            import paddle.fluid as fluid
             import numpy as np
             paddle.enable_static()
 
-            data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = fluid.data(name="label", shape=[-1], dtype="int")
-            fc_out = fluid.layers.fc(input=data, size=2)
-            predict = fluid.layers.softmax(input=fc_out)
-            filter_tag = layers.data(name='Filter_tag', shape=[-1,16], dtype='int64')
-            ins_tag = layers.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
+            label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            fc_out = paddle.static.nn.fc(input=data, size=2)
+            predict = paddle.nn.functional.softmax(input=fc_out)
+            filter_tag = paddle.static..data(name='Filter_tag', shape=[-1,16], dtype='int64')
+            ins_tag = paddle.static.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
             label_after_filter, _ = fluid.layers.filter_by_instag(label, ins_tag, filter_tag, False)
             predict_after_filter, ins_tag_weight = fluid.layers.filter_by_instag(predict, ins_tag, filter_tag, False)
-            result=fluid.layers.auc(input=predict_after_filter, label=label_after_filter, ins_tag_weight=ins_tag_weight)
+            result=paddle.static.auc(input=predict_after_filter, label=label_after_filter, ins_tag_weight=ins_tag_weight)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
 
-            exe.run(fluid.default_startup_program())
+            exe.run(paddle.static.default_startup_program())
             x = np.random.rand(3,32,32).astype("float32")
             y = np.array([1,0,1])
             output= exe.run(feed={"input": x,"label": y},
