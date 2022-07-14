@@ -1491,6 +1491,15 @@
     func : matmul
   backward : matmul_grad
 
+- api : matrix_nms
+  args : (Tensor bboxes, Tensor scores, int background_label = 0, float score_threshold, float post_threshold = 0, int nms_top_k, int keep_top_k, bool normalized = true, bool use_gaussian = false, float gaussian_sigma = 2.0)
+  output : Tensor(out), Tensor(index), Tensor(roisnum)
+  infer_meta :
+    func : MatrixNMSInferMeta
+  kernel :
+    func : MatrixNMSKernel
+  option:
+
 # matrix_power
 - api : matrix_power
   args : (Tensor x, int n)

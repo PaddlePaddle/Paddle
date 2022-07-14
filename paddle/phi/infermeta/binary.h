@@ -249,6 +249,21 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 int y_num_col_dims,
                                 MetaTensor* out);
 
+void MatrixNMSInferMeta(const MetaTensor& bboxes,
+                        const MetaTensor& scores,
+                        int background_label,
+                        float score_threshold,
+                        float post_threshold,
+                        int nms_top_k,
+                        int keep_top_k,
+                        bool normalized,
+                        bool use_gaussian,
+                        float gaussian_sigma,
+                        MetaTensor* out,
+                        MetaTensor* index,
+                        MetaTensor* roisnum,
+                        MetaConfig config = MetaConfig());
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,

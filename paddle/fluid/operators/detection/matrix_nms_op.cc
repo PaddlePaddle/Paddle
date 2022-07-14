@@ -11,9 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,55 +26,6 @@ using LoDTensor = framework::LoDTensor;
 class MatrixNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes", "MatrixNMS");
-    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "MatrixNMS");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MatrixNMS");
-    auto box_dims = ctx->GetInputDim("BBoxes");
-    auto score_dims = ctx->GetInputDim("Scores");
-    auto score_size = score_dims.size();
-
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_size == 3,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(Scores) must be 3. "
-                            "But received rank = %d.",
-                            score_size));
-      PADDLE_ENFORCE_EQ(box_dims.size(),
-                        3,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(BBoxes) must be 3."
-                            "But received rank = %d.",
-                            box_dims.size()));
-      PADDLE_ENFORCE_EQ(box_dims[2] == 4,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The last dimension of Input (BBoxes) must be 4, "
-                            "represents the layout of coordinate "
-                            "[xmin, ymin, xmax, ymax]."));
-      PADDLE_ENFORCE_EQ(
-          box_dims[1],
-          score_dims[2],
-          platform::errors::InvalidArgument(
-              "The 2nd dimension of Input(BBoxes) must be equal to "
-              "last dimension of Input(Scores), which represents the "
-              "predicted bboxes."
-              "But received box_dims[1](%s) != socre_dims[2](%s)",
-              box_dims[1],
-              score_dims[2]));
-    }
-    ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
-    ctx->SetOutputDim("Index", {box_dims[1], 1});
-    if (ctx->HasOutput("RoisNum")) {
-      ctx->SetOutputDim("RoisNum", {-1});
-    }
-    if (!ctx->IsRuntime()) {
-      ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
-      ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -435,13 +388,18 @@ https://arxiv.org/abs/2003.10152
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(matrix_nms,
+                            MatrixNMSInferShapeFunctor,
+                            PD_INFER_META(phi::MatrixNMSInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     matrix_nms,
     ops::MatrixNMSOp,
     ops::MatrixNMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MatrixNMSInferShapeFunctor);
 REGISTER_OP_CPU_KERNEL(matrix_nms,
                        ops::MatrixNMSKernel<float>,
                        ops::MatrixNMSKernel<double>);
