@@ -452,6 +452,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
       OpProtoAndCheckerMaker::OpRoleAttrName(),
       (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
   desc->SetAttr("value", 1.0f);
+  desc->SetAttr("shape", std::vector<int64_t>({1}));
   std::vector<std::string> output_names;
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());

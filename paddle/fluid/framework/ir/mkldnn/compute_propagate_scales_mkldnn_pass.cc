@@ -372,7 +372,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
     const auto op_name = op_node->Name();
     if (scale_immutable_ops.count(op_name)) {
       std::string input_name;
-      if (op_name == "slice") {
+      if (op_name == "slice" || op_name == "shape") {
         input_name = op_node->Op()->Input("Input")[0];
       } else {
         input_name = op_node->Op()->Input("X")[0];
@@ -389,6 +389,13 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
         (*var_quant_scales)[output_name] = in_iter->second;
       } else if (out_iter != var_quant_scales->end()) {
         (*var_quant_scales)[input_name] = out_iter->second;
+      }
+    } else if (op_name == "concat") {
+      auto out_iter = var_quant_scales->find(op_node->Op()->Output("Out")[0]);
+      if (out_iter != var_quant_scales->end()) {
+        std::vector<std::string> input_names = op_node->Op()->Input("X");
+        for (auto input_name : input_names)
+          (*var_quant_scales)[input_name] = out_iter->second;
       }
     } else if (op_name == "scale") {
       const std::string output_name = op_node->Op()->Output("Out")[0];
@@ -445,6 +452,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       "reshape2",
       "pool2d",
       "slice",
+      "shape",
       "nearest_interp",
       "nearest_interp_v2"};
 
