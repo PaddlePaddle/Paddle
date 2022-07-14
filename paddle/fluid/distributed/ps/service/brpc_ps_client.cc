@@ -103,7 +103,7 @@ void DownpourPsClientService::service(
   }
 }
 
-// 启动client端RpcService 用于数据互发等操作
+// 启动 client 端 RpcService 用于数据互发等操作
 int32_t BrpcPsClient::StartClientService() {
   if (_service.Configure(this, _client_id) != 0) {
     LOG(ERROR)
@@ -124,7 +124,7 @@ int32_t BrpcPsClient::StartClientService() {
   _server_started = true;
   _env->RegistePsClient(
       butil::my_ip_cstr(), _server.listen_address().port, _client_id);
-  VLOG(0) << ">>> BrpcPsClient Service addr: " << butil::my_ip_cstr() << ", "
+  VLOG(0) << "BrpcPsClient Service addr: " << butil::my_ip_cstr() << ", "
           << _server.listen_address().port << ", " << _client_id;
   return 0;
 }
@@ -134,22 +134,24 @@ int32_t BrpcPsClient::StartFlClientService(const std::string &self_endpoint) {
   _fl_server.AddService(&_service, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
   if (self_endpoint.empty()) {
-    LOG(ERROR) << "fl client endpoint not set";
+    LOG(ERROR) << "fl-ps > fl client endpoint not set";
     return -1;
   }
 
   if (_fl_server.Start(self_endpoint.c_str(), &options) != 0) {
-    VLOG(0) << "Fl Client Service start fail. Try again.";
+    VLOG(0) << "fl-ps > StartFlClientService failed. Try again.";
     auto ip_port = paddle::string::Split(self_endpoint, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
     if (_fl_server.Start(int_ip_port.c_str(), &options) != 0) {
-      LOG(ERROR) << "Fl Client Service start failed, ip_port= " << int_ip_port;
+      LOG(ERROR) << "fl-ps > StartFlClientService failed, ip_port= "
+                 << int_ip_port;
       return -1;
     }
   } else {
-    VLOG(0) << "Fl Client Service start success! listen on " << self_endpoint;
+    VLOG(0) << "fl-ps > StartFlClientService succeed! listen on "
+            << self_endpoint;
   }
   return 0;
 }
@@ -210,42 +212,42 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
     coordinator_ip_port.assign(coordinator_list[i].ip.c_str());
     coordinator_ip_port.append(":");
     coordinator_ip_port.append(std::to_string(coordinator_list[i].port));
-    VLOG(0) << ">>> coordinator_ip_port: " << coordinator_ip_port;
+    VLOG(0) << "fl-ps > BrpcFlclient connetcting to coordinator: "
+            << coordinator_ip_port;
     for (size_t j = 0; j < _coordinator_channels[i].size(); ++j) {
       _coordinator_channels[i][j].reset(new brpc::Channel());
       if (_coordinator_channels[i][j]->Init(
               coordinator_ip_port.c_str(), "", &options) != 0) {
-        LOG(ERROR) << "BrpcFlclient connect to Coordinator:"
+        LOG(ERROR) << "fl-ps > BrpcFlclient connect to coordinator:"
                    << coordinator_ip_port << " Failed! Try again.";
         std::string int_ip_port = GetIntTypeEndpoint(coordinator_list[i].ip,
                                                      coordinator_list[i].port);
         if (_coordinator_channels[i][j]->Init(
                 int_ip_port.c_str(), "", &options) != 0) {
-          LOG(ERROR) << "BrpcFlclient connect to Coordinator:" << int_ip_port
-                     << " Failed!";
+          LOG(ERROR) << "fl-ps > BrpcFlclient connect to coordinator:"
+                     << int_ip_port << " Failed!";
           return -1;
         }
       }
     }
   }
   StartFlClientService(self_endpoint);
-  VLOG(0) << ">>> InitializeFlWorker finished!";
+  VLOG(0) << "fl-ps > InitializeFlWorker finished!";
   return 0;
 }
 
-void BrpcPsClient::PushFlClientInfoSync(const std::string &fl_params) {
+void BrpcPsClient::PushFLClientInfoSync(const std::string &fl_client_info) {
   size_t request_call_num = _coordinator_channels.size();
-  VLOG(0) << "fl client to coordinator channel size is: " << request_call_num;
   FlClientBrpcClosure *closure =
       new FlClientBrpcClosure(request_call_num, [request_call_num](void *done) {
         auto *closure = reinterpret_cast<FlClientBrpcClosure *>(done);
         int ret = 0;
         for (size_t i = 0; i < request_call_num; i++) {
-          if (closure->check_response(i, FL_PUSH_PARAMS_SYNC) != 0) {
-            LOG(ERROR)
-                << "PushFlClientInfoSync response from coordinator is failed";
+          if (closure->check_response(i, PUSH_FL_CLIENT_INFO_SYNC) != 0) {
+            LOG(ERROR) << "fl-ps > PushFLClientInfoSync response from "
+                          "coordinator is failed";
             ret = -1;
-            break;
+            return;
           }
         }
         closure->set_promise_value(ret);
@@ -254,26 +256,27 @@ void BrpcPsClient::PushFlClientInfoSync(const std::string &fl_params) {
   std::future<int32_t> fut = promise->get_future();
   closure->add_promise(promise);
   for (size_t i = 0; i < request_call_num; ++i) {
-    closure->request(i)->set_cmd_id(FL_PUSH_PARAMS_SYNC);
+    closure->request(i)->set_cmd_id(PUSH_FL_CLIENT_INFO_SYNC);
     closure->request(i)->set_client_id(_client_id);
-    closure->request(i)->set_str_params(fl_params);
+    closure->request(i)->set_str_params(fl_client_info);
     brpc::Channel *rpc_channel = _coordinator_channels[0][0].get();
     if (rpc_channel == nullptr) {
       LOG(ERROR) << "_coordinator_channels is null";
+      return;
     }
     PsService_Stub rpc_stub(rpc_channel);  // CoordinatorService
     rpc_stub.FLService(
         closure->cntl(i), closure->request(i), closure->response(i), closure);
     fut.wait();
   }
-  VLOG(0) << ">>> PushFlClientInfoSync finished！";
+  VLOG(0) << "fl-ps > PushFLClientInfoSync finished, client id: " << _client_id;
   return;
 }
 
 std::string BrpcPsClient::PullFlStrategy() {
   while (!_service._is_fl_strategy_ready) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    VLOG(0) << "wait for fl strategy returned from coordinator";
+    VLOG(0) << "fl-ps > waiting for fl strategy returned from coordinator";
   }
   _service._is_fl_strategy_ready =
       false;  // only support single thread, no need for multi-threads

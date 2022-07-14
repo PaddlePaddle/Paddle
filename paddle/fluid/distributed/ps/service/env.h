@@ -65,7 +65,7 @@ struct PSHost {
     s << "host: " << ip;
     s << " port: " << port;
     s << " rank: " << rank;
-    s << " uint: " << SerializeToUint64();
+    s << " uint64: " << SerializeToUint64();
     return s.str();
   }
 
@@ -302,7 +302,7 @@ class PaddlePSEnvironment : public PSEnvironment {
         host.ParseFromString(host_sign_list->at(i));
         _coordinator_list.push_back(host);
         _coordinator_sign_set.insert(host.rank);
-        VLOG(0) << ">>> Coordinator info: " << host.ToString();
+        VLOG(0) << "fl-ps > coordinator info in env: " << host.ToString();
       }
     }
     return;

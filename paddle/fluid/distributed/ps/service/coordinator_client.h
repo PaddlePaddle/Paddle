@@ -62,81 +62,69 @@ class CoordinatorServiceHandle {
   void SaveFLClientInfo(const CoordinatorReqMessage& request) {
     auto client_id = request.client_id();
     const std::string& str_params = request.str_params();
-    VLOG(0) << ">>> recved client: " << client_id << ", info: " << str_params;
-    VLOG(0) << ">>> last_round_total_fl_clients_num: "
-            << last_round_total_fl_clients_num;
-    std::unique_lock<std::mutex> lk(mtx_);
+    // each client is allowed to send empty message to maintain heartbeat(i.e.
+    // use staleness msg)
+    std::unique_lock<std::mutex> lck(_mtx);
     if (str_params.size() != 0) {
-      _client_info_mp[client_id] =
-          str_params;  // each client send empty message to maintain
-                       // heartbeat(i.e. use staleness msg)
+      _client_info_mp[client_id] = str_params;
+    } else {
+      LOG(INFO) << "fl-ps > content in request from " << client_id
+                << " is null";
     }
     fl_client_ids.insert(client_id);
-    lk.unlock();
-    fl_clients_count_++;
-    // how to know all clients have reported params?
-    // how to do when a client loss connection?
-    if (fl_clients_count_.load() == last_round_total_fl_clients_num) {
+    _fl_clients_count++;
+    // TODO(ziyoujiyi): how to process when a client loss connection?
+    if (_fl_clients_count.load() == last_round_total_fl_clients_num) {
       _is_all_clients_info_collected = true;
-    } else {
-      VLOG(0) << "total fl client num is: " << last_round_total_fl_clients_num
-              << "req fl client num is: " << fl_clients_count_;
+      _cv.notify_one();
     }
+    lck.unlock();
+    VLOG(0) << "last_round_total_fl_clients_num: "
+            << last_round_total_fl_clients_num
+            << ", has recved fl client num: " << _fl_clients_count.load();
     return;
   }
 
   std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
-    VLOG(0) << ">>> Entering QueryFLClientsInfo!";
     platform::Timer timeline;
+    double query_wait_time = 0.0;
     timeline.Start();
-    double coordinator_wait_time = 0.0;
-    while (coordinator_wait_time <
-           FLAGS_coordinator_wait_all_clients_max_time) {  // in case that some
-                                                           // clients down
-      if (_is_all_clients_info_collected == true) {
-        VLOG(0) << ">>> _is_all_clients_info_collected";
-        break;
+    auto f = [&]() -> bool {
+      while (
+          query_wait_time <
+          FLAGS_coordinator_wait_all_clients_max_time) {  // in case that some
+                                                          // clients down
+        if (_is_all_clients_info_collected == true) {
+          // LOG(INFO) << "fl-ps > _is_all_clients_info_collected";
+          return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        timeline.Pause();
+        query_wait_time += timeline.ElapsedSec();
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      VLOG(0) << "waiting for all fl clients info collected!";
-      timeline.Pause();
-      coordinator_wait_time += timeline.ElapsedSec();
-    }
+      // LOG(WARNNING) << "fl-ps > query_wait_time exceed!";
+      return true;
+    };
+
+    std::unique_lock<std::mutex> lck(_mtx);
+    _cv.wait(lck, f);
+    lck.unlock();
+
     _is_all_clients_info_collected = false;
-    fl_clients_count_.store(0);
+    _fl_clients_count.store(0);
     return _client_info_mp;
-  }
-
-  void InitDefaultFlStrategy() {
-    for (size_t i = 0; i < last_round_total_fl_clients_num; i++) {
-      _fl_strategy_mp[i] = "JOIN";
-    }
-    return;
-  }
-
-  void SaveFLStrategy(
-      const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    VLOG(0) << ">>> Entering SaveFLStrategy!";
-    for (auto it = fl_strategy.begin(); it != fl_strategy.end(); it++) {
-      uint32_t client_id = it->first;
-      _fl_strategy_mp[client_id] = it->second;
-    }
-    _is_fl_strategy_ready = true;
-    return;
   }
 
  public:
   std::unordered_map<uint32_t, std::string> _client_info_mp;
-  std::unordered_map<uint32_t, std::string> _fl_strategy_mp;
   std::set<uint32_t> fl_client_ids;
-  bool _is_fl_strategy_ready = false;
   uint32_t last_round_total_fl_clients_num = 0;
   bool _is_all_clients_info_collected = false;
 
  private:
-  std::mutex mtx_;
-  std::condition_variable cv_;
-  std::atomic<uint32_t> fl_clients_count_{0};
+  std::mutex _mtx;
+  std::condition_variable _cv;
+  std::atomic<uint32_t> _fl_clients_count{0};
 };
 
 class CoordinatorService : public PsService {
@@ -148,7 +136,7 @@ class CoordinatorService : public PsService {
   virtual ~CoordinatorService() {}
 
   virtual void Initialize() {
-    _service_handle_map[FL_PUSH_PARAMS_SYNC] =
+    _service_handle_map[PUSH_FL_CLIENT_INFO_SYNC] =
         std::bind(&CoordinatorService::SaveFLClientInfo,
                   this,
                   std::placeholders::_1,
@@ -168,30 +156,18 @@ class CoordinatorService : public PsService {
     return 0;
   }
 
-  void InitTotalFlClientNum(uint32_t all_fl_clients_num) {
+  void SetTotalFLClientsNum(uint32_t all_fl_clients_num) {
     if (_coordinator_service_handle.get() != nullptr) {
       _coordinator_service_handle->last_round_total_fl_clients_num =
           all_fl_clients_num;
     } else {
-      LOG(ERROR) << "_coordinator_service_handle is null in CoordinatorService";
+      LOG(ERROR) << "fl-ps > _coordinator_service_handle is null in "
+                    "CoordinatorService";
     }
     return;
   }
 
-  void InitDefaultFlStrategy() {
-    _coordinator_service_handle->InitDefaultFlStrategy();
-  }
-
-  void SetFlStrategyReady(bool flag) {
-    _coordinator_service_handle->_is_fl_strategy_ready = flag;
-    return;
-  }
-
-  bool IsFlStrategyReady() {
-    return _coordinator_service_handle->_is_fl_strategy_ready;
-  }
-
-  std::set<uint32_t> GetFlClientIds() {
+  std::set<uint32_t> GetFLClientIds() {
     return _coordinator_service_handle->fl_client_ids;
   }
 
@@ -199,21 +175,7 @@ class CoordinatorService : public PsService {
     return _coordinator_service_handle->QueryFLClientsInfo();
   }
 
-  void SaveFLStrategy(
-      const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    _coordinator_service_handle->SaveFLStrategy(fl_strategy);
-    return;
-  }
-
-  CoordinatorServiceHandle* GetCoordinatorServiceHandlePtr() {
-    return _coordinator_service_handle.get();
-  }
-
-  void SetEndpoint(const std::string& endpoint) {}
-
  private:
-  size_t _rank;
-  PSClient* _client;
   std::shared_ptr<CoordinatorServiceHandle> _coordinator_service_handle;
   std::unordered_map<int32_t, CoordinatorServiceFunc> _service_handle_map;
   std::mutex _mtx;
@@ -227,30 +189,46 @@ class CoordinatorClient : public BrpcPsClient {
 
   int32_t Initialize(const std::vector<std::string>& trainer_endpoints);
 
-  void InitTotalFlClientNum(uint32_t all_fl_clients_num) {
-    _service.InitTotalFlClientNum(all_fl_clients_num);
-    this->_total_client_num = all_fl_clients_num;
+  void SetTotalFLClientsNum(uint32_t all_fl_clients_num) {
+    _service.SetTotalFLClientsNum(all_fl_clients_num);
+    this->_total_clients_num = all_fl_clients_num;
     return;
   }
 
   int32_t StartClientService();
 
+  void SaveFLStrategy(
+      const std::unordered_map<uint32_t, std::string>& fl_strategy) {
+    for (auto it = fl_strategy.begin(); it != fl_strategy.end(); it++) {
+      uint32_t client_id = it->first;
+      _fl_strategy_mp[client_id] = it->second;
+    }
+    std::unique_lock<std::mutex> lck(_mtx);
+    _is_fl_strategy_ready = true;
+    _cv.notify_all();
+    return;
+  }
+
+  void WaitForFLStrategyReady() {
+    std::unique_lock<std::mutex> lck(_mtx);
+    _cv.wait(lck, [=]() { return _is_fl_strategy_ready; });
+  }
+
   void SendFLStrategy(const uint32_t& client_id);
 
-  void SetFlStrategyReady(bool flag) { _service.SetFlStrategyReady(flag); }
+  void ResetFLStrategyFlag() { _is_fl_strategy_ready = false; }
 
-  bool IsFlStrategyReady() { return _service.IsFlStrategyReady(); }
+  void SetDefaultFLStrategy() {
+    for (size_t i = 0; i < _total_clients_num; i++) {
+      _fl_strategy_mp[i] = "";
+    }
+    return;
+  }
 
-  std::set<uint32_t> GetFlClientIds() { return _service.GetFlClientIds(); }
+  std::set<uint32_t> GetFLClientIds() { return _service.GetFLClientIds(); }
 
   std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
     return _service.QueryFLClientsInfo();
-  }
-
-  void SaveFLStrategy(
-      const std::unordered_map<uint32_t, std::string>& fl_strategy) {
-    _service.SaveFLStrategy(fl_strategy);
-    return;
   }
 
   void SetEndpoint(const std::string& endpoint) {
@@ -259,7 +237,7 @@ class CoordinatorClient : public BrpcPsClient {
 
  public:
   size_t _coordinator_id;
-  uint32_t _total_client_num;
+  uint32_t _total_clients_num;
   std::string _endpoint;
   std::vector<std::array<std::shared_ptr<brpc::Channel>, 1>>
       _pserver_channels;  // coordinator2pserver
@@ -267,7 +245,10 @@ class CoordinatorClient : public BrpcPsClient {
       _fl_client_channels;  // coordinator2psclient
   brpc::Server _server;
   CoordinatorService _service;
+  std::unordered_map<uint32_t, std::string> _fl_strategy_mp;
+  bool _is_fl_strategy_ready = false;
   std::mutex _mtx;
+  std::condition_variable _cv;
 };
 
 }  // namespace distributed

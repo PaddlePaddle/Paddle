@@ -67,8 +67,8 @@ enum PsCmdID {
   PS_QUERY_WITH_SHARD = 46;
   // pserver2pserver cmd start from 100
   PS_S2S_MSG = 101;
-  FL_PUSH_PARAMS_SYNC = 200;
-  FL_PUSH_FL_STRATEGY = 201;
+  PUSH_FL_CLIENT_INFO_SYNC = 200;
+  PUSH_FL_STRATEGY = 201;
 }
 
 message PsRequestMessage {

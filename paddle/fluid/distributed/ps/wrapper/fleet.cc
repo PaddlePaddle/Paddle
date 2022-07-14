@@ -141,34 +141,24 @@ void FleetWrapper::InitFlWorker(const std::vector<std::string>& host_list,
   assert(worker_ptr_.get() != nullptr);
   uint32_t coordinator_num = host_list.size();
   ps_env_.SetCoordinators(&host_list, coordinator_num);
-  VLOG(0) << ">>> worker_ptr_ type1 FleetWrapper: "
-          << typeid(worker_ptr_).name();
   auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
-  VLOG(0) << ">>> worker_ptr_ type2 FleetWrapper: "
-          << typeid(worker_ptr_).name();
   ptr->InitializeFlWorker(self_endpoint);
   return;
 }
 
-void FleetWrapper::PushFlClientInfoSync(const std::string& fl_params) {
-  VLOG(0) << "fl_params in fleet.cc: " << fl_params;
-  // paddle::distributed::FLParameter fl_param;
-  // google::protobuf::TextFormat::ParseFromString(fl_params, &fl_param);
-  // InitGFlag(fl_param.init_gflags());
+void FleetWrapper::PushFLClientInfoSync(const std::string& fl_client_info) {
+  // FLClientInfo fci;
+  // google::protobuf::TextFormat::ParseFromString(fl_client_info, &fci);
+  // InitGFlag(fci.init_gflags());
   auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
-  if (typeid(ptr).name() != typeid(BrpcPsClient).name()) {
-    LOG(ERROR) << "fl_client_ptr type error";
-  }
-  ptr->PushFlClientInfoSync(fl_params);
+  VLOG(0) << "fl-ps > PushFLClientInfoSync: " << typeid(worker_ptr_).name()
+          << ", " << typeid(ptr).name() << ", " << typeid(BrpcPsClient).name();
+  ptr->PushFLClientInfoSync(fl_client_info);
   return;
 }
 
 std::string FleetWrapper::PullFlStrategy() {
   auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
-  if (typeid(ptr).name() != typeid(BrpcPsClient).name()) {
-    LOG(ERROR) << "fl_client_ptr type error: " << typeid(ptr).name() << ", "
-               << typeid(BrpcPsClient).name();
-  }
   std::string str = ptr->PullFlStrategy();
   return str;
 }

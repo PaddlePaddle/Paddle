@@ -700,8 +700,7 @@ class FLCommunicator : public GeoCommunicator {
       const std::unordered_map<uint32_t, std::string> &fl_strategy);
 
   void SendThreadAsync();
-  void SendToFLClient();
-  void RPCSendFLStrategy(const uint32_t &client_id);
+  void RpcSendFLStrategy();
 
  private:
   int thread_pool_size_ = 1;

@@ -77,7 +77,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
       .def("save_cache", &FleetWrapper::SaveCache)
       .def("init_fl_worker", &FleetWrapper::InitFlWorker)
-      .def("push_fl_client_info_sync", &FleetWrapper::PushFlClientInfoSync)
+      .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
       .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy);
 }
 

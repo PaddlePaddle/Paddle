@@ -305,7 +305,7 @@ class FleetWrapper {
   void InitFlWorker(const std::vector<std::string>& host_list,
                     int index,
                     const std::string& self_endpoint);
-  void PushFlClientInfoSync(const std::string& fl_params);
+  void PushFLClientInfoSync(const std::string& fl_client_info);
   std::string PullFlStrategy();
   //**********
 

@@ -23,8 +23,9 @@ import abc
 import os
 import logging
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-2s [%(filename)s:%(lineno)d] %(message)s',
+    level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -199,6 +200,7 @@ class FLClient(FLClientBase):
 
     def train_loop(self):
         while self.epoch_idx < self.total_train_epoch:
+            logger.info("fl-ps > curr epoch idx: {}".format(self.epoch_idx))
             self.strategy_handlers['train']()
             self.strategy_handlers['save_model']()
             self.barrier()
@@ -209,7 +211,7 @@ class FLClient(FLClientBase):
             }
             self.push_fl_client_info_sync(state_info)
             strategy_dict = self.pull_fl_strategy()
-            logger.info("received fl strategy: {}".format(strategy_dict))
+            logger.info("fl-ps > recved fl strategy: {}".format(strategy_dict))
             # ......... to implement ...... #
             if strategy_dict['next_state'] == "JOIN":
                 self.strategy_handlers['infer']()
@@ -225,13 +227,11 @@ class FLClient(FLClientBase):
         strategy_dict = {}
         fl_strategy_str = self._client_ptr.pull_fl_strategy(
         )  # block: wait for coordinator's strategy arrived
-        logger.info("fl-ps > fl client recved fl_strategy_str: {}".format(
+        logger.info("fl-ps > fl client recved fl_strategy(str):\n{}".format(
             fl_strategy_str))
         fl_strategy_desc = the_one_ps_pb2.FLStrategy()
         text_format.Parse(bytes(fl_strategy_str, encoding="utf8"),
                           fl_strategy_desc)
-        logger.info("fl-ps > interation num: {}".format(
-            fl_strategy_desc.iteration_num))
         strategy_dict["next_state"] = fl_strategy_desc.next_state
         return strategy_dict
 
@@ -275,6 +275,7 @@ class FLClient(FLClientBase):
         epoch_time = time.time() - epoch_start_time
         epoch_speed = self.train_example_nums / epoch_time
         self.train_statical_info["speed"].append(epoch_speed)
+        logger.info("fl-ps > callback_train finished")
 
     def callback_infer(self):
         fetch_info = [

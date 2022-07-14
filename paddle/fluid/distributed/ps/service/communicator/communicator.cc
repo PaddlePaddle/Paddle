@@ -1495,11 +1495,10 @@ void FLCommunicator::InitBrpcClient(
     const std::vector<std::string> &host_sign_list) {
   auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
-    VLOG(0) << ">>> FLCommunicator::InitBrpcClient get _worker_ptr";
+    VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
         fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted before,
                              // but no need for Coordinator
-    VLOG(0) << ">>> _worker_ptr in FLCommunicator addr: " << _worker_ptr.get();
   }
   if (coordinator_client_ptr_ == nullptr) {
     coordinator_client_ptr_.reset(new CoordinatorClient);
@@ -1516,6 +1515,7 @@ void FLCommunicator::StartCoordinatorClient(
     return;
   }
   coordinator_client_ptr_->Initialize(trainer_endpoints);
+  VLOG(0) << "fl-ps > StartCoordinatorClient finish!";
 }
 
 void FLCommunicator::StartCoordinatorServer() {
@@ -1526,6 +1526,7 @@ void FLCommunicator::StartCoordinatorServer() {
   if (ret != 0) {
     LOG(ERROR) << "coordinator_client_ptr_ StartClientService failed";
   }
+  VLOG(0) << "fl-ps > StartCoordinatorServer finished!";
   return;
 }
 
@@ -1540,36 +1541,21 @@ void FLCommunicator::SaveFLStrategy(
 }
 
 void FLCommunicator::SendThreadAsync() {
-  VLOG(0) << ">>> entering FLCommunicator::SendThreadAsync";
   while (is_running_) {
-    SendToFLClient();
+    RpcSendFLStrategy();
   }
-  VLOG(0) << "<<< FLCommunicator::SendThreadAsync exit";
   return;
 }
 
-void FLCommunicator::SendToFLClient() {
-  VLOG(0) << "entering FLCommunicator::SendToFLClient";
-  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-  while (!coordinator_client_ptr_->IsFlStrategyReady()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    VLOG(0) << "waiting for fl strategy ready!";
-  }
-  std::set<uint32_t> clients = coordinator_client_ptr_->GetFlClientIds();
-  VLOG(0) << ">>> In FLCommunicator::SendToFLClient clients size is: "
-          << clients.size();
+void FLCommunicator::RpcSendFLStrategy() {
+  std::set<uint32_t> clients = coordinator_client_ptr_->GetFLClientIds();
+  coordinator_client_ptr_->WaitForFLStrategyReady();
   for (auto client_id : clients) {
-    RPCSendFLStrategy(client_id);
+    coordinator_client_ptr_->SendFLStrategy(client_id);
   }
-  coordinator_client_ptr_->SetFlStrategyReady(false);
-  VLOG(0) << "FLCommunicator::SendToFLClient finished！";
+  coordinator_client_ptr_->ResetFLStrategyFlag();
+  VLOG(0) << "fl-ps > RpcSendFLStrategy finished！";
   return;
-}
-
-void FLCommunicator::RPCSendFLStrategy(const uint32_t &client_id) {
-  VLOG(0) << "entering FLCommunicator::RPCSendFLStrategy";
-  coordinator_client_ptr_->SendFLStrategy(client_id);
-  VLOG(0) << "RPCSendFLStrategy to client_id: " << client_id << " finished!";
 }
 
 void FLCommunicator::StartCoordinator(
@@ -1577,12 +1563,9 @@ void FLCommunicator::StartCoordinator(
     const std::vector<std::string> &trainer_endpoints) {
   coordinator_client_ptr_->SetEndpoint(self_endpoint);
   StartCoordinatorClient(trainer_endpoints);
-  VLOG(0) << ">>> StartCoordinatorClient succeed!";
   StartCoordinatorServer();
-  VLOG(0) << ">>> StartCoordinatorServer succeed!";
   async_send_thread_.reset(
       new std::thread(&FLCommunicator::SendThreadAsync, this));
-  VLOG(0) << ">>> SendThreadAsync in coordinator succeed!";
 }
 
 }  // namespace distributed

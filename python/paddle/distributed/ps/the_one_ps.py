@@ -896,7 +896,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.with_coordinator = self.role_maker._with_coordinator
         self.coordinator_hosts = []
         if self.with_coordinator:
-            print(">>> all ps addr: {}".format(self.string_hosts))
+            print("fl-ps > all ps addrs: {}".format(self.string_hosts))
             coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
             for idx, ep in enumerate(coordinator_endpoints):
                 ip, port = ep.split(":")
@@ -1007,10 +1007,9 @@ class TheOnePSRuntime(RuntimeBase):
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
         self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
-        print(">>> trainer_endpoint: {}".format(self.trainer_endpoint))
-        print(">>> with_coordinator?: {}".format(self.with_coordinator))
-        print(">>> coordinator address: {} - {}".format(self.coordinator_hosts,
-                                                        role_id))
+        print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
+        print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
+        print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
         if self.with_coordinator:
             self._worker.init_fl_worker(self.coordinator_hosts, role_id,
                                         self.trainer_endpoint)

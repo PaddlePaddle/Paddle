@@ -36,24 +36,23 @@ void CoordinatorService::FLService(
     CoordinatorResMessage* response,
     ::google::protobuf::Closure* done) {
   brpc::ClosureGuard done_guard(done);
-  VLOG(0) << ">>> entering CoordinatorService::FLService";
   response->set_err_code(0);
   response->set_err_msg("");
   brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
   int32_t msg_type = request->cmd_id();
   uint32_t from_client_id = request->client_id();
-  VLOG(0) << "recv client id: " << from_client_id << ", msg_type: " << msg_type;
-  std::unique_lock<std::mutex> lck(_mtx);
+  VLOG(0) << "fl-ps > recv from client id: " << from_client_id
+          << ", msg_type: " << msg_type;
+  // TODO(ziyoujiyi): find is not thread safe, beacuse of RB_Tree traversal
   auto itr = _service_handle_map.find(msg_type);
   if (itr == _service_handle_map.end()) {
-    LOG(ERROR) << "unknown client2coordinator_msg type:" << msg_type;
+    LOG(ERROR) << "fl-ps > unknown flClient2Coordinator msg type: " << msg_type;
     return;
   }
-  int ret = itr->second(*request, response, cntl);
-  lck.unlock();
+  int ret = itr->second(*request, response, cntl);  // SaveFLClientInfo
   if (ret != 0) {
     response->set_err_code(-1);
-    response->set_err_msg("handle_client2client_msg failed");
+    response->set_err_msg("fl-ps > handle flClient2Coordinator msg failed");
   }
   return;
 }
@@ -119,7 +118,7 @@ int32_t CoordinatorClient::Initialize(
     fl_client_ip_port.append(":");
     fl_client_ip_port.append(std::to_string(fl_client_list[i].port));
     uint32_t rank = fl_client_list[i].rank;
-    VLOG(0) << ">>> coordinator connect to fl_client: " << rank;
+    VLOG(0) << "fl-ps > coordinator connect to fl_client: " << rank;
     _fl_client_channels[rank].reset(new brpc::Channel());
     if (_fl_client_channels[rank]->Init(
             fl_client_ip_port.c_str(), "", &options) != 0) {
@@ -136,8 +135,8 @@ int32_t CoordinatorClient::Initialize(
     }
   }
 
-  InitTotalFlClientNum(fl_client_list.size());
-  _service.InitDefaultFlStrategy();
+  SetTotalFLClientsNum(fl_client_list.size());
+  SetDefaultFLStrategy();
   return 0;
 }
 
@@ -148,7 +147,7 @@ int32_t CoordinatorClient::StartClientService() {
   brpc::ServerOptions options;
   options.num_threads = 1;
   if (_endpoint.empty()) {
-    LOG(ERROR) << "Coordinator endpoints not set";
+    LOG(ERROR) << "fl-ps > coordinator server endpoint not set";
     return -1;
   }
   auto addr = paddle::string::Split(_endpoint, ':');
@@ -157,27 +156,25 @@ int32_t CoordinatorClient::StartClientService() {
   std::string rank = addr[2];
   std::string ip_port = ip + ":" + port;
   if (_server.Start(ip_port.c_str(), &options) != 0) {
-    LOG(ERROR) << "CoordinatorServer start failed";
+    LOG(ERROR) << "fl-ps > StartClientService failed";
     return -1;
   }
   uint32_t port_ = std::stol(port);
   int32_t rank_ = std::stoi(rank);
   _env->RegisteCoordinatorClient(ip, port_, rank_);
-  VLOG(0) << ">>> coordinator service addr: " << ip << ", " << port << ", "
+  VLOG(0) << "fl-ps > coordinator service addr: " << ip << ", " << port << ", "
           << _coordinator_id;
   return 0;
 }
 
 void CoordinatorClient::SendFLStrategy(const uint32_t& client_id) {
-  VLOG(0) << ">>> entering CoordinatorClient::SendFLStrategy! peer client id: "
-          << client_id;
   size_t request_call_num = 1;
   FlClientBrpcClosure* closure =
       new FlClientBrpcClosure(request_call_num, [](void* done) {
         auto* closure = reinterpret_cast<FlClientBrpcClosure*>(done);
         int ret = 0;
-        if (closure->check_response(0, FL_PUSH_FL_STRATEGY) != 0) {
-          LOG(ERROR) << "SendFLStrategy response from coordinator is failed";
+        if (closure->check_response(0, PUSH_FL_STRATEGY) != 0) {
+          LOG(ERROR) << "fl-ps > SendFLStrategy failed";
           ret = -1;
         }
         closure->set_promise_value(ret);
@@ -185,22 +182,20 @@ void CoordinatorClient::SendFLStrategy(const uint32_t& client_id) {
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int32_t> fut = promise->get_future();
   closure->add_promise(promise);
-  closure->request(0)->set_cmd_id(FL_PUSH_FL_STRATEGY);
+  closure->request(0)->set_cmd_id(PUSH_FL_STRATEGY);
   closure->request(0)->set_client_id(client_id);
-  //
-  std::string fl_strategy =
-      _service.GetCoordinatorServiceHandlePtr()->_fl_strategy_mp[client_id];
-  //
+  std::string fl_strategy = _fl_strategy_mp[client_id];
   closure->request(0)->set_str_params(fl_strategy);
   brpc::Channel* rpc_channel = _fl_client_channels[client_id].get();
   if (rpc_channel == nullptr) {
-    LOG(ERROR) << "_fl_client_channels is null";
+    LOG(ERROR) << "fl-ps > _fl_client_channels is null";
+    return;
   }
   PsService_Stub rpc_stub(rpc_channel);  // DownpourPsClientService
   rpc_stub.FLService(
       closure->cntl(0), closure->request(0), closure->response(0), closure);
   fut.wait();
-  VLOG(0) << "<<< CoordinatorClient::SendFLStrategy finished";
+  VLOG(0) << "fl-ps > SendFLStrategy to client: " << client_id << " finished";
   return;
 }
 
