@@ -161,30 +161,19 @@ cc_test(
   SRCS buddy_allocator_test.cc
   DEPS allocator)
 
-function(file_download_and_uncompress URL NAME)
-  message(STATUS "Download dependence[${NAME}] from ${URL}")
-  set(${NAME}_INCLUDE_DIR
-      ${THIRD_PARTY_PATH}/${NAME}
-      PARENT_SCOPE)
-  ExternalProject_Add(
-    extern_download_${NAME}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX ${THIRD_PARTY_PATH}/${NAME}
-    URL ${URL}
-    DOWNLOAD_DIR ${THIRD_PARTY_PATH}/${NAME}
-    SOURCE_DIR ${THIRD_PARTY_PATH}/${NAME}
-    DOWNLOAD_NO_PROGRESS 1
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    UPDATE_COMMAND ""
-    INSTALL_COMMAND "")
-endfunction()
-
 if(WITH_TESTING)
   if(TEST buddy_allocator_test)
     set_tests_properties(buddy_allocator_test PROPERTIES LABELS
                                                          "RUN_TYPE=EXCLUSIVE")
   endif()
-  set(URL "https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar")
-  file_download_and_uncompress(URL "buddy_allocator")
+
+  # TODO(zhiqiu): why not win32? because wget is not found on windows
+  if(NOT WIN32)
+    add_custom_target(
+      download_data
+      COMMAND wget -nc
+              https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
+      COMMAND tar -xf buddy_allocator_test_data.tar)
+    add_dependencies(buddy_allocator_test download_data)
+  endif()
 endif()
