@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"

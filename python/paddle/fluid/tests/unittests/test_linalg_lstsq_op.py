@@ -89,34 +89,34 @@ class LinalgLstsqTestCase(unittest.TestCase):
             self._result_sg_values = results[3].numpy()
             self.assert_np_close()
 
-    # def test_static(self):
-    #     paddle.enable_static()
-    #     for dev in self.devices:
-    #         paddle.set_device(dev)
-    #         place = fluid.CPUPlace() if dev == "cpu" else fluid.CUDAPlace(0)
-    #         with fluid.program_guard(fluid.Program(), fluid.Program()):
-    #             x = paddle.fluid.data(name="x",
-    #                                   shape=self._input_shape_1,
-    #                                   dtype=self._input_data_1.dtype)
-    #             y = paddle.fluid.data(name="y",
-    #                                   shape=self._input_shape_2,
-    #                                   dtype=self._input_data_2.dtype)
-    #             results = paddle.linalg.lstsq(x,
-    #                                           y,
-    #                                           rcond=self.rcond,
-    #                                           driver=self.driver)
-    #             exe = fluid.Executor(place)
-    #             fetches = exe.run(fluid.default_main_program(),
-    #                               feed={
-    #                                   "x": self._input_data_1,
-    #                                   "y": self._input_data_2
-    #                               },
-    #                               fetch_list=[results])
-    #             self._result_solution = fetches[0]
-    #             self._result_residuals = fetches[1]
-    #             self._result_rank = fetches[2]
-    #             self._result_sg_values = fetches[3]
-    #             self.assert_np_close()
+    def test_static(self):
+        paddle.enable_static()
+        for dev in self.devices:
+            paddle.set_device(dev)
+            place = fluid.CPUPlace() if dev == "cpu" else fluid.CUDAPlace(0)
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                x = paddle.fluid.data(name="x",
+                                      shape=self._input_shape_1,
+                                      dtype=self._input_data_1.dtype)
+                y = paddle.fluid.data(name="y",
+                                      shape=self._input_shape_2,
+                                      dtype=self._input_data_2.dtype)
+                results = paddle.linalg.lstsq(x,
+                                              y,
+                                              rcond=self.rcond,
+                                              driver=self.driver)
+                exe = fluid.Executor(place)
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={
+                                      "x": self._input_data_1,
+                                      "y": self._input_data_2
+                                  },
+                                  fetch_list=[results])
+                self._result_solution = fetches[0]
+                self._result_residuals = fetches[1]
+                self._result_rank = fetches[2]
+                self._result_sg_values = fetches[3]
+                self.assert_np_close()
 
     def assert_np_close(self):
         if len(self._input_shape_1) == 2:

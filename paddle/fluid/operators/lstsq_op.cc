@@ -77,7 +77,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(lstsq,
                             LstsqInferShapeFunctor,
-                            PD_INFER_META(phi::TriangularSolveInferMeta));
+                            PD_INFER_META(phi::LstsqInferMeta));
 
 REGISTER_OPERATOR(lstsq,
                   ops::LstsqOp,
