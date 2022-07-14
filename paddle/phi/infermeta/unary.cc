@@ -1312,6 +1312,21 @@ void NanmedianInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(out_dim));
 }
 
+void NMSInferMeta(const MetaTensor& x,
+                        float threshold,
+                        MetaTensor* out){
+    auto boxes_dim = x.dims();
+    PADDLE_ENFORCE_EQ(boxes_dim.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The Input Boxes must be 2-dimention "
+                          "whose shape must be [N, 4] "
+                          "N is the number of boxes "
+                          "in last dimension in format [x1, x2, y1, y2]. "));
+    auto num_boxes = boxes_dim[0];
+    out->set_dims(framework::make_ddim(num_boxes));
+}
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,

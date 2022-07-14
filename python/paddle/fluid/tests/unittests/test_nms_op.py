@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def iou(box_a, box_b):
@@ -71,6 +72,7 @@ class TestNMSOp(OpTest):
 
     def setUp(self):
         self.op_type = 'nms'
+        self.python_api = paddle.vision.ops.nms
         self.dtype = np.float64
         self.init_dtype_type()
         boxes = np.random.rand(32, 4).astype(self.dtype)
@@ -86,7 +88,7 @@ class TestNMSOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 if __name__ == "__main__":

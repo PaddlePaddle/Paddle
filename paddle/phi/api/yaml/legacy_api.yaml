@@ -1474,6 +1474,15 @@
   optional : weight
   backward : nll_loss_grad
 
+- api : nms
+  args : (Tensor x, float threshold)
+  output : Tensor(out)
+  infer_meta :
+    func : NMSInferMeta
+  kernel :
+    func : nms
+    data_type : x
+
 - api : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
   output : Tensor(out), Tensor(norm)
