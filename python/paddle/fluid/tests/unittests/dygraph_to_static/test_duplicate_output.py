@@ -21,10 +21,10 @@ import paddle
 
 np.random.seed(1)
 
-if fluid.is_compiled_with_cuda():
-    place = fluid.CUDAPlace(0)
+if paddle.fluid.is_compiled_with_cuda():
+    place = paddle.fluid.CUDAPlace(0)
 else:
-    place = fluid.CPUPlace()
+    place = paddle.fluid.CPUPlace()
 
 
 class SimpleNet(paddle.nn.Layer):
