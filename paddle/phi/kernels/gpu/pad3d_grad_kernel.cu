@@ -503,5 +503,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d_grad, GPU, ALL_LAYOUT, phi::Pad3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(pad3d_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
