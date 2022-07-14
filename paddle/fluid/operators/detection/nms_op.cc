@@ -132,13 +132,6 @@ static void NMS(const T* boxes_data,
 template <typename T>
 class NMSKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* boxes = context.Input<Tensor>("Boxes");
-    Tensor* output = context.Output<Tensor>("KeepBoxesIdxs");
-    int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
-    auto threshold = context.template Attr<float>("iou_threshold");
-    NMS<T>(boxes->data<T>(), output_data, threshold, boxes->dims()[0]);
-  }
 };
 
 }  // namespace operators
@@ -152,4 +145,3 @@ REGISTER_OPERATOR(
     ops::NMSOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(nms, ops::NMSKernel<float>, ops::NMSKernel<double>);

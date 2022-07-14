@@ -1,28 +1,25 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+#include "paddle/phi/kernels/nms_kernel.h"
 
-    http://www.apache.org/licenses/LICENSE-2.0
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/diagonal.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include <vector>
-
-#include "paddle/fluid/operators/detection/nms_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-
-static const int64_t threadsPerBlock = sizeof(int64_t) * 8;
-
-namespace paddle {
-namespace operators {
-
-using framework::Tensor;
+namespace phi {
 
 template <typename T>
 static __global__ void NMS(const T* boxes_data,
@@ -53,15 +50,12 @@ static __global__ void NMS(const T* boxes_data,
   }
 }
 
-template <typename T>
-class NMSCudaKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* boxes = context.Input<Tensor>("Boxes");
-    Tensor* output = context.Output<Tensor>("KeepBoxesIdxs");
-    auto* output_data = output->mutable_data<int64_t>(context.GetPlace());
-
-    auto threshold = context.template Attr<float>("iou_threshold");
+template <typename T, typename Context>
+void NMSKernel(const Context& dev_ctx,
+                   const DenseTensor& boxes,
+                   float threshold,
+                   DenseTensor* output){
+    auto* output_data = dev_ctx.template Alloc<T>(output);
     const int64_t num_boxes = boxes->dims()[0];
     const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
 
@@ -69,19 +63,19 @@ class NMSCudaKernel : public framework::OpKernel<T> {
     dim3 grid(blocks_per_line, blocks_per_line);
 
     auto mask_data =
-        memory::Alloc(context.cuda_device_context(),
+        memory::Alloc(dev_ctx.cuda_device_context(),
                       num_boxes * blocks_per_line * sizeof(uint64_t));
     uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
-    NMS<T><<<grid, block, 0, context.cuda_device_context().stream()>>>(
+    NMS<T><<<grid, block, 0, dev_ctx.cuda_device_context().stream()>>>(
         boxes->data<T>(), threshold, num_boxes, mask_dev);
 
     std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  mask_host.data(),
-                 context.GetPlace(),
+                 dev_ctx.GetPlace(),
                  mask_dev,
                  num_boxes * blocks_per_line * sizeof(uint64_t),
-                 context.cuda_device_context().stream());
+                 dev_ctx.cuda_device_context().stream());
 
     std::vector<int64_t> remv(blocks_per_line);
 
@@ -100,19 +94,13 @@ class NMSCudaKernel : public framework::OpKernel<T> {
         }
       }
     }
-    memory::Copy(context.GetPlace(),
+    memory::Copy(dev_ctx.GetPlace(),
                  output_data,
-                 platform::CPUPlace(),
+                 phi::CPUPlace(),
                  output_host,
                  sizeof(int64_t) * num_boxes,
-                 context.cuda_device_context().stream());
-  }
-};
+                 dev_ctx.cuda_device_context().stream());
+}
 
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(nms,
-                        ops::NMSCudaKernel<float>,
-                        ops::NMSCudaKernel<double>);
+}
+PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
