@@ -84,7 +84,7 @@
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
   output : Tensor(out), Tensor(rulebook)
   kernel :
-    func : sparse_conv3d{sparse_coo, dense -> sparse_coo, dense}
+    func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense}
     layout : x
   intermediate : rulebook
   backward : conv3d_grad
@@ -309,10 +309,10 @@
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook)
   kernel :
-    func : sparse_maxpool{sparse_coo -> sparse_coo, dense}
+    func : maxpool_coo{sparse_coo -> sparse_coo, dense}
     layout : x
   intermediate : rulebook
-  backward : sparse_maxpool_grad
+  backward : maxpool_grad
 
 - api: mv
   args : (Tensor x, Tensor vec)
