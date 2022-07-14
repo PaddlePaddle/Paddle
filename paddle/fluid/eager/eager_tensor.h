@@ -234,7 +234,9 @@ class EagerVariable final {
     if (src_tensor_) {
       auto* framework_tensor = var_.GetMutable<phi::DenseTensor>();
       auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
-      tensor_dense->ShareDataWith(*framework_tensor);
+      if (framework_tensor->memory_size() > 0) {
+        tensor_dense->ShareDataWith(*framework_tensor);
+      }
     }
   }
 
