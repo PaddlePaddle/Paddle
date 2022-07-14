@@ -43,6 +43,15 @@
     data_type : x
   backward : cross_grad
 
+- api : diag
+  args : (Tensor x, int offset = 0, float padding_value = 0.0)
+  output : Tensor
+  infer_meta :
+    func : DiagInferMeta
+  kernel :
+    func : diag
+  backward : diag_grad
+
 - api : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor

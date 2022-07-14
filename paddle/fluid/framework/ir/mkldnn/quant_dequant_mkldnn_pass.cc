@@ -55,23 +55,6 @@ void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
   }
 }
 
-void QuantDequantMkldnnPass::MarkSkipQuantizedPool2d(ir::Graph* graph) const {
-  VLOG(3) << "mark avg pool2d as skip quantized op";
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp()) continue;
-
-    if (op_node->Name() == "pool2d") {
-      auto* op_desc = op_node->Op();
-      auto pool_type =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("pooling_type"));
-      if (pool_type == "avg") {
-        op_node->Op()->SetAttr("skip_quant", 1);
-      }
-    }
-  }
-}
-
 void QuantDequantMkldnnPass::CollectInfoFromFake(
     ir::Graph* graph,
     Scope* scope,
@@ -548,7 +531,6 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   MarkSkipQuantizedOps(graph, skip_ops);
-  MarkSkipQuantizedPool2d(graph);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   CollectInputScalesFromFake(
       graph, scope, fake_quantize_types, &var_quant_scales);

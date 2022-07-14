@@ -66,7 +66,7 @@ class DeviceEvent {
                           type_id_));
     // TODO(Aurelius84): only support CPU/CUDA, need consider XPU/NPU later
     PADDLE_ENFORCE_LT(type_id_,
-                      3,
+                      4,
                       platform::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
     PADDLE_ENFORCE_NOT_NULL(
