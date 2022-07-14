@@ -383,10 +383,10 @@ class FleetWrapper {
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     {
-        std::lock_guard<std::mutex> lk(ins_mutex);
-        if (NULL == s_instance_) {
-            s_instance_.reset(new paddle::framework::FleetWrapper());
-        }
+      std::lock_guard<std::mutex> lk(ins_mutex);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new paddle::framework::FleetWrapper());
+      }
     }
     return s_instance_;
   }
