@@ -17,10 +17,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -336,13 +338,19 @@ to before and will not effect the result.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(generate_proposals_v2,
+                            GenerateProposalsV2InferShapeFunctor,
+                            PD_INFER_META(phi::GenerateProposalsV2InferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     generate_proposals_v2,
     ops::GenerateProposalsV2Op,
     ops::GenerateProposalsV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    GenerateProposalsV2InferShapeFunctor);
+
 REGISTER_OP_CPU_KERNEL(generate_proposals_v2,
                        ops::GenerateProposalsV2Kernel<float>,
                        ops::GenerateProposalsV2Kernel<double>);

@@ -1088,6 +1088,24 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void GenerateProposalsV2InferMeta(const MetaTensor& scores,
+                                  const MetaTensor& bbox_deltas,
+                                  const MetaTensor& im_shape,
+                                  const MetaTensor& anchors,
+                                  const MetaTensor& variances,
+                                  int pre_nms_top_n,
+                                  int post_nms_top_n,
+                                  float nms_thresh,
+                                  float min_size,
+                                  float eta,
+                                  bool pixel_offset,
+                                  MetaTensor* rpn_rois,
+                                  MetaTensor* rpn_roi_probs,
+                                  MetaTensor* rpn_rois_num) {
+  rpn_rois->set_dims(phi::make_ddim({-1, 4}));
+  rpn_roi_probs->set_dims(phi::make_ddim({-1, 1}));
+}
+
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
