@@ -2102,8 +2102,8 @@ set -x
     classify_case_by_cardNum    
     
     #generate ut mem map
-    python3.7 ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
-    python3.7 ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
+    python2.7 ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
+    python ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
     
 }
 
