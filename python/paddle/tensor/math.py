@@ -22,6 +22,7 @@ from paddle.common_ops_import import dygraph_only
 from paddle.common_ops_import import OpProtoHolder
 from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
+from pip import main
 
 from .manipulation import cast
 from .creation import _complex_to_real_dtype
@@ -4549,3 +4550,56 @@ def frac(x, name=None):
             helper.append_op(
                 type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
             return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def take(input, index, name=None):
+    """
+    Returns a new tensor with the elements of input at the given indices. 
+    The input tensor is treated as if it were viewed as a 1-D tensor. 
+    The result takes the same shape as the indices.
+    
+    Args:
+        input (Tensor): An N-D Tensor, which data type should be int32, int64, float32, float64. 
+        index (Tensor): An N-D Tensor, which data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Tensor with the same shape as index, the data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(0, 12).reshape([3, 4])
+            idx = paddle.arange(4, 10).reshape([2, 3])
+
+            paddle.take(x, idx)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[4, 5, 6],
+            #         [7, 8, 9]])
+
+            x.take(idx)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[4, 5, 6],
+            #         [7, 8, 9]])
+    """
+
+    if paddle.in_dynamic_mode():
+        if not isinstance(index, (paddle.Tensor, Variable)):
+            raise TypeError(
+                "The type of 'index' must be Tensor, but got {}".format(type(index)))
+        if index.dtype not in [paddle.int32, paddle.int64]:
+            raise TypeError(
+                "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
+                    index.dtype))
+    else:
+        check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'take')
+
+    input_1d = input.flatten()
+    index_1d = index.flatten()
+
+    # This processing enables 'take' to handle negative indexes within the correct range
+    index_1d = paddle.where(index_1d < 0, index_1d + input_1d.shape[0], index_1d)
+    out = input_1d.flatten().index_select(index_1d).reshape(index.shape)
+
+    return out
