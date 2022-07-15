@@ -18,7 +18,6 @@
 
 #include <sstream>
 
-#include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/framework/io/fs.h"
@@ -530,7 +529,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
              mf_value_size]() -> int {
               auto& keys = task_keys[shard_id];
               auto& local_shard = _local_shards[shard_id];
-              float data_buffer[value_size];
+              float data_buffer[value_size];  // NOLINT
               float* data_buffer_ptr = data_buffer;
               for (size_t i = 0; i < keys.size(); ++i) {
                 uint64_t key = keys[i].first;
@@ -549,7 +548,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
                   ret = itr.value_ptr();
                 }
                 int pull_data_idx = keys[i].second;
-                pull_values[pull_data_idx] = (char*)ret;
+                pull_values[pull_data_idx] = (char*)ret;  // NOLINT
               }
               return 0;
             });

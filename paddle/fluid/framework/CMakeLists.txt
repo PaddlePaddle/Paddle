@@ -45,7 +45,7 @@ proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(
   op_def_api
   SRCS op_def_api.cc
-  DEPS op_def_proto boost)
+  DEPS op_def_proto)
 
 file(GLOB OP_DEF_FILES
      ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
@@ -341,7 +341,7 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto boost enforce)
+  DEPS framework_proto enforce)
 cc_test(
   attribute_test
   SRCS attribute_test.cc
@@ -354,12 +354,12 @@ cc_test(
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
-  DEPS framework_proto boost)
+  DEPS framework_proto)
 
 cc_library(
   op_version_registry
   SRCS op_version_registry.cc
-  DEPS op_version_proto framework_proto boost)
+  DEPS op_version_proto framework_proto)
 cc_test(
   op_version_registry_test
   SRCS op_version_registry_test.cc
@@ -519,7 +519,7 @@ cc_test(
 cc_library(
   program_processing
   SRCS program_processing.cc
-  DEPS boost proto_desc)
+  DEPS proto_desc)
 cc_test(
   program_processing_test
   SRCS program_processing_test.cc
@@ -1025,7 +1025,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto boost)
+  DEPS framework_proto)
 cc_test(
   prune_test
   SRCS prune_test.cc
