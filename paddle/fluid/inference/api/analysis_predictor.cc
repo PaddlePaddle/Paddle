@@ -458,7 +458,8 @@ void *AnalysisPredictor::GetExecStream() const {
     } else {
       paddle::platform::DeviceContextPool &pool =
           paddle::platform::DeviceContextPool::Instance();
-      return reinterpret_cast<const phi::GPUContext *>(pool.Get(place_))
+      return reinterpret_cast<const platform::CUDADeviceContext *>(
+                 pool.Get(place_))
           ->stream();
     }
   } else {
