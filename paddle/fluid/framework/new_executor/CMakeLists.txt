@@ -22,8 +22,9 @@ set(INTERPRETERCORE_DEPS
     monitor
     nan_inf_utils)
 
-add_subdirectory(workqueue)
 add_subdirectory(garbage_collector)
+add_subdirectory(interpreter)
+add_subdirectory(workqueue)
 
 cc_library(
   data_transfer
@@ -36,7 +37,8 @@ cc_library(
 cc_library(
   interpretercore_util
   SRCS interpretercore_util.cc
-  DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer)
+  DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer
+       add_dependency)
 cc_library(
   event_manager
   SRCS event_manager.cc
