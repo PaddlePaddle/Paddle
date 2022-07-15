@@ -235,8 +235,9 @@ class EagerVariable final {
       auto* framework_tensor = var_.GetMutable<phi::DenseTensor>();
       auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
       if (framework_tensor->memory_size() > 0 &&
-          !paddle::platform::is_same_place(framework_tensor->place(),
-                                           tensor_dense->place())) {
+          (!paddle::platform::is_same_place(framework_tensor->place(),
+                                            tensor_dense->place()) ||
+           framework_tensor->dtype() != tensor_dense->dtype())) {
         tensor_dense->ShareBufferWith(*framework_tensor);
       }
     }
