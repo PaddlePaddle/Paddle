@@ -38,9 +38,6 @@ set(STANDALONE_EXECUTOR_DEPS
     enforce
     scope
     glog
-    enforce
-    glog
-    scope
     workqueue
     interpretercore_event_garbage_collector
     ${DEVICE_EVENT_LIBS}
