@@ -1115,15 +1115,6 @@
   kernel :
     func : less_than
 
-- api : lgamma
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : lgamma
-  backward : lgamma_grad
-
 - api : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
   output : Tensor
