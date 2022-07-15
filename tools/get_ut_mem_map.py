@@ -56,7 +56,10 @@ def get_ut_mem(rootPath):
                 case_dic[ut]['mem_nvidia'] = mem_nvidia1
             if caseTime != -1:
                 case_dic[ut]['time'] = caseTime
+            fi.close()
 
+    if not os.path.exists("/pre_test"):
+        os.mkdir("/pre_test")
     ut_mem_map_file = "/pre_test/ut_mem_map.json"
     with open(ut_mem_map_file, "w") as f:
         json.dump(case_dic, f)

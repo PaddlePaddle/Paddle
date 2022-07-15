@@ -85,6 +85,9 @@ def classify_cases_by_mem(rootPath):
                 case = case.replace('^', '').replace('$', '').strip()
                 all_tests_by_card['exclusive_card_tests'].append(case)
 
+    if not os.path.exists("/pre_test"):
+        os.mkdir("/pre_test")
+
     with open("/pre_test/classify_case_by_cardNum.json", "w") as f:
         json.dump(all_tests_by_card, f)
 
