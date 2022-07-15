@@ -566,11 +566,10 @@ def _grad(ys, xs, v=None):
     """
     if paddle.fluid._non_static_mode():
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
+        if isinstance(xs, paddle.fluid.framework.Variable):
+            xs_grad = xs_grad[0]
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
-
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        xs_grad = xs_grad[0]
 
     return _replace_none_with_zero_tensor(xs_grad, xs)
 
