@@ -15,6 +15,7 @@
 
 #include <algorithm>
 
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -44,6 +45,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Enable serial execution for standalone executor, used for debug.");
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace framework {
@@ -457,11 +459,19 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.output_index = outs_name2id;
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
+#ifdef PADDLE_WITH_ASCEND_CL
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+    // values, but only through special `float_status` to checks whether
+    // the operation is overflow. More about `float_status`, see:
+    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+    if (FLAGS_check_nan_inf) {
+      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+    }
+#endif
+
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
-      VLOG(4) << "End run " << place << " "
-              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
       auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
           static_cast<const framework::OperatorWithKernel*>(op));
@@ -603,6 +613,12 @@ void build_op_func_list(const platform::Place& place,
                   << var_scope->GetNameById(p.first) << " to "
                   << var_scope->GetNameById(p.second);
         }
+      }
+
+      // for debug nan/inf
+      if (FLAGS_check_nan_inf) {
+        VLOG(4) << "Check nan/inf";
+        framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
       }
     }
 
@@ -779,12 +795,7 @@ void ShrinkDownstreamMap(std::map<int, std::list<int>>* downstream_map,
   // b: c
 
   // happens_before[i][j] means i should be executed before j
-  op_happens_before->resize(op_num);
-  for (size_t i = 0; i < op_num; ++i) {
-    (*op_happens_before)[i].resize(op_num);
-    std::fill(
-        (*op_happens_before)[i].begin(), (*op_happens_before)[i].end(), false);
-  }
+  op_happens_before->assign(op_num, std::vector<bool>(op_num, false));
 
   // bfs to get all next ops
   auto bfs = [&](size_t op_idx) {
@@ -894,6 +905,18 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+    // the original output of inplace op is also change.
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto& var = p.second;
+        if (var2min_rw_op.count(var)) {
+          for (auto dep_op : var2min_rw_op[var]) {
+            op2dependences[op_idx].insert(dep_op);
+          }
+        }
+      }
+    }
 
     // step2: update 2 var2xxxx data structure
     for (auto& item :
@@ -902,16 +925,6 @@ std::map<int, std::list<int>> build_op_downstream_map(
         var2recent_write_op[var] = op_idx;
         var2min_rw_op[var] = {static_cast<int>(op_idx)};
         remove_duplicate.insert(var);
-      }
-    }
-
-    for (auto& item :
-         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
-      for (auto var : item.second) {
-        if (remove_duplicate.count(var) ==
-            0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
-        }
       }
     }
 
@@ -925,8 +938,16 @@ std::map<int, std::list<int>> build_op_downstream_map(
       for (auto& p : m) {
         auto var = p.second;
         var2recent_write_op[var] = op_idx;
-        // var in input list and in output list, so remove it.
-        if (remove_duplicate.count(var) == 0) {
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
+        remove_duplicate.insert(var);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        if (remove_duplicate.count(var) ==
+            0) {  // var in input list and in output list, so remove it.
           update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }

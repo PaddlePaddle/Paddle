@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 
 #include "glog/logging.h"
 
@@ -71,11 +72,19 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
   AttributeMap attrs;
+  AttributeMap extra_attrs =
+      paddle::operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(
+          op_desc.type());
   for (auto& attr : op_desc.attrs()) {
-    attrs[attr.name()] = GetAttrValue(attr);
+    auto it = extra_attrs.find(attr.name());
+    if (it != extra_attrs.end()) {
+      it->second = GetAttrValue(attr);
+    } else {
+      attrs[attr.name()] = GetAttrValue(attr);
+    }
   }
 
-  return CreateOp(op_desc.type(), inputs, outputs, attrs);
+  return CreateOp(op_desc.type(), inputs, outputs, attrs, extra_attrs);
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {

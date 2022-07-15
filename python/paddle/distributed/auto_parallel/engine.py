@@ -15,13 +15,14 @@
 import copy
 import logging
 from collections import defaultdict
+import socket
 
 import paddle
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
 
 from paddle import fluid, static
 from paddle.io import Dataset
+from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
@@ -29,14 +30,15 @@ from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Operator
+from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -60,8 +62,8 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
-        # if self.cluster is None:
-        #     self.cluster = get_default_cluster()
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
@@ -72,7 +74,6 @@ class Engine:
         self._saver = DistributedSaver()
         self._logger = get_logger(logging.INFO)
 
-        self._default_strategy = None
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
@@ -84,6 +85,12 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
+        self._dygraph_mode = False
 
     def prepare(self,
                 optimizer=None,
@@ -99,6 +106,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -114,23 +122,108 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
-        self._build()
+        self._prepare_single_mode("train")
 
+    def _prepare_single_mode(self, mode):
+        self._modes = [mode]
+        self._build(self._modes[0])
         # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
         for mode in self._modes:
             # Do the parallel process
-            self._parallel(mode, all_ranks)
+            self._parallel(mode, self._all_ranks)
+
             # Init comm and startup program
             self._initialize(mode)
+            self._mode_init_states[mode] = True
 
-    def _build(self):
-        for mode in self._modes:
+    def _build(self, mode):
+
+        if _non_static_mode() or self._dygraph_mode:
+            self._dygraph_mode = True
+            self._logger.info("Building model with 'to_static' method.")
+
+            # build forward main program
+            self.static_model = to_static(self.model,
+                                          input_spec=self.inputs_spec)
+            inputs = self.static_model.forward.inputs
+            outputs = self.static_model.forward.outputs
+            forward_main_prog = self.static_model.forward.main_program
+            forward_startup_prog = self.static_model.forward.concrete_program.startup_program
+            self.concrete_program = self.static_model.forward.concrete_program
+
+            # build loss main program
+            outputs_spec = []
+            outputs_name = []
+            for out in outputs:
+                outputs_spec.append(InputSpec(out.shape, out.dtype, out.name))
+                outputs_name.append(out.name)
+            if isinstance(self._loss, paddle.nn.Layer):
+                self.static_loss = to_static(self._loss.forward,
+                                             input_spec=outputs_spec +
+                                             self.labels_spec)
+                loss_main_prog = self.static_loss.main_program
+            elif callable(self._loss):
+                self.static_loss = to_static(self._loss,
+                                             input_spec=outputs_spec +
+                                             self.labels_spec)
+                loss_main_prog = self.static_loss.main_program
+
+            # build startup program
+            for param in self.concrete_program.parameters:
+                Parameter(name=param.name,
+                          desc=param,
+                          type=param.type,
+                          shape=param.shape,
+                          dtype=param.dtype,
+                          stop_gradient=param.stop_gradient,
+                          block=forward_startup_prog.global_block())
+
+            paddle.enable_static()
+
+            # NOTE: pure program will loss dist_attr
+            # feeded_var_names = [var.name for var in inputs]
+            # main_prog_0 = main_prog_0._prune_with_input(
+            #     feeded_var_names=feeded_var_names, targets=outputs)
+
+            labels = []
+            losses = []
+            metrics = []
+            # concat forward and loss prog
+            if mode != 'predict' and self._loss:
+                forward_block = forward_main_prog.global_block()
+                loss_block = loss_main_prog.global_block()
+                for idx, op in enumerate(loss_block.ops):
+                    op_desc = forward_block.desc.append_op()
+                    op_desc.copy_from(op.desc)
+                    for in_name in op.input_arg_names:
+                        if in_name in outputs_name:
+                            continue
+                        in_var = forward_block._clone_variable(
+                            loss_block.vars[in_name], force_persistable=False)
+                        if loss_block.vars[in_name].is_data:
+                            labels.append(in_var)
+                    for out_name in op.output_arg_names:
+                        out_var = forward_block._clone_variable(
+                            loss_block.vars[out_name], force_persistable=False)
+                        if idx == len(loss_block.ops) - 1:
+                            losses.append(out_var)
+                forward_block._sync_with_cpp()
+            serial_main_prog = forward_main_prog
+            serial_startup_prog = forward_startup_prog
+            # update metrics op in program
+            with static.program_guard(serial_main_prog, serial_startup_prog), \
+                utils.unique_name.guard():
+                if mode != "predict":
+                    for metric in self._metrics:
+                        metrics.extend(
+                            to_list(metric.compute(*(outputs + labels))))
+
+        else:
+            # build program in static mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
             if serial_main_prog is not None:
                 return
@@ -154,31 +247,26 @@ class Engine:
                         metrics.extend(
                             to_list(metric.compute(*(outputs + labels))))
 
-            default_ctx = get_default_distributed_context()
-            if not default_ctx.has_annotation or self._default_strategy:
-                # We build the world process group because the data parallel
-                # needs all ranks by default.
-                new_process_group(list(range(self._nranks)))
-                default_ctx.data_parallel = True
+        default_ctx = get_default_distributed_context()
+        if not default_ctx.has_annotation:
+            # We build the world process group because the data parallel
+            # needs all ranks by default.
+            new_process_group(list(range(self._nranks)))
+            default_ctx.data_parallel = True
 
-            # self._feed_vars[mode] = {"inputs": inputs, "labels": labels}
-            feed_vars = {"inputs": inputs, "labels": labels}
+        feed_vars = {"inputs": inputs, "labels": labels}
 
-            # self._fetch_vars[mode] = {
-            #     "outputs": flatten(outputs),
-            #     "loss": losses,
-            #     "metrics": metrics
-            # }
-            fetch_vars = {
-                "outputs": flatten(outputs),
-                "loss": losses,
-                "metrics": metrics
-            }
+        fetch_vars = {
+            "outputs": flatten(outputs),
+            "loss": losses,
+            "metrics": metrics
+        }
 
-            self._dist_contexts[mode] = DistributedContext(
-                serial_main_prog, serial_startup_prog, self._optimizer, losses,
-                feed_vars, fetch_vars, self.cluster, self.strategy)
-            self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        self._dist_contexts[mode] = DistributedContext(
+            serial_main_prog, serial_startup_prog, self._optimizer, losses,
+            feed_vars, fetch_vars, self.cluster, self.strategy)
+        self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        self._dist_contexts[mode]._dygraph_mode = self._dygraph_mode
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -235,15 +323,99 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+
+            has_recv_by_socket = []
+            # This is a magic number and the rank number for training is usually less than 5000
+            magic_num = 5000
+            genv = _get_global_env()
+            cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
+            cur_rank_recv_port = int(cur_rank_port) + magic_num
+            server_socket = None
+            # Large enough for recv rank
+            buff_size = 1024
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind((cur_rank_ip, cur_rank_recv_port))
+            # The 10 is an empirical value
+            server_socket.listen(10)
+            client_sockets = {}
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
+                if len(process_group.ranks) == 2:
+                    index = process_group.ranks.index(self._cur_rank)
+                    is_send = True if index == 0 else False
+                    if is_send:
+                        recv_rank = process_group.ranks[1]
+                        recv_rank_ip, recv_rank_port = genv.trainer_endpoints[
+                            recv_rank].split(":")
+                        connect_port = int(recv_rank_port) + magic_num
+                        client_socket = socket.socket(socket.AF_INET,
+                                                      socket.SOCK_STREAM)
+                        client_socket.connect((recv_rank_ip, connect_port))
+                        client_socket.send(str(self._cur_rank).encode('utf-8'))
+                        rank = client_socket.recv(buff_size).decode('utf-8')
+                        rank = int(rank)
+                        if rank != recv_rank:
+                            raise ValueError(
+                                "Please check comm pair, the recv rank should be {} but got {}."
+                                .format(recv_rank, rank))
+                        else:
+                            print("It is able to instantiate {} as sender now.".
+                                  format(process_group.ranks))
+                        client_socket.close()
+                    else:
+                        send_rank = process_group.ranks[0]
+                        while True:
+                            if send_rank not in has_recv_by_socket:
+                                client_socket, recv_addr = server_socket.accept(
+                                )
+                                rank = int(
+                                    client_socket.recv(buff_size).decode())
+                                client_sockets[rank] = client_socket
+                                has_recv_by_socket.append(rank)
+                            else:
+                                client_sockets[send_rank].send(
+                                    str(self._cur_rank).encode("utf-8"))
+                                client_sockets[send_rank].close()
+                                print(
+                                    "It is able to instantiate {} as recver now."
+                                    .format(process_group.ranks))
+                                break
                 process_group.instantiate()
+            server_socket.close()
 
-        # initialize
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+
+        if self._dygraph_mode:
+            paddle.disable_static()
+            main_program = self._dist_main_progs[mode][self._cur_rank]
+            for param in self.concrete_program.parameters:
+                # create var in scope and share parameters to scope
+                if param.name not in main_program.global_block().vars:
+                    continue
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = self._dist_contexts[
+                    mode].get_tensor_dist_attr_for_program(var)
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.topology,
+                    "process_group": var_dist_attr.process_mesh.processes
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                from .converter import Converter
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr)
+                shared_tensor = paddle.to_tensor(sliced_param,
+                                                 place=self._place)
+                param_tensor._share_data_with(
+                    shared_tensor.value().get_tensor())
+            paddle.enable_static()
+
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
             uninitialized = []
@@ -267,14 +439,20 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
 
-        usr_fetch = self._to_map_fetch(fetches)
-        fetch_loss = self._inner_fetch(self.fetch_vars["loss"])
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
 
         for epoch in range(epochs):
@@ -292,8 +470,7 @@ class Engine:
                 user_outs = outs[len(fetch_loss):]
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
-                    train_logs["train_" +
-                               fetch_map[user_fetch_list[i]]] = out[0]
+                    train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
                 self._logger.info(train_logs)
 
     def evaluate(self,
@@ -303,13 +480,16 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
-        usr_fetch = self._to_map_fetch(fetches)
-        fetch_loss = self._inner_fetch(self.fetch_vars["loss"])
-        fetch_metrics = self._inner_fetch(self.fetch_vars["metrics"])
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
+        fetch_metrics = self._validate_fetches(self.fetch_vars["metrics"])
         inner_fetch = dict(fetch_loss, **fetch_metrics)
         fetch_list, fetch_map = self._fetch_map(inner_fetch, usr_fetch)
 
@@ -321,7 +501,7 @@ class Engine:
                                       return_numpy=return_numpy)
             # inner fetches
             if fetch_loss:
-                eval_logs["eval_loss"] = outs[0]
+                eval_logs["eval_loss"] = outs[0][0]
             # Metric
             if fetch_metrics:
                 metric_out = outs[len(fetch_loss):len(inner_fetch)]
@@ -331,9 +511,9 @@ class Engine:
                     for i, res in enumerate(to_list(results)):
                         eval_logs["eval_" + metric.name()[i]] = res
             # usr fetches
-            usr_out = outs[len(inner_fetch):]
+            usr_outs = outs[len(inner_fetch):]
             usr_fetch_list = fetch_list[len(inner_fetch):]
-            for i, out in enumerate(usr_out):
+            for i, out in enumerate(usr_outs):
                 eval_logs["eval_" + fetch_map[usr_fetch_list[i]]] = out
             # logger
             self._logger.info(eval_logs)
@@ -345,12 +525,15 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)
 
-        usr_fetch = self._to_map_fetch(fetches)
-        fetch_outputs = self._inner_fetch(self.fetch_vars["outputs"])
+        usr_fetch = self._validate_fetches(fetches)
+        fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
         fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
 
         outputs = []
@@ -362,41 +545,10 @@ class Engine:
                                       return_numpy=return_numpy)
             outputs.append(outs[:len(fetch_outputs)])
             for i, out in enumerate(outs):
-                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out[0]
+                predict_logs["pred_" + fetch_map[fetch_list[i]]] = out
             self._logger.info(predict_logs)
 
         return outputs
-
-    def _local_var(self, var):
-        var_name = _to_name_str(var)
-        return var_name in self.main_program.global_block().vars
-
-    def _to_map_fetch(self, fetches):
-        if not fetches:
-            return {}
-        if isinstance(fetches, dict):
-            fetch_var_names = list(map(_to_name_str, fetches.values()))
-            usr_fetches = dict(zip(fetch_var_names, list(fetches.keys())))
-        elif isinstance(fetches, list):
-            fetch_var_names = list(map(_to_name_str, fetches))
-            usr_fetches = dict(zip(fetch_var_names, fetch_var_names))
-        return dict(filter(lambda x: self._local_var(x[0]),
-                           usr_fetches.items()))
-
-    def _inner_fetch(self, fetch_vars):
-        fetch_list = list(
-            map(lambda x: x.name, list(filter(self._local_var, fetch_vars))))
-        inner_fetches = dict(zip(fetch_list, fetch_list))
-        return inner_fetches
-
-    def _fetch_map(self, inner_fetch, usr_fetch):
-        # replace inner fetch name if usr set for it
-        for iname in inner_fetch:
-            if iname in usr_fetch:
-                inner_fetch[iname] = usr_fetch[iname]
-                usr_fetch.pop(iname)
-        fetches = dict(inner_fetch, **usr_fetch)
-        return list(fetches.keys()), fetches
 
     def _create_dataloader(self,
                            dataset,
@@ -468,26 +620,35 @@ class Engine:
                         .format(i, spec))
         return specs
 
-    def _set_data_parallel(self, var):
-        if self._nranks == 1:
-            self._default_strategy = 'serial'
-            auto.shard_tensor(var,
-                              dist_attr={
-                                  "process_mesh": [0],
-                                  "dims_mapping":
-                                  [-1 for _ in range(len(var.shape))]
-                              })
-        else:
-            self._default_strategy = 'dp'
-            auto.shard_tensor(var,
-                              dist_attr={
-                                  "process_mesh":
-                                  list(range(self._nranks)),
-                                  "dims_mapping":
-                                  [0] + [-1 for _ in range(len(var.shape) - 1)]
-                              })
+    def _is_local_var(self, var):
+        var_name = _to_name_str(var)
+        return var_name in self.main_program.global_block().vars
 
-        return var
+    def _validate_fetches(self, fetches):
+        # 1. Check user-defined fetches type
+        # 2. Prepare fetches_dict like {user_defined_name: var_name}
+        if not fetches:
+            return {}
+        if isinstance(fetches, dict):
+            fetch_var_names = list(map(_to_name_str, fetches.values()))
+            fetches_dict = dict(zip(fetch_var_names, list(fetches.keys())))
+        elif isinstance(fetches, list):
+            fetch_var_names = list(map(_to_name_str, fetches))
+            fetches_dict = dict(zip(fetch_var_names, fetch_var_names))
+        else:
+            raise TypeError("'fetches' only support 'dict' and 'list', "
+                            "but got '{}'".format(str(type(fetches))))
+        return dict(
+            filter(lambda x: self._is_local_var(x[0]), fetches_dict.items()))
+
+    def _fetch_map(self, inner_fetch, usr_fetch):
+        # replace inner fetch name if usr set for it
+        for iname in inner_fetch:
+            if iname in usr_fetch:
+                inner_fetch[iname] = usr_fetch[iname]
+                usr_fetch.pop(iname)
+        fetches = dict(inner_fetch, **usr_fetch)
+        return list(fetches.keys()), fetches
 
     def _get_data_parallel_info(self, var, dist_context):
         # get data parallel world size and current data parallel rank

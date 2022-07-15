@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
@@ -257,7 +258,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
-
+#ifdef PADDLE_WITH_MKLDNN
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(OneDNNContext);
+#endif
   /* Input Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);

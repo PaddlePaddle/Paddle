@@ -26,7 +26,8 @@ cc_library(
 cc_library(
   jit_layer
   SRCS layer.cc
-  DEPS jit_compilation_unit)
+  DEPS jit_serializer jit_function_utils jit_serializer_utils
+       jit_compilation_unit jit_function_schema)
 
 if(WITH_TESTING
    AND NOT WIN32
@@ -45,12 +46,7 @@ if(WITH_TESTING
       feed_op
       fetch_op
       scale_op
-      jit_serializer
-      jit_layer
-      jit_function_utils
-      jit_function_schema
-      jit_compilation_unit
-      jit_serializer_utils)
+      jit_layer)
   cc_test(
     layer_test
     SRCS layer_test.cc

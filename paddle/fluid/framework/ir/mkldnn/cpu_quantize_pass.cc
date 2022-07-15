@@ -1136,6 +1136,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
+  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");

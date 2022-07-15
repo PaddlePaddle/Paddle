@@ -238,12 +238,6 @@ if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 328693 6836917 39303645
   fi
 
-HAS_MODIFIED_ALLOCATION=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/memory/allocation" || true`
-if [ "${HAS_MODIFIED_ALLOCATION}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zhiqiu and Shixiaowei02 for paddle/fluid/memory/allocation.\nIt is being modularized and refactored. Thanks!\n"
-    check_approval 1 6888866 39303645
-  fi
-
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"

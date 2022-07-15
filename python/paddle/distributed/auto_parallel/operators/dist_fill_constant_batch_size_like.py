@@ -118,7 +118,6 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
                 shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
 
         op._set_attr("shape", shape_list)
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

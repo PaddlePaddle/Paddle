@@ -58,13 +58,14 @@ static void CheckInputVarStatus(const Tensor &tensor) {
                         "wrong type. Expect type is DenseTensor.",
                         tensor.name()));
 
-  PADDLE_ENFORCE_EQ(tensor.initialized(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The tensor in input tensor %s of "
-                        "RunProgram(Grad)Op "
-                        "is not initialized.",
-                        tensor.name()));
+  PADDLE_ENFORCE_EQ(
+      static_cast<phi::DenseTensor *>(tensor.impl().get())->IsInitialized(),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "The tensor in input tensor %s of "
+          "RunProgram(Grad)Op "
+          "is not initialized.",
+          tensor.name()));
 }
 
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
@@ -84,7 +85,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
                           name));
-    PADDLE_ENFORCE_EQ(src_tensor.initialized(),
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The tensor in output tensor %s get from "
@@ -120,7 +121,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = tensors[i].name();
-    if (name == "Fake_var" || !tensors[i].initialized()) {
+    if (name == "Fake_var") {
       continue;
     }
     auto *var = scope->Var(name);

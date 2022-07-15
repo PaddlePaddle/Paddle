@@ -195,6 +195,7 @@ cc_library(
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
+
 cc_library(
   device_context
   SRCS device_context.cc
@@ -219,11 +220,16 @@ cc_library(
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
        eigen3
-       cpu_context
        generator)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context xpu_resource_pool)
 endif()
+
+if(WITH_MKLDNN)
+  target_link_libraries(device_context onednn_context)
+endif()
+
+target_link_libraries(device_context cpu_context)
 
 cc_library(
   collective_helper
@@ -280,6 +286,16 @@ if(WITH_XPU)
       CACHE INTERNAL "device event libs")
 endif()
 
+if(WITH_ASCEND_CL)
+  cc_library(
+    device_event_npu
+    SRCS device_event_npu.cc
+    DEPS device_event_base npu_resource_pool)
+  set(DEVICE_EVENT_LIBS
+      device_event_npu
+      CACHE INTERNAL "device event libs")
+endif()
+
 if(WITH_GPU)
   nv_library(
     device_event_gpu
@@ -297,6 +313,10 @@ if(WITH_GPU)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
+  nv_test(
+    device_context_test_cuda_graph
+    SRCS device_context_test_cuda_graph.cu
+    DEPS device_context gpu_info cuda_graph_with_memory_pool)
   nv_test(
     transform_test
     SRCS transform_test.cu
