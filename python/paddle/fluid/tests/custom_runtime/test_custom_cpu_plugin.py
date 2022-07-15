@@ -41,7 +41,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_eager_backward_api()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
-        self._test_eager_backward_api()
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -120,17 +119,19 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def _test_eager_backward_api(self):
         x = np.random.random([2, 2]).astype("float32")
         y = np.random.random([2, 2]).astype("float32")
-        dout = np.ones([2, 2]).astype("float32")
-        x_grad = np.matmul(dout, y.transpose())
+        grad = np.ones([2, 2]).astype("float32")
 
         import paddle
         paddle.set_device('custom_cpu')
         x_tensor = paddle.to_tensor(x, stop_gradient=False)
         y_tensor = paddle.to_tensor(y)
-        z_tensor = paddle.matmul(x_tensor, y_tensor)
-        paddle.autograd.backward([z_tensor])
+        z1_tensor = paddle.matmul(x_tensor, y_tensor)
+        z2_tensor = paddle.matmul(x_tensor, y_tensor)
 
-        self.assertTrue(np.allclose(x_grad, x_tensor.grad.numpy()))
+        grad_tensor = paddle.to_tensor(grad)
+        paddle.autograd.backward([z1_tensor, z2_tensor], [grad_tensor, None])
+
+        self.assertTrue(x_tensor.grad.place.is_custom_place())
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']
