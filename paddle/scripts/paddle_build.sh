@@ -2102,7 +2102,7 @@ set -x
     classify_case_by_cardNum    
     
     #generate ut mem map
-    python2.7 ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
+    python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
     python ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
     
 }
@@ -3556,11 +3556,9 @@ function main() {
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        enable_unused_var_check
         get_precise_tests_map_file
         ;;
       ci_parallelTest)
-        enable_unused_var_check
         get_parallel_tests_map_file
         ;;
       cicheck_brpc)
