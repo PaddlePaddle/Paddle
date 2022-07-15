@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
 
 #include <memory>
 
@@ -330,7 +330,7 @@ TEST(BuddyAllocator, SpeedAna) {
   std::vector<bool> vec_free_flag;
 
   std::string line;
-  int size, id;
+  int size = 0, id = 0;
   while (in_file >> size >> id) {
     vec_size.push_back(size);
     vec_pos.push_back(id);

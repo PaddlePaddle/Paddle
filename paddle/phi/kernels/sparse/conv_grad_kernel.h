@@ -25,16 +25,13 @@ template <typename T, typename Context>
 void Conv3dCooGradKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& kernel,
-                         const SparseCooTensor& out,
                          const DenseTensor& rulebook,
-                         const DenseTensor& counter,
                          const SparseCooTensor& out_grad,
                          const std::vector<int>& paddings,
                          const std::vector<int>& dilations,
                          const std::vector<int>& strides,
                          const int groups,
                          const bool subm,
-                         const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad);
 
@@ -43,16 +40,13 @@ std::tuple<SparseCooTensor, DenseTensor> Conv3dCooGrad(
     const Context& dev_ctx,
     const SparseCooTensor& x,
     const DenseTensor& kernel,
-    const SparseCooTensor& out,
     const DenseTensor& rulebook,
-    const DenseTensor& counter,
     const SparseCooTensor& out_grad,
     const std::vector<int>& paddings,
     const std::vector<int>& dilations,
     const std::vector<int>& strides,
     const int groups,
-    const bool subm,
-    const std::string& key) {
+    const bool subm) {
   SparseCooTensor x_grad;
   DenseTensor kernel_grad;
 
@@ -60,16 +54,13 @@ std::tuple<SparseCooTensor, DenseTensor> Conv3dCooGrad(
   Conv3dCooGradKernel<T, Context>(dev_ctx,
                                   x,
                                   kernel,
-                                  out,
                                   rulebook,
-                                  counter,
                                   out_grad,
                                   paddings,
                                   dilations,
                                   strides,
                                   groups,
                                   subm,
-                                  key,
                                   &x_grad,
                                   &kernel_grad);
   return std::make_tuple(x_grad, kernel_grad);

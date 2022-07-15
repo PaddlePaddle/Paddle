@@ -676,4 +676,5 @@ class TestHessianBatchFirst(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    np.random.seed(2022)
     unittest.main()

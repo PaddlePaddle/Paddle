@@ -498,14 +498,6 @@
     func : determinant
   backward : det_grad
 
-- api : diag
-  args : (Tensor x, int offset, float padding_value)
-  output : Tensor
-  infer_meta :
-    func : DiagInferMeta
-  kernel :
-    func : diag
-
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor

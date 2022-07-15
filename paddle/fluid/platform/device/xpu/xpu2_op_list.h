@@ -60,6 +60,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"bilinear_interp_v2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"broadcast", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"cast",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace()),
@@ -323,6 +324,8 @@ XPUOpMap& get_kl2_ops() {
       {"one_hot_v2",
        XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT64, XPUPlace())})},
+      {"p_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"p_norm_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"pool2d_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
@@ -519,11 +522,9 @@ XPUOpMap& get_kl2_ops() {
 
       // Fused op
       {"resnet_basic_block_grad",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
-                     pOpKernelType(vartype::FP16, XPUPlace())})},
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;
