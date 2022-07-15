@@ -148,6 +148,14 @@ void ArgsortInferMeta(const MetaTensor& input,
   indices->share_lod(input);
 }
 
+void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
+  auto out_dims_v = phi::vectorize(input.dims());
+  out_dims_v.push_back(2);
+  auto out_dims = phi::make_ddim(out_dims_v);
+  output->set_dims(out_dims);
+  output->share_lod(input);
+}
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
