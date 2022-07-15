@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/kernels/trace_kernel.h"
-
+#include "paddle/phi/kernels/nms_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
@@ -25,7 +22,7 @@ namespace phi {
 
 template <typename T>
 static void NMS(const T* boxes_data,
-                int64_t* output_data,
+                T* output_data,
                 float threshold,
                 int64_t num_boxes) {
   auto num_masks = CeilDivide(num_boxes, 64);
@@ -66,8 +63,8 @@ void NMSKernel(const Context& dev_ctx,
                    const DenseTensor& boxes,
                    float threshold,
                    DenseTensor* output){
-    int64_t* output_data = dev_ctx.template Alloc<T>(output);
-    NMS<T>(boxes->data<T>(), output_data, threshold, boxes->dims()[0]);
+    auto output_data = dev_ctx.template Alloc<T>(output);
+    NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
 }
 
 }  // namespace phi

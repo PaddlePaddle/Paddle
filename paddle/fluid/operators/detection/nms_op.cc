@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
+
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -76,44 +76,6 @@ class NMSOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "Boxes"), ctx.GetPlace());
   }
 };
-
-template <typename T>
-static void NMS(const T* boxes_data,
-                int64_t* output_data,
-                float threshold,
-                int64_t num_boxes) {
-  auto num_masks = CeilDivide(num_boxes, 64);
-  std::vector<uint64_t> masks(num_masks, 0);
-
-  for (int64_t i = 0; i < num_boxes; ++i) {
-    if (masks[i / 64] & 1ULL << (i % 64)) continue;
-    T box_1[4];
-    for (int k = 0; k < 4; ++k) {
-      box_1[k] = boxes_data[i * 4 + k];
-    }
-    for (int64_t j = i + 1; j < num_boxes; ++j) {
-      if (masks[j / 64] & 1ULL << (j % 64)) continue;
-      T box_2[4];
-      for (int k = 0; k < 4; ++k) {
-        box_2[k] = boxes_data[j * 4 + k];
-      }
-      bool is_overlap = CalculateIoU<T>(box_1, box_2, threshold);
-      if (is_overlap) {
-        masks[j / 64] |= 1ULL << (j % 64);
-      }
-    }
-  }
-
-  int64_t output_data_idx = 0;
-  for (int64_t i = 0; i < num_boxes; ++i) {
-    if (masks[i / 64] & 1ULL << (i % 64)) continue;
-    output_data[output_data_idx++] = i;
-  }
-
-  for (; output_data_idx < num_boxes; ++output_data_idx) {
-    output_data[output_data_idx] = 0;
-  }
-}
 
 template <typename T>
 class NMSKernel : public framework::OpKernel<T> {
