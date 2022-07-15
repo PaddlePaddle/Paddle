@@ -20,7 +20,7 @@
 
 // TODO(Ruibiao):
 // 1. Move other dependency adding codes from interpretercore_util.cc to
-// add_dependency.cc
+// dependency_utils.cc
 // 2. Move other Interpretercore related codes to directory
 // new_executor/interpreter
 // 3. Try to remove parameter op_happens_before from the dependency adding

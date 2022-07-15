@@ -152,6 +152,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\

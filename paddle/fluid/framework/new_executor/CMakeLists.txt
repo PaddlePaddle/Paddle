@@ -12,9 +12,9 @@ set(STANDALONE_EXECUTOR_SRCS
     standalone_executor.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
-    add_dependency
-    op_registry
+    dependency_utils
     device_context
+    op_registry
     scope
     framework_proto
     data_feed_proto
