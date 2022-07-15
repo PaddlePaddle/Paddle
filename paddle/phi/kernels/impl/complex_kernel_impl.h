@@ -15,7 +15,9 @@
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -59,6 +61,47 @@ void ImagKernel(const Context& dev_ctx,
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ImagFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
+}
+
+// functors to use with ElementwiseComputeEx
+template <typename T>
+struct RealAndImagToComplexFunctor {
+  inline HOSTDEVICE phi::dtype::complex<T> operator()(const T x, const T y) {
+    return phi::dtype::complex<T>(x, y);
+  }
+};
+
+template <typename T>
+struct ImagAndRealToComplexFunctor {
+  inline HOSTDEVICE phi::dtype::complex<T> operator()(const T y, const T x) {
+    return phi::dtype::complex<T>(x, y);
+  }
+};
+
+template <typename T, typename Context>
+void ComplexKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  using C = phi::dtype::complex<T>;
+  dev_ctx.template Alloc<C>(out);
+
+// NOTE(chenfeiyu): be careful of the caveats of calling elementwise-related
+// facility functions
+#if defined(__NVCC__) || defined(__HIPCC__)
+  phi::funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
+      dev_ctx, x, y, /*axis*/ -1, RealAndImagToComplexFunctor<T>(), out);
+#else
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {
+    phi::funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
+        dev_ctx, x, y, /*axis*/ -1, RealAndImagToComplexFunctor<T>(), out);
+  } else {
+    phi::funcs::ElementwiseCompute<ImagAndRealToComplexFunctor<T>, T, C>(
+        dev_ctx, x, y, /*axis*/ -1, ImagAndRealToComplexFunctor<T>(), out);
+  }
+#endif
 }
 
 }  // namespace phi

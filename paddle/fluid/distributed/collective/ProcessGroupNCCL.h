@@ -129,6 +129,12 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in,
       std::vector<phi::DenseTensor>& out) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>& in,
+      std::vector<phi::DenseTensor>& out,
+      std::vector<int64_t>& in_sizes,
+      std::vector<int64_t>& out_sizes) override;
+
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& tensors,
       std::vector<phi::DenseTensor>& out_tensors,
@@ -138,6 +144,15 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
+
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) override;
+
+  static void GroupStart();
+
+  static void GroupEnd();
 
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
@@ -162,8 +177,8 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
-                   int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void BroadcastUniqueNCCLID(std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
@@ -190,6 +205,9 @@ class ProcessGroupNCCL : public ProcessGroup {
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
+
+  void CheckSplitSizes(std::vector<int64_t>& split_sizes,
+                       std::vector<int64_t> tensor_shape);
 };
 
 }  //  namespace distributed

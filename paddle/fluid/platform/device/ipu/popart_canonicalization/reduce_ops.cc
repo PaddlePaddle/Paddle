@@ -36,6 +36,27 @@ Node *reduce_op_handler(Graph *graph, Node *node, const std::string &op_name) {
   return CreateBaseOp(graph, node, op_name, node->inputs, node->outputs, attrs);
 }
 
+Node *reduce_all_op_handler(Graph *graph,
+                            Node *node,
+                            const std::string &op_name) {
+  auto *op = node->Op();
+  auto attrs = AttributeMap{};
+  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  if (!reduce_all) {
+    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
+    attrs.emplace("axes", axes);
+  }
+  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
+  auto keepdims = int64_t{keepdims_};
+  attrs.emplace("keepdims", keepdims);
+  auto int32_x =
+      CreateCast(graph, node, node->inputs, {}, VarType::INT32)->outputs[0];
+  auto reduce_op = CreateBaseOp(graph, node, op_name, {int32_x}, {}, attrs);
+  return CreateCast(
+      graph, node, reduce_op->outputs, node->outputs, VarType::BOOL);
+}
+
 Node *reduce_mean_handler(Graph *graph, Node *node) {
   return reduce_op_handler(graph, node, "popart_reducemean");
 }
@@ -56,6 +77,34 @@ Node *reduce_prod_handler(Graph *graph, Node *node) {
   return reduce_op_handler(graph, node, "popart_reduceprod");
 }
 
+Node *logsumexp_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto attrs = AttributeMap{};
+  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  if (!reduce_all) {
+    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
+    auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
+    attrs.emplace("axes", axes);
+  }
+  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keepdim"));
+  auto keepdims = int64_t{keepdims_};
+  attrs.emplace("keepdims", keepdims);
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_reducelogsumexp",
+                      node->inputs,
+                      node->outputs,
+                      attrs);
+}
+
+Node *reduce_all_handler(Graph *graph, Node *node) {
+  return reduce_all_op_handler(graph, node, "popart_reducemin");
+}
+
+Node *reduce_any_handler(Graph *graph, Node *node) {
+  return reduce_all_op_handler(graph, node, "popart_reducemax");
+}
+
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
@@ -66,3 +115,6 @@ REGISTER_HANDLER(reduce_min, reduce_min_handler);
 REGISTER_HANDLER(reduce_sum, reduce_sum_handler);
 REGISTER_HANDLER(reduce_max, reduce_max_handler);
 REGISTER_HANDLER(reduce_prod, reduce_prod_handler);
+REGISTER_HANDLER(logsumexp, logsumexp_handler);
+REGISTER_HANDLER(reduce_all, reduce_all_handler);
+REGISTER_HANDLER(reduce_any, reduce_any_handler);

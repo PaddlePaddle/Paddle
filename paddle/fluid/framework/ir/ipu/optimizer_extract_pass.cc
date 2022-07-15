@@ -287,19 +287,6 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
     } else if (op_role == OpRole::kLRSched) {
       // op_role == OpRole::kLRSched | OpRole::kOptimize
       new_op.SetAttr("with_lr_sched", true);
-    } else if (op_type == "identity_loss") {
-      auto outputs = op->Outputs();
-      PADDLE_ENFORCE_EQ(
-          outputs.size(),
-          1,
-          platform::errors::InvalidArgument("Can only support one loss key"));
-      auto losses = outputs.begin()->second;
-      PADDLE_ENFORCE_EQ(
-          losses.size(),
-          1,
-          platform::errors::InvalidArgument("Can only support one loss name"));
-      auto loss_var = losses.front();
-      new_op.SetAttr("loss_var", loss_var);
     }
   }
 

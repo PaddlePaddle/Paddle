@@ -17,6 +17,7 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 using dnnl::memory;
 using dnnl::primitive;
@@ -452,6 +453,8 @@ class MatMulMKLDNNHandler
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
+
+    paddle::platform::AppendActivation(ctx, post_operations);
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
