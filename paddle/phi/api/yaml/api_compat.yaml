@@ -5,19 +5,19 @@
     out : Out
 
 - api : bernoulli
-  input :
+  inputs :
     x : X
   outputs :
     out : Out
 
 - api : cholesky
-  input :
+  inputs :
     x : X
   outputs :
     out : Out
 
 - api : cholesky_solve
-  input :
+  inputs :
     {x : X, y : Y}
   outputs :
     out : Out
