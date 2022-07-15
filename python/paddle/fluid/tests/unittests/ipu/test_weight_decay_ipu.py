@@ -22,8 +22,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
 
@@ -36,6 +34,7 @@ class TestBase(IPUOpTest):
         self.model_path = os.path.join(self.temp_dir.name, "weight_decay")
 
     def tearDown(self):
+        super().tearDown()
         self.temp_dir.cleanup()
 
     def set_atol(self):

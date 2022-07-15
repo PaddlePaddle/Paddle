@@ -20,8 +20,6 @@ import paddle.static
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestIpuStrategy(unittest.TestCase):
 
     def test_set_options(self):
