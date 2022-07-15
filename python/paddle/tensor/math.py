@@ -4549,3 +4549,67 @@ def frac(x, name=None):
             helper.append_op(
                 type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y})
             return _elementwise_op(LayerHelper(op_type, **locals()))
+
+def sgn(x, name=None):
+    """
+    This API is used to return the fractional portion of each element in input.
+    This API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+
+
+    Args:
+        x (Tensor): The input tensor, which data type should be int32, int64, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor of frac.
+
+    Examples:
+        .. code-block:: Python
+
+            import paddle
+            import numpy as np
+
+            input = paddle.rand([3, 3], 'float32')
+            print(input.numpy())
+            # [[ 1.2203873  -1.0035421  -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-1.5131804   0.5850153  -0.17597814]]
+
+            output = paddle.frac(input)
+            print(output.numpy())
+            # [[ 0.22038734 -0.00354207 -0.35193074]
+            #  [-0.00928353  0.58917075 -0.8407828 ]
+            #  [-0.5131804   0.5850153  -0.17597814]]
+            Returns an element-wise indication of the sign of a number.
+  `y = sign(x) = -1 if x < 0; 0 if x == 0; 1 if x > 0`.
+  For complex numbers, `y = sign(x) = x / |x| if x != 0, otherwise y = 0`.
+  Example usage:
+   # real number
+  tf.math.sign([0., 2., -3.])
+  <tf.Tensor: shape=(3,), dtype=float32,
+  numpy=array([ 0.,  1., -1.], dtype=float32)>
+  # complex number
+ tf.math.sign([1 + 1j, 0 + 0j])
+  <tf.Tensor: shape=(2,), dtype=complex128,
+  numpy=array([0.70710678+0.70710678j, 0.        +0.j        ])>
+  Args:
+   x: A Tensor. Must be one of the following types: bfloat16, half, float32,
+     float64, int32, int64, complex64, complex128.
+   name: A name for the operation (optional).
+  Returns:
+   A Tensor. Has the same type as x.
+   If x is a SparseTensor, returns SparseTensor(x.indices,
+     tf.math.sign(x.values, ...), x.dense_shape).
+    """
+    if paddle.is_complex(x):
+        expand_x = paddle.as_real(x)
+        exp_zero = expand_x != 0
+        zero_mask = exp_zero[:, 0] & exp_zero[:, 1]
+        x_abs = paddle.abs(x)
+        x_abs = paddle.reshape(x_abs, [x_abs.shape[0], 1])
+        output = expand_x
+        output[zero_mask] = expand_x[zero_mask] / x_abs[zero_mask]
+        return paddle.as_complex(output)
+    else:
+        return paddle.sign(x)
