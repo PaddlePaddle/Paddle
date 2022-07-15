@@ -111,11 +111,12 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
   details::VarHandle *var = nullptr;
   if (var_holder.empty()) {
     if (node->Var()) {
-      var = new details::VarHandle(graph->CreateVarNode(node->Var()),
-                                   0,
-                                   place_offset,
-                                   node->Name(),
-                                   place);
+      var = new details::VarHandle(
+          graph->CreateVarNode(node->Var(), node->GetVarNodeBlockId()),
+          0,
+          place_offset,
+          node->Name(),
+          place);
     } else {
       var = new details::VarHandle(
           graph->CreateEmptyNode(node->Name(), ir::Node::Type::kVariable),
@@ -376,7 +377,8 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
   for (ir::Node *output : node->outputs) {
     ir::Node *new_node = nullptr;
     if (output->Var()) {
-      new_node = result->CreateVarNode(output->Var());
+      new_node =
+          result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
     } else {
       new_node =
           result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
@@ -696,7 +698,8 @@ void MultiDevSSAGraphBuilderBase::CreateScaleLossGradOp(
 
     CreateOpOutput(result,
                    op_handle,
-                   result->CreateVarNode(out_var_node->Var()),
+                   result->CreateVarNode(out_var_node->Var(),
+                                         out_var_node->GetVarNodeBlockId()),
                    places_[i],
                    i);
   }
@@ -1225,7 +1228,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
       if (output->Var()) {
-        new_node = result->CreateVarNode(output->Var());
+        new_node =
+            result->CreateVarNode(output->Var(), output->GetVarNodeBlockId());
       } else {
         new_node =
             result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
