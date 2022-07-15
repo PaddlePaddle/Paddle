@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// #include "paddle/phi/kernels/solve_kernel.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/expand_as_kernel.h"
 #include "paddle/phi/kernels/funcs/matrix_solve.h"

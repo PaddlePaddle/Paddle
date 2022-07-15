@@ -82,13 +82,12 @@ void SolveGradKernel(const Context& dev_ctx,
   DenseTensor tmp_y;
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
-    phi::SqueezeKernel<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
+    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
     phi::Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
   }
-
   DenseTensor tmp_x;
   tmp_x.Resize(x.dims());
   dev_ctx.Alloc(&tmp_x, x.dtype());
@@ -98,7 +97,6 @@ void SolveGradKernel(const Context& dev_ctx,
   std::vector<int64_t> y_broadcast_dims;
   std::tie(x_broadcast_dims, y_broadcast_dims) =
       get_broadcast_dims(tmp_x, tmp_y);
-
   // tmp_dx
   DenseTensor tmp_dx;
   tmp_dx.Resize(phi::make_ddim(x_broadcast_dims));
@@ -122,6 +120,7 @@ void SolveGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dy);
     linalg_solve<Context, T>(dev_ctx, tmp_input, dout, &tmp_dy);
   }
+
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
 
@@ -132,6 +131,7 @@ void SolveGradKernel(const Context& dev_ctx,
           phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
       auto mat_dim_b1 = phi::funcs::CreateMatrixDescriptor(out.dims(), 0, true);
       blas.MatMul(tmp_dy, mat_dim_a1, out, mat_dim_b1, T(-1), &tmp_dx, T(0));
+
     } else if (is_vector_rhs(x, y)) {
       DenseTensor tmp_dy_;
       dev_ctx.Alloc(&tmp_dy_, y.dtype());
@@ -157,6 +157,7 @@ void SolveGradKernel(const Context& dev_ctx,
           phi::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
       blas.MatMul(
           tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx, T(0));
+
     } else {
       auto mat_dim_a1 =
           phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
@@ -207,7 +208,6 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dy_help.dims().size() != dy->dims().size()) {
           keep_dim = false;
         }
-
         ReduceSumForSolvelGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims, keep_dim);
       }
@@ -222,7 +222,6 @@ void SolveGradKernel(const Context& dev_ctx,
     dx_help.Resize(tmp_dx.dims());
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
     phi::Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
-
     // get dims
     std::vector<std::int64_t> x_dims = vectorize(x.dims());
     std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -232,7 +231,6 @@ void SolveGradKernel(const Context& dev_ctx,
 
     const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
-
     std::fill(
         dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);
     std::copy(x_dims.data(),
@@ -256,7 +254,6 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dx_help.dims().size() != dx->dims().size()) {
           keep_dim = false;
         }
-
         ReduceSumForSolvelGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims, keep_dim);
       }
