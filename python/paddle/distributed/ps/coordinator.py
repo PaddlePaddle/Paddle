@@ -17,6 +17,7 @@ from paddle.fluid.communicator import FLCommunicator
 from paddle.distributed.fleet.proto import the_one_ps_pb2
 from google.protobuf import text_format
 from paddle.distributed.ps.utils.public import is_distributed_env
+import paddle.distributed.fleet as fleet
 import time
 import abc
 import os
@@ -95,7 +96,7 @@ class ClientSelector(ClientSelectorBase):
 class FLClientBase(abc.ABC):
 
     def __init__(self):
-        import paddle.distributed.fleet as fleet
+        pass
 
     def set_basic_config(self, role_maker, config, metrics):
         self.role_maker = role_maker
