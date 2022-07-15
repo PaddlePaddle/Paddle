@@ -1188,7 +1188,6 @@ class TheOnePSRuntime(RuntimeBase):
                               scope,
                               program,
                               var_names=None):
-        begin = time.time()
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
         send_ctx = get_the_one_send_context(
@@ -1198,15 +1197,9 @@ class TheOnePSRuntime(RuntimeBase):
             ep_list=self.endpoints)
         if program is None or len(self.origin_main_programs) == 1:
             program = self.origin_main_programs[0]
-        end = time.time()
-        print('debug zcb save_dense_params prepare cost ', (end - begin) / 60.0)
-        begin = time.time()
         dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
-        end = time.time()
-        print('debug zcb save_dense_params pull_dense cost ', (end - begin) / 60.0)
         save_var_names = dense_var_names if var_names is None else var_names
 #        print("save_var_names:", save_var_names)
-        begin = time.time()
 #        for var in save_var_names:
 #            tensor = scope.find_var(var).get_tensor()
 #            paddle.save(
@@ -1215,8 +1208,6 @@ class TheOnePSRuntime(RuntimeBase):
         vars = [program.global_block().var(i) for i in save_var_names]
         with fluid.scope_guard(scope):
             fluid.io.save_vars(executor, "./", program, vars=vars, filename=dirname)
-        end = time.time()
-        print('debug zcb save_dense_params save cost ', (end - begin) / 60.0)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
@@ -1271,10 +1262,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        begin = time.time()
         self._worker.save_all_model(dirname, mode)
-        end = time.time()
-        print('debug zcb save model cost: ', (end - begin) / 60.0)
 
     def _ps_inference_save_inference_model(self,
                                            executor,

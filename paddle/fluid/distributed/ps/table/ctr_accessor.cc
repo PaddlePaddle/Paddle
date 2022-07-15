@@ -100,7 +100,6 @@ bool CtrCommonAccessor::SaveSSD(float* value) {
 }
 
 bool CtrCommonAccessor::Save(float* value, int param) {
-  CostTimer timer2("accessor save");
   auto base_threshold = _config.ctr_accessor_param().base_threshold();
   auto delta_threshold = _config.ctr_accessor_param().delta_threshold();
   auto delta_keep_days = _config.ctr_accessor_param().delta_keep_days();
@@ -309,7 +308,6 @@ float CtrCommonAccessor::ShowClickScore(float show, float click) {
 }
 
 std::string CtrCommonAccessor::ParseToString(const float* v, int param) {
-  CostTimer timer("accessor parse_to_string");
   thread_local std::ostringstream os;
   os.clear();
   os.str("");

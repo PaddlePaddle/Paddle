@@ -49,15 +49,6 @@ int32_t MemorySparseTable::Initialize() {
   auto& profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_sparse_update_all");
   profiler.register_profiler("pserver_sparse_select_all");
-  profiler.register_profiler("sparse table save one key");
-  profiler.register_profiler("sparse table write_line");
-  profiler.register_profiler("accessor save");
-  profiler.register_profiler("accessor parse_to_string");
-  profiler.register_profiler("sparse table save shard");
-  profiler.register_profiler("sparse table save shard while");
-  profiler.register_profiler("sparse table save check one key");
-  profiler.register_profiler("sparse table save shard close");
-  profiler.register_profiler("sprase table top push");
   InitializeValue();
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
@@ -350,7 +341,6 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    CostTimer timer("sparse table save shard");
     FsChannelConfig channel_config;
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path =
@@ -373,14 +363,12 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
     int err_no = 0;
     auto& shard = _local_shards[i];
     do {
-      CostTimer timer2("sparse table save shard while");
       err_no = 0;
       feasign_size = 0;
       is_write_failed = false;
       auto write_channel =
           _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
       for (auto it = shard.begin(); it != shard.end(); ++it) {
-        CostTimer timer11("sparse table save check one key");
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
             _value_accesor->Save(it.value().data(), 4)) {
@@ -389,10 +377,8 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
         }
 
         if (_value_accesor->Save(it.value().data(), save_param)) {
-          CostTimer timer1("sparse table save one key");
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          CostTimer timer0("sparse table write_line");
           if (0 !=
               write_channel->write_line(paddle::string::format_string(
                   "%lu %s", it.key(), format_value.c_str()))) {
@@ -406,8 +392,6 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
           ++feasign_size;
         }
       }
-      VLOG(0) << "debug zcb begin close " << channel_config.path;
-      CostTimer timer12("sparse table save shard close");
       write_channel->close();
       if (err_no == -1) {
         ++retry_num;
@@ -425,7 +409,6 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
       }
     } while (is_write_failed);
     feasign_size_all += feasign_size;
-    CostTimer timer3("sparse table save shard updatestat " + std::to_string(i));
     for (auto it = shard.begin(); it != shard.end(); ++it) {
       _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
     }
@@ -565,8 +548,6 @@ int64_t MemorySparseTable::CacheShuffle(
     paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
         writers[i];
     writer.Reset(tmp_channels[i].get());
-    //    ChannelWriter<std::pair<uint64_t, std::string>>& writer = writers[i];
-    //    writer.reset(make_channel<std::pair<uint64_t, std::string>>());
 
     for (size_t idx = 0; idx < table_ptrs.size(); idx++) {
       Table* table_ptr = table_ptrs[idx];
@@ -636,7 +617,6 @@ int64_t MemorySparseTable::CacheShuffle(
     }
   }
   shuffled_channel->Write(std::move(local_datas));
-  // LOG(INFO) << "cache shuffle finished";
   return 0;
 }
 

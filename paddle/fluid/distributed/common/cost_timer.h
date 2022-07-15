@@ -67,19 +67,19 @@ class CostTimer {
     _profiler_node = profiler.profiler(label);
     // 如果不在profiler中，则使用log输出耗时信息
     _is_print_cost = _profiler_node == NULL;
-    _start_time_ms = butil::gettimeofday_us();
+    _start_time_ms = butil::gettimeofday_ms();
   }
   explicit CostTimer(CostProfilerNode& profiler_node) {  // NOLINT
     _is_print_cost = false;
     _profiler_node = &profiler_node;
-    _start_time_ms = butil::gettimeofday_us();
+    _start_time_ms = butil::gettimeofday_ms();
   }
   ~CostTimer() {
     if (_is_print_cost) {
-      VLOG(0) << "CostTimer label:" << _label
-              << ", cost:" << butil::gettimeofday_us() - _start_time_ms << "ms";
+      VLOG(3) << "CostTimer label:" << _label
+              << ", cost:" << butil::gettimeofday_ms() - _start_time_ms << "ms";
     } else {
-      *(_profiler_node->recorder) << butil::gettimeofday_us() - _start_time_ms;
+      *(_profiler_node->recorder) << butil::gettimeofday_ms() - _start_time_ms;
     }
   }
 

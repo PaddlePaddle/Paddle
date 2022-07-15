@@ -82,8 +82,8 @@ set_source_files_properties(
   ctr_dymf_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
   memory_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-#set_source_files_properties(
-#  ssd_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+set_source_files_properties(
+  ssd_sparse_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
   memory_sparse_geo_table.cc PROPERTIES COMPILE_FLAGS
                                         ${DISTRIBUTE_COMPILE_FLAGS})
@@ -99,7 +99,7 @@ cc_library(
   DEPS ${TABLE_DEPS} ps_framework_proto sparse_sgd_rule)
 cc_library(
   sparse_table
-  SRCS memory_sparse_table.cc memory_sparse_geo_table.cc
+  SRCS memory_sparse_table.cc ssd_sparse_table.cc memory_sparse_geo_table.cc
   DEPS ps_framework_proto
        ${TABLE_DEPS}
        fs

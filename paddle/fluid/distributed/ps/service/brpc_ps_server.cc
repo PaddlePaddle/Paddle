@@ -652,7 +652,6 @@ int32_t BrpcPsService::SaveOneTable(Table *table,
   int32_t feasign_size = 0;
 
   VLOG(3) << "save table " << request.params(0) << " " << request.params(1);
-  CostTimer timer("server save one table");
   feasign_size = table->Save(request.params(0), request.params(1));
   if (feasign_size < 0) {
     set_response_code(response, -1, "table save failed");
@@ -665,12 +664,10 @@ int32_t BrpcPsService::SaveAllTable(Table *table,
                                     const PsRequestMessage &request,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
-  CostTimer all_timer("service save all table");
   auto &table_map = *(_server->GetTable());
   int32_t feasign_size = 0;
 
   for (auto &itr : table_map) {
-    VLOG(0) << "begin save table " << itr.first;
     feasign_size = SaveOneTable(itr.second.get(), request, response, cntl);
     if (feasign_size < 0) {
       LOG(ERROR) << "save table[" << itr.first << "] failed";

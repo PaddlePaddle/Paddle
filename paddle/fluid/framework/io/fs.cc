@@ -79,8 +79,6 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
           }};
   }
 
-  VLOG(0) << "debug zcb open write path: " << path;
-
   return fp;
 }
 
@@ -285,7 +283,6 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
 
   bool is_pipe = true;
   fs_add_read_converter_internal(path, is_pipe, converter);
-  VLOG(0) << "debug zcb hdfs path: " << path;
   return fs_open_internal(path, is_pipe, "r", hdfs_buffer_size(), err_no);
 }
 

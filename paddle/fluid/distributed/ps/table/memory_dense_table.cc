@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/distributed/common/cost_timer.h"
 
 namespace paddle {
 namespace distributed {
@@ -49,15 +48,6 @@ int32_t MemoryDenseTable::Initialize() {
   sync = _config.common().sync();
   VLOG(1) << "table " << _config.common().table_name() << " is sync: " << sync;
   _global_lr = new float(1.0);
-
-  auto& profiler = CostProfiler::instance();
-  profiler.register_profiler("save dense all");
-  profiler.register_profiler("save dense build summary");
-  profiler.register_profiler("save dense build d2sum");
-  profiler.register_profiler("save dense write all");
-  profiler.register_profiler("save dense write after for");
-  profiler.register_profiler("save dense write_line");
-  profiler.register_profiler("save dense write channel close");
 
   InitializeValue();
   InitializeOptimizer();
@@ -331,7 +321,6 @@ int32_t MemoryDenseTable::Load(const std::string& path,
 
 int32_t MemoryDenseTable::Save(const std::string& path,
                                const std::string& param) {
-  CostTimer timer1("save dense all");
   int save_param = atoi(param.c_str());
   uint32_t feasign_size;
   VLOG(0) << "MemoryDenseTable::save path " << path;
@@ -350,24 +339,17 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       _value_accesor->Converter(save_param).deconverter;
 
   bool is_write_failed = false;
-//  std::vector<std::vector<std::string>> result_buffer_param(
-//      param_dim_, std::vector<std::string>());
   std::vector<std::string> result_buffer_param;
   result_buffer_param.reserve(param_dim_);
-//  std::vector<std::string> result_buffer_fixed_len;
-//  result_buffer_fixed_len.reserve(fixed_len_params_dim_);
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
-    CostTimer timer2("save dense build summary");
-    CostTimer timer3("save dense build d2sum");
     for (int x = 0; x < param_dim_; ++x) {
       result_buffer_param.emplace_back(
           std::to_string(values_[param_idx_][x]));
    }
 
   } else {
-    CostTimer timer3("save dense build d2sum");
     std::ostringstream os;
     for (int y = 0; y < param_dim_; ++y) {
       os.clear();
@@ -384,7 +366,6 @@ int32_t MemoryDenseTable::Save(const std::string& path,
   int retry_num = 0;
   int err_no = 0;
   do {
-    CostTimer timer4("save dense write all");
     err_no = 0;
     is_write_failed = false;
     feasign_size = 0;
@@ -392,15 +373,8 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
     
-    CostTimer timer5("save dense write after for");
     for (auto& t : result_buffer_param) {
-//      if (_config.common().name() == "adam_d2sum") {
-//        t.insert(t.begin() + 1, "0");  // avg_w
-//      }
-      CostTimer timer6("save dense write_line");
-      if (0 !=
-          //write_channel->write_line(paddle::string::join_strings(t, ' '))) {
-         write_channel->write_line(t)) {
+      if (0 != write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;
         LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
@@ -412,7 +386,6 @@ int32_t MemoryDenseTable::Save(const std::string& path,
 
     ++feasign_size;
     VLOG(0) << "debug zcb save begin close " << channel_config.path;    
-    CostTimer timer7("save dense write channel close");
     write_channel->close();
     if (err_no == -1) {
       ++retry_num;

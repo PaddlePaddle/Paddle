@@ -481,16 +481,6 @@ class HDFSClient(FS):
         for x in range(retry_times + 1):
             ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
             ret = int(ret)
-
-            #            proc = subprocess.Popen(
-            #                whole_commands,
-            #                stdout=subprocess.PIPE,
-            #                stderr=subprocess.PIPE,
-            #                shell=True,
-            #                encoding='utf8')
-            #            (output, errors) = proc.communicate()
-            #            ret_code, ret_out, ret_err = proc.returncode, output, errors
-
             if ret == 0:
                 break
             time.sleep(retry_sleep_second)
@@ -498,7 +488,6 @@ class HDFSClient(FS):
             raise FSShellCmdAborted(cmd)
 
         return ret, output.splitlines()
-        #return ret_code, ret_out.splitlines(), ret_err.splitlines()
 
     @_handle_errors()
     def list_dirs(self, fs_path):
@@ -700,10 +689,6 @@ class HDFSClient(FS):
         ret, out = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret != 0:
             return False
-#            for l in out:
-#                if "No such file or directory" in l:
-#                    return False
-#            raise ExecuteError(cmd)
 
         return True
 

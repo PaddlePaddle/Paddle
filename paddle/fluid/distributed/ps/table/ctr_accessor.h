@@ -22,7 +22,6 @@
 #include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
-#include "paddle/fluid/distributed/common/cost_timer.h"
 
 namespace paddle {
 namespace distributed {
