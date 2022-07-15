@@ -1892,6 +1892,16 @@
     func : softmax_grad
     use_gpudnn : true
 
+- backward_api : solve_grad
+  forward : solve (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, Tensor out)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : solve_grad
+
 - backward_api : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)

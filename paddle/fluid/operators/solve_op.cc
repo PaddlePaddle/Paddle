@@ -17,9 +17,13 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -30,94 +34,6 @@ using framework::Tensor;
 class SolveOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Solve");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Solve");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Solve");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-
-    std::vector<int64_t> x_dims_vec = phi::vectorize(ctx->GetInputDim("X"));
-    std::vector<int64_t> y_dims_vec = phi::vectorize(ctx->GetInputDim("Y"));
-
-    auto x_dims_n = x_dims_vec.size();
-    auto y_dims_n = y_dims_vec.size();
-
-    PADDLE_ENFORCE_GT(x_dims_n,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimensions of SolveOp "
-                          "should be larger than 1. But received X's "
-                          "dimensions = %d, X's shape = [%s]",
-                          x_dims_n,
-                          x_dims));
-
-    PADDLE_ENFORCE_GE(y_dims_n,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The input tensor Y's dimensions of SolveOp "
-                          "should be larger than or equal 1. But received Y's "
-                          "dimensions = %d, Y's shape = [%s]",
-                          y_dims_n,
-                          y_dims));
-
-    PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2],
-                      x_dims[x_dims_n - 1],
-                      platform::errors::InvalidArgument(
-                          "The inner-most 2 dimensions of Input(X) all should "
-                          "be square matrices "
-                          "But received X's shape[-2] = %d and shape[-1] = %d.",
-                          x_dims[x_dims_n - 2],
-                          x_dims[x_dims_n - 1]));
-
-    bool x_broadcasted = false, y_broadcasted = false;
-    bool trans_x = false, trans_y = false;
-    if (x_dims_n == 1) {
-      x_dims_vec.insert(x_dims_vec.begin(), 1);
-      x_dims_n = 2;
-      x_broadcasted = true;
-    }
-
-    if (y_dims_n == 1) {
-      y_dims_vec.push_back(1);
-      y_dims_n = 2;
-      y_broadcasted = true;
-    }
-
-    size_t M, N;
-    if (trans_x) {
-      M = x_dims_vec[x_dims_n - 1];
-    } else {
-      M = x_dims_vec[x_dims_n - 2];
-    }
-    if (trans_y) {
-      N = y_dims_vec[y_dims_n - 2];
-    } else {
-      N = y_dims_vec[y_dims_n - 1];
-    }
-
-    std::vector<int64_t> new_dims;
-    if (x_dims_n >= y_dims_n) {
-      new_dims.assign(x_dims_vec.begin(), x_dims_vec.end() - 2);
-    } else {
-      new_dims.assign(y_dims_vec.begin(), y_dims_vec.end() - 2);
-    }
-    if (!x_broadcasted) {
-      new_dims.push_back(M);
-    }
-    if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
-    }
-
-    auto out_dims = phi::make_ddim(new_dims);
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
@@ -163,30 +79,6 @@ class SolveOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 class SolveGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "solve");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "solve");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "solve");
-    // reuse the linalg.solve forward output
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "solve");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-
-    auto x_grad_name = framework::GradVarName("X");
-    auto y_grad_name = framework::GradVarName("Y");
-
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-    if (ctx->HasOutput(y_grad_name)) {
-      ctx->SetOutputDim(y_grad_name, y_dims);
-    }
-  }
 };
 
 template <typename T>
@@ -212,11 +104,21 @@ class SolveOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(solve,
+                            SolveInferShapeFunctor,
+                            PD_INFER_META(phi::SolveInferMeta));
+
 REGISTER_OPERATOR(solve,
                   ops::SolveOp,
                   ops::SolveOpMaker,
                   ops::SolveOpInferVarType,
                   ops::SolveOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SolveOpGradMaker<paddle::imperative::OpBase>);
+                  ops::SolveOpGradMaker<paddle::imperative::OpBase>,
+                  SolveInferShapeFunctor);
 
-REGISTER_OPERATOR(solve_grad, ops::SolveGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(solve_grad,
+                            SolveGradInferShapeFunctor,
+                            PD_INFER_META(phi::SolveGradInferMeta));
+
+REGISTER_OPERATOR(solve_grad, ops::SolveGradOp, SolveGradInferShapeFunctor);

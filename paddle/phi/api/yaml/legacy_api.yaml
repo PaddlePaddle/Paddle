@@ -1966,6 +1966,16 @@
     use_gpudnn : true
   backward : softmax_grad
 
+- api : solve
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : SolveInferMeta
+  kernel :
+    func : solve
+    data_type : x
+  backward : solve_grad
+
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
   output : Tensor[]
