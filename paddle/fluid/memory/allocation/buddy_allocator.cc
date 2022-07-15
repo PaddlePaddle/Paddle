@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
+#include "paddle/fluid/memory/allocation/buddy_allocator.h"
 
 #include <algorithm>
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <cstddef>
 #include <functional>
 
-#include "paddle/fluid/memory/detail/memory_block.h"
+#include "paddle/fluid/memory/allocation/memory_block.h"
 
 namespace paddle {
 namespace memory {

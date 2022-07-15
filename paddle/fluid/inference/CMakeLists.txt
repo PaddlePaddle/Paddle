@@ -40,6 +40,10 @@ get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(utils_modules stringpiece pretty_log string_helper benchmark)
 
+if(WITH_CUSTOM_DEVICE)
+  set(fluid_modules ${fluid_modules} phi_capi)
+endif()
+
 add_subdirectory(api)
 
 # Create static inference library if needed

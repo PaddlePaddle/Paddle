@@ -21,13 +21,6 @@ class DenseTensor;
 }  // namespace phi
 
 namespace paddle {
-namespace framework {}  // namespace framework
-namespace platform {
-class MKLDNNDeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 using dnnl::memory;
