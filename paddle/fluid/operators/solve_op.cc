@@ -221,10 +221,3 @@ REGISTER_OPERATOR(solve,
                   ops::SolveOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(solve_grad, ops::SolveGradOp);
-
-// REGISTER_OP_CPU_KERNEL(solve,
-//                        ops::SolveKernel<phi::CPUContext, float>,
-//                        ops::SolveKernel<phi::CPUContext, double>);
-// REGISTER_OP_CPU_KERNEL(solve_grad,
-//                        ops::SolveGradKernel<phi::CPUContext, float>,
-//                        ops::SolveGradKernel<phi::CPUContext, double>);

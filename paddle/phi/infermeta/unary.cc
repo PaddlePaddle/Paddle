@@ -3203,15 +3203,18 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     }
     out->set_dtype(x.dtype());
   }
-  // set xshape dims.
-  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < x_dims.size(); ++i) {
-    xshape_dims[i + 1] = x_dims[i];
+  if (xshape) {
+    // set xshape dims.
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+
+    xshape->set_dims(phi::make_ddim(xshape_dims));
+    xshape->share_lod(x);
+    xshape->set_dtype(x.dtype());
   }
-  xshape->set_dims(phi::make_ddim(xshape_dims));
-  xshape->share_lod(x);
-  xshape->set_dtype(x.dtype());
 }
 
 void UnStackInferMeta(const MetaTensor& x,

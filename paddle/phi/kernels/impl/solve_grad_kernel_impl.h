@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-// #include "paddle/phi/kernels/solve_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
@@ -31,28 +31,6 @@ limitations under the License. */
 #endif
 
 namespace phi {
-
-// template <typename DeviceContext, typename T>
-// void ReduceSumForSolve(const Tensor* input,
-//                        Tensor* output,
-//                        const std::vector<int>& reduce_dims,
-//                        bool keep_dim,
-//                        const paddle::framework::ExecutionContext& ctx) {
-// #if defined(__NVCC__) || defined(__HIPCC__)
-//   auto stream = ctx.cuda_device_context().stream();
-//   TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-//       ctx.cuda_device_context(),
-//       *input,
-//       output,
-//       kps::IdentityFunctor<T>(),
-//       reduce_dims,
-//       stream);
-// #else
-//   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
-//       input, output, reduce_dims, keep_dim, false, ctx)
-//       .template apply<T>();
-// #endif
-// }
 
 template <typename Context, typename T>
 struct ReduceSumForSolvelGrad {
@@ -101,35 +79,20 @@ void SolveGradKernel(const Context& dev_ctx,
                      DenseTensor* dy) {
   bool is_vector = false;
   is_vector = is_vector_rhs(x, y);
-
   DenseTensor tmp_y;
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
-    //   tmp_y.mutable_data(dev_ctx.GetPlace(), y.dtype());
     phi::SqueezeKernel<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
-    //   to_unsqueeze(dev_ctx, *y, &tmp_y);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
     phi::Copy(dev_ctx, y, dev_ctx.GetPlace(), false, &tmp_y);
-    //   tmp_y.mutable_data(dev_ctx.GetPlace(), y->dtype());
-    //   framework::TensorCopy(
-    //       *y,
-    //       dev_ctx.GetPlace(),
-    //       dev_ctx.template device_context<platform::DeviceContext>(),
-    //       &tmp_y);
   }
 
   DenseTensor tmp_x;
   tmp_x.Resize(x.dims());
   dev_ctx.Alloc(&tmp_x, x.dtype());
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &tmp_x);
-  // tmp_x.mutable_data(dev_ctx.GetPlace(), x->dtype());
-  // framework::TensorCopy(
-  //     *x,
-  //     dev_ctx.GetPlace(),
-  //     dev_ctx.template device_context<platform::DeviceContext>(),
-  //     &tmp_x);
 
   std::vector<int64_t> x_broadcast_dims;
   std::vector<int64_t> y_broadcast_dims;
@@ -139,19 +102,16 @@ void SolveGradKernel(const Context& dev_ctx,
   // tmp_dx
   DenseTensor tmp_dx;
   tmp_dx.Resize(phi::make_ddim(x_broadcast_dims));
-  // tmp_dx.mutable_data<T>(dev_ctx.GetPlace());
   dev_ctx.template Alloc<T>(&tmp_dx);
 
   // tmp_dy
   DenseTensor tmp_dy;
   tmp_dy.Resize(phi::make_ddim(y_broadcast_dims));
-  // tmp_dy.mutable_data<T>(dev_ctx.GetPlace());
   dev_ctx.template Alloc<T>(&tmp_dy);
 
   DenseTensor tmp_input(x.dtype());
   const auto& new_dims_vec = phi::funcs::getNewDimsVec(x.dims());
   tmp_input.Resize(phi::make_ddim(new_dims_vec));
-  // tmp_x.mutable_data<T>(dev_ctx.GetPlace());
   dev_ctx.template Alloc<T>(&tmp_input);
 
   phi::funcs::TransposeNormal<Context, T> trans;
@@ -160,14 +120,11 @@ void SolveGradKernel(const Context& dev_ctx,
 
   if (dy) {
     dev_ctx.template Alloc<T>(dy);
-    //   dy->mutable_data<T>(dev_ctx.GetPlace());
-    // reuse linalg_solve forward logics to get tmp_dy
     linalg_solve<Context, T>(dev_ctx, tmp_input, dout, &tmp_dy);
   }
-
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
-    //   dx->mutable_data<T>(dev_ctx.GetPlace());
+
     // to get dx
     auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
     if (x.dims().size() == 2 && y.dims().size() == 2) {
@@ -178,23 +135,21 @@ void SolveGradKernel(const Context& dev_ctx,
     } else if (is_vector_rhs(x, y)) {
       DenseTensor tmp_dy_;
       dev_ctx.Alloc(&tmp_dy_, y.dtype());
-      // tmp_dy_.mutable_data(dev_ctx.GetPlace(), y->dtype());
-      phi::UnsqueezeKernel<T, Context>(dev_ctx,
-                                       tmp_dy,
-                                       paddle::experimental::IntArray({-1}),
-                                       &tmp_dy_,
-                                       nullptr);
-      // to_unsqueeze(dev_ctx, tmp_dy, &tmp_dy_);
+
+      phi::Unsqueeze<T, Context>(dev_ctx,
+                                 tmp_dy,
+                                 paddle::experimental::IntArray({-1}),
+                                 &tmp_dy_,
+                                 nullptr);
 
       DenseTensor tmp_out_;
       dev_ctx.Alloc(&tmp_out_, out.dtype());
-      // tmp_out_.mutable_data(dev_ctx.GetPlace(), out->dtype());
-      phi::UnsqueezeKernel<T, Context>(dev_ctx,
-                                       out,
-                                       paddle::experimental::IntArray({-1}),
-                                       &tmp_out_,
-                                       nullptr);
-      // to_unsqueeze(dev_ctx, *out, &tmp_out_);
+
+      phi::Unsqueeze<T, Context>(dev_ctx,
+                                 out,
+                                 paddle::experimental::IntArray({-1}),
+                                 &tmp_out_,
+                                 nullptr);
 
       auto mat_dim_a1 =
           phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
@@ -209,19 +164,12 @@ void SolveGradKernel(const Context& dev_ctx,
       blas.MatMul(tmp_dy, mat_dim_a1, out, mat_dim_b1, T(-1), &tmp_dx, T(0));
     }
   }
-
   if (y.dims() != tmp_dy.dims()) {
     DenseTensor dy_help;
     dy_help.Resize(tmp_dy.dims());
     dev_ctx.Alloc(&dy_help, tmp_dy.dtype());
-    //   dy_help.mutable_data(dev_ctx.GetPlace(), tmp_dy.dtype());
 
     phi::Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
-    //   framework::TensorCopy(
-    //       tmp_dy,
-    //       dev_ctx.GetPlace(),
-    //       dev_ctx.template device_context<platform::DeviceContext>(),
-    //       &dy_help);
 
     // get dims
     std::vector<std::int64_t> x_dims = vectorize(x.dims());
@@ -244,10 +192,10 @@ void SolveGradKernel(const Context& dev_ctx,
               y_dims.data() + y_ndim,
               dy_broadcast_dims.data() + ndim - y_ndim);
 
-    std::vector<int64_t> dy_reduce_dims;
-    for (int64_t idx = 0; idx <= ndim - 3; idx++) {
+    std::vector<int> dy_reduce_dims;
+    for (int idx = 0; idx <= ndim - 3; idx++) {
       if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
-        dy_reduce_dims.push_back(int64_t(idx));
+        dy_reduce_dims.push_back(idx);
       }
     }
     // reduce sum to get grad by ReduceSum
@@ -259,58 +207,21 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dy_help.dims().size() != dy->dims().size()) {
           keep_dim = false;
         }
-        // ReduceSumForSolve<DeviceContext, T>(
-        //     &dy_help, dy, dy_reduce_dims, keep_dim, dev_ctx);
-        // call Reduce kernel
-        // phi::Reduce<Context, T, phi::funcs::SumFunctor>(dev_ctx,
-        //     dy_help,
-        //     true,
-        //     dy_reduce_dims,
-        //     keep_dim,
-        //     dy->dtype(),
-        //     dy);
-        // #if defined(__NVCC__) || defined(__HIPCC__)
-        //     phi::funcs::ReduceKernel<T, T, kps::AddFunctor,
-        //     kps::IdentityFunctor<T>>(
-        //   dev_ctx, dy_help, dx, kps::IdentityFunctor<T>(), dy_reduce_dims);
-        // #else
-        //     phi::ReduceKernelImpl<Context, T, T, phi::funcs::SumFunctor>(
-        //     dev_ctx, dy_help, dx, dy_reduce_dims, keep_dim, false);
-        // #endif
 
         ReduceSumForSolvelGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims, keep_dim);
-        //     void Reduce(const DeviceContext& dev_ctx,
-        // const DenseTensor& x,
-        // bool reduce_all,
-        // const std::vector<int64_t>& dims,
-        // bool keep_dim,
-        // DataType out_dtype,
-        // DenseTensor* out) {
       }
       dy->Resize(y.dims());
     }
   } else {
     phi::Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, dy);
-    //   framework::TensorCopy(
-    //       tmp_dy,
-    //       dev_ctx.GetPlace(),
-    //       dev_ctx.template device_context<platform::DeviceContext>(),
-    //       dy);
   }
 
   if (x.dims() != tmp_dx.dims()) {
     DenseTensor dx_help;
     dx_help.Resize(tmp_dx.dims());
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
-    //   dx_help.mutable_data(dev_ctx.GetPlace(), tmp_dx.dtype());
-
     phi::Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
-    //   framework::TensorCopy(
-    //       tmp_dx,
-    //       dev_ctx.GetPlace(),
-    //       dev_ctx.template device_context<platform::DeviceContext>(),
-    //       &dx_help);
 
     // get dims
     std::vector<std::int64_t> x_dims = vectorize(x.dims());
@@ -328,8 +239,8 @@ void SolveGradKernel(const Context& dev_ctx,
               x_dims.data() + x_ndim,
               dx_broadcast_dims.data() + ndim - x_ndim);
 
-    std::vector<int64_t> dx_reduce_dims;
-    for (int64_t idx = 0; idx <= ndim - 3; idx++) {
+    std::vector<int> dx_reduce_dims;
+    for (int idx = 0; idx <= ndim - 3; idx++) {
       if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
         dx_reduce_dims.push_back(idx);
       }
@@ -337,7 +248,7 @@ void SolveGradKernel(const Context& dev_ctx,
     // reduce sum to get grad by ReduceSum
     if (dx) {
       dev_ctx.template Alloc<T>(dx);
-      // dx->mutable_data<T>(dev_ctx.GetPlace());
+
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
@@ -345,27 +256,9 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dx_help.dims().size() != dx->dims().size()) {
           keep_dim = false;
         }
-        // ReduceSumForSolve<Context, T>(
-        //     &dx_help, dx, dx_reduce_dims, keep_dim, dev_ctx);
 
         ReduceSumForSolvelGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims, keep_dim);
-        // #if defined(__NVCC__) || defined(__HIPCC__)
-        //     phi::funcs::ReduceKernel<T, T, kps::AddFunctor,
-        //     kps::IdentityFunctor<T>>(
-        //   dev_ctx, dx_help, dx, kps::IdentityFunctor<T>(), dx_reduce_dims);
-        // #else
-        //     phi::ReduceKernelImpl<Context, T, T, phi::funcs::SumFunctor>(
-        //     dev_ctx, dx_help, dx, dx_reduce_dims, keep_dim, false);
-        // #endif
-
-        // phi::Reduce<Context, T, phi::funcs::SumFunctor>(dev_ctx,
-        //         dx_help,
-        //         true,
-        //         dx_reduce_dims,
-        //         keep_dim,
-        //         dx->dtype(),
-        //         dx);
       }
       dx->Resize(x.dims());
     }
