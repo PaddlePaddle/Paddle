@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_grad_kernel.h"
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -39,18 +39,18 @@ namespace sparse {
 // x_grad = out_grad * transpose(kenrel)
 // kernel_grad = transpose(x) * out_grad
 template <typename T, typename IntT>
-void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
-                         const SparseCooTensor& x,
-                         const DenseTensor& kernel,
-                         const DenseTensor& rulebook,
-                         const SparseCooTensor& out_grad,
-                         const std::vector<int>& paddings,
-                         const std::vector<int>& dilations,
-                         const std::vector<int>& strides,
-                         const int groups,
-                         const bool subm,
-                         SparseCooTensor* x_grad,
-                         DenseTensor* kernel_grad) {
+void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& kernel,
+                            const DenseTensor& rulebook,
+                            const SparseCooTensor& out_grad,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& dilations,
+                            const std::vector<int>& strides,
+                            const int groups,
+                            const bool subm,
+                            SparseCooTensor* x_grad,
+                            DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = kernel_dims[3];
@@ -220,42 +220,42 @@ void Conv3dGradGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Conv3dGradKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const DenseTensor& kernel,
-                      const DenseTensor& rulebook,
-                      const SparseCooTensor& out_grad,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
-                      const std::vector<int>& strides,
-                      const int groups,
-                      const bool subm,
-                      SparseCooTensor* x_grad,
-                      DenseTensor* kernel_grad) {
+void Conv3dCooGradKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& kernel,
+                         const DenseTensor& rulebook,
+                         const SparseCooTensor& out_grad,
+                         const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
+                         const std::vector<int>& strides,
+                         const int groups,
+                         const bool subm,
+                         SparseCooTensor* x_grad,
+                         DenseTensor* kernel_grad) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dGradGPUKernel", ([&] {
-        Conv3dGradGPUKernel<T, data_t>(dev_ctx,
-                                       x,
-                                       kernel,
-                                       rulebook,
-                                       out_grad,
-                                       paddings,
-                                       dilations,
-                                       strides,
-                                       groups,
-                                       subm,
-                                       x_grad,
-                                       kernel_grad);
+      x.non_zero_indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
+        Conv3dCooGradGPUKernel<T, data_t>(dev_ctx,
+                                          x,
+                                          kernel,
+                                          rulebook,
+                                          out_grad,
+                                          paddings,
+                                          dilations,
+                                          strides,
+                                          groups,
+                                          subm,
+                                          x_grad,
+                                          kernel_grad);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_conv3d_grad,
+PD_REGISTER_KERNEL(conv3d_coo_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::Conv3dGradKernel,
+                   phi::sparse::Conv3dCooGradKernel,
                    float,
                    double,
                    phi::dtype::float16) {
