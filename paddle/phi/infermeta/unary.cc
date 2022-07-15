@@ -789,6 +789,12 @@ void ExpandInferMeta(const MetaTensor& x,
   }
 }
 
+void FillDiagonalInferMeta(
+    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,

@@ -841,6 +841,16 @@
     data_type : dtype
     backend : place
 
+- api : fill_diagonal
+  args : (Tensor x, float value, int offset, bool wrap)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalInferMeta
+  kernel :
+    func : fill_diagonal
+  inplace : (x -> out)
+  backward : fill_diagonal_grad
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)

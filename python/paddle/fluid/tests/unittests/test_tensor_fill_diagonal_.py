@@ -13,11 +13,36 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+from op_test import OpTest
 import unittest
 import numpy as np
 import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+
+
+class TestTensorFillDiagonalOp(OpTest):
+
+    def setUp(self):
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_
+        self.op_type = "fill_diagonal_"
+        self.init_kernel_type()
+        self.use_mkldnn = False
+        self.init_kernel_type()
+        x0 = np.random.random((20, 40)).astype(self.dtype)
+        self.inputs = {"X": x0}
+        y = np.fill_diagonal(x0, 1., False)
+        self.outputs = {'Out': y}
+        self.attrs = {'value': 1., 'offset': 0, 'wrap': False}
+
+    def init_kernel_type(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True)
 
 
 class TensorFillDiagonal_Test(unittest.TestCase):
