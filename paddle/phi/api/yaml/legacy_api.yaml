@@ -654,6 +654,15 @@
   optional : seed_tensor
   backward : dropout_grad
 
+- api : edit_distance
+  args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
+  output : Tensor(sequencenum), Tensor(out)
+  infer_meta :
+    func : EditDistanceInferMeta
+  kernel :
+    func : EditDistanceKernel
+  optional: hypslength, refslength
+
 # eigh
 - api : eigh
   args : (Tensor x, str uplo)

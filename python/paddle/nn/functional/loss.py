@@ -440,10 +440,10 @@ def square_error_cost(input, label):
 
 def edit_distance(input,
                   label,
-                  normalized=True,
-                  ignored_tokens=None,
                   input_length=None,
-                  label_length=None):
+                  label_length=None,
+                  normalized=True,
+                  ignored_tokens=None):
     """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
