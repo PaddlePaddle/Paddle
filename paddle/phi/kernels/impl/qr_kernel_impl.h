@@ -19,14 +19,16 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/optional.h"
 
-#if defined(PADDLE_WITH_CUDA)
+// HIP not support cusolver
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
 namespace phi {
 
-#if defined(PADDLE_WITH_CUDA)
+// HIP not support cusolver
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template <typename DeviceContext, typename T>
 void BatchedGeqrf(const DeviceContext& dev_ctx,
                   int batch_size,

@@ -24,7 +24,8 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#if defined(PADDLE_WITH_CUDA)
+// HIP not support cusolver
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
@@ -82,7 +83,8 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA)
+// HIP not support cusolver
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 template <typename DeviceContext, typename T>
 inline void BatchedOrmqr(const DeviceContext& dev_ctx,
                          bool left,

@@ -3206,7 +3206,6 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                          'driver': driver
                      })
 
-    print("--- 3 ---")
     if driver == "gels":
         rank = paddle.static.data(name='rank', shape=[0])
         singular_values = paddle.static.data(name='singular_values', shape=[0])
