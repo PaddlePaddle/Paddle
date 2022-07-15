@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace operators {
