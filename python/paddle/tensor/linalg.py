@@ -3161,9 +3161,6 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if not isinstance(rcond, float):
-        raise TypeError("Attr rcond of lstsq must be a float number")
-
     if _non_static_mode():
         if in_dygraph_mode():
             solution, residuals, rank, singular_values = _C_ops.final_state_lstsq(
@@ -3209,6 +3206,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                          'driver': driver
                      })
 
+    print("--- 3 ---")
     if driver == "gels":
         rank = paddle.static.data(name='rank', shape=[0])
         singular_values = paddle.static.data(name='singular_values', shape=[0])
