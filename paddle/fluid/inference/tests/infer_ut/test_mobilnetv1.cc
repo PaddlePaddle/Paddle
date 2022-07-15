@@ -73,7 +73,7 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
   SingleThreadPrediction(
       pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
   // check outputs
-  CompareRecord(&truth_output_data, &infer_output_data);
+  CompareRecord(&truth_output_data, &infer_output_data, 2e-4);
   VLOG(1) << "finish test";
 }
 

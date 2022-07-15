@@ -47,18 +47,17 @@ class FcOpConverter : public OpConverter {
                                       nvinfer1::Dims x_dim,
                                       int x_num_col_dims,
                                       std::string output_name) {
-    // add shuffle before fc
+    // add shuffle before fc,
+    // reshape_before_fc_dim only used in static shape mode
     nvinfer1::Dims reshape_before_fc_dim;
-    reshape_before_fc_dim.nbDims = x_num_col_dims + 3;
-    // padding shape "* x q x 1 x 1"
+    reshape_before_fc_dim.nbDims = x_num_col_dims + 1;
+    // padding shape "* x q"
 
     nvinfer1::ITensor* filal_reshape_before_fc_shape_tensor = nullptr;
 
     if (!engine_->with_dynamic_shape()) {
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_dim.d[i] = 1;
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
+      reshape_before_fc_dim.d[x_num_col_dims] = 1;
+      for (int i = 0; i < before_fc->getDimensions().nbDims; i++) {
         if (i < x_num_col_dims) {
           reshape_before_fc_dim.d[i] = 0;
         } else {
@@ -68,11 +67,10 @@ class FcOpConverter : public OpConverter {
     } else {
       std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
       nvinfer1::ITensor* input_shape_tensor = Shape(before_fc);
+      reshape_before_fc_shape_tensor.resize(x_num_col_dims + 1);
+      reshape_before_fc_shape_tensor[x_num_col_dims] = Add1DConstantLayer(1);
 
-      for (int i = 0; i < reshape_before_fc_dim.nbDims; i++) {
-        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
-      }
-      for (int i = 0; i < x_dim.nbDims; i++) {
+      for (int i = 0; i < before_fc->getDimensions().nbDims; i++) {
         if (i < x_num_col_dims) {
           reshape_before_fc_shape_tensor[i] =
               GetEleTensorOfShape(input_shape_tensor, i);
@@ -245,17 +243,47 @@ class FcOpConverter : public OpConverter {
         }
       } else {
         // add fc layer
-        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(engine_,
-                                                    FullyConnected,
-                                                    *inputs,
-                                                    n_output,
-                                                    weight.get(),
-                                                    bias.get());
+        // inputs is [ * x input_size]
+        nvinfer1::Dims trt_dims;
+        trt_dims.nbDims = inputs->getDimensions().nbDims;
+        for (int i = 0; i < trt_dims.nbDims; i++) {
+          trt_dims.d[i] = 1;
+        }
+
+        trt_dims.d[trt_dims.nbDims - 2] = m;
+        trt_dims.d[trt_dims.nbDims - 1] = n;
+        auto* weight_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, weight.get())
+                ->getOutput(0);
+
+        for (int i = 0; i < trt_dims.nbDims; i++) {
+          trt_dims.d[i] = 1;
+        }
+        trt_dims.d[trt_dims.nbDims - 1] = n;
+
+        auto* bias_tensor =
+            TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, bias.get())
+                ->getOutput(0);
+        auto* matmul_layer_float =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 MatrixMultiply,
+                                 *inputs,
+                                 nvinfer1::MatrixOperation::kNONE,
+                                 *weight_tensor,
+                                 nvinfer1::MatrixOperation::kNONE);
+
+        auto* fc_layer_float =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *matmul_layer_float->getOutput(0),
+                                 *bias_tensor,
+                                 nvinfer1::ElementWiseOperation::kSUM);
+
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
                 .c_str());
-        auto* fc_after_reshape_float = reshape_after_fc(
-            fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
+        auto* fc_after_reshape_float = fc_layer_float;
+
         if (activation_type == "relu") {
           fc_after_reshape_float->setName(
               ("float_reshape_after_fc: Shuffle (Output: " + output_name + ")")
@@ -335,70 +363,47 @@ class FcOpConverter : public OpConverter {
     }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
-    if (x_dim.nbDims == 4 && x_num_col_dims == 1) {
-      if (enable_int8 || support_int8) {
-        // add conv1x1 layer
-        nvinfer1::DimsHW nv_ksize(1, 1);
-        auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
-                                                   Convolution,
-                                                   *X,
-                                                   n_output,
-                                                   nv_ksize,
-                                                   weight.get(),
-                                                   bias.get());
-        if (activation_type == "relu") {
-          fc_layer_int8->setName(
-              ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
-                  .c_str());
-          PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"),
-              true,
-              platform::errors::InvalidArgument(
-                  "must have out threshold in fc layers in int8 mode"));
-          float out_scale = 0;
-          if (enable_int8) {
-            out_scale =
-                BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-          } else {
-            out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
-          }
-          engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
-                                         out_scale);
-          nvinfer1::IActivationLayer* relu_layer_int8 =
-              TRT_ENGINE_ADD_LAYER(engine_,
-                                   Activation,
-                                   *(fc_layer_int8->getOutput(0)),
-                                   nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8,
-                                   "relu_after_ernie_fc_int8",
-                                   {output_name},
-                                   test_mode);
+    if (x_dim.nbDims == 4 && x_num_col_dims == 1 &&
+        (enable_int8 || support_int8)) {
+      // add conv1x1 layer
+      nvinfer1::DimsHW nv_ksize(1, 1);
+      auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
+                                                 Convolution,
+                                                 *X,
+                                                 n_output,
+                                                 nv_ksize,
+                                                 weight.get(),
+                                                 bias.get());
+      if (activation_type == "relu") {
+        fc_layer_int8->setName(
+            ("ernie_fc_op_int8: Convolution (Output: " + output_name + ")")
+                .c_str());
+        PADDLE_ENFORCE_EQ(
+            op_desc.HasAttr("out_threshold"),
+            true,
+            platform::errors::InvalidArgument(
+                "must have out threshold in fc layers in int8 mode"));
+        float out_scale = 0;
+        if (enable_int8) {
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         } else {
-          RreplenishLayerAndOutput(fc_layer_int8,
-                                   "ernie_fc_op_int8: Convolution",
-                                   {output_name},
-                                   test_mode);
+          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
         }
+        engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
+        nvinfer1::IActivationLayer* relu_layer_int8 =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 Activation,
+                                 *(fc_layer_int8->getOutput(0)),
+                                 nvinfer1::ActivationType::kRELU);
+        RreplenishLayerAndOutput(relu_layer_int8,
+                                 "relu_after_ernie_fc_int8",
+                                 {output_name},
+                                 test_mode);
       } else {
-        // add fc layer
-        auto* fc_layer_float = TRT_ENGINE_ADD_LAYER(
-            engine_, FullyConnected, *X, n_output, weight.get(), bias.get());
-        if (activation_type == "relu") {
-          fc_layer_float->setName(
-              ("ernie_fc_op_float: (Output: " + output_name + ")").c_str());
-          nvinfer1::IActivationLayer* relu_layer_float =
-              TRT_ENGINE_ADD_LAYER(engine_,
-                                   Activation,
-                                   *(fc_layer_float->getOutput(0)),
-                                   nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_float,
-                                   "relu_after_ernie_fc_float",
-                                   {output_name},
-                                   test_mode);
-        } else {
-          RreplenishLayerAndOutput(
-              fc_layer_float, "ernie_fc_op_float", {output_name}, test_mode);
-        }
+        RreplenishLayerAndOutput(fc_layer_int8,
+                                 "ernie_fc_op_int8: Convolution",
+                                 {output_name},
+                                 test_mode);
       }
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
