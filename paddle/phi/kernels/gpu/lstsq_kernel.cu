@@ -165,6 +165,11 @@ void LstsqKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lstsq, GPU, ALL_LAYOUT, phi::LstsqKernel, float, double) {}
+PD_REGISTER_KERNEL(lstsq,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LstsqKernel,
+                   float,
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP
