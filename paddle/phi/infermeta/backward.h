@@ -261,7 +261,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
 
-void UnStackGradInferMeta(const std::vector<const MetaTensor*>& x,
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad);
 

@@ -661,12 +661,12 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
-void UnStackGradInferMeta(const std::vector<const MetaTensor*>& x,
+void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
-  std::vector<phi::DDim> input_dims(x.size());
-  for(size_t i = 0; i < x.size(); ++i){
-    input_dims[i] = x[i]->dims();
+  std::vector<phi::DDim> input_dims(out_grad.size());
+  for(size_t i = 0; i < out_grad.size(); ++i){
+    input_dims[i] = out_grad[i]->dims();
   }
   for (size_t i = 1; i < input_dims.size(); ++i) {
     PADDLE_ENFORCE_EQ(
@@ -700,6 +700,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& x,
   auto vec = phi::vectorize<int>(input_dims[0]);
   vec.insert(vec.begin() + axis, input_dims.size());
   x_grad->set_dims(phi::make_ddim(vec));
+  x_grad->set_dtype(out_grad[0]->dtype());
 }
 
 }  // namespace phi
