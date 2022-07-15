@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
-#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/memory/allocation/system_allocator.h"
 
 #include "paddle/fluid/memory/stats.h"
 
