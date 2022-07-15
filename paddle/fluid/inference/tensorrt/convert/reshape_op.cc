@@ -36,7 +36,7 @@ class ReshapeOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     std::vector<int> shape =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
     if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode

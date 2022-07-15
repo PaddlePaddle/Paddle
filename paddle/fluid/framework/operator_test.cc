@@ -543,7 +543,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
 
   auto attr_map = exe_context.Attrs();
-  ASSERT_EQ(BOOST_GET(float, attr_map["scale"]), 3.14f);
+  ASSERT_EQ(PADDLE_GET(float, attr_map["scale"]), 3.14f);
   ASSERT_EQ(exe_context.Type(), "test_operator");
 }
 

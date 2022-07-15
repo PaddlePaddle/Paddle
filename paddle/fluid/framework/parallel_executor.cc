@@ -995,7 +995,7 @@ FetchUnmergedList ParallelExecutor::Run(
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data =
       member_->executor_->Run(fetch_tensors, /*return_merged=*/false);
-  return BOOST_GET(FetchUnmergedList, fetch_data);
+  return PADDLE_GET(FetchUnmergedList, fetch_data);
 }
 
 FetchList ParallelExecutor::RunAndMerge(
@@ -1012,7 +1012,7 @@ FetchList ParallelExecutor::RunAndMerge(
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->RunAndMerge";
   auto fetch_data =
       member_->executor_->Run(fetch_tensors, /*return_merged=*/true);
-  return BOOST_GET(FetchList, fetch_data);
+  return PADDLE_GET(FetchList, fetch_data);
 }
 
 void ParallelExecutor::RunWithoutFetch(
