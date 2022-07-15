@@ -120,6 +120,22 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         self.assertTrue(pred.place.is_custom_place())
 
+    def test_eager_backward_api(self):
+        x = np.random.random([2, 2]).astype("float32")
+        y = np.random.random([2, 2]).astype("float32")
+        grad = np.ones([2, 2]).astype("float32")
+
+        import paddle
+        paddle.set_device('custom_cpu')
+        x_tensor = paddle.to_tensor(x, stop_gradient=False)
+        y_tensor = paddle.to_tensor(y)
+        z_tensor = paddle.add(x_tensor, y_tensor)
+
+        grad_tensor = paddle.to_tensor(grad)
+        paddle.autograd.backward([z_tensor], [grad_tensor], False)
+
+        self.assertTrue(np.allclose(grad, x_tensor.grad.numpy()))
+
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']
 
