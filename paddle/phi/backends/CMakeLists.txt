@@ -29,6 +29,10 @@ if(WITH_GPU)
   add_dependencies(phi_context gpu_context)
 endif()
 
+if(WITH_MKLDNN)
+  add_dependencies(phi_context onednn_context)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   add_dependencies(phi_context custom_context)
   cc_library(
