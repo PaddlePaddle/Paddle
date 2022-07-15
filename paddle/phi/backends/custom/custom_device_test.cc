@@ -107,6 +107,7 @@ void TestTensorShareDataWith(const paddle::platform::Place& place) {
 }
 
 void TestTensorUtils(const paddle::platform::Place& place) {
+  std::cout << "TestTensorUtils on " << place << std::endl;
   if (paddle::platform::is_custom_place(place) == false) {
     return;
   }
@@ -166,6 +167,76 @@ void TestTensorUtils(const paddle::platform::Place& place) {
 #endif
 }
 
+void TestCustomCCL(const paddle::platform::Place& place) {
+  std::cout << "TestCustomCCL on " << place << std::endl;
+  if (paddle::platform::is_custom_place(place) == false) {
+    return;
+  }
+  std::string dev_type = place.GetDeviceType();
+  phi::ccl::CCLComm comm;
+  phi::stream::Stream stream(place, nullptr);
+  phi::ccl::CCLRootId root_id;
+
+  phi::DeviceManager::CCLDestroyComm(dev_type, nullptr);
+  phi::DeviceManager::CCLGetUniqueId(dev_type, &root_id);
+  phi::DeviceManager::CCLCommInitRank(dev_type, 0, &root_id, 0, nullptr);
+  phi::DeviceManager::CCLBroadcast(dev_type,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   0,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLAllReduce(dev_type,
+                                   nullptr,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   phi::ccl::CCLReduceOp::SUM,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLReduce(dev_type,
+                                nullptr,
+                                nullptr,
+                                0,
+                                phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                phi::ccl::CCLReduceOp::SUM,
+                                comm,
+                                stream);
+  phi::DeviceManager::CCLAllGather(dev_type,
+                                   nullptr,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLReduceScatter(
+      dev_type,
+      nullptr,
+      nullptr,
+      0,
+      phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+      phi::ccl::CCLReduceOp::SUM,
+      comm,
+      stream);
+  phi::DeviceManager::CCLGroupStart(dev_type);
+  phi::DeviceManager::CCLGroupEnd(dev_type);
+  phi::DeviceManager::CCLSend(dev_type,
+                              nullptr,
+                              0,
+                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                              0,
+                              comm,
+                              stream);
+  phi::DeviceManager::CCLRecv(dev_type,
+                              nullptr,
+                              0,
+                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                              0,
+                              comm,
+                              stream);
+}
+
 TEST(CustomDevice, Tensor) {
   InitDevice();
   auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
@@ -179,6 +250,7 @@ TEST(CustomDevice, Tensor) {
     TestTensorMutableData(place);
     TestTensorShareDataWith(place);
     TestTensorUtils(place);
+    TestCustomCCL(place);
   }
 }
 
