@@ -200,7 +200,7 @@
   kernel :
     func : batch_norm_grad_grad
     data_type : x
-  optional : out_mean, out_variance
+  optional : out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
   inplace : (grad_out -> grad_out_grad)
 
 - backward_api : batch_norm_grad

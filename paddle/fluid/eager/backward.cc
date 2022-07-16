@@ -215,7 +215,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
-  VLOG(6) << "Startup_ops's size is " << queue.size();
+  VLOG(3) << "Startup_ops's size is " << queue.size();
 
   /* --- Topological Visit --- */
   // 1. Pop queue
