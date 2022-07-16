@@ -261,9 +261,13 @@ class FcOpConverter : public OpConverter {
         }
         trt_dims.d[trt_dims.nbDims - 1] = n;
 
-        auto* bias_tensor =
-            TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, bias.get())
+
+nvinfer1::ITensor* bias_tensor;
+if (with_bias) {
+bias_tensor = TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, bias.get())
                 ->getOutput(0);
+}
+
         auto* matmul_layer_float =
             TRT_ENGINE_ADD_LAYER(engine_,
                                  MatrixMultiply,
@@ -272,12 +276,16 @@ class FcOpConverter : public OpConverter {
                                  *weight_tensor,
                                  nvinfer1::MatrixOperation::kNONE);
 
-        auto* fc_layer_float =
-            TRT_ENGINE_ADD_LAYER(engine_,
+nvinfer1::ILayer* fc_layer_float = (nvinfer1::ILayer*)(matmul_layer_float);
+if (with_bias) {
+
+fc_layer_float = (nvinfer1::ILayer*)(TRT_ENGINE_ADD_LAYER(engine_,
                                  ElementWise,
                                  *matmul_layer_float->getOutput(0),
                                  *bias_tensor,
-                                 nvinfer1::ElementWiseOperation::kSUM);
+                                 nvinfer1::ElementWiseOperation::kSUM));
+
+}
 
         fc_layer_float->setName(
             ("fc_op_float: FullyConnected (Output: " + output_name + ")")
@@ -313,7 +321,7 @@ class FcOpConverter : public OpConverter {
     int weight_w, weight_h;
     auto weight = engine_->GetTrtWeight(op_desc.Input(w_name).front(), *Y_t);
 
-    if (!transpose_y) {
+    if (!transpose_y && (enable_int8 || support_int8)) {
       if (weight.get().type == nvinfer1::DataType::kFLOAT) {
         std::vector<float> weight_data_tmp;
         weight_data_tmp.reserve(Y_t->numel());

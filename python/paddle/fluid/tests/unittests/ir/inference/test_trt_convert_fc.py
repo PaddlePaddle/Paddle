@@ -35,14 +35,14 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, (int)(attrs[0]["m"] / 2),
+            return np.random.random([batch, 3, 64, (int)(attrs[0]["m"] / 2),
                             2]).astype(np.float32)
 
         def generate_w(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([attrs[0]["m"], attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["m"], attrs[0]["n"]]).astype(np.float32)
 
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["n"]]).astype(np.float32)
 
         for batch in [1, 4]:
             for [m, n] in [[32, 23]]:
@@ -151,13 +151,13 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, 14]).astype(np.float32)
+            return np.random.random([batch, 3, 64, 14]).astype(np.float32)
 
         def generate_w(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([attrs[0]["m"], attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["m"], attrs[0]["n"]]).astype(np.float32)
 
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["n"]]).astype(np.float32)
 
         for batch in [1, 4]:
             for [m, n] in [[14, 43]]:
