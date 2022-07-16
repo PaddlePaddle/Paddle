@@ -1281,7 +1281,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
     // auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto src_masks = ctx.MultiInput<Tensor>("SrcMask");
-    auto *src_mask = src_masks[0];
+    const Tensor *src_mask = nullptr;
+
+    if (src_masks.size() > 0) {
+      src_mask = src_masks[0];
+    }
+
     auto attn_idxs = ctx.MultiInput<Tensor>("AttnIdx");
     auto attn_idxs_len = ctx.MultiInput<Tensor>("AttnIdxLen");
     auto cache_kvs = ctx.MultiInput<Tensor>("CacheKV");

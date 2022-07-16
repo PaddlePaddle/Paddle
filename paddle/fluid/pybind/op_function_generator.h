@@ -60,6 +60,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "LnBias",
       "QKVW",
       "QKVBias",
+      "AttnIdx",
+      "AttnIdxLen",
       "CacheKV",
       "TimeStep",
       "SrcMask",

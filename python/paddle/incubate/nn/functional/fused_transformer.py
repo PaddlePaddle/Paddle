@@ -830,7 +830,7 @@ def fused_multi_transformer(x,
         )
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-    if not isinstance(attn_mask, (list, tuple)):
+    if attn_mask is not None and not isinstance(attn_mask, (list, tuple)):
         attn_mask = [attn_mask]
 
     if _non_static_mode():
@@ -839,11 +839,12 @@ def fused_multi_transformer(x,
             time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
             ffn_ln_biases, pre_ffn_ln_scales, pre_ffn_ln_biases,
             post_ffn_ln_scales, post_ffn_ln_biases, ffn1_weights, ffn1_biases,
-            ffn2_weights, ffn2_biases, cache_kvs, 'pre_layer_norm',
-            pre_layer_norm, 'layer_norm_type', layer_norm_type, 'epsilon',
-            epsilon, 'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation,
-            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
+            ffn2_weights, ffn2_biases, caches_idx, caches_idx_len, cache_kvs,
+            'pre_layer_norm', pre_layer_norm, 'layer_norm_type',
+            layer_norm_type, 'epsilon', epsilon, 'dropout_rate', dropout_rate,
+            'is_test', not training, 'dropout_implementation', mode,
+            'act_method', activation, 'trans_qkvw', trans_qkvw, 'ring_id',
+            ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out

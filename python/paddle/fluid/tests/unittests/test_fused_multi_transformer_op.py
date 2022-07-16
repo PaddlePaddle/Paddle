@@ -94,9 +94,19 @@ class TestFusedMultiTransformerOp(OpTest):
         self.norm = LayerNorm(self.embed_dim)
         self.ffn_norm = LayerNorm(self.embed_dim)
 
+        if self.layer_norm_type == 'sandwich':
+            self.pre_ffn_norm = LayerNorm(self.embed_dim)
+            self.post_ffn_norm = LayerNorm(self.embed_dim)
+
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
         self.activation = getattr(F, self.act_method)
+
+        if self.layer_norm_type is None:
+            if self.pre_layer_norm:
+                self.layer_norm_type = 'pre_layer_norm'
+            else:
+                self.layer_norm_type = 'post_layer_norm'
 
     def config(self):
         # for debug
@@ -136,6 +146,7 @@ class TestFusedMultiTransformerOp(OpTest):
         ### spares index
         self.attn_idx = None
         self.attn_len = 0
+        # self.input_seq = None
 
         ### layer norm type
         self.layer_norm_type = None
@@ -162,23 +173,44 @@ class TestFusedMultiTransformerOp(OpTest):
             self.attn_mask = np.ones(
                 (self.batch_size, 1, self.query_length, out_seq_len),
                 dtype=self.attn_mask_type)
-            if self.attn_mask_type == np.int64:
-                self.attn_mask = np.tril(self.attn_mask)
-            elif self.attn_mask_type == np.float64:
-                if self.has_cache_kv and not self.gen_cache_kv:
-                    # NOTE: decoder stage, -1(out_seq_len) should no mask
-                    self.attn_mask[:, :, :, -2] = 0.0
-                    self.attn_mask = (self.attn_mask - 1.0) * 1e4
-                else:
-                    self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
-            elif self.attn_mask_type == np.bool_:
-                if self.has_cache_kv and not self.gen_cache_kv:
-                    self.attn_mask[:, :, :, -2] = 0
-                else:
+
+            if self.attn_idx is not None:
+                if self.attn_mask_type == np.int64:
                     self.attn_mask = np.tril(self.attn_mask)
+                elif self.attn_mask_type == np.float64:
+                    if self.has_cache_kv and not self.gen_cache_kv:
+                        # NOTE: decoder stage, -1(out_seq_len) should no mask
+                        # self.attn_mask[:, :, :, -2] = 0.0
+                        # self.attn_mask = self.attn_mask[:, :, :1, :self.query_length]
+                        self.attn_mask = (self.attn_mask - 1.0) * 1e4
+                    else:
+                        self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
+                # elif self.attn_mask_type == np.bool_:
+                #     if self.has_cache_kv and not self.gen_cache_kv:
+                #         self.attn_mask[:, :, :, -2] = 0
+                #     else:
+                #         self.attn_mask = np.tril(self.attn_mask)
+                else:
+                    raise ValueError(
+                        "'attn_mask_type' should be 'int64' or 'float64'.")
             else:
-                raise ValueError(
-                    "'attn_mask_type' should be 'int64' or 'float64'.")
+                if self.attn_mask_type == np.int64:
+                    self.attn_mask = np.tril(self.attn_mask)
+                elif self.attn_mask_type == np.float64:
+                    if self.has_cache_kv and not self.gen_cache_kv:
+                        # NOTE: decoder stage, -1(out_seq_len) should no mask
+                        self.attn_mask[:, :, :, -2] = 0.0
+                        self.attn_mask = (self.attn_mask - 1.0) * 1e4
+                    else:
+                        self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e4
+                elif self.attn_mask_type == np.bool_:
+                    if self.has_cache_kv and not self.gen_cache_kv:
+                        self.attn_mask[:, :, :, -2] = 0
+                    else:
+                        self.attn_mask = np.tril(self.attn_mask)
+                else:
+                    raise ValueError(
+                        "'attn_mask_type' should be 'int64' or 'float64'.")
         else:
             self.attn_mask = None
         self.key, self.value = self.query, self.query
@@ -196,14 +228,53 @@ class TestFusedMultiTransformerOp(OpTest):
             cache_kv = paddle.to_tensor(self.cache_kv, stop_gradient=False)
 
         if self.has_attn_mask:
-            attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
+            if self.attn_idx is not None:
+                attn_mask_tmp = paddle.to_tensor(self.attn_mask,
+                                                 stop_gradient=False)
+                attn_masks = [
+                    attn_mask_tmp[:, :, :, :self.query_length +
+                                  self.attn_len[0] + 1],
+                    attn_mask_tmp[:, :, :, :self.query_length +
+                                  self.attn_len[1] + 1],
+                    attn_mask_tmp[:, :, :, :self.query_length +
+                                  self.attn_len[2] + 1],
+                ]
+            else:
+                attn_mask = paddle.to_tensor(self.attn_mask,
+                                             stop_gradient=False)
         else:
             attn_mask = None
+
+        if self.has_cache_kv:
+            # [1, B, n_head, cache_seq_len, head_dim]
+            cache_k, cache_v = paddle.split(cache_kv, 2)
+            cache_k = paddle.squeeze(cache_k, axis=0)
+            cache_v = paddle.squeeze(cache_v, axis=0)
+            # [B, n_head, cache_seq_len + seq_len, head_dim]
+            # out_seq_len = cache_seq_len + seq_len
+            if self.attn_idx is not None:
+                cache_k_input = cache_k[:, :, :self.query_length, :]
+                cache_v_input = cache_v[:, :, :self.query_length, :]
+                cache_k_sparse = cache_k[:, :, self.query_length:, :]
+                cache_v_sparse = cache_v[:, :, self.query_length:, :]
+
+                caches_idx = [
+                    paddle.to_tensor(
+                        np.array(self.attn_idx[0][:self.attn_len[0]]).astype(
+                            'int32')),
+                    paddle.to_tensor(
+                        np.array(self.attn_idx[1][:self.attn_len[1]]).astype(
+                            'int32')),
+                    paddle.to_tensor(
+                        np.array(self.attn_idx[2][:self.attn_len[2]]).astype(
+                            'int32')),
+                ]
 
         for i in range(self.layers):
             residual = tensor_query
             ln1_out = tensor_query
-            if self.pre_layer_norm:
+
+            if self.layer_norm_type == 'pre_layer_norm' or self.layer_norm_type == 'sandwich':
                 ln1_out = self.norm(tensor_query)
 
             q = self.q_proj(ln1_out)
@@ -218,9 +289,9 @@ class TestFusedMultiTransformerOp(OpTest):
 
             if self.has_cache_kv:
                 # [1, B, n_head, cache_seq_len, head_dim]
-                cache_k, cache_v = paddle.split(cache_kv, 2)
-                cache_k = paddle.squeeze(cache_k, axis=0)
-                cache_v = paddle.squeeze(cache_v, axis=0)
+                # cache_k, cache_v = paddle.split(cache_kv, 2)
+                # cache_k = paddle.squeeze(cache_k, axis=0)
+                # cache_v = paddle.squeeze(cache_v, axis=0)
                 # [B, n_head, cache_seq_len + seq_len, head_dim]
                 # out_seq_len = cache_seq_len + seq_len
                 if self.debug:
@@ -231,8 +302,41 @@ class TestFusedMultiTransformerOp(OpTest):
                 if self.gen_cache_kv:
                     cache_kvs.append((k_out, v_out))
                 else:
-                    k_out = paddle.concat([cache_k, k_out], axis=-2)
-                    v_out = paddle.concat([cache_v, v_out], axis=-2)
+                    if self.attn_idx is not None:
+                        # cache_k_input = cache_k[:, :, :self.input_seq_len, :]
+                        # cache_v_input = cache_v[:, :, :self.input_seq_len, :]
+                        # cache_k_sparse = cache_k[:, :, self.input_seq_len:, :]
+                        # cache_v_sparse = cache_v[:, :, self.input_seq_len:, :]
+                        assert len(self.attn_idx) == 3
+
+                        if i == self.layers - 1:
+                            attn_idx = caches_idx[2]
+                            attn_len = self.attn_len[2]
+                            attn_mask = attn_masks[2]
+                        elif (i - 1) % 4 == 0:
+                            attn_idx = caches_idx[1]
+                            attn_len = self.attn_len[1]
+                            attn_mask = attn_masks[1]
+                        else:
+                            attn_idx = caches_idx[0]
+                            attn_len = self.attn_len[0]
+                            attn_mask = attn_masks[0]
+
+                        cache_k_sparse_tmp = paddle.gather(cache_k_sparse,
+                                                           attn_idx,
+                                                           axis=2)
+                        cache_v_sparse_tmp = paddle.gather(cache_v_sparse,
+                                                           attn_idx,
+                                                           axis=2)
+
+                        k_out = paddle.concat(
+                            [cache_k_input, cache_k_sparse_tmp, k_out], axis=-2)
+                        v_out = paddle.concat(
+                            [cache_v_input, cache_v_sparse_tmp, v_out], axis=-2)
+
+                    else:
+                        k_out = paddle.concat([cache_k, k_out], axis=-2)
+                        v_out = paddle.concat([cache_v, v_out], axis=-2)
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
@@ -277,24 +381,33 @@ class TestFusedMultiTransformerOp(OpTest):
                 x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
             out = self.out_proj(out_linear_in)
 
-            residual_out = residual + self.dropout(out)
-            if not self.pre_layer_norm:
-                attn_out = self.norm(residual_out)
+            if self.layer_norm_type == 'sandwich':
+                residual_out = self.dropout(out)
+                attn_out = residual + self.norm(residual_out)
             else:
-                attn_out = residual_out
+                residual_out = residual + self.dropout(out)
+                if self.layer_norm_type != 'pre_layer_norm':
+                    attn_out = self.norm(residual_out)
+                else:
+                    attn_out = residual_out
 
             ffn_ln_out = attn_out
-            if self.pre_layer_norm:
+            if self.layer_norm_type == 'pre_layer_norm' or self.layer_norm_type == 'sandwich':
                 ffn_ln_out = self.ffn_norm(attn_out)
 
             ffn1_out = self.ffn1_proj(ffn_ln_out)
             ffn1_out = self.dropout(self.activation(ffn1_out))
             ffn2_out = self.ffn2_proj(ffn1_out)
 
-            residual_out = attn_out + self.dropout(ffn2_out)
-            final_out = residual_out
-            if not self.pre_layer_norm:
-                final_out = self.ffn_norm(residual_out)
+            if self.layer_norm_type == 'sandwich':
+                # pass
+                residual_out = self.post_ffn_norm(self.dropout(ffn2_out))
+                final_out = attn_out + residual_out
+            else:
+                residual_out = attn_out + self.dropout(ffn2_out)
+                final_out = residual_out
+                if not self.pre_layer_norm:
+                    final_out = self.ffn_norm(residual_out)
 
             tensor_query = final_out
 
@@ -388,22 +501,56 @@ class TestFusedMultiTransformerOp(OpTest):
 
             cache_kv[1, :, :, :self.cache_length, :] = self.cache_kv[1]
             if self.gen_cache_kv:
-                assert self.query_length == self.cache_length
+                assert self.query_length == self.cache_length, "{} {}".format(
+                    self.query_length, self.cache_length)
                 cache_kv[:] = 0
             else:
+                # if self.attn_idx is not None:
+                #     time_step = paddle.to_tensor([self.cache_length - 1],
+                #                              dtype='int32',
+                #                              place=paddle.CPUPlace())
+
                 time_step = paddle.to_tensor([self.cache_length],
                                              dtype='int32',
                                              place=paddle.CPUPlace())
         if self.has_attn_mask:
-            attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
+            if self.attn_idx is not None:
+                attn_mask = paddle.to_tensor(
+                    self.attn_mask[:, :, :1, :self.query_length])
+                attn_mask = [attn_mask, attn_mask, attn_mask]
+            else:
+                attn_mask = paddle.to_tensor(self.attn_mask,
+                                             stop_gradient=False)
         else:
             attn_mask = None
         qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
+        caches_idx = None
+        caches_idx_len = None
+        if self.attn_idx is not None:
+            caches_idx = [
+                paddle.to_tensor(np.array(self.attn_idx[0]).astype('int32')),
+                paddle.to_tensor(np.array(self.attn_idx[1]).astype('int32')),
+                paddle.to_tensor(np.array(self.attn_idx[2]).astype('int32')),
+            ]
+            caches_idx_len = [
+                paddle.to_tensor(np.array([self.attn_len[0]]).astype('int32'),
+                                 place=paddle.CPUPlace()),
+                paddle.to_tensor(np.array([self.attn_len[1]]).astype('int32'),
+                                 place=paddle.CPUPlace()),
+                paddle.to_tensor(np.array([self.attn_len[2]]).astype('int32'),
+                                 place=paddle.CPUPlace()),
+            ]
+
         if attn_mask is not None and self.attn_mask_type != np.bool_:
-            attn_mask = _convert_attention_mask(attn_mask, x.dtype)
+            if isinstance(attn_mask, (list, tuple)):
+                attn_mask = [
+                    _convert_attention_mask(am, x.dtype) for am in attn_mask
+                ]
+            else:
+                attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
         qkv_weights, qkv_biases = [], []
         out_weights, out_biases = [], []
@@ -411,6 +558,14 @@ class TestFusedMultiTransformerOp(OpTest):
         ffn1_weights, ffn1_biases = [], []
         ffn2_weights, ffn2_biases = [], []
         ffn_ln_scales, ffn_ln_biases = [], []
+
+        if self.layer_norm_type == 'sandwich':
+            pre_ffn_ln_scales, pre_ffn_ln_biases = [], []
+            post_ffn_ln_scales, post_ffn_ln_biases = [], []
+        else:
+            pre_ffn_ln_scales, pre_ffn_ln_biases = None, None
+            post_ffn_ln_scales, post_ffn_ln_biases = None, None
+
         for i in range(self.layers):
             qkv_weights.append(qkv_weight_tensor)
             qkv_biases.append(qkv_bias_tensor)
@@ -428,26 +583,51 @@ class TestFusedMultiTransformerOp(OpTest):
                 cache_kvs.append(paddle.to_tensor(cache_kv,
                                                   stop_gradient=False))
 
-        final_out = fused_multi_transformer(x,
-                                            ln_scales,
-                                            ln_biases,
-                                            qkv_weights,
-                                            qkv_biases,
-                                            out_weights,
-                                            out_biases,
-                                            ffn_ln_scales,
-                                            ffn_ln_biases,
-                                            ffn1_weights,
-                                            ffn1_biases,
-                                            ffn2_weights,
-                                            ffn2_biases,
-                                            pre_layer_norm=self.pre_layer_norm,
-                                            epsilon=epsilon,
-                                            cache_kvs=cache_kvs,
-                                            time_step=time_step,
-                                            attn_mask=attn_mask,
-                                            dropout_rate=self.dropout_prob,
-                                            training=self.training)
+            if self.layer_norm_type == 'sandwich':
+                pre_ffn_ln_scale = paddle.to_tensor(self.pre_ffn_norm.weight,
+                                                    stop_gradient=False)
+                pre_ffn_ln_bias = paddle.to_tensor(self.pre_ffn_norm.bias,
+                                                   stop_gradient=False)
+
+                post_ffn_ln_scale = paddle.to_tensor(self.post_ffn_norm.weight,
+                                                     stop_gradient=False)
+                post_ffn_ln_bias = paddle.to_tensor(self.post_ffn_norm.bias,
+                                                    stop_gradient=False)
+
+                pre_ffn_ln_scales.append(pre_ffn_ln_scale)
+                pre_ffn_ln_biases.append(pre_ffn_ln_bias)
+                post_ffn_ln_scales.append(post_ffn_ln_scale)
+                post_ffn_ln_biases.append(post_ffn_ln_bias)
+
+        # final_out = None
+        final_out = fused_multi_transformer(
+            x,
+            ln_scales,
+            ln_biases,
+            qkv_weights,
+            qkv_biases,
+            out_weights,
+            out_biases,
+            ffn_ln_scales,
+            ffn_ln_biases,
+            ffn1_weights,
+            ffn1_biases,
+            ffn2_weights,
+            ffn2_biases,
+            pre_ffn_ln_scales,
+            pre_ffn_ln_biases,
+            post_ffn_ln_scales,
+            post_ffn_ln_biases,
+            pre_layer_norm=self.pre_layer_norm,
+            layer_norm_type=self.layer_norm_type,
+            epsilon=epsilon,
+            cache_kvs=cache_kvs,
+            caches_idx=caches_idx,
+            caches_idx_len=caches_idx_len,
+            time_step=time_step,
+            attn_mask=attn_mask,
+            dropout_rate=self.dropout_prob,
+            training=self.training)
 
         if self.has_cache_kv:
             return final_out[0], final_out[1]
@@ -553,6 +733,29 @@ class TestFusedMultiTransformerOpGenCacheKVFp16(TestFusedMultiTransformerOp):
         self.gen_cache_kv = True
         self.x_type = np.float16
         self.layers = 3  # odd layers
+
+
+class TestFusedMultiTransformerOpSandWich(TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.layer_norm_type = 'sandwich'
+        self.layers = 4
+
+
+class TestFusedMultiTransformerOpSparseAttn(TestFusedMultiTransformerOp):
+
+    def config(self):
+        super().config()
+        self.layer_norm_type = 'sandwich'
+        self.layers = 2
+        self.query_length = 1
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+
+        self.attn_idx = [[1, 3, 5, 7, 9], [2, 4, 6, 8, 10], [0, 11, 12, 13, 14]]
+        self.attn_len = [5, 5, 5]
+        self.batch_size = 1
 
 
 if __name__ == "__main__":
