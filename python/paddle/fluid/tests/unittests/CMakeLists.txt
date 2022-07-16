@@ -1717,3 +1717,6 @@ endif()
 py_test_modules(
   test_add_reader_dependency_for_interpretercore MODULES
   test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(test_add_reader_dependency_for_interpretercore
+                     PROPERTIES TIMEOUT 120)

@@ -18,6 +18,7 @@
 disable_wingpu_test="^test_model$|\
 ^test_dataloader_early_reset$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
