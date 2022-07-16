@@ -181,8 +181,25 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     for (size_t i = 0; i < rank; i++) {
       value[i] = ddim[i];
     }
+    auto tmp_value = value;
+    bool use_layout_autotune = self->tensor.autotune();
+    if (use_layout_autotune) {
+      if (self->tensor.layout() == paddle::experimental::DataLayout::NCHW &&
+          value.size() == 4) {
+        // NCHW -> NHWC
+        value[1] = tmp_value[2];
+        value[2] = tmp_value[3];
+        value[3] = tmp_value[1];
+      } else if (self->tensor.layout() ==
+                     paddle::experimental::DataLayout::NHWC &&
+                 value.size() == 4) {
+        // NHWC -> NCHW
+        value[1] = tmp_value[3];
+        value[2] = tmp_value[1];
+        value[3] = tmp_value[2];
+      }  // else undefined
+    }
   }
-
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

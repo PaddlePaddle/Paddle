@@ -76,7 +76,7 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  CHECK(dst->layout() == src.layout());
+  dst->set_layout(src.layout());
 
   if (paddle::platform::is_cpu_place(src_place) &&
       paddle::platform::is_cpu_place(dst_place)) {

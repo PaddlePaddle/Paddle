@@ -214,6 +214,13 @@ class PADDLE_API Tensor final {
   DataLayout layout() const;
 
   /**
+   * @brief Return Whether use layout autotune.
+   *
+   * @return bool DataLayout
+   */
+  bool autotune() const;
+
+  /**
    * @brief Determine whether tensor is DenseTensor
    *
    * @return true

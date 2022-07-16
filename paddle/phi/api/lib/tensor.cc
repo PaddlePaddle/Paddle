@@ -155,6 +155,9 @@ bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
 
 bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 
+bool Tensor::autotune() const {
+    return static_cast<phi::DenseTensor *>(impl_.get())->autotune();}
+
 bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
