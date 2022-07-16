@@ -2036,6 +2036,7 @@ function get_parallel_tests_map_file {
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
+    single_card_test_num=0
 set +x
 
     while read -r line; do
@@ -2071,7 +2072,9 @@ set +x
                     multiple_card_tests="$multiple_card_tests|^$testcase$"
                 fi
             else
-                if [[ "${single_card_tests}" -gt 3000 ]];then
+                single_card_test_num=$(($single_card_test_num+1))
+                echo $single_card_test_num
+                if [[ $single_card_test_num -gt 3000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
                     else
