@@ -28,7 +28,7 @@ def get_ut_mem(rootPath):
             ut = f.replace('^', '').replace('$.log', '')
             case_dic[ut] = {}
             filename = '%s/%s' % (parent, f)
-            fi = open(filename, 'rb')
+            fi = open(filename, encoding='utf-8')
             lines = fi.readlines()
             mem_reserved1 = -1
             mem_nvidia1 = -1
