@@ -285,7 +285,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "recover_padding",
       "remove_padding",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "fused_token_prune"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,

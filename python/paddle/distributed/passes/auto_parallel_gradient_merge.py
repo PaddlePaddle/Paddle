@@ -58,7 +58,7 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
 def _remove_op_role_var(param, grad):
     op_maker = core.op_proto_and_checker_maker
     op = grad.op
-    if op.has_attr(op_maker.kOpRoleVarAttrName()):
+    if op and op.has_attr(op_maker.kOpRoleVarAttrName()):
         op._remove_attr(op_maker.kOpRoleVarAttrName())
 
 

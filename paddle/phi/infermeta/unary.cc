@@ -148,6 +148,14 @@ void ArgsortInferMeta(const MetaTensor& input,
   indices->share_lod(input);
 }
 
+void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
+  auto out_dims_v = phi::vectorize(input.dims());
+  out_dims_v.push_back(2);
+  auto out_dims = phi::make_ddim(out_dims_v);
+  output->set_dims(out_dims);
+  output->share_lod(input);
+}
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
@@ -397,6 +405,39 @@ void EighInferMeta(const MetaTensor& x,
   }
   out_w->set_dims(phi::make_ddim(values_dim));
   out_v->set_dims(input_dim);
+}
+
+void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(x_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "The dimensions of Input(X) for Eigvals operator "
+                        "should be at least 2, "
+                        "but received X's dimension = %d, X's shape = [%s].",
+                        x_dims.size(),
+                        x_dims));
+
+  if (config.is_runtime || !phi::contain_unknown_dim(x_dims)) {
+    int last_dim = x_dims.size() - 1;
+    PADDLE_ENFORCE_EQ(x_dims[last_dim],
+                      x_dims[last_dim - 1],
+                      errors::InvalidArgument(
+                          "The last two dimensions of Input(X) for Eigvals "
+                          "operator should be equal, "
+                          "but received X's shape = [%s].",
+                          x_dims));
+  }
+
+  auto out_dims = vectorize(x_dims);
+  out_dims.resize(x_dims.size() - 1);
+
+  const DataType& x_dtype = x.dtype();
+  const DataType& out_dtype =
+      IsComplexType(x_dtype) ? x_dtype : ToComplexType(x_dtype);
+
+  out->set_dims(make_ddim(out_dims));
+  out->set_dtype(out_dtype);
 }
 
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
@@ -3170,15 +3211,18 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     }
     out->set_dtype(x.dtype());
   }
-  // set xshape dims.
-  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < x_dims.size(); ++i) {
-    xshape_dims[i + 1] = x_dims[i];
+  if (xshape) {
+    // set xshape dims.
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+
+    xshape->set_dims(phi::make_ddim(xshape_dims));
+    xshape->share_lod(x);
+    xshape->set_dtype(x.dtype());
   }
-  xshape->set_dims(phi::make_ddim(xshape_dims));
-  xshape->share_lod(x);
-  xshape->set_dtype(x.dtype());
 }
 
 void UnStackInferMeta(const MetaTensor& x,
