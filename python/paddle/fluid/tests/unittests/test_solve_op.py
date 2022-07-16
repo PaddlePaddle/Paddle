@@ -49,10 +49,10 @@ class TestSolveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 # x broadcast + 3D batch case
@@ -70,10 +70,13 @@ class TestSolveOpBatched_case0(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-1)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=1e-1,
+                        check_eager=True)
 
 
 # 3D batch + y vector case
@@ -91,10 +94,13 @@ class TestSolveOpBatched_case1(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=0.04,
+                        check_eager=True)
 
 
 # 3D batch + y broadcast case
@@ -112,10 +118,13 @@ class TestSolveOpBatched_case2(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=0.02,
+                        check_eager=True)
 
 
 # x broadcast + 3D batch case
@@ -133,10 +142,13 @@ class TestSolveOpBatched_case3(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=0.02,
+                        check_eager=True)
 
 
 # 3D normal batch case
@@ -154,10 +166,10 @@ class TestSolveOpBatched_case4(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 # 4D normal batch case
@@ -175,10 +187,10 @@ class TestSolveOpBatched_case5(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 # 4D batch + y broadcast case
@@ -196,10 +208,10 @@ class TestSolveOpBatched_case6(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 # 5D normal batch case
@@ -217,10 +229,13 @@ class TestSolveOpBatched_case7(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=0.04,
+                        check_eager=True)
 
 
 # 5D batch + y broadcast case
@@ -238,10 +253,13 @@ class TestSolveOpBatched_case8(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        max_relative_error=0.04,
+                        check_eager=True)
 
 
 class TestSolveOpError(unittest.TestCase):
@@ -580,7 +598,6 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                 input_y_np = np.ones([4, 4]).astype(self.dtype)
                 input_x = fluid.dygraph.to_variable(input_x_np)
                 input_y = fluid.dygraph.to_variable(input_y_np)
-
                 try:
                     result = paddle.linalg.solve(input_x, input_y)
                 except RuntimeError as ex:

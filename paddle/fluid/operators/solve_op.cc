@@ -119,6 +119,6 @@ REGISTER_OPERATOR(solve,
 
 DECLARE_INFER_SHAPE_FUNCTOR(solve_grad,
                             SolveGradInferShapeFunctor,
-                            PD_INFER_META(phi::SolveGradInferMeta));
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
 
 REGISTER_OPERATOR(solve_grad, ops::SolveGradOp, SolveGradInferShapeFunctor);
