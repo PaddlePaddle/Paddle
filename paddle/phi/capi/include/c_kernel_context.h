@@ -87,6 +87,26 @@ PD_List PD_KernelContextListScalarAttrAt(PD_KernelContext *ctx, size_t index);
 
 PD_Place *PD_KernelContextPlaceAttrAt(PD_KernelContext *ctx, size_t index);
 
+const char *PD_StringAttr(void *attr);
+
+PD_DataType PD_DatatTypeAttr(void *attr);
+
+PD_DataLayout PD_DatatLayoutAttr(void *attr);
+
+PD_List PD_ListInt32Attr(void *attr);
+
+PD_List PD_ListInt64Attr(void *attr);
+
+PD_List PD_ListFloatAttr(void *attr);
+
+PD_List PD_ListDoubleAttr(void *attr);
+
+PD_List PD_ListScalarAttr(void *attr);
+
+PD_List PD_ListStringAttr(void *attr);
+
+PD_List PD_ListBoolAttr(void *attr);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

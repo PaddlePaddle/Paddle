@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -108,7 +106,7 @@ class TestCase4(TestBase):
 
 
 class TestCase5(TestBase):
-
+    # Depthwise conv2d
     def set_op_attrs(self):
         super().set_op_attrs()
         self.attrs['groups'] = 3

@@ -131,6 +131,8 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
     transposer = std::make_shared<FlattenOpTransformer<VarType>>(op_type);
   } else if (op_type == "arg_max") {
     transposer = std::make_shared<ArgmaxOpTransformer<VarType>>(op_type);
+  } else if (op_type == "concat") {
+    transposer = std::make_shared<ConcatOpTransformer<VarType>>(op_type);
   } else if (op_type.find("elementwise_") != std::string::npos) {
     transposer = std::make_shared<ElementwiseOpTransformer<VarType>>(op_type);
   } else {

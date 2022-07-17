@@ -21,8 +21,8 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import SplitAssignTransformer
 
 
 class ListTransformer(BaseTransformer):

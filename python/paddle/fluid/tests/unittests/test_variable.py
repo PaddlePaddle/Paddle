@@ -30,6 +30,9 @@ paddle.enable_static()
 
 class TestVariable(unittest.TestCase):
 
+    def setUp(self):
+        np.random.seed(2022)
+
     def test_np_dtype_convert(self):
         DT = core.VarDesc.VarType
         convert = convert_np_dtype_to_dtype_
@@ -486,6 +489,9 @@ class TestVariable(unittest.TestCase):
 
 class TestVariableSlice(unittest.TestCase):
 
+    def setUp(self):
+        np.random.seed(2022)
+
     def _test_item_none(self, place):
         data = np.random.rand(2, 3, 4).astype("float32")
         prog = paddle.static.Program()
@@ -544,6 +550,9 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(2022)
 
     def numel(self, shape):
         return reduce(lambda x, y: x * y, shape)
@@ -723,10 +732,10 @@ class TestListIndex(unittest.TestCase):
             return
         getitem_pp = exe.run(prog, feed={x.name: array}, fetch_list=fetch_list)
 
-        print(getitem_pp)
-        self.assertTrue(np.array_equal(value_np, getitem_pp[0]),
-                        msg='\n numpy:{},\n paddle:{}'.format(
-                            value_np, getitem_pp[0]))
+        np.testing.assert_allclose(value_np,
+                                   getitem_pp[0],
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def test_static_graph_getitem_bool_index(self):
         paddle.enable_static()
@@ -791,9 +800,7 @@ class TestListIndex(unittest.TestCase):
                              },
                              fetch_list=fetch_list)
 
-        self.assertTrue(np.allclose(array2, setitem_pp[0]),
-                        msg='\n numpy:{},\n paddle:{}'.format(
-                            array2, setitem_pp[0]))
+        np.testing.assert_allclose(array2, setitem_pp[0], rtol=1e-5, atol=1e-8)
 
     def test_static_graph_setitem_list_index(self):
         paddle.enable_static()

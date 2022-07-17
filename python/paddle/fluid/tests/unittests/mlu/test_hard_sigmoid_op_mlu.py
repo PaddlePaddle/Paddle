@@ -25,7 +25,8 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 paddle.enable_static()
-SEED = 2021
+SEED = 2022
+np.random.seed(SEED)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
