@@ -25,6 +25,9 @@ import os
 class TrtConvertFcTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        # The output has diff between gpu and trt in CI windows
+        if (os.name == 'nt'):
+            return False
         return True
 
     def sample_program_configs(self):
@@ -132,17 +135,6 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
 
-    def add_skip_trt_case(self):
-
-        def teller1(program_config, predictor_config):
-            if (os.name == 'nt'):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in CI windows.")
-
     def test(self):
         self.run_test()
 
@@ -153,6 +145,9 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
 class TrtConvertFcTest2(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        # The output has diff between gpu and trt in CI windows
+        if (os.name == 'nt'):
+            return False
         return True
 
     def sample_program_configs(self):
@@ -247,17 +242,6 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
-
-    def add_skip_trt_case(self):
-
-        def teller1(program_config, predictor_config):
-            if (os.name == 'nt'):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in CI windows.")
 
     def test(self):
         self.run_test()
