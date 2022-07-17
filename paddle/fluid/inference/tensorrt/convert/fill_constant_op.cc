@@ -37,7 +37,7 @@ class FillConstantOpConverter : public OpConverter {
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
     void* trt_data = nullptr;
     size_t trt_num;
-    if (dtype == 2 || dtype == 3) {  // int, int64
+    if (dtype == 2 || dtype == 3) {  // int,int64
       auto* tmp_ptr = out_tensor->mutable_data<int>(platform::CPUPlace());
       for (int64_t i = 0; i < out_tensor->numel(); i++)
         tmp_ptr[i] = std::stoi(str_value);
