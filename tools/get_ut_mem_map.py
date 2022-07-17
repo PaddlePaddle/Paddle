@@ -28,12 +28,13 @@ def get_ut_mem(rootPath):
             ut = f.replace('^', '').replace('$.log', '')
             case_dic[ut] = {}
             filename = '%s/%s' % (parent, f)
-            fi = open(filename, encoding='utf-8')
+            fi = open(filename, mode='rb')
             lines = fi.readlines()
             mem_reserved1 = -1
             mem_nvidia1 = -1
             caseTime = -1
             for line in lines:
+                line = line.decode('utf-8', errors='ignore')
                 if '[Memory Usage (Byte)] gpu' in line:
                     mem_reserved = round(
                         float(
