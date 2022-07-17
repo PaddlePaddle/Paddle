@@ -17,8 +17,11 @@
 #include <cstring>
 #include <functional>
 #include <string>
+
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace platform {
@@ -70,37 +73,6 @@ struct CommonEvent {
   EventRole role = EventRole::kOrdinary;
   TracerEventType type = TracerEventType::NumTypes;
   const char *attr = nullptr;  // not owned, designed for performance
-};
-
-struct CommonMemEvent {
- public:
-  CommonMemEvent(uint64_t timestamp_ns,
-                 uint64_t addr,
-                 TracerMemEventType type,
-                 int64_t increase_bytes,
-                 const Place &place,
-                 uint64_t current_allocated,
-                 uint64_t current_reserved,
-                 uint64_t peak_allocated,
-                 uint64_t peak_reserved)
-      : timestamp_ns(timestamp_ns),
-        addr(addr),
-        type(type),
-        increase_bytes(increase_bytes),
-        place(place),
-        current_allocated(current_allocated),
-        current_reserved(current_reserved),
-        peak_allocated(peak_allocated),
-        peak_reserved(peak_reserved) {}
-  uint64_t timestamp_ns;
-  uint64_t addr;
-  TracerMemEventType type;
-  int64_t increase_bytes;
-  Place place;
-  uint64_t current_allocated;
-  uint64_t current_reserved;
-  uint64_t peak_allocated;
-  uint64_t peak_reserved;
 };
 
 struct OperatorSupplementOriginEvent {

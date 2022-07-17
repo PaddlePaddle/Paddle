@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+
+#include <sstream>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
@@ -20,7 +22,8 @@
 
 // Used to filter events, works like glog VLOG(level).
 // RecordEvent will works if host_trace_level >= level.
-PADDLE_DEFINE_EXPORTED_int64(host_trace_level, 1,
+PADDLE_DEFINE_EXPORTED_int64(host_trace_level,
+                             1,
                              "RecordEvent will works "
                              "if host_trace_level >= level.");
 
@@ -29,7 +32,7 @@ namespace platform {
 
 namespace {
 
-void ProcessHostEvents(const HostEventSection& host_events,
+void ProcessHostEvents(const HostEventSection<CommonEvent>& host_events,
                        TraceEventCollector* collector) {
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
@@ -49,6 +52,53 @@ void ProcessHostEvents(const HostEventSection& host_events,
   }
 }
 
+void ProcessOperatorSupplementEvents(
+    const HostEventSection<OperatorSupplementOriginEvent>& op_supplement_events,
+    TraceEventCollector* collector) {
+  for (const auto& thr_sec : op_supplement_events.thr_sections) {
+    uint64_t tid = thr_sec.thread_id;
+    if (thr_sec.thread_name != kDefaultThreadName) {
+      collector->AddThreadName(tid, thr_sec.thread_name);
+    }
+    for (const auto& evt : thr_sec.events) {
+      OperatorSupplementEvent event;
+      event.timestamp_ns = evt.timestamp_ns;
+      event.op_type = evt.op_type;
+      std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+      std::map<std::string, std::vector<std::string>> dtypes;
+      std::string callstack;
+      for (auto it = evt.input_shapes.begin(); it != evt.input_shapes.end();
+           it++) {
+        for (auto idx = 0lu; idx < it->second.size(); idx++) {
+          input_shapes[it->first].push_back(std::vector<int64_t>());
+          for (auto dim_idx = 0; dim_idx < it->second.at(idx).size();
+               dim_idx++) {
+            input_shapes[it->first][idx].push_back(
+                it->second.at(idx).at(dim_idx));
+          }
+        }
+      }
+      for (auto it = evt.dtypes.begin(); it != evt.dtypes.end(); it++) {
+        for (auto idx = 0lu; idx < it->second.size(); idx++) {
+          dtypes[it->first].push_back(
+              framework::proto::VarType::Type_Name(it->second.at(idx)));
+        }
+      }
+
+      std::ostringstream result_string;
+      for (auto it = evt.callstack.begin(); it != evt.callstack.end(); it++) {
+        result_string << (*it) << std::endl;
+      }
+      event.input_shapes = input_shapes;
+      event.dtypes = dtypes;
+      event.callstack = result_string.str();
+      event.process_id = op_supplement_events.process_id;
+      event.thread_id = tid;
+      collector->AddOperatorSupplementEvent(std::move(event));
+    }
+  }
+}
+
 }  // namespace
 
 void HostTracer::PrepareTracing() {
@@ -59,16 +109,20 @@ void HostTracer::PrepareTracing() {
 
 void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::READY || state_ == TracerState::STOPED, true,
+      state_ == TracerState::READY || state_ == TracerState::STOPED,
+      true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
-  HostEventRecorder::GetInstance().GatherEvents();
+  HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
+  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
+      .GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
 
 void HostTracer::StopTracing() {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STARTED,
+      state_,
+      TracerState::STARTED,
       platform::errors::PreconditionNotMet("TracerState must be STARTED"));
   HostTraceLevel::GetInstance().SetLevel(HostTraceLevel::kDisabled);
   state_ = TracerState::STOPED;
@@ -76,11 +130,16 @@ void HostTracer::StopTracing() {
 
 void HostTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
-      state_, TracerState::STOPED,
+      state_,
+      TracerState::STOPED,
       platform::errors::PreconditionNotMet("TracerState must be STOPED"));
-  HostEventSection host_events =
-      HostEventRecorder::GetInstance().GatherEvents();
+  HostEventSection<CommonEvent> host_events =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   ProcessHostEvents(host_events, collector);
+  HostEventSection<OperatorSupplementOriginEvent> op_supplement_events =
+      HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
+          .GatherEvents();
+  ProcessOperatorSupplementEvents(op_supplement_events, collector);
 }
 
 }  // namespace platform

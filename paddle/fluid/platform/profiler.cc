@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler.h"
+
 #include <mutex>  // NOLINT
 #include <random>
 #include <sstream>
@@ -20,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
@@ -29,6 +30,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
@@ -202,14 +205,14 @@ void RecordEvent::End() {
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
     uint64_t end_ns = PosixInNsec();
     if (LIKELY(shallow_copy_name_ != nullptr)) {
-      HostEventRecorder::GetInstance().RecordEvent(
+      HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
           shallow_copy_name_, start_ns_, end_ns, role_, type_);
     } else if (name_ != nullptr) {
       if (attr_ == nullptr) {
-        HostEventRecorder::GetInstance().RecordEvent(
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
             *name_, start_ns_, end_ns, role_, type_);
       } else {
-        HostEventRecorder::GetInstance().RecordEvent(
+        HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
             *name_, start_ns_, end_ns, role_, type_, *attr_);
         delete attr_;
       }
@@ -243,7 +246,7 @@ RecordInstantEvent::RecordInstantEvent(const char *name,
     return;
   }
   auto start_end_ns = PosixInNsec();
-  HostEventRecorder::GetInstance().RecordEvent(
+  HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
       name, start_end_ns, start_end_ns, EventRole::kOrdinary, type);
 }
 
@@ -305,125 +308,12 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
-RecordMemEvent::RecordMemEvent(const void *ptr,
-                               const phi::Place &place,
-                               size_t size,
-                               const TracerMemEventType type) {
-  if (g_state == ProfilerState::kDisabled &&
-      FLAGS_enable_host_event_recorder_hook == false) {
-    return;
-  }
-  if (type == TracerMemEventType::Allocate) {
-    uint64_t current_allocated;
-    uint64_t peak_allocated;
-    uint64_t current_reserved = 0;  // 0 means keep the same as before
-    uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
-      current_allocated =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    } else {
-      current_allocated =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    }
-
-    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
-                                                        place,
-                                                        size,
-                                                        type,
-                                                        current_allocated,
-                                                        current_reserved,
-                                                        peak_allocated,
-                                                        peak_reserved);
-  } else if (type == TracerMemEventType::ReservedAllocate) {
-    uint64_t current_reserved;
-    uint64_t peak_reserved;
-    uint64_t current_allocated = 0;  // 0 means keep the same as before
-    uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
-      current_reserved =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
-    } else {
-      current_reserved =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
-    }
-
-    platform::MemEvenRecorder::Instance().PushMemRecord(ptr,
-                                                        place,
-                                                        size,
-                                                        type,
-                                                        current_allocated,
-                                                        current_reserved,
-                                                        peak_allocated,
-                                                        peak_reserved);
-  } else if (type == TracerMemEventType::Free) {
-    uint64_t current_allocated;
-    uint64_t peak_allocated;
-    uint64_t current_reserved = 0;  // 0 means keep the same as before
-    uint64_t peak_reserved = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
-      current_allocated =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          HOST_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    } else {
-      current_allocated =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Allocated, place.GetDeviceId());
-      peak_allocated =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Allocated, place.GetDeviceId());
-    }
-
-    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
-                                                       place,
-                                                       size,
-                                                       type,
-                                                       current_allocated,
-                                                       current_reserved,
-                                                       peak_allocated,
-                                                       peak_reserved);
-  } else if (type == TracerMemEventType::ReservedFree) {
-    uint64_t current_reserved;
-    uint64_t peak_reserved;
-    uint64_t current_allocated = 0;  // 0 means keep the same as before
-    uint64_t peak_allocated = 0;     // 0 means keep the same as before
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
-      current_reserved =
-          HOST_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          HOST_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
-    } else {
-      current_reserved =
-          DEVICE_MEMORY_STAT_CURRENT_VALUE(Reserved, place.GetDeviceId());
-      peak_reserved =
-          DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, place.GetDeviceId());
-    }
-
-    platform::MemEvenRecorder::Instance().PopMemRecord(ptr,
-                                                       place,
-                                                       size,
-                                                       type,
-                                                       current_allocated,
-                                                       current_reserved,
-                                                       peak_allocated,
-                                                       peak_reserved);
-  }
-}
-
 void MemEvenRecorder::PushMemRecord(const void *ptr,
                                     const Place &place,
                                     size_t size) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   PADDLE_ENFORCE_EQ(events.count(ptr),
@@ -436,7 +326,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr,
 }
 
 void MemEvenRecorder::PopMemRecord(const void *ptr, const Place &place) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled) {
+    return;
+  }
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
   auto iter = events.find(ptr);
@@ -535,7 +427,7 @@ void PopMemEvent(uint64_t start_ns,
 
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
-    HostEventRecorder::GetInstance().RecordEvent(
+    HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
         name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
     return;
   }
@@ -733,7 +625,8 @@ void DisableHostEventRecorder() {
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -745,8 +638,9 @@ std::string PrintHostEvents() {
   return oss.str();
 }
 
-static void EmulateEventPushAndPop(const HostEventSection &host_sec,
-                                   std::map<uint64_t, ThreadEvents> *out) {
+static void EmulateEventPushAndPop(
+    const HostEventSection<CommonEvent> &host_sec,
+    std::map<uint64_t, ThreadEvents> *out) {
   for (const auto &thr_sec : host_sec.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
     auto cur_thr_list = std::make_shared<EventList<Event>>();
@@ -793,7 +687,8 @@ static void EmulateEventPushAndPop(const HostEventSection &host_sec,
   }
 }
 
-static void EmulateCPURecordsAdd(const HostEventSection &host_sec) {
+static void EmulateCPURecordsAdd(
+    const HostEventSection<CommonEvent> &host_sec) {
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer == nullptr) {
     return;
@@ -821,10 +716,11 @@ static std::map<uint64_t, ThreadEvents> DockHostEventRecorderHostPart() {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();
+  auto host_evt_sec =
+      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
-  return std::move(thr_events);
+  return thr_events;
 }
 
 static void DockHostEventRecorderDevicePart(
