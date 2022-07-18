@@ -69,6 +69,7 @@ list(
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
+  fill_constant_op.cc
   fused_token_prune_op.cc)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
