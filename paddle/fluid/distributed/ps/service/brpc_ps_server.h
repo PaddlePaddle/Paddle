@@ -187,10 +187,13 @@ class BrpcPsService : public PsBaseService {
                             PsResponseMessage &response,
                             brpc::Controller *cntl);
 
-  int32_t Revert(Table *table, const PsRequestMessage &request,
-                 PsResponseMessage &response, brpc::Controller *cntl);
+  int32_t Revert(Table *table,
+                 const PsRequestMessage &request,
+                 PsResponseMessage &response,
+                 brpc::Controller *cntl);
 
-  int32_t CheckSavePrePatchDone(Table *table, const PsRequestMessage &request,
+  int32_t CheckSavePrePatchDone(Table *table,
+                                const PsRequestMessage &request,
                                 PsResponseMessage &response,
                                 brpc::Controller *cntl);
 

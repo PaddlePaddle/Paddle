@@ -97,7 +97,7 @@ extern void hdfs_mv(const std::string& src, const std::string& dest);
 extern std::shared_ptr<FILE> fs_open_read(const std::string& path,
                                           int* err_no,
                                           const std::string& converter,
-                                          bool read_data=false);
+                                          bool read_data = false);
 
 extern std::shared_ptr<FILE> fs_open_write(const std::string& path,
                                            int* err_no,
