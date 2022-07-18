@@ -27,54 +27,6 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-<<<<<<< HEAD
-        for shape in [[2, 3, 4]]:
-            for dtype in [5]:
-                for str_value in ["2", "23", "-1"]:
-                    dics = [{
-                        "str_value": str_value,
-                        "shape": shape,
-                        "dtype": dtype
-                    }, {
-                        "axis": -1
-                    }]
-                    ops_config = [
-                        {
-                            "op_type": "fill_constant",
-                            "op_inputs": {},
-                            "op_outputs": {
-                                "Out": ["X_data"],
-                            },
-                            "op_attrs": dics[0]
-                        },
-                        {
-                            "op_type": "elementwise_add",
-                            "op_inputs": {
-                                "X": ["X_data"],
-                                "Y": ["Y_data"]
-                            },
-                            "op_outputs": {
-                                "Out": ["out_data"],
-                            },
-                            "op_attrs": dics[1]
-                        },
-                    ]
-
-                    def generate_input():
-                        return np.random.random([1, 1]).astype(np.float32)
-
-                    ops = self.generate_op_config(ops_config)
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "Y_data":
-                            TensorConfig(data_gen=partial(generate_input))
-                        },
-                        outputs=["out_data"])
-
-                    yield program_config
-=======
 
         def generate_value_data(attrs: List[Dict[str, Any]]):
             return np.array([1]).astype(np.int32)
@@ -139,7 +91,6 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                             outputs=["out_data"])
 
                         yield program_config
->>>>>>> develop
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -161,13 +112,9 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-<<<<<<< HEAD
-            return 1, 2
-=======
             if (self.num_input < 3):
                 return 0, 6
             return 1, 5
->>>>>>> develop
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
