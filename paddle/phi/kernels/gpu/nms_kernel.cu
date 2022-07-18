@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/nms_kernel.h"
-
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/diagonal.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/memory/memcpy.h"
+
+static const int64_t threadsPerBlock = sizeof(int64_t) * 8;
 
 namespace phi {
 
@@ -58,30 +61,23 @@ void NMSKernel(const Context& dev_ctx,
     auto* output_data = dev_ctx.template Alloc<T>(output);
     const int64_t num_boxes = boxes->dims()[0];
     const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
-
     dim3 block(threadsPerBlock);
     dim3 grid(blocks_per_line, blocks_per_line);
-
     auto mask_data =
-        memory::Alloc(dev_ctx.cuda_device_context(),
-                      num_boxes * blocks_per_line * sizeof(uint64_t));
+        paddle::memory::Alloc(dev_ctx, num_boxes * blocks_per_line * sizeof(uint64_t));
     uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
-    NMS<T><<<grid, block, 0, dev_ctx.cuda_device_context().stream()>>>(
+    NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
         boxes->data<T>(), threshold, num_boxes, mask_dev);
-
     std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
-    memory::Copy(phi::CPUPlace(),
+    paddle::memory::Copy(phi::CPUPlace(),
                  mask_host.data(),
                  dev_ctx.GetPlace(),
                  mask_dev,
                  num_boxes * blocks_per_line * sizeof(uint64_t),
-                 dev_ctx.cuda_device_context().stream());
-
+                 dev_ctx.stream());
     std::vector<int64_t> remv(blocks_per_line);
-
     std::vector<int64_t> keep_boxes_idxs(num_boxes);
     int64_t* output_host = keep_boxes_idxs.data();
-
     int64_t last_box_num = 0;
     for (int64_t i = 0; i < num_boxes; ++i) {
       auto remv_element_id = i / threadsPerBlock;
@@ -94,13 +90,12 @@ void NMSKernel(const Context& dev_ctx,
         }
       }
     }
-    memory::Copy(dev_ctx.GetPlace(),
+    paddle::memory::Copy(dev_ctx.GetPlace(),
                  output_data,
                  phi::CPUPlace(),
                  output_host,
                  sizeof(int64_t) * num_boxes,
-                 dev_ctx.cuda_device_context().stream());
+                 dev_ctx.stream());
 }
-
 }
 PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
