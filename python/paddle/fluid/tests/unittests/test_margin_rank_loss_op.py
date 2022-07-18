@@ -24,6 +24,8 @@ class TestMarginRankLossOp(OpTest):
 
     def setUp(self):
         self.op_type = "margin_rank_loss"
+        self.python_api = fluid.layers.margin_rank_loss
+        self.python_out_sig = ["Out"]
         batch_size = 5
         margin = 0.5
         # labels_{i} = {-1, 1}
@@ -41,10 +43,10 @@ class TestMarginRankLossOp(OpTest):
         self.outputs = {'Activated': act, 'Out': loss}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(["X1", "X2"], "Out")
+        self.check_grad(["X1", "X2"], "Out", check_eager=True)
 
     def test_check_grad_ignore_x1(self):
         self.check_grad(["X2"], "Out", no_grad_set=set('X1'))

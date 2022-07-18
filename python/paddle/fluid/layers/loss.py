@@ -1386,23 +1386,28 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
            right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
-    helper = LayerHelper('margin_rank_loss', **locals())
     check_variable_and_dtype(label, 'label', ['float32'], 'margin_rank_loss')
     check_variable_and_dtype(label, 'left', ['float32'], 'margin_rank_loss')
     check_variable_and_dtype(label, 'right', ['float32'], 'margin_rank_loss')
-    out = helper.create_variable_for_type_inference(left.dtype)
-    act = helper.create_variable_for_type_inference(left.dtype)
-    helper.append_op(type='margin_rank_loss',
-                     inputs={
-                         "Label": label,
-                         "X1": left,
-                         "X2": right
-                     },
-                     outputs={
-                         'Out': out,
-                         'Activated': act
-                     },
-                     attrs={'margin': margin})
+
+    if in_dygraph_mode():
+        out = _C_ops.final_state_margin_rank_loss(label, left, right, margin)
+        return out
+    else:
+        helper = LayerHelper('margin_rank_loss', **locals())
+        out = helper.create_variable_for_type_inference(left.dtype)
+        act = helper.create_variable_for_type_inference(left.dtype)
+        helper.append_op(type='margin_rank_loss',
+                         inputs={
+                             "Label": label,
+                             "X1": left,
+                             "X2": right
+                         },
+                         outputs={
+                             'Out': out,
+                             'Activated': act
+                         },
+                         attrs={'margin': margin})
     return out
 
 

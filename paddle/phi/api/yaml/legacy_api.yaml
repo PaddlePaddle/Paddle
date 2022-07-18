@@ -1254,6 +1254,16 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- api : margin_rank_loss
+  args : (Tensor label, Tensor left, Tensor right, float margin)
+  output : Tensor(out), Tensor(activated) 
+  infer_meta :
+    func : MarginRankLossInferMeta
+  kernel:
+    func : margin_rank_loss
+  intermediate : activated
+  backward : margin_rank_loss_grad
+  
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
