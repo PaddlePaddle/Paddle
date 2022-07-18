@@ -112,6 +112,14 @@ class DenseTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
+  /// \brief Returns whether use layout autotune.
+  /// \return Whether the tensor has been autotuned.
+  bool autotune() const noexcept { return meta_.is_autotune; }
+
+  /// \brief Set whether use layout autotune.
+  /// \return Set layout autotune.
+  void set_autotune(bool autotune) { meta_.is_autotune = autotune; }
+
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }

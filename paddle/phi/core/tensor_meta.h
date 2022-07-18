@@ -51,6 +51,7 @@ struct DenseTensorMeta {
   bool valid() const noexcept;
 
   bool is_scalar{false};
+  bool is_autotune{false};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};

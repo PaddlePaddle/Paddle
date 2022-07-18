@@ -23,6 +23,18 @@ namespace paddle {
 namespace imperative {
 
 template <typename VarType>
+void SetOutDataLayout(std::shared_ptr<VarType> var,
+                      const paddle::experimental::DataLayout layout) {
+  paddle::imperative::SetDataLayout(var, layout);
+  // 1.get out_tensor
+  paddle::framework::Variable* tmp_var = var->MutableVar();
+  auto* out = tmp_var->GetMutable<framework::LoDTensor>();
+  // 2.SetDataLayout
+  out->set_layout(layout);
+  out->set_autotune(true);
+}
+
+template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
     const std::shared_ptr<VarType>& var,
     const DataLayout layout,
@@ -111,7 +123,7 @@ class LayoutTransformer {
           auto out_vars = outs.at(name);
           for (auto& var : out_vars) {
             if (var != nullptr) {
-              paddle::imperative::SetDataLayout(var, layout);
+              paddle::imperative::SetOutDataLayout(var, layout);
             }
           }
           not_in_out = false;
@@ -123,7 +135,7 @@ class LayoutTransformer {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
           if (var != nullptr) {
-            paddle::imperative::SetDataLayout(var, layout);
+            paddle::imperative::SetOutDataLayout(var, layout);
           }
         }
       }
