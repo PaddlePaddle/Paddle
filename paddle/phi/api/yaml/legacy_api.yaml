@@ -360,6 +360,14 @@
     func : clip
   backward : clip_grad
 
+- api : clip_by_norm
+  args : (Tensor x, float max_norm)
+  output : Tensor(out)
+  infer_meta :
+    func : ClipByNormInferMeta
+  kernel :
+    func : clip_by_norm
+
 - api : complex
   args : (Tensor x, Tensor y)
   output : Tensor
