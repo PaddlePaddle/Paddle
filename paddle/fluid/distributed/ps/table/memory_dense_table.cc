@@ -348,13 +348,25 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));
     }
 
-  } else {
+  } else if (_config.common().name() == "adam_d2sum") {
     std::ostringstream os;
     for (int y = 0; y < param_dim_; ++y) {
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y] << " 0";
       for (int x = 2; x < param_col_ids_.size(); ++x) {
+        os << " ";
+        os << values_[param_col_ids_[x]][y];
+      }
+      result_buffer_param.emplace_back(std::move(os.str()));
+    }
+  } else {
+    std::ostringstream os;
+    for (int y = 0; y < param_dim_; ++y) {
+      os.clear();
+      os.str("");
+      os << values_[param_col_ids_[0]][y];
+      for (int x = 1; x < param_col_ids_.size(); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -384,7 +396,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     }
 
     ++feasign_size;
-    VLOG(0) << "debug zcb save begin close " << channel_config.path;
+    // VLOG(0) << "save begin close " << channel_config.path;
     write_channel->close();
     if (err_no == -1) {
       ++retry_num;

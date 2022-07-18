@@ -586,6 +586,10 @@ class SparseTable(Table):
         table_proto.table_class = self.table_class
         table_proto.type = the_one_ps_pb2.PS_SPARSE_TABLE
         table_proto.shard_num = self.shard_num
+        if table_proto.sparse_table_cache_file_num > len(
+                get_ps_endpoints(self.context['role_maker'])):
+            table_proto.sparse_table_cache_file_num = len(
+                get_ps_endpoints(self.context['role_maker']))
 
         self.common.table_name = self.context['grad_name_to_param_name'][
             ctx.origin_varnames()[0]]
