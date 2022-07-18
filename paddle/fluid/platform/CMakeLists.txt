@@ -241,8 +241,13 @@ endif()
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
+
 if(WITH_ASCEND_CL)
   target_link_libraries(device_context npu_resource_pool)
+endif()
+
+if(WITH_XPU)
+  target_link_libraries(device_context xpu_resource_pool)
 endif()
 
 if(WITH_MLU)
