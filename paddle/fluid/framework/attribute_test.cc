@@ -89,8 +89,8 @@ TEST(Attribute, GetAttrValueToAny) {
   auto rlt_vars_desc =
       paddle::any_cast<std::vector<paddle::framework::VarDesc*>>(rlt_vars_attr);
   EXPECT_EQ(rlt_vars_desc.size(), vars_desc.size());
-  EXPECT_EQ(rlt_vars_desc[0]->Name(), vars_desc[0].Name());
-  EXPECT_EQ(rlt_vars_desc[1]->Name(), vars_desc[1].Name());
+  EXPECT_EQ(rlt_vars_desc[0]->Name(), vars_desc[0]->Name());
+  EXPECT_EQ(rlt_vars_desc[1]->Name(), vars_desc[1]->Name());
 
   paddle::framework::ProgramDesc prog;
   paddle::framework::proto::BlockDesc proto_block;
