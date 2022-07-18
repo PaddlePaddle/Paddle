@@ -1276,41 +1276,70 @@ bool OperatorWithKernel::SupportNPU() const {
 
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
-  auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-  if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-    VLOG(6) << "Warning: " << type_
-            << " don't find its MKLDNN Kernel in Fluid "
-               "Registered Kernels. And We don't "
-               "search its kernels in phi lib, "
-               "SupportsMKLDNN() return false.";
-    return false;
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
+                   kern_pair.first.data_type_ == data_type;
+          });
+    }
   }
-  auto& op_kernels = op_kernel_iter->second;
-  return std::any_of(op_kernels.begin(),
-                     op_kernels.end(),
-                     [data_type](OpKernelMap::const_reference kern_pair) {
-                       return platform::is_cpu_place(kern_pair.first.place_) &&
-                              kern_pair.first.library_type_ ==
-                                  LibraryType::kMKLDNN &&
-                              kern_pair.first.data_type_ == data_type;
-                     });
 }
 
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type) const {
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
-  bool support =
-      kernels_iter != all_op_kernels.end() &&
-      kernels_iter->second.find(kernel_type) != kernels_iter->second.end();
-#if defined(PADDLE_WITH_XPU)
+  if (kernels_iter == all_op_kernels.end()) return false;
+  OpKernelMap& kernels = kernels_iter->second;
+  auto kernel_iter = kernels.find(kernel_type);
+
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(kernel_type.place_)) {
-    support = support &&
-              paddle::platform::is_xpu_support_op(type_, kernel_type) &&
-              !paddle::platform::is_in_xpu_black_list(type_);
+    return kernel_iter != kernels.end() &&
+           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+           !paddle::platform::is_in_xpu_black_list(type_);
   }
 #endif
-  return support;
+
+#ifdef PADDLE_WITH_XPU_KP
+  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+    bool use_xpu_kp_kernel_rt =
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(type_, kernel_type);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_in_xpu_kpwhite_list(type_);
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+    if (is_xpu_kp_support) {
+      auto tmp_kernel_type = kernel_type;
+      tmp_kernel_type.library_type_ = LibraryType::kKP;
+      return kernels.find(tmp_kernel_type) != kernels.end();
+    }
+    return kernel_iter != kernels.end() &&
+           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+           !paddle::platform::is_in_xpu_black_list(type_);
+  }
+#endif
+
+  return kernel_iter != kernels.end();
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -2082,7 +2111,9 @@ Scope* OperatorWithKernel::PrepareData(
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              (in_def->backend != phi::Backend::GPUDNN ||
-              tensor_backend != phi::Backend::GPU)) ||
+              tensor_backend != phi::Backend::GPU) &&
+             (in_def->backend != phi::Backend::KPS ||
+              tensor_backend != phi::Backend::XPU)) ||
             tensor_in->place().GetType() == AllocationType::GPUPINNED) {
           new_expected_kernel_key = std::make_unique<OpKernelType>(
               expected_kernel_key.data_type_,
