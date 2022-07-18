@@ -168,10 +168,6 @@ REGISTER_OPERATOR(svd,
 
 REGISTER_OPERATOR(svd_grad, ops::SvdGradOp);
 
-REGISTER_OP_CPU_KERNEL(svd,
-                       ops::SvdCPUKernel<float>,
-                       ops::SvdCPUKernel<double>);
-
 REGISTER_OP_CPU_KERNEL(svd_grad,
                        ops::SvdGradKernel<phi::CPUContext, float>,
                        ops::SvdGradKernel<phi::CPUContext, double>);

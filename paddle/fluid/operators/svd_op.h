@@ -28,58 +28,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
 
-template <typename T>
-class SvdCPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* x = context.Input<Tensor>("X");
-    Tensor* U = context.Output<Tensor>("U");
-    Tensor* VH = context.Output<Tensor>("VH");
-    Tensor* S = context.Output<Tensor>("S");
-    int full = context.Attr<bool>("full_matrices");
-
-    /*Create Tensors and output, set the dim ...*/
-    auto numel = x->numel();
-    auto& orig_dev_ctx = context.template device_context<phi::CPUContext>();
-    auto& dev_ctx = static_cast<
-        const typename framework::ConvertToPhiContext<phi::CPUContext>::TYPE&>(
-        orig_dev_ctx);
-    Tensor trans_x = ::phi::TransposeLast2Dim<T>(dev_ctx, *x);
-    auto* x_data = trans_x.data<T>();
-    auto x_dims = x->dims();
-    int rows = x_dims[x_dims.size() - 2];
-    int cols = x_dims[x_dims.size() - 1];
-    int k = std::min(rows, cols);
-    int col_u = full ? rows : k;
-    int col_v = full ? cols : k;
-    int batches = numel / (rows * cols);
-    auto* U_out = U->mutable_data<phi::dtype::Real<T>>(
-        context.GetPlace(),
-        size_t(batches * rows * col_u * sizeof(phi::dtype::Real<T>)));
-    auto* VH_out = VH->mutable_data<phi::dtype::Real<T>>(
-        context.GetPlace(),
-        size_t(batches * col_v * cols * sizeof(phi::dtype::Real<T>)));
-    auto* S_out = S->mutable_data<phi::dtype::Real<T>>(
-        context.GetPlace(), size_t(batches * k * sizeof(phi::dtype::Real<T>)));
-    /*SVD Use the Eigen Library*/
-    math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
-    /* let C[m, n] as a col major matrix with m rows and n cols.
-     * let R[m, n] is row major matrix with m rows and n cols.
-     * then we have: R[m,n] = C[m, n].resize((n,m)).tranpose_last_two()
-     * */
-    auto col_major_to_row_major = [&dev_ctx](Tensor* out) {
-      auto origin_dim = out->dims();
-      int64_t& x = origin_dim[origin_dim.size() - 1];
-      int64_t& y = origin_dim[origin_dim.size() - 2];
-      std::swap(x, y);
-      out->Resize(origin_dim);
-      return ::phi::TransposeLast2Dim<T>(dev_ctx, *out);
-    };
-    *U = col_major_to_row_major(U);
-    *VH = col_major_to_row_major(VH);
-  }
-};
-
 template <typename DeviceContext, typename T>
 class SvdGradKernel : public framework::OpKernel<T> {
  public:
