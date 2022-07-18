@@ -17,6 +17,7 @@ import sys
 import copy
 import shlex
 import pathlib
+import time
 import pickle
 import json
 import subprocess
@@ -37,6 +38,7 @@ from paddle.distributed.passes import new_pass, PassContext
 
 from .config import TuningConfig
 from .algorithms import new_algorithm
+from .trial import TrialStatus
 
 
 def _get_new_params_grads(target_program, ref_program, ref_params_grads):
@@ -86,10 +88,20 @@ def get_metric(results):
         results,
         dict), "results should be type of dictionary, but got {}.".format(
             type(results))
-    if 'throughtput' in results and isinstance(results['throughtput'], float):
-        return float(results['throughtput'])
+    if 'Throughtput' in results and isinstance(results['Throughtput'], float):
+        return float(results['Throughtput'])
     else:
         return -1.0
+
+
+def parse_results(results):
+    if results['Throughtput'] > 0:
+        return "Throughtput: {}".format(results['Throughtput'])
+    et = results.get("ErrorType", None)
+    if et == "ResourceExhaustedError":
+        return "Fail with OOM"
+    else:
+        return "Fail with UNKWON ERROR"
 
 
 class OptimizationTuner:
@@ -116,14 +128,20 @@ class OptimizationTuner:
         self._inputs_spec = inputs_spec
         self._labels_spec = labels_spec
 
+        self._finished_trials = []
+        self._best_metric = None
+        self._best_iter = float("-inf")
+
+        dist_env = paddle.distributed.ParallelEnv()
+        self.rank = dist_env.rank
+        self.device_id = dist_env.device_id
+
         self._build_programs_without_optimization()
         self._select_tuning_algorithm()
 
-    # TODO this func may be intergated into parallelizer
+    # TODO Generate compelet program with all parts like forward, backward, update
+    # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
-        # NOTE (JZ-LIANG): This function is supposed to generate a compeleted program
-        # with all parts like forward, backward, update, parallelism transformation,
-        # only without optimization transformation. It will be update in future.
 
         serial_main_program = self._dist_context.serial_main_program
         serial_startup_program = self._dist_context.serial_startup_program
@@ -132,6 +150,7 @@ class OptimizationTuner:
         with program_guard(serial_main_program, serial_startup_program):
             params_grads = append_backward(
                 serial_loss, distop_context=self._dist_context.dist_op_context)
+
         self._completer.complete_backward_annotation(serial_main_program)
         self._dist_context.block_state.parse_backward_blocks(
             serial_main_program)
@@ -145,16 +164,25 @@ class OptimizationTuner:
                           os.path.join(self._config.log_dir, "Programs"),
                           "vanilla_startup")
 
+    def _select_tuning_algorithm(self):
+
+        selected_passes_set = self._config.tuning_passes_name
+        algorithm_name = "_".join(sorted(selected_passes_set))
+        self._algorithm = new_algorithm(algorithm_name, self._config)
+
+    # TODO only dependent on dist context
+    # all env need to be start a new pass are member of dist context
     def _get_new_context(self):
-        # TODO only dependent on dist context
-        # all env need to be start a new pass are member of dist context
+
         clear_all_process_groups()
+
         new_dist_context = DistributedContext()
         new_dist_context._serial_main_program = self._dist_context.serial_main_program.clone(
             for_test=False)
         new_dist_context._serial_startup_program = self._dist_context.serial_startup_program.clone(
             for_test=False)
 
+        # mapping variable into new dist context
         new_dist_context._params_grads = _get_new_params_grads(
             new_dist_context.serial_main_program,
             self._dist_context.serial_main_program,
@@ -164,6 +192,7 @@ class OptimizationTuner:
             self._dist_context.serial_main_program,
             self._dist_context.serial_loss)
 
+        # copy information in forward and backward
         new_dist_context._serial_optimizer = copy.deepcopy(
             self._dist_context.serial_optimizer)
         new_dist_context._dist_tensors_for_program = copy.deepcopy(
@@ -176,24 +205,20 @@ class OptimizationTuner:
             self._dist_context._dist_op_context)
         new_dist_context._block_state = copy.deepcopy(
             self._dist_context.block_state)
+
         pass_context = PassContext()
         new_completer = Completer(new_dist_context)
 
         return new_dist_context, pass_context, new_completer
 
-    def _select_tuning_algorithm(self):
-
-        selected_passes_set = self._config.tuning_passes_name
-        algorithm_name = "_".join(sorted(selected_passes_set))
-        self.algorithm = new_algorithm(algorithm_name, self._config)
-
-    def _apply_optimization(self, new_strategy):
-
+    def _apply_optimization(self, trial):
+        new_strategy = trial.space
         dist_context, pass_context, completer = self._get_new_context()
 
         main_program = dist_context.serial_main_program
         startup_program = dist_context.serial_startup_program
 
+        # applying optimization pass
         if new_strategy.amp:
             config = copy.deepcopy(new_strategy.amp_configs)
             config["dist_context"] = dist_context
@@ -222,7 +247,6 @@ class OptimizationTuner:
                                                     config)
             auto_parallel_recompute_pass.apply([main_program],
                                                [startup_program], pass_context)
-            print("apply recompute pass !" * 8)
 
         # Do logical partition
         partitioner = Partitioner(dist_context, self._rank_id)
@@ -252,7 +276,6 @@ class OptimizationTuner:
             auto_parallel_sharding_pass.apply([dist_main_prog],
                                               [dist_startup_prog], pass_context)
 
-        # recompute is then train-only optimization
         if new_strategy.gradient_merge:
             config = copy.deepcopy(new_strategy.gradient_merge_configs)
             config["dist_context"] = dist_context
@@ -262,99 +285,108 @@ class OptimizationTuner:
             auto_parallel_gradient_merge_pass.apply([dist_main_prog],
                                                     [dist_startup_prog],
                                                     pass_context)
-        return dist_main_prog, dist_startup_prog
+        trial.main_program, trial.startup_program = dist_main_prog, dist_startup_prog
+        return trial
 
-    # TODO a profiler class
-    def _evaluate_trial(self, main_program, startup_program):
+    def _get_profile_context(self, trial, result_path):
+
+        profile_ctx = {}
+
+        profile_ctx['distributed_env'] = copy.deepcopy(
+            paddle.distributed.ParallelEnv())
+        profile_ctx['group_map'] = parse_process_groups()
+        profile_ctx["loss_var_name"] = self._dist_context.serial_loss.name
+
+        profile_ctx["batch_size"] = infer_batch_size(trial.main_program,
+                                                     self._inputs_spec)
+        profile_ctx[
+            "main_program_decs"] = trial.main_program.desc.serialize_to_string(
+            )
+        profile_ctx[
+            "startup_program_decs"] = trial.startup_program.desc.serialize_to_string(
+            )
+        profile_ctx["result_filename"] = result_path
+
+        return profile_ctx
+
+    def _launch_profile(self, ctx_path, trial_dir):
+
+        if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
+            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+        else:
+            coverage_args = []
+
+        profile_args = " ".join([
+            "--rank",
+            str(self.rank),
+            "--device_id",
+            str(self.device_id),
+            "--ctx_filename",
+            ctx_path,
+        ])
+        cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
+        cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
+
+        parent_env = copy.copy(os.environ.copy())
+        # env flags need for profile
+        new_env = {
+            "FLAGS_USE_STANDALONE_EXECUTOR": "False",
+        }
+        new_env.update(parent_env)
+
+        # TODO if any rank hang or fail, kill all processes
+        print("executing cmd: {} .".format(" ".join(cmd)))
+        # new_process = subprocess.Popen(cmd, env=new_env)
+        with open(os.path.join(trial_dir, "stdout.log" + str(self.rank)),
+                  "wb") as out, open(
+                      os.path.join(trial_dir, "stderr.log" + str(self.rank)),
+                      "wb") as err:
+            result = subprocess.Popen(cmd, stdout=out, stderr=err, env=new_env)
+            result.wait()
+            out.flush()
+            err.flush()
+            os.fsync(out)
+            os.fsync(err)
+
+    def _profile_trial(self, trial):
+
+        # Making working directory
+        trial_dir = self._get_trial_dir(trial)
+        if not os.path.exists(trial_dir):
+            if paddle.distributed.get_rank() == 0:
+                pathlib.Path(trial_dir).mkdir(parents=True, exist_ok=True)
+            else:
+                while not os.path.exists(trial_dir):
+                    pass
+        ctx_filename = "profile_ctx." + str(self.rank)
+        ctx_path = os.path.join(trial_dir, ctx_filename)
+        result_path = os.path.join(trial_dir, "result.json")
+
+        # Prepare Profile Context
+        profile_ctx = self._get_profile_context(trial, result_path)
+        with open(ctx_path, 'wb') as f:
+            pickle.dump(profile_ctx, f, protocol=4)
+
+        if self._config.verbose:
+            debug_program(trial.main_program, trial_dir, "main_program")
+            debug_program(trial.startup_program, trial_dir, "startup_program")
+            #TODO dump cur pass config to file
+
+        # Run
+        self._launch_profile(ctx_path, trial_dir)
+
+        # load results
+        with open(result_path, 'r') as fp:
+            results = json.load(fp)
+        return results
+
+    def _evaluate_trial(self, trial):
+
+        print("Trial {} evaluation start.".format(trial.name))
+        self._apply_optimization(trial)
 
         if self._config.mode == "PROFILE":
-
-            print("strat evaluating: {} .".format(
-                self.algorithm.get_trial_name()))
-
-            # Make workspace
-            work_dir = os.path.join(self._config.log_dir,
-                                    self.algorithm.get_trial_name())
-            if not os.path.exists(work_dir):
-                if paddle.distributed.get_rank() == 0:
-                    pathlib.Path(work_dir).mkdir(parents=True, exist_ok=True)
-                else:
-                    while not os.path.exists(work_dir):
-                        pass
-
-            # Prepare Profile Context
-            profile_ctx = {}
-            dist_env = copy.deepcopy(paddle.distributed.ParallelEnv())
-            rank = dist_env.rank
-            ctx_filename = "profile_ctx." + str(rank)
-            ctx_path = os.path.join(work_dir, ctx_filename)
-            assert isinstance(rank, int)
-            device_id = dist_env.device_id
-            assert isinstance(device_id, int)
-            profile_ctx['distributed_env'] = dist_env
-            profile_ctx['group_map'] = parse_process_groups()
-            profile_ctx["loss_var_name"] = self._dist_context.serial_loss.name
-            profile_ctx["batch_size"] = infer_batch_size(
-                main_program, self._inputs_spec)
-            profile_ctx[
-                "main_program_decs"] = main_program.desc.serialize_to_string()
-            profile_ctx[
-                "startup_program_decs"] = startup_program.desc.serialize_to_string(
-                )
-            result_path = os.path.join(work_dir, "result.json")
-            profile_ctx["result_filename"] = result_path
-
-            with open(ctx_path, 'wb') as f:
-                pickle.dump(profile_ctx, f, protocol=4)
-
-            if self._config.verbose:
-                debug_program(main_program, work_dir, "main_program")
-                debug_program(startup_program, work_dir, "startup_program")
-                #TODO dump cur pass config to file
-
-            # Run profile
-            if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-                coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
-            else:
-                coverage_args = []
-            profile_args = " ".join([
-                "--rank",
-                str(rank),
-                "--device_id",
-                str(device_id),
-                "--ctx_filename",
-                ctx_path,
-            ])
-            cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
-            cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
-            # TODO if any rank hang or fail, kill all, otherwise
-            parent_env = copy.copy(os.environ.copy())
-            new_env = {
-                "FLAGS_USE_STANDALONE_EXECUTOR": "False",
-            }
-            new_env.update(parent_env)
-            print("executing cmd: {} .".format(" ".join(cmd)))
-            new_process = subprocess.Popen(cmd, env=new_env)
-
-            with open(os.path.join(work_dir, "stdout.log" + str(rank)),
-                      "wb") as out, open(
-                          os.path.join(work_dir, "stderr.log" + str(rank)),
-                          "wb") as err:
-                result = subprocess.Popen(cmd, stdout=out, stderr=err)
-                result.wait()
-                out.flush()
-                err.flush()
-                os.fsync(out)
-                os.fsync(err)
-
-            # load results
-            with open(result_path, 'r') as fp:
-                results = json.load(fp)
-
-            print("end evaluating: {} .".format(
-                self.algorithm.get_trial_name()))
-
-            return results
+            results = self._profile_trial(trial)
 
         elif self._config.mode == "COSTMODEL":
             raise NotImplementedError(
@@ -363,48 +395,90 @@ class OptimizationTuner:
             raise NotImplementedError("invalid evaluation mode: {}".format(
                 self._config.mode))
 
-    def tune(self):
+        print("Trial {} evaluation finish with {}.".format(
+            trial.name, parse_results(results)))
+        return results
 
-        # step1: collect model info which might
-        self.algorithm.collect_model_info(
+    def _update(self, i, trial, results):
+        self._finished_trials.append(trial)
+
+        cur_mertic = get_metric(results)
+        if self._best_metric == None or cur_mertic < self._best_metric:
+            self._best_metric = cur_mertic
+            self._best_iter = i
+
+    def _get_trial_dir(self, trial):
+        return os.path.join(self._config.log_dir, trial.name)
+
+    def get_best_config(self):
+        """
+        Return the best optimization configuration found in the tuning.
+
+        Returns:
+            A object of fleet.DistributedStrategy with best configuration.       
+        """
+        assert self._best_iter >= 0, "The best configuration is not found yet !"
+        best_trial = self._finished_trials[self._best_iter]
+        return self._algorithm.get_config_from_trial(best_trial)
+
+    def summary(self):
+        """
+        Display tuning result summary.
+        """
+        # TODO summary with the trial_name with metric_of_trial
+        print("Tuning Result Summary")
+        print("Run total {} trials with {} min.".format(
+            len(self._finished_trials),
+            (time.time() - self._tuning_start_time) / 60))
+        best_trial = self._finished_trials[self._best_iter]
+        print("The best trial is {} ".format(best_trial.name))
+        best_trial.summary()
+
+    def clear(self):
+        """
+        Clear the temporary file generated in tuning procedure.
+        """
+        pass
+
+    def tune(self):
+        """
+        Performs the search for best hyperparameter configuations 
+        for the selected optimization pass(es). 
+        """
+
+        # step1: collect model info which might be used for
+        # pruning the search space of the algorithm
+        self._tuning_start_time = time.time()
+        self._algorithm.collect_model_info(
             self._dist_context.serial_main_program,
             self._dist_context.serial_startup_program)
 
-        # step2: main while loop
+        # main search loop
         i = 0
-        best_i = 0
-        best_metric = None
-        try:
-            while i < self._config.max_num_trial:
+        while i < self._config.max_num_trial:
+            # step2: create a new trial
+            trial = self._algorithm.next_trial()
 
-                # TODO TrialStatus.STOPPED
-                if self.algorithm.status() == "STOP":
-                    break
+            if trial.status == TrialStatus.STOPPED:
+                break
 
-                new_strategy = self.algorithm.next_trial()
-                new_main_program, new_startup_program = self._apply_optimization(
-                    new_strategy)
-                last_results = self._evaluate_trial(new_main_program,
-                                                    new_startup_program)
+            # step3: evaluate the trial
+            results = self._evaluate_trial(trial)
 
-                if best_metric == None or get_metric(
-                        last_results) < best_metric:
-                    best_metric = get_metric(last_results)
-                    best_i = i
+            # step4: update the algorithm with last result,
+            # which could be used by algorithm to pruning the
+            # remaining search space.
+            self._algorithm.update(results)
+            self._update(i, trial, results)
 
-                # TODO trial result class
-                self.algorithm.update(last_results)
+            # early stop
+            i += 1
+            if self._config.early_stop and self._config.early_stop <= i - self._best_iter:
+                print(
+                    "Early stop the Tuning since there is no better trial found within [{}] trials"
+                    .format(self._config.early_stop))
+                break
 
-                i += 1
-                if self._config.early_stop and self._config.early_stop <= i - best_i:
-                    print(
-                        "Early stop the Tuning since there is no better trial found within [{}] trials"
-                        .format(self._config.early_stop))
-                    break
-        except:
-            print("Tuner got Error: {}".format(sys.exc_info()[0]))
-            print(sys.exc_info()[1])
-            traceback.print_tb(sys.exc_info()[2])
-
-        # step3: summary the best config and return
-        self.algorithm.summary()
+        self.clear()
+        # step5: summary the best config and return
+        self.summary()

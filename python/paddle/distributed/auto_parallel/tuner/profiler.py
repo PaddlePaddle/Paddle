@@ -22,7 +22,9 @@ run
 write result
 """
 import os
+import sys
 import argparse
+import traceback
 import pickle
 import json
 import time
@@ -70,16 +72,6 @@ def parse_args():
         required=True,
         help=
         "the filename to the profile context file saved by optimizaiton tuner")
-    # parser.add_argument(
-    #     "--main_program_filename",
-    #     type=str,
-    #     required=True,
-    #     help="the filename to the main program decs file saved by optimizaiton tuner" )
-    # parser.add_argument(
-    #     "--startup_program_filename",
-    #     type=str,
-    #     required=True,
-    #     help="the filename to the startup program decs file saved by optimizaiton tuner" )
 
     args = parser.parse_args()
 
@@ -116,6 +108,31 @@ def gen_data(batch_size):
         loss_mask.append(np.ones(sequence_len))
 
     return tokens, position_ids, attention_mask, labels, loss_mask
+
+
+def get_cpp_error_type(error):
+
+    msg = str(error).splitlines()
+    cpp_error_types = [
+        'InvalidArgumentError',
+        'NotFoundError',
+        'OutOfRangeError',
+        'AlreadyExistsError',
+        'ResourceExhaustedError',
+        'PreconditionNotMetError',
+        'PermissionDeniedError',
+        'ExecutionTimeoutError',
+        'UnimplementedError',
+        'UnavailableError',
+        'FatalError',
+        'ExternalError',
+    ]
+    error_type = 'FatalError'
+    for et in cpp_error_types:
+        for line in msg:
+            if et in line:
+                return et
+    return error_type
 
 
 def profiler():
@@ -164,6 +181,8 @@ def profiler():
 
     startup_program_decs_str = profile_ctx['startup_program_decs']
     startup_program = Program.parse_from_string(startup_program_decs_str)
+
+    result_path = profile_ctx["result_filename"]
     # print("=========startup_program" * 8)
     # print(startup_program)
     # print("=========startup_program" * 8)
@@ -173,7 +192,7 @@ def profiler():
 
     # reconstruct communicator
 
-    # build fake dataloader
+    # TODO build fake dataloader
 
     place_type = _current_expected_place()
     if not isinstance(place_type, paddle.CUDAPlace):
@@ -190,44 +209,59 @@ def profiler():
     print("batch size: ", batch_size)
     tokens, position_ids, attention_mask, labels, loss_mask = gen_data(
         batch_size)
-    while eval_step < args.profile_end_step:
-        start_time = time.time()
 
-        loss = exe.run(
-            main_program,
-            feed={
-                "tokens": tokens,
-                "position_ids": position_ids,
-                "attention_mask": attention_mask,
-                "labels": labels,
-                "loss_mask": loss_mask
-            },
-            fetch_list=[loss_var],
-            use_program_cache=True,
-        )
+    try:
+        while eval_step < args.profile_end_step:
+            start_time = time.time()
 
-        end_time = time.time()
+            loss = exe.run(
+                main_program,
+                feed={
+                    "tokens": tokens,
+                    "position_ids": position_ids,
+                    "attention_mask": attention_mask,
+                    "labels": labels,
+                    "loss_mask": loss_mask
+                },
+                fetch_list=[loss_var],
+                use_program_cache=True,
+            )
 
-        if eval_step >= args.profile_start_step:
-            duration += end_time - start_time
+            end_time = time.time()
 
-        print(loss[0])
-        print("step: %d, loss_print: %f" % (eval_step, loss[0]))
-        eval_step += 1
+            if eval_step >= args.profile_start_step:
+                duration += end_time - start_time
 
-    avg_tput = 1.0 * (args.profile_end_step -
-                      args.profile_start_step) / duration
-    result_dict = {"throughtput": avg_tput}
-    result_path = profile_ctx["result_filename"]
+            print(loss[0])
+            print("step: %d, loss_print: %f" % (eval_step, loss[0]))
+            eval_step += 1
 
-    if paddle.distributed.get_rank() == 0:
-        with open(result_path, 'w') as fp:
-            json.dump(result_dict, fp)
+        avg_tput = 1.0 * (args.profile_end_step -
+                          args.profile_start_step) / duration
 
-    print("profile avg speed : {} step / s.".format((avg_tput)))
+        result_dict = {
+            "Throughtput": avg_tput,
+            "ErrorType": None,
+        }
+
+        if paddle.distributed.get_rank() == 0:
+            with open(result_path, 'w') as fp:
+                json.dump(result_dict, fp)
+
+        print("profile done! avg speed : {} step / s.".format((avg_tput)))
+    except Exception as e:
+        error_type = get_cpp_error_type(e)
+        result_dict = {
+            "Throughtput": -1,
+            "ErrorType": error_type,
+        }
+        if not os.path.isfile(result_path):
+            with open(result_path, 'w') as fp:
+                json.dump(result_dict, fp)
+
+        print("profile failed with error: [{}]".format(error_type), )
+        exit(1)
 
 
 if __name__ == "__main__":
     profiler()
-
-    # /usr/bin/python3 -u -m paddle.distributed.auto_parallel.tuner.profile --rank 0 --device_id 0 --ctx_filename ./Sharing_stage_2_trial.pfcontext --main_program_filename ./Sharing_stage_2_trial.main_program_decs.0 --startup_program_filename ./Sharing_stage_2_trial.startup_program_decs.0

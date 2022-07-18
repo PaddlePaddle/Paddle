@@ -141,8 +141,3 @@ class TuningConfig(object):
     # (NOTE)tuning config ONLY wraps dist strategy for pass config which is to be tuned
     def __getattr__(self, item):
         return getattr(self._dist_strategy, item)
-
-    # def __setattr__(self, key, value):
-    #     if key not in self.__dict__:
-    #         raise TypeError("{} is not a tunable passes {}".format(key))
-    #     self.__dict__[key] = value

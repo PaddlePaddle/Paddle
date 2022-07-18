@@ -14,12 +14,19 @@
 
 import copy
 from abc import ABC, abstractmethod
+from .trial import TrialStatus
+from .trial import OptimizationTunerTrial as Trial
 
 
 class AlgorithmBase(ABC):
     """
-    An Tuning alogrithm is a function find out an optimal configuration given the selected tuning optimization passes (and the arguments to be tuned). 
-    Different optimization passes commibation will correspond to a different algorithm.
+    An Tuning alogrithm is a class to find out an optimal configuration 
+    given the selected tuning optimization pass(es) and the arguments to be tuned. 
+    Different optimization pass(es) will correspond to a different algorithm,
+    where different search space **pruning rules** will applied.
+
+    In another word, the key "algorithm" for this class is the 
+    search space pruning rules specific for the given optimization scenario.
     """
     _REGISTERED_ALGORITHMS = {}
 
@@ -32,18 +39,24 @@ class AlgorithmBase(ABC):
 
     def __init__(self, config):
         self._config = config
-        self._trial_count = 0
-        if self._config.max_num_trial:
-            self._max_num_trial = self._config.max_num_trial
-        else:
-            self._max_num_trial = float("inf")
+        self._init_spaces()
+        self._changed_configs = []
+
+    @property
+    def changed_configs(self):
+        return self._changed_configs[:]
 
     def collect_model_info(self, main_prog, startup_prog):
         """
-        Collect the model static info (from programs) that could be used to pruning candidate trials and saving tuning time.
-        For instance, model info like number of model parameters and activation memory could be 
+        Collect the model static info (from programs) that could be used to 
+        pruning candidate trials and saving tuning time.For instance, 
+        model info like number of model parameters and activation memory could be 
         used to prune candidated trial and decide the next trial.
         """
+        pass
+
+    @abstractmethod
+    def _init_spaces(self):
         pass
 
     @abstractmethod
@@ -51,12 +64,23 @@ class AlgorithmBase(ABC):
         pass
 
     @abstractmethod
-    def update(self, result):
+    def update(self, results):
+        """
+        Update the algorthim with the results of last trial. Using this information is used to 
+        pruning the search space of the future trial.
+        """
         pass
 
-    @abstractmethod
-    def summary(self):
-        pass
+    def get_config_from_trial(self, trial):
+        """
+        Return a new fleet.DistributedStrategy with the configurations in trial.
+        """
+        assert len(self._changed_configs) > 0
+        new_strategy = copy.deepcopy(self._config.dist_strategy)
+        for name in self._changed_configs:
+            config = getattr(trial.space, name)
+            setattr(new_strategy, name, config)
+        return new_strategy
 
 
 def register_algor(name):
@@ -82,45 +106,50 @@ class ShardingStageAlgorithm(AlgorithmBase):
     # TODO import trial class & copy strategy
     def __init__(self, config):
         super().__init__(config)
+        self._changed_configs = ["sharding_configs"]
+
+    def _init_spaces(self):
         self._max_stage = 3
+        self._trial_idx = 0
 
         stage_range = self._config.sharding_configs.get("stage_range", None)
         if stage_range:
-            assert set(stage_range).issubset(set([0, 1, 2, 3]))
-            stage_range.sort()
+            assert set(stage_range).issubset(
+                set([0, 1, 2, 3])
+            ), "Sharding Stage should belong into range within 0 - 3 but got".format(
+                stage_range)
+            stage_range.sort(reverse=True)
         else:
-            stage_range = [0, 1, 2, 3]
-        self.stage_range = stage_range[:]
-        self._max_num_trial = min(self._max_num_trial, len(self.stage_range))
+            stage_range = list(range(self._max_stage + 1)).sort(reverse=True)
+
+        self._stage_range = stage_range[:]
+        self._total_num_trial = len(self._stage_range)
 
     def next_trial(self):
 
-        if self._trial_count < self._max_num_trial:
+        if self._trial_idx < self._total_num_trial:
+
+            stage = self._stage_range[self._trial_idx]
+
             new_strategy = copy.deepcopy(self._config.dist_strategy)
             config_dict = new_strategy.sharding_configs
-            config_dict["stage"] = self.stage_range[self._trial_count]
+            config_dict["stage"] = stage
             new_strategy.sharding_configs = config_dict
-            self._trial_count += 1
-            return new_strategy
+
+            name = "trial-sharding-stage{}".format(stage)
+            trial = Trial(new_strategy, name, self.changed_configs)
+
+            return trial
         else:
-            return None
+            return Trial(None, None, None, status=TrialStatus.STOPPED)
 
-    # TODO should return a trial class and trial name should be its member
-    def get_trial_name(self):
-        return "Sharing_stage_{}_trial".format(self._trial_count)
+    def update(self, results):
 
-    def status(self):
-        if self._trial_count >= 0 and self._trial_count < self._max_num_trial:
-            return "RUNNING"
+        et = results.get("ErrorType", None)
+        if et and et == "ResourceExhaustedError":
+            self._trial_idx = self._total_num_trial
+            print(
+                "Last trial is failed with OOM, all remaining trials are pruned to save time !"
+            )
         else:
-            return "STOP"
-
-    def update(self, result):
-        """
-        Update the algorthim with the result of last trial. Using this information is used to 
-        pruning the search space of the future trial.
-        """
-        pass
-
-    def summary(self):
-        print(" algorithm.summary() " * 8)
+            self._trial_idx += 1
