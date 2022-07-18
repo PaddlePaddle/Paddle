@@ -27,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class VarDesc;
 class BlockDesc;
 class ProgramDesc;
 
@@ -84,6 +85,10 @@ class OpDesc {
 
   void SetAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
+
+  void SetVarAttr(const std::string &name, VarDesc *var);
+
+  void SetVarsAttr(const std::string &name, std::vector<VarDesc *> vars);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 
@@ -162,6 +167,10 @@ class OpDesc {
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
  private:
+  friend class ProgramDesc;
+  // Find VarDesc from OpDesc located Block into global Block
+  VarDesc *FindVarRecursive(const std::string &name);
+
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
     std::vector<typename MapType::key_type> ret_val;

@@ -4392,7 +4392,9 @@ class IrOpNode(IrNode):
         assert self.node.op() is not None, \
             "The node operator description can not be None."
         desc = self.node.op()
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and \
                 all(isinstance(v, Block) for v in val):
