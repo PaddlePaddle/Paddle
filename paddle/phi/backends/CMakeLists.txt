@@ -40,4 +40,8 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
-set_property(GLOBAL PROPERTY PHI_MODULES phi_backends)
+
+# for inference library
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+set(phi_modules ${phi_modules} phi_backends)
+set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
