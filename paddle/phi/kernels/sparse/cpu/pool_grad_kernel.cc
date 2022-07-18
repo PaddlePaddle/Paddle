@@ -92,7 +92,7 @@ void MaxPoolCooGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(maxpool_grad_coo,
+PD_REGISTER_KERNEL(maxpool_coo_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::MaxPoolCooGradKernel,
