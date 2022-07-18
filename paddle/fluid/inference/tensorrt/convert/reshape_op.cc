@@ -42,10 +42,7 @@ class ReshapeOpConverter : public OpConverter {
     nvinfer1::Dims reshape_dim;
     nvinfer1::ITensor* real_shape_tensor = nullptr;
     std::vector<nvinfer1::ITensor*> concat_inputs;
-<<<<<<< HEAD
-=======
     bool one_input = false;
->>>>>>> develop
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
           op_desc.Input("ShapeTensor").size() > 0) {
@@ -69,11 +66,7 @@ class ReshapeOpConverter : public OpConverter {
       }
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-<<<<<<< HEAD
-    if (!engine_->with_dynamic_shape())
-=======
     if (!engine_->with_dynamic_shape() || one_input)
->>>>>>> develop
       layer->setReshapeDimensions(reshape_dim);
     else
       layer->setInput(1, *real_shape_tensor);
