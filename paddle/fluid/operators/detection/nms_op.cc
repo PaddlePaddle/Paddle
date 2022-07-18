@@ -79,7 +79,6 @@ class NMSOp : public framework::OperatorWithKernel {
 
 template <typename T>
 class NMSKernel : public framework::OpKernel<T> {
- public:
 };
 
 }  // namespace operators

@@ -59,7 +59,7 @@ void NMSKernel(const Context& dev_ctx,
                    float threshold,
                    DenseTensor* output){
     auto* output_data = dev_ctx.template Alloc<T>(output);
-    const int64_t num_boxes = boxes->dims()[0];
+    const int64_t num_boxes = boxes.dims()[0];
     const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
     dim3 block(threadsPerBlock);
     dim3 grid(blocks_per_line, blocks_per_line);
@@ -67,7 +67,7 @@ void NMSKernel(const Context& dev_ctx,
         paddle::memory::Alloc(dev_ctx, num_boxes * blocks_per_line * sizeof(uint64_t));
     uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
     NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        boxes->data<T>(), threshold, num_boxes, mask_dev);
+        boxes.data<T>(), threshold, num_boxes, mask_dev);
     std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
     paddle::memory::Copy(phi::CPUPlace(),
                  mask_host.data(),
