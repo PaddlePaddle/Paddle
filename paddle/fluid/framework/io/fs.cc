@@ -255,7 +255,8 @@ void set_download_command(const std::string& x) {
   customized_download_cmd_internal() = x;
 }
 
-std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
+std::shared_ptr<FILE> hdfs_open_read(std::string path,
+                                     int* err_no,
                                      const std::string& converter,
                                      bool read_data) {
   if (download_cmd() != "") {  // use customized download command
@@ -267,16 +268,16 @@ std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
         path = string::format_string(
             "%s -text \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
       } else {
-        path = string::format_string("%s -text \"%s\"", hdfs_command().c_str(),
-                                     path.c_str());
+        path = string::format_string(
+            "%s -text \"%s\"", hdfs_command().c_str(), path.c_str());
       }
     } else {
       if (read_data) {
         path = string::format_string(
             "%s -cat \"%s\"", dataset_hdfs_command().c_str(), path.c_str());
       } else {
-        path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
-                                     path.c_str());
+        path = string::format_string(
+            "%s -cat \"%s\"", hdfs_command().c_str(), path.c_str());
       }
     }
   }
@@ -392,7 +393,8 @@ int fs_select_internal(const std::string& path) {
   return 0;
 }
 
-std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
+std::shared_ptr<FILE> fs_open_read(const std::string& path,
+                                   int* err_no,
                                    const std::string& converter,
                                    bool read_data) {
   switch (fs_select_internal(path)) {

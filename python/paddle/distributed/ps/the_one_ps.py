@@ -1199,15 +1199,19 @@ class TheOnePSRuntime(RuntimeBase):
             program = self.origin_main_programs[0]
         dense_var_names = self._pull_dense(program, scope, send_ctx, dense_map)
         save_var_names = dense_var_names if var_names is None else var_names
-#        print("save_var_names:", save_var_names)
-#        for var in save_var_names:
-#            tensor = scope.find_var(var).get_tensor()
-#            paddle.save(
-#                tensor, os.path.join(dirname, var), use_binary_format=True)
+        #        print("save_var_names:", save_var_names)
+        #        for var in save_var_names:
+        #            tensor = scope.find_var(var).get_tensor()
+        #            paddle.save(
+        #                tensor, os.path.join(dirname, var), use_binary_format=True)
 
         vars = [program.global_block().var(i) for i in save_var_names]
         with fluid.scope_guard(scope):
-            fluid.io.save_vars(executor, "./", program, vars=vars, filename=dirname)
+            fluid.io.save_vars(executor,
+                               "./",
+                               program,
+                               vars=vars,
+                               filename=dirname)
 
     def _save_sparse_params(self, executor, dirname, context, main_program,
                             mode):
@@ -1450,8 +1454,10 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
 
     def _save_dense_params(self, *args, **kwargs):
-#        if self.role_maker._is_first_worker():
+        #        if self.role_maker._is_first_worker():
         self._ps_save_dense_params(*args, **kwargs)
+
+
 #        fleet.util.barrier()
 
     def _save_persistables(self, *args, **kwargs):

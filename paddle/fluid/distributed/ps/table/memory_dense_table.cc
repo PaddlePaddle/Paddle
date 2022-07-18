@@ -345,9 +345,8 @@ int32_t MemoryDenseTable::Save(const std::string& path,
   int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
     for (int x = 0; x < param_dim_; ++x) {
-      result_buffer_param.emplace_back(
-          std::to_string(values_[param_idx_][x]));
-   }
+      result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));
+    }
 
   } else {
     std::ostringstream os;
@@ -355,11 +354,11 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y] << " 0";
-      for (int x = 2; x < param_col_ids_.size(); ++ x) {
+      for (int x = 2; x < param_col_ids_.size(); ++x) {
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
-     result_buffer_param.emplace_back(std::move(os.str()));
+      result_buffer_param.emplace_back(std::move(os.str()));
     }
   }
 
@@ -372,7 +371,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     // 40M
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
-    
+
     for (auto& t : result_buffer_param) {
       if (0 != write_channel->write_line(t)) {
         ++retry_num;
@@ -385,7 +384,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     }
 
     ++feasign_size;
-    VLOG(0) << "debug zcb save begin close " << channel_config.path;    
+    VLOG(0) << "debug zcb save begin close " << channel_config.path;
     write_channel->close();
     if (err_no == -1) {
       ++retry_num;

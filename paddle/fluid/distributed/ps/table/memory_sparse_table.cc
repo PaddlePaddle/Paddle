@@ -24,7 +24,6 @@
 
 #include "boost/lexical_cast.hpp"
 #include "glog/logging.h"
-#include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_bool(pserver_print_missed_key_num_every_push,
@@ -379,9 +378,8 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
         if (_value_accesor->Save(it.value().data(), save_param)) {
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          if (0 !=
-              write_channel->write_line(paddle::string::format_string(
-                  "%lu %s", it.key(), format_value.c_str()))) {
+          if (0 != write_channel->write_line(paddle::string::format_string(
+                       "%lu %s", it.key(), format_value.c_str()))) {
             ++retry_num;
             is_write_failed = true;
             LOG(ERROR)
@@ -437,9 +435,10 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
 #pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < _m_real_local_shard_num; ++i) {
     FsChannelConfig channel_config;
-    channel_config.path =
-        paddle::string::format_string("%s/part-%03d-%05d", table_path.c_str(),
-                                      _shard_idx, file_start_idx + i);
+    channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
+                                                        table_path.c_str(),
+                                                        _shard_idx,
+                                                        file_start_idx + i);
 
     channel_config.converter = _value_accesor->Converter(save_param).converter;
     channel_config.deconverter =
@@ -463,9 +462,8 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
             if (_value_accesor->Save(it.value().data(), save_param)) {
               std::string format_value = _value_accesor->ParseToString(
                   it.value().data(), it.value().size());
-              if (0 !=
-                  write_channel->write_line(paddle::string::format_string(
-                      "%lu %s", it.key(), format_value.c_str()))) {
+              if (0 != write_channel->write_line(paddle::string::format_string(
+                           "%lu %s", it.key(), format_value.c_str()))) {
                 ++retry_num;
                 is_write_failed = true;
                 LOG(ERROR) << "MemorySparseTable save failed, retry it! path:"
@@ -498,8 +496,10 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
     feasign_size_all += feasign_size;
   }
   LOG(INFO) << "MemorySparseTable save patch success, path:"
-            << paddle::string::format_string("%s/%03d/part-%03d-", path.c_str(),
-                                             _config.table_id(), _shard_idx)
+            << paddle::string::format_string("%s/%03d/part-%03d-",
+                                             path.c_str(),
+                                             _config.table_id(),
+                                             _shard_idx)
             << " from " << file_start_idx << " to "
             << file_start_idx + _m_real_local_shard_num - 1
             << ", feasign size: " << feasign_size_all;
@@ -507,10 +507,11 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
 }
 
 int64_t MemorySparseTable::CacheShuffle(
-    const std::string& path, const std::string& param, double cache_threshold,
-    std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
-                                       std::string& msg)>
-        send_msg_func,
+    const std::string& path,
+    const std::string& param,
+    double cache_threshold,
+    std::function<std::future<int32_t>(
+        int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
     paddle::framework::Channel<std::pair<uint64_t, std::string>>&
         shuffled_channel,
     const std::vector<Table*>& table_ptrs) {
@@ -555,8 +556,8 @@ int64_t MemorySparseTable::CacheShuffle(
       shard_type* shard_ptr = static_cast<shard_type*>(table_ptr->GetShard(i));
 
       for (auto it = shard_ptr->begin(); it != shard_ptr->end(); ++it) {
-        if (value_accesor->SaveCache(it.value().data(), save_param,
-                                     cache_threshold)) {
+        if (value_accesor->SaveCache(
+                it.value().data(), save_param, cache_threshold)) {
           std::string format_value = value_accesor->ParseToString(
               it.value().data(), it.value().size());
           std::pair<uint64_t, std::string> pkv(it.key(), format_value.c_str());
@@ -621,7 +622,8 @@ int64_t MemorySparseTable::CacheShuffle(
 }
 
 int32_t MemorySparseTable::SaveCache(
-    const std::string& path, const std::string& param,
+    const std::string& path,
+    const std::string& param,
     paddle::framework::Channel<std::pair<uint64_t, std::string>>&
         shuffled_channel) {
   if (_shard_idx >= _config.sparse_table_cache_file_num()) {
@@ -648,9 +650,8 @@ int32_t MemorySparseTable::SaveCache(
   while (shuffled_channel->Read(data)) {
     for (auto& t : data) {
       ++feasign_size;
-      if (0 !=
-          write_channel->write_line(paddle::string::format_string(
-              "%lu %s", t.first, t.second.c_str()))) {
+      if (0 != write_channel->write_line(paddle::string::format_string(
+                   "%lu %s", t.first, t.second.c_str()))) {
         LOG(ERROR) << "Cache Table save failed, "
                       "path:"
                    << channel_config.path << ", retry it!";
@@ -840,7 +841,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
              mf_value_size]() -> int {
               auto& keys = task_keys[shard_id];
               auto& local_shard = _local_shards[shard_id];
-              float data_buffer[value_size];
+              float data_buffer[value_size];  // NOLINT
               float* data_buffer_ptr = data_buffer;
               for (size_t i = 0; i < keys.size(); ++i) {
                 uint64_t key = keys[i].first;
@@ -859,7 +860,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
                   ret = itr.value_ptr();
                 }
                 int pull_data_idx = keys[i].second;
-                pull_values[pull_data_idx] = (char*)ret;
+                pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
               }
               return 0;
             });
@@ -946,7 +947,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
               FixedFeatureValue* feature_value_new = &(local_shard_new[key]);
               auto new_size = feature_value.size();
               feature_value_new->resize(new_size);
-              memcpy(const_cast<float*>(feature_value_new->data()), value_data,
+              memcpy(const_cast<float*>(feature_value_new->data()),
+                     value_data,
                      new_size * sizeof(float));
             }
           }
