@@ -76,7 +76,7 @@
   args : (Tensor x, Tensor kernel, Tensor rulebook, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
   output : Tensor(x_grad), Tensor(kernel_grad)
   kernel :
-    func : sparse_conv3d_grad{sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
+    func : conv3d_coo_grad{sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_api : coo_to_dense_grad
   forward : coo_to_dense(Tensor x) -> Tensor(out)
