@@ -20,7 +20,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
-#include "xpu/kernel/debug.h"  // NOLINT
+//#include "xpu/kernel/debug.h"  // NOLINT
 #include "xpu/runtime.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
@@ -657,9 +657,9 @@ void HeterCommKernel::convert_feature_value_as_float(
     ValueT* d_vals_in,
     int len,
     bool to_float) {
-    xpu_kernel_debug_reset();
+    //xpu_kernel_debug_reset();
     convert_feature_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
-    xpu_kernel_debug();
+    //xpu_kernel_debug();
 }
 
 template void HeterCommKernel::convert_feature_value_as_float<paddle::framework::FeatureValue>(
@@ -717,9 +717,9 @@ void HeterCommKernel::convert_feature_push_value_as_float(
     ValueT* d_vals_in,
     int len,
     bool to_float) {
-    xpu_kernel_debug_reset();
+    //xpu_kernel_debug_reset();
     convert_feature_push_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
-    xpu_kernel_debug();
+    //xpu_kernel_debug();
 }
 
 template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue>(

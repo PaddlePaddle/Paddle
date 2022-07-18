@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "xpu/kernel/cluster_header.h"  // NOLINT
-#include "xpu/kernel/debug.h"           // NOLINT
+//#include "xpu/kernel/debug.h"           // NOLINT
 #include "xpu/kernel/math.h"            // NOLINT
 #include "xpu/kernel/simd.h"
 
