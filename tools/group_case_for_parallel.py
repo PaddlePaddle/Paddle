@@ -26,11 +26,11 @@ def group_case_for_parallel(rootPath):
             'exclusive_card_tests', 'exclusive_card_tests_mem0'
     ]:
         # os.system(
-        #     'cd %s/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak/%s --no-check-certificate'
+        #     'cd %s/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/%s --no-check-certificate'
         #     % (rootPath, filename))
         os.system(
-            'cd %s/tools && cp /home/data/cfs/group_case_for_parallel/%s ./' %
-            (rootPath, filename))
+            'cd %s/tools && cp /home/data/cfs/group_case_for_parallel/pre_test/%s ./'
+            % (rootPath, filename))
 
     #get nightly tests
     nightly_tests_file = open('%s/tools/nightly_tests' % rootPath, 'r')
