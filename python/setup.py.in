@@ -379,6 +379,7 @@ packages=['paddle',
           'paddle.incubate.sparse.nn',
           'paddle.incubate.sparse.nn.layer',
           'paddle.incubate.sparse.nn.functional',
+          'paddle.incubate.xpu',
           'paddle.io',
           'paddle.optimizer',
           'paddle.nn',
@@ -578,7 +579,8 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands = ["patchelf --set-soname '${FLUID_CORE_NAME}.so' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands.append("patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:

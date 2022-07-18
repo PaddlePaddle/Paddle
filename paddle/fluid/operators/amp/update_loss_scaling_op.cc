@@ -169,9 +169,9 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 };
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<platform::CPUDeviceContext, T, IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const platform::CPUDeviceContext& ctx,
+  void operator()(const phi::CPUContext& ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -203,9 +203,9 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T, IsFoundInfOnCPU> {
 };
 
 template <typename T>
-class LazyZeros<platform::CPUDeviceContext, T> {
+class LazyZeros<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& dev_ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
@@ -225,7 +225,7 @@ class LazyZeros<platform::CPUDeviceContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     update_loss_scaling,

@@ -66,7 +66,6 @@ TEST(DEV_API, add) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto dense_out = phi::Add<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -118,7 +117,6 @@ TEST(DEV_API, subtract) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto dense_out = phi::Subtract<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -170,7 +168,6 @@ TEST(DEV_API, divide) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto dense_out = phi::Divide<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result
@@ -222,7 +219,6 @@ TEST(DEV_API, multiply) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
   auto dense_out = phi::Multiply<float>(dev_ctx, dense_x, dense_y);
 
   // 3. check result

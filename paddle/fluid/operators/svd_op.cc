@@ -172,7 +172,6 @@ REGISTER_OP_CPU_KERNEL(svd,
                        ops::SvdCPUKernel<float>,
                        ops::SvdCPUKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(
-    svd_grad,
-    ops::SvdGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SvdGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(svd_grad,
+                       ops::SvdGradKernel<phi::CPUContext, float>,
+                       ops::SvdGradKernel<phi::CPUContext, double>);

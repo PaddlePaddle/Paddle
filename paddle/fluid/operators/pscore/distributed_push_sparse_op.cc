@@ -135,6 +135,5 @@ REGISTER_OPERATOR(distributed_push_sparse,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_push_sparse,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+    ops::DistributedPushSparseKernel<phi::CPUContext, float>,
+    ops::DistributedPushSparseKernel<phi::CPUContext, double>);

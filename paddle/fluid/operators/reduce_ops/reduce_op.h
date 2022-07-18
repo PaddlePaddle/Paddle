@@ -545,6 +545,38 @@ class ReduceOp : public framework::OperatorWithKernel {
     }
   }
 
+  // oneDNN's reduction kernel is optimized only for reducing throughout the
+  // most outer dims, so in case of another type of reduction, it would be
+  // better to fallback to native implementation
+  static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
+    // native reduce kernels don't support bf16
+    // so oneDNN kernel is enforced in that case
+    if (ctx.Input<framework::LoDTensor>("X")->dtype() ==
+        experimental::DataType::BFLOAT16)
+      return true;
+
+    auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
+    const bool reduce_all = ctx.Attr<bool>("reduce_all");
+    int ndims = ctx.Input<framework::LoDTensor>("X")->dims().size();
+
+    if (reduce_all) {
+      return true;
+    }
+
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      if (reduce_dims[i] < 0) reduce_dims[i] = ndims + reduce_dims[i];
+    }
+    sort(reduce_dims.begin(), reduce_dims.end());
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      if (reduce_dims[reduce_dims.size() - i - 1] !=
+          static_cast<int>(ndims - i - 1)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
@@ -554,7 +586,8 @@ class ReduceOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
+        HasOptimizedOneDNNKernel(ctx)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,

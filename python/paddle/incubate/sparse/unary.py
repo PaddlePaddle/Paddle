@@ -13,78 +13,16 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, core, convert_np_dtype_to_dtype_
 
 __all__ = []
 
 
 @dygraph_only
-def tanh(x, name=None):
-    """
-    sparse tanh activation, requiring x to be a sparse coo or sparse csr tensor.
-
-    .. math::
-
-        out = tanh(x)
-
-    Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Sparse Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.fluid.framework import _test_eager_guard
-
-            with _test_eager_guard():
-                dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
-                sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.incubate.sparse.tanh(sparse_x)
-    """
-    return _C_ops.final_state_sparse_tanh(x)
-
-
-@dygraph_only
-def sqrt(x, name=None):
-    """
-    Calculate square root of x, requiring x to be a sparse coo or sparse csr tensor.
-
-    .. math::
-
-        out = sqrt(x)
-
-    Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Sparse Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.fluid.framework import _test_eager_guard
-
-            with _test_eager_guard():
-                dense_x = paddle.to_tensor([4, 0, 1], dtype='float32')
-                sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.incubate.sparse.sqrt(sparse_x)
-    """
-    return _C_ops.final_state_sparse_sqrt(x)
-
-
-@dygraph_only
 def sin(x, name=None):
     """
-    Calculate sin of x, requiring x to be a sparse coo or sparse csr tensor.
-
+    Calculate elementwise sin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
     .. math::
 
         out = sin(x)
@@ -101,11 +39,467 @@ def sin(x, name=None):
         .. code-block:: python
 
             import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.sin(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_sin(x)
+
+
+@dygraph_only
+def tan(x, name=None):
+    """
+    Calculate elementwise tan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = tan(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.tan(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_tan(x)
+
+
+@dygraph_only
+def asin(x, name=None):
+    """
+    Calculate elementwise asin of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = asin(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.asin(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_asin(x)
+
+
+@dygraph_only
+def atan(x, name=None):
+    """
+    Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = atan(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.atan(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_atan(x)
+
+
+@dygraph_only
+def sinh(x, name=None):
+    """
+    Calculate elementwise sinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = sinh(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.sinh(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_sinh(x)
+
+
+@dygraph_only
+def asinh(x, name=None):
+    """
+    Calculate elementwise asinh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = asinh(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.asinh(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_asinh(x)
+
+
+@dygraph_only
+def atanh(x, name=None):
+    """
+    Calculate elementwise atanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = atanh(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.atanh(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_atanh(x)
+
+
+@dygraph_only
+def tanh(x, name=None):
+    """
+    Calculate elementwise tanh of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = tanh(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.tanh(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_tanh(x)
+
+
+@dygraph_only
+def square(x, name=None):
+    """
+    Calculate elementwise square of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = square(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.square(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_square(x)
+
+
+@dygraph_only
+def sqrt(x, name=None):
+    """
+    Calculate elementwise sqrt of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
+        
+    .. math::
+
+        out = sqrt(x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.sqrt(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_sqrt(x)
+
+
+@dygraph_only
+def log1p(x, name=None):
+    """
+    Calculate the natural log of (1+x), requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = ln(1+x)
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2, 0, 1], dtype='float32')
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.log1p(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_log1p(x)
+
+
+@dygraph_only
+def cast(x, index_dtype=None, value_dtype=None, name=None):
+    """
+    cast non-zero-index of SparseTensor to `index_dtype`, non-zero-element of SparseTensor to
+    `value_dtype` , requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        index_dtype (np.dtype|str, optional): Data type of the index of SparseCooTensor, 
+            or crows/cols of SparseCsrTensor. Can be uint8, int8, int16, int32, int64.
+        value_dtype (np.dtype|str, optional): Data type of the value of SparseCooTensor,
+            SparseCsrTensor. Can be bool, float16, float32, float64, int8, int32, int64, uint8.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2, 0, 1])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.cast(sparse_x, 'int32', 'float64')
+            
+    """
+    if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
+        index_dtype = convert_np_dtype_to_dtype_(index_dtype)
+    if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
+        value_dtype = convert_np_dtype_to_dtype_(value_dtype)
+    return _C_ops.final_state_sparse_cast(x, index_dtype, value_dtype)
+
+
+@dygraph_only
+def pow(x, factor, name=None):
+    """
+    Calculate elementwise pow of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = x^{factor}
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        factor (float|int): factor of pow.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.pow(sparse_x, 2)
+            
+    """
+    return _C_ops.final_state_sparse_pow(x, float(factor))
+
+
+@dygraph_only
+def neg(x, name=None):
+    """
+    Calculate elementwise negative of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = -x
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.neg(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_scale(x, -1.0, 0.0, True)
+
+
+@dygraph_only
+def abs(x, name=None):
+    """
+    Calculate elementwise absolute value of x, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = |x|
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.abs(sparse_x)
+            
+    """
+    return _C_ops.final_state_sparse_abs(x)
+
+
+@dygraph_only
+def coalesce(x):
+    r"""
+    the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+    Parameters:
+        x (Tensor): the input SparseCooTensor.
+
+    Returns:
+        Tensor: return the SparseCooTensor after coalesced.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.incubate import sparse
             from paddle.fluid.framework import _test_eager_guard
 
             with _test_eager_guard():
-                dense_x = paddle.to_tensor([-2, 0, 3], dtype='float32')
-                sparse_x = dense_x.to_sparse_coo(1)
-                out = paddle.incubate.sparse.sin(sparse_x)
-    """
-    return _C_ops.final_state_sparse_sin(x)
+                indices = [[0, 0, 1], [1, 1, 2]]
+                values = [1.0, 2.0, 3.0]
+                sp_x = sparse.sparse_coo_tensor(indices, values)
+                sp_x = sparse.coalesce(sp_x)
+                print(sp_x.indices())
+                #[[0, 1], [1, 2]]
+                print(sp_x.values())
+                #[3.0, 3.0]
+	"""
+    return _C_ops.final_state_sparse_coalesce(x)

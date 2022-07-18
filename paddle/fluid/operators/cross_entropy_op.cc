@@ -421,7 +421,7 @@ class CrossEntropyGradOpMaker2 : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
+using CPUCtx = phi::CPUContext;
 
 REGISTER_OPERATOR(cross_entropy,
                   ops::CrossEntropyOpBase,

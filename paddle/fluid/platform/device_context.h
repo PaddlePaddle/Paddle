@@ -59,6 +59,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
 #include <map>
@@ -134,21 +135,12 @@ constexpr DeviceType kMLU = DeviceType::MLU;
 
 using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = phi::CPUContext;
-// TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = phi::CPUContext directly.
-class CPUDeviceContext : public phi::CPUContext {
- public:
-  CPUDeviceContext();
-  explicit CPUDeviceContext(CPUPlace place);
-};
-
 template <typename Place>
 struct DefaultDeviceContextType;
 
 template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = CPUDeviceContext;
+  using TYPE = phi::CPUContext;
 };
 
 // Graphcore IPU
@@ -725,132 +717,8 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-
-class MKLDNNDeviceContextThreadLocals {
-  // default mkldnn session id
-
-  typedef MKLDNNDeviceContextThreadLocals self;
-  struct Body {
-    bool said_once = false;
-    size_t cur_mkldnn_session_id;
-    // Current data input shape string.
-    // - For fixed-shape, it's a null string in default.
-    // - For dynamic-shape, it's user specific.
-    std::string cur_input_shape_str;
-    // the cache capacity of different input shapes for MKLDNN.
-    // Default 1 means fixed input shape, not dynamic shape.
-    int cur_input_shape_cache_capacity;
-    // Recently registered data_format. This is needed to
-    // know for converting MKL-DNN Tensor to non MKL-DNN
-    paddle::framework::DataLayout cur_paddle_data_layout;
-    // MKL-DNN stream used for execution of primitives (per-thread)
-    dnnl::engine cur_engine;
-    dnnl::stream cur_stream;
-    std::string key_suffix;  // Key identifying current Executor
-    bool key_attach_thread_id = true;
-    void* exec_ptr_ = nullptr;
-
-    Body();
-    ~Body();
-    void set_cur_mkldnn_session_id(size_t sid);
-    size_t get_cur_mkldnn_session_id(void);
-    void set_cur_input_shape_str(std::string input_shape_str);
-    void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
-    void set_cur_paddle_data_layout(framework::DataLayout dl);
-    framework::DataLayout get_cur_paddle_data_layout(void);
-    void log_lib_version(void);
-    const dnnl::engine& get_engine(void);
-    dnnl::stream& get_stream(void);
-    void set_key_suffix(const std::string& suffix) { key_suffix = suffix; }
-    const std::string& get_key_suffix(void) const { return key_suffix; }
-    void disable_tid_in_key(void) { key_attach_thread_id = false; }
-    bool is_tid_used_in_key(void) const { return key_attach_thread_id; }
-    void set_curr_exec(void* exec_ptr) { exec_ptr_ = exec_ptr; }
-    void* get_curr_exec(void) const { return exec_ptr_; }
-  };
-  MKLDNNDeviceContextThreadLocals() = default;
-  MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
-      delete;
-
- public:
-  // default mkldnn session id
-  static constexpr size_t kMKLDNNSessionID_Default = 0;
-  // mkldnn session id for cache clearing mode
-  static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
-  static Body& fetch() {
-    thread_local Body b;
-    return b;
-  }
-};
-
-class MKLDNNDeviceContext : public CPUDeviceContext {
- public:
-  template <class T>
-  using BlobPtr_t = std::shared_ptr<T>;
-  template <class P1, class P2>
-  using umap_value_smart_t = std::unordered_map<P1, BlobPtr_t<P2>>;
-  template <class T>
-  using umap_key_string_t = umap_value_smart_t<std::string, T>;
-
-  // Following three maps are used to cache MKLDNN primitives.
-  // There relations are:
-  // - BlobMap = Map<cur_thread_id, ShapeBlob>
-  // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
-  // - KeyBlob  = Map<blob_name, blob>
-
-  using KeyBlob = umap_key_string_t<void>;
-  using ShapeBlob = umap_key_string_t<KeyBlob>;
-  using BlobMap = umap_value_smart_t<int, ShapeBlob>;
-
-  // Auxillary two-level structure (shape, executor) to easier control
-  // clearing cache objects related to specific executor
-
-  using ExecKey = void*;
-  using ExecMapCacheIterPair = std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>;
-  using ExecMap =
-      std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
-  using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
-
-  explicit MKLDNNDeviceContext(CPUPlace place);
-
-  /* \brief  Get the active engine */
-  const dnnl::engine& GetEngine() const { return tls().get_engine(); }
-
-  // Register object to currently used executor's map
-  void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
-  void RemoveShapeEntriesWithExecutor(void) const;
-
-  // Remove all entries from the blob map
-  void ResetBlobMap(void* ptr);
-
-  // Prevent next ResetBlobMap()
-  void BlockNextCacheClearing();
-
-  // Get the ShapeBlob size in cur_mkldnn_session_id.
-  size_t GetShapeBlobSize() const;
-
-  // Set data to blob (i.e. name/data pair). Create blob if not existing
-  void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
-
-  // Calculate number of oneDNN objects cached
-  unsigned int GetCachedObjectsNumber(void) const;
-
-  // Find a saved blob. Return nullptr if not found
-  std::shared_ptr<void> GetBlob(const std::string& name) const;
-
-  static auto tls() -> decltype(MKLDNNDeviceContextThreadLocals::fetch()) {
-    return MKLDNNDeviceContextThreadLocals::fetch();
-  }
-
- private:
-  std::shared_ptr<BlobMap> p_blobmap_;
-  // Map key is pointer of executor and value is a data(iterator in map) needed
-  // to erase
-  std::shared_ptr<ExecShape> p_exec_items_;
-  std::shared_ptr<std::mutex> p_mutex_;
-  // 0 - clearing is allowed. x > 0 do not clear.
-  unsigned int block_next_cache_clearing_ = 0;
-};
+using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
+using MKLDNNDeviceContext = phi::OneDNNContext;
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

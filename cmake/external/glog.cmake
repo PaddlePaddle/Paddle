@@ -45,7 +45,7 @@ if(WITH_ARM_BRPC)
   file(
     WRITE ${GLOG_SOURCE_DIR}/CMakeLists.txt
     "PROJECT(ARM_GLOGS)\n" "cmake_minimum_required(VERSION 3.0)\n"
-    "install(DIRECTORY arm_glog/include arm_glog/lib \n"
+    "install(DIRECTORY arm_glog/include arm_glog/lib\n"
     "        DESTINATION . USE_SOURCE_PERMISSIONS)\n")
   ExternalProject_Add(
     extern_glog

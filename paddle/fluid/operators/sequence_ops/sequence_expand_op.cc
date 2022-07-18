@@ -281,15 +281,13 @@ REGISTER_OPERATOR(sequence_expand,
 REGISTER_OPERATOR(sequence_expand_grad,
                   ops::SequenceExpandOpGrad,
                   ops::SequenceExpandGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand,
-    ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_grad,
-    ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_expand,
+                       ops::SequenceExpandKernel<phi::CPUContext, float>,
+                       ops::SequenceExpandKernel<phi::CPUContext, double>,
+                       ops::SequenceExpandKernel<phi::CPUContext, int>,
+                       ops::SequenceExpandKernel<phi::CPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_expand_grad,
+                       ops::SequenceExpandGradKernel<phi::CPUContext, float>,
+                       ops::SequenceExpandGradKernel<phi::CPUContext, double>,
+                       ops::SequenceExpandGradKernel<phi::CPUContext, int>,
+                       ops::SequenceExpandGradKernel<phi::CPUContext, int64_t>);

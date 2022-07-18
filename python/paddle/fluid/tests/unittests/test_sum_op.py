@@ -384,6 +384,29 @@ class API_Test_Add_n(unittest.TestCase):
                 self.assertEqual(
                     (input1.grad.numpy() == expected_grad_result).all(), True)
 
+    def test_add_n_and_add_and_grad(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([[1, 2, 3], [4, 5, 6]])
+            np_y = [[7, 8, 9], [10, 11, 12]]
+            np_z = [[1, 1, 1], [1, 1, 1]]
+            x = paddle.to_tensor(np_x, dtype='float32', stop_gradient=False)
+            y = paddle.to_tensor(np_y, dtype='float32', stop_gradient=False)
+            z = paddle.to_tensor(np_z, dtype='float32')
+
+            out1 = x + z
+            out2 = y + z
+            out = paddle.add_n([out1, out2])
+
+            dx, dy = paddle.grad([out], [x, y], create_graph=True)
+
+            expected_out = np.array([[10., 12., 14.], [16., 18., 20.]])
+            expected_dx = np.array([[1, 1, 1], [1, 1, 1]])
+            expected_dy = np.array([[1, 1, 1], [1, 1, 1]])
+
+            self.assertTrue(np.allclose(out, expected_out))
+            self.assertTrue(np.allclose(dx, expected_dx))
+            self.assertTrue(np.allclose(dy, expected_dy))
+
 
 class TestRaiseSumError(unittest.TestCase):
 

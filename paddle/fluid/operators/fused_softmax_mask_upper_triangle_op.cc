@@ -104,10 +104,7 @@ REGISTER_OPERATOR(
     ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
-REGISTER_OP_CPU_KERNEL(fused_softmax_mask_upper_triangle,
-                       ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
-                           paddle::platform::CPUDeviceContext,
-                           float>,
-                       ops::SoftmaxMaskFuseUpperTriangleCPUKernel<
-                           paddle::platform::CPUDeviceContext,
-                           double>);
+REGISTER_OP_CPU_KERNEL(
+    fused_softmax_mask_upper_triangle,
+    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, float>,
+    ops::SoftmaxMaskFuseUpperTriangleCPUKernel<phi::CPUContext, double>);

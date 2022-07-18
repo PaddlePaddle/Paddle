@@ -81,7 +81,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
+      auto* temp_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
       return temp_data;
     };
 
