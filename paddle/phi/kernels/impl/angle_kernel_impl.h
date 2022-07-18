@@ -31,8 +31,9 @@ void AnagleKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = out->mutable_data<phi::dtype::Real<T>>(
-      dev_ctx.GetPlace(), size_t(x.numel() * sizeof(phi::dtype::Real<T>)));
+  out->Resize(x.dims());
+  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+
   funcs::ForRange<Context> for_range(dev_ctx, numel);
   funcs::AngleFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);

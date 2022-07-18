@@ -33,8 +33,8 @@ void AnagleGradKernel(const Context& dev_ctx,
   auto numel = out_grad.numel();
   auto* dout_data = out_grad.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();
-  auto* dx_data = x_grad->mutable_data<T>(
-      dev_ctx.GetPlace(), static_cast<size_t>(numel * sizeof(T)));
+  x_grad->Resize(out_grad.dims());
+  auto* dx_data = dev_ctx.template Alloc<T>(x_grad);
 
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::AngleGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
