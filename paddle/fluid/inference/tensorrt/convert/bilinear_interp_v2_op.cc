@@ -51,6 +51,17 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     auto align_mode = BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
 
     auto resize_inputs = op_desc.Inputs();
+    // A 1D int32 tensor
+    nvinfer1::ITensor* outsize_tensor = nullptr;
+    if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+      if (op_desc.Input("OutSize").size() >= 1) {
+        outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
+      }
+    }
+
+    std::cout << outsize_tensor->getDimensions().d[0] << std::endl;
+    std::cout << outsize_tensor->getDimensions().d[1] << std::endl;
+
     auto input_names = op_desc.Input("X");
     auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
@@ -103,12 +114,17 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     std::vector<float> scales;
+    std::vector<nvinfer1::ITensor*> outsize_tensor_vec;
 
     if (engine_->with_dynamic_shape()) {
+      outsize_tensor_vec.push_back(Add1DConstantLayer(1));
       scales.push_back(1.f);
     }
 
     if (data_layout == framework::DataLayout::kNCHW) {
+      outsize_tensor_vec.push_back(Add1DConstantLayer(3));
+      // outsize_tensor_vec.push_back(Add1DConstantLayer(32));
+      // outsize_tensor_vec.push_back(Add1DConstantLayer(32));
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
@@ -121,7 +137,20 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
           "Data layout must be NCHW or NHWC."));
     }
 
-    layer->setScales(scales.data(), scales.size());
+    if (outsize_tensor) {
+      auto* tmp_tensor = Concat(outsize_tensor_vec);
+      std::vector<nvinfer1::ITensor*> tmp_vec{tmp_tensor, outsize_tensor};
+      layer->setInput(1, *Concat(tmp_vec));
+      // layer->setInput(1, *Concat(outsize_tensor_vec));
+    } else {
+      layer->setScales(scales.data(), scales.size());
+    }
+
+    std::cout << layer->getOutput(0)->getDimensions().d[0] << std::endl;
+    std::cout << layer->getOutput(0)->getDimensions().d[1] << std::endl;
+    std::cout << layer->getOutput(0)->getDimensions().d[2] << std::endl;
+    std::cout << layer->getOutput(0)->getDimensions().d[3] << std::endl;
+
     RreplenishLayerAndOutput(
         layer, "bilinear_interp_v2", {output_name}, test_mode);
   }
