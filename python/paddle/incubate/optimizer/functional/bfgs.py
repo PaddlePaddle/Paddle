@@ -14,8 +14,8 @@
 
 import numpy as np
 
-from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+from line_search import strong_wolfe
+from utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
 
 import paddle
 from paddle.fluid.optimizer import Optimizer
@@ -24,7 +24,7 @@ from paddle import _C_ops
 
 def minimize_bfgs(objective_func,
                   initial_position,
-                  max_iters=10,
+                  max_iters=2,
                   tolerance_grad=1e-7,
                   tolerance_change=1e-20,
                   initial_inverse_hessian_estimate=None,
@@ -141,7 +141,7 @@ def minimize_bfgs(objective_func,
                 "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".
                 format(line_search_fn))
         #print("value: ", value)
-        print("alpha: ", alpha)
+        #print("alpha: ", alpha)
         num_func_calls += ls_func_calls
         #############    update Hk    #############
         sk = alpha * pk
@@ -181,128 +181,3 @@ def minimize_bfgs(objective_func,
         body=body,
         loop_vars=[k, done, is_converge, num_func_calls, xk, value, g1, Hk])
     return is_converge, num_func_calls, xk, value, g1, Hk
-
-
-class LossAndFlatGradient:
-    """A helper class to create a function required by tfp.optimizer.lbfgs_minimize.
-    Args:
-        trainable_variables: Trainable variables.
-        build_loss: A function to build the loss function expression.
-    """
-
-    def __init__(self, net, build_loss):
-        self.net = net
-        self.weights = self.net.parameters()
-        self.build_loss = build_loss
-
-        # Shapes of all trainable parameters
-        self.shapes = [paddle.shape(weight) for weight in self.weights]
-        self.n_tensors = len(self.shapes)
-
-        # Information for tf.dynamic_stitch and tf.dynamic_partition later
-        self.count = 0
-        self.indices = []  # stitch indices
-        self.partitions = []  # partition indices
-        for i, shape in enumerate(self.shapes):
-
-            n = paddle.prod(shape).item()
-            self.indices.append(
-                paddle.reshape(
-                    paddle.arange(
-                        self.count, self.count + n, dtype='float32'),
-                    shape))
-            self.partitions.append(n)
-            self.count += n
-
-    def __call__(self, weights_1d):
-        """A function that can be used by tfp.optimizer.lbfgs_minimize.
-        Args:
-           weights_1d: a 1D tf.Tensor.
-        Returns:
-            A scalar loss and the gradients w.r.t. the `weights_1d`.
-        """
-        # Set the weights
-        for weight in self.weights:
-            weight.clear_grad()
-        self.set_flat_weights(weights_1d)
-        loss = self.build_loss()
-        loss.backward()
-        grad = self.dynamic_stitch([param.grad for param in self.weights])
-
-        return loss, grad
-
-    def dynamic_stitch(self, inputs):
-        flattened_weights = [paddle.flatten(weight) for weight in inputs]
-        concat_weights = paddle.concat(flattened_weights)
-        return concat_weights
-
-    def dynamic_partition(self, weights_1d, partitions, n_tensors):
-        split_weights = paddle.split(weights_1d, self.partitions)
-        original_weights = [
-            paddle.reshape(weight, shape)
-            for weight, shape in zip(split_weights, self.shapes)
-        ]
-        return original_weights
-
-    def set_flat_weights(self, weights_1d):
-        """Sets the weights with a 1D tf.Tensor.
-        Args:
-            weights_1d: a 1D tf.Tensor representing the trainable variables.
-        """
-        #weights = self.dynamic_partition(weights_1d, self.partitions,
-        #self.n_tensors)
-        #for i, (shape, param) in enumerate(zip(self.shapes, weights)):
-        #paddle.assign(self.net.parameters()[i], paddle.reshape(param, shape))
-
-        with paddle.no_grad():
-            for i in range(len(self._flat_weight)):
-                self._flat_weight[i] = weights_1d[i]
-
-    def to_flat_weights(self, weights):
-        """Returns a 1D tf.Tensor representing the `weights`.
-        Args:
-            weights: A list of tf.Tensor representing the weights.
-        Returns:
-            A 1D tf.Tensor representing the `weights`.
-        """
-        _all_weights = [None] * len(self.weights)
-        _all_weights = [w for w in self.weights]
-
-        self._flat_weight = paddle.create_parameter(
-            shape=[self.count], dtype='float32')
-        #if paddle.fluid.in_dygraph_mode():
-        with paddle.no_grad():
-            _C_ops.coalesce_tensor(
-                _all_weights, _all_weights, self._flat_weight, "copy_data",
-                True, "use_align", False, "dtype", self.weights[0].dtype)
-
-        # 计算loss后马上计算loss对flat_weight的梯度，仍然报错说无关
-        # loss = self.build_loss()
-        # gradient = paddle.grad([loss], [self._flat_weight], create_graph=False)[0]
-        # print("gradient: ", gradient)
-        return self._flat_weight
-        # for static-graph, append coalesce_tensor into startup program
-        # with program_guard(default_startup_program(),
-        #                     default_startup_program()):
-        #     with paddle.no_grad():
-        #         self._helper.append_op(
-        #             type="coalesce_tensor",
-        #             inputs={"Input": self._all_weights},
-        #             outputs={
-        #                 "Output": self._all_weights,
-        #                 "FusedOutput": self._flat_weight
-        #             },
-        #             attrs={
-        #                 "copy_data": True,
-        #                 "use_align": False,
-        #                 "dtype": params[0].dtype
-        #             })
-        #     return self._flat_weight
-
-
-def bfgs_minimize(net, build_loss, previous_optimizer_results=None):
-    func = LossAndFlatGradient(net, build_loss)
-    initial_position = func.to_flat_weights(net.parameters())
-    results = minimize_bfgs(func, initial_position=initial_position)
-    func.set_flat_weights(results[2])
-    return results
