@@ -647,6 +647,16 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   need_update_ = true;
 }
 
+void OpDesc::SetVarAttr(const std::string &name, VarDesc *var) {
+  this->attrs_[name] = var;
+  need_update_ = true;
+}
+
+void OpDesc::SetVarsAttr(const std::string &name, std::vector<VarDesc *> vars) {
+  this->attrs_[name] = vars;
+  need_update_ = true;
+}
+
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
   need_update_ = true;
@@ -790,6 +800,19 @@ struct SetAttrDescVisitor {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
+
+  void operator()(const std::vector<VarDesc *> &v) const {
+    std::vector<std::string> var_names;
+    for (auto var : v) {
+      var_names.emplace_back(var->Name());
+    }
+    VectorToRepeated(var_names, attr_->mutable_vars_name());
+  }
+
+  void operator()(const VarDesc *desc) const {
+    attr_->set_var_name(desc->Name());
+  }
+
   void operator()(const std::vector<BlockDesc *> &v) const {
     std::vector<int> blocks_idx;
     for (auto blk : v) {
@@ -914,6 +937,21 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     InferVarTypeContext context(this, block);
     info.infer_var_type_(&context);
   }
+}
+
+VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
+  auto *cur_block = block_;
+  while (cur_block->ID() >= 0) {
+    auto *var = block_->FindVar(name);
+    if (var != nullptr) {
+      return var;
+    }
+    cur_block = cur_block->ParentBlock();
+  }
+  PADDLE_THROW(platform::errors::NotFound(
+      "Not found Var(%s) from Block(%d) back into global Block.",
+      name,
+      cur_block->ID()));
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

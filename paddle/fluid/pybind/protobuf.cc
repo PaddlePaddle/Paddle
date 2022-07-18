@@ -328,6 +328,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
       .def("attr", &pd::OpDesc::GetAttr)
+      .def("set_var_attr", &pd::OpDesc::SetVarAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
