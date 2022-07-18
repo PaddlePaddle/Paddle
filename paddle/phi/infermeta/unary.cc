@@ -3378,6 +3378,11 @@ void IdentityLossInferMeta(const MetaTensor& x,
   }
 }
 
+void ExponentialInferMeta(const MetaTensor& x, float lambda, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
