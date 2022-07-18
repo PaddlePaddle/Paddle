@@ -33,6 +33,7 @@ class _Conv3D(Layer):
                  dilation=1,
                  groups=1,
                  subm=False,
+                 key=None,
                  padding_mode='zeros',
                  weight_attr=None,
                  bias_attr=None,
@@ -46,6 +47,7 @@ class _Conv3D(Layer):
         self._out_channels = out_channels
         self._data_format = data_format
         self._subm = subm
+        self._key = key
 
         assert padding_mode == 'zeros', "Currently, only support padding_mode='zeros'"
         assert groups == 1, "Currently, only support groups=1"
@@ -95,6 +97,7 @@ class _Conv3D(Layer):
                              dilation=self._dilation,
                              groups=self._groups,
                              subm=self._subm,
+                             key=self._key,
                              data_format=self._data_format)
         return out
 
@@ -240,6 +243,7 @@ class Conv3D(_Conv3D):
                                      dilation=dilation,
                                      groups=groups,
                                      subm=False,
+                                     key=None,
                                      padding_mode=padding_mode,
                                      weight_attr=weight_attr,
                                      bias_attr=bias_attr,
@@ -361,6 +365,7 @@ class SubmConv3D(_Conv3D):
                  dilation=1,
                  groups=1,
                  padding_mode='zeros',
+                 key=None,
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NDHWC"):
@@ -372,6 +377,7 @@ class SubmConv3D(_Conv3D):
                                          dilation=dilation,
                                          groups=groups,
                                          subm=True,
+                                         key=key,
                                          padding_mode=padding_mode,
                                          weight_attr=weight_attr,
                                          bias_attr=bias_attr,

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -55,6 +55,7 @@ template <typename T, typename IntT = int>
 void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& rulebook,
+                          const DenseTensor& counter,
                           const SparseCooTensor& out,
                           const SparseCooTensor& out_grad,
                           const std::vector<int>& kernel_sizes,
@@ -63,23 +64,9 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
   const int in_channels = x.dims()[4];
   int rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
-  std::vector<IntT> offsets(kernel_size + 1), counter(kernel_size, 0),
-      h_counter(rulebook_len, 0);
-  phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
-                                     rulebook_ptr,
-                                     rulebook_len * sizeof(IntT),
-#ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
-#else
-                                     cudaMemcpyDeviceToHost,
-#endif
-
-                                     dev_ctx.stream());
-  dev_ctx.Wait();
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[h_counter[i]] += 1;
-  }
-  phi::funcs::sparse::PrefixSum(&counter[0], &offsets[0], kernel_size);
+  std::vector<int> offsets(kernel_size + 1);
+  const int* counter_ptr = counter.data<int>();
+  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
   const T* out_features_ptr = out.non_zero_elements().data<T>();
@@ -99,12 +86,12 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
                         &x_grad_indices);
 
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0) {
+    if (counter_ptr[i] <= 0) {
       continue;
     }
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, counter[i] * in_channels, 1);
+        dev_ctx, counter_ptr[i] * in_channels, 1);
     MaxPoolGradCudaKernel<T, IntT>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
@@ -112,8 +99,8 @@ void MaxPoolGradGPUKernel(const GPUContext& dev_ctx,
            dev_ctx.stream()>>>(in_features_ptr,
                                out_features_ptr,
                                out_grad_ptr,
-                               rulebook_ptr + offsets[i] + rulebook_len,
-                               counter[i],
+                               rulebook_ptr + offsets[i],
+                               counter_ptr[i],
                                rulebook_len,
                                in_channels,
                                x_grad_ptr);
@@ -124,6 +111,7 @@ template <typename T, typename Context>
 void MaxPoolGradKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const DenseTensor& rulebook,
+                       const DenseTensor& counter,
                        const SparseCooTensor& out,
                        const SparseCooTensor& out_grad,
                        const std::vector<int>& kernel_sizes,
@@ -131,7 +119,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolGradGPUKernel", ([&] {
         MaxPoolGradGPUKernel<T, data_t>(
-            dev_ctx, x, rulebook, out, out_grad, kernel_sizes, x_grad);
+            dev_ctx, x, rulebook, counter, out, out_grad, kernel_sizes, x_grad);
       }));
 }
 

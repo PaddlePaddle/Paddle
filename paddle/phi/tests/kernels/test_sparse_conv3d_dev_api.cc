@@ -112,8 +112,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
   };
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    DenseTensor rulebook = phi::Empty(
-        dev_ctx_cpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
+    DenseTensor rulebook, counter;
     SparseCooTensor out = sparse::Conv3dCoo<T>(dev_ctx_cpu,
                                                x_tensor,
                                                kernel_tensor,
@@ -122,7 +121,9 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                                strides,
                                                1,
                                                subm,
-                                               &rulebook);
+                                               "Conv3d",
+                                               &rulebook,
+                                               &counter);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -142,13 +143,16 @@ void TestConv3dBase(const std::vector<IntT>& indices,
           sparse::Conv3dCooGrad<T>(dev_ctx_cpu,
                                    x_tensor,
                                    kernel_tensor,
+                                   out,
                                    rulebook,
+                                   counter,
                                    out,
                                    paddings,
                                    dilations,
                                    strides,
                                    1,
-                                   subm);
+                                   subm,
+                                   "Conv3d");
       f_verify(std::get<0>(grads).non_zero_elements().data<T>(), features_grad);
       f_verify(std::get<1>(grads).data<T>(), kernel_grad);
     }
@@ -196,8 +200,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
   phi::Copy(
       dev_ctx_gpu, kernel_tensor, phi::GPUPlace(), true, &d_kernel_tensor);
 
-  DenseTensor d_rulebook = phi::Empty(
-      dev_ctx_gpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
+  DenseTensor d_rulebook, d_counter;
   SparseCooTensor d_out = sparse::Conv3dCoo<T>(dev_ctx_gpu,
                                                d_x_tensor,
                                                d_kernel_tensor,
@@ -206,7 +209,10 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                                strides,
                                                1,
                                                subm,
-                                               &d_rulebook);
+                                               "Conv3d",
+                                               &d_rulebook,
+                                               &d_counter);
+  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
   SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
@@ -245,13 +251,16 @@ void TestConv3dBase(const std::vector<IntT>& indices,
         sparse::Conv3dCooGrad<T>(dev_ctx_gpu,
                                  d_x_tensor,
                                  d_kernel_tensor,
+                                 d_out,
                                  d_rulebook,
+                                 d_counter,
                                  d_out,
                                  paddings,
                                  dilations,
                                  strides,
                                  1,
-                                 subm);
+                                 subm,
+                                 "Conv3d");
     DenseTensor d_features_grad = std::get<0>(grads).non_zero_elements();
     DenseTensor d_kernel_grad = std::get<1>(grads);
     DenseTensor h_features_grad =

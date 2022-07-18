@@ -29,6 +29,7 @@ def _conv3d(x,
             dilation=1,
             groups=1,
             subm=False,
+            key=None,
             data_format="NDHWC",
             name=None):
     assert in_dynamic_mode(), "Currently, only support dynamic mode"
@@ -62,8 +63,9 @@ def _conv3d(x,
     dilation = convert_to_list(dilation, dims, 'dilation')
     op_type = "conv3d"
 
-    pre_bias = _C_ops.final_state_sparse_conv3d(x, weight, padding, dilation,
-                                                stride, groups, subm)
+    pre_bias = _C_ops.final_state_sparse_conv3d_coo(
+        x, weight, padding, dilation, stride, groups, subm,
+        key if key is not None else "")
     if bias is not None:
         values = pre_bias.values()
         add_bias = elementwise_add(values, bias, axis=1)
@@ -186,7 +188,7 @@ def conv3d(x,
               # (1, 1, 1, 2, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
-                   data_format, name)
+                   None, data_format, name)
 
 
 def subm_conv3d(x,
@@ -197,6 +199,7 @@ def subm_conv3d(x,
                 dilation=1,
                 groups=1,
                 data_format="NDHWC",
+                key=None,
                 name=None):
     r"""
 
@@ -301,4 +304,4 @@ def subm_conv3d(x,
               #(1, 1, 3, 4, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, True,
-                   data_format, name)
+                   key, data_format, name)

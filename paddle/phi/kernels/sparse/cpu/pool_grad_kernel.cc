@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -28,6 +28,7 @@ template <typename T, typename IntT = int>
 void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& rulebook,
+                          const DenseTensor& counter,
                           const SparseCooTensor& out,
                           const SparseCooTensor& out_grad,
                           const std::vector<int>& kernel_sizes,
@@ -36,11 +37,10 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
   const int channels = x.dims()[4];
   int rulebook_len = rulebook.dims()[1];
   const IntT* rulebook_ptr = rulebook.data<IntT>();
-  std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[rulebook_ptr[i]] += 1;
-  }
-  phi::funcs::sparse::PrefixSum(&counter[0], &offsets[0], kernel_size);
+  std::vector<int> offsets(kernel_size + 1);
+  const int* counter_ptr = counter.data<int>();
+
+  phi::funcs::sparse::PrefixSum(counter_ptr, &offsets[0], kernel_size);
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
   const T* out_features_ptr = out.non_zero_elements().data<T>();
@@ -60,7 +60,7 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
 
   phi::funcs::MaxPoolGrad<T> grad_functor;
   for (int i = 0; i < kernel_size; i++) {
-    for (int j = 0; j < counter[i]; j++) {
+    for (int j = 0; j < counter_ptr[i]; j++) {
       IntT in_i = rulebook_ptr[rulebook_len + offsets[i] + j];
       IntT out_i = rulebook_ptr[rulebook_len * 2 + offsets[i] + j];
       for (int c = 0; c < channels; c++) {
@@ -78,6 +78,7 @@ template <typename T, typename Context>
 void MaxPoolGradKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const DenseTensor& rulebook,
+                       const DenseTensor& counter,
                        const SparseCooTensor& out,
                        const SparseCooTensor& out_grad,
                        const std::vector<int>& kernel_sizes,
@@ -85,7 +86,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
   PD_VISIT_INTEGRAL_TYPES(
       x.non_zero_indices().dtype(), "MaxPoolGradCPUKernel", ([&] {
         MaxPoolGradCPUKernel<T, data_t>(
-            dev_ctx, x, rulebook, out, out_grad, kernel_sizes, x_grad);
+            dev_ctx, x, rulebook, counter, out, out_grad, kernel_sizes, x_grad);
       }));
 }
 
