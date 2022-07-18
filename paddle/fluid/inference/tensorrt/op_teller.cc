@@ -169,6 +169,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
+      "fill_constant",
       "squeeze2",
       "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
@@ -274,6 +275,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
+      "fill_constant",
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune"};
@@ -1456,6 +1458,27 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
+    if (op_type == "fill_constant") {
+      auto fill_constant_inputs = desc.Inputs();
+      if (fill_constant_inputs.find("ValueTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ValueTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensorList") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensorList").size()) return false;
+      }
+      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      // only support int32, int64, float32
+      if (!(dtype == 2 || dtype == 3 || dtype == 5)) {
+        return false;
+      }
+    }
+
     if (op_type == "instance_norm") {
       if (with_dynamic_shape) {
         VLOG(3) << "trt instance_norm op does not support dynamic shape ";
@@ -1809,6 +1832,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
+      if (with_dynamic_shape) {
+        return true;
+      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
@@ -2043,6 +2069,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "cast") {
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
       int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
       if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {

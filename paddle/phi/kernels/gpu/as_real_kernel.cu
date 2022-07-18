@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/complex_view_op.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/as_real_kernel.h"
 
-namespace ops = paddle::operators;
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/as_real_impl.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    as_complex,
-    ops::AsComplexKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AsComplexKernel<paddle::platform::CUDADeviceContext, double>);
+PD_REGISTER_KERNEL(as_real, GPU, ALL_LAYOUT, phi::AsRealKernel, float, double) {
+}

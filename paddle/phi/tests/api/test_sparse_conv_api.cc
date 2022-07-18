@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 
-PD_DECLARE_KERNEL(sparse_conv3d, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(conv3d_coo, CPU, ALL_LAYOUT);
 
 template <typename T>
 void TestConv3dBase(const std::vector<int>& indices,
