@@ -64,7 +64,7 @@ class DeviceEvent {
                           "Required type < %d, but received type = %d",
                           MaxDeviceTypes,
                           type_id_));
-    // TODO(Aurelius84): only support CPU/CUDA, need consider XPU/NPU later
+    // TODO(Aurelius84): only support CPU/CUDA/XPU/NPU.
     PADDLE_ENFORCE_LT(type_id_,
                       4,
                       platform::errors::Unavailable(
