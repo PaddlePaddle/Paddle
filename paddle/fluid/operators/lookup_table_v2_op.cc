@@ -105,6 +105,7 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
         .SetDefault(0)
         .AsExtra();
+    AddAttr<int>("slot", "slot of id").SetDefault(0).AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
         .SetDefault(std::vector<int64_t>({}))
