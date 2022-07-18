@@ -48,7 +48,7 @@ class MulLstmFusePassTest(InferencePassTest):
     def test_check_output(self):
         use_gpu = False
         self.check_output_with_option(use_gpu)
-        self.assertTrue(PassVersionChecker.IsCompatible('mul_lstm_fuse_pass'))
+        self.assertTrue(PassVersionChecker.IsCompatible('fc_lstm_fuse_pass'))
 
 
 if __name__ == "__main__":
