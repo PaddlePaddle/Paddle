@@ -18,7 +18,6 @@
 #endif
 #include <cmath>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
