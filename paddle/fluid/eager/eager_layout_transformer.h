@@ -15,19 +15,25 @@
 #pragma once
 
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/imperative/layout_autotune.h"
 namespace egr {
-class LayoutTransformer {
+class EagerLayoutTransformer {
  public:
-  explicit LayoutTransformer(const std::string& op_name) : op_name_(op_name) {
+  EagerLayoutTransformer() : op_name_("") {}
+  explicit EagerLayoutTransformer(const std::string& op_name)
+      : op_name_(op_name) {
     use_autotune_ = false;
-    desired_layout_ = "Undefine";
+    desired_layout_ = "UNDEFINED";
   }
   template <typename T1>
-  void SetAttr(T1 attr) {}
+  void SetAttr(T1 attr) {
+    use_autotune_ = false;
+    desired_layout_ = "UNDEFINED";
+  }
   template <typename T1, typename T2>
   void SetAttr(T1 attr1, T2 attr2) {}
 
-  virtual ~LayoutTransformer() {}
+  virtual ~EagerLayoutTransformer() {}
 
   virtual paddle::experimental::Tensor TransInTensor(
       const paddle::experimental::Tensor in) {
@@ -36,11 +42,59 @@ class LayoutTransformer {
 
  protected:
   bool use_autotune_;
-  std::string desired_layout_;
-
   const std::string op_name_;
-  std::vector<std::string> outs_{};
-  std::vector<std::string> attrs_{};
+  std::string desired_layout_;
+};
+
+class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
+ public:
+  EagerHeavilyLayoutSensitiveOpTransformer() : op_name_("") {}
+  explicit EagerHeavilyLayoutSensitiveOpTransformer(const std::string& op_name)
+      : op_name_(op_name) {
+    use_autotune_ = false;
+    final_layout_ = "UNDEFINED";
+  }
+  template <typename T1>
+  void SetAttr(T1 layout) {
+    // Step 1: Adjust the data_layout attr to the desired layout
+    auto desired_layout =
+        paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+    std::string desired_layout_str =
+        paddle::framework::DataLayoutToString(desired_layout);
+    if (layout != desired_layout_str) {
+      VLOG(4) << "Origin layout attr: " << layout
+              << ", Desired layout attr: " << desired_layout_str;
+      final_layout_ = desired_layout_str;
+      use_autotune_ = true;
+    }
+  }
+
+  virtual paddle::experimental::Tensor TransInTensor(
+      paddle::experimental::Tensor in) {
+    std::vector<int> axis;
+    if (paddle::framework::DataLayoutToString(in.layout()) != final_layout_) {
+      if (final_layout_ == "NHWC") {
+        axis = {0, 2, 3, 1};
+      } else if (final_layout_ == "NCHW") {
+        axis = {0, 3, 1, 2};
+      } else {
+        axis = {0, 1, 2, 3};
+      }
+      auto out_tensor = transpose_final_state_dygraph_function(in, axis);
+      VLOG(4) << "Transpose asdfasdfas ";
+      return out_tensor;
+    }
+    return in;
+  }
+
+  std::string GetOutLayout() { return final_layout_; }
+
+  virtual ~EagerHeavilyLayoutSensitiveOpTransformer() {}
+
+ protected:
+  bool use_autotune_;
+  const std::string op_name_;
+  std::string final_layout_;
 };
 
 }  // namespace egr

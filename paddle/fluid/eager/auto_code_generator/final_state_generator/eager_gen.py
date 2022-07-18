@@ -964,15 +964,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         heavily_flag = True
         if len(layout_autotune_attr) == 0:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerAutotuneLayoutTransformer(op_name, tensors_vector);\n"
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
             )
         elif len(layout_autotune_attr) == 1:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerAutotuneLayoutTransformer<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, {layout_autotune_attr[0]});\n"
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, {layout_autotune_attr[0]});\n"
             )
         elif len(layout_autotune_attr) == 2:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerAutotuneLayoutTransformer<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name,tensors_vector, {layout_autotune_attr[0]}, {layout_autotune_attr[1]});\n"
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name,tensors_vector, {layout_autotune_attr[0]}, {layout_autotune_attr[1]});\n"
             )
 
         for name, atype, default_val, pos in forward_attrs_list:

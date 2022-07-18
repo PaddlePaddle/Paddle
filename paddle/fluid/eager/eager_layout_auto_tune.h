@@ -20,39 +20,52 @@
 namespace egr {
 
 // layout_agnostic_ops_
-inline LayoutTransformer EagerAutotuneLayoutTransformer(
+inline EagerLayoutTransformer EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector) {
   VLOG(3) << "asdf Optimze Layout agnostic op: " << op_name;
-  auto transposer = LayoutTransformer(op_name);
+  auto transposer = EagerLayoutTransformer(op_name);
   return transposer;
 }
 
+// lightly and heavily
 template <typename T>  // default int
-inline LayoutTransformer EagerAutotuneLayoutTransformer(
+inline EagerLayoutTransformer EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     const T& attr) {
-  VLOG(3) << "asdf Optimze Layout agnostic op: " << op_name;
-  auto transposer = LayoutTransformer(op_name);
+  auto transposer = EagerLayoutTransformer(op_name);
   return transposer;
 }
-template <>  // default int
-inline LayoutTransformer EagerAutotuneLayoutTransformer(
+
+// lightly
+template <typename T1, typename T2>
+inline EagerLayoutTransformer EagerLayoutAutotune(
+    const std::string& op_name,
+    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector,
+    const T1& attr1,
+    const T2& attr2) {
+  auto transposer = EagerLayoutTransformer(op_name);
+  return transposer;
+}
+
+// heavily
+template <>
+inline EagerLayoutTransformer EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     const std::string& attr) {
-  auto transposer = LayoutTransformer(op_name);
+  auto transposer = EagerLayoutTransformer(op_name);
   if (paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout() ==
       paddle::experimental::DataLayout::UNDEFINED) {
     // Layout autotune only supports model with convolutional layers
     if (op_name != "conv2d") {
       return transposer;
     } else {
-      VLOG(3) << "asdf Optimze Layout lightly or heavily op: " << op_name;
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
           (data_type == paddle::experimental::DataType::FLOAT32) &&
@@ -67,7 +80,6 @@ inline LayoutTransformer EagerAutotuneLayoutTransformer(
         paddle::imperative::LayoutAutoTune::Instance().SetDesiredLayout(
             paddle::experimental::DataLayout::NHWC);
       } else {
-        VLOG(3) << "DisableLayoutAutoTune";
         paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune();
         return transposer;
       }
@@ -78,20 +90,19 @@ inline LayoutTransformer EagerAutotuneLayoutTransformer(
     }
   }
 
-  // set layout
-  return transposer;
-}
+  if (paddle::imperative::LayoutAutoTune::Instance().IsHeavilyLayoutSensitive(
+          op_name)) {
+    auto heavily_trans = EagerHeavilyLayoutSensitiveOpTransformer(op_name);
+    auto tensor_tmp = heavily_trans.TransInTensor(tensors_vector[0][0]);
+    return heavily_trans;
+  } else {
+    VLOG(4) << op_name
+            << "'s LayoutTransformer is unimplemented. Use default "
+               "LayoutTransformer instead.";
+    return transposer;
+  }
 
-template <typename T1, typename T2>  // default int
-inline LayoutTransformer EagerAutotuneLayoutTransformer(
-    const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                               kSlotSmallVectorSize>& amp_tensors_vector,
-    const T1& attr1,
-    const T2& attr2) {
-  VLOG(4) << "asdf Layout asdf AmpAutoCasts: inputs(" << op_name;
-  auto transposer = LayoutTransformer(op_name);
-  transposer.SetAttr<T1, T2>(attr1, attr2);
+  // set layout
   return transposer;
 }
 
