@@ -358,15 +358,15 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
-Input("{{name_in_forward_orig | to_pascal_case}}")
+Input("{{name_in_forward_orig}}")
   {%- elif name in output_names %}
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
-Output("{{name | to_pascal_case}}")
+Output("{{name}}")
   {%- elif name.endswith("_grad") %}{# output grad#}
     {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
-OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
+OutputGrad("{{name_in_forward_orig}}")
     {%- endif %}
   {%- endif %}
 {%- endmacro %}
@@ -376,11 +376,11 @@ OutputGrad("{{name_in_forward_orig | to_pascal_case}}")
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name[:-5] | to_pascal_case}}")
+InputGrad("{{name[:-5]}}")
   {%- elif (name | to_input_name) in input_names %}
     {% set name_in_forward = name | to_input_name %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name | to_input_name | to_pascal_case}}")
+InputGrad("{{name | to_input_name}}")
   {%- endif %}
 {%- endmacro %}
 

@@ -119,7 +119,6 @@ cc_library(
        string_helper
        device_context
        gflags
-       glog
-       boost)
+       glog)
 
 target_link_libraries(table -fopenmp)

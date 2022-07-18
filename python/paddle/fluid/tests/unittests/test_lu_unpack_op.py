@@ -190,6 +190,9 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
 class TestLU_UnpackAPI(unittest.TestCase):
 
+    def setUp(self):
+        np.random.seed(2022)
+
     def test_dygraph(self):
 
         def run_lu_unpack_dygraph(shape, dtype):
