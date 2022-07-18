@@ -44,6 +44,12 @@ void MetaTensor::set_dims(const DDim& dims) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->dims = dims;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
+        ->dims = dims;
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    // DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
+    //     ->dims = dims;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -60,6 +66,10 @@ void MetaTensor::set_dtype(DataType dtype) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->dtype = dtype;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    // No need to set dtype
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    // No need to set dtype
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -76,6 +86,10 @@ void MetaTensor::set_layout(DataLayout layout) {
     DenseTensorUtils::GetMutableMeta(
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->layout = layout;
+  } else if (phi::SparseCooTensor::classof(tensor_)) {
+    // No need to set dtype
+  } else if (phi::SparseCsrTensor::classof(tensor_)) {
+    // No need to set dtype
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));

@@ -20,6 +20,8 @@ limitations under the License. */
 
 namespace phi {
 
+class DenseTensorUtils;
+
 /// \brief The SparseCooTensor uses two DenseTensors to represent
 /// the non zero elements and the indices of non zero elements of
 /// original DenseTensor.
@@ -87,17 +89,15 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
-  int64_t numel() const override { return product(dims_); }
+  int64_t numel() const override { return product(meta_.dims); }
 
   /// \brief Returns the dims of the original dense tensor.
   /// \return The dims of the original dense tensor.
-  const DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override {
-    return non_zero_elements_.dtype();
-  }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
@@ -147,24 +147,33 @@ class SparseCooTensor : public TensorBase,
                      DataType dtype,
                      size_t requested_size = 0) override;
 
-  /// \brief set the dims of original dense tensor
-  void set_dims(const DDim& dims) { this->dims_ = dims; }
-
   /// \brief get the sparse dim
   int32_t sparse_dim() const;
 
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+  /// \brief Returns the meta information of the tensor.
+  /// \return The meta information of the tensor.
+  const SparseTensorMeta& meta() const noexcept { return meta_; }
+
+  void set_meta(SparseTensorMeta&& meta);
+
+  void set_meta(const SparseTensorMeta& meta);
+
+  void set_dims(const DDim& dims) { meta_.dims = dims; }
+
+ protected:
+  SparseTensorMeta meta_;
+
  private:
+  friend class DenseTensorUtils;
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
   // save the non zero elements of original dense tensor
   DenseTensor non_zero_elements_;
   /// whether the indices has coalesced
   bool coalesced_ = false;
-  // save the number of non zero elements in each batch
-  DDim dims_;
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */

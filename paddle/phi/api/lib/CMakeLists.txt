@@ -425,6 +425,7 @@ cc_library(
        api_gen_utils
        kernel_dispatch
        infermeta
+       sparse_infermeta
        sparse_api
        strings_api)
 cc_library(

@@ -102,6 +102,14 @@ phi::MetaTensor MakeMetaTensor(
   return phi::MetaTensor();
 }
 
+phi::MetaTensor MakeMetaTensor(
+    const paddle::optional<phi::SparseCooTensor>& tensor) {
+  if (tensor) {
+    return {phi::MetaTensor(*tensor)};
+  }
+  return phi::MetaTensor();
+}
+
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
