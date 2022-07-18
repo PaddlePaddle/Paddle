@@ -67,7 +67,7 @@ class PSClient {
   PSClient(PSClient &&) = delete;
   PSClient(const PSClient &) = delete;
 
-  int32_t Configure(
+  virtual int32_t Configure(
       const PSParameter &config,
       const std::map<uint64_t, std::vector<paddle::distributed::Region>>
           &regions,
