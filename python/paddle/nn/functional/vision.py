@@ -271,8 +271,11 @@ def grid_sample(x,
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False
         grid.stop_gradient = False
-
-    if in_dynamic_mode():
+    print ("#########")
+    if paddle.in_dygraph_mode():
+        print("### gindygraphmode")
+        return _C_ops.final_state_grid_sample(x,grid,mode,padding_mode,align_corners)
+    elif  in_dynamic_mode():
         attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
                  align_corners, 'use_cudnn', use_cudnn)
         out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
