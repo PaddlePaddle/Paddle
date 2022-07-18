@@ -46,6 +46,10 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               string::Sprintf("n-dim bool tensor. Each element is %s",
                               comment.equation));
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 It operates element-wise on X and Y, and returns the Out. Each of them is a
 N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
@@ -76,6 +80,19 @@ class CompareOp : public framework::OperatorWithKernel {
         kt.place_ = ctx.GetPlace();
       }
     }
+
+#ifdef PADDLE_WITH_MKLDNN
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return kt;
   }
 };
