@@ -1368,6 +1368,10 @@ class OpTest(unittest.TestCase):
                                 inplace_atol=None,
                                 check_eager=False):
 
+        # disable legacy dygraph check when check_eager is True
+        if check_eager == True:
+            check_dygraph = False
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
