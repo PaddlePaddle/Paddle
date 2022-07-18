@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature SolveGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "solve_grad", {"X", "Y", "Out@GRAD", "Out"}, {}, {"X@GRAD", "Y@GRAD"});
+      "solve_grad", {"X", "Y", "Out", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 }  // namespace phi

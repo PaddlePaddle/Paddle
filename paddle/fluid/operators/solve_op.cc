@@ -91,9 +91,9 @@ class SolveOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetType("solve_grad");
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     // reuse the linalg.solve forward output
     retv->SetInput("Out", this->Output("Out"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     retv->SetAttrMap(this->Attrs());
