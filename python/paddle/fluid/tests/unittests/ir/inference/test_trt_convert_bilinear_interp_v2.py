@@ -133,14 +133,14 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.array([32,32]).astype("int32")
+            return np.ones([32, 32]).astype(np.float32)
 
         for data_layout in ["NCHW"]:
             for scale_y in [2.0, ]:
                 for scale_x in [2.0,]:
                     scale = [scale_y, scale_x]
-                    for out_h in [32, 64, 128, 192]:
-                        for out_w in [32, 64]:
+                    for out_h in [32]:
+                        for out_w in [32]:
                             dics = [{
                                 "data_layout": data_layout,
                                 "interp_method": "bilinear",
@@ -151,7 +151,18 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
                                 "out_w": out_w
                             }]
 
-                            ops_config = [{
+                            ops_config = [
+                    {
+                    "op_type": "shape",
+                    "op_inputs": {
+                        "Input": ["input2"]
+                    },
+                    "op_outputs": {
+                        "Out": ["outsize_data"]
+                    },"op_attrs":{}
+                } ,
+
+                                {
                                 "op_type": "bilinear_interp_v2",
                                 "op_inputs": {
                                     "X": ["input_data"],
@@ -161,7 +172,8 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
                                     "Out": ["output_data"]
                                 },
                                 "op_attrs": dics[0]
-                            }]
+                            },
+                ]
                             ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(
@@ -171,7 +183,7 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
                                     "input_data":
                                     TensorConfig(
                                         data_gen=partial(generate_input1, dics)),
-                                    "outsize_data": 
+                                    "input2": 
                                     TensorConfig(
                                         data_gen=partial(generate_input2, dics)),
                                 },
@@ -182,22 +194,18 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64], "outsize_data": [2]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64], "outsize_data": [2]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64], "outsize_data": [2]}
+        def generate_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64], "input2": [32,32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64], "input2": [32,32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64], "input2": [32,32]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 2
-
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
+        def generate_trt_nodes_num(dynamic_shape):
+            return 1, 3
 
         # for static_shape
         # clear_dynamic_shape()
@@ -209,13 +217,11 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
         #     attrs, False), 1e-2
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-2
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-2
 
     def test(self):
         self.run_test()
