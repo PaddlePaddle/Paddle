@@ -58,6 +58,7 @@ class TestComplexOp(OpTest):
 
     def setUp(self):
         self.op_type = "complex"
+        self.python_api = paddle.complex
         self.init_spec()
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         y = np.random.randn(*self.y_shape).astype(self.dtype)

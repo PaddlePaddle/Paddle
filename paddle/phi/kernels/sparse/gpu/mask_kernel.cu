@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 
 namespace phi {
 namespace sparse {
@@ -238,6 +238,8 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
       x_indexs_ptr, x_indexs.numel(), table.data<int>());
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
+
+  const int VecBytes = 16;
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {
     MaskCopy<T, IntT, VecSize>

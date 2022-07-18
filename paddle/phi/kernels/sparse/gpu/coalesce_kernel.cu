@@ -155,6 +155,7 @@ void CoalesceGPUKernel(const GPUContext& dev_ctx,
                                out_values.data<T>());
   }
 
+
   // 6. convert index to coordinate
   Dim<DDim::kMaxRank> const_dims;
   for (int i = 0; i < x.dims().size(); i++) {

@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
@@ -51,6 +52,9 @@ class PoolXPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
+    bool ceil_mode = context.Attr<bool>("ceil_mode");
+    std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
     PADDLE_ENFORCE_EQ(
         ksize.size(),
         2,
@@ -70,10 +74,27 @@ class PoolXPUKernel : public framework::OpKernel<T> {
         ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
       }
     }
+
     const int n = in_x->dims()[0];
     const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
+
+    framework::DDim data_dims;
+
+    data_dims = phi::slice_ddim(in_x->dims(), 2, in_x->dims().size());
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
+    if (ceil_mode) {
+      paddings[1] += (strides[0] - 1);
+      paddings[3] += (strides[1] - 1);
+    }
+
     auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
     out->mutable_data<T>(context.GetPlace());
     auto output = reinterpret_cast<XPUType*>(out->data<T>());
@@ -135,6 +156,9 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
+    bool ceil_mode = context.Attr<bool>("ceil_mode");
+    std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
     const int* index_data = nullptr;
     PADDLE_ENFORCE_EQ(
         ksize.size(),
@@ -163,6 +187,22 @@ class PoolGradXPUKernel : public framework::OpKernel<T> {
     const int c = in_x->dims()[1];
     const int in_h = in_x->dims()[2];
     const int in_w = in_x->dims()[3];
+
+    framework::DDim data_dims;
+
+    data_dims = phi::slice_ddim(in_x->dims(), 2, in_x->dims().size());
+    phi::funcs::UpdatePadding(&paddings,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              data_dims,
+                              strides,
+                              ksize);
+    if (ceil_mode) {
+      paddings[1] += (strides[0] - 1);
+      paddings[3] += (strides[1] - 1);
+    }
+
     auto input = reinterpret_cast<const XPUType*>(in_x->data<T>());
     auto output = reinterpret_cast<const XPUType*>(out->data<T>());
     auto output_grad = reinterpret_cast<const XPUType*>(out_grad->data<T>());
