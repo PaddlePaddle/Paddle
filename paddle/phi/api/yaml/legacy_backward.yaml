@@ -92,6 +92,18 @@
   kernel :
     func : addmm_grad
 
+- backward_api : angle_grad
+  forward : angle (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : angle_grad
+  data_transform:
+    skip_transform : out_grad
+
 - backward_api : argsort_grad
   forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
   args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
