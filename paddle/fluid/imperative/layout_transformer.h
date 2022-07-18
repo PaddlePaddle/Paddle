@@ -401,7 +401,7 @@ class ArgmaxOpTransformer
           }
           default:
             VLOG(4) << "The data_type of axis is Error, axis must be int or "
-                       "int64, bug got "
+                       "int64, but got "
                     << (AttrTypeID((*attrs)["axis"]));
         }
       }
@@ -451,9 +451,6 @@ class ConcatOpTransformer
       auto axis = BOOST_GET_CONST(int, (*attrs)["axis"]);
       (*attrs)["axis"] = static_cast<int>(perm[axis]);
     }
-    auto axis = BOOST_GET_CONST(int, (*attrs)["axis"]);
-    VLOG(3) << "Optimze lightly layout sensitive op asdfasdfasdf axis" << axis;
-
     this->SetVarsLayout(outs, var_layout);
     return ins;
   }
