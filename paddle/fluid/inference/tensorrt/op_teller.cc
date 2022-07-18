@@ -1374,27 +1374,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       return true;
     }
 
-    if (op_type == "fill_constant") {
-      auto fill_constant_inputs = desc.Inputs();
-      if (fill_constant_inputs.find("ValueTensor") !=
-          fill_constant_inputs.end()) {
-        if (desc.Input("ValueTensor").size()) return false;
-      }
-      if (fill_constant_inputs.find("ShapeTensor") !=
-          fill_constant_inputs.end()) {
-        if (desc.Input("ShapeTensor").size()) return false;
-      }
-      if (fill_constant_inputs.find("ShapeTensorList") !=
-          fill_constant_inputs.end()) {
-        if (desc.Input("ShapeTensorList").size()) return false;
-      }
-      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
-      // only support int32, int64, float32
-      if (!(dtype == 2 || dtype == 3 || dtype == 5)) {
-        return false;
-      }
-    }
-
     if (op_type == "shape") {
       if (!with_dynamic_shape) return false;
     }
@@ -1865,10 +1844,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (with_dynamic_shape) {
         return true;
       }
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
       if (!desc.HasAttr("shape")) {
         return false;
       }
