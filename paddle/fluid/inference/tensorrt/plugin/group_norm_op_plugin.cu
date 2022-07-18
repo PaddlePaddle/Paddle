@@ -144,7 +144,7 @@ int GroupNormPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
             dim3 grids(input_dims[0]*groups_);
             dim3 blocks(block_size_nchw);
             if (size<vec_size*block_size_nchw){
-                ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0,stream>(
+                ScalarGetMeanAndVarNCHW<float><<<grids, blocks, 0,stream>>>(
                     input, mean_d, temp_variance_d, size);
             } else {
                 VectorizedGetMeanAndVarNCHW<float, AccT, vec_size>
