@@ -1203,10 +1203,12 @@ struct OperatorWithKernel::CacheImpl {
           infer_shape_ctx_->GetInputDim(in_name) !=
               inputs_dim_caches[in_name]) {
         inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputDim(in_name);
-        discardCudaGraphCache();
         flag = true;
       }
     }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (!flag) discardCudaGraphCache();
+#endif
     return flag;
   }
 
