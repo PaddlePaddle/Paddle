@@ -132,9 +132,16 @@ def grad(outputs, inputs, grad_outputs=None):
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
-
     if not utils.prim_enabled():
-        return backward.gradients(outputs, inputs, grad_outputs)
+        grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
+        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # The follow code snippet fixes the problem by return the first element
+        # of grad_inputs when the inputs is a signle Tensor.
+        if isinstance(inputs, framework.Variable) and isinstance(
+                grad_inputs, typing.Sequence) and len(grad_inputs) > 0:
+            return grad_inputs[0]
+        else:
+            return grad_inputs
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '
