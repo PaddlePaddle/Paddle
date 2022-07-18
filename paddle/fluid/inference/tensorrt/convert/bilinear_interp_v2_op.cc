@@ -123,8 +123,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     if (data_layout == framework::DataLayout::kNCHW) {
       outsize_tensor_vec.push_back(Add1DConstantLayer(3));
-      // outsize_tensor_vec.push_back(Add1DConstantLayer(32));
-      // outsize_tensor_vec.push_back(Add1DConstantLayer(32));
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
@@ -141,7 +139,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       auto* tmp_tensor = Concat(outsize_tensor_vec);
       std::vector<nvinfer1::ITensor*> tmp_vec{tmp_tensor, outsize_tensor};
       layer->setInput(1, *Concat(tmp_vec));
-      // layer->setInput(1, *Concat(outsize_tensor_vec));
     } else {
       layer->setScales(scales.data(), scales.size());
     }
