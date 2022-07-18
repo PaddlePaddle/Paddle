@@ -167,6 +167,15 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+#  backward : as_complex
+
 # asin
 - api : asin
   args : (Tensor x)
@@ -497,14 +506,6 @@
   kernel :
     func : determinant
   backward : det_grad
-
-- api : diag
-  args : (Tensor x, int offset, float padding_value)
-  output : Tensor
-  infer_meta :
-    func : DiagInferMeta
-  kernel :
-    func : diag
 
 - api : diag_embed
   args : (Tensor x, int offset, int dim1, int dim2)
