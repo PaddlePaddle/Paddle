@@ -371,7 +371,6 @@ __device__ __inline__ void ReadData(Ty* dst,
   __local__ Tx in_temp[1];
   // Each branch is added for better performance
   if (NX == 1 && NY == 1) {  // for NX == 1 and NY == 1
-    mfence_local();
     if (IsBoundary) {
       if (left_size_nx > 0) {
         GM2LM(src + thread_offset, in_temp, sizeof(Tx));
