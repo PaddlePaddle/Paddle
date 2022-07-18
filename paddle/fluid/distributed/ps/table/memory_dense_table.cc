@@ -347,7 +347,6 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     for (int x = 0; x < param_dim_; ++x) {
       result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));
     }
-
   } else if (_config.common().name() == "adam_d2sum") {
     std::ostringstream os;
     for (int y = 0; y < param_dim_; ++y) {
