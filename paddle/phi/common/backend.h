@@ -50,7 +50,7 @@ enum class Backend : uint8_t {
   MLU,  // MLU currently does not exist at the same time as CUDA
 
   // the third library backend
-  MKLDNN,
+  ONEDNN,
   GPUDNN,  // cuDNN and hipDNN
 
   // paddle kernel primitives backend
@@ -118,8 +118,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MLU:
       os << "MLU";
       break;
-    case Backend::MKLDNN:
-      os << "MKLDNN";
+    case Backend::ONEDNN:
+      os << "ONEDNN";
       break;
     case Backend::GPUDNN:
       os << "GPUDNN";
@@ -160,8 +160,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MLU")) {
     return Backend::MLU;
-  } else if (s == std::string("MKLDNN")) {
-    return Backend::MKLDNN;
+  } else if (s == std::string("OneDNN")) {
+    return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {

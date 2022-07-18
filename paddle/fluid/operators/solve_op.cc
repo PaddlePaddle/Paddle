@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/solve_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
@@ -220,10 +220,3 @@ REGISTER_OPERATOR(solve,
                   ops::SolveOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(solve_grad, ops::SolveGradOp);
-
-REGISTER_OP_CPU_KERNEL(solve,
-                       ops::SolveKernel<phi::CPUContext, float>,
-                       ops::SolveKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(solve_grad,
-                       ops::SolveGradKernel<phi::CPUContext, float>,
-                       ops::SolveGradKernel<phi::CPUContext, double>);

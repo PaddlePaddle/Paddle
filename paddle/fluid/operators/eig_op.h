@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <complex>
 
-#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -30,6 +29,7 @@
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
