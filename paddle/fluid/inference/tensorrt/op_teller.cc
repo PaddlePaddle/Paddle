@@ -1360,6 +1360,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
+    if (op_type == "sum") {
+       return true;
+    }
+
+    if (op_type == "shape" && !with_dynamic_shape) {
+      return false;
+    }
+
     if (op_type == "fused_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "fused_embedding_eltwise_layernorm should run on dynamic "
