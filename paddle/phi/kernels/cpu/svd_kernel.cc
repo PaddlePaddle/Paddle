@@ -102,18 +102,13 @@ void SvdKernel(const Context& dev_ctx,
   auto x_dims = X.dims();
   int rows = x_dims[x_dims.size() - 2];
   int cols = x_dims[x_dims.size() - 1];
-  int k = std::min(rows, cols);
-  int col_u = full ? rows : k;
-  int col_v = full ? cols : k;
+  // int k = std::min(rows, cols);
+  // int col_u = full ? rows : k;
+  // int col_v = full ? cols : k;
   int batches = numel / (rows * cols);
-  auto* U_out = U->mutable_data<phi::dtype::Real<T>>(
-      dev_ctx.GetPlace(),
-      size_t(batches * rows * col_u * sizeof(phi::dtype::Real<T>)));
-  auto* VH_out = VH->mutable_data<phi::dtype::Real<T>>(
-      dev_ctx.GetPlace(),
-      size_t(batches * col_v * cols * sizeof(phi::dtype::Real<T>)));
-  auto* S_out = S->mutable_data<phi::dtype::Real<T>>(
-      dev_ctx.GetPlace(), size_t(batches * k * sizeof(phi::dtype::Real<T>)));
+  auto* U_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(U);
+  auto* VH_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(VH);
+  auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
   /*SVD Use the Eigen Library*/
   BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   /* let C[m, n] as a col major matrix with m rows and n cols.
