@@ -983,6 +983,21 @@ def save(layer, path, input_spec=None, **configs):
         #   - the input_spec's name should be in concrete_program.inputs
         input_var_names = _get_input_var_names(concrete_program.inputs,
                                                inner_input_spec)
+        # NOTE(YuanRisheng): [ Delete input variables name that is not used]
+        # There is a corner case that needs prune the inputs
+        # - The program need input's shape or other message and the program doesn't
+        #   need input itself. The input name should be pruned.
+        input_var_names_needed = []
+        for input_var_name in input_var_names:
+            is_use = False
+            for idx, op in enumerate(
+                    concrete_program.main_program.global_block().ops):
+                if input_var_name in op.input_arg_names:
+                    is_use = True
+                    break
+            if is_use:
+                input_var_names_needed.append(input_var_name)
+        input_var_names = input_var_names_needed
 
         # NOTE(chenweihang): [ Get output variables ]
         # the rule is like [ Get input variables name ]. For output var,
