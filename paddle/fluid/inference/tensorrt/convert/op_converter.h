@@ -309,6 +309,8 @@ class OpConverter {
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
+        std::cout << input << std::endl;
+        std::cout << ranks << std::endl;
         if (ranks == 0) {
           all_dynamic_shape_set = false;
           LOG(INFO) << "trt input [" << input.c_str()

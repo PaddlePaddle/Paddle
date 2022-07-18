@@ -51,6 +51,14 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     auto align_mode = BOOST_GET_CONST(int, op_desc.GetAttr("align_mode"));
 
     auto resize_inputs = op_desc.Inputs();
+    // A 1D int32 tensor
+    nvinfer1::ITensor* outsize_tensor = nullptr;
+    if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+      if (op_desc.Input("OutSize").size() >= 1) {
+        outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
+      }
+    }
+
     auto input_names = op_desc.Input("X");
     auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
@@ -103,12 +111,17 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     std::vector<float> scales;
+    std::vector<nvinfer1::ITensor*> outsize_tensor_vec;
 
     if (engine_->with_dynamic_shape()) {
+      outsize_tensor_vec.push_back(Add1DConstantLayer(1));
       scales.push_back(1.f);
     }
 
     if (data_layout == framework::DataLayout::kNCHW) {
+      outsize_tensor_vec.push_back(Add1DConstantLayer(3));
+      outsize_tensor_vec.push_back(Add1DConstantLayer(320));
+      outsize_tensor_vec.push_back(Add1DConstantLayer(320));
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
@@ -121,7 +134,16 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
           "Data layout must be NCHW or NHWC."));
     }
 
-    layer->setScales(scales.data(), scales.size());
+    if (outsize_tensor) {
+     // auto* tmp_tensor = Concat(outsize_tensor_vec);
+    //  std::vector<nvinfer1::ITensor*> tmp_vec{tmp_tensor, outsize_tensor};
+     // layer->setInput(1, *Concat(tmp_vec));
+     layer->setInput(1, *Concat(outsize_tensor_vec));
+    }
+    else {
+      layer->setScales(scales.data(), scales.size());
+    }
+
     RreplenishLayerAndOutput(
         layer, "bilinear_interp_v2", {output_name}, test_mode);
   }
