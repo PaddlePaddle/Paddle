@@ -45,3 +45,14 @@ target_link_libraries(phi_backends ${BACKENDS_DEPS})
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 set(phi_modules ${phi_modules} phi_backends)
 set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
+
+if(WITH_CUSTOM_DEVICE)
+  cc_test(
+    custom_device_test
+    SRCS custom/custom_device_test.cc
+    DEPS phi_backends phi_device_context)
+  cc_test(
+    capi_test
+    SRCS custom/capi_test.cc
+    DEPS phi_capi)
+endif()
