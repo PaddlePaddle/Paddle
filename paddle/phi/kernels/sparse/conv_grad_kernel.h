@@ -17,27 +17,26 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void Conv3dGradKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const DenseTensor& kernel,
-                      const DenseTensor& rulebook,
-                      const SparseCooTensor& out_grad,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
-                      const std::vector<int>& strides,
-                      const int groups,
-                      const bool subm,
-                      SparseCooTensor* x_grad,
-                      DenseTensor* kernel_grad);
+void Conv3dCooGradKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& kernel,
+                         const DenseTensor& rulebook,
+                         const SparseCooTensor& out_grad,
+                         const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
+                         const std::vector<int>& strides,
+                         const int groups,
+                         const bool subm,
+                         SparseCooTensor* x_grad,
+                         DenseTensor* kernel_grad);
 
 template <typename T, typename Context>
-std::tuple<SparseCooTensor, DenseTensor> Conv3dGrad(
+std::tuple<SparseCooTensor, DenseTensor> Conv3dCooGrad(
     const Context& dev_ctx,
     const SparseCooTensor& x,
     const DenseTensor& kernel,
@@ -52,18 +51,18 @@ std::tuple<SparseCooTensor, DenseTensor> Conv3dGrad(
   DenseTensor kernel_grad;
 
   // TODO(zhangkaihuo): call InferMeta func here
-  Conv3dGradKernel<T, Context>(dev_ctx,
-                               x,
-                               kernel,
-                               rulebook,
-                               out_grad,
-                               paddings,
-                               dilations,
-                               strides,
-                               groups,
-                               subm,
-                               &x_grad,
-                               &kernel_grad);
+  Conv3dCooGradKernel<T, Context>(dev_ctx,
+                                  x,
+                                  kernel,
+                                  rulebook,
+                                  out_grad,
+                                  paddings,
+                                  dilations,
+                                  strides,
+                                  groups,
+                                  subm,
+                                  &x_grad,
+                                  &kernel_grad);
   return std::make_tuple(x_grad, kernel_grad);
 }
 
