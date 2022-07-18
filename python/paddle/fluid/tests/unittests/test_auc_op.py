@@ -27,7 +27,6 @@ class TestAucOp(OpTest):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
-        ins_tag_weight = np.ones((128, 1)).astype("float32")
         num_thresholds = 200
         slide_steps = 1
 
@@ -40,8 +39,7 @@ class TestAucOp(OpTest):
             'Predict': pred,
             'Label': labels,
             "StatPos": stat_pos,
-            "StatNeg": stat_neg,
-            "InsTagWeight": ins_tag_weight
+            "StatNeg": stat_neg
         }
         self.attrs = {
             'curve': 'ROC',
@@ -74,7 +72,6 @@ class TestGlobalAucOp(OpTest):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1)).astype("int64")
-        ins_tag_weight = np.ones((128, 1)).astype("float32")
         num_thresholds = 200
         slide_steps = 0
 
@@ -85,8 +82,7 @@ class TestGlobalAucOp(OpTest):
             'Predict': pred,
             'Label': labels,
             "StatPos": stat_pos,
-            "StatNeg": stat_neg,
-            "InsTagWeight": ins_tag_weight
+            "StatNeg": stat_neg
         }
         self.attrs = {
             'curve': 'ROC',
@@ -119,7 +115,10 @@ class TestAucOpError(unittest.TestCase):
             def test_type1():
                 data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
                 label1 = fluid.data(name="label1", shape=[-1], dtype="int")
-                result1 = fluid.layers.auc(input=data1, label=label1)
+                ins_tag_w1 = fluid.data(name="label1", shape=[-1], dtype="int")
+                result1 = fluid.layers.auc(input=data1,
+                                           label=label1,
+                                           ins_tag_weight=ins_tag_w1)
 
             self.assertRaises(TypeError, test_type1)
 

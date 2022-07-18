@@ -18,18 +18,11 @@ namespace phi {
 
 // we have to return every specific KernelSignature for infrt now
 KernelSignature AucOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("InsTagWeight")) {
-    return KernelSignature(
-        "auc",
-        {"Predict", "Label", "StatPos", "StatNeg", "InsTagWeight"},
-        {"curve", "num_thresholds", "slide_steps"},
-        {"AUC", "StatPosOut", "StatNegOut"});
-  } else {
-    return KernelSignature("auc",
-                           {"Predict", "Label", "StatPos", "StatNeg"},
-                           {"curve", "num_thresholds", "slide_steps"},
-                           {"AUC", "StatPosOut", "StatNegOut"});
-  }
+  return KernelSignature(
+      "auc",
+      {"Predict", "Label", "StatPos", "StatNeg", "InsTagWeight"},
+      {"curve", "num_thresholds", "slide_steps"},
+      {"AUC", "StatPosOut", "StatNegOut"});
 }
 
 }  // namespace phi
