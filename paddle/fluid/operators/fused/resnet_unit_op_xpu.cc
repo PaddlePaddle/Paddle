@@ -21,29 +21,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline void fill_nchw(const std::vector<int> &dims,
-                      bool is_nchw,
-                      int *n,
-                      int *c,
-                      int *h,
-                      int *w) {
-  *n = dims[0];
-  *c = dims[1];
-  *h = dims[2];
-  *w = dims[3];
-  if (!is_nchw) {
-    *c = dims[3];
-    *h = dims[1];
-    *w = dims[2];
-  }
-}
-
 template <typename T>
 class ResNetUnitXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(ctx.GetPlace()),
+        platform::is_xpu_place(place),
         true,
         platform::errors::PreconditionNotMet("It must use XPUPlace."));
 
@@ -77,95 +61,39 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
-
-    auto input_x_shape = phi::vectorize<int>(input_x->dims());
-    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
-    auto output_shape = phi::vectorize<int>(output->dims());
-
-    auto place = ctx.GetPlace();
-    auto output_ptr = output->mutable_data<T>(place);
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
 
+    std::vector<const T *> x_list = {input_x->data<T>()};
+    std::vector<const T *> w_list = {filter_x->data<T>()};
+    std::vector<T *> conv_y_list = {conv_out_x->mutable_data<T>(place)};
+
+    std::vector<std::vector<int>> x_shape_list = {
+        phi::vectorize<int>(input_x->dims())};
+
+    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
     std::vector<int> ksize = {filter_x_shape[2], filter_x_shape[3]};
     if (!is_nchw) {
       ksize[0] = filter_x_shape[1];
       ksize[1] = filter_x_shape[2];
     }
     std::vector<int> strides = {stride, stride};
+    std::vector<std::vector<int>> ksize_list = {ksize};
+    std::vector<std::vector<int>> stride_list = {strides};
     std::vector<int> paddings = {padding, padding};
     std::vector<int> dilations = {dilation, dilation};
-    int conv_x_n = -1, conv_x_c = -1, conv_x_h = -1, conv_x_w = -1;
-    fill_nchw(
-        input_x_shape, is_nchw, &conv_x_n, &conv_x_c, &conv_x_h, &conv_x_w);
+    std::vector<const float *> scale_list = {scale_x->data<float>()};
+    std::vector<const float *> bias_list = {bias_x->data<float>()};
+    std::vector<float *> batch_mean_list = {
+        saved_mean_x->mutable_data<float>(place)};
+    std::vector<float *> batch_invstd_list = {
+        saved_invstd_x->mutable_data<float>(place)};
+    std::vector<float *> global_mean_list = {
+        running_mean_x->mutable_data<float>(place)};
+    std::vector<float *> global_var_list = {
+        running_var_x->mutable_data<float>(place)};
 
-    // 1. Conv
-    auto conv_out_x_ptr = conv_out_x->mutable_data<T>(place);
-    int r = xpu::conv2d<T, T, T, int16_t>(dev_ctx.x_context(),
-                                          input_x->data<T>(),
-                                          filter_x->data<T>(),
-                                          conv_out_x_ptr,
-                                          conv_x_n,
-                                          conv_x_c,
-                                          conv_x_h,
-                                          conv_x_w,
-                                          filter_x_shape[0],
-                                          ksize,
-                                          strides,
-                                          paddings,
-                                          dilations,
-                                          group,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit conv");
-
-    // 2. BN
-    auto conv_out_x_shape = phi::vectorize<int>(conv_out_x->dims());
-    Tensor bn_out;
-    bn_out.Resize(conv_out_x->dims());
-    auto bn_out_ptr = bn_out.mutable_data<T>(place);
-    auto saved_mean_x_ptr = saved_mean_x->mutable_data<T>(place);
-    auto saved_invstd_x_ptr = saved_invstd_x->mutable_data<T>(place);
-    auto running_mean_x_ptr = running_mean_x->mutable_data<T>(place);
-    auto running_var_x_ptr = running_var_x->mutable_data<T>(place);
-    int bn_n = -1, bn_c = -1, bn_h = -1, bn_w = -1;
-    fill_nchw(conv_out_x_shape, is_nchw, &bn_n, &bn_c, &bn_h, &bn_w);
-    if (is_train) {
-      r = xpu::batch_norm<T>(dev_ctx.x_context(),
-                             conv_out_x_ptr,
-                             bn_out_ptr,
-                             bn_n,
-                             bn_c,
-                             bn_h,
-                             bn_w,
-                             eps,
-                             momentum,
-                             scale_x->data<T>(),
-                             bias_x->data<T>(),
-                             saved_mean_x_ptr,
-                             saved_invstd_x_ptr,
-                             running_mean_x_ptr,
-                             running_var_x_ptr,
-                             is_nchw);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn");
-    } else {
-      r = xpu::batch_norm_infer<T>(dev_ctx.x_context(),
-                                   conv_out_x_ptr,
-                                   bn_out_ptr,
-                                   bn_n,
-                                   bn_c,
-                                   bn_h,
-                                   bn_w,
-                                   eps,
-                                   scale_x->data<T>(),
-                                   bias_x->data<T>(),
-                                   running_mean_x_ptr,
-                                   running_var_x_ptr,
-                                   is_nchw);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn");
-    }
-
+    std::vector<const float *> x_maxlist = {nullptr};
+    std::vector<const float *> w_maxlist = {nullptr};
     if (has_shortcut) {
       // input z
       const Tensor *input_z = ctx.Input<Tensor>("Z");
@@ -179,118 +107,66 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       Tensor *running_mean_z = ctx.Output<Tensor>("RunningMeanZ");
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
 
-      auto input_z_shape = phi::vectorize<int>(input_z->dims());
-      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
+      x_list.push_back(input_z->data<T>());
+      w_list.push_back(filter_z->data<T>());
+      conv_y_list.push_back(conv_out_z->mutable_data<T>(place));
 
-      // 3.1 Conv for second input
+      x_shape_list.push_back(phi::vectorize<int>(input_z->dims()));
+
+      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
       std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
       if (!is_nchw) {
         ksize_z[0] = filter_z_shape[1];
         ksize_z[1] = filter_z_shape[2];
       }
-      std::vector<int> strides_z = {stride_z, stride_z};
-      int conv_z_n = -1, conv_z_c = -1, conv_z_h = -1, conv_z_w = -1;
-      fill_nchw(
-          input_z_shape, is_nchw, &conv_z_n, &conv_z_c, &conv_z_h, &conv_z_w);
-
-      // 1. Conv
-      auto conv_out_z_ptr = conv_out_z->mutable_data<T>(place);
-      r = xpu::conv2d<T, T, T, int16_t>(dev_ctx.x_context(),
-                                        input_z->data<T>(),
-                                        filter_z->data<T>(),
-                                        conv_out_z_ptr,
-                                        conv_z_n,
-                                        conv_z_c,
-                                        conv_z_h,
-                                        conv_z_w,
-                                        filter_z_shape[0],
-                                        ksize_z,
-                                        strides_z,
-                                        paddings,
-                                        dilations,
-                                        group,
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        is_nchw);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit conv");
-
-      // 3.2 BN for second input
-      auto conv_out_z_shape = phi::vectorize<int>(conv_out_z->dims());
-      Tensor bn_z_out;
-      bn_z_out.Resize(conv_out_z->dims());
-      auto bn_z_out_ptr = bn_z_out.mutable_data<T>(ctx.GetPlace());
-      auto saved_mean_z_ptr = saved_mean_z->mutable_data<T>(ctx.GetPlace());
-      auto saved_invstd_z_ptr = saved_invstd_z->mutable_data<T>(ctx.GetPlace());
-      auto running_mean_z_ptr = running_mean_z->mutable_data<T>(ctx.GetPlace());
-      auto running_var_z_ptr = running_var_z->mutable_data<T>(ctx.GetPlace());
-      int bn_z_n = -1, bn_z_c = -1, bn_z_h = -1, bn_z_w = -1;
-      fill_nchw(conv_out_z_shape, is_nchw, &bn_z_n, &bn_z_c, &bn_z_h, &bn_z_w);
-      if (is_train) {
-        r = xpu::batch_norm<T>(dev_ctx.x_context(),
-                               conv_out_z_ptr,
-                               bn_z_out_ptr,
-                               bn_z_n,
-                               bn_z_c,
-                               bn_z_h,
-                               bn_z_w,
-                               eps,
-                               momentum,
-                               scale_z->data<T>(),
-                               bias_z->data<T>(),
-                               saved_mean_z_ptr,
-                               saved_invstd_z_ptr,
-                               running_mean_z_ptr,
-                               running_var_z_ptr,
-                               is_nchw);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn");
-      } else {
-        r = xpu::batch_norm_infer<T>(dev_ctx.x_context(),
-                                     conv_out_z_ptr,
-                                     bn_z_out_ptr,
-                                     bn_z_n,
-                                     bn_z_c,
-                                     bn_z_h,
-                                     bn_z_w,
-                                     eps,
-                                     scale_z->data<T>(),
-                                     bias_z->data<T>(),
-                                     running_mean_z_ptr,
-                                     running_var_z_ptr,
-                                     is_nchw);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn");
-      }
-      // 3.3 add + relu
-      r = xpu::broadcast_add(dev_ctx.x_context(),
-                             bn_out_ptr,
-                             bn_z_out_ptr,
-                             output_ptr,
-                             conv_out_x_shape,
-                             conv_out_z_shape);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit add");
-      r = xpu::relu(
-          dev_ctx.x_context(), output_ptr, output_ptr, output->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit relu");
+      ksize_list.push_back(ksize_z);
+      stride_list.push_back({stride_z, stride_z});
+      scale_list.push_back(scale_z->data<float>());
+      bias_list.push_back(bias_z->data<float>());
+      batch_mean_list.push_back(saved_mean_z->mutable_data<float>(place));
+      batch_invstd_list.push_back(saved_invstd_z->mutable_data<float>(place));
+      global_mean_list.push_back(running_mean_z->mutable_data<float>(place));
+      global_var_list.push_back(running_var_z->mutable_data<float>(place));
+      x_maxlist.push_back(nullptr);
+      w_maxlist.push_back(nullptr);
     } else {
       if (fuse_add) {
         const Tensor *input_z = ctx.Input<Tensor>("Z");
         auto input_z_shape = phi::vectorize<int>(input_z->dims());
-        r = xpu::broadcast_add(dev_ctx.x_context(),
-                               bn_out_ptr,
-                               input_z->data<T>(),
-                               output_ptr,
-                               conv_out_x_shape,
-                               input_z_shape);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit add");
-        r = xpu::relu(
-            dev_ctx.x_context(), output_ptr, output_ptr, output->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit relu");
-      } else {
-        r = xpu::relu(
-            dev_ctx.x_context(), bn_out_ptr, output_ptr, output->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit relu");
+        x_list.push_back(input_z->data<T>());
+        x_shape_list.push_back(input_z_shape);
+        x_maxlist.push_back(nullptr);
       }
     }
+    int r = xpu::resnet_unit_fusion<T, T, T, int16_t>(
+        dev_ctx.x_context(),
+        x_list,
+        w_list,
+        conv_y_list,
+        output->mutable_data<T>(place),
+        x_shape_list,
+        filter_x_shape[0],
+        ksize_list,
+        stride_list,
+        paddings,
+        dilations,
+        group,
+        eps,
+        momentum,
+        x_maxlist,
+        w_maxlist,
+        scale_list,
+        bias_list,
+        batch_mean_list,
+        batch_invstd_list,
+        global_mean_list,
+        global_var_list,
+        xpu::Activation_t::RELU,
+        is_nchw,
+        has_shortcut,
+        fuse_add,
+        is_train);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_fusion");
   }
 };
 
@@ -320,11 +196,6 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     Tensor *scale_x_grad = ctx.Output<Tensor>(framework::GradVarName("ScaleX"));
     Tensor *bias_x_grad = ctx.Output<Tensor>(framework::GradVarName("BiasX"));
 
-    auto x_grad_ptr = x_grad->mutable_data<T>(place);
-    auto filter_x_grad_ptr = filter_x_grad->mutable_data<T>(place);
-    auto scale_x_grad_ptr = scale_x_grad->mutable_data<T>(place);
-    auto bias_x_grad_ptr = bias_x_grad->mutable_data<T>(place);
-
     int padding = ctx.Attr<int>("padding");
     int stride = ctx.Attr<int>("stride");
     int stride_z = ctx.Attr<int>("stride_z");
@@ -335,32 +206,38 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
     bool fuse_add = ctx.Attr<bool>("fuse_add");
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    std::vector<int> x_strides = {stride, stride};
-    std::vector<int> z_strides = {stride, stride};
+    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
+
+    std::vector<const T *> x_list = {x->data<T>()};
+    std::vector<const T *> w_list = {filter_x->data<T>()};
+    std::vector<const T *> conv_y_list = {conv_out_x->data<T>()};
+    std::vector<T *> dx_list = {x_grad->mutable_data<T>(place)};
+    std::vector<T *> dw_list = {filter_x_grad->mutable_data<T>(place)};
+
+    std::vector<std::vector<int>> x_shape_list = {
+        phi::vectorize<int>(x->dims())};
+
+    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
+    std::vector<int> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
+    if (!is_nchw) {
+      x_ksize[0] = filter_x_shape[1];
+      x_ksize[1] = filter_x_shape[2];
+    }
+    std::vector<std::vector<int>> ksize_list = {x_ksize};
+    std::vector<std::vector<int>> stride_list = {{stride, stride}};
     std::vector<int> paddings = {padding, padding};
     std::vector<int> dilations = {dilation, dilation};
 
-    auto x_shape = phi::vectorize<int>(x->dims());
-    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
-    auto output_shape = phi::vectorize<int>(output->dims());
+    std::vector<const float *> x_maxlist = {nullptr};
+    std::vector<const float *> w_maxlist = {nullptr};
 
-    auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
-
-    Tensor conv_out_x_grad;
-    conv_out_x_grad.Resize(conv_out_x->dims());
-    conv_out_x_grad.mutable_data<T>(place);
-    int r = 0;
-    Tensor relu_grad;
-    relu_grad.Resize(y_grad->dims());
-    relu_grad.mutable_data<T>(place);
-    auto relu_grad_ptr = relu_grad.data<T>();
-    r = xpu::relu_grad(dev_ctx.x_context(),
-                       output->data<T>(),
-                       output->data<T>(),
-                       y_grad->data<T>(),
-                       relu_grad.data<T>(),
-                       relu_grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit relu_grad");
+    std::vector<const float *> scale_list = {scale_x->data<float>()};
+    std::vector<const float *> batch_mean_list = {saved_mean_x->data<float>()};
+    std::vector<const float *> batch_invstd_list = {
+        saved_invstd_x->data<float>()};
+    std::vector<float *> dscale_list = {
+        scale_x_grad->mutable_data<float>(place)};
+    std::vector<float *> dbias_list = {bias_x_grad->mutable_data<float>(place)};
 
     if (has_shortcut) {
       //       X                   Z
@@ -385,158 +262,65 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       Tensor *scale_z_grad =
           ctx.Output<Tensor>(framework::GradVarName("ScaleZ"));
       Tensor *bias_z_grad = ctx.Output<Tensor>(framework::GradVarName("BiasZ"));
+      x_list.push_back(z->data<T>());
+      w_list.push_back(filter_z->data<T>());
+      conv_y_list.push_back(conv_out_z->data<T>());
+      dx_list.push_back(z_grad->mutable_data<T>(place));
+      dw_list.push_back(filter_z_grad->mutable_data<T>(place));
+      x_shape_list.push_back(phi::vectorize<int>(z->dims()));
 
-      auto z_grad_ptr = z_grad->mutable_data<T>(place);
-      auto filter_z_grad_ptr = filter_z_grad->mutable_data<T>(place);
-      auto scale_z_grad_ptr = scale_z_grad->mutable_data<T>(place);
-      auto bias_z_grad_ptr = bias_z_grad->mutable_data<T>(place);
-
-      auto conv_out_z_shape = phi::vectorize<int>(conv_out_z->dims());
-      int bn_z_n = -1, bn_z_c = -1, bn_z_h = -1, bn_z_w = -1;
-      fill_nchw(conv_out_z_shape, is_nchw, &bn_z_n, &bn_z_c, &bn_z_h, &bn_z_w);
-
-      Tensor conv_out_z_grad;
-      conv_out_z_grad.Resize(conv_out_z->dims());
-      conv_out_z_grad.mutable_data<T>(place);
-      r = xpu::batch_norm_grad<T>(dev_ctx.x_context(),
-                                  conv_out_z->data<T>(),
-                                  relu_grad_ptr,
-                                  conv_out_z_grad.data<T>(),
-                                  bn_z_n,
-                                  bn_z_c,
-                                  bn_z_h,
-                                  bn_z_w,
-                                  scale_z->data<T>(),
-                                  saved_mean_z->data<T>(),
-                                  saved_invstd_z->data<T>(),
-                                  scale_z_grad_ptr,
-                                  bias_z_grad_ptr,
-                                  is_nchw,
-                                  nullptr,
-                                  nullptr,
-                                  eps);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn_grad");
-
-      auto conv_out_x_shape = phi::vectorize<int>(conv_out_x->dims());
-      int bn_x_n = -1, bn_x_c = -1, bn_x_h = -1, bn_x_w = -1;
-      fill_nchw(conv_out_x_shape, is_nchw, &bn_x_n, &bn_x_c, &bn_x_h, &bn_x_w);
-      r = xpu::batch_norm_grad<T>(dev_ctx.x_context(),
-                                  conv_out_x->data<T>(),
-                                  relu_grad_ptr,
-                                  conv_out_x_grad.data<T>(),
-                                  bn_x_n,
-                                  bn_x_c,
-                                  bn_x_h,
-                                  bn_x_w,
-                                  scale_x->data<T>(),
-                                  saved_mean_x->data<T>(),
-                                  saved_invstd_x->data<T>(),
-                                  scale_x_grad_ptr,
-                                  bias_x_grad_ptr,
-                                  is_nchw,
-                                  nullptr,
-                                  nullptr,
-                                  eps);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn_grad");
-
-      auto z_shape = phi::vectorize<int>(z->dims());
       auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
-      int z_n = -1, z_c = -1, z_h = -1, z_w = -1;
-      fill_nchw(z_shape, is_nchw, &z_n, &z_c, &z_h, &z_w);
-      std::vector<int> z_ksize = {filter_z_shape[2], filter_z_shape[3]};
+      std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
       if (!is_nchw) {
-        z_ksize[0] = filter_z_shape[1];
-        z_ksize[1] = filter_z_shape[2];
+        ksize_z[0] = filter_z_shape[1];
+        ksize_z[1] = filter_z_shape[2];
       }
-      std::vector<int> z_strides = {stride_z, stride_z};
-      r = xpu::conv2d_grad<T, T, T, int16_t>(dev_ctx.x_context(),
-                                             z->data<T>(),
-                                             filter_z->data<T>(),
-                                             conv_out_z_grad.data<T>(),
-                                             z_grad_ptr,
-                                             filter_z_grad_ptr,
-                                             z_n,
-                                             z_c,
-                                             z_h,
-                                             z_w,
-                                             filter_z_shape[0],
-                                             z_ksize,
-                                             z_strides,
-                                             paddings,
-                                             dilations,
-                                             group,
-                                             nullptr,
-                                             nullptr,
-                                             nullptr,
-                                             nullptr,
-                                             nullptr,
-                                             is_nchw);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit conv_grad");
+      ksize_list.push_back(ksize_z);
+      stride_list.push_back({stride_z, stride_z});
+      x_maxlist.push_back(nullptr);
+      w_maxlist.push_back(nullptr);
+
+      scale_list.push_back(scale_z->data<float>());
+      batch_mean_list.push_back(saved_mean_z->data<float>());
+      batch_invstd_list.push_back(saved_invstd_z->data<float>());
+      dscale_list.push_back(scale_z_grad->mutable_data<float>(place));
+      dbias_list.push_back(bias_z_grad->mutable_data<float>(place));
     } else {
-      auto conv_out_x_shape = phi::vectorize<int>(conv_out_x->dims());
-      int bn_x_n = -1, bn_x_c = -1, bn_x_h = -1, bn_x_w = -1;
-      fill_nchw(conv_out_x_shape, is_nchw, &bn_x_n, &bn_x_c, &bn_x_h, &bn_x_w);
-      r = xpu::batch_norm_grad<T>(dev_ctx.x_context(),
-                                  conv_out_x->data<T>(),
-                                  relu_grad_ptr,
-                                  conv_out_x_grad.data<T>(),
-                                  bn_x_n,
-                                  bn_x_c,
-                                  bn_x_h,
-                                  bn_x_w,
-                                  scale_x->data<T>(),
-                                  saved_mean_x->data<T>(),
-                                  saved_invstd_x->data<T>(),
-                                  scale_x_grad_ptr,
-                                  bias_x_grad_ptr,
-                                  is_nchw,
-                                  nullptr,
-                                  nullptr,
-                                  eps);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit bn_grad");
-
-      Tensor *z_grad =
-          fuse_add ? ctx.Output<Tensor>(framework::GradVarName("Z")) : nullptr;
-      if (z_grad) {
-        z_grad->mutable_data<T>(place);
-        memory::Copy(place,
-                     z_grad->data<T>(),
-                     place,
-                     relu_grad.data<T>(),
-                     sizeof(T) * z_grad->numel());
+      if (fuse_add) {
+        auto z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
+        dx_list.push_back(z_grad->mutable_data<T>(place));
       }
     }
 
-    int x_n = -1, x_c = -1, x_h = -1, x_w = -1;
-    fill_nchw(x_shape, is_nchw, &x_n, &x_c, &x_h, &x_w);
-    std::vector<int> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
-    if (!is_nchw) {
-      x_ksize[0] = filter_x_shape[1];
-      x_ksize[1] = filter_x_shape[2];
-    }
-    r = xpu::conv2d_grad<T, T, T, int16_t>(dev_ctx.x_context(),
-                                           x->data<T>(),
-                                           filter_x->data<T>(),
-                                           conv_out_x_grad.data<T>(),
-                                           x_grad_ptr,
-                                           filter_x_grad_ptr,
-                                           x_n,
-                                           x_c,
-                                           x_h,
-                                           x_w,
-                                           filter_x_shape[0],
-                                           x_ksize,
-                                           x_strides,
-                                           paddings,
-                                           dilations,
-                                           group,
-                                           nullptr,
-                                           nullptr,
-                                           nullptr,
-                                           nullptr,
-                                           nullptr,
-                                           is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet unit conv_grad");
+    int r =
+        xpu::resnet_unit_grad_fusion<T, T, T, int16_t>(dev_ctx.x_context(),
+                                                       x_list,
+                                                       w_list,
+                                                       y_grad->data<T>(),
+                                                       output->data<T>(),
+                                                       conv_y_list,
+                                                       dx_list,
+                                                       dw_list,
+                                                       x_shape_list,
+                                                       filter_x_shape[0],
+                                                       ksize_list,
+                                                       stride_list,
+                                                       paddings,
+                                                       dilations,
+                                                       group,
+                                                       x_maxlist,
+                                                       w_maxlist,
+                                                       scale_list,
+                                                       batch_mean_list,
+                                                       batch_invstd_list,
+                                                       dscale_list,
+                                                       dbias_list,
+                                                       xpu::Activation_t::RELU,
+                                                       eps,
+                                                       is_nchw,
+                                                       has_shortcut,
+                                                       fuse_add);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
 };
 
