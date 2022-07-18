@@ -2211,12 +2211,6 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     check_type(target_gradients, 'target_gradients',
                (framework.Variable, list, tuple, type(None)),
                'paddle.static.gradients')
-
-    from ..incubate.autograd.primx import _gradients
-    from ..incubate.autograd.utils import prim_enabled
-    if prim_enabled():
-        return _gradients(targets, inputs, target_gradients)
-
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
 

@@ -32,9 +32,6 @@ using Name2VariableMap = std::unordered_map<std::string, Variable>;
 
 class Layer {
  public:
-  // TODO(dev): Make vector<string>, num_slot as in argument
-  // Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-  // {}
   Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
         const Name2VariableMap& params_dict,
         const phi::Place& place);
@@ -43,15 +40,20 @@ class Layer {
 
   Variable Attribute(const std::string& name) const;
 
-  std::vector<Variable> forward(const std::vector<Variable>& inputs);
+  std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
+
+  std::vector<DenseTensor> forward(const std::vector<DenseTensor>& inputs);
 
   void to(const phi::Place& place);
 
   void SetFunction(const std::string& name,
                    const std::shared_ptr<BaseFunction>& function);
 
+  std::vector<std::string> FunctionNames() const;
+
+  const Name2FunctionMap& FunctionMap() const;
+
  private:
-  // internal::Object obj_;
   Name2VariableMap params_dict_;
   Name2VariableMap attrs_dict_;
   CompilationUnit unit_;

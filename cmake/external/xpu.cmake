@@ -10,7 +10,7 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
       "https://baidu-kunlun-product.cdn.bcebos.com/KL-SDK/klsdk-dev")
-  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220601")
+  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/20220712")
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
@@ -19,14 +19,17 @@ endif()
 if(NOT DEFINED XPU_XDNN_BASE_URL)
   set(XPU_XDNN_BASE_URL_WITHOUT_DATE
       "https://klx-sdk-release-public.su.bcebos.com/xdnn/dev")
-  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220601")
+  set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL_WITHOUT_DATE}/20220712")
 else()
   set(XPU_XDNN_BASE_URL "${XPU_XDNN_BASE_URL}")
 endif()
 
+set(XPU_XCCL_BASE_URL
+    "https://klx-sdk-release-public.su.bcebos.com/xccl/release/1.0.0")
+
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XDNN_DIR_NAME "XDNN-kylin_aarch64")
+  set(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
   set(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
   set(XPU_XDNN_URL
       "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
@@ -40,7 +43,7 @@ elseif(WITH_SUNWAY)
       CACHE STRING "" FORCE)
 elseif(WITH_BDCENTOS)
   set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
-  set(XPU_XDNN_DIR_NAME "XDNN-bdcentos_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
   set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
   # ubuntu and centos: use output by XDNN API team
   set(XPU_XDNN_URL
@@ -48,7 +51,7 @@ elseif(WITH_BDCENTOS)
       CACHE STRING "" FORCE)
 elseif(WITH_UBUNTU)
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
-  set(XPU_XDNN_DIR_NAME "XDNN-ubuntu_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
   set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
   # ubuntu and centos: use output by XDNN API team
   set(XPU_XDNN_URL
@@ -56,7 +59,7 @@ elseif(WITH_UBUNTU)
       CACHE STRING "" FORCE)
 elseif(WITH_CENTOS)
   set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
-  set(XPU_XDNN_DIR_NAME "XDNN-bdcentos_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
   set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
   # ubuntu and centos: use output by XDNN API team
   set(XPU_XDNN_URL
@@ -64,7 +67,7 @@ elseif(WITH_CENTOS)
       CACHE STRING "" FORCE)
 else()
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
-  set(XPU_XDNN_DIR_NAME "XDNN-ubuntu_x86_64")
+  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
   set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
   # default: use output by XDNN API team
   set(XPU_XDNN_URL
@@ -76,7 +79,7 @@ set(XPU_XRE_URL
     "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XCCL_URL
-    "${XPU_BASE_URL_WITHOUT_DATE}/20220411/${XPU_XCCL_DIR_NAME}.tar.gz"
+    "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"

@@ -442,13 +442,6 @@ class TestErrorInForLoop(TestTransformForLoop):
     def _init_dyfunc(self):
         self.dyfunc = for_loop_dyfunc_not_support
 
-    def test_ast_to_func(self):
-        with self.assertRaisesRegexp(
-                NotImplementedError,
-                "Dynamic-to-Static only supports the step value is a constant or negative constant "
-        ):
-            self._run_static()
-
 
 if __name__ == '__main__':
     with fluid.framework._test_eager_guard():

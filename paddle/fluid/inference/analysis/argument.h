@@ -331,6 +331,9 @@ struct Argument {
 
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
+  DECL_ARGUMENT_FIELD(mixed_black_list,
+                      MixedBlackList,
+                      std::unordered_set<std::string>);
 
  private:
   std::unordered_set<std::string> valid_fields_;

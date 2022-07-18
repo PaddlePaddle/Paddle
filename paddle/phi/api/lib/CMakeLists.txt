@@ -94,6 +94,14 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
+# op extra info file
+set(ops_extra_info_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
+set(api_compat_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api_compat.yaml)
+set(ops_extra_info_file
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
+
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
@@ -211,6 +219,13 @@ else()
   message("remove ${generated_argument_mapping_path}")
 endif()
 
+# generate ops extra info
+execute_process(
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --api_compat_yaml_path
+    ${api_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
+message("generate ${ops_extra_info_file}")
+
 # generate forward api
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
@@ -242,8 +257,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
-          ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+          ${legacy_bw_api_yaml_file}
   VERBATIM)
 
 # generate sparse api

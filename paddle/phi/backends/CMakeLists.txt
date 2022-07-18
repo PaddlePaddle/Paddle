@@ -12,6 +12,10 @@ if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
 
+if(WITH_MKLDNN)
+  add_subdirectory(onednn)
+endif()
+
 cc_library(
   phi_context
   SRCS all_context.cc

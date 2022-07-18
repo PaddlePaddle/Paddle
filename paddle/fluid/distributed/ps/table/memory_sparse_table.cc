@@ -15,6 +15,7 @@
 #include <omp.h>
 #include <sstream>
 
+#include "glog/logging.h"
 #include "paddle/fluid/distributed/common/cost_timer.h"
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
@@ -23,7 +24,6 @@
 #include "paddle/fluid/framework/io/fs.h"
 
 #include "boost/lexical_cast.hpp"
-#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_bool(pserver_print_missed_key_num_every_push,

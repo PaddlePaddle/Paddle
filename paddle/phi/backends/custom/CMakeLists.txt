@@ -11,4 +11,8 @@ if(WITH_CUSTOM_DEVICE)
     custom_device_test
     SRCS custom_device_test.cc
     DEPS device_manager device_context)
+  cc_test(
+    capi_test
+    SRCS capi_test.cc
+    DEPS phi_capi)
 endif()
