@@ -569,7 +569,8 @@ int32_t BrpcPsService::PushSparse(Table *table,
     return 0;
   }
   CostTimer timer("pserver_server_push_sparse");
-  const uint32_t num = *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
+  const uint32_t num =
+      *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
   |---keysData---|---valuesData---|

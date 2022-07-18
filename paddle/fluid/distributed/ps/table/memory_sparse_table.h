@@ -72,15 +72,17 @@ class MemorySparseTable : public Table {
                        const std::string& param) override;
 
   virtual int32_t SaveCache(
-      const std::string& path, const std::string& param,
+      const std::string& path,
+      const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
   virtual double GetCacheThreshold() { return _local_show_threshold; }
   virtual int64_t CacheShuffle(
-      const std::string& path, const std::string& param, double cache_threshold,
-      std::function<std::future<int32_t>(int msg_type, int to_pserver_id,
-                                         std::string& msg)>
-          send_msg_func,
+      const std::string& path,
+      const std::string& param,
+      double cache_threshold,
+      std::function<std::future<int32_t>(
+          int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
