@@ -42,6 +42,12 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  const std::string& data_format,
                                  MetaTensor* x_grad);
 
+void ComplexGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dout,
+                          MetaTensor* dx,
+                          MetaTensor* dy);
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,

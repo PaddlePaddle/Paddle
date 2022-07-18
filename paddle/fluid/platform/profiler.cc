@@ -310,8 +310,10 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 
 std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
     RecordMemEvent::size_cache;
+
 std::map<const char *, std::map<uint64_t, bool>>
     RecordMemEvent::has_initialized;
+
 RecordMemEvent::RecordMemEvent(const void *ptr,
                                const phi::Place &place,
                                size_t size,

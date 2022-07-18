@@ -80,6 +80,10 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void EigvalsInferMeta(const MetaTensor& x,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out,

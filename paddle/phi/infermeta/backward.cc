@@ -83,6 +83,23 @@ void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void ComplexGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& dout,
+                          MetaTensor* dx,
+                          MetaTensor* dy) {
+  auto x_dims = x.dims();
+  if (dx) {
+    dx->set_dims(x_dims);
+    dx->set_dtype(x.dtype());
+  }
+  auto y_dims = y.dims();
+  if (dy) {
+    dy->set_dims(y_dims);
+    dy->set_dtype(y.dtype());
+  }
+}
+
 void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& dout,
