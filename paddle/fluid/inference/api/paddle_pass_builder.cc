@@ -159,8 +159,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
-    "transpose_flatten_concat_fuse_pass",
-};
+    "transpose_flatten_concat_fuse_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
