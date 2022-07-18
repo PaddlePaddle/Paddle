@@ -29,9 +29,7 @@ cc_library(
   DEPS jit_serializer jit_function_utils jit_serializer_utils
        jit_compilation_unit jit_function_schema)
 
-if(WITH_TESTING
-   AND NOT WIN32
-   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+if(WITH_TESTING AND NOT WIN32)
   add_custom_target(
     jit_download_program
     COMMAND wget -nc -q
