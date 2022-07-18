@@ -2676,6 +2676,7 @@ class TestSoftplus(TestActivation):
 
     def setUp(self):
         self.op_type = "softplus"
+        self.python_api=paddle.nn.functional.softplus
         self.init_dtype()
 
         beta = 2
@@ -2687,11 +2688,12 @@ class TestSoftplus(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'beta': beta, "threshold": threshold}
         self.outputs = {'Out': out}
+        self.check_eager=True
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out',check_eager=True)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
