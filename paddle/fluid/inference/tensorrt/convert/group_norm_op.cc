@@ -45,13 +45,13 @@ class GroupNormOpConverter : public OpConverter {
     std::string bias_name = op_desc.Input("Bias").front();
 
     // get the presistable var's data
-    auto GetWeight = [&](const std::string& var_name,
+    auto GetWeight = [&](const std::string& variable_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
-      auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_variable = scope.FindVar(variable_name);
+      auto* temp_tensor = temp_variable->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
+      auto weight = engine_->GetTrtWeight(variable_name, *temp_tensor);
       return weight;
     };
 
@@ -60,51 +60,53 @@ class GroupNormOpConverter : public OpConverter {
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
 
-    nvinfer1::Dims scale_nv_dims;
-    nvinfer1::Dims bias_nv_dims;
-    scale_nv_dims.nbDims = scale_dims.size();
-    bias_nv_dims.nbDims = bias_dims.size();
-    for (int i = 0; i < scale_dims.size(); i++) {
-      scale_nv_dims.d[i] = scale_dims.at(i);
+    if(engine_->with_dynamic_shape()){
+        //TODO
+    }else{
+        nvinfer1::Dims scale_nv_dims;
+        nvinfer1::Dims bias_nv_dims;
+        scale_nv_dims.nbDims = scale_dims.size();
+        bias_nv_dims.nbDims = bias_dims.size();
+        for (int i = 0; i < scale_dims.size(); i++) {
+        scale_nv_dims.d[i] = scale_dims.at(i);
+        }
+        for (int i = 0; i < bias_dims.size(); i++) {
+        bias_nv_dims.d[i] = bias_dims.at(i);
+        }
+        auto* scale_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Constant, scale_nv_dims, scale_weights.get());
+        auto* bias_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Constant, bias_nv_dims, bias_weights.get());
+
+        std::vector<nvinfer1::ITensor*> plugin_inputs;
+        plugin_inputs.emplace_back(input_itensor);
+        plugin_inputs.emplace_back(scale_layer->getOutput(0));
+        plugin_inputs.emplace_back(bias_layer->getOutput(0));
+
+        const std::vector<nvinfer1::PluginField> fields{
+            {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
+            {"num_groups", &groups, nvinfer1::PluginFieldType::kINT32, 1},
+        };
+
+        nvinfer1::PluginFieldCollection* plugin_collections =
+            static_cast<nvinfer1::PluginFieldCollection*>(
+                malloc(sizeof(*plugin_collections) +
+                    fields.size() * sizeof(nvinfer1::PluginField)));
+        plugin_collections->nbFields = static_cast<int>(fields.size());
+        plugin_collections->fields = fields.data();
+
+        auto creator =
+            GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
+        auto group_norm_plugin =
+            creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
+        free(plugin_collections);
+
+        auto group_norm_plugin_layer = engine_->network()->addPluginV2(
+            plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
+        auto output_name = op_desc.Output("Y")[0];
+        RreplenishLayerAndOutput(
+            group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
     }
-    for (int i = 0; i < bias_dims.size(); i++) {
-      bias_nv_dims.d[i] = bias_dims.at(i);
-    }
-
-    auto* scale_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, scale_nv_dims, scale_weights.get());
-    auto* bias_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Constant, bias_nv_dims, bias_weights.get());
-
-    std::vector<nvinfer1::ITensor*> plugin_inputs;
-    plugin_inputs.emplace_back(input_itensor);
-    plugin_inputs.emplace_back(scale_layer->getOutput(0));
-    plugin_inputs.emplace_back(bias_layer->getOutput(0));
-
-    const std::vector<nvinfer1::PluginField> fields{
-        {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"num_groups", &groups, nvinfer1::PluginFieldType::kINT32, 1},
-    };
-
-    nvinfer1::PluginFieldCollection* plugin_collections =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collections) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
-    plugin_collections->nbFields = static_cast<int>(fields.size());
-    plugin_collections->fields = fields.data();
-
-    auto creator =
-        GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
-    auto group_norm_plugin =
-        creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
-    free(plugin_collections);
-
-    auto group_norm_plugin_layer = engine_->network()->addPluginV2(
-        plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
-
-    auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(
-        group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
   }
 };
 

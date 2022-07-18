@@ -39,6 +39,7 @@ class TRTGroupNormTest(InferencePassTest):
         self.trt_parameters = TRTGroupNormTest.TensorRTParam(
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam(
+            #//TODO wangbojun why data in dynamic shape param all share same size?
             {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]},
             {'data': [1, 512, 12, 12]}, False)
         self.fetch_list = [out]
