@@ -1203,10 +1203,12 @@ struct OperatorWithKernel::CacheImpl {
           infer_shape_ctx_->GetInputDim(in_name) !=
               inputs_dim_caches[in_name]) {
         inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputDim(in_name);
-        discardCudaGraphCache();
         flag = true;
       }
     }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if(flag) discardCudaGraphCache();
+#endif
     return flag;
   }
 
@@ -1445,7 +1447,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
+//  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))

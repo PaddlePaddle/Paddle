@@ -332,7 +332,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = phi::vectorize(transformed_input.dims());
     auto f_dims = phi::vectorize(filter->dims());
-    if (!exhaustive_search) {
+    if (false) {
 #if CUDNN_VERSION >= 8000
       int perf_count;
       int best_algo_idx = 0;
