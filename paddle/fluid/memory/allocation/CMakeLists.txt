@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler)
+set(ALLOCATOR_DEPS place profiler)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -98,12 +98,12 @@ if(WITH_GPU)
   nv_test(
     best_fit_allocator_test
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
-    DEPS allocator memcpy)
+    DEPS allocator memory)
 elseif(WITH_ROCM)
   hip_test(
     best_fit_allocator_test
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
-    DEPS allocator memcpy)
+    DEPS allocator memory)
 else()
   cc_test(
     best_fit_allocator_test

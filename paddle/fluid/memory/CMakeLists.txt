@@ -1,24 +1,7 @@
 add_subdirectory(allocation)
 
-if(WITH_MKLDNN)
-  set(MKLDNN_CTX_DEPS mkldnn)
-else()
-  set(MKLDNN_CTX_DEPS)
-endif()
-
-cc_library(
-  malloc
-  SRCS malloc.cc
-  DEPS place enforce allocator profiler ${MKLDNN_CTX_DEPS})
-cc_library(
-  memcpy
-  SRCS memcpy.cc
-  DEPS place device_context)
-cc_library(
-  stats
-  SRCS stats.cc
-  DEPS enforce)
-cc_library(memory DEPS malloc memcpy stats)
+add_library(memory malloc.cc memcpy.cc)
+target_link_libraries(memory allocator)
 
 cc_test(
   memory_stats_test
@@ -33,15 +16,15 @@ if(WITH_GPU)
   nv_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context malloc)
+    DEPS device_context memory)
   nv_test(
     stream_safe_cuda_alloc_test
     SRCS stream_safe_cuda_alloc_test.cu
-    DEPS malloc cuda_graph_with_memory_pool)
+    DEPS memory cuda_graph_with_memory_pool)
   nv_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS malloc gpu_info place)
+    DEPS memory gpu_info place)
 
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
@@ -55,11 +38,11 @@ if(WITH_ROCM)
   hip_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context malloc)
+    DEPS device_context memory)
   hip_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
-    DEPS malloc gpu_info place)
+    DEPS memory gpu_info place)
 endif()
 
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
@@ -77,7 +60,7 @@ if(WITH_GPU
   nv_test(
     get_base_ptr_test
     SRCS get_base_ptr_test.cu
-    DEPS malloc gpu_info)
+    DEPS memory gpu_info)
   set_tests_properties(
     get_base_ptr_test
     PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;

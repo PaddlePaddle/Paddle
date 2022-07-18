@@ -41,6 +41,9 @@ cc_library(
   dense_tensor
   SRCS dense_tensor.cc dense_tensor_impl.cc
   DEPS convert_utils fluid_convert_utils tensor_meta tensor_base)
+
+target_link_libraries(dense_tensor memory)
+
 cc_library(
   sparse_coo_tensor
   SRCS sparse_coo_tensor.cc
@@ -65,7 +68,7 @@ cc_library(
 cc_library(
   selected_rows
   SRCS selected_rows_impl.cc selected_rows.cc
-  DEPS tensor_base dense_tensor phi_enforce ddim memcpy)
+  DEPS tensor_base dense_tensor phi_enforce ddim memory)
 cc_library(
   phi_device_context
   SRCS device_context.cc
@@ -86,38 +89,23 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context
-         gpu_context
-         dense_tensor
-         selected_rows
-         malloc
-         memcpy
+    DEPS cpu_context gpu_context dense_tensor selected_rows memor
          device_context)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context
-         gpu_context
-         dense_tensor
-         selected_rows
-         malloc
-         memcpy
+    DEPS cpu_context gpu_context dense_tensor selected_rows memory
          device_context)
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context
-         xpu_context
-         dense_tensor
-         selected_rows
-         malloc
-         memcpy
+    DEPS cpu_context xpu_context dense_tensor selected_rows memory
          device_context)
 else()
   cc_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS cpu_context dense_tensor selected_rows malloc memcpy device_context)
+    DEPS cpu_context dense_tensor selected_rows memory device_context)
 endif()

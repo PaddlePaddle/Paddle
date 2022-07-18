@@ -13,7 +13,7 @@ cc_library(
 cc_library(
   lite_tensor_utils
   SRCS tensor_utils.cc
-  DEPS memcpy ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})
+  DEPS memory ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})
 cc_test(
   test_lite_engine
   SRCS test_engine_lite.cc

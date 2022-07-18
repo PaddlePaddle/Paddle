@@ -73,7 +73,7 @@ cc_library(
 cc_library(
   data_type
   SRCS data_type.cc
-  DEPS framework_proto ddim device_context)
+  DEPS framework_proto)
 cc_test(
   data_type_test
   SRCS data_type_test.cc

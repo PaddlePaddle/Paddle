@@ -23,7 +23,7 @@ set(fluid_deps
     operator
     op_registry
     variable_helper
-    memcpy)
+    memory)
 set(generated_deps final_dygraph_function final_dygraph_node dygraph_function
                    dygraph_node)
 
@@ -72,7 +72,7 @@ cc_library(
        operator
        op_registry
        variable_helper
-       memcpy
+       memory
        scale_op
        autograd_meta
        hook_utils)

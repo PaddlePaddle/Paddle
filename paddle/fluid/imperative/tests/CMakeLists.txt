@@ -39,7 +39,7 @@ endif()
 cc_test(
   test_gradient_accmulator
   SRCS test_gradient_accmulator.cc
-  DEPS memcpy
+  DEPS memory
        selected_rows_utils
        selected_rows_functor
        gradient_accumulator
@@ -56,7 +56,7 @@ cc_test(
        op_registry
        variable_helper
        mul_op
-       memcpy)
+       memory)
 cc_test(
   test_prepare_op
   SRCS test_prepare_op.cc
@@ -79,7 +79,7 @@ cc_test(
        mul_op
        reduce_sum_op
        elementwise_add_op
-       memcpy)
+       memory)
 cc_test(
   test_hooks
   SRCS test_hooks.cc
@@ -92,7 +92,7 @@ cc_test(
        variable_helper
        mul_op
        elementwise_add_op
-       memcpy)
+       memory)
 cc_test(
   test_eager
   SRCS test_eager.cc
@@ -104,5 +104,5 @@ if(WITH_NCCL
   cc_test(
     test_group
     SRCS test_group.cc
-    DEPS reducer concat_and_split memcpy)
+    DEPS reducer concat_and_split memory)
 endif()

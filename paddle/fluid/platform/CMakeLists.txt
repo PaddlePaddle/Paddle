@@ -200,7 +200,7 @@ cc_library(
   device_context
   SRCS device_context.cc
   DEPS simple_threadpool
-       malloc
+       memory
        xxhash
        ${STREAM_CALLBACK_DEPS}
        place
