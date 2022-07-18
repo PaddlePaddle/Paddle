@@ -241,6 +241,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def generate_quantized_model(self,
                                  model_path,
                                  quantizable_op_type,
+                                 batch_size,
+                                 batch_nums,
                                  algo="KL",
                                  round_type="round",
                                  is_full_quantize=False,
@@ -262,6 +264,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         ptq = PostTrainingQuantization(executor=exe,
                                        sample_generator=val_reader,
                                        model_dir=model_path,
+                                       batch_size=batch_size,
+                                       batch_nums=batch_nums,
                                        algo=algo,
                                        quantizable_op_type=quantizable_op_type,
                                        round_type=round_type,
@@ -299,7 +303,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
         self.generate_quantized_model(os.path.join(model_cache_folder, "model"),
-                                      quantizable_op_type, algo, round_type,
+                                      quantizable_op_type, batch_size,
+                                      sample_iterations, algo, round_type,
                                       is_full_quantize, is_use_cache_file,
                                       is_optimize_model, onnx_format)
 
