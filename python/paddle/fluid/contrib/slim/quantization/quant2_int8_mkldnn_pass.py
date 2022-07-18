@@ -264,6 +264,14 @@ class Quant2Int8MkldnnPass(object):
                     elif output_name in self._var_quant_scales:
                         self._var_quant_scales[
                             input_name] = self._var_quant_scales[output_name]
+                elif op.name() == 'concat':
+                    output_name = op.output("Out")[0]
+                    if output_name in self._var_quant_scales:
+                        input_names = op.input("X")
+                        for input_name in input_names:
+                            self._var_quant_scales[
+                                input_name] = self._var_quant_scales[
+                                    output_name]
                 elif op.name() in self._scale_ops:
                     input_name = op.input("X")[0]
                     output_name = op.output("Out")[0]
@@ -595,13 +603,6 @@ class Quant2Int8MkldnnPass(object):
         _compute_lstm_weight_scales("WeightX", "WeightH")
         return graph
 
-    def _find_avg_pooling_ids(self, graph):
-        for op in graph.all_op_nodes():
-            if op.name() in self._pool_ops:
-                if op.op().attr("pooling_type") == "avg":
-                    self._op_ids_to_skip.add(op.id())
-        return self._op_ids_to_skip
-
     def _update_relu_output_scales(self, graph):
 
         def _set_unsigned_scale(graph, ops, op_out_name, predicate):
@@ -651,11 +652,9 @@ class Quant2Int8MkldnnPass(object):
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')
         graph = self._apply_pass(
             graph, 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
-        graph = self._apply_pass(
-            graph, 'cpu_quantize_placement_pass',
-            ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
-            [self._ops_to_quantize,
-             self._find_avg_pooling_ids(graph)])
+        graph = self._apply_pass(graph, 'cpu_quantize_placement_pass',
+                                 ['quantize_enabled_op_types'],
+                                 [self._ops_to_quantize])
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales,
