@@ -174,7 +174,12 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
                                      MetaTensor* ddy);
 
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
-
+void MarginRankLossGradInferMeta(const MetaTensor& label,
+                                 const MetaTensor& activated,
+                                 const MetaTensor& out_grad,
+                                 float margin,
+                                 MetaTensor* left_grad,
+                                 MetaTensor* right_grad);
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

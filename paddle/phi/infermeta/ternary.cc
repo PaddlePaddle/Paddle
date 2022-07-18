@@ -633,6 +633,56 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MarginRankLossInferMeta(const MetaTensor& label,
+                             const MetaTensor& left,
+                             const MetaTensor& right,
+                             float margin,
+                             MetaTensor* out,
+                             MetaTensor* activated) {
+  auto label_dims = label.dims();
+  auto x1_dims = left.dims();
+  auto x2_dims = right.dims();
+
+  PADDLE_ENFORCE_EQ(
+      label_dims,
+      x1_dims,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Label) shape should equals the shape of "
+          "Input(X1). Received: Input(Label)'s shape: [%s], Input(X1)'s "
+          "shape: [%s].",
+          label_dims,
+          x1_dims));
+  PADDLE_ENFORCE_EQ(
+      x1_dims,
+      x2_dims,
+      phi::errors::InvalidArgument(
+          "The shape of Input(X1) shape should equals the shape of "
+          "Input(X2). Received: Input(X1)'s shape: [%s], Input(X2)'s shape: "
+          "[%s].",
+          x1_dims,
+          x2_dims));
+  PADDLE_ENFORCE_EQ(
+      label_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The dimensions of Input(Label) should be 2. Received: "
+          "the shape of Input(Label): [%s], the dimensions of Input(Label): "
+          "%d.",
+          label_dims,
+          label_dims.size()));
+  PADDLE_ENFORCE_EQ(label_dims[1],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(Lable) should be 1"
+                        "Received: the shape of Input(Label): [%s].",
+                        label_dims));
+
+  activated->set_dims(label_dims);
+  activated->set_dtype(label.dtype());
+  out->set_dims(label_dims);
+  out->set_dtype(label.dtype());
+}
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,

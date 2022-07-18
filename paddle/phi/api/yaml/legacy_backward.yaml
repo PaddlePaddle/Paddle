@@ -1127,6 +1127,15 @@
   kernel :
     func : logsumexp_grad
 
+- backward_api : margin_rank_loss_grad
+  forward : margin_rank_loss(Tensor label, Tensor left, Tensor right, float margin) -> Tensor(out), Tensor(activated)
+  args : (Tensor label, Tensor activated, Tensor out_grad, float margin)
+  output : Tensor(left_grad), Tensor(right_grad)
+  infer_meta : 
+    func : MarginRankLossGradInferMeta
+  kernel :
+    func : margin_rank_loss_grad
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)

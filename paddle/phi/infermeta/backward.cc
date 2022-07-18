@@ -392,6 +392,29 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   dx->share_lod(xshape);
 }
 
+void MarginRankLossGradInferMeta(const MetaTensor& label,
+                                 const MetaTensor& activated,
+                                 const MetaTensor& out_grad,
+                                 float margin,
+                                 MetaTensor* left_grad,
+                                 MetaTensor* right_grad){
+  PADDLE_ENFORCE_NE(
+      left_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The left_grad in MarginRankLossGradInferMeta can't be nullptr."));
+    
+  PADDLE_ENFORCE_NE(
+      right_grad,
+      nullptr,
+      phi::errors::InvalidArgument(
+          "The right_grad in MarginRankLossGradInferMeta can't be nullptr."));
+
+  auto label_dims = label.dims();
+  left_grad->set_dims(label_dims);
+  right_grad->set_dims(label_dims);
+                       
+}
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

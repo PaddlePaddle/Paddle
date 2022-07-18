@@ -325,8 +325,8 @@ add_custom_command(
           ${dygraph_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp}
           ${dygraph_api_source_file}
-  DEPENDS ${api_yaml_file} ${sparse_api_yaml_file} ${im_api_gen_file}
-          ${api_gen_base} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${sparse_api_yaml_file}
+          ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta

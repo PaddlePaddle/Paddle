@@ -113,6 +113,13 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MarginRankLossInferMeta(const MetaTensor& label,
+                             const MetaTensor& left,
+                             const MetaTensor& right,
+                             float margin,
+                             MetaTensor* out,
+                             MetaTensor* activated);
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,
