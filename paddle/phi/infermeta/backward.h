@@ -100,6 +100,12 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
                                  MetaTensor* filter_grad,
                                  MetaTensor* mask_grad);
 
+void EigGradInferMeta(const MetaTensor& out_w,
+                      const MetaTensor& out_v,
+                      const MetaTensor& dout_w,
+                      const MetaTensor& dout_v,
+                      MetaTensor* dx);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

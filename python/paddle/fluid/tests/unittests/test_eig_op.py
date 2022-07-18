@@ -227,6 +227,29 @@ class TestEigStatic(TestEigOp):
             str(np.abs(fetch_vec)))
 
 
+class TestEigDyGraph(TestEigOp):
+
+    def test_check_output_with_place(self):
+        input_np = np.random.random([3, 3]).astype('complex')
+        expect_val, expect_vec = np.linalg.eig(input_np)
+
+        paddle.set_device("cpu")
+        paddle.disable_static()
+
+        input_tensor = paddle.to_tensor(input_np)
+        fetch_val, fetch_vec = paddle.linalg.eig(input_tensor)
+
+        self.assertTrue(
+            np.allclose(expect_val, fetch_val.numpy(), 1e-6,
+                        1e-6), "The eigen values have diff: \nExpected " +
+            str(expect_val) + "\n" + "But got: " + str(fetch_val))
+        self.assertTrue(
+            np.allclose(np.abs(expect_vec), np.abs(fetch_vec.numpy()), 1e-6,
+                        1e-6), "The eigen vectors have diff: \nExpected " +
+            str(np.abs(expect_vec)) + "\n" + "But got: " +
+            str(np.abs(fetch_vec.numpy())))
+
+
 class TestEigWrongDimsError(unittest.TestCase):
 
     def test_error(self):
@@ -254,7 +277,7 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
+        self.assertRaises(RuntimeError, paddle.linalg.eig, x)
 
 
 if __name__ == "__main__":
