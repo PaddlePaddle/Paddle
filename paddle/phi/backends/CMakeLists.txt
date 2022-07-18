@@ -40,3 +40,4 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
+set_property(GLOBAL PROPERTY PHI_MODULES phi_backends)
