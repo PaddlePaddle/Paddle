@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
@@ -119,9 +119,8 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
   int ldc = std::max<int>(1, m);
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnSormqr_bufferSize(
-          handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr_bufferSize(
+      handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor* info = new DenseTensor();
   info->Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(info);
@@ -137,21 +136,20 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
     float* workspace_ptr = dev_ctx.template Alloc<float>(workspace);
 
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnSormqr(handle,
-                                                    side,
-                                                    trans,
-                                                    m,
-                                                    n,
-                                                    k,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    other_working_ptr,
-                                                    ldc,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr(handle,
+                                                              side,
+                                                              trans,
+                                                              m,
+                                                              n,
+                                                              k,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              other_working_ptr,
+                                                              ldc,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
 
     // check the error info
     int info_h;
@@ -190,9 +188,8 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
   int ldc = std::max<int>(1, m);
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnDormqr_bufferSize(
-          handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr_bufferSize(
+      handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor* info = new DenseTensor();
   info->Resize(make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(info);
@@ -208,21 +205,20 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
     double* workspace_ptr = dev_ctx.template Alloc<double>(workspace);
 
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnDormqr(handle,
-                                                    side,
-                                                    trans,
-                                                    m,
-                                                    n,
-                                                    k,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    other_working_ptr,
-                                                    ldc,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr(handle,
+                                                              side,
+                                                              trans,
+                                                              m,
+                                                              n,
+                                                              k,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              other_working_ptr,
+                                                              ldc,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
 
     // check the error info
     int info_h;

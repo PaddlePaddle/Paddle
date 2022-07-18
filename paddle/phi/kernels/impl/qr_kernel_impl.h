@@ -15,12 +15,12 @@
 #pragma once
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
@@ -64,8 +64,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnSgeqrf_bufferSize(
-          handle, m, n, a, lda, &lwork));
+      phi::dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor* workspace = new DenseTensor();
   workspace->Resize(make_ddim({lwork}));
@@ -79,16 +78,15 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnSgeqrf(handle,
-                                                    m,
-                                                    n,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf(handle,
+                                                              m,
+                                                              n,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -120,8 +118,7 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnDgeqrf_bufferSize(
-          handle, m, n, a, lda, &lwork));
+      phi::dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor* workspace = new DenseTensor();
   workspace->Resize(make_ddim({lwork}));
@@ -135,16 +132,15 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnDgeqrf(handle,
-                                                    m,
-                                                    n,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDgeqrf(handle,
+                                                              m,
+                                                              n,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -176,9 +172,8 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnSorgqr_bufferSize(
-          handle, m, n, k, a, lda, tau, &lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr_bufferSize(
+      handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor* workspace = new DenseTensor();
   workspace->Resize(make_ddim({lwork}));
@@ -192,17 +187,16 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnSorgqr(handle,
-                                                    m,
-                                                    n,
-                                                    k,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr(handle,
+                                                              m,
+                                                              n,
+                                                              k,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -234,9 +228,8 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cusolverDnDorgqr_bufferSize(
-          handle, m, n, k, a, lda, tau, &lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr_bufferSize(
+      handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor* workspace = new DenseTensor();
   workspace->Resize(make_ddim({lwork}));
@@ -250,17 +243,16 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cusolverDnDorgqr(handle,
-                                                    m,
-                                                    n,
-                                                    k,
-                                                    a_working_ptr,
-                                                    lda,
-                                                    tau_working_ptr,
-                                                    workspace_ptr,
-                                                    lwork,
-                                                    info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr(handle,
+                                                              m,
+                                                              n,
+                                                              k,
+                                                              a_working_ptr,
+                                                              lda,
+                                                              tau_working_ptr,
+                                                              workspace_ptr,
+                                                              lwork,
+                                                              info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
