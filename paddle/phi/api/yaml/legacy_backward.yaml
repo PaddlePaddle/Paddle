@@ -104,6 +104,14 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_api : as_complex_grad
+  forward : as_complex (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func :
+  invoke : as_real(out_grad)
+
 - backward_api : asin_grad
   forward : asin (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

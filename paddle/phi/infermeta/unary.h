@@ -50,6 +50,8 @@ void ArgsortInferMeta(const MetaTensor& input,
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
+void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
