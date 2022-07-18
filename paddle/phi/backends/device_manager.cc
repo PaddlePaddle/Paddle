@@ -25,6 +25,7 @@
 #include <regex>
 
 #include "glog/logging.h"
+#include "paddle/utils/string/split.h"
 
 namespace phi {
 
@@ -388,6 +389,139 @@ std::vector<size_t> DeviceManager::GetDeviceList(
     const std::string& device_type) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetDeviceList();
+}
+
+std::vector<size_t> DeviceManager::GetSelectedDeviceList(
+    const std::string& device_type) {
+  std::vector<size_t> devices;
+  std::string FLAGS = "FLAGS_selected_" + device_type + "s";
+  auto FLAGS_selected_devices = getenv(FLAGS.c_str());
+  if (FLAGS_selected_devices) {
+    auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
+    for (auto id : devices_str) {
+      devices.push_back(atoi(id.c_str()));
+    }
+  } else {
+    int count = DeviceManager::GetDeviceCount(device_type);
+    for (int i = 0; i < count; ++i) {
+      devices.push_back(i);
+    }
+  }
+  return devices;
+}
+
+void DeviceManager::CCLDestroyComm(const std::string& device_type,
+                                   ccl::CCLComm ccl_comm) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLDestroyComm(ccl_comm);
+}
+
+void DeviceManager::CCLCommInitRank(const std::string& device_type,
+                                    size_t num_ranks,
+                                    ccl::CCLRootId* root_id,
+                                    size_t rank_id,
+                                    ccl::CCLComm* ccl_comm) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLCommInitRank(num_ranks, root_id, rank_id, ccl_comm);
+}
+
+void DeviceManager::CCLGetUniqueId(const std::string& device_type,
+                                   ccl::CCLRootId* root_id) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGetUniqueId(root_id);
+}
+
+void DeviceManager::CCLBroadcast(const std::string& device_type,
+                                 void* data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 size_t root_id,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLBroadcast(data, num, data_type, root_id, ccl_comm, stream);
+}
+
+void DeviceManager::CCLAllReduce(const std::string& device_type,
+                                 void* in_data,
+                                 void* out_data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 ccl::CCLReduceOp reduce_op,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllReduce(
+      in_data, out_data, num, data_type, reduce_op, ccl_comm, stream);
+}
+
+void DeviceManager::CCLReduce(const std::string& device_type,
+                              void* in_data,
+                              void* out_data,
+                              size_t num,
+                              ccl::CCLDataType data_type,
+                              ccl::CCLReduceOp reduce_op,
+                              const ccl::CCLComm& ccl_comm,
+                              const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLReduce(
+      in_data, out_data, num, data_type, reduce_op, ccl_comm, stream);
+}
+
+void DeviceManager::CCLAllGather(const std::string& device_type,
+                                 void* in_data,
+                                 void* out_data,
+                                 size_t num,
+                                 ccl::CCLDataType data_type,
+                                 const ccl::CCLComm& ccl_comm,
+                                 const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllGather(in_data, out_data, num, data_type, ccl_comm, stream);
+}
+
+void DeviceManager::CCLReduceScatter(const std::string& device_type,
+                                     void* in_data,
+                                     void* out_data,
+                                     size_t num,
+                                     ccl::CCLDataType data_type,
+                                     ccl::CCLReduceOp op,
+                                     const ccl::CCLComm& ccl_comm,
+                                     const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLReduceScatter(
+      in_data, out_data, num, data_type, op, ccl_comm, stream);
+}
+
+void DeviceManager::CCLGroupStart(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGroupStart();
+}
+
+void DeviceManager::CCLGroupEnd(const std::string& device_type) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLGroupEnd();
+}
+
+void DeviceManager::CCLSend(const std::string& device_type,
+                            void* sendbuf,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            size_t dst_rank,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLSend(sendbuf, num, data_type, dst_rank, ccl_comm, stream);
+}
+
+void DeviceManager::CCLRecv(const std::string& device_type,
+                            void* recvbuf,
+                            size_t num,
+                            ccl::CCLDataType data_type,
+                            size_t src_rank,
+                            const ccl::CCLComm& ccl_comm,
+                            const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
 }
 
 DeviceManager& DeviceManager::Instance() {
