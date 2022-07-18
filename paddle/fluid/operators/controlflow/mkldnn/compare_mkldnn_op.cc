@@ -16,12 +16,11 @@
 
 namespace ops = paddle::operators;
 
-#define REGISTER_COMPARE_OP_MKLDNN_KERNEL(op_type, algo)                        \
-  REGISTER_OP_KERNEL(                                                           \
-      op_type,                                                                  \
-      MKLDNN,                                                                   \
-      ::paddle::platform::CPUPlace,                                             \
-      ops::EltwiseMKLDNNKernel<float, algo>);                                   \
+#define REGISTER_COMPARE_OP_MKLDNN_KERNEL(op_type, algo) \
+  REGISTER_OP_KERNEL(op_type,                            \
+                     MKLDNN,                             \
+                     ::paddle::platform::CPUPlace,       \
+                     ops::EltwiseMKLDNNKernel<float, algo>);
 
 REGISTER_COMPARE_OP_MKLDNN_KERNEL(equal, dnnl::algorithm::binary_eq)
 REGISTER_COMPARE_OP_MKLDNN_KERNEL(not_equal, dnnl::algorithm::binary_ne)

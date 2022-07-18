@@ -29,7 +29,9 @@ op_function_map = {
     'less_equal': np.less_equal
 }
 
+
 class TestEqualOneDNNOp(OpTest):
+
     def set_op_type(self):
         self.op_type = "equal"
 
@@ -44,25 +46,36 @@ class TestEqualOneDNNOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(fluid.core.CPUPlace())
 
+
 class TestNotEqualOneDNNOp(TestEqualOneDNNOp):
+
     def set_op_type(self):
         self.op_type = "not_equal"
 
+
 class TestGreaterThanOneDNNOp(TestEqualOneDNNOp):
+
     def set_op_type(self):
         self.op_type = "greater_than"
 
+
 class TestGreaterEqualOneDNNOp(TestEqualOneDNNOp):
+
     def set_op_type(self):
         self.op_type = "greater_equal"
 
+
 class TestLessThanOneDNNOp(TestEqualOneDNNOp):
+
     def set_op_type(self):
         self.op_type = "less_than"
 
+
 class TestLessEqualOneDNNOp(TestEqualOneDNNOp):
+
     def set_op_type(self):
         self.op_type = "less_equal"
+
 
 if __name__ == "__main__":
     paddle.enable_static()
