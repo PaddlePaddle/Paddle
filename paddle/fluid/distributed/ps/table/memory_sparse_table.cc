@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/io/fs.h"
 
-#include "boost/lexical_cast.hpp"
+// #include "boost/lexical_cast.hpp"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_bool(pserver_print_missed_key_num_every_push,
