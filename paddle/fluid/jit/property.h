@@ -25,39 +25,6 @@
 namespace paddle {
 namespace jit {
 
-// convert between std::vector and protobuf repeated.
-template <typename T>
-inline std::vector<T> RepeatedToVector(
-    const google::protobuf::RepeatedField<T> &repeated_field) {
-  std::vector<T> ret;
-  ret.reserve(repeated_field.size());
-  std::copy(
-      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
-  return ret;
-}
-
-template <typename T, typename RepeatedField>
-inline void VectorToRepeated(const std::vector<T> &vec,
-                             RepeatedField *repeated_field) {
-  repeated_field->Clear();
-  repeated_field->Reserve(vec.size());
-  for (const auto &elem : vec) {
-    *repeated_field->Add() = elem;
-  }
-}
-
-// Specialize vector<bool>.
-template <typename RepeatedField>
-inline void VectorToRepeated(const std::vector<bool> &vec,
-                             RepeatedField *repeated_field) {
-  repeated_field->Clear();
-  repeated_field->Reserve(vec.size());
-  for (auto elem : vec) {
-    *repeated_field->Add() = elem;
-  }
-}
-
-
 class Property {
  public:
   explicit Property() {}
@@ -77,14 +44,20 @@ class Property {
 
   const proto::PropertyVals *Proto() const { return &property_; }
 
-  bool SetFloat(const float& f, std::string name="");
-  bool SetFloats(const std::vector<float>& v, std::string name="");
+  size_t Size() const;
 
-  bool SetInt64(const int64_t& f, std::string name="");
-  bool SetInt64s(const std::vector<int64_t>& v, std::string name="");
+  void SetFloat(const float& f);
+  void SetFloat(const std::string& name, const float& f);
+  void SetFloats(const std::string& name, const std::vector<float>& v);
 
-  bool SetString(const std::string& s, std::string name="");
-  bool SetStrings(const std::vector<std::string>& v, std::string name="");
+  float GetFloat(const std::string& name) const;
+  float GetFloat(const int& idx) const;
+
+  void SetInt64(const std::string& name, const int64_t& f);
+  void SetInt64s(const std::string& name, const std::vector<int64_t>& v);
+
+  void SetString(const  std::string& name, const std::string& s);
+  void SetStrings(const std::string& name, const std::vector<std::string>& v);
 
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }

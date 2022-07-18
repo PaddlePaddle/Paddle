@@ -58,6 +58,6 @@ endif()
 proto_library(paddle_jit_property_proto SRCS property.proto)
 
 cc_library(
-  property
+  jit_property
   SRCS property.cc
   DEPS paddle_jit_property_proto)

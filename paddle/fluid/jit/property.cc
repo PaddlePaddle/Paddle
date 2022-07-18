@@ -13,9 +13,106 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/jit/property.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace jit {
+
+size_t Property::Size() const{
+    return property_.entrys_size();
+}
+
+void Property::SetFloat(const float& f) {
+    auto type = proto::ValueProto::FLOAT;
+    auto entry = property_.add_entrys();
+    entry->set_type(type);
+    entry->set_f(f);
+    VLOG(3) << "Property: set_float " << f;
+}
+
+void Property::SetFloat(const std::string& name, const float& f){
+    auto type = proto::ValueProto::FLOAT;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    entry->set_f(f);
+    VLOG(3) << "Property: set_float " << f << " name: " << name;
+}
+
+√ Property::GetFloat(const std::string& name) const{
+    for (size_t i = 0; i < Size(); i++){
+        auto e = property_.entrys(i);
+        if (e.has_name() && e.name() == name ){
+            return e.f();
+        }
+    }
+    phi::errors::NotFound("name not found"); 
+}
+
+float Property::GetFloat(const int& idx) const{
+    if (idx >= Size()){
+        phi::errors::OutOfRange("idx out of range");
+    }
+    auto e = property_.entrys(idx);
+    if (e.has_f()){
+        return e.f();
+    }
+    phi::errors::NotFound("not has float"); 
+}
+
+void Property::SetFloats(const std::string& name, const std::vector<float>& v){
+    auto type = proto::ValueProto::FLOATS;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    for (auto i : v){
+        entry->add_floats(i);
+    }
+    VLOG(3) << "Property: set_floats " << v[0] << "... name: " << name;
+
+}
+
+void Property::SetInt64(const std::string& name, const int64_t& i){
+    auto type = proto::ValueProto::INT;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    entry->set_i(i);
+    VLOG(3) << "Property: set_int " << i << " name: " << name;
+}
+
+void Property::SetInt64s(const std::string& name, const std::vector<int64_t>& v){
+    auto type = proto::ValueProto::INTS;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    for (auto i : v){
+        entry->add_ints(i);
+    }
+    VLOG(3) << "Property: set_ints " << v[0] << " name: " << name;
+
+}
+
+void Property::SetString(const std::string& name, const std::string& s){
+    auto type = proto::ValueProto::STRING;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    entry->set_s(s);
+    VLOG(3) << "Property: set_string " << s << " name: " << name;
+}
+
+void Property::SetStrings(const std::string& name, const std::vector<std::string>& v){
+    auto type = proto::ValueProto::STRINGS;
+    auto entry = property_.add_entrys();
+    entry->set_name(name);
+    entry->set_type(type);
+    for (auto i : v){
+        entry->add_strings(i);
+    }
+    VLOG(3) << "Property: set_strings " << v[0] << " name: " << name;
+}
+
 
 }  // namespace jit
 }  // namespace paddle

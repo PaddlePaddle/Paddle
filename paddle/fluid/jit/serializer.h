@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/jit/property.pb.h"
+#include "paddle/fluid/jit/property.h"
 
 #include "paddle/fluid/jit/layer.h"
 

@@ -28,6 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/jit/property.h"
 
+
+namespace py = pybind11;
+
 namespace paddle {
 namespace pybind {
 
@@ -47,6 +50,14 @@ static pybind11::bytes SerializeMessage(
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
+}
+
+template <typename T>
+static void DeserializeMessage(T &self, const std::string& str){
+     PADDLE_ENFORCE_EQ(self.Proto()->ParsePartialFromString(str), 
+     true,
+     platform::errors::InvalidArgument("Failed to parse pb from string"));
+     return;
 }
 
 // Bind Methods
@@ -347,53 +358,41 @@ void BindOpDesc(pybind11::module *m) {
 
 // Serialize Class Property
 void BindPropertyDesc(pybind11::module *m){
-  pybind11::enum_<jit::proto::TensorProto::DataType>(*m, "PropertyTensorDType", "")
-      .value("FLOAT", jit::proto::TensorProto::FLOAT)
-      .value("UINT8", jit::proto::TensorProto::UINT8)
-      .value("INT8", jit::proto::TensorProto::INT8)
-      .value("UINT16", jit::proto::TensorProto::UINT16)
-      .value("INT16", jit::proto::TensorProto::INT16)
-      .value("INT32", jit::proto::TensorProto::INT32)
-      .value("INT64", jit::proto::TensorProto::INT64)
-      .value("STRING", jit::proto::TensorProto::STRING)
-      .value("BOOL", jit::proto::TensorProto::BOOL)
-      .value("FLOAT16", jit::proto::TensorProto::FLOAT16)
-      .value("DOUBLE", jit::proto::TensorProto::DOUBLE)
-      .value("UINT32", jit::proto::TensorProto::UINT32)
-      .value("UINT64", jit::proto::TensorProto::UINT64)
-      .value("COMPLEX64", jit::proto::TensorProto::COMPLEX64)
-      .value("COMPLEX128", jit::proto::TensorProto::COMPLEX128)
-      .value("BFLOAT16", jit::proto::TensorProto::BFLOAT16);
-
-
-  pybind11::enum_<jit::proto::ValueProto::AttributeType>(*m, "PropertyValueType", "")
-      .value("FLOAT", jit::proto::ValueProto::FLOAT)
-      .value("INT", jit::proto::ValueProto::INT)
-      .value("STRING", jit::proto::ValueProto::STRING)
-      .value("TENSOR", jit::proto::ValueProto::TENSOR)
-      .value("FLOATS", jit::proto::ValueProto::FLOATS)
-      .value("INTS", jit::proto::ValueProto::INTS)
-      .value("STRINGS", jit::proto::ValueProto::STRINGS)
-      .value("TENSORS", jit::proto::ValueProto::TENSORS);
-
   pybind11::class_<jit::Property> property(*m, "Property");
      property.def(
          "__init__",
          [](jit::Property &self){ new (&self) jit::Property(); },
          pybind11::return_value_policy::reference)
-     .def("set_float", &jit::Property::SetFloat)
-     .def("set_floats", &jit::Property::SetFloats)
-     .def("set_int64", &jit::Property::SetInt64)
-     .def("set_int64s", &jit::Property::SetInt64s)
-     .def("set_string", &jit::Property::SetString)
-     .def("set_strings", &jit::Property::SetStrings)
-     .def("set_tensor", [](pd::VarDesc& tensor){
+     .def("size",
+          &jit::Property::Size
+     )
+     .def("set_float", 
+          py::overload_cast<const float&>(&jit::Property::SetFloat), 
+          "set float", 
+          py::arg("val"))
+     .def("set_float", 
+          py::overload_cast<const std::string&, const float&>(&jit::Property::SetFloat), 
+          "set float",
+          py::arg("val"), py::arg("name"))
+     .def("get_float",
+          py::overload_cast<const int&>(&jit::Property::GetFloat, py::const_)
+     )
+     .def("get_float",
+          py::overload_cast<const std::string&>(&jit::Property::GetFloat, py::const_)
+     )
+     .def("set_floats", &jit::Property::SetFloats, "set list of float", py::arg("val"), py::arg("name"))
+     .def("set_int64", &jit::Property::SetInt64, "set int", py::arg("val"), py::arg("name"))
+     .def("set_int64s", &jit::Property::SetInt64s, "set list of int", py::arg("val"), py::arg("name"))
+     .def("set_string", &jit::Property::SetString, "set string", py::arg("val"), py::arg("name"))
+     .def("set_strings", &jit::Property::SetStrings, "set list of string", py::arg("val"), py::arg("name"))
+     .def("set_tensor", [](const pd::VarDesc& tensor, const std::string name){
                throw platform::errors::Unimplemented("Not implement set_tensor.");
           })
-     .def("set_tensors", [](pybind11::list& tensors){
+     .def("set_tensors", [](const pybind11::list& tensors, const std::string name){
           throw platform::errors::Unimplemented("Not implement set_tensors.");
      })
-     .def("serialize_to_string", SerializeMessage<jit::Property>);
+     .def("serialize_to_string", SerializeMessage<jit::Property>)
+     .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
 }  // namespace pybind
