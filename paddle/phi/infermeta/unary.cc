@@ -3367,6 +3367,69 @@ void IdentityLossInferMeta(const MetaTensor& x,
   }
 }
 
+void DiagEmbedInferMeta(
+    const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_GE(
+      dim1,
+      -(x_dims.size() + 1),
+      phi::errors::OutOfRange(
+          "Dim1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim1));
+  PADDLE_ENFORCE_LE(
+      dim1,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Dim1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim1));
+
+  PADDLE_ENFORCE_GE(
+      dim2,
+      -(x_dims.size() + 1),
+      phi::errors::OutOfRange(
+          "Dim2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim2));
+  PADDLE_ENFORCE_LE(
+      dim2,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Dim2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim2));
+
+  int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
+  int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
+  int offset_ = std::abs(offset);
+
+  PADDLE_ENFORCE_NE(dim1_,
+                    dim2_,
+                    phi::errors::InvalidArgument(
+                        "diagonal dimensions should not be identical "
+                        "%ld vs %ld.",
+                        dim1,
+                        dim2));
+
+  int new_dim_len = offset_ + x_dims[x_dims.size() - 1];
+  auto sizes = vectorize(x_dims);
+  sizes.pop_back();
+  sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
+  sizes.insert(sizes.begin() + std::max(dim1_, dim2_), new_dim_len);
+  out->set_dims(phi::make_ddim(sizes));
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

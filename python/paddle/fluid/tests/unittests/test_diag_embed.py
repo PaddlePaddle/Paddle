@@ -27,11 +27,12 @@ class TestDiagEmbedOp(OpTest):
 
     def setUp(self):
         self.op_type = "diag_embed"
+        self.python_api = F.diag_embed
         self.init_config()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')

@@ -506,6 +506,14 @@
   kernel :
     func : diag
 
+- api : diag_embed
+  args : (Tensor x, int offset, int dim1, int dim2)
+  output : Tensor
+  infer_meta :
+    func : DiagEmbedInferMeta
+  kernel :
+    func : diag_embed
+
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
