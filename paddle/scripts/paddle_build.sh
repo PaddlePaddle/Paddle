@@ -1977,7 +1977,6 @@ set +x
                 fi
             else
                 single_card_test_num=$(($single_card_test_num+1))
-                echo $single_card_test_num
                 if [[ $single_card_test_num -gt 3000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
@@ -2073,7 +2072,6 @@ set +x
                 fi
             else
                 single_card_test_num=$(($single_card_test_num+1))
-                echo $single_card_test_num
                 if [[ $single_card_test_num -gt 3000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
