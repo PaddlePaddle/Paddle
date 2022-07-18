@@ -927,27 +927,64 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
     auto dout = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
-    auto d_ddOut = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
-    auto d_dOutNew = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
 
     if (d_Out_New) {
       auto d_OutNew = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
-      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
-                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
+
+      if (d_DDOut && d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
+                              (static_cast<T>(2) * dout * ddx * d_dOutNew);
+
+      } else if (d_DDOut && !d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut);
+
+      } else if (!d_DDOut && d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = -(static_cast<T>(2) * dout * ddx * d_dOutNew);
+      }
     }
     if (d_d_Out) {
       auto d_dOut = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
-      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+
+      if (d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+      }
     }
     if (d_DDx) {
       auto d_ddx = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
-      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
-                         static_cast<T>(2) * out * dout * d_dOutNew;
+
+      if (d_DDOut && d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
+                           static_cast<T>(2) * out * dout * d_dOutNew;
+
+      } else if (d_DDOut && !d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut;
+      } else if (!d_DDOut && d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_ddx.device(*d) = -static_cast<T>(2) * out * dout * d_dOutNew;
+      }
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {

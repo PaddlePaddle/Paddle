@@ -2104,6 +2104,7 @@
   kernel :
     func : tanh_triple_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
+  optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_api : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)

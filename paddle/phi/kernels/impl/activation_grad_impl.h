@@ -172,8 +172,8 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
                           const DenseTensor& ddx,
-                          const DenseTensor& d_dout_new,
-                          const DenseTensor& d_ddout,
+                          const paddle::optional<DenseTensor>& d_dout_new,
+                          const paddle::optional<DenseTensor>& d_ddout,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx) {
@@ -194,8 +194,8 @@ void TanhTripleGradKernel(const Context& dev_ctx,
           &out,
           &ddx,
           &dout,
-          &d_ddout,
-          &d_dout_new,  // input
+          d_ddout.get_ptr(),
+          d_dout_new.get_ptr(),  // input
           d_dout,
           d_out_new,
           d_ddx);  // output
