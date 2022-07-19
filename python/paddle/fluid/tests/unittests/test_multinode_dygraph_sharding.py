@@ -24,14 +24,18 @@ from test_collective_multi_nodes import TestDistBase
 import os
 
 
-class TestDYgraphDPMode(TestDistBase):
+class TestDYgrapShardingDP(TestDistBase):
 
     def setUp(self):
         self._trainers = 8
         self._init_env()
 
-    def test_col_parallel_linear(self):
-        self.check_with_place("dygraph_hybrid_dp.py", backend="nccl")
+    def test_hybrid_sharding_stage2(self):
+        self.check_with_place("mn_dygraph_sharding_stage2.py", backend="nccl")
+
+    def test_hybrid_sharding_stage3(self):
+        self.check_with_place("mn_dygraph_group_sharded_stage3.py",
+                              backend="nccl")
 
 
 if __name__ == '__main__':
