@@ -23,15 +23,16 @@ namespace {
 
 Node *yolo_box_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto clip_bbox = BOOST_GET_CONST(bool, op->GetAttr("clip_bbox"));
-  auto iou_aware = BOOST_GET_CONST(bool, op->GetAttr("iou_aware"));
-  auto conf_thresh = BOOST_GET_CONST(float, op->GetAttr("conf_thresh"));
+  auto clip_bbox = PADDLE_GET_CONST(bool, op->GetAttr("clip_bbox"));
+  auto iou_aware = PADDLE_GET_CONST(bool, op->GetAttr("iou_aware"));
+  auto conf_thresh = PADDLE_GET_CONST(float, op->GetAttr("conf_thresh"));
   auto iou_aware_factor =
-      BOOST_GET_CONST(float, op->GetAttr("iou_aware_factor"));
-  auto class_num = BOOST_GET_CONST(int, op->GetAttr("class_num"));
-  auto downsample_ratio = BOOST_GET_CONST(int, op->GetAttr("downsample_ratio"));
-  auto scale_x_y = BOOST_GET_CONST(float, op->GetAttr("scale_x_y"));
-  auto anchors = BOOST_GET_CONST(std::vector<int>, op->GetAttr("anchors"));
+      PADDLE_GET_CONST(float, op->GetAttr("iou_aware_factor"));
+  auto class_num = PADDLE_GET_CONST(int, op->GetAttr("class_num"));
+  auto downsample_ratio =
+      PADDLE_GET_CONST(int, op->GetAttr("downsample_ratio"));
+  auto scale_x_y = PADDLE_GET_CONST(float, op->GetAttr("scale_x_y"));
+  auto anchors = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("anchors"));
 
   // For Slice Op, while value is very large, it equals to the ends.
   int max_int = INT_MAX;
@@ -75,13 +76,13 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
   // Build the grid
   // grid_x_0 shape is [w]
   std::vector<float> grid_x_0(nchw[3]);
-  std::iota(grid_x_0.begin(), grid_x_0.end(), float(0.0));
+  std::iota(grid_x_0.begin(), grid_x_0.end(), 0.0f);
   // grid_y_0 shape is [h]
   std::vector<float> grid_y_0(nchw[2]);
-  std::iota(grid_y_0.begin(), grid_y_0.end(), float(0.0));
+  std::iota(grid_y_0.begin(), grid_y_0.end(), 0.0f);
   // grid_x_1 shape is [w * h]
   std::vector<float> grid_x_1;
-  for (int i = 0; i < int(nchw[2]); i++) {
+  for (int i = 0; i < nchw[2]; i++) {
     grid_x_1.insert(grid_x_1.end(), grid_x_0.begin(), grid_x_0.end());
   }
   auto *grid_x_1_node = CreateConst(graph,
@@ -92,7 +93,7 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
                             ->outputs[0];
   // grid_y_1 shape is [h * w]
   std::vector<float> grid_y_1;
-  for (int i = 0; i < int(nchw[3]); i++) {
+  for (int i = 0; i < nchw[3]; i++) {
     grid_y_1.insert(grid_y_1.end(), grid_y_0.begin(), grid_y_0.end());
   }
   auto *grid_y_1_node = CreateConst(graph,
@@ -151,13 +152,14 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
   auto *bias_x_y_node =
       CreateConst(graph,
                   node,
-                  std::vector<float>{((float)1.0 - scale_x_y) / (float)2.0},
+                  std::vector<float>{(1.0f - scale_x_y) / 2.0f},
                   {int64_t(1)},
                   VarType2OnnxDType(target_dtype))
           ->outputs[0];
   auto *wh = CreateConst(graph,
                          node,
-                         std::vector<float>{float(nchw[3]), float(nchw[2])},
+                         std::vector<float>{static_cast<float>(nchw[3]),
+                                            static_cast<float>(nchw[2])},
                          {int64_t(2)},
                          VarType2OnnxDType(target_dtype))
                  ->outputs[0];
@@ -196,7 +198,7 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
   auto *downsample_node =
       CreateConst(graph,
                   node,
-                  std::vector<float>{float(downsample_ratio)},
+                  std::vector<float>{static_cast<float>(downsample_ratio)},
                   {int64_t(1)},
                   VarType2OnnxDType(target_dtype))
           ->outputs[0];
@@ -265,13 +267,12 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
                         {{"axes", std::vector<int64_t>{4}}})
                ->outputs[0];
     ioup = CreateBaseOp(graph, node, "popart_sigmoid", {ioup}, {})->outputs[0];
-    auto *power_0 =
-        CreateConst(graph,
-                    node,
-                    std::vector<float>{(float)1.0 - iou_aware_factor},
-                    {int64_t(1)},
-                    VarType2OnnxDType(target_dtype))
-            ->outputs[0];
+    auto *power_0 = CreateConst(graph,
+                                node,
+                                std::vector<float>{1.0f - iou_aware_factor},
+                                {int64_t(1)},
+                                VarType2OnnxDType(target_dtype))
+                        ->outputs[0];
     auto *power_1 = CreateConst(graph,
                                 node,
                                 std::vector<float>{iou_aware_factor},
@@ -291,7 +292,7 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
   // pred_box = pred_box * (pred_conf > 0.).astype('float32')
   auto *value_2 = CreateConst(graph,
                               node,
-                              std::vector<float>{float(2.0)},
+                              std::vector<float>{2.0f},
                               {int64_t(1)},
                               VarType2OnnxDType(target_dtype))
                       ->outputs[0];
@@ -393,7 +394,7 @@ Node *yolo_box_handler(Graph *graph, Node *node) {
                       ->outputs[0];
     auto *float_value_1 = CreateConst(graph,
                                       node,
-                                      std::vector<float>{float(1.0)},
+                                      std::vector<float>{1.0f},
                                       {int64_t(1)},
                                       VarType2OnnxDType(target_dtype))
                               ->outputs[0];

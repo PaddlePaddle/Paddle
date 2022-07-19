@@ -29,10 +29,10 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
     PADDLE_THROW(
         platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
   }
-  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
-  auto dims = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  auto value_ = BOOST_GET_CONST(float, op->GetAttr("value"));
+  auto dims = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+  auto value_ = PADDLE_GET_CONST(float, op->GetAttr("value"));
   int size = 1;
   for (auto &dim : dims) {
     size *= dim;
@@ -77,13 +77,13 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
 
 Node *gaussian_random_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto shape = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+  auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
-  auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
-  auto scale = BOOST_GET_CONST(float, op->GetAttr("std"));
+  auto mean = PADDLE_GET_CONST(float, op->GetAttr("mean"));
+  auto scale = PADDLE_GET_CONST(float, op->GetAttr("std"));
   // seed not work
-  auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
+  auto seed_ = PADDLE_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph,
                       node,
@@ -101,13 +101,13 @@ Node *gaussian_random_handler(Graph *graph, Node *node) {
 
 Node *uniform_random_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto shape = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+  auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
-  auto high = BOOST_GET_CONST(float, op->GetAttr("max"));
-  auto low = BOOST_GET_CONST(float, op->GetAttr("min"));
+  auto high = PADDLE_GET_CONST(float, op->GetAttr("max"));
+  auto low = PADDLE_GET_CONST(float, op->GetAttr("min"));
   // seed not work
-  auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
+  auto seed_ = PADDLE_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph,
                       node,
@@ -126,7 +126,7 @@ Node *uniform_random_handler(Graph *graph, Node *node) {
 Node *transpose_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
 
-  auto axis_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
+  auto axis_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axis"));
   std::vector<int64_t> perm(axis_.begin(), axis_.end());
   auto attrs = AttributeMap{{"perm", perm}};
 
@@ -141,7 +141,7 @@ Node *transpose_handler(Graph *graph, Node *node) {
 
 Node *reshape_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto shape_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
+  auto shape_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("shape"));
   std::vector<int64_t> shape(shape_.begin(), shape_.end());
   auto attrs = AttributeMap{
       {"value", shape},
@@ -162,7 +162,7 @@ Node *reshape_handler(Graph *graph, Node *node) {
 
 Node *flatten2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   return CreateBaseOp(graph,
                       node,
                       "popart_flatten",
@@ -184,7 +184,7 @@ Node *gather_handler(Graph *graph, Node *node) {
 
 Node *squeeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+  auto axes_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   auto input_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
 
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
@@ -207,7 +207,7 @@ Node *squeeze_handler(Graph *graph, Node *node) {
 
 Node *cast_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
+  auto otype = PADDLE_GET_CONST(int, op->GetAttr("out_dtype"));
   auto new_node = CreateCast(graph,
                              node,
                              node->inputs,
@@ -233,7 +233,7 @@ Node *lookup_table_op_handler(Graph *graph,
                               Node *node,
                               const std::string &type) {
   auto *op = node->Op();
-  auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
+  auto padding_idx_ = PADDLE_GET_CONST(int64_t, op->GetAttr("padding_idx"));
   auto w_shape_ = GetInputVarNode("W", node)->Var()->GetShape();
   auto table_size_ = w_shape_[0];
   auto emb_size_ = w_shape_[1];
@@ -250,14 +250,15 @@ Node *lookup_table_op_handler(Graph *graph,
                                      {"dims", const_shape_},
                                      {"dtype", GetOutputVarDType(node)}});
     if (padding_idx_ == 0) {
-      auto right_slice = CreateSlice(graph,
-                                     node,
-                                     {GetInputVarNode("W", node)},
-                                     {},
-                                     std::vector<int>{int(padding_idx_) + 1},
-                                     std::vector<int>{int(table_size_)},
-                                     std::vector<int>{0},
-                                     std::vector<int>{1});
+      auto right_slice =
+          CreateSlice(graph,
+                      node,
+                      {GetInputVarNode("W", node)},
+                      {},
+                      std::vector<int>{static_cast<int>(padding_idx_) + 1},
+                      std::vector<int>{static_cast<int>(table_size_)},
+                      std::vector<int>{0},
+                      std::vector<int>{1});
       w_node = CreateBaseOp(graph,
                             node,
                             "popart_concat",
@@ -265,14 +266,15 @@ Node *lookup_table_op_handler(Graph *graph,
                             {},
                             {{"axis", int64_t(0)}});
     } else if (padding_idx_ == table_size_ - 1) {
-      auto left_slice = CreateSlice(graph,
-                                    node,
-                                    {GetInputVarNode("W", node)},
-                                    {},
-                                    std::vector<int>{0},
-                                    std::vector<int>{int(padding_idx_)},
-                                    std::vector<int>{0},
-                                    std::vector<int>{1});
+      auto left_slice =
+          CreateSlice(graph,
+                      node,
+                      {GetInputVarNode("W", node)},
+                      {},
+                      std::vector<int>{0},
+                      std::vector<int>{static_cast<int>(padding_idx_)},
+                      std::vector<int>{0},
+                      std::vector<int>{1});
       w_node = CreateBaseOp(graph,
                             node,
                             "popart_concat",
@@ -280,22 +282,24 @@ Node *lookup_table_op_handler(Graph *graph,
                             {},
                             {{"axis", int64_t{0}}});
     } else {
-      auto left_slice = CreateSlice(graph,
-                                    node,
-                                    {GetInputVarNode("W", node)},
-                                    {},
-                                    std::vector<int>{0},
-                                    std::vector<int>{int(padding_idx_)},
-                                    std::vector<int>{0},
-                                    std::vector<int>{1});
-      auto right_slice = CreateSlice(graph,
-                                     node,
-                                     {GetInputVarNode("W", node)},
-                                     {},
-                                     std::vector<int>{int(padding_idx_) + 1},
-                                     std::vector<int>{int(table_size_)},
-                                     std::vector<int>{0},
-                                     std::vector<int>{1});
+      auto left_slice =
+          CreateSlice(graph,
+                      node,
+                      {GetInputVarNode("W", node)},
+                      {},
+                      std::vector<int>{0},
+                      std::vector<int>{static_cast<int>(padding_idx_)},
+                      std::vector<int>{0},
+                      std::vector<int>{1});
+      auto right_slice =
+          CreateSlice(graph,
+                      node,
+                      {GetInputVarNode("W", node)},
+                      {},
+                      std::vector<int>{static_cast<int>(padding_idx_) + 1},
+                      std::vector<int>{static_cast<int>(table_size_)},
+                      std::vector<int>{0},
+                      std::vector<int>{1});
       w_node = CreateBaseOp(graph,
                             node,
                             "popart_concat",
@@ -341,7 +345,7 @@ Node *lookup_table_v2_handler(Graph *graph, Node *node) {
 
 Node *unsqueeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+  auto axes_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   auto new_node_unsqueeze = CreateBaseOp(graph,
                                          node,
@@ -355,7 +359,7 @@ Node *unsqueeze_handler(Graph *graph, Node *node) {
 
 Node *concat_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
+  int64_t axis_{PADDLE_GET_CONST(int, op->GetAttr("axis"))};
 
   auto new_node_concat = CreateBaseOp(graph,
                                       node,
@@ -368,7 +372,7 @@ Node *concat_handler(Graph *graph, Node *node) {
 
 Node *stack_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
+  int64_t axis_{PADDLE_GET_CONST(int, op->GetAttr("axis"))};
   std::vector<int64_t> axes_{axis_};
 
   std::vector<Node *> unsqueeze_outputs_{};
@@ -402,7 +406,7 @@ Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto inputs = op->Inputs();
 
-  auto axes_value = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+  auto axes_value = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axes"));
 
   std::vector<std::vector<int>> slice_values(3);
   std::vector<std::string> tensor_names{"Starts", "Ends", "Strides"};
@@ -422,13 +426,13 @@ Node *slice_handler(Graph *graph, Node *node) {
         slice_values[i] = std::vector<int>(axes_value.size(), 1);
       } else {
         slice_values[i] =
-            BOOST_GET_CONST(std::vector<int>, op->GetAttr(attr_names[i]));
+            PADDLE_GET_CONST(std::vector<int>, op->GetAttr(attr_names[i]));
       }
     }
   }
 
   auto decrease_axis_ =
-      BOOST_GET_CONST(std::vector<int>, op->GetAttr("decrease_axis"));
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("decrease_axis"));
   if (decrease_axis_.size() == 0) {
     return CreateSlice(graph,
                        node,
@@ -480,7 +484,7 @@ Node *expand_handler(Graph *graph, Node *node) {
                               VarType::INT64);
   } else {
     auto expand_times_i32 =
-        BOOST_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));
+        PADDLE_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));
     auto expand_times_ =
         std::vector<int64_t>{expand_times_i32.begin(), expand_times_i32.end()};
     auto dim = int64_t(expand_times_.size());
@@ -514,31 +518,32 @@ Node *share_data_handler(Graph *graph, Node *node) {
 
 Node *assign_value_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
-  auto dims_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
+  auto dims_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("shape"));
   std::vector<int64_t> dims(dims_.begin(), dims_.end());
   Attribute values;
   std::string value_name;
   switch (dtype_) {
     case VarType::BOOL: {
       value_name = "bool_values";
-      auto vec_int = BOOST_GET_CONST(std::vector<int>, op->GetAttr(value_name));
+      auto vec_int =
+          PADDLE_GET_CONST(std::vector<int>, op->GetAttr(value_name));
       std::vector<bool> vec_bool(vec_int.begin(), vec_int.end());
       values = vec_bool;
     } break;
     case VarType::INT32:
       value_name = "int32_values";
-      values = BOOST_GET_CONST(std::vector<int>, op->GetAttr(value_name));
+      values = PADDLE_GET_CONST(std::vector<int>, op->GetAttr(value_name));
       break;
     case VarType::FP16:
     case VarType::FP32:
       value_name = "fp32_values";
-      values = BOOST_GET_CONST(std::vector<float>, op->GetAttr(value_name));
+      values = PADDLE_GET_CONST(std::vector<float>, op->GetAttr(value_name));
       break;
     case VarType::INT64:
       value_name = "int64_values";
-      values = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr(value_name));
+      values = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr(value_name));
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -559,9 +564,9 @@ Node *assign_value_handler(Graph *graph, Node *node) {
 
 Node *fill_any_like_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+  auto value = PADDLE_GET_CONST(float, op->GetAttr("value"));
   auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
-  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = static_cast<VarType::Type>(dtype_);
   int size = 1;
   for (auto &dim : x_shape) {
@@ -608,9 +613,9 @@ Node *fill_any_like_handler(Graph *graph, Node *node) {
 
 Node *one_hot_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto depth = BOOST_GET_CONST(int, op->GetAttr("depth"));
+  auto depth = PADDLE_GET_CONST(int, op->GetAttr("depth"));
   auto allow_out_of_range =
-      BOOST_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
+      PADDLE_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
   if (allow_out_of_range) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Do not support allow_out_of_range=True"));
@@ -642,9 +647,9 @@ Node *one_hot_handler(Graph *graph, Node *node) {
 
 Node *one_hot_v2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto depth = BOOST_GET_CONST(int, op->GetAttr("depth"));
+  auto depth = PADDLE_GET_CONST(int, op->GetAttr("depth"));
   auto allow_out_of_range =
-      BOOST_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
+      PADDLE_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
   if (allow_out_of_range) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Do not support allow_out_of_range=True"));
@@ -688,8 +693,8 @@ Node *one_hot_v2_handler(Graph *graph, Node *node) {
 
 Node *split_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto sections = BOOST_GET_CONST(std::vector<int>, op->GetAttr("sections"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
+  auto sections = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("sections"));
   return CreateSplit(graph,
                      node,
                      {GetInputVarNode("X", node)},
@@ -719,8 +724,8 @@ Node *clip_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   // if (min_value == -FLT_MAX) then means no min_value
   // if (max_value == FLT_MAX) then means no max_value
-  auto min_value = BOOST_GET_CONST(float, op->GetAttr("min"));
-  auto max_value = BOOST_GET_CONST(float, op->GetAttr("max"));
+  auto min_value = PADDLE_GET_CONST(float, op->GetAttr("min"));
+  auto max_value = PADDLE_GET_CONST(float, op->GetAttr("max"));
 
   bool has_min_tensor = false;
   bool has_max_tensor = false;
@@ -820,7 +825,7 @@ Node *dist_handler(Graph *graph, Node *node) {
   auto *abs_node =
       CreateBaseOp(graph, node, "popart_abs", {sub_node}, {})->outputs[0];
 
-  auto p = BOOST_GET_CONST(float, op->GetAttr("p"));
+  auto p = PADDLE_GET_CONST(float, op->GetAttr("p"));
 
   // Reshape to 1-D output
   auto target_shape = AttributeMap{{"value", std::vector<int64_t>{-1}},
@@ -920,7 +925,7 @@ Node *expand_as_v2_handler(Graph *graph, Node *node) {
   }
   auto input_shape = GetInputVarNode("X", node)->Var()->GetShape();
   auto shape_value =
-      BOOST_GET_CONST(std::vector<int>, op->GetAttr("target_shape"));
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("target_shape"));
   // Check the dimensions
   int input_shape_index = input_shape.size() - 1;
   int target_shape_index = shape_value.size() - 1;
@@ -967,7 +972,7 @@ Node *expand_v2_handler(Graph *graph, Node *node) {
         "attribute `shape`."));
   }
   auto input_shape = GetInputVarNode("X", node)->Var()->GetShape();
-  auto shape_value = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
+  auto shape_value = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("shape"));
   // Check the dimensions
   int input_shape_index = input_shape.size() - 1;
   int target_shape_index = shape_value.size() - 1;
@@ -1004,8 +1009,8 @@ Node *expand_v2_handler(Graph *graph, Node *node) {
 
 Node *flatten_contiguous_range_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto start_axis = BOOST_GET_CONST(int, op->GetAttr("start_axis"));
-  auto stop_axis = BOOST_GET_CONST(int, op->GetAttr("stop_axis"));
+  auto start_axis = PADDLE_GET_CONST(int, op->GetAttr("start_axis"));
+  auto stop_axis = PADDLE_GET_CONST(int, op->GetAttr("stop_axis"));
   auto input_rank = GetInputVarNode("X", node)->Var()->GetShape().size();
 
   if (start_axis < 0) {
@@ -1054,7 +1059,7 @@ Node *flatten_contiguous_range_handler(Graph *graph, Node *node) {
 
 Node *flip_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axes = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
+  auto axes = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("axis"));
   auto input_shape = GetInputVarNode("X", node)->Var()->GetShape();
   for (auto it = axes.begin(); it != axes.end();) {
     if (*it < 0) {
@@ -1146,9 +1151,9 @@ Node *meshgrid_handler(Graph *graph, Node *node) {
 
 Node *p_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto keepdim = BOOST_GET_CONST(bool, op->GetAttr("keepdim"));
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto porder = BOOST_GET_CONST(float, op->GetAttr("porder"));
+  auto keepdim = PADDLE_GET_CONST(bool, op->GetAttr("keepdim"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
+  auto porder = PADDLE_GET_CONST(float, op->GetAttr("porder"));
 
   auto target_dtype = ONNXDataType::FLOAT;
   if (GetInputVarNode("X", node)->Var()->GetDataType() == VarType::FP16) {
@@ -1202,7 +1207,7 @@ Node *tile_handler(Graph *graph, Node *node) {
         platform::errors::Unimplemented("Do not support repeats as tensors."));
   }
   auto repeat_times =
-      BOOST_GET_CONST(std::vector<int>, op->GetAttr("repeat_times"));
+      PADDLE_GET_CONST(std::vector<int>, op->GetAttr("repeat_times"));
   int nums = repeat_times.size();
   std::vector<int> ones(
       GetInputVarNode("X", node)->Var()->GetShape().size() - nums, 1);
@@ -1223,7 +1228,7 @@ Node *tile_handler(Graph *graph, Node *node) {
 
 Node *unstack_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   if (axis < 0) {
     axis += GetInputVarNode("X", node)->Var()->GetShape().size();
   }
