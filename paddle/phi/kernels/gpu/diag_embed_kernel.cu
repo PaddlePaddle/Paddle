@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diag_embed_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/diag_embed_impl.cu.h"
+#include "paddle/phi/kernels/impl/diag_embed_impl.h"
 
 PD_REGISTER_KERNEL(diag_embed,
                    GPU,

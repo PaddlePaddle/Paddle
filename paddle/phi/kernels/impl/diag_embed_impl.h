@@ -14,13 +14,16 @@
 
 #pragma once
 
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#endif
+
 #include "paddle/phi/kernels/diag_embed_kernel.h"
 
 #include <algorithm>
-#include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
