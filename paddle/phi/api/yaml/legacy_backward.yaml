@@ -108,9 +108,13 @@
   forward : as_complex (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  infer_meta :
-    func :
   invoke : as_real(out_grad)
+
+- backward_api : as_real_grad
+  forward : as_real (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : as_complex(out_grad)
 
 - backward_api : asin_grad
   forward : asin (Tensor x) -> Tensor(out)

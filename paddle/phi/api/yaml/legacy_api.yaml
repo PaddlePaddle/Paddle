@@ -183,8 +183,7 @@
     func : AsRealInferMeta
   kernel :
     func : as_real
-#  backward : as_complex
-
+  backward : as_real_grad
 # asin
 - api : asin
   args : (Tensor x)

@@ -22,6 +22,16 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
+
+/**
+ * @brief This operator is used to return a complex tensor represented by an
+ * old-fashioned real tensor. The size of the last dimension of the input tensor
+ * should be 2, which corresponds to 'real' and 'complex', respectively.
+ *
+ * @param  ctx     device context
+ * @param  x       the input tensor of as_complex
+ * @param  out     the output tensor of as_complex
+ */
 template <typename T, typename Context>
 void AsComplexKernel(const Context& ctx,
                      const DenseTensor& x,

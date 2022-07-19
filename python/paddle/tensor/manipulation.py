@@ -3928,8 +3928,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"
