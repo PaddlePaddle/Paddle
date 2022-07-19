@@ -854,11 +854,8 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
         )
     if in_dygraph_mode():
         if len(inshape) == 2:
-            return _C_ops.final_state_fill_diagonal_(x, 'value', value,
-                                                     'offset', offset, 'wrap',
-                                                     wrap)
-        return _C_ops.final_state_fill_diagonal_(x, 'value', value, 'offset',
-                                                 offset, 'wrap', True)
+            return _C_ops.final_state_fill_diagonal_(x, value, offset, wrap)
+        return _C_ops.final_state_fill_diagonal_(x, value, offset, True)
 
     if len(inshape) == 2:
         return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
