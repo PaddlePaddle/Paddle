@@ -28,6 +28,10 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad);
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
