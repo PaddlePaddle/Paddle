@@ -99,6 +99,13 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
                 extra_checker_str_list.append(
                     f"{{\"{api_compat_args['api']}\", {{ {api_extra_attr_checkers} }}}}"
                 )
+                if 'backward' in api_compat_args:
+                    extra_map_str_list.append(
+                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_map} }}}}"
+                    )
+                    extra_checker_str_list.append(
+                        f"{{\"{api_compat_args['backward']}\", {{ {api_extra_attr_checkers} }}}}"
+                    )
 
     ops_extra_info_file = open(ops_extra_info_path, 'w')
     ops_extra_info_file.write(

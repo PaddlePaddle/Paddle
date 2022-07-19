@@ -33,6 +33,7 @@
     out : Out
 
 - api : conv2d
+  backward : conv2d_grad
   extra :
     attrs : [bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
@@ -42,6 +43,7 @@
              int workspace_size_MB = 512, bool exhaustive_search = false]
 
 - api : depthwise_conv2d
+  backward : depthwise_conv2d_grad
   extra :
     attrs : [bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,

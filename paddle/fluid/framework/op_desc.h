@@ -208,5 +208,38 @@ class OpDesc {
   // current OpDesc is not built from the other one.
   uint64_t original_id_ = id_;
 };
+
+struct SetAttrDescVisitor {
+  explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr);
+  void operator()(int v) const;
+  void operator()(float v) const;
+  void operator()(const std::string &v) const;
+
+  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
+  template <class T,
+            class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  void operator()(T b) const {
+    attr->set_b(b);
+  }
+
+  void operator()(const std::vector<int> &v) const;
+  void operator()(const std::vector<float> &v) const;
+  void operator()(const std::vector<std::string> &v) const;
+  void operator()(const std::vector<bool> &v) const;
+  void operator()(const std::vector<BlockDesc *> &v) const;
+
+  void operator()(BlockDesc *desc) const;
+
+  void operator()(int64_t v) const;
+
+  void operator()(const std::vector<int64_t> &v) const;
+
+  void operator()(const std::vector<double> &v) const;
+
+  void operator()(paddle::blank) const;
+
+  mutable proto::OpDesc::Attr *attr;
+};
+
 }  // namespace framework
 }  // namespace paddle

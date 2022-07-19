@@ -472,17 +472,22 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     }
   }
   // restore attrs_
+  InitRuntimeAttributeMapByOpExtraInfo(desc.type(), &runtime_attrs_);
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
-    std::string attr_name = attr.name();
+    const std::string &attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
     // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS attr here.
     if (attr.type() != proto::AttrType::BLOCK &&
         attr.type() != proto::AttrType::BLOCKS) {
-      attrs_[attr_name] = GetAttrValue(attr);
+      auto iter = runtime_attrs_.find(attr_name);
+      if (iter == runtime_attrs_.end()) {
+        attrs_[attr_name] = GetAttrValue(attr);
+      } else {
+        iter->second = GetAttrValue(attr);
+      }
     }
   }
   this->block_ = block;
-  InitRuntimeAttributeMapByOpExtraInfo(desc.type(), &runtime_attrs_);
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -589,6 +594,7 @@ std::vector<std::string> OpDesc::AttrNames() const {
 
 void OpDesc::RemoveAttr(const std::string &name) {
   attrs_.erase(name);
+  runtime_attrs_.erase(name);
   need_update_ = true;
 }
 
@@ -600,7 +606,11 @@ static bool IsGradOp(const std::string &name) {
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   AttributeMap *attrs_ptr = &(this->attrs_);
-  if (!HasProtoAttr(name) && !IsGradOp(Type())) {
+
+  const auto &extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
+  auto extra_attr_iter = extra_attr_map.find(name);
+  if (extra_attr_iter != extra_attr_map.end()) {
     attrs_ptr = &(this->runtime_attrs_);
   }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
@@ -664,18 +674,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
       need_update_ = true;
       return;
     }
-    const auto &extra_attr_map =
-        operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
-    if (!extra_attr_map.empty()) {
-      auto attr_iter = extra_attr_map.find(name);
-      if (attr_iter != extra_attr_map.end() &&
-          static_cast<proto::AttrType>(attr_iter->second.index() - 1) ==
-              proto::AttrType::BOOLEAN) {
-        attrs_ptr->operator[](name) =
-            static_cast<bool>(BOOST_GET_CONST(int, v));
-        need_update_ = true;
-        return;
-      }
+    if (extra_attr_iter != extra_attr_map.end() &&
+        static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1) ==
+            proto::AttrType::BOOLEAN) {
+      attrs_ptr->operator[](name) = static_cast<bool>(BOOST_GET_CONST(int, v));
+      need_update_ = true;
+      return;
     }
   }
 
@@ -811,58 +815,53 @@ void OpDesc::RenameInput(const std::string &old_name,
   need_update_ = true;
 }
 
-struct SetAttrDescVisitor {
-  explicit SetAttrDescVisitor(proto::OpDesc::Attr *attr) : attr_(attr) {}
-  mutable proto::OpDesc::Attr *attr_;
-  void operator()(int v) const { attr_->set_i(v); }
-  void operator()(float v) const { attr_->set_f(v); }
-  void operator()(const std::string &v) const { attr_->set_s(v); }
+SetAttrDescVisitor::SetAttrDescVisitor(proto::OpDesc::Attr *proto_attr)
+    : attr(proto_attr) {}
+void SetAttrDescVisitor::operator()(int v) const { attr->set_i(v); }
+void SetAttrDescVisitor::operator()(float v) const { attr->set_f(v); }
+void SetAttrDescVisitor::operator()(const std::string &v) const {
+  attr->set_s(v);
+}
 
-  // Please refer to https://github.com/PaddlePaddle/Paddle/issues/7162
-  template <class T,
-            class = typename std::enable_if<std::is_same<bool, T>::value>::type>
-  void operator()(T b) const {
-    attr_->set_b(b);
+void SetAttrDescVisitor::operator()(const std::vector<int> &v) const {
+  VectorToRepeated(v, attr->mutable_ints());
+}
+void SetAttrDescVisitor::operator()(const std::vector<float> &v) const {
+  VectorToRepeated(v, attr->mutable_floats());
+}
+void SetAttrDescVisitor::operator()(const std::vector<std::string> &v) const {
+  VectorToRepeated(v, attr->mutable_strings());
+}
+void SetAttrDescVisitor::operator()(const std::vector<bool> &v) const {
+  VectorToRepeated(v, attr->mutable_bools());
+}
+void SetAttrDescVisitor::operator()(const std::vector<BlockDesc *> &v) const {
+  std::vector<int> blocks_idx;
+  for (auto blk : v) {
+    blocks_idx.push_back(blk->ID());
   }
+  VectorToRepeated(blocks_idx, attr->mutable_blocks_idx());
+}
 
-  void operator()(const std::vector<int> &v) const {
-    VectorToRepeated(v, attr_->mutable_ints());
-  }
-  void operator()(const std::vector<float> &v) const {
-    VectorToRepeated(v, attr_->mutable_floats());
-  }
-  void operator()(const std::vector<std::string> &v) const {
-    VectorToRepeated(v, attr_->mutable_strings());
-  }
-  void operator()(const std::vector<bool> &v) const {
-    VectorToRepeated(v, attr_->mutable_bools());
-  }
-  void operator()(const std::vector<BlockDesc *> &v) const {
-    std::vector<int> blocks_idx;
-    for (auto blk : v) {
-      blocks_idx.push_back(blk->ID());
-    }
-    VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
-  }
+void SetAttrDescVisitor::operator()(BlockDesc *desc) const {
+  attr->set_block_idx(desc->ID());
+}
 
-  void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+void SetAttrDescVisitor::operator()(int64_t v) const { attr->set_l(v); }
 
-  void operator()(int64_t v) const { attr_->set_l(v); }
+void SetAttrDescVisitor::operator()(const std::vector<int64_t> &v) const {
+  VectorToRepeated(v, attr->mutable_longs());
+}
 
-  void operator()(const std::vector<int64_t> &v) const {
-    VectorToRepeated(v, attr_->mutable_longs());
-  }
+void SetAttrDescVisitor::operator()(const std::vector<double> &v) const {
+  VectorToRepeated(v, attr->mutable_float64s());
+}
 
-  void operator()(const std::vector<double> &v) const {
-    VectorToRepeated(v, attr_->mutable_float64s());
-  }
-
-  void operator()(paddle::blank) const {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported calling method of SetAttrDescVisitor object for "
-        "`boosst::blank` type."));
-  }
-};
+void SetAttrDescVisitor::operator()(paddle::blank) const {
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Unsupported calling method of SetAttrDescVisitor object for "
+      "`boost::blank` type."));
+}
 
 void OpDesc::Flush() {
   if (need_update_) {

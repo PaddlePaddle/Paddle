@@ -145,12 +145,13 @@ class OpDescCreationMethod(object):
 
 class OpInfo(object):
 
-    def __init__(self, name, method, inputs, outputs, attrs):
+    def __init__(self, name, method, inputs, outputs, attrs, extra_attrs):
         self.name = name
         self.method = method
         self.inputs = inputs
         self.outputs = outputs
         self.attrs = attrs
+        self.extra_attrs = extra_attrs
 
 
 def create_op_creation_method(op_proto):
@@ -163,13 +164,16 @@ def create_op_creation_method(op_proto):
         opdesc = method(*args, **kwargs)
         return core.Operator.create(opdesc.SerializeToString())
 
+    extra_attrs_map = core.get_op_extra_attrs(op_proto.type)
+
     return OpInfo(method=__impl__,
                   name=op_proto.type,
                   inputs=[(var.name, var.duplicable)
                           for var in op_proto.inputs],
                   outputs=[(var.name, var.duplicable)
                            for var in op_proto.outputs],
-                  attrs=[attr.name for attr in op_proto.attrs])
+                  attrs=[attr.name for attr in op_proto.attrs],
+                  extra_attrs=[item for item in extra_attrs_map.keys()])
 
 
 class OperatorFactory(object):
@@ -219,6 +223,9 @@ class OperatorFactory(object):
 
     def get_op_attr_names(self, type):
         return self.get_op_info(type).attrs
+
+    def get_op_extra_attr_names(self, type):
+        return self.get_op_info(type).extra_attrs
 
 
 class __RecurrentOp__(object):

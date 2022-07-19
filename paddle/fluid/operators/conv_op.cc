@@ -348,19 +348,6 @@ void Conv2DOpMaker::Make() {
                             "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1});
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_relu_before_depthwise_conv",
-                "(bool, default false) Only used in cuda depthwise kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
