@@ -47,8 +47,6 @@ TEST(FS, mv) {
   }
 
   try {
-    paddle::framework::set_download_command(
-        "hadoop -D hadoop.job.ugi=xxx fs -text");
     paddle::framework::dataset_hdfs_set_command(
         "hadoop -D hadoop.job.ugi=anotherxxx fs -text");
     int err_no = 0;
