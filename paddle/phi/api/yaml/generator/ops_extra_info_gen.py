@@ -81,7 +81,7 @@ def generate_extra_info(api_compat_yaml_path, ops_extra_info_path):
                 for attr in extra_args_map['attrs']:
                     attr_type, attr_name, default_val = parse_attr(attr)
                     attr_checker_func_list.append(
-                        f"[](framework::AttributeMap* attr_map)-> void {{ ExtraAttrChecker<{attr_type}>(\"{attr_name}\", {default_val})(attr_map);}}"
+                        f"[](framework::AttributeMap* attr_map, bool only_check_exist_value)-> void {{ ExtraAttrChecker<{attr_type}>(\"{attr_name}\", {default_val})(attr_map, only_check_exist_value);}}"
                     )
                     if attr_type.startswith("std::vector"):
                         attr_map_list.append(

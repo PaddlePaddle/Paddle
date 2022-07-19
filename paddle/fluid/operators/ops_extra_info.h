@@ -24,11 +24,13 @@ struct ExtraAttrChecker {
   ExtraAttrChecker(const std::string& attr_name, T default_value)
       : attr_name(attr_name), default_val(default_value) {}
 
-  void operator()(framework::AttributeMap* attr_map) {
+  void operator()(framework::AttributeMap* attr_map,
+                  bool only_check_exist_value) {
     auto it = attr_map->find(attr_name);
     if (it == attr_map->end()) {
-      // default_value_setter_ has no more than one element
-      attr_map->emplace(attr_name, default_val);
+      if (!only_check_exist_value) {
+        attr_map->emplace(attr_name, default_val);
+      }
       return;
     }
     framework::ExtractAttribute<T> extract_attr(attr_name);
@@ -55,7 +57,7 @@ class ExtraInfoUtils {
     return empty_extra_attrs_map_;
   }
 
-  const std::vector<std::function<void(framework::AttributeMap*)>>&
+  const std::vector<std::function<void(framework::AttributeMap*, bool)>>&
   GetExtraAttrsChecker(const std::string& op_type) const {
     auto iter = g_extra_attrs_checker_.find(op_type);
     if (iter != g_extra_attrs_checker_.end()) {
@@ -70,10 +72,11 @@ class ExtraInfoUtils {
   std::unordered_map<std::string, paddle::framework::AttributeMap>
       g_extra_attrs_map_;
   paddle::framework::AttributeMap empty_extra_attrs_map_{};
-  std::unordered_map<std::string,
-                     std::vector<std::function<void(framework::AttributeMap*)>>>
+  std::unordered_map<
+      std::string,
+      std::vector<std::function<void(framework::AttributeMap*, bool)>>>
       g_extra_attrs_checker_;
-  std::vector<std::function<void(framework::AttributeMap*)>>
+  std::vector<std::function<void(framework::AttributeMap*, bool)>>
       empty_extra_attrs_checker_{};
 };
 

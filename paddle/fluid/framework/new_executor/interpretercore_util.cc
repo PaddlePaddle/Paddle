@@ -271,7 +271,7 @@ void create_all_ops(const framework::BlockDesc& block,
     const auto& extra_attr_checkers =
         operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(op_type);
     for (const auto& checker : extra_attr_checkers) {
-      checker(&op_runtime_attr_map);
+      checker(&op_runtime_attr_map, false);
     }
 
     auto op_base =
