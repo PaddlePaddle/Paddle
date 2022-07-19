@@ -120,8 +120,7 @@ class AutoTuneBase {
 
   template <typename Context, typename... Args>
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
-    // Regard 1st run as warmup. Judge the result by the time cost of rest run
-    // cycles.
+    // Regard 1st run as warmup, judge the result by the time cost of rest cycles.
     constexpr int repeats = 3;
     phi::GpuTimer timer;
     float time_cost = 0;
