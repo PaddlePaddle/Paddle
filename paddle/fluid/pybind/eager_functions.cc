@@ -141,16 +141,17 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
+  std::vector<paddle::experimental::Tensor> result;
   {
     eager_gil_scoped_release guard;
-    std::vector<paddle::experimental::Tensor> result = egr::Grad(tensors,
-                                                                 inputs,
-                                                                 grad_tensors,
-                                                                 retain_graph,
-                                                                 create_graph,
-                                                                 only_inputs,
-                                                                 allow_unused,
-                                                                 no_grad_vars);
+    result = egr::Grad(tensors,
+                       inputs,
+                       grad_tensors,
+                       retain_graph,
+                       create_graph,
+                       only_inputs,
+                       allow_unused,
+                       no_grad_vars);
   }
   VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
