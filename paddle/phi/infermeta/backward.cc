@@ -403,7 +403,7 @@ void MarginRankLossGradInferMeta(const MetaTensor& label,
       nullptr,
       phi::errors::InvalidArgument(
           "The left_grad in MarginRankLossGradInferMeta can't be nullptr."));
-    
+
   PADDLE_ENFORCE_NE(
       right_grad,
       nullptr,
@@ -412,8 +412,7 @@ void MarginRankLossGradInferMeta(const MetaTensor& label,
 
   auto label_dims = label.dims();
   left_grad->set_dims(label_dims);
-  right_grad->set_dims(label_dims);
-                       
+  right_grad->set_dims(label_dims);       
 }
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
