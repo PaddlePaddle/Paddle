@@ -20,6 +20,24 @@
 namespace phi {
 
 template <class T>
+static inline T BBoxArea(const T* box, const bool normalized) {
+  if (box[2] < box[0] || box[3] < box[1]) {
+    // If coordinate values are is invalid
+    // (e.g. xmax < xmin or ymax < ymin), return 0.
+    return static_cast<T>(0.);
+  } else {
+    const T w = box[2] - box[0];
+    const T h = box[3] - box[1];
+    if (normalized) {
+      return w * h;
+    } else {
+      // If coordinate values are not within range [0, 1].
+      return (w + 1) * (h + 1);
+    }
+  }
+}
+
+template <class T>
 static inline T JaccardOverlap(const T* box1,
                                const T* box2,
                                const bool normalized) {
@@ -132,6 +150,7 @@ void NMSMatrix(const DenseTensor& bbox,
   }
 }
 
+template <typename T>
 size_t MultiClassMatrixNMS(const DenseTensor& scores,
                            const DenseTensor& bboxes,
                            std::vector<T>* out,
@@ -144,7 +163,7 @@ size_t MultiClassMatrixNMS(const DenseTensor& scores,
                            T score_threshold,
                            T post_threshold,
                            bool use_gaussian,
-                           float gaussian_sigma) const {
+                           float gaussian_sigma) {
   std::vector<int> all_indices;
   std::vector<T> all_scores;
   std::vector<T> all_classes;
@@ -225,14 +244,14 @@ template <typename T, typename Context>
 void MatrixNMSKernel(const Context& ctx,
                      const DenseTensor& bboxes,
                      const DenseTensor& scores,
-                     int background_label,
                      float score_threshold,
                      float post_threshold,
                      int nms_top_k,
                      int keep_top_k,
-                     bool normalized,
                      bool use_gaussian,
                      float gaussian_sigma,
+                     int background_label,
+                     bool normalized,
                      DenseTensor* out,
                      DenseTensor* index,
                      DenseTensor* roisnum) {
@@ -266,8 +285,8 @@ void MatrixNMSKernel(const Context& ctx,
                                   nms_top_k,
                                   keep_top_k,
                                   normalized,
-                                  score_threshold,
-                                  post_threshold,
+                                  static_cast<T>(score_threshold),
+                                  static_cast<T>(post_threshold),
                                   use_gaussian,
                                   gaussian_sigma);
     offsets.push_back(offsets.back() + num_out);
@@ -276,15 +295,15 @@ void MatrixNMSKernel(const Context& ctx,
 
   int64_t num_kept = offsets.back();
   if (num_kept == 0) {
-    out.Resize(phi::make_ddim({0, out_dim}));
-    ctx.template Alloc<T>(&out);
-    index.Resize(phi::make_ddim({0, 1}));
-    ctx.template Alloc<int>(&index);
+    out->Resize(phi::make_ddim({0, out_dim}));
+    ctx.template Alloc<T>(out);
+    index->Resize(phi::make_ddim({0, 1}));
+    ctx.template Alloc<int>(index);
   } else {
-    out.Resize(phi::make_ddim({num_kept, out_dim}));
-    ctx.template Alloc<T>(&out);
-    index.Resize(phi::make_ddim({num_kept, 1}));
-    ctx.template Alloc<int>(&index);
+    out->Resize(phi::make_ddim({num_kept, out_dim}));
+    ctx.template Alloc<T>(out);
+    index->Resize(phi::make_ddim({num_kept, 1}));
+    ctx.template Alloc<int>(index);
     std::copy(detections.begin(), detections.end(), out->data<T>());
     std::copy(indices.begin(), indices.end(), index->data<int>());
   }

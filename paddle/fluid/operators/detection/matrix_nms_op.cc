@@ -51,21 +51,14 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "class number, M is number of bounding boxes. For each category "
              "there are total M scores which corresponding M bounding boxes. "
              " Please note, M is equal to the 2nd dimension of BBoxes. ");
-    AddAttr<int>(
-        "background_label",
-        "(int, default: 0) "
-        "The index of background label, the background label will be ignored. "
-        "If set to -1, then all categories will be considered.")
-        .SetDefault(0);
     AddAttr<float>("score_threshold",
                    "(float) "
                    "Threshold to filter out bounding boxes with low "
                    "confidence score.");
     AddAttr<float>("post_threshold",
-                   "(float, default 0.) "
+                   "(float) "
                    "Threshold to filter out bounding boxes with low "
-                   "confidence score AFTER decaying.")
-        .SetDefault(0.);
+                   "confidence score AFTER decaying.");
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
@@ -75,10 +68,6 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int64_t) "
                  "Number of total bboxes to be kept per image after NMS "
                  "step. -1 means keeping all bboxes after NMS step.");
-    AddAttr<bool>("normalized",
-                  "(bool, default true) "
-                  "Whether detections are normalized.")
-        .SetDefault(true);
     AddAttr<bool>("use_gaussian",
                   "(bool, default false) "
                   "Whether to use Gaussian as decreasing function.")
@@ -88,6 +77,16 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Sigma for Gaussian decreasing function, only takes effect ",
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
+    AddAttr<int>(
+        "background_label",
+        "(int, default: 0) "
+        "The index of background label, the background label will be ignored. "
+        "If set to -1, then all categories will be considered.")
+        .SetDefault(0);
+    AddAttr<bool>("normalized",
+                  "(bool, default true) "
+                  "Whether detections are normalized.")
+        .SetDefault(true);
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
