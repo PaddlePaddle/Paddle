@@ -112,12 +112,12 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   for (auto node : graph->Nodes()) {
     if (node->Name() == "feed") {
       if (node->IsOp()) {
-        feed_list[BOOST_GET_CONST(int, node->Op()->GetAttr("col"))] =
+        feed_list[PADDLE_GET_CONST(int, node->Op()->GetAttr("col"))] =
             node->outputs[0]->Name();
       }
     } else if (node->Name() == "fetch") {
       if (node->IsOp()) {
-        fetch_list[BOOST_GET_CONST(int, node->Op()->GetAttr("col"))] =
+        fetch_list[PADDLE_GET_CONST(int, node->Op()->GetAttr("col"))] =
             node->inputs[0]->Name();
       }
     }
