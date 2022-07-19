@@ -31,6 +31,9 @@ from .unary import pow
 from .unary import cast
 from .unary import neg
 from .unary import coalesce
+from .unary import deg2rad
+from .unary import rad2deg
+from .unary import expm1
 
 from .binary import mv
 from .binary import matmul
@@ -60,6 +63,9 @@ __all__ = [
     'pow',
     'cast',
     'neg',
+    'deg2rad',
+    'rad2deg',
+    'expm1',
     'mv',
     'matmul',
     'masked_matmul',

@@ -112,6 +112,22 @@
   output : Tensor(x_grad)
   invoke : divide_scalar(out_grad, scalar)
 
+- backward_api : expm1_grad
+  forward : expm1(Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  kernel :
+    func : expm1_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           expm1_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
+- backward_api : leaky_relu_grad
+  forward : leaky_relu(Tensor x, float alpha) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float alpha)
+  output : Tensor(x_grad)
+  kernel :
+    func : leaky_relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           leaky_relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
 - backward_api : log1p_grad
   forward : log1p(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -160,6 +176,14 @@
   kernel :
     func : pow_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            pow_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
+- backward_api : relu6_grad
+  forward : relu6(Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  kernel :
+    func : relu6_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           relu6_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
 - backward_api : relu_grad
   forward : relu(Tensor x) -> Tensor(out)
@@ -255,7 +279,7 @@
 - backward_api: fused_attention_grad
   forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
-  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad) 
+  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax

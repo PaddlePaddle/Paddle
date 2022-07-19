@@ -127,6 +127,24 @@
            divide_csr_scalar{sparse_csr -> sparse_csr}
   backward : divide_scalar_grad
 
+- api : expm1
+  args : (Tensor x)
+  output : Tensor(out)
+  kernel :
+    func : expm1_coo{sparse_coo -> sparse_coo},
+           expm1_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : expm1_grad
+
+- api : leaky_relu
+  args : (Tensor x, float alpha)
+  output : Tensor(out)
+  kernel :
+    func : leaky_relu_coo{sparse_coo -> sparse_coo},
+           leaky_relu_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : leaky_relu_grad
+
 - api : log1p
   args : (Tensor x)
   output : Tensor(out)
@@ -162,6 +180,15 @@
            relu_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : relu_grad
+
+- api : relu6
+  args : (Tensor x, float threshold)
+  output : Tensor(out)
+  kernel :
+    func : relu6_coo{sparse_coo -> sparse_coo},
+           relu6_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : relu6_grad
 
 - api : scale
   args : (Tensor x, float scale, float bias, bool bias_after_scale)
