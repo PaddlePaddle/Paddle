@@ -174,6 +174,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "recover_padding",
       "remove_padding",
       "fill_constant",
+      "sum",
+      "shape",
       "squeeze2",
       "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
@@ -284,6 +286,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "recover_padding",
       "remove_padding",
       "fill_constant",
+      "sum",
+      "shape",
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune"};
@@ -1212,6 +1216,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 or float16 into trt.
+      if (!(dtype == 5 || dtype == 4)) {
+        return false;
+      }
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
         return false;
@@ -1364,6 +1373,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                "mode.";
         return false;
       }
+    }
+    // remember that 1D input in static shape mode is filtered at the beginning
+    if (op_type == "sum") {
+      return true;
+    }
+
+    if (op_type == "shape" && !with_dynamic_shape) {
+      return false;
     }
 
     if (op_type == "sum") {
@@ -2073,6 +2090,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "cast") {
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
       int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
       int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
 

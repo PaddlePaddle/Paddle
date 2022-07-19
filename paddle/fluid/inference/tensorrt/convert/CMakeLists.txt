@@ -69,7 +69,10 @@ list(
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
+<<<<<<< HEAD
   rnn_op.cc
+=======
+>>>>>>> develop
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc

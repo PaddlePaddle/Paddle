@@ -21,6 +21,7 @@ namespace tensorrt {
 class SumOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
+<<<<<<< HEAD
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a fluid sum op to tensorrt sum layer";
 
@@ -33,6 +34,28 @@ class SumOpConverter : public OpConverter {
       layer = TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *input_i, *sum_tmp,
                                    nvinfer1::ElementWiseOperation::kSUM);
       sum_tmp = layer->getOutput(0);
+=======
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(4) << "convert a fluid sum op to tensorrt sum layer";
+
+    framework::OpDesc op_desc(op, nullptr);
+    nvinfer1::ILayer* layer = nullptr;
+    // Declare the first input
+    auto* sum_tmp = engine_->GetITensor(op_desc.Input("X")[0]);
+    if (op_desc.Input("X").size() == 1) {
+      layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *sum_tmp);
+    } else {
+      for (size_t i = 1; i < op_desc.Input("X").size(); i++) {
+        auto* input_i = engine_->GetITensor(op_desc.Input("X")[i]);
+        layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                     ElementWise,
+                                     *input_i,
+                                     *sum_tmp,
+                                     nvinfer1::ElementWiseOperation::kSUM);
+        sum_tmp = layer->getOutput(0);
+      }
+>>>>>>> develop
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "sum", {output_name}, test_mode);
