@@ -49,7 +49,9 @@ class ExecutorFunction : public BaseFunction {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
     utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
-    inner_exe_.Run(info_->ProgramDesc(),
+    framework::ProgramDesc desc(info_->ProgramDesc());
+    utils::RemoveFeedFetch(&desc);
+    inner_exe_.Run(desc,
                    &scope_,
                    /*blockID=*/0,
                    false,

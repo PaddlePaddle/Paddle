@@ -51,14 +51,14 @@ class PEFunction : public BaseFunction {
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
     std::string prog_string;
     std::hash<std::string> string_hash;
-    auto &program_desc = info_->ProgramDesc();
-    // TODO(dev): Serialize is very slow.
-    const_cast<framework::ProgramDesc *>(&program_desc)
-        ->Proto()
-        ->SerializePartialToString(&prog_string);
 
+    framework::ProgramDesc desc(info_->ProgramDesc());
+    utils::RemoveFeedFetch(&desc);
+    // TODO(dev): Serialize is very slow.
+    desc.Proto()->SerializePartialToString(&prog_string);
     int64_t program_id = static_cast<int64_t>(string_hash(prog_string));
-    const framework::BlockDesc &global_block = program_desc.Block(0);
+
+    const framework::BlockDesc &global_block = desc.Block(0);
     int64_t start_op_index = 0;
     int64_t end_op_index = static_cast<int64_t>(global_block.OpSize());
 
@@ -67,7 +67,7 @@ class PEFunction : public BaseFunction {
     std::vector<std::string> output_var_names = info_->OutputArgNames();
 
     if (end_op_index > start_op_index) {
-      auto cache_info = framework::GetExecutorInfoFromCache(program_desc,
+      auto cache_info = framework::GetExecutorInfoFromCache(desc,
                                                             place_,
                                                             start_op_index,
                                                             end_op_index,
@@ -85,10 +85,7 @@ class PEFunction : public BaseFunction {
                                       output_var_names.end());
 
         framework::details::ParseSafeEagerDeletionSkipVars(
-            program_desc,
-            end_op_index,
-            output_var_names,
-            &skip_eager_delete_vars);
+            desc, end_op_index, output_var_names, &skip_eager_delete_vars);
       }
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }

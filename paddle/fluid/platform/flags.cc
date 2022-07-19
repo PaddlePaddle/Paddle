@@ -916,3 +916,19 @@ PADDLE_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
+
+/**
+ * JitLayer related FLAG
+ * Name: FLAGS_function_type
+ * Since Version: 2.3.0
+ * Value Range: string, {Executor, PE, Predictor},
+ * default=Executor
+ * Example:
+ * Note:
+ * FLAGS_function_type == Executor, using ExecutorFunction by default
+ * FLAGS_function_type == PE, using PEFunction by default
+ * FLAGS_function_type == Predictor, using PredictorFunction by default
+ */
+PADDLE_DEFINE_EXPORTED_string(function_type,
+                              "Executor",
+                              "Choose default funciton type in JitLayer.");
