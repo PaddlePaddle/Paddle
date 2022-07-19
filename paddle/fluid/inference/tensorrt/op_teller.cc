@@ -1207,6 +1207,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != 5) {
+        return false;
+      }
       const auto x_shape = x_var_desc->GetShape();
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
