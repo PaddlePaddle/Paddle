@@ -312,7 +312,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                                 'use_calc_stream': True,
                                                 OP_ROLE_KEY: OpRole.Forward
                                             })
-            startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -412,8 +411,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         set_comm_op_dist_attr_for_program(c_identity_op, dist_attr.process_mesh,
                                           out_grad_dist_attr, ctx)
 
-        main_block._sync_with_cpp()
-        c_embedding_grad_op_desc = main_block.desc.append_op()
+        c_embedding_grad_op_desc = main_block.append_op(type='nop').desc
         c_embedding_grad_op_desc.set_type("c_embedding_grad")
         c_embedding_grad_op_desc.set_input('Ids', [Ids_var.name])
         c_embedding_grad_op_desc.set_input('W', [Weight_var.name])
@@ -422,7 +420,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         c_embedding_grad_op_desc.set_output('W@GRAD', [Weight_grad.name])
         c_embedding_grad_op_desc._set_attr('start_index', relative_idx)
         c_embedding_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)
-        main_block._sync_with_cpp()
 
         c_embedding_grad_op = main_block.ops[-1]
         assert c_embedding_grad_op.type == "c_embedding_grad"

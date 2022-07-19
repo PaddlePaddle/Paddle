@@ -24,7 +24,7 @@ std::shared_ptr<BaseFunction> CompilationUnit::Function(
   PADDLE_ENFORCE_EQ(
       function_map_.count(name),
       1,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Funciton name %s is not exist in function_map_.", name));
   return function_map_.at(name);
 }

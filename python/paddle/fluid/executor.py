@@ -1388,8 +1388,8 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
-            ) or isinstance(place, core.CustomPlace):
+            if core.is_compiled_with_mlu() or isinstance(
+                    place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
@@ -1404,8 +1404,12 @@ class Executor(object):
                     return False
 
                 # Unsupported case 3: data parallel
-                if program._is_data_parallel == True and len(
+                if program._is_data_parallel and len(
                         program._get_places(place, program._places)) != 1:
+                    return False
+
+                # Unsupported case 4: inference
+                if program._is_inference:
                     return False
 
                 return True
@@ -1444,6 +1448,11 @@ class Executor(object):
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                    else:
+                        from paddle.incubate.autograd import prim_enabled, prim2orig
+                        if prim_enabled() and program == default_main_program():
+                            prim2orig()
+
                     program = self._add_feed_fetch_ops(
                         program=inner_program,
                         feed=feed,

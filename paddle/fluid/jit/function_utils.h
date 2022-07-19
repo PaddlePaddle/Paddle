@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -30,15 +31,20 @@ namespace jit {
 using Variable = paddle::framework::Variable;
 using Name2VariableMap = std::unordered_map<std::string, Variable>;
 using DenseTensor = phi::DenseTensor;
+using Tensor = paddle::experimental::Tensor;
+
 namespace utils {
 
-void FetchVarsByNames(const std::vector<std::string> &names,
-                      const framework::Scope &scope,
-                      std::vector<Variable> *outs);
+std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors);
+std::vector<Tensor> ToTensors(const std::vector<DenseTensor> &tensors);
 
-void ShareInputsIntoScope(const std::vector<std::string> &ordered_input_names,
-                          const std::vector<Variable> &vars,
-                          framework::Scope *scope);
+void FetchOuts(const std::vector<std::string> &names,
+               const framework::Scope &scope,
+               std::vector<DenseTensor> *outs);
+
+void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
+                    const std::vector<DenseTensor> &vars,
+                    framework::Scope *scope);
 
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
                           const Name2VariableMap &params_dict,

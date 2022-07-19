@@ -2853,8 +2853,7 @@ def tile(x, repeat_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (repeat_times.ndim == 1,
-                    "Only support ndim == 1 while repeat_times is a Tensor.")
+            assert repeat_times.ndim == 1, "Only support ndim == 1 while repeat_times is a Tensor."
             repeat_times = repeat_times.numpy().tolist()
 
         return _C_ops.final_state_tile(x, repeat_times)
