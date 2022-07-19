@@ -51,10 +51,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
@@ -416,7 +416,7 @@ class PSGPUWrapper {
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
                           ? 1
-                          : int(config["optimizer_type"]);
+                          : static_cast<int>(config["optimizer_type"]);
   }
 
   void SetDate(int year, int month, int day) {
