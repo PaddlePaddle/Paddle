@@ -22,23 +22,23 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void MaxPoolGradKernel(const Context& dev_ctx,
-                       const SparseCooTensor& x,
-                       const DenseTensor& rulebook,
-                       const SparseCooTensor& out,
-                       const SparseCooTensor& out_grad,
-                       const std::vector<int>& kernel_sizes,
-                       SparseCooTensor* x_grad);
+void MaxPoolCooGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const DenseTensor& rulebook,
+                          const SparseCooTensor& out,
+                          const SparseCooTensor& out_grad,
+                          const std::vector<int>& kernel_sizes,
+                          SparseCooTensor* x_grad);
 
 template <typename T, typename Context>
-SparseCooTensor MaxPoolGrad(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& rulebook,
-                            const SparseCooTensor& out,
-                            const SparseCooTensor& out_grad,
-                            const std::vector<int>& kernel_sizes) {
+SparseCooTensor MaxPoolCooGrad(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const DenseTensor& rulebook,
+                               const SparseCooTensor& out,
+                               const SparseCooTensor& out_grad,
+                               const std::vector<int>& kernel_sizes) {
   SparseCooTensor x_grad;
-  MaxPoolGradKernel<T, Context>(
+  MaxPoolCooGradKernel<T, Context>(
       dev_ctx, x, rulebook, out, out_grad, kernel_sizes, &x_grad);
   return x_grad;
 }

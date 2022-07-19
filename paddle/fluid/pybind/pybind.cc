@@ -1684,9 +1684,9 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(BOOST_GET(LoDTensor, var));
+            return py::cast(PADDLE_GET(LoDTensor, var));
           } else {
-            return py::cast(BOOST_GET(LoDTensorArray, var));
+            return py::cast(PADDLE_GET(LoDTensorArray, var));
           }
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
@@ -1792,10 +1792,10 @@ All parameter, weight, gradient are variables in Paddle.
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
-                auto &data = BOOST_GET(LoDTensor, self[i]);
+                auto &data = PADDLE_GET(LoDTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
-                auto &data = BOOST_GET(LoDTensorArray, self[i]);
+                auto &data = PADDLE_GET(LoDTensorArray, self[i]);
                 py::list tmp(data.size());
                 for (size_t j = 0; j < data.size(); ++j) {
                   tmp[j] = py::cast(std::move(data[j]));
@@ -1812,7 +1812,7 @@ All parameter, weight, gradient are variables in Paddle.
           "append",
           [](FetchList &self, const LoDTensor &t) {
             self.emplace_back();
-            auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
+            auto &lod_tensor = PADDLE_GET(LoDTensor, self.back());
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
@@ -1822,7 +1822,7 @@ All parameter, weight, gradient are variables in Paddle.
           "append",
           [](FetchList &self, const LoDTensorArray &t) {
             self.emplace_back();
-            auto &lod_tensor_array = BOOST_GET(LoDTensorArray, self.back());
+            auto &lod_tensor_array = PADDLE_GET(LoDTensorArray, self.back());
             for (size_t i = 0; i < t.size(); ++i) {
               lod_tensor_array[i].ShareDataWith(t[i]);
               lod_tensor_array[i].set_lod(t[i].lod());
@@ -1841,10 +1841,10 @@ All parameter, weight, gradient are variables in Paddle.
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
-                  auto &var = BOOST_GET(LoDTensor, self[i][j]);
+                  auto &var = PADDLE_GET(LoDTensor, self[i][j]);
                   tmp[j] = py::cast(std::move(var));
                 } else {
-                  auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
+                  auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);
                   py::list tmp_array(var.size());
                   for (size_t k = 0; k < var.size(); ++k) {
                     tmp_array[k] = std::move(var[k]);

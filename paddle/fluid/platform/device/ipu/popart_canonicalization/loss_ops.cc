@@ -29,7 +29,7 @@ bool is_dynamic_graph() {
 
 Node *identity_loss_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
+  auto reduction = PADDLE_GET_CONST(int, op->GetAttr("reduction"));
   return CreateIdentityLossOp(
       graph, node, node->inputs, node->outputs, reduction);
 }
@@ -181,7 +181,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto logits = GetInputVarNode("X", node);
   auto label = GetInputVarNode("Label", node);
   auto output = GetOutputVarNode("Y", node);
-  auto ignore_index = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
+  auto ignore_index = PADDLE_GET_CONST(int, op->GetAttr("ignore_index"));
   return cross_entropy_general_handler(graph,
                                        node,
                                        logits,
@@ -199,9 +199,9 @@ Node *softmax_with_cross_entropy_handler(Graph *graph, Node *node) {
   auto logits = GetInputVarNode("Logits", node);
   auto label = GetInputVarNode("Label", node);
   auto output = GetOutputVarNode("Loss", node);
-  auto ignore_index = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto soft_label = BOOST_GET_CONST(bool, op->GetAttr("soft_label"));
+  auto ignore_index = PADDLE_GET_CONST(int, op->GetAttr("ignore_index"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
+  auto soft_label = PADDLE_GET_CONST(bool, op->GetAttr("soft_label"));
 
   logits = CreateSoftmaxOpset11(
                graph, node, {logits}, {GetOutputVarNode("Softmax", node)}, axis)
@@ -220,7 +220,7 @@ Node *softmax_with_cross_entropy_handler(Graph *graph, Node *node) {
 Node *kldiv_loss_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto reduction = ConvertToPopartReduction(
-      BOOST_GET_CONST(std::string, op->GetAttr("reduction")));
+      PADDLE_GET_CONST(std::string, op->GetAttr("reduction")));
   if (reduction == 2) {
     reduction = RemoveTailReduction(graph, node, "Loss");
   }
@@ -371,7 +371,7 @@ Node *huber_loss_handler(Graph *graph, Node *node) {
           ->outputs.front();
 
   // const delta
-  auto delta_value = BOOST_GET_CONST(float, op->GetAttr("delta"));
+  auto delta_value = PADDLE_GET_CONST(float, op->GetAttr("delta"));
   auto delta =
       CreateConst(
           graph, node, std::vector<float>{delta_value}, {1}, GetVarDType(x))
@@ -433,8 +433,8 @@ Node *warpctc_handler(Graph *graph, Node *node) {
   auto label = GetInputVarNode("Label", node);
   auto logits_length = GetInputVarNode("LogitsLength", node);
   auto label_length = GetInputVarNode("LabelLength", node);
-  auto blank = BOOST_GET_CONST(int, op->GetAttr("blank"));
-  auto norm_by_times = BOOST_GET_CONST(bool, op->GetAttr("norm_by_times"));
+  auto blank = PADDLE_GET_CONST(int, op->GetAttr("blank"));
+  auto norm_by_times = PADDLE_GET_CONST(bool, op->GetAttr("norm_by_times"));
   int reduction = 2;
   if (is_dynamic_graph()) {
     reduction = RemoveTailReduction(graph, node, "Loss");
