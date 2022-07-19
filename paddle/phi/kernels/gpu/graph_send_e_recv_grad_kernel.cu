@@ -16,10 +16,13 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -107,6 +110,7 @@ void CalculateXGrad(const Context& ctx,
                     int64_t index_size,
                     int64_t slice_size,
                     T* x_grad,
+                    const DenseTensor& out_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
 #ifdef PADDLE_WITH_HIP
@@ -118,17 +122,50 @@ void CalculateXGrad(const Context& ctx,
   int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
+  std::vector<int64_t> reduce_idx;
+  bool reduce = ReduceGrad(out_grad_dims, x_dims, reduce_idx);
   if (pool_type == "SUM") {
     if (compute_type == "ADD") {
       GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
-      GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
-          <<<grid, block, 0, ctx.stream()>>>(out_grad,
-                                             d_index,
-                                             s_index,
-                                             x_grad,
-                                             index_size,
-                                             slice_size,
-                                             functor);
+      if (!reduce) {
+        GraphSendRecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendRecvSumCUDAFunctor<T, IndexT>>
+            <<<grid, block, 0, ctx.stream()>>>(out_grad,
+                                               d_index,
+                                               s_index,
+                                               x_grad,
+                                               index_size,
+                                               slice_size,
+                                               functor);
+      } else {
+        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        DenseTensor x_grad_v2 =
+            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        T* x_grad_v2_data = x_grad_v2.data<T>();
+        GraphSendRecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendRecvSumCUDAFunctor<T, IndexT>>
+            <<<grid, block, 0, ctx.stream()>>>(out_grad,
+                                               d_index,
+                                               s_index,
+                                               x_grad_v2_data,
+                                               index_size,
+                                               bcast_info.out_len,
+                                               functor);
+        // Run reduce_sum
+        DenseTensor x_grad_out = phi::Sum<T, Context>(
+            ctx,
+            x_grad_v2,
+            reduce_idx,
+            paddle::experimental::CppTypeToDataType<T>::Type(),
+            true);
+        cudaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   cudaMemcpyDeviceToDevice);
+      }
     } else if (compute_type == "MUL") {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
@@ -144,31 +181,100 @@ void CalculateXGrad(const Context& ctx,
       const dim3 block_(ntx, nty);
       funcs::MultiplyFunctor<T> mul_functor;
       GraphSendERecvSumCUDAFunctor<T> sum_functor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvSumCUDAFunctor<T>,
-                               funcs::MultiplyFunctor<T>>
-          <<<grid_, block_, 0, ctx.stream()>>>(
-              out_grad,
-              e_data,
-              d_index,
-              s_index,
-              thrust::raw_pointer_cast(l_bcastoff.data()),
-              thrust::raw_pointer_cast(r_bcastoff.data()),
-              x_grad,
-              index_size,
-              bcast_info.l_len,
-              bcast_info.r_len,
-              out_len,
-              bcast_info.use_bcast,
-              mul_functor,
-              sum_functor);
+      if (!reduce) {
+        GraphSendERecvCUDAKernel<T,
+                                 IndexT,
+                                 GraphSendERecvSumCUDAFunctor<T>,
+                                 funcs::MultiplyFunctor<T>>
+            <<<grid_, block_, 0, ctx.stream()>>>(
+                out_grad,
+                e_data,
+                d_index,
+                s_index,
+                thrust::raw_pointer_cast(l_bcastoff.data()),
+                thrust::raw_pointer_cast(r_bcastoff.data()),
+                x_grad,
+                index_size,
+                bcast_info.l_len,
+                bcast_info.r_len,
+                out_len,
+                bcast_info.use_bcast,
+                mul_functor,
+                sum_functor);
+      } else {
+        DenseTensor x_grad_v2 =
+            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        T* x_grad_v2_data = x_grad_v2.data<T>();
+        GraphSendERecvCUDAKernel<T,
+                                 IndexT,
+                                 GraphSendERecvSumCUDAFunctor<T>,
+                                 funcs::MultiplyFunctor<T>>
+            <<<grid_, block_, 0, ctx.stream()>>>(
+                out_grad,
+                e_data,
+                d_index,
+                s_index,
+                thrust::raw_pointer_cast(l_bcastoff.data()),
+                thrust::raw_pointer_cast(r_bcastoff.data()),
+                x_grad_v2_data,
+                index_size,
+                bcast_info.l_len,
+                bcast_info.r_len,
+                out_len,
+                bcast_info.use_bcast,
+                mul_functor,
+                sum_functor);
+        DenseTensor x_grad_out = phi::Sum<T, Context>(
+            ctx,
+            x_grad_v2,
+            reduce_idx,
+            paddle::experimental::CppTypeToDataType<T>::Type(),
+            true);
+        cudaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   cudaMemcpyDeviceToDevice);
+      }
     }
   } else if (pool_type == "MEAN") {
     const int* s_count = dst_count->data<int>();
     if (compute_type == "ADD") {
-      ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-          out_grad, d_index, s_index, x_grad, index_size, slice_size, s_count);
+      if (!reduce) {
+        ManipulateMeanGradCUDAKernel<T, IndexT>
+            <<<grid, block, 0, ctx.stream()>>>(out_grad,
+                                               d_index,
+                                               s_index,
+                                               x_grad,
+                                               index_size,
+                                               slice_size,
+                                               s_count);
+      } else {
+        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        DenseTensor x_grad_v2 =
+            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        T* x_grad_v2_data = x_grad_v2.data<T>();
+        ManipulateMeanGradCUDAKernel<T, IndexT>
+            <<<grid, block, 0, ctx.stream()>>>(out_grad,
+                                               d_index,
+                                               s_index,
+                                               x_grad_v2_data,
+                                               index_size,
+                                               bcast_info.out_len,
+                                               s_count);
+        // Run reduce_sum
+        DenseTensor x_grad_out = phi::Sum<T, Context>(
+            ctx,
+            x_grad_v2,
+            reduce_idx,
+            paddle::experimental::CppTypeToDataType<T>::Type(),
+            true);
+        cudaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   cudaMemcpyDeviceToDevice);
+      }
     } else if (compute_type == "MUL") {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
@@ -182,21 +288,55 @@ void CalculateXGrad(const Context& ctx,
       const int nby = (index_size + nty - 1) / nty;
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
-      ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
-          <<<grid_, block_, 0, ctx.stream()>>>(
-              out_grad,
-              e_data,
-              d_index,
-              s_index,
-              s_count,
-              thrust::raw_pointer_cast(l_bcastoff.data()),
-              thrust::raw_pointer_cast(r_bcastoff.data()),
-              x_grad,
-              index_size,
-              bcast_info.l_len,
-              bcast_info.r_len,
-              out_len,
-              bcast_info.use_bcast);
+      if (!reduce) {
+        ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
+            <<<grid_, block_, 0, ctx.stream()>>>(
+                out_grad,
+                e_data,
+                d_index,
+                s_index,
+                s_count,
+                thrust::raw_pointer_cast(l_bcastoff.data()),
+                thrust::raw_pointer_cast(r_bcastoff.data()),
+                x_grad,
+                index_size,
+                bcast_info.l_len,
+                bcast_info.r_len,
+                out_len,
+                bcast_info.use_bcast);
+      } else {
+        DenseTensor x_grad_v2 =
+            phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
+        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        T* x_grad_v2_data = x_grad_v2.data<T>();
+        ManipulateMeanGradCUDAKernelForMulX<T, IndexT>
+            <<<grid_, block_, 0, ctx.stream()>>>(
+                out_grad,
+                e_data,
+                d_index,
+                s_index,
+                s_count,
+                thrust::raw_pointer_cast(l_bcastoff.data()),
+                thrust::raw_pointer_cast(r_bcastoff.data()),
+                x_grad_v2_data,
+                index_size,
+                bcast_info.l_len,
+                bcast_info.r_len,
+                out_len,
+                bcast_info.use_bcast);
+        // Run reduce_sum
+        DenseTensor x_grad_out = phi::Sum<T, Context>(
+            ctx,
+            x_grad_v2,
+            reduce_idx,
+            paddle::experimental::CppTypeToDataType<T>::Type(),
+            true);
+        // TODO(daisiming): Whether use x_grad instead.
+        cudaMemcpy(x_grad,
+                   x_grad_out.data<T>(),
+                   x_grad_out.numel() * sizeof(T),
+                   cudaMemcpyDeviceToDevice);
+      }
     }
   }
 }
@@ -353,6 +493,7 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
                                        index_size,
                                        slice_size,
                                        x_grad_data,
+                                       out_grad,
                                        dst_count,
                                        out);
     CalculateEGrad<Context, T, IndexT>(ctx,

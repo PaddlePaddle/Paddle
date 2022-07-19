@@ -114,4 +114,26 @@ inline std::vector<int> InferBroadcastShape(const phi::DDim& x_dims,
   return out_dims_array;
 }
 
+inline bool ReduceGrad(const phi::DDim& out_grad_dims,
+                       const phi::DDim& x_dims,
+                       std::vector<int64_t>& axis) {
+  // We must ensure the ndim of out_grad and x are the same.
+  bool reduce = false;
+  for (int i = 1; i < out_grad_dims.size(); i++) {
+    if (out_grad_dims[i] != x_dims[i]) {
+      reduce = true;
+      break;
+    }
+  }
+  if (!reduce) return false;
+
+  // Get reduce axis.
+  for (int i = 1; i < out_grad_dims.size(); i++) {
+    if (out_grad_dims[i] - x_dims[i] != 0) {
+      axis.emplace_back(i);
+    }
+  }
+  return true;
+}
+
 }  // namespace phi

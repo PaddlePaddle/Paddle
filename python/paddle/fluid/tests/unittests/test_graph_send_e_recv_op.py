@@ -336,6 +336,28 @@ class TestSumCase5(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
+class TestSumCase6(TestGraphSendERecvSumOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestSumCase7(TestGraphSendERecvSumOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
 class TestGraphSendERecvMeanOp(OpTest):
 
     def setUp(self):
@@ -420,6 +442,28 @@ class TestMeanCase5(TestGraphSendERecvMeanOp):
         self.x = np.random.random((10, 8, 5)).astype("float64")
         self.e = np.random.random((15, 8, 1)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestMeanCase6(TestGraphSendERecvMeanOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestMeanCase7(TestGraphSendERecvMeanOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
@@ -514,6 +558,28 @@ class TestMaxCase5(TestGraphSendERecvMaxOp):
         self.compute_type = 'MUL'
 
 
+class TestMaxCase6(TestGraphSendERecvMaxOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestMaxCase7(TestGraphSendERecvMaxOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
 class TestGraphSendERecvMinOp(OpTest):
 
     def setUp(self):
@@ -598,6 +664,28 @@ class TestMinCase5(TestGraphSendERecvMinOp):
         self.x = np.random.random((10, 8, 5)).astype("float64")
         self.e = np.random.random((15, 8, 1)).astype("float64")
         index = np.random.randint(0, 10, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'MUL'
+
+
+class TestMinCase6(TestGraphSendERecvMinOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.compute_type = 'ADD'
+
+
+class TestMinCase7(TestGraphSendERecvMinOp):
+
+    def set_config(self):
+        self.x = np.random.random((100, 1)).astype("float64")
+        self.e = np.random.random((15, 20)).astype("float64")
+        index = np.random.randint(0, 100, (15, 2)).astype(np.int64)
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
