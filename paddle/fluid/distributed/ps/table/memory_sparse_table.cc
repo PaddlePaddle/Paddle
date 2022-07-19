@@ -947,7 +947,7 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
               FixedFeatureValue* feature_value_new = &(local_shard_new[key]);
               auto new_size = feature_value.size();
               feature_value_new->resize(new_size);
-              memcpy(const_cast<float*>(feature_value_new->data()),
+              memcpy(feature_value_new->data(),
                      value_data,
                      new_size * sizeof(float));
             }
