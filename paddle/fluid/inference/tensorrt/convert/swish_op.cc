@@ -59,7 +59,7 @@ class SwishOpConverter : public OpConverter {
             "But received Out's size %u.",
             output_num));
     // Get attrs
-    float beta = BOOST_GET_CONST(float, op_desc.GetAttr("beta"));
+    float beta = PADDLE_GET_CONST(float, op_desc.GetAttr("beta"));
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {

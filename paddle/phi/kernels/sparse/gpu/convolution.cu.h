@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 namespace phi {
 namespace sparse {

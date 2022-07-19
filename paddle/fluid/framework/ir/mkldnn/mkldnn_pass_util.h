@@ -67,7 +67,7 @@ static void GetInfoFromTheFirstOp(
         if (pos != std::string::npos) {
           std::string name = fake_name.substr(0, pos);
           auto scales_vector =
-              BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
+              PADDLE_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
           info_map->insert(std::make_pair(name, scales_vector));
           op_desc->RemoveAttr(fake_name);
         }
