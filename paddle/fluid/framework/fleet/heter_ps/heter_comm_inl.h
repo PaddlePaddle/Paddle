@@ -48,7 +48,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
     table->set_xpu_id(dev_id);
     table->set_xpu_idx(dev_idx);
     table->set_xpu_num(resource_->total_device());
-    VLOG(3) << "init heter xpu table(id|idx|dev_num):" 
+    VLOG(3) << "init heter xpu table(id|idx|dev_num):"
             << dev_id << "|" << dev_idx << "|" << resource_->total_device();
 #endif
     tables_.push_back(table);
@@ -680,10 +680,12 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(3) << "heter comm inl pull sparse all reduce start";
     heter_comm_kernel_->convert_feature_value_as_float(d_shard_vals_ptr, h_fid_seq->size(), true);
+    xpu_wait();
     bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_vals_ptr,
         h_fid_seq->size() * sizeof(ValType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     heter_comm_kernel_->convert_feature_value_as_float(d_all_vals_ptr, h_fid_seq->size(), false);
+    xpu_wait();
     VLOG(3) << "heter comm inl pull sparse all reduce finish";
   } else {
     VLOG(3) << "heter comm inl pull unnecessary all reduce";
@@ -994,10 +996,12 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
     VLOG(3) << "heter comm inl push sparse all reduce start";
     heter_comm_kernel_->convert_feature_push_value_as_float(d_shard_grads_ptr, h_fid_seq->size(), true);
+    xpu_wait();
     bkcl_all_reduce(comm->comm(), d_shard_grads_ptr, d_all_grads_ptr,
         h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
         BKCL_FLOAT, BKCL_ADD, stream);
     heter_comm_kernel_->convert_feature_push_value_as_float(d_all_grads_ptr, h_fid_seq->size(), false);
+    xpu_wait();
     VLOG(3) << "heter comm inl push sparse all reduce finish";
   } else {
     VLOG(3) << "heter comm inl push sparse unnecessary all reduce";
