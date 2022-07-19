@@ -65,6 +65,8 @@ enum PsCmdID {
   PS_SAVE_WITH_SHARD = 44;
   PS_QUERY_WITH_SCOPE = 45;
   PS_QUERY_WITH_SHARD = 46;
+  PS_REVERT = 47;
+  PS_CHECK_SAVE_PRE_PATCH_DONE = 48;
   // pserver2pserver cmd start from 100
   PS_S2S_MSG = 101;
 }
