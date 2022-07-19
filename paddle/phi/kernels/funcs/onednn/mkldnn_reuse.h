@@ -20,7 +20,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
