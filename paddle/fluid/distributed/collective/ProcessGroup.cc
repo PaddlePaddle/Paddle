@@ -44,5 +44,12 @@ ProcessGroup::ProcessGroup(int rank, int size, const platform::Place& place,
   }
 }
 
+// about mpi
+void ProcessGroup::Task::finish(std::exception_ptr exception) {
+  is_completed_ = true;
+  exception_ = exception;
+  cv_.notify_all();
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

@@ -67,6 +67,11 @@ class ProcessGroup {
     CommType comm_type_;
     std::mutex mutex_;
     bool is_completed_ = false;
+    // mpi
+    std::condition_variable cv_;
+    std::exception_ptr exception_;
+    void finish(std::exception_ptr exception = nullptr);
+    void finishAndThrow(std::exception_ptr exception);
   };
 
   explicit ProcessGroup(int rank, int size, const platform::Place& place,

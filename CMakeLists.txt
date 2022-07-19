@@ -353,6 +353,10 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_MPI)
+    include(mpi)
+endif()
+
 if(WITH_MLU)
     include(neuware)
 endif()
