@@ -59,13 +59,13 @@ class ConcatPrimOpShapeInference : public framework::InferShapeBase {
     auto axis = ctx->Attrs().Get<int64_t>("axis");
     int64_t cnt_along_axis = 0;
     framework::VarDesc *first_x_var =
-        BOOST_GET(framework::VarDesc *, x_var_ptrs[0]);
+        PADDLE_GET(framework::VarDesc *, x_var_ptrs[0]);
     auto first_x_shape = first_x_var->GetShape();
     cnt_along_axis += first_x_shape[axis];
     size_t first_x_rank = first_x_shape.size();
     for (size_t i = 1; i < x_var_ptrs.size(); ++i) {
       framework::VarDesc *x_var =
-          BOOST_GET(framework::VarDesc *, x_var_ptrs[i]);
+          PADDLE_GET(framework::VarDesc *, x_var_ptrs[i]);
       auto x_shape = x_var->GetShape();
       cnt_along_axis += x_shape[axis];
       size_t x_rank = x_shape.size();
@@ -97,7 +97,7 @@ class ConcatPrimOpShapeInference : public framework::InferShapeBase {
 
     std::vector<int64_t> y_shape(first_x_shape);
     y_shape[axis] = cnt_along_axis;
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(y_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(y_shape);
   }
 };
 

@@ -352,7 +352,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
   std::string val = "";
   val += "{";
-  for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
+  for (auto x : PADDLE_GET_CONST(std::vector<T>, attr)) {
     val += std::to_string(x) + ",";
   }
   if (val.size() > 1) val.pop_back();
@@ -363,7 +363,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
 template <typename T, bool IsVector>
 static typename std::enable_if<!IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
-  return std::to_string(BOOST_GET_CONST(T, attr));
+  return std::to_string(PADDLE_GET_CONST(T, attr));
 }
 
 static std::pair<std::string, std::string> GetAttrType(
@@ -385,7 +385,7 @@ static std::pair<std::string, std::string> GetAttrType(
     case (3): {
       ret = "std::string";
       if (is_arg) ret += "&";
-      val = "\"" + BOOST_GET_CONST(std::string, attr) + "\"";
+      val = "\"" + PADDLE_GET_CONST(std::string, attr) + "\"";
       break;
     }
     case (4): {
@@ -404,7 +404,7 @@ static std::pair<std::string, std::string> GetAttrType(
       ret = "std::vector<std::string>";
       if (is_arg) ret += "&";
       val += "{";
-      for (auto x : BOOST_GET_CONST(std::vector<std::string>, attr)) {
+      for (auto x : PADDLE_GET_CONST(std::vector<std::string>, attr)) {
         val += "\"" + x + "\"" + ",";
       }
       if (val.size() > 1) val.pop_back();
@@ -3083,27 +3083,44 @@ static std::string ConvertCoreOpsInfosToString(
   return core_ops_returns_info_init_str;
 }
 
-static std::string GenerateCoreOpsReturnsInfo() {
+static std::string GenerateCoreOpsArgsInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_info = { %s };\n"
-      "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_args_type_info = { %s };\n"
-      "std::unordered_map<std::string, std::vector<std::string>> "
-      "core_ops_returns_info = { %s };\n";
+      "core_ops_args_info = { %s };\n";
 
   std::string core_ops_args_info_init_str =
       ConvertCoreOpsInfosToString(core_ops_args_info);
+
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_info_init_str);
+
+  return core_ops_info_str;
+}
+
+static std::string GenerateCoreOpsArgsTypeInfo() {
+  const char* Core_Ops_Returns_MAP_TEMPLATE =
+      "std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_args_type_info = { %s };\n";
+
   std::string core_ops_args_type_info_init_str =
       ConvertCoreOpsInfosToString(core_ops_args_type_info);
+
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_type_info_init_str);
+
+  return core_ops_info_str;
+}
+
+static std::string GenerateCoreOpsReturnsInfo() {
+  const char* Core_Ops_Returns_MAP_TEMPLATE =
+      "std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_returns_info = { %s };\n";
+
   std::string core_ops_returns_info_init_str =
       ConvertCoreOpsInfosToString(core_ops_returns_info);
 
-  std::string core_ops_info_str =
-      paddle::string::Sprintf(Core_Ops_Returns_MAP_TEMPLATE,
-                              core_ops_args_info_init_str,
-                              core_ops_args_type_info_init_str,
-                              core_ops_returns_info_init_str);
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_returns_info_init_str);
 
   return core_ops_info_str;
 }
@@ -3252,6 +3269,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 
   GenerateForwardDygraphFile(
       output_dir + "/forwards/dygraph_forward_functions_args_info.tmp.cc",
+      GenerateCoreOpsArgsInfo());
+  GenerateForwardDygraphFile(
+      output_dir + "/forwards/dygraph_forward_functions_args_type_info.tmp.cc",
+      GenerateCoreOpsArgsTypeInfo());
+  GenerateForwardDygraphFile(
+      output_dir + "/forwards/dygraph_forward_functions_returns_info.tmp.cc",
       GenerateCoreOpsReturnsInfo());
 
   VLOG(6) << "-------- GenerateNodeCCFile -------";

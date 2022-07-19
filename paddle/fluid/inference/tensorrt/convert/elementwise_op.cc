@@ -75,7 +75,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     // axis here is relative to explicit batch
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     int real_x_rank = dims_x.nbDims;
     int real_y_rank = dims_y.nbDims;
     if (!engine_->with_dynamic_shape()) {

@@ -853,6 +853,24 @@ int32_t FleetWrapper::SaveCache(int table_id,
   return feasign_cnt;
 }
 
+void FleetWrapper::Revert() {
+  auto ret = worker_ptr_->Revert();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
+}
+
+void FleetWrapper::CheckSavePrePatchDone() {
+  auto ret = worker_ptr_->CheckSavePrePatchDone();
+  ret.wait();
+  if (ret.get() == -1) {
+    LOG(ERROR) << "table revert failed";
+    exit(-1);
+  }
+}
+
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
   struct engine_wrapper_t {
     std::default_random_engine engine;

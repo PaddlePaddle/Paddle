@@ -47,7 +47,7 @@ class GatherOpConverter : public OpConverter {
 
     int axis = 0;
     if (op_desc.HasAttr("axis")) {
-      axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+      axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     }
 
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *index_tensor);
