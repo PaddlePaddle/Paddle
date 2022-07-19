@@ -302,11 +302,8 @@ void AnalysisPredictor::InitPlace() {
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (config_.thread_local_stream_enabled()) {
-      auto *ctx = static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
-      VLOG(3) << "The prediction process will be completed using a separate "
-                 "normal-priority stream on each thread.";
-      ctx->ResetThreadContext(platform::stream::Priority::kNormal);
+      LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
+                                 "Please use config.SetExecStream instead.";
     }
 #endif
   } else if (config_.use_xpu()) {
@@ -1621,14 +1618,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
-  if (stream != nullptr) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = place_;
-    auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
-        pool.Get(gpu_place));
-    dev_ctx->SetThreadLocalStream(stream);
-  }
+  LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
+                             "Please use config.SetExecStream instead.";
   return ZeroCopyRun();
 }
 #endif

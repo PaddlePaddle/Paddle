@@ -28,6 +28,7 @@ __all__ = [  #noqa
     'yolo_box',
     'deform_conv2d',
     'DeformConv2D',
+    'distribute_fpn_proposals',
     'read_file',
     'decode_jpeg',
     'roi_pool',
@@ -833,6 +834,123 @@ class DeformConv2D(Layer):
                             groups=self._groups,
                             mask=mask)
         return out
+
+
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             pixel_offset=False,
+                             rois_num=None,
+                             name=None):
+    r"""
+        In Feature Pyramid Networks (FPN) models, it is needed to distribute 
+    all proposals into different FPN level, with respect to scale of the proposals, 
+    the referring scale and the referring level. Besides, to restore the order of 
+    proposals, we return an array which indicates the original index of rois 
+    in current proposals. To compute FPN level for each roi, the formula is given as follows:
+    
+    .. math::
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois (Tensor): The input fpn_rois. 2-D Tensor with shape [N, 4] and data type can be
+            float32 or float64.
+        min_level (int): The lowest level of FPN layer where the proposals come 
+            from.
+        max_level (int): The highest level of FPN layer where the proposals
+            come from.
+        refer_level (int): The referring level of FPN layer with specified scale.
+        refer_scale (int): The referring scale of FPN layer with specified level.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of 
+            image shape will be 1. 'False' by default.
+        rois_num (Tensor, optional): 1-D Tensor contains the number of RoIs in each image. 
+            The shape is [B] and data type is int32. B is the number of images.
+            If rois_num not None, it will return a list of 1-D Tensor. Each element 
+            is the output RoIs' number of each image on the corresponding level
+            and the shape is [B]. None by default.
+        name (str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
+    Returns:
+        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+            and data type is same as `fpn_rois` . The length is max_level-min_level+1.         
+        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+            , where N is the number of total rois. The data type is int32. 
+        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is 
+            the RoIs' number in each image on the corresponding level. The shape 
+            is [B] and data type of int32, where B is the number of images.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            fpn_rois = paddle.rand((10, 4))
+            rois_num = paddle.to_tensor([3, 1, 4, 2], dtype=paddle.int32)
+
+            multi_rois, restore_ind, rois_num_per_level = paddle.vision.ops.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224,
+                rois_num=rois_num)
+    """
+    num_lvl = max_level - min_level + 1
+
+    if _non_static_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
+                 refer_level, 'refer_scale', refer_scale, 'pixel_offset',
+                 pixel_offset)
+        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
+            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
+        return multi_rois, restore_ind, rois_num_per_level
+
+    else:
+        check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                                 'distribute_fpn_proposals')
+        helper = LayerHelper('distribute_fpn_proposals', **locals())
+        dtype = helper.input_dtype('fpn_rois')
+        multi_rois = [
+            helper.create_variable_for_type_inference(dtype)
+            for i in range(num_lvl)
+        ]
+
+        restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+
+        inputs = {'FpnRois': fpn_rois}
+        outputs = {
+            'MultiFpnRois': multi_rois,
+            'RestoreIndex': restore_ind,
+        }
+
+        if rois_num is not None:
+            inputs['RoisNum'] = rois_num
+            rois_num_per_level = [
+                helper.create_variable_for_type_inference(dtype='int32')
+                for i in range(num_lvl)
+            ]
+            outputs['MultiLevelRoIsNum'] = rois_num_per_level
+        else:
+            rois_num_per_level = None
+
+        helper.append_op(type='distribute_fpn_proposals',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs={
+                             'min_level': min_level,
+                             'max_level': max_level,
+                             'refer_level': refer_level,
+                             'refer_scale': refer_scale,
+                             'pixel_offset': pixel_offset
+                         })
+        return multi_rois, restore_ind, rois_num_per_level
 
 
 def read_file(filename, name=None):
