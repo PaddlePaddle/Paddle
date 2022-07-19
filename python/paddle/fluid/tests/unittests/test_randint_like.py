@@ -81,22 +81,22 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs3, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
-
-        with program_guard(Program(), Program()):
-            x_float16 = paddle.fluid.data(name="x_float16",
-                                          shape=[10, 12],
-                                          dtype="float16")
-            exe = paddle.static.Executor(self.place)
-            # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
-            outlist4 = [
-                paddle.randint_like(x_float16, low=-3, high=25, dtype=dtype)
-                for dtype in self.dtype
-            ]
-            outs4 = exe.run(feed={'x_float16': self.x_float16},
-                            fetch_list=outlist4)
-            for out, dtype in zip(outs4, self.dtype):
-                self.assertTrue(out.dtype, np.dtype(dtype))
-                self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
+        if paddle.is_compiled_with_cuda():
+            with program_guard(Program(), Program()):
+                x_float16 = paddle.fluid.data(name="x_float16",
+                                              shape=[10, 12],
+                                              dtype="float16")
+                exe = paddle.static.Executor(self.place)
+                # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
+                outlist4 = [
+                    paddle.randint_like(x_float16, low=-3, high=25, dtype=dtype)
+                    for dtype in self.dtype
+                ]
+                outs4 = exe.run(feed={'x_float16': self.x_float16},
+                                fetch_list=outlist4)
+                for out, dtype in zip(outs4, self.dtype):
+                    self.assertTrue(out.dtype, np.dtype(dtype))
+                    self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
 
         with program_guard(Program(), Program()):
             x_float32 = paddle.fluid.data(name="x_float32",
