@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/MPITools.hpp"
+#include "paddle/fluid/distributed/collective/MPITools.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 
 namespace paddle {
 namespace distributed {
 
-ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
+MPI_Op ToMPIRedType(ReduceOp reduction) {
   static const std::map<ReduceOp, ncclRedOp_t> red_type = {
-      {ReduceOp::MIN, ncclMin},
-      {ReduceOp::MAX, ncclMax},
-      {ReduceOp::SUM, ncclSum},
-      {ReduceOp::PRODUCT, ncclProd},
+      {ReduceOp::MIN, MPI_MIN},
+      {ReduceOp::MAX, MPI_MAX},
+      {ReduceOp::SUM, MPI_SUM},
+      {ReduceOp::PRODUCT, MPI_PROD},
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(), true,
                     platform::errors::InvalidArgument(
-                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
+                        "Invalid mpi reduction. Must be MPI_MIN | MPI_MAX | "
+                        "MPI_PROD | MPI_SUM."));
   return it->second;
 }
 
