@@ -18,7 +18,7 @@
 
 namespace phi {
 
-int64_t CalStride(phi::DDim dim) {
+inline int64_t CalStride(phi::DDim dim) {
   int rank = dim.size();
   int64_t dimsum = 1;
   int64_t strides = 0;

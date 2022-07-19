@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -60,7 +61,7 @@ void FillDiagonalKernel(const Context& ctx,
   //  auto wrap = ctx.Attr<bool>("wrap");
 
   //  auto* x = ctx.Input<framework::Tensor>("X");
-  framework::TensorCopy(x, ctx.GetPlace(), out);
+  paddle::framework::TensorCopy(x, ctx.GetPlace(), out);
 
   T* out_data = ctx.template Alloc<T>(out);
   auto fill_val = static_cast<T>(value);
