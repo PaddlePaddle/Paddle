@@ -27,11 +27,11 @@ class FillConstantOpConverter : public OpConverter {
         << "convert a fluid fill_constant op to tensorrt fill_constant layer";
 
     framework::OpDesc op_desc(op, nullptr);
-    int dtype = BOOST_GET_CONST(int, op_desc.GetAttr("dtype"));
+    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     std::string str_value =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("str_value"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int64_t> shape =
-        BOOST_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
     std::unique_ptr<framework::Tensor> out_tensor(new framework::Tensor());
     out_tensor->Resize(phi::make_ddim(shape));
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;

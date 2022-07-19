@@ -89,6 +89,12 @@
   outputs :
     out : Out
 
+- api : solve
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - api : trace
   inputs :
     x : Input

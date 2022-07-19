@@ -352,7 +352,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
   std::string val = "";
   val += "{";
-  for (auto x : BOOST_GET_CONST(std::vector<T>, attr)) {
+  for (auto x : PADDLE_GET_CONST(std::vector<T>, attr)) {
     val += std::to_string(x) + ",";
   }
   if (val.size() > 1) val.pop_back();
@@ -363,7 +363,7 @@ static typename std::enable_if<IsVector, std::string>::type GetAttrValue(
 template <typename T, bool IsVector>
 static typename std::enable_if<!IsVector, std::string>::type GetAttrValue(
     const framework::Attribute& attr) {
-  return std::to_string(BOOST_GET_CONST(T, attr));
+  return std::to_string(PADDLE_GET_CONST(T, attr));
 }
 
 static std::pair<std::string, std::string> GetAttrType(
@@ -385,7 +385,7 @@ static std::pair<std::string, std::string> GetAttrType(
     case (3): {
       ret = "std::string";
       if (is_arg) ret += "&";
-      val = "\"" + BOOST_GET_CONST(std::string, attr) + "\"";
+      val = "\"" + PADDLE_GET_CONST(std::string, attr) + "\"";
       break;
     }
     case (4): {
@@ -404,7 +404,7 @@ static std::pair<std::string, std::string> GetAttrType(
       ret = "std::vector<std::string>";
       if (is_arg) ret += "&";
       val += "{";
-      for (auto x : BOOST_GET_CONST(std::vector<std::string>, attr)) {
+      for (auto x : PADDLE_GET_CONST(std::vector<std::string>, attr)) {
         val += "\"" + x + "\"" + ",";
       }
       if (val.size() > 1) val.pop_back();

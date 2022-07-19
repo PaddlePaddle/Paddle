@@ -308,7 +308,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // update weights and biases
     float epsilon =
-        BOOST_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
+        PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
     recompute_bias_and_weights(scope,
                                conv_weight,
                                *bn_scale,
@@ -552,7 +552,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // update weights and biases
     float epsilon =
-        BOOST_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
+        PADDLE_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
 
     // if bias is an input to other ops as well then we cannot overwrite it
     // so we create separate elementwise Y in nodes

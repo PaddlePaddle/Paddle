@@ -94,7 +94,7 @@ std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
   std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(BOOST_GET_CONST(
+      compilation_keys.emplace_back(PADDLE_GET_CONST(
           int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
