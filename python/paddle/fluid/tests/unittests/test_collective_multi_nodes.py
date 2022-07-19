@@ -117,56 +117,23 @@ class TestDistBase(unittest.TestCase):
         self._run_cluster(model_file, required_envs)
 
     def _run_cluster(self, model_file, envs):
-        worker_endpoints = self._ps_endpoints.split(",")
-        procs = []
-        outputs = []
-        tmppaths = []
-        for i in range(self._trainers // len(self._ips)):
-            endi = self._trainer_id * len(self._ips) + i
-            env = {
-                "FLAGS_selected_gpus": str(i),
-                "PADDLE_TRAINER_ID": str(i),
-                "PADDLE_TRAINERS_NUM": str(self._trainers),
-                "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                "PADDLE_CURRENT_ENDPOINT": worker_endpoints[endi],
-            }
-            env.update(envs)
-            out, stdpipe, path = self._run_cluster_one(model_file, env, i)
-            procs.append(out)
-            outputs.append(stdpipe)
-            tmppaths.append(path)
-        run_sucess = True
-        for i, p in enumerate(procs):
-            killed = False
-            try:
-                p.communicate(timeout=120)
-                code = p.poll()
-                if code is None:
-                    raise subprocess.TimeoutExpired
+        run_cluster_process = f"{sys.executable} -u -m paddle.distributed.launch --log_dir /tmp/log {model_file}"
+        filted_envs = dict()
+        for k in envs.keys():
+            if "PADDLE_" == k[:7]:
+                continue
+            filted_envs[k] = envs[k]
 
-            except subprocess.TimeoutExpired:
-                p.kill()
-                code = -15
-                killed = True
+        launcher = subprocess.Popen(run_cluster_process.strip().split(),
+                                    stdout=sys.stderr,
+                                    stderr=sys.stdout,
+                                    env=filted_envs)
+        launcher.communicate(timeout=120)
 
-            assert code is not None
-            if p.returncode != 0:
-                run_sucess = False
-                if killed:
-                    failed_type = "timed out"
-                else:
-                    failed_type = "failed"
-                print(
-                    f"========= subprocess {i} {failed_type}, following are the error messages(file:{tmppaths[i]}): ==========="
-                )
-                outputs[i].seek(0, 0)
-                for line in outputs[i]:
-                    print(line[:-1])
-            outputs[i].close()
-            #os.remove(tmppaths[i])
-
-        if not run_sucess:
-            raise RuntimeError("the process failed")
+        if launcher.poll() is None:
+            raise TimeoutError
+        elif launcher.poll() != 0:
+            raise RuntimeError("test failed!")
 
     def _run_cluster_one(self, model_file, envs, pi):
         #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
