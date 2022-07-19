@@ -557,6 +557,19 @@
   kernel :
     func : dropout_grad
 
+- backward_api : eig_grad
+  forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
+  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_v]
+  kernel :
+    func : eig_grad
+    data_type : out_v
+  data_transform:
+    skip_transform : out_w, out_w_grad
+
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
   args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
