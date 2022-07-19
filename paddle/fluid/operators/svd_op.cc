@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/svd_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -167,7 +166,3 @@ REGISTER_OPERATOR(svd,
                   ops::SvdGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(svd_grad, ops::SvdGradOp);
-
-REGISTER_OP_CPU_KERNEL(svd_grad,
-                       ops::SvdGradKernel<phi::CPUContext, float>,
-                       ops::SvdGradKernel<phi::CPUContext, double>);

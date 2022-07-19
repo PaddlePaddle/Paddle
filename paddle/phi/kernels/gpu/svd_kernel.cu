@@ -15,7 +15,7 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/phi/kernels/eigh_kernel.h"
+#include "paddle/phi/kernels/svd_kernel.h"
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
