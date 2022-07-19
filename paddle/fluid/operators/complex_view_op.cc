@@ -65,15 +65,6 @@ class AsComplexGradMaker : public framework::SingleGradOpMaker<T> {
 class AsRealOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(framework::ToRealType(input_data_type),
-                                   ctx.GetPlace());
-  }
 };
 
 class AsRealOpMaker : public framework::OpProtoAndCheckerMaker {
