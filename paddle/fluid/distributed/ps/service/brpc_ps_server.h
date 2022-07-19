@@ -53,12 +53,12 @@ class BrpcPsServer : public PSServer {
   }
   int32_t Port();
 
-  virtual int32_t StartS2S() override;
-  virtual ::std::future<int32_t> SendPServer2PServerMsg(
+  int32_t StartS2S() override;
+  ::std::future<int32_t> SendPServer2PServerMsg(
       int msg_type, int to_pserver_id, const std::string &msg) override;
-  virtual int32_t ReceiveFromPServer(int msg_type,
-                                     int pserver_id,
-                                     const std::string &msg) override;
+  int32_t ReceiveFromPServer(int msg_type,
+                             int pserver_id,
+                             const std::string &msg) override;
 
  private:
   virtual int32_t Initialize();
@@ -75,117 +75,127 @@ class BrpcPsService;
 typedef int32_t (BrpcPsService::*serviceHandlerFunc)(
     Table *table,
     const PsRequestMessage &request,
-    PsResponseMessage &response,
+    PsResponseMessage &response,  // NOLINT
     brpc::Controller *cntl);
 
 class BrpcPsService : public PsBaseService {
  public:
-  virtual int32_t Initialize() override;
+  int32_t Initialize() override;
 
-  virtual void service(::google::protobuf::RpcController *controller,
-                       const PsRequestMessage *request,
-                       PsResponseMessage *response,
-                       ::google::protobuf::Closure *done) override;
+  void service(::google::protobuf::RpcController *controller,
+               const PsRequestMessage *request,
+               PsResponseMessage *response,
+               ::google::protobuf::Closure *done) override;
 
  private:
   int32_t InitializeShardInfo();
   int32_t PullDense(Table *table,
                     const PsRequestMessage &request,
-                    PsResponseMessage &response,
+                    PsResponseMessage &response,  // NOLINT
                     brpc::Controller *cntl);
   int32_t PushDense(Table *table,
                     const PsRequestMessage &request,
-                    PsResponseMessage &response,
+                    PsResponseMessage &response,  // NOLINT
                     brpc::Controller *cntl);
   int32_t PushDenseParam(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,
+                         PsResponseMessage &response,  // NOLINT
                          brpc::Controller *cntl);
   int32_t PushSparseParam(Table *table,
                           const PsRequestMessage &request,
-                          PsResponseMessage &response,
+                          PsResponseMessage &response,  // NOLINT
                           brpc::Controller *cntl);
   int32_t PullSparse(Table *table,
                      const PsRequestMessage &request,
-                     PsResponseMessage &response,
+                     PsResponseMessage &response,  // NOLINT
                      brpc::Controller *cntl);
   int32_t PullGeoParam(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
   int32_t Barrier(Table *table,
                   const PsRequestMessage &request,
-                  PsResponseMessage &response,
+                  PsResponseMessage &response,  // NOLINT
                   brpc::Controller *cntl);
   int32_t PushSparse(Table *table,
                      const PsRequestMessage &request,
-                     PsResponseMessage &response,
+                     PsResponseMessage &response,  // NOLINT
                      brpc::Controller *cntl);
   int32_t LoadOneTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
   int32_t LoadAllTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
   int32_t SaveOneTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
   int32_t SaveAllTable(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
   int32_t ShrinkTable(Table *table,
                       const PsRequestMessage &request,
-                      PsResponseMessage &response,
+                      PsResponseMessage &response,  // NOLINT
                       brpc::Controller *cntl);
   int32_t ClearOneTable(Table *table,
                         const PsRequestMessage &request,
-                        PsResponseMessage &response,
+                        PsResponseMessage &response,  // NOLINT
                         brpc::Controller *cntl);
   int32_t ClearAllTable(Table *table,
                         const PsRequestMessage &request,
-                        PsResponseMessage &response,
+                        PsResponseMessage &response,  // NOLINT
                         brpc::Controller *cntl);
   int32_t StopServer(Table *table,
                      const PsRequestMessage &request,
-                     PsResponseMessage &response,
+                     PsResponseMessage &response,  // NOLINT
                      brpc::Controller *cntl);
   int32_t StartProfiler(Table *table,
                         const PsRequestMessage &request,
-                        PsResponseMessage &response,
+                        PsResponseMessage &response,  // NOLINT
                         brpc::Controller *cntl);
   int32_t StopProfiler(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
 
   int32_t PrintTableStat(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,
+                         PsResponseMessage &response,  // NOLINT
                          brpc::Controller *cntl);
 
   int32_t PushGlobalStep(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,
+                         PsResponseMessage &response,  // NOLINT
                          brpc::Controller *cntl);
 
   int32_t CacheShuffle(Table *table,
                        const PsRequestMessage &request,
-                       PsResponseMessage &response,
+                       PsResponseMessage &response,  // NOLINT
                        brpc::Controller *cntl);
 
   int32_t SaveCacheTable(Table *table,
                          const PsRequestMessage &request,
-                         PsResponseMessage &response,
+                         PsResponseMessage &response,  // NOLINT
                          brpc::Controller *cntl);
 
   int32_t GetCacheThreshold(Table *table,
                             const PsRequestMessage &request,
-                            PsResponseMessage &response,
+                            PsResponseMessage &response,  // NOLINT
                             brpc::Controller *cntl);
+
+  int32_t Revert(Table *table,
+                 const PsRequestMessage &request,
+                 PsResponseMessage &response,  // NOLINT
+                 brpc::Controller *cntl);
+
+  int32_t CheckSavePrePatchDone(Table *table,
+                                const PsRequestMessage &request,
+                                PsResponseMessage &response,  // NOLINT
+                                brpc::Controller *cntl);
 
   bool _is_initialize_shard_info;
   std::mutex _initialize_shard_mutex;
@@ -208,7 +218,7 @@ class DownpourPServerBrpcClosure : public PServerClosure {
   }
   virtual ~DownpourPServerBrpcClosure() {}
 
-  virtual void Run() override {
+  void Run() override {
     if (_waiting_num.fetch_sub(1) == 1) {
       _callback(this);
       delete this;

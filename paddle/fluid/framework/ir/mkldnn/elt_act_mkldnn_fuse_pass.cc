@@ -68,7 +68,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
       const std::string wo_elt_type =
           "The " + elt_type;  // Workaround for PP error message checking.
       PADDLE_ENFORCE_EQ(
-          BOOST_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
+          PADDLE_GET_CONST(bool, elementwise_op->GetAttr("use_mkldnn")),
           true,
           platform::errors::PreconditionNotMet(
               wo_elt_type + "+Act fusion may happen only when oneDNN library "
@@ -85,7 +85,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     if (act_type == "gelu" && activation_op->HasAttr("approximate") &&
-        BOOST_GET_CONST(bool, activation_op->GetAttr("approximate")))
+        PADDLE_GET_CONST(bool, activation_op->GetAttr("approximate")))
       elementwise_op->SetAttr("fuse_activation", std::string("gelu_tanh"));
     else
       elementwise_op->SetAttr("fuse_activation", act_type);
@@ -99,10 +99,11 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
-  PrettyLogDetail("---    fused %d %s with %s activation",
-                  found_elementwise_activation_count,
-                  elt_type,
-                  act_type);
+  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+    PrettyLogDetail("---    fused %d %s with %s activation",
+                    found_elementwise_activation_count,
+                    elt_type,
+                    act_type);
 }
 
 }  // namespace ir

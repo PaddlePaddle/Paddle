@@ -223,6 +223,11 @@ class TestVJP(TestAutogradFunctional):
         self.func_vjp_nested()
         self.func_vjp_aliased_input()
 
+    def test_input_single_tensor(self):
+        self.assertIsInstance(
+            paddle.incubate.autograd.vjp(paddle.tanh, paddle.rand((3, 4)))[1],
+            paddle.fluid.framework.Variable)
+
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
@@ -676,4 +681,5 @@ class TestHessianBatchFirst(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    np.random.seed(2022)
     unittest.main()
