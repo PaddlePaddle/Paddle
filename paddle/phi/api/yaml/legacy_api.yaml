@@ -2280,6 +2280,7 @@
     func : TemporalShiftInferMeta
   kernel :
     func : temporal_shift
+  backward : temporal_shift_grad
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})

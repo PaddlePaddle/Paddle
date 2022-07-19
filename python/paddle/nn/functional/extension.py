@@ -361,6 +361,8 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'. "
                          "Received Attr(data_format): {}.".format(data_format))
+    if in_dygraph_mode():
+        return _C_ops.final_state_temporal_shift(x, seg_num, shift_ratio, data_format)
     if _non_static_mode():
         return _C_ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
                                      shift_ratio, 'data_format', data_format)

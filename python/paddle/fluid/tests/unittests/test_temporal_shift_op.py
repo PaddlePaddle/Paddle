@@ -62,6 +62,7 @@ class TestTemporalShift(OpTest):
         output = temporal_shift(x, self.seg_num, self.shift_ratio,
                                 self.data_format)
         self.outputs = {"Out": output}
+        self.python_out_sig = ["Out"]
 
     def test_check_output(self):
         self.check_output(check_eager=True)
