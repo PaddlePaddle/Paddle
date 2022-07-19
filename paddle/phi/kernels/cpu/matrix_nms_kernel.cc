@@ -303,4 +303,4 @@ void MatrixNMSKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    prior_box, CPU, ALL_LAYOUT, phi::PriorBoxKernel, float, double) {}
+    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {}

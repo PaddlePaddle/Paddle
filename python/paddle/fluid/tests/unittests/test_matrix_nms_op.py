@@ -222,6 +222,12 @@ class TestMatrixNMSOp(OpTest):
         self.check_output()
 
 
+class TestMatrixNMSOp2(TestMatrixNMSOp):
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
 
     def set_argument(self):
