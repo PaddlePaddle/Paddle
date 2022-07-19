@@ -60,6 +60,10 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
     return input_dims_.at(index);
   }
 
+  nvinfer1::Dims const& getOutputDims(int index) const {
+    return output_dims_.at(index);
+  }
+
   nvinfer1::DataType getDataType() const { return data_type_; }
 
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
@@ -131,14 +135,15 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
   }
 
  protected:
-  // Deserialize input_dims, max_batch_size, data_type, data_format
+  // Deserialize input_dims, output_dims, max_batch_size, data_type, data_format
   void deserializeBase(void const*& serial_data,  // NOLINT
                        size_t& serial_length);    // NOLINT
   size_t getBaseSerializationSize() const;
-  // Serialize input_dims, max_batch_size, data_type, data_format
+  // Serialize input_dims, output_dims, max_batch_size, data_type, data_format
   void serializeBase(void*& buffer) const;  // NOLINT
 
   std::vector<nvinfer1::Dims> input_dims_;
+  std::vector<nvinfer1::Dims> output_dims_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
 
@@ -158,6 +163,11 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
   nvinfer1::Dims const& getInputDims(int index) const {
     return input_dims_.at(index);
   }
+
+  nvinfer1::Dims const& getOutputDims(int index) const {
+    return output_dims_.at(index);
+  }
+
   nvinfer1::DataType getDataType() const { return data_type_; }
   nvinfer1::PluginFormat getDataFormat() const { return data_format_; }
 
@@ -260,6 +270,7 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
  protected:
   std::vector<nvinfer1::Dims> input_dims_;
+  std::vector<nvinfer1::Dims> output_dims_;
   nvinfer1::DataType data_type_;
   nvinfer1::PluginFormat data_format_;
   bool with_fp16_;

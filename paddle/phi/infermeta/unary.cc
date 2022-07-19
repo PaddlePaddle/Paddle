@@ -3382,3 +3382,4 @@ void IdentityLossInferMeta(const MetaTensor& x,
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
 PD_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
+PD_REGISTER_INFER_META_FN(pool2d, phi::PoolInferMeta);

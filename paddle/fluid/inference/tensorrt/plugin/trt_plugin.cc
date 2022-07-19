@@ -21,10 +21,12 @@ namespace plugin {
 
 inline void Seria(void*& buffer,  // NOLINT
                   const std::vector<nvinfer1::Dims>& input_dims,
+                  const std::vector<nvinfer1::Dims>& output_dims,
                   nvinfer1::DataType data_type,
                   nvinfer1::PluginFormat data_format,
                   bool with_fp16) {
   SerializeValue(&buffer, input_dims);
+  SerializeValue(&buffer, output_dims);
   SerializeValue(&buffer, data_type);
   SerializeValue(&buffer, data_format);
   SerializeValue(&buffer, with_fp16);
@@ -33,25 +35,28 @@ inline void Seria(void*& buffer,  // NOLINT
 inline void Deseria(void const*& serial_data,
                     size_t& serial_length,  // NOLINT
                     std::vector<nvinfer1::Dims>* input_dims,
+                    std::vector<nvinfer1::Dims>* output_dims,
                     nvinfer1::DataType* data_type,
                     nvinfer1::PluginFormat* data_format,
                     bool* with_fp16) {
   DeserializeValue(&serial_data, &serial_length, input_dims);
+  DeserializeValue(&serial_data, &serial_length, output_dims);
   DeserializeValue(&serial_data, &serial_length, data_type);
   DeserializeValue(&serial_data, &serial_length, data_format);
   DeserializeValue(&serial_data, &serial_length, with_fp16);
 }
 
 inline size_t SeriaSize(const std::vector<nvinfer1::Dims>& input_dims,
+                        const std::vector<nvinfer1::Dims>& output_dims,
                         nvinfer1::DataType data_type,
                         nvinfer1::PluginFormat data_format,
                         bool with_fp16) {
-  return (SerializedSize(input_dims) + SerializedSize(data_type) +
+  return (SerializedSize(input_dims) + SerializedSize(output_dims) + SerializedSize(data_type) +
           SerializedSize(data_format) + SerializedSize(with_fp16));
 }
 
 void PluginTensorRT::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
+  Seria(buffer, input_dims_, output_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRT::deserializeBase(void const*& serial_data,
@@ -59,13 +64,14 @@ void PluginTensorRT::deserializeBase(void const*& serial_data,
   Deseria(serial_data,
           serial_length,
           &input_dims_,
+          &output_dims_,
           &data_type_,
           &data_format_,
           &with_fp16_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
+  return SeriaSize(input_dims_, output_dims_, data_type_, data_format_, with_fp16_);
 }
 
 bool PluginTensorRT::supportsFormat(
@@ -84,10 +90,11 @@ void PluginTensorRT::configureWithFormat(const nvinfer1::Dims* input_dims,
   data_type_ = type;
   data_format_ = format;
   input_dims_.assign(input_dims, input_dims + num_inputs);
+  output_dims_.assign(output_dims, output_dims + num_outputs);
 }
 
 void PluginTensorRTV2Ext::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
+  Seria(buffer, input_dims_, output_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
@@ -95,13 +102,14 @@ void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
   Deseria(serial_data,
           serial_length,
           &input_dims_,
+          &output_dims_,
           &data_type_,
           &data_format_,
           &with_fp16_);
 }
 
 size_t PluginTensorRTV2Ext::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
+  return SeriaSize(input_dims_, output_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::configurePlugin(
@@ -116,6 +124,7 @@ void PluginTensorRTV2Ext::configurePlugin(
     nvinfer1::PluginFormat float_format,
     int32_t max_batch_size) TRT_NOEXCEPT {
   input_dims_.assign(input_dims, input_dims + nb_inputs);
+  output_dims_.assign(output_dims, output_dims + nb_outputs);
   data_format_ = float_format;
   data_type_ = input_types[0];
 }
