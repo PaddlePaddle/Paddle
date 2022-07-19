@@ -927,9 +927,9 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
@@ -964,6 +964,17 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
+    def convert_to_complex(list_of_tensor):
+        list_of_complex = []
+        for tensor in list_of_tensor:
+            list_of_complex.append(paddle.as_complex(tensor))
+        return list_of_complex
+
+    is_input_complex = (tensor.dtype == paddle.complex64
+                        or tensor.dtype == paddle.complex128)
+    if is_input_complex:
+        tensor = paddle.as_real(tensor)
+
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         if len(tensor_list) == 0:
@@ -975,7 +986,11 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         task = group.process_group.all_gather(tensor, out)
         task.wait()
         tensor_list.clear()
-        tensor_list.extend(paddle.split(out, group.nranks, 0))
+        list_of_tensor = paddle.split(out, group.nranks, 0)
+        if is_input_complex:
+            tensor_list.extend(convert_to_complex(list_of_tensor))
+        else:
+            tensor_list.extend(list_of_tensor)
         return
 
     ring_id = 0 if group is None else group.id
@@ -992,13 +1007,14 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             raise ValueError("The type of 'tensor_list' for all_gather "
                              "should be list.")
         for elem in tensor_list:
-            check_variable_and_dtype(
-                elem, 'tensor_list',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'all_gather')
-        check_variable_and_dtype(
-            tensor, 'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
+            check_variable_and_dtype(elem, 'tensor_list', [
+                'float16', 'float32', 'float64', 'int32', 'int64', 'bool',
+                'int8', 'uint8', 'complex64', 'complex128'
+            ], 'all_gather')
+        check_variable_and_dtype(tensor, 'tensor', [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'int8',
+            'uint8', 'complex64', 'complex128'
+        ], 'all_gather')
         helper.append_op(type=op_type,
                          inputs={'X': [tensor]},
                          outputs={'Out': [out]},
@@ -1008,7 +1024,77 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
                              'nranks': nranks
                          })
 
-    tensor_list.extend(paddle.split(out, nranks, 0))
+    list_of_tensor = paddle.split(out, nranks, 0)
+    if is_input_complex:
+        tensor_list.extend(convert_to_complex(list_of_tensor))
+    else:
+        tensor_list.extend(list_of_tensor)
+
+
+def _convert_object_to_tensor(obj):
+    import pickle
+    import io
+    _pickler = pickle.Pickler
+    f = io.BytesIO()
+    _pickler(f).dump(obj)
+    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
+    tensor = paddle.to_tensor(data)
+    return tensor
+
+
+def _convert_tensor_to_object(tensor):
+    import pickle
+    import io
+    _unpickler = pickle.Unpickler
+    return _unpickler(io.BytesIO(tensor.numpy())).load()
+
+
+def all_gather_object(object_list, obj, group=None, use_calc_stream=True):
+    """
+
+    Gather picklable objects from all participators and all get the result. Through the all_gather operator, each GPU will have data
+    from all GPUs.
+
+    Args:
+        object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
+        obj (Any): The picklable object to send.
+        group (Group): The group instance return by new_group or None for global default group.
+        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
+            Default to True.
+
+    Returns:
+        None.
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import numpy as np
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            object_list = []
+            if paddle.distributed.ParallelEnv().local_rank == 0:
+                obj = {"foo": [1, 2, 3]}
+                paddle.distributed.all_gather_object(object_list, obj)
+            else:
+                obj = {"bar": [4, 5, 6]}
+                paddle.distributed.all_gather_object(object_list, obj)
+    """
+    assert in_dygraph_mode(
+    ), "all_gather_object doesn't support static graph mode."
+
+    tensor = _convert_object_to_tensor(obj)
+
+    tensor_list = []
+    all_gather(tensor_list, tensor, group, use_calc_stream)
+    for tensor in tensor_list:
+        object_list.append(_convert_tensor_to_object(tensor))
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):

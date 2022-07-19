@@ -1731,7 +1731,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
     
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64, uint8, uint16.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections`` 
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1808,9 +1808,10 @@ def split(x, num_or_sections, axis=0, name=None):
         _C_ops.split(input, out, *attrs)
         return out
 
-    check_variable_and_dtype(
-        input, 'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'split')
+    check_variable_and_dtype(input, 'input', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8',
+        'int8'
+    ], 'split')
     check_type(num_or_sections, 'num_or_sections', (list, int, tuple), 'split')
     check_type(dim, 'dim', (int, Variable), 'split')
     if isinstance(dim, Variable):

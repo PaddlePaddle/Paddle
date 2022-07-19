@@ -1598,7 +1598,7 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
   set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
