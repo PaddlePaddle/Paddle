@@ -95,7 +95,6 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   return framework::ProgramDesc(buffer);
 }
 
-
 Layer Load(const std::string& file_path, const phi::Place& place) {
   auto deserializer = Deserializer();
   return deserializer(file_path, place);

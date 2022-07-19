@@ -54,7 +54,6 @@ if(WITH_TESTING
   add_dependencies(layer_test jit_download_program)
 endif()
 
-
 proto_library(paddle_jit_property_proto SRCS property.proto)
 
 cc_library(
