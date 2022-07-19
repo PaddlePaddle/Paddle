@@ -2693,7 +2693,9 @@ class TestSoftplus(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out',check_eager=True)
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out',check_eager=check_eager)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
