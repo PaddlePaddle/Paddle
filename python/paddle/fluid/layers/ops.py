@@ -55,7 +55,6 @@ __unary_func__ = [
     'round',
     'reciprocal',
     'square',
-    'lgamma',
     'acosh',
     'asinh',
     'atanh',
@@ -477,20 +476,6 @@ Examples:
         out = paddle.square(x)
         print(out)
         # [0.16 0.04 0.01 0.09]
-
-""")
-
-add_sample_code(
-    globals()["lgamma"], r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.lgamma(x)
-        print(out)
-        # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
 
 """)
 

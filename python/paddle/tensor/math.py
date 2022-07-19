@@ -63,7 +63,6 @@ from .ops import erf    # noqa: F401
 from .ops import sqrt    # noqa: F401
 from .ops import sqrt_    # noqa: F401
 from .ops import sin    # noqa: F401
-from .ops import lgamma    # noqa: F401
 from .ops import asinh    # noqa: F401
 from .ops import acosh    # noqa: F401
 from .ops import atanh    # noqa: F401
