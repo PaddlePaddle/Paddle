@@ -183,9 +183,9 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
   EAGER_TRY
   auto tensor_base_list =
       CastPyArg2VectorOfTensorBase(PyTuple_GET_ITEM(args, 0), 0);
+  std::vector<paddle::experimental::Tensor> tensor_list;
   {
     eager_gil_scoped_release guard;
-    std::vector<paddle::experimental::Tensor> tensor_list;
     tensor_list.reserve(tensor_base_list.size());
     auto func = [](framework::Tensor& tensor_base) {
       paddle::experimental::Tensor tensor(
