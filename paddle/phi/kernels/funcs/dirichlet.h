@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
 #pragma once
 #include <cmath>
 #include <random>
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
 #if defined(PADDLE_WITH_CUDA)
@@ -42,10 +39,8 @@
 #define COMPAT_LOG1P std::log1p
 #endif
 
-namespace paddle {
-namespace operators {
-template <typename DeviceContext, typename T>
-struct DirichletSampler;
+namespace phi {
+namespace funcs {
 
 template <typename ScalarT, typename SamplerT>
 struct BaseSampler {
@@ -116,18 +111,5 @@ sample_gamma(ScalarT alpha,
       return static_cast<ScalarT>(scale * d * v);
   }
 }
-
-template <typename DeviceContext, typename T>
-class DirichletKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* alpha = ctx.Input<framework::Tensor>("Alpha");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    DirichletSampler<DeviceContext, T> sampler;
-    sampler(ctx, alpha, out);
-  }
-};
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
