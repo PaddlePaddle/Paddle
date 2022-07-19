@@ -51,7 +51,7 @@ class TuningConfig(object):
         self._mode = None
         self._profile_start_step = None
         self._profile_end_step = None
-        self._log_dir = None
+        self._project_dir = None
         self._max_num_trial = None
         self._early_stop = None
         self._verbose = None
@@ -71,8 +71,8 @@ class TuningConfig(object):
         return self._profile_end_step
 
     @property
-    def log_dir(self):
-        return self._log_dir
+    def project_dir(self):
+        return self._project_dir
 
     @property
     def tuning_passes_name(self):
@@ -109,18 +109,10 @@ class TuningConfig(object):
 
         self._verbose = user_config.get("verbose", False)
 
-        log_dir = user_config.get("log_dir", None)
-        if not log_dir:
-            log_dir = os.path.join(os.getcwd(), "tuning_results")
-
-        self._log_dir = log_dir
-        if not os.path.exists(self._log_dir):
-            if paddle.distributed.get_rank() == 0:
-                pathlib.Path(self._log_dir).mkdir(parents=True, exist_ok=True)
-                if self._verbose:
-                    pathlib.Path(os.path.join(self._log_dir,
-                                              "Programs")).mkdir(parents=True,
-                                                                 exist_ok=True)
+        project_dir = user_config.get("project_dir", None)
+        if not project_dir:
+            project_dir = os.path.join(os.getcwd(), "OptimizationTuning")
+        self._project_dir = project_dir
 
         for p in _tuning_supported_passes:
             if getattr(self._dist_strategy, p) and _get_pass_config(

@@ -20,12 +20,15 @@ import pathlib
 import time
 import pickle
 import json
+import logging
 import subprocess
 import traceback
 
 import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
+from paddle.distributed.passes import new_pass, PassContext
+from paddle.distributed.utils import get_logger
 
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.completion import Completer
@@ -34,7 +37,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups
 from paddle.distributed.auto_parallel.utils import debug_program
 from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
-from paddle.distributed.passes import new_pass, PassContext
 
 from .config import TuningConfig
 from .algorithms import new_algorithm
@@ -96,7 +98,7 @@ def get_metric(results):
 
 def parse_results(results):
     if results['Throughtput'] > 0:
-        return "Throughtput: {}".format(results['Throughtput'])
+        return "Throughtput: {} step / s.".format(results['Throughtput'])
     et = results.get("ErrorType", None)
     if et == "ResourceExhaustedError":
         return "Fail with OOM"
@@ -135,9 +137,19 @@ class OptimizationTuner:
         dist_env = paddle.distributed.ParallelEnv()
         self.rank = dist_env.rank
         self.device_id = dist_env.device_id
+        self._logger = get_logger(logging.INFO)
 
         self._build_programs_without_optimization()
         self._select_tuning_algorithm()
+
+    @property
+    def project_dir(self):
+        dirname = self._config.project_dir
+        if not os.path.exists(dirname):
+            if paddle.distributed.get_rank() == 0:
+                pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+
+        return dirname
 
     # TODO Generate compelet program with all parts like forward, backward, update
     # as well as parallelism transformation.
@@ -157,12 +169,13 @@ class OptimizationTuner:
         self._dist_context._params_grads = params_grads
 
         if self._config.verbose:
-            debug_program(self._dist_context._serial_main_program,
-                          os.path.join(self._config.log_dir, "Programs"),
-                          "vanilla_main")
+            baseline_dir = os.path.join(self.project_dir, "baseline")
+            if not os.path.exists(baseline_dir):
+                pathlib.Path(baseline_dir).mkdir(parents=True, exist_ok=True)
+            debug_program(self._dist_context._serial_main_program, baseline_dir,
+                          "main")
             debug_program(self._dist_context._serial_startup_program,
-                          os.path.join(self._config.log_dir, "Programs"),
-                          "vanilla_startup")
+                          baseline_dir, "startup")
 
     def _select_tuning_algorithm(self):
 
@@ -335,7 +348,7 @@ class OptimizationTuner:
         new_env.update(parent_env)
 
         # TODO if any rank hang or fail, kill all processes
-        print("executing cmd: {} .".format(" ".join(cmd)))
+        self._logger.debug("Executing cmd:\n{} .".format(" ".join(cmd)))
         # new_process = subprocess.Popen(cmd, env=new_env)
         with open(os.path.join(trial_dir, "stdout.log" + str(self.rank)),
                   "wb") as out, open(
@@ -382,7 +395,7 @@ class OptimizationTuner:
 
     def _evaluate_trial(self, trial):
 
-        print("Trial {} evaluation start.".format(trial.name))
+        self._logger.info("Trial {} evaluation start.".format(trial.name))
         self._apply_optimization(trial)
 
         if self._config.mode == "PROFILE":
@@ -395,7 +408,7 @@ class OptimizationTuner:
             raise NotImplementedError("invalid evaluation mode: {}".format(
                 self._config.mode))
 
-        print("Trial {} evaluation finish with {}.".format(
+        self._logger.info("Trial {} evaluation finish with {}.".format(
             trial.name, parse_results(results)))
         return results
 
@@ -408,7 +421,7 @@ class OptimizationTuner:
             self._best_iter = i
 
     def _get_trial_dir(self, trial):
-        return os.path.join(self._config.log_dir, trial.name)
+        return os.path.join(self.project_dir, trial.name)
 
     def get_best_config(self):
         """
@@ -426,19 +439,34 @@ class OptimizationTuner:
         Display tuning result summary.
         """
         # TODO summary with the trial_name with metric_of_trial
-        print("Tuning Result Summary")
-        print("Run total {} trials with {} min.".format(
-            len(self._finished_trials),
-            (time.time() - self._tuning_start_time) / 60))
         best_trial = self._finished_trials[self._best_iter]
-        print("The best trial is {} ".format(best_trial.name))
-        best_trial.summary()
+        summary_ = """
+Tuning Result Summary
+Run total {} trials with {} min.
+The best trial is: [{}], whose configuration is following: 
+        """.format(len(self._finished_trials),
+                   (time.time() - self._tuning_start_time) / 60,
+                   best_trial.name)
+        summary_ += "\n" + best_trial.summary() + "\n"\
+
+        self._logger.info(summary_)
+        with open(os.path.join(self.project_dir, "summary.txt"), "w+") as fw:
+            for line in summary_.split("\n"):
+                fw.write(line + "\n")
+
+        full_strategy = self.get_best_config()
+        full_strategy.save_to_prototxt(
+            os.path.join(self.project_dir, "tuned_dist_strategy.prototxt"))
 
     def clear(self):
         """
         Clear the temporary file generated in tuning procedure.
         """
-        pass
+        # TODO clear up zombie process created by tuning
+        if not self._config.verbose:
+            for trial in self._finished_trials:
+                trial_dir = self._get_trial_dir(trial)
+                shutil.rmtree(trial_dir, ignore_errors=True)
 
     def tune(self):
         """
@@ -474,11 +502,12 @@ class OptimizationTuner:
             # early stop
             i += 1
             if self._config.early_stop and self._config.early_stop <= i - self._best_iter:
-                print(
+                self._logger.info(
                     "Early stop the Tuning since there is no better trial found within [{}] trials"
                     .format(self._config.early_stop))
                 break
 
-        self.clear()
         # step5: summary the best config and return
         self.summary()
+
+        self.clear()

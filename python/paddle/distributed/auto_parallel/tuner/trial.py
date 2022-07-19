@@ -161,7 +161,7 @@ class OptimizationTunerTrial(Trial):
                 draws += h2_format.format(key, str(my_configs.get(key, None)))
 
         result_res = draws + border
-        print(result_res)
+        return result_res
 
 
 def _generate_trial_id():

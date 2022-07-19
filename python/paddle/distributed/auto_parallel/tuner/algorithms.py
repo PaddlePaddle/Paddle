@@ -14,6 +14,9 @@
 
 import copy
 from abc import ABC, abstractmethod
+import logging
+
+from paddle.distributed.utils import get_logger
 from .trial import TrialStatus
 from .trial import OptimizationTunerTrial as Trial
 
@@ -40,6 +43,7 @@ class AlgorithmBase(ABC):
     def __init__(self, config):
         self._config = config
         self._init_spaces()
+        self._logger = get_logger(logging.INFO)
         self._changed_configs = []
 
     @property
@@ -148,7 +152,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         et = results.get("ErrorType", None)
         if et and et == "ResourceExhaustedError":
             self._trial_idx = self._total_num_trial
-            print(
+            self._logger.info(
                 "Last trial is failed with OOM, all remaining trials are pruned to save time !"
             )
         else:
