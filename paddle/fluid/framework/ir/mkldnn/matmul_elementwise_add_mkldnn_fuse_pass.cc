@@ -65,9 +65,8 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
-    matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
+    matmul->Op()->SetInput("Bias", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
-    matmul->Op()->SetAttr("fuse_residual_connection", true);
 
     GraphSafeRemoveNodes(g, {matmul_out, elementwise_add});
 

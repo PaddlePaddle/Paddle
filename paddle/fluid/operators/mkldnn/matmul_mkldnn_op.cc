@@ -167,7 +167,13 @@ class MatMulMKLDNNHandler
     auto out_md = memory::desc(matmul_dims_.out_dims,
                                MKLDNNGetDataType<OT>(),
                                matmul_dims_.out_strides);
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+    auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
+    if (bias) {
+      this->AcquireForwardPrimitiveDescriptor(
+          matmul_attrs, x_md, y_md, out_md, out_md);
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+    }
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
@@ -179,6 +185,7 @@ class MatMulMKLDNNHandler
  public:
   void Execute(const paddle::framework::Tensor* x,
                const paddle::framework::Tensor* y,
+               const paddle::framework::Tensor* bias,
                paddle::framework::Tensor* out) {
     const auto src_memory_p = this->AcquireSrcMemory(x);
     const auto weights_memory_p = this->AcquireWeightsMemory(y);
@@ -193,24 +200,36 @@ class MatMulMKLDNNHandler
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
 
-    // Simulate batch matmul by processing in loop
     void* x_ptr = src_memory_p->get_data_handle();
     void* y_ptr = weights_memory_p->get_data_handle();
     void* out_ptr = dst_memory_p->get_data_handle();
     auto offsets = this->GetOffsets();
-    for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
-      src_memory_p->set_data_handle(x_ptr);
-      weights_memory_p->set_data_handle(y_ptr);
-      dst_memory_p->set_data_handle(out_ptr);
-      matmul_p->execute(astream,
-                        {
-                            {DNNL_ARG_SRC, *src_memory_p},
-                            {DNNL_ARG_WEIGHTS, *weights_memory_p},
-                            {DNNL_ARG_DST, *dst_memory_p},
-                        });
-      x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
-      y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
-      out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
+
+    if (bias) {
+      auto bias_memory_p = this->AcquireSrcMemory(bias);
+      matmul_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+      void* bias_ptr = bias_memory_p->get_data_handle();
+      for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
+        src_memory_p->set_data_handle(x_ptr);
+        weights_memory_p->set_data_handle(y_ptr);
+        bias_memory_p->set_data_handle(bias_ptr);
+        dst_memory_p->set_data_handle(out_ptr);
+        matmul_p->execute(astream, matmul_args);
+        x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
+        y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
+        bias_ptr = static_cast<char*>(bias_ptr) + std::get<2>(offsets);
+        out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
+      }
+    } else {
+      for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
+        src_memory_p->set_data_handle(x_ptr);
+        weights_memory_p->set_data_handle(y_ptr);
+        dst_memory_p->set_data_handle(out_ptr);
+        matmul_p->execute(astream, matmul_args);
+        x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
+        y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
+        out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
+      }
     }
     astream.wait();
 
@@ -530,20 +549,24 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
   constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
+  auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
   auto* out = ctx.Output<Tensor>("Out");
   const auto& dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-    MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx).Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx)
+        .Execute(x, y, bias, out);
   } else if (is_bfloat16) {
     MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>(onednn_engine, ctx)
-        .Execute(x, y, out);
+        .Execute(x, y, bias, out);
   } else if (fuse_relu) {
-    MatMulMKLDNNHandler<XT, YT, uint8_t>(onednn_engine, ctx).Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, uint8_t>(onednn_engine, ctx)
+        .Execute(x, y, bias, out);
   } else {
-    MatMulMKLDNNHandler<XT, YT, int8_t>(onednn_engine, ctx).Execute(x, y, out);
+    MatMulMKLDNNHandler<XT, YT, int8_t>(onednn_engine, ctx)
+        .Execute(x, y, bias, out);
   }
 }
 

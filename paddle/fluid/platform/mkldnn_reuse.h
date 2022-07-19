@@ -819,7 +819,8 @@ class MatMulV2MKLDNNHandler
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override,
-                        const dnnl::primitive_attr matmul_attrs)
+                        const dnnl::primitive_attr matmul_attrs,
+                        const Tensor* bias = nullptr)
       : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
                                                                    cpu_place) {
     // M X K * K X N
@@ -889,7 +890,18 @@ class MatMulV2MKLDNNHandler
     auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
     auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
 
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+    if (bias) {
+      auto bias_tz = phi::vectorize(bias->dims());
+      dnnl::memory::desc bias_md;
+      auto data_type = platform::is_int8<T>() ? dnnl::memory::data_type::s32
+                                              : dnnl::memory::data_type::f32;
+      bias_md =
+          platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::any);
+      this->AcquireForwardPrimitiveDescriptor(
+          matmul_attrs, x_md, y_md, bias_md, out_md);
+    } else {
+      this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+    }
   }
 
   std::vector<int64_t> FakeTransposeStrides(

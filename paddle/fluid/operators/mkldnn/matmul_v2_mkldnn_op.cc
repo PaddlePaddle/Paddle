@@ -150,6 +150,7 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
   const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
+  auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
   MatMulV2MKLDNNHandler<T> handler(onednn_engine,
                                    ctx.GetPlace(),
                                    x_dims,
@@ -159,7 +160,8 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
                                    IsOutputFused(ctx),
                                    x_strides_override,
                                    y_strides_override,
-                                   matmul_attrs);
+                                   matmul_attrs,
+                                   bias);
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -171,6 +173,11 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
+
+  if (bias) {
+    auto bias_memory_p = handler.AcquireSrcMemory(bias);
+    matmul_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+  }
 
   auto& astream = MKLDNNDeviceContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
