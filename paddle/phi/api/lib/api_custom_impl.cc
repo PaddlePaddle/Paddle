@@ -214,6 +214,8 @@ Tensor conv2d_impl(const Tensor& input,
 
   kernel_data_type = ParseDataType(input);
 
+  VLOG(6) << "conv2d API kernel key: [" << input.layout() << ", "
+          << kernel_layout << ", " << filter.layout() << "]";
   if (kernel_backend == Backend::UNDEFINED ||
       kernel_layout == DataLayout::UNDEFINED ||
       kernel_data_type == DataType::UNDEFINED) {
@@ -243,6 +245,8 @@ Tensor conv2d_impl(const Tensor& input,
   if (kernel_backend == Backend::GPU) {
     args0.backend = Backend::GPU;
     args1.backend = Backend::GPU;
+    args0.layout = input.layout();
+    args1.layout = filter.layout();
   }
 
   auto input_input = PrepareData(input, args0, {});

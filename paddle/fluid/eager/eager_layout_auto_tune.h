@@ -20,46 +20,47 @@
 namespace egr {
 
 // layout_agnostic_ops_
-inline EagerLayoutTransformer EagerLayoutAutotune(
+inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector) {
   VLOG(3) << "asdf Optimze Layout agnostic op: " << op_name;
-  auto transposer = EagerLayoutTransformer(op_name);
+  std::shared_ptr<EagerLayoutTransformer> transposer = nullptr;
+  transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 
 // lightly and heavily
 template <typename T>  // default int
-inline EagerLayoutTransformer EagerLayoutAutotune(
+inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    const T& attr) {
-  auto transposer = EagerLayoutTransformer(op_name);
+    T* attr) {
+  auto transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 
 // lightly
 template <typename T1, typename T2>
-inline EagerLayoutTransformer EagerLayoutAutotune(
+inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
-    const T1& attr1,
-    const T2& attr2) {
-  auto transposer = EagerLayoutTransformer(op_name);
+    T1* attr1,
+    T2* attr2) {
+  auto transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 
 // heavily
 template <>
-inline EagerLayoutTransformer EagerLayoutAutotune(
+inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    const std::string& attr) {
-  auto transposer = EagerLayoutTransformer(op_name);
+    std::string* attr) {
+  auto transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   if (paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout() ==
       paddle::experimental::DataLayout::UNDEFINED) {
     // Layout autotune only supports model with convolutional layers
@@ -69,10 +70,10 @@ inline EagerLayoutTransformer EagerLayoutAutotune(
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
           (data_type == paddle::experimental::DataType::FLOAT32) &&
-          (attr == "NHWC");
+          (*attr == "NHWC");
       bool is_tune_fp16 =
           (data_type == paddle::experimental::DataType::FLOAT16) &&
-          (attr == "NCHW");
+          (*attr == "NCHW");
       if (is_tune_fp32) {
         paddle::imperative::LayoutAutoTune::Instance().SetDesiredLayout(
             paddle::experimental::DataLayout::NCHW);
@@ -92,9 +93,11 @@ inline EagerLayoutTransformer EagerLayoutAutotune(
 
   if (paddle::imperative::LayoutAutoTune::Instance().IsHeavilyLayoutSensitive(
           op_name)) {
-    auto heavily_trans = EagerHeavilyLayoutSensitiveOpTransformer(op_name);
-    auto tensor_tmp = heavily_trans.TransInTensor(tensors_vector[0][0]);
-    return heavily_trans;
+    auto heavily_transposer =
+        std::make_shared<EagerHeavilyLayoutSensitiveOpTransformer>(op_name);
+
+    heavily_transposer->SetAttr<std::string>(attr);
+    return heavily_transposer;
   } else {
     VLOG(4) << op_name
             << "'s LayoutTransformer is unimplemented. Use default "

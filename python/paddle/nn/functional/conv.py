@@ -130,6 +130,8 @@ def _conv_nd(x,
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
+            if dygraph_utils.core.use_layout_autotune() and channel_dim == 1:
+                channel_dim = 3
             if len(bias.shape) < len(x.shape):
                 tmp_bias = _C_ops.final_state_reshape(
                     bias, bias.shape +

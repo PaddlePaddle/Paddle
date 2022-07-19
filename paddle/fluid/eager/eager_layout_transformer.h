@@ -17,6 +17,24 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 namespace egr {
+paddle::experimental::Tensor EagerTraceTransposeOp(
+    const paddle::experimental::DataLayout layout,
+    const paddle::experimental::Tensor& in) {
+  std::vector<int> axis;
+  if (layout == paddle::experimental::DataLayout::NHWC) {
+    axis = {0, 2, 3, 1};
+  } else if (layout == paddle::experimental::DataLayout::NCHW) {
+    axis = {0, 3, 1, 2};
+  } else {
+    axis = {0, 1, 2, 3};
+  }
+  auto out_tensor = transpose_final_state_dygraph_function(in, axis);
+  VLOG(4) << "AutoTune Transpose from "
+          << paddle::framework::DataLayoutToString(in.layout()) << " to "
+          << paddle::framework::DataLayoutToString(layout);
+  return out_tensor;
+}
+
 class EagerLayoutTransformer {
  public:
   EagerLayoutTransformer() : op_name_("") {}
@@ -25,20 +43,33 @@ class EagerLayoutTransformer {
     use_autotune_ = false;
     desired_layout_ = "UNDEFINED";
   }
-  template <typename T1>
-  void SetAttr(T1 attr) {
-    use_autotune_ = false;
-    desired_layout_ = "UNDEFINED";
-  }
-  template <typename T1, typename T2>
-  void SetAttr(T1 attr1, T2 attr2) {}
+
+  EagerLayoutTransformer(const EagerLayoutTransformer&) = delete;
+
+  EagerLayoutTransformer& operator=(const EagerLayoutTransformer&) = delete;
 
   virtual ~EagerLayoutTransformer() {}
 
+  template <typename T1>
+  void SetAttr(T1* attr) {
+    use_autotune_ = false;
+    desired_layout_ = "UNDEFINED";
+  }
+
+  template <typename T1, typename T2>
+  void SetAttr(T1* attr1, T2* attr2) {
+    use_autotune_ = false;
+    desired_layout_ = "UNDEFINED";
+  }
+
   virtual paddle::experimental::Tensor TransInTensor(
-      const paddle::experimental::Tensor in) {
+      const std::string& in_name, const paddle::experimental::Tensor& in) {
+    VLOG(4) << "input " << in_name << "'s layout is equal to Desired";
     return in;
   }
+
+  template <typename T>
+  void SetOutTensorLayout(T* out_tensor) {}
 
  protected:
   bool use_autotune_;
@@ -54,47 +85,46 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     use_autotune_ = false;
     final_layout_ = "UNDEFINED";
   }
+
   template <typename T1>
-  void SetAttr(T1 layout) {
-    // Step 1: Adjust the data_layout attr to the desired layout
+  void SetAttr(T1* layout) {
     auto desired_layout =
         paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
     std::string desired_layout_str =
         paddle::framework::DataLayoutToString(desired_layout);
-    if (layout != desired_layout_str) {
-      VLOG(4) << "Origin layout attr: " << layout
+    if (*layout != desired_layout_str) {
+      VLOG(4) << op_name_ << " origin layout attr: " << *layout
               << ", Desired layout attr: " << desired_layout_str;
       final_layout_ = desired_layout_str;
       use_autotune_ = true;
+      *layout = final_layout_;
     }
   }
 
-  virtual paddle::experimental::Tensor TransInTensor(
-      paddle::experimental::Tensor in) {
-    std::vector<int> axis;
-    if (paddle::framework::DataLayoutToString(in.layout()) != final_layout_) {
-      if (final_layout_ == "NHWC") {
-        axis = {0, 2, 3, 1};
-      } else if (final_layout_ == "NCHW") {
-        axis = {0, 3, 1, 2};
-      } else {
-        axis = {0, 1, 2, 3};
-      }
-      auto out_tensor = transpose_final_state_dygraph_function(in, axis);
-      VLOG(4) << "Transpose asdfasdfas ";
+  paddle::experimental::Tensor TransInTensor(
+      const std::string& in_name, const paddle::experimental::Tensor& in) {
+    auto desired_layout =
+        paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+    if (heavily_input_.count(in_name) != 0 && in.layout() != desired_layout) {
+      VLOG(4) << op_name_ << "EagerHeavilyLayoutSensitiveOpTransformer "
+              << in_name << " need transpose from "
+              << paddle::framework::DataLayoutToString(in.layout()) << " to "
+              << paddle::framework::DataLayoutToString(desired_layout);
+      auto out_tensor = EagerTraceTransposeOp(desired_layout, in);
+      out_tensor.set_autotune(true);
+      out_tensor.set_layout(desired_layout);
       return out_tensor;
     }
+    VLOG(4) << op_name_ << "EagerHeavilyLayoutSensitiveOpTransformer "
+            << in_name << "'s layout is equal to Desired";
     return in;
   }
-
-  std::string GetOutLayout() { return final_layout_; }
-
-  virtual ~EagerHeavilyLayoutSensitiveOpTransformer() {}
 
  protected:
   bool use_autotune_;
   const std::string op_name_;
   std::string final_layout_;
+  std::unordered_set<std::string> heavily_input_{"x", "y", "input"};
 };
 
 }  // namespace egr

@@ -156,7 +156,16 @@ bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
 bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
 
 bool Tensor::autotune() const {
-    return static_cast<phi::DenseTensor *>(impl_.get())->autotune();}
+    return static_cast<phi::DenseTensor *>(impl_.get())->autotune();
+}
+
+void Tensor::set_autotune(bool autotune) const {
+    return static_cast<phi::DenseTensor *>(impl_.get())->set_autotune(autotune);
+}
+
+void Tensor::set_layout(const DataLayout layout) const {
+    return static_cast<phi::DenseTensor *>(impl_.get())->set_layout(layout);
+}
 
 bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());

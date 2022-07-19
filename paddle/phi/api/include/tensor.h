@@ -219,7 +219,14 @@ class PADDLE_API Tensor final {
    * @return bool DataLayout
    */
   bool autotune() const;
-
+  /**
+   * @brief Set layout autotune.
+   */
+  void set_autotune(bool autotune) const;
+  /**
+   * @brief Set layout.
+   */
+  void set_layout(const DataLayout) const;
   /**
    * @brief Determine whether tensor is DenseTensor
    *

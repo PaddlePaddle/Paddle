@@ -352,11 +352,15 @@ AMP_LOGIC_TEMPLATE = \
 """
 LAYOUT_LOGIC_TEMPLATE=\
 """
-    if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
+  if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
     VLOG(5) << "Check and Prepare For LAYOUT";
     paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
     {} 
-    }}
+    paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune(); 
+    {}
+    paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
+    return out_tensor;
+  }}
 """
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
 """
@@ -901,6 +905,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_tensors_vector_optional_list = []
         amp_autocast_list = []
         amp_autocast_optional_list = []
+        layout_autotune_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"NEW_{name}"
@@ -914,6 +919,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     amp_autocast_optional_list.append(
                         f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                     )
+                    layout_autotune_list.append(f"auto NEW_{name} = {name};\n")
                 else:
                     if is_inplaced and forward_inplace_map and name in forward_inplace_map.keys(
                     ):
@@ -928,6 +934,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         amp_autocast_list.append(
                             f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                         )
+                    layout_autotune_list.append(
+                        f"auto NEW_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
             else:
                 assert IsVectorTensorType(ttype)
                 arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
@@ -935,12 +944,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_autocast_list.append(
                     f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
                 )
-
+                layout_autotune_list.append(f"auto NEW_{name} = {name};\n")
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
         # for layout autotune attr
-        lightly_sensitive_attr = ['axis', 'axes', 'dim', 'dims', 'start', 'end']
+        lightly_sensitive_attr = [
+            'axis', 'axes', 'dim', 'dims', 'start', 'end', 'stop'
+        ]
         heavily_sensitive_attr = ['data_format', 'data_layout']
         layout_autotune_attr = []
         layout_autotune_attr_code_list = []
@@ -952,13 +963,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             lightly_flag = False
             heavily_flag = False
             for attr_name in lightly_sensitive_attr:
-                if name.find(attr_name) != -1:
+                if name.find(
+                        attr_name) != -1 and name not in layout_autotune_attr:
                     lightly_flag = True
                     layout_autotune_attr.append(name)
                     layout_autotune_attr_type_list.append(atype)
             if lightly_flag is False:
                 for attr_name in heavily_sensitive_attr:
-                    if name.find(attr_name) != -1:
+                    if name.find(attr_name
+                                 ) != -1 and name not in layout_autotune_attr:
                         layout_autotune_attr.append(name)
                         layout_autotune_attr_type_list.append(atype)
                         heavily_flag = True
@@ -968,12 +981,17 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
         elif len(layout_autotune_attr) == 1:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, {layout_autotune_attr[0]});\n"
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, &{layout_autotune_attr[0]});\n"
             )
         elif len(layout_autotune_attr) == 2:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name,tensors_vector, {layout_autotune_attr[0]}, {layout_autotune_attr[1]});\n"
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name, tensors_vector, &{layout_autotune_attr[0]}, &{layout_autotune_attr[1]});\n"
             )
+        else:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector, {len(layout_autotune_attr)});\n"
+            )
+        # layout autotune tensor
 
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
@@ -1142,10 +1160,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
                 amp_autocast_list_str, amp_call_str)
 
+        layout_inputs_call_args_str = amp_inputs_call_args_str
+
         # Forward layout autotune
-        layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
-            amp_tensors_vector_list_str,
-            "    ".join(layout_autotune_attr_code_list))
+        if returns_type_str == "paddle::experimental::Tensor&" or forward_api_name == "slice" or forward_api_name == "strided_slice":
+            layout_logic_str = ""
+        else:
+            # after_call_str = f"return {forward_function_name}({layout_inputs_call_args_str});\n"
+            after_call_str = f"auto out_tensor = {forward_function_name}({layout_inputs_call_args_str});\n"
+            after_call_str += f"    transformer->SetOutTensorLayout<{returns_type_str}>(&out_tensor);\n"
+            layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
+                amp_tensors_vector_list_str,
+                "    ".join(layout_autotune_attr_code_list) + "    " +
+                "    ".join(layout_autotune_list), after_call_str)
 
         # Generate forward_definition_str and forward_declaration_str
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
