@@ -257,8 +257,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${bw_api_source_file_tmp}
           ${bw_api_source_file}
   COMMENT "copy_if_different ${bw_api_header_file} ${bw_api_source_file}"
-  DEPENDS ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} ${bw_api_gen_file}
-          ${api_gen_base}
+  DEPENDS ${bw_api_yaml_file} ${bw_api_gen_file} ${api_gen_base}
+          ${legacy_bw_api_yaml_file}
   VERBATIM)
 
 # generate sparse api

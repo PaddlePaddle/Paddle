@@ -158,6 +158,7 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
   delete container_;
+  cudaFree(device_optimizer_config_);
 }
 
 template <typename KeyType, typename ValType>

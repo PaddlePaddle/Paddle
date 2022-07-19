@@ -17,7 +17,7 @@ endforeach()
 
 set_tests_properties(test_autograd_functional_dynamic PROPERTIES TIMEOUT 200)
 set_tests_properties(test_autograd_functional_static PROPERTIES TIMEOUT 160)
-set_tests_properties(test_gradients_and_minimize PROPERTIES TIMEOUT 60)
+set_tests_properties(test_minimize PROPERTIES TIMEOUT 60)
 if(NOT WIN32)
   set_tests_properties(test_autograd_functional_prim PROPERTIES TIMEOUT 60)
 endif()

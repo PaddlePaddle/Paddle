@@ -167,6 +167,15 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+#  backward : as_complex
+
 # asin
 - api : asin
   args : (Tensor x)
@@ -342,6 +351,15 @@
     func : clip
   backward : clip_grad
 
+- api : complex
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+  backward : complex_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -489,14 +507,6 @@
     func : determinant
   backward : det_grad
 
-- api : diag
-  args : (Tensor x, int offset, float padding_value)
-  output : Tensor
-  infer_meta :
-    func : DiagInferMeta
-  kernel :
-    func : diag
-
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -526,6 +536,14 @@
   kernel :
     func : eigh
   backward : eigh_grad
+
+- api : eigvals
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : EigvalsInferMeta
+  kernel :
+    func : eigvals
 
 - api : einsum
   args : (Tensor[] x, str equation)
@@ -2205,6 +2223,15 @@
     func : unique
     data_type : x
 
+- api : unique_consecutive
+  args : (Tensor x, bool return_inverse, bool return_counts, int[] axis, int dtype)
+  output : Tensor(out), Tensor(index), Tensor(counts)
+  infer_meta :
+      func : UniqueConsecutiveInferMeta
+  kernel :
+    func : unique_consecutive
+    data_type : x
+
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)
@@ -2258,3 +2285,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+# eig
+- api: eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad

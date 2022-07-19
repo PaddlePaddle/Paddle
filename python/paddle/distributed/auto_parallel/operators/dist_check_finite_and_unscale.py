@@ -113,12 +113,11 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                 filter_vars.append(varname)
 
         # replicate op in dist program
-        dist_op_desc = main_block.desc.append_op()
+        dist_op_desc = main_block.append_op(type='nop').desc
         dist_op_desc.copy_from(backward_op.desc)
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
         dist_op_desc.set_input('X', filter_vars)
         dist_op_desc.set_output('Out', filter_vars)
-        main_block._sync_with_cpp()
 
         # sync result
         group = new_process_group(world_process_group.ranks)
@@ -137,7 +136,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                         attrs={
                                             "in_dtype": inf_var.dtype,
                                             "out_dtype": inf_var_int32.dtype,
-                                            OP_ROLE_KEY: OpRole.Backward
+                                            OP_ROLE_KEY: OpRole.Optimize
                                         })
         allreduce_op = main_block.append_op(type='c_allreduce_max',
                                             inputs={'X': inf_var_int32},
@@ -145,7 +144,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                             attrs={
                                                 'ring_id': group.id,
                                                 'use_calc_stream': True,
-                                                OP_ROLE_KEY: OpRole.Backward
+                                                OP_ROLE_KEY: OpRole.Optimize
                                             })
         cast_op2 = main_block.append_op(type='cast',
                                         inputs={'X': inf_var_int32},
@@ -153,9 +152,8 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
                                         attrs={
                                             "in_dtype": inf_var_int32.dtype,
                                             "out_dtype": inf_var.dtype,
-                                            OP_ROLE_KEY: OpRole.Backward
+                                            OP_ROLE_KEY: OpRole.Optimize
                                         })
-        main_block._sync_with_cpp()
 
         for op in [cast_op1, allreduce_op, cast_op2]:
             new_op_dist_attr = OperatorDistributedAttribute()

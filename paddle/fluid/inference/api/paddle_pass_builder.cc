@@ -160,6 +160,10 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
+    "trt_map_matmul_v2_to_mul_pass",
+    "trt_map_matmul_v2_to_matmul_pass",
+    "trt_map_matmul_to_mul_pass",
+    "fc_fuse_pass",
     "tensorrt_subgraph_pass",
 };
 
@@ -298,6 +302,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
+             "matmul_activation_mkldnn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after

@@ -24,5 +24,7 @@ foreach(TEST_OP ${DIST_TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
-set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
+set_tests_properties(test_matmul_op_xpu PROPERTIES TIMEOUT 300)

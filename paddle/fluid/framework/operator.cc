@@ -1276,41 +1276,70 @@ bool OperatorWithKernel::SupportNPU() const {
 
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
-  auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-  if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-    VLOG(6) << "Warning: " << type_
-            << " don't find its MKLDNN Kernel in Fluid "
-               "Registered Kernels. And We don't "
-               "search its kernels in phi lib, "
-               "SupportsMKLDNN() return false.";
-    return false;
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
+                   kern_pair.first.data_type_ == data_type;
+          });
+    }
   }
-  auto& op_kernels = op_kernel_iter->second;
-  return std::any_of(op_kernels.begin(),
-                     op_kernels.end(),
-                     [data_type](OpKernelMap::const_reference kern_pair) {
-                       return platform::is_cpu_place(kern_pair.first.place_) &&
-                              kern_pair.first.library_type_ ==
-                                  LibraryType::kMKLDNN &&
-                              kern_pair.first.data_type_ == data_type;
-                     });
 }
 
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type) const {
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
-  bool support =
-      kernels_iter != all_op_kernels.end() &&
-      kernels_iter->second.find(kernel_type) != kernels_iter->second.end();
-#if defined(PADDLE_WITH_XPU)
+  if (kernels_iter == all_op_kernels.end()) return false;
+  OpKernelMap& kernels = kernels_iter->second;
+  auto kernel_iter = kernels.find(kernel_type);
+
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(kernel_type.place_)) {
-    support = support &&
-              paddle::platform::is_xpu_support_op(type_, kernel_type) &&
-              !paddle::platform::is_in_xpu_black_list(type_);
+    return kernel_iter != kernels.end() &&
+           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+           !paddle::platform::is_in_xpu_black_list(type_);
   }
 #endif
-  return support;
+
+#ifdef PADDLE_WITH_XPU_KP
+  if (paddle::platform::is_xpu_place(kernel_type.place_)) {
+    bool use_xpu_kp_kernel_rt =
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(type_, kernel_type);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_in_xpu_kpwhite_list(type_);
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+    if (is_xpu_kp_support) {
+      auto tmp_kernel_type = kernel_type;
+      tmp_kernel_type.library_type_ = LibraryType::kKP;
+      return kernels.find(tmp_kernel_type) != kernels.end();
+    }
+    return kernel_iter != kernels.end() &&
+           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
+           !paddle::platform::is_in_xpu_black_list(type_);
+  }
+#endif
+
+  return kernel_iter != kernels.end();
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -1318,7 +1347,7 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
   const auto& attrs_map = ctx.Attrs();
   auto iter = attrs_map.find("use_mkldnn");
   bool use_mkldnn_ctx = iter != attrs_map.end() &&
-                        BOOST_GET_CONST(bool, iter->second) &&
+                        PADDLE_GET_CONST(bool, iter->second) &&
                         platform::is_cpu_place(ctx.GetPlace());
   return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
 }
@@ -1351,6 +1380,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
+  } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
+             !need_prepare_phi_data_) {
+    if (!all_kernels_must_compute_runtime_shape_)
+      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    (*pt_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -2082,7 +2116,9 @@ Scope* OperatorWithKernel::PrepareData(
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              (in_def->backend != phi::Backend::GPUDNN ||
-              tensor_backend != phi::Backend::GPU)) ||
+              tensor_backend != phi::Backend::GPU) &&
+             (in_def->backend != phi::Backend::KPS ||
+              tensor_backend != phi::Backend::XPU)) ||
             tensor_in->place().GetType() == AllocationType::GPUPINNED) {
           new_expected_kernel_key = std::make_unique<OpKernelType>(
               expected_kernel_key.data_type_,
@@ -2612,15 +2648,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
           switch (AttrTypeID(attr_iter->second)) {
             case proto::AttrType::FLOAT:
               pt_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(BOOST_GET_CONST(float, attr_iter->second))));
+                  phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
               break;
             case proto::AttrType::INT:
               pt_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(BOOST_GET_CONST(int, attr_iter->second))));
+                  phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
               break;
             case proto::AttrType::STRING:
               pt_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
-                  BOOST_GET_CONST(std::string, attr_iter->second))));
+                  PADDLE_GET_CONST(std::string, attr_iter->second))));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -2640,19 +2676,19 @@ void OperatorWithKernel::BuildPhiKernelContext(
           switch (AttrTypeID(attr_iter->second)) {
             case proto::AttrType::INTS:
               pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second))));
+                  PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second))));
               break;
             case proto::AttrType::LONGS:
               pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second))));
+                  PADDLE_GET_CONST(std::vector<int64_t>, attr_iter->second))));
               break;
             case proto::AttrType::INT:
               pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  &BOOST_GET_CONST(int32_t, attr_iter->second), 1)));
+                  &PADDLE_GET_CONST(int32_t, attr_iter->second), 1)));
               break;
             case proto::AttrType::LONG:
               pt_kernel_context->EmplaceBackAttr(std::move(phi::IntArray(
-                  &BOOST_GET_CONST(int64_t, attr_iter->second), 1)));
+                  &PADDLE_GET_CONST(int64_t, attr_iter->second), 1)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -2682,7 +2718,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         switch (AttrTypeID(attr_iter->second)) {
           case proto::AttrType::INTS: {
             const auto& vec =
-                BOOST_GET_CONST(std::vector<int32_t>, attr_iter->second);
+                PADDLE_GET_CONST(std::vector<int32_t>, attr_iter->second);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -2692,7 +2728,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case proto::AttrType::LONGS: {
             const auto& vec =
-                BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second);
+                PADDLE_GET_CONST(std::vector<int64_t>, attr_iter->second);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -2702,7 +2738,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case proto::AttrType::FLOATS: {
             const auto& vec =
-                BOOST_GET_CONST(std::vector<float>, attr_iter->second);
+                PADDLE_GET_CONST(std::vector<float>, attr_iter->second);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -2712,7 +2748,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case proto::AttrType::FLOAT64S: {
             const auto& vec =
-                BOOST_GET_CONST(std::vector<double>, attr_iter->second);
+                PADDLE_GET_CONST(std::vector<double>, attr_iter->second);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -2722,7 +2758,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case proto::AttrType::BOOLEANS: {
             const auto& vec =
-                BOOST_GET_CONST(std::vector<bool>, attr_iter->second);
+                PADDLE_GET_CONST(std::vector<bool>, attr_iter->second);
             std::vector<phi::Scalar> scalar_list;
             scalar_list.reserve(vec.size());
             for (const auto& val : vec) {
@@ -2747,43 +2783,43 @@ void OperatorWithKernel::BuildPhiKernelContext(
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(float, attr_iter->second));
+                PADDLE_GET_CONST(float, attr_iter->second));
             break;
           case phi::AttributeType::INT32:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(int, attr_iter->second));
+                PADDLE_GET_CONST(int, attr_iter->second));
             break;
           case phi::AttributeType::BOOL:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(bool, attr_iter->second));
+                PADDLE_GET_CONST(bool, attr_iter->second));
             break;
           case phi::AttributeType::INT64:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(int64_t, attr_iter->second));
+                PADDLE_GET_CONST(int64_t, attr_iter->second));
             break;
           case phi::AttributeType::INT32S:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<int>, attr_iter->second));
+                PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
           case phi::AttributeType::DATA_TYPE: {
             auto data_type = framework::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
-                    BOOST_GET_CONST(int, attr_iter->second)));
+                    PADDLE_GET_CONST(int, attr_iter->second)));
             pt_kernel_context->EmplaceBackAttr(data_type);
           } break;
           case phi::AttributeType::STRING:
             pt_kernel_context->EmplaceBackAttr(
-                std::move(BOOST_GET_CONST(std::string, attr_iter->second)));
+                std::move(PADDLE_GET_CONST(std::string, attr_iter->second)));
             break;
           case phi::AttributeType::INT64S:
             switch (AttrTypeID(attr_iter->second)) {
               case proto::AttrType::LONGS:
                 pt_kernel_context->EmplaceBackAttr(
-                    BOOST_GET_CONST(std::vector<int64_t>, attr_iter->second));
+                    PADDLE_GET_CONST(std::vector<int64_t>, attr_iter->second));
                 break;
               case proto::AttrType::INTS: {
                 const auto& vector_int_attr =
-                    BOOST_GET_CONST(std::vector<int>, attr_iter->second);
+                    PADDLE_GET_CONST(std::vector<int>, attr_iter->second);
                 const std::vector<int64_t> vector_int64_attr(
                     vector_int_attr.begin(), vector_int_attr.end());
                 pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
@@ -2798,11 +2834,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
             break;
           case phi::AttributeType::FLOAT32S:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<float>, attr_iter->second));
+                PADDLE_GET_CONST(std::vector<float>, attr_iter->second));
             break;
           case phi::AttributeType::STRINGS:
             pt_kernel_context->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<std::string>, attr_iter->second));
+                PADDLE_GET_CONST(std::vector<std::string>, attr_iter->second));
             break;
           default:
             PADDLE_THROW(platform::errors::Unimplemented(

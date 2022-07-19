@@ -74,6 +74,10 @@ void CompareInferMeta(const MetaTensor& x,
                       int axis,
                       MetaTensor* out);
 
+void ComplexInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      MetaTensor* out);
+
 void ConvInferMeta(const MetaTensor& input,
                    const MetaTensor& filter,
                    const std::vector<int>& strides,
@@ -300,5 +304,7 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
+
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 }  // namespace phi

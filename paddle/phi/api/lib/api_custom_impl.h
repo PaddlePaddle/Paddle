@@ -116,10 +116,6 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
 
 ////////////////// Backward(grad) api impls //////////////////////
 
-void add_n_grad_impl(const std::vector<Tensor>& x,
-                     const Tensor& out_grad,
-                     std::vector<Tensor*> x_grad);
-
 void conv2d_grad_impl(const Tensor& input,
                       const Tensor& filter,
                       const Tensor& out_grad,
