@@ -39,6 +39,27 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
   return false;
 }
 
+inline paddle::experimental::Tensor Cast(
+    const paddle::experimental::Tensor& input,
+    const paddle::experimental::DataType& dst_dtype,
+    const bool trace_backward = true) {
+  if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
+    if (trace_backward) {
+      return sparse::cast_final_state_dygraph_function(
+          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+    } else {
+      return paddle::experimental::sparse::cast(
+          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+    }
+  } else {
+    if (trace_backward) {
+      return cast_final_state_dygraph_function(input, dst_dtype);
+    } else {
+      return paddle::experimental::cast(input, dst_dtype);
+    }
+  }
+}
+
 inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::experimental::Tensor>& inputs,
@@ -51,13 +72,7 @@ inline std::vector<paddle::experimental::Tensor> EagerAmpAutoCasts(
   std::vector<paddle::experimental::Tensor> inputs_casted;
   for (auto& input : inputs) {
     if (NeedCast(input, dst_dtype)) {
-      if (trace_backward) {
-        inputs_casted.emplace_back(
-            std::move(cast_final_state_dygraph_function(input, dst_dtype)));
-      } else {
-        inputs_casted.emplace_back(
-            std::move(paddle::experimental::cast(input, dst_dtype)));
-      }
+      inputs_casted.emplace_back(std::move(Cast(input, dst_dtype)));
     } else {
       inputs_casted.emplace_back(input);
     }
@@ -92,11 +107,7 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     }
   }
   if (NeedCast(input, dst_dtype)) {
-    if (trace_backward) {
-      return cast_final_state_dygraph_function(input, dst_dtype);
-    } else {
-      return paddle::experimental::cast(input, dst_dtype);
-    }
+    return Cast(input, dst_dtype, trace_backward);
   }
   return input;
 }

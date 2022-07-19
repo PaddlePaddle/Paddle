@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -475,8 +476,13 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+#ifdef PADDLE_WITH_IPU
+    gc_event_.emplace_back(phi::CPUPlace(), 0);
+#else
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
+
+#endif
   }
   bool inplaced = false;
   for (auto inst : vec_instruction_) {

@@ -347,7 +347,7 @@ void ComputePropagateScalesMkldnnPass::UpdateScaleOpInScale(
     auto pair = iter->second;
     const auto tensor = pair.second;
 
-    const auto scale = BOOST_GET_CONST(float, op_node->Op()->GetAttr("scale"));
+    const auto scale = PADDLE_GET_CONST(float, op_node->Op()->GetAttr("scale"));
     Tensor tmp_tensor;
     tmp_tensor.Resize(tensor.dims());
     auto* data = tmp_tensor.mutable_data<float>(platform::CPUPlace());

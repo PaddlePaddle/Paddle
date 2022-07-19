@@ -96,7 +96,7 @@ class OpDesc {
   T GetAttrIfExists(const std::string &name) const {
     T result{};
     if (HasAttr(name)) {
-      result = BOOST_GET_CONST(T, GetAttr(name));
+      result = PADDLE_GET_CONST(T, GetAttr(name));
     }
     return result;
   }

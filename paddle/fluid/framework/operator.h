@@ -185,7 +185,7 @@ class OperatorBase {
         attrs_.find(name),
         attrs_.end(),
         platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return BOOST_GET_CONST(T, attrs_.at(name));
+    return PADDLE_GET_CONST(T, attrs_.at(name));
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -304,7 +304,7 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
