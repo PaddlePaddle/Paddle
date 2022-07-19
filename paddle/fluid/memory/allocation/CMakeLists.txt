@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler)
+set(ALLOCATOR_DEPS place stats profiler phi_backends)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -54,7 +54,6 @@ endif()
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND ALLOCATOR_SRCS custom_allocator.cc)
-  list(APPEND ALLOCATOR_DEPS device_manager)
 endif()
 
 if(WITH_XPU)
