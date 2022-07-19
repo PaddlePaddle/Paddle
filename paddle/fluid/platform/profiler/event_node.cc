@@ -92,11 +92,9 @@ void NodeTrees::BuildTrees(
        ++it) {
     auto dst_iter =
         correlation_id2runtime_event_node.find((*it)->CorrelationId());
-    PADDLE_ENFORCE_NE(
-        dst_iter,
-        correlation_id2runtime_event_node.end(),
-        platform::errors::NotFound("Unknown device events, "
-                                   "no corresponding cuda runtime events"));
+    if (dst_iter == correlation_id2runtime_event_node.end()) {
+      continue;
+    }
     dst_iter->second->AddDeviceTraceEventNode(*it);
   }
   // construct thread2mem_event_nodes
@@ -375,22 +373,9 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
           hasenter = true;
         }
         (*it)->SetOperatorSupplementNode(*op_supplement_it);
-        PADDLE_ENFORCE_EQ((*it)->Type(),
-                          TracerEventType::Operator,
-                          platform::errors::PreconditionNotMet(
-                              "Operator supplement events should be embraced "
-                              "by event of type TracerEventType::Operator, "
-                              "but got type TracerEventType::%s",
-                              StringTracerEventType((*it)->Type())));
         op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
-          PADDLE_ENFORCE_LE(op_supplement_count,
-                            1,
-                            platform::errors::PreconditionNotMet(
-                                "One event of TracerEventType::Operator has no "
-                                "more than 1 op supplement event, but got %d.",
-                                op_supplement_count));
           lastposition = op_supplement_it;
           break;
         }

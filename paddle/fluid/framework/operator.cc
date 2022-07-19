@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -59,7 +60,8 @@ class DenseTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism,
+                             0,
                              "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 DECLARE_bool(enable_host_event_recorder_hook);
@@ -74,7 +76,8 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDimsDebug(const ScopeBase& scope, const std::string& name,
+static DDim GetDimsDebug(const ScopeBase& scope,
+                         const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -268,7 +271,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           Type(), platform::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
-          op_name, platform::TracerEventType::Operator,
+          op_name,
+          platform::TracerEventType::Operator,
           FLAGS_enable_host_event_recorder_hook ? 20 : 1,
           platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
@@ -297,9 +301,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(
-      ins.size(), 1UL,
+      ins.size(),
+      1UL,
       platform::errors::InvalidArgument(
-          "Operator %s's input %s should contain only one variable.", type_,
+          "Operator %s's input %s should contain only one variable.",
+          type_,
           name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
@@ -308,9 +314,10 @@ const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
   PADDLE_ENFORCE_NE(
-      it, inputs_.end(),
-      platform::errors::NotFound("Operator %s does not have the input %s.",
-                                 type_, name));
+      it,
+      inputs_.end(),
+      platform::errors::NotFound(
+          "Operator %s does not have the input %s.", type_, name));
   return it->second;
 }
 
@@ -325,9 +332,11 @@ bool OperatorBase::HasOutputs(const std::string& name) const {
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(
-      outs.size(), 1UL,
+      outs.size(),
+      1UL,
       platform::errors::InvalidArgument(
-          "Operator %s's output %s should contain only one variable.", type_,
+          "Operator %s's output %s should contain only one variable.",
+          type_,
           name));
   return outs.empty() ? kEmptyVarName : outs[0];
 }
@@ -336,7 +345,8 @@ const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE_NE(
-      it, outputs_.end(),
+      it,
+      outputs_.end(),
       platform::errors::NotFound(
           "Operator %s does not have an output called %s.", type_, name));
   return it->second;
@@ -484,18 +494,20 @@ void OperatorBase::CheckAllInputOutputSet() const {
   for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable() && !in.extra()) {
       PADDLE_ENFORCE_NE(
-          inputs_.find(in.name()), inputs_.end(),
-          platform::errors::NotFound("Operator %s's input (%s) is not set.",
-                                     Type(), in.name()));
+          inputs_.find(in.name()),
+          inputs_.end(),
+          platform::errors::NotFound(
+              "Operator %s's input (%s) is not set.", Type(), in.name()));
     }
   }
 
   for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable() && !out.extra()) {
       PADDLE_ENFORCE_NE(
-          outputs_.find(out.name()), outputs_.end(),
-          platform::errors::NotFound("Operator %s's output (%s) is not set.",
-                                     Type(), out.name()));
+          outputs_.find(out.name()),
+          outputs_.end(),
+          platform::errors::NotFound(
+              "Operator %s's output (%s) is not set.", Type(), out.name()));
     }
   }
 }
@@ -568,10 +580,12 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   if (it == ctx_.inputs.end()) return nullptr;
 
   PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
+      it->second.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.",
-          op_.Type(), name));
+          op_.Type(),
+          name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -580,10 +594,12 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   if (it == ctx_.outputs.end()) return nullptr;
 
   PADDLE_ENFORCE_LE(
-      it->second.size(), 1UL,
+      it->second.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Operator %s's output %s should contain only one variable.",
-          op_.Type(), name));
+          op_.Type(),
+          name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -598,10 +614,13 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   }
   std::vector<const Tensor*> res;
   res.reserve(vars.size());
-  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+  std::transform(vars.begin(),
+                 vars.end(),
+                 std::back_inserter(res),
                  [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+                   PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(),
+                                     true,
                                      platform::errors::InvalidArgument(
                                          "Input variable should be LoDTensor, "
                                          "but the received type is %s.",
@@ -621,7 +640,9 @@ std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
   }
   std::vector<Tensor*> res;
   res.reserve(vars.size());
-  std::transform(vars.begin(), vars.end(), std::back_inserter(res),
+  std::transform(vars.begin(),
+                 vars.end(),
+                 std::back_inserter(res),
                  [&](Variable* var) -> Tensor* {
                    return var == nullptr ? nullptr
                                          : var->GetMutable<LoDTensor>();
@@ -679,7 +700,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     const auto& in = it->second;
     if (in.size() == 0) return false;
     PADDLE_ENFORCE_EQ(
-        in.size(), 1UL,
+        in.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Input %s should not contain more than one inputs.", name));
     return in[0] != nullptr;
@@ -697,7 +719,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return false;
     }
     PADDLE_ENFORCE_EQ(
-        out.size(), 1UL,
+        out.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Output %s should not contain more than one outputs.", name));
     return out[0] != nullptr;
@@ -754,11 +777,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
   std::string GetInputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+    PADDLE_ENFORCE_LT(idx,
+                      op_proto->inputs().size(),
                       platform::errors::OutOfRange(
                           "The index should be less than the size of inputs of "
                           "operator %s, but got index is %d and size is %d",
-                          op_.Type(), idx, op_proto->inputs().size()));
+                          op_.Type(),
+                          idx,
+                          op_proto->inputs().size()));
     return op_proto->inputs()[idx].name();
   }
 
@@ -766,42 +792,55 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
     PADDLE_ENFORCE_LT(
-        idx, op_proto->outputs().size(),
+        idx,
+        op_proto->outputs().size(),
         platform::errors::OutOfRange(
             "The index should be less than the size of outputs of "
             "operator %s, but got index is %d and size is %d",
-            op_.Type(), idx, op_proto->outputs().size()));
+            op_.Type(),
+            idx,
+            op_proto->outputs().size()));
     return op_proto->outputs()[idx].name();
   }
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
+        in_it,
+        ctx_.inputs.end(),
         platform::errors::NotFound("Input %s does not exist.", in));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
+        out_it,
+        ctx_.outputs.end(),
         platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+    PADDLE_ENFORCE_LT(i,
+                      in_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of input dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                          in_it->second.size(),
+                          i));
+    PADDLE_ENFORCE_LT(j,
+                      out_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of output dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
+                          out_it->second.size(),
+                          j));
 
     Variable* in_var = in_it->second[i];
     Variable* out_var = out_it->second[j];
 
     PADDLE_ENFORCE_EQ(
-        in_var->Type(), out_var->Type(),
+        in_var->Type(),
+        out_var->Type(),
         platform::errors::InvalidArgument(
-            "The type of input (%s) and output (%s) are inconsistent.", in,
+            "The type of input (%s) and output (%s) are inconsistent.",
+            in,
             out));
 
     if (in_var->IsType<phi::SelectedRows>()) {
@@ -825,19 +864,22 @@ class RuntimeInferShapeContext : public InferShapeContext {
                    const std::string& out) const override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+    PADDLE_ENFORCE_NE(in_it,
+                      ctx_.inputs.end(),
                       platform::errors::NotFound(
                           "Input [%s] found error in Op [%s]", in, op_.Type()));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
-                                   op_.Type()));
+        out_it,
+        ctx_.outputs.end(),
+        platform::errors::NotFound(
+            "Output [%s] found error in Op [%s]", out, op_.Type()));
 
     auto& in_var_list = in_it->second;
     auto& out_var_list = out_it->second;
 
     PADDLE_ENFORCE_EQ(
-        in_var_list.size(), out_var_list.size(),
+        in_var_list.size(),
+        out_var_list.size(),
         platform::errors::PreconditionNotMet(
             "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
@@ -852,10 +894,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
       Variable* in_var = in_var_list[i];
       if (!in_var->IsType<LoDTensor>()) return;
       Variable* out_var = out_var_list[i];
-      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
+                        true,
                         platform::errors::PreconditionNotMet(
                             "The %d-th output of Output(%s) must be LoDTensor.",
-                            i, out_var_names[i]));
+                            i,
+                            out_var_names[i]));
       auto& in_tensor = in_var->Get<LoDTensor>();
       auto* out_tensor = out_var->GetMutable<LoDTensor>();
       out_tensor->set_lod(in_tensor.lod());
@@ -866,32 +910,41 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) const override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE_NE(
-        in_it, ctx_.inputs.end(),
+        in_it,
+        ctx_.inputs.end(),
         platform::errors::NotFound("Input %s does not exist.", in));
     PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
+        out_it,
+        ctx_.outputs.end(),
         platform::errors::NotFound("Output %s does not exist.", out));
-    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+    PADDLE_ENFORCE_LT(i,
+                      in_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of input dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          in_it->second.size(), i));
-    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                          in_it->second.size(),
+                          i));
+    PADDLE_ENFORCE_LT(j,
+                      out_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of output dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
-                          out_it->second.size(), j));
+                          out_it->second.size(),
+                          j));
 
     Variable* in_var = in_it->second.at(i);
     if (!in_var->IsType<LoDTensor>()) return;
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE_EQ(
-        out_var->IsType<LoDTensor>(), true,
+        out_var->IsType<LoDTensor>(),
+        true,
         platform::errors::InvalidArgument(
             "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
     auto& in_tensor = in_var->Get<LoDTensor>();
@@ -926,7 +979,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
         "set in the runtime kernel."));
   }
 
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
                    size_t j = 0) const override {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "SetLoDLevel is only used in compile time. The calculation of "
@@ -969,10 +1023,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
   DDim GetInputDim(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
     PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
+        vars.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Input(%s) should hold one element, but now it holds %zu elements.",
-            name, vars.size()));
+            name,
+            vars.size()));
     return this->GetDim(vars[0]);
   }
 
@@ -998,10 +1054,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     auto& vars = OutputVars(name);
     PADDLE_ENFORCE_EQ(
-        vars.size(), 1UL,
+        vars.size(),
+        1UL,
         platform::errors::InvalidArgument("Output(%s) should hold one element, "
                                           "but now it holds %zu elements.",
-                                          name, vars.size()));
+                                          name,
+                                          vars.size()));
     SetDim(vars[0], dim);
   }
 
@@ -1038,7 +1096,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
   std::vector<DDim> GetDims(const std::vector<Variable*>& vars) const {
     std::vector<DDim> ret;
     ret.reserve(vars.size());
-    std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
+    std::transform(vars.begin(),
+                   vars.end(),
+                   std::back_inserter(ret),
                    [this](Variable* var) { return this->GetDim(var); });
     return ret;
   }
@@ -1064,12 +1124,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void SetDims(const std::vector<Variable*>& vars,
                const std::vector<DDim>& dims) {
     size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size(),
+    PADDLE_ENFORCE_EQ(length,
+                      dims.size(),
                       platform::errors::InvalidArgument(
                           "The number of input variables do not match the "
                           "number of input dimensions, the number of variables "
                           "is %zu, the number of dimensions is %zu.",
-                          length, dims.size()));
+                          length,
+                          dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (vars[i] == nullptr) {
         continue;
@@ -1088,9 +1150,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
       const std::vector<Variable*>& vars) const {
     std::vector<proto::VarType::Type> retv;
     retv.resize(vars.size());
-    std::transform(vars.begin(), vars.end(), retv.begin(),
+    std::transform(vars.begin(),
+                   vars.end(),
+                   retv.begin(),
                    std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                             this, std::placeholders::_1));
+                             this,
+                             std::placeholders::_1));
     return retv;
   }
 
@@ -1102,7 +1167,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const std::vector<Variable*>& InputVars(const std::string& name) const {
     auto it = ctx_.inputs.find(name);
     PADDLE_ENFORCE_NE(
-        it, ctx_.inputs.end(),
+        it,
+        ctx_.inputs.end(),
         platform::errors::NotFound(
             "Operator (%s) does not have the input (%s).", op_.Type(), name));
     return it->second;
@@ -1111,7 +1177,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const std::vector<Variable*>& OutputVars(const std::string& name) const {
     auto it = ctx_.outputs.find(name);
     PADDLE_ENFORCE_NE(
-        it, ctx_.outputs.end(),
+        it,
+        ctx_.outputs.end(),
         platform::errors::NotFound(
             "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
     return it->second;
@@ -1132,20 +1199,23 @@ static void CheckTensorNANOrInf(const std::string& op_type,
     return;
   }
   PADDLE_ENFORCE_NE(
-      framework::TensorContainsInf(tensor), true,
-      platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
-                              op_type, name));
+      framework::TensorContainsInf(tensor),
+      true,
+      platform::errors::Fatal(
+          "Operator %s output Tensor %s contains Inf.", op_type, name));
   PADDLE_ENFORCE_NE(
-      framework::TensorContainsNAN(tensor), true,
-      platform::errors::Fatal("Operator %s output Tensor %s contains NAN.",
-                              op_type, name));
+      framework::TensorContainsNAN(tensor),
+      true,
+      platform::errors::Fatal(
+          "Operator %s output Tensor %s contains NAN.", op_type, name));
 }
 
 bool OperatorWithKernel::SupportGPU() const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
-      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
                     return kern_pair.first.backend() == phi::Backend::GPU;
                   });
@@ -1158,7 +1228,8 @@ bool OperatorWithKernel::SupportGPU() const {
     } else {
       auto& op_kernels = kernel_iter->second;
       return std::any_of(
-          op_kernels.begin(), op_kernels.end(),
+          op_kernels.begin(),
+          op_kernels.end(),
           [](OpKernelMap::const_reference kern_pair) {
             return platform::is_gpu_place(kern_pair.first.place_);
           });
@@ -1170,7 +1241,8 @@ bool OperatorWithKernel::SupportNPU() const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
-      std::any_of(phi_kernels.begin(), phi_kernels.end(),
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
                     return kern_pair.first.backend() == phi::Backend::NPU;
                   });
@@ -1183,7 +1255,8 @@ bool OperatorWithKernel::SupportNPU() const {
     } else {
       auto& op_kernels = kernel_iter->second;
       return std::any_of(
-          op_kernels.begin(), op_kernels.end(),
+          op_kernels.begin(),
+          op_kernels.end(),
           [](OpKernelMap::const_reference kern_pair) {
             return platform::is_npu_place(kern_pair.first.place_);
           });
@@ -1195,14 +1268,16 @@ bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
   if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-    VLOG(6) << "Warning: " << type_ << " don't find its MKLDNN Kernel in Fluid "
-                                       "Registered Kernels. And We don't "
-                                       "search its kernels in phi lib, "
-                                       "SupportsMKLDNN() return false.";
+    VLOG(6) << "Warning: " << type_
+            << " don't find its MKLDNN Kernel in Fluid "
+               "Registered Kernels. And We don't "
+               "search its kernels in phi lib, "
+               "SupportsMKLDNN() return false.";
     return false;
   }
   auto& op_kernels = op_kernel_iter->second;
-  return std::any_of(op_kernels.begin(), op_kernels.end(),
+  return std::any_of(op_kernels.begin(),
+                     op_kernels.end(),
                      [data_type](OpKernelMap::const_reference kern_pair) {
                        return platform::is_cpu_place(kern_pair.first.place_) &&
                               kern_pair.first.library_type_ ==
@@ -1366,7 +1441,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
-        ) {
+    ) {
       run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1399,7 +1474,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU_KP)
           || (is_xpu_unsupport && !is_xpu_kp_support)
 #endif
-              ) {
+      ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
@@ -1429,10 +1504,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("prepare_data",
                                        platform::TracerEventType::OperatorInner,
-                                       1, platform::EventRole::kInnerOp);
+                                       1,
+                                       platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      transfer_scope = PrepareData(scope, *kernel_type_,
-                                   &transfered_inplace_vars, runtime_ctx);
+      transfer_scope = PrepareData(
+          scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
     }
   }
   // exec scope is the scope that kernel actually executed on.
@@ -1442,9 +1518,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
                                        platform::TracerEventType::OperatorInner,
-                                       1, platform::EventRole::kInnerOp);
+                                       1,
+                                       platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->Info().infer_shape_(&infer_shape_ctx);
+    record_event.End();
+    platform::RecordOpInfoSupplement(
+        Type(), Attrs(), infer_shape_ctx, *runtime_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {
@@ -1456,7 +1536,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
-                                       1, platform::EventRole::kInnerOp);
+                                       1,
+                                       platform::EventRole::kInnerOp);
     if (run_phi_kernel_) {
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
@@ -1584,7 +1665,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
   PADDLE_ENFORCE_NE(
-      kernels_iter, all_op_kernels.end(),
+      kernels_iter,
+      all_op_kernels.end(),
       platform::errors::Unavailable(
           "There are no kernels which are registered in the %s operator.",
           type_));
@@ -1706,10 +1788,12 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
-                    platform::errors::NotFound(
-                        "Operator (%s) does not have kernel for %s.", type_,
-                        KernelTypeToString(expected_kernel_key)));
+  PADDLE_ENFORCE_NE(
+      kernel_iter,
+      kernels.end(),
+      platform::errors::NotFound("Operator (%s) does not have kernel for %s.",
+                                 type_,
+                                 KernelTypeToString(expected_kernel_key)));
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
@@ -1719,7 +1803,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 }
 
 void OperatorWithKernel::TransferInplaceVarsBack(
-    const Scope& scope, const std::vector<std::string>& inplace_vars,
+    const Scope& scope,
+    const std::vector<std::string>& inplace_vars,
     const Scope& transfer_scope) const {
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
@@ -1730,8 +1815,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
-                                     "The variable[%s] is nullptr.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::InvalidArgument(
+                                "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
@@ -1811,7 +1897,8 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
 }
 
 Scope* OperatorWithKernel::PrepareData(
-    const Scope& scope, const OpKernelType& expected_kernel_key,
+    const Scope& scope,
+    const OpKernelType& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
@@ -1867,8 +1954,8 @@ Scope* OperatorWithKernel::PrepareData(
           input_vars[i] = trans_var;
           auto out = trans_var->GetMutable<LoDTensor>();
           out->Resize(tensor_in->dims());
-          platform::MatchShapeToLayout(out, tensor_in->layout(),
-                                       DataLayout::kNHWC);
+          platform::MatchShapeToLayout(
+              out, tensor_in->layout(), DataLayout::kNHWC);
           VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
                      "but kNHWC layout"
                   << var_name_item.first << " in Operator " << type_;
@@ -1915,8 +2002,8 @@ Scope* OperatorWithKernel::PrepareData(
       if (!run_by_executor_ &&
           (platform::is_gpu_place(kernel_type_for_var.place_) ||
            platform::is_gpu_place(expected_kernel_key.place_))) {
-        new_scope = TryCreateTransferScope(kernel_type_for_var,
-                                           expected_kernel_key, &scope);
+        new_scope = TryCreateTransferScope(
+            kernel_type_for_var, expected_kernel_key, &scope);
         enable_cache_transfer_scope_ = true;
       }
       if (!new_scope) {
@@ -1978,7 +2065,8 @@ Scope* OperatorWithKernel::PrepareData(
 }
 
 void OperatorWithKernel::ParseInputDataType(
-    const Variable* var, const std::string& name,
+    const Variable* var,
+    const std::string& name,
     proto::VarType::Type* data_type) const {
   if (var != nullptr) {
     const Tensor* t = nullptr;
@@ -1998,17 +2086,20 @@ void OperatorWithKernel::ParseInputDataType(
     }
     if (t != nullptr) {
       PADDLE_ENFORCE_EQ(
-          t->IsInitialized(), true,
+          t->IsInitialized(),
+          true,
           platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
                                             "contains uninitialized Tensor.",
-                                            Type(), name));
+                                            Type(),
+                                            name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
     }
   }
 }
 
 void OperatorWithKernel::ParseMultiInputDataType(
-    const std::vector<Variable*>& vars, const std::string& name,
+    const std::vector<Variable*>& vars,
+    const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
@@ -2032,10 +2123,12 @@ void OperatorWithKernel::ParseMultiInputDataType(
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
-            t->IsInitialized(), true,
+            t->IsInitialized(),
+            true,
             platform::errors::InvalidArgument("The %s Op's Input Variable `%s` "
                                               "contains uninitialized Tensor.",
-                                              Type(), name));
+                                              Type(),
+                                              name));
         proto::VarType::Type tmp =
             paddle::framework::TransToProtoVarType(t->dtype());
         PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
@@ -2045,7 +2138,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
                            "consistent or reigster GetExpectedKernelType. The "
                            "current variable type is (%s), but the "
                            "previous variable type is (%s).",
-                           Type(), name, DataTypeToString(tmp),
+                           Type(),
+                           name,
+                           DataTypeToString(tmp),
                            DataTypeToString(*data_type)));
         *data_type = tmp;
       }
@@ -2066,7 +2161,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE_NE(
-      data_type, dafault_data_type,
+      data_type,
+      dafault_data_type,
       platform::errors::NotFound(
           "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
@@ -2083,12 +2179,14 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
     ParseMultiInputDataType(ctx.MultiInputVar(name), name, &data_type);
   }
   PADDLE_ENFORCE_NE(
-      data_type, dafault_data_type,
+      data_type,
+      dafault_data_type,
       platform::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
           "data type is empty or not LoDTensor or SelectedRows or "
           "LoDTensorArray.",
-          name, Type()));
+          name,
+          Type()));
   return data_type;
 }
 
@@ -2120,11 +2218,14 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
       t,
       platform::errors::InvalidArgument(
           "The Tensor of variable %s is nullptr when promote complex types."));
-  PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+  PADDLE_ENFORCE_EQ(t->IsInitialized(),
+                    true,
                     platform::errors::InvalidArgument(
                         "The Tensor in the %s Op's Input Variable %s(%s) is "
                         "not initialized.",
-                        Type(), name, ctx.InputName(name)));
+                        Type(),
+                        name,
+                        ctx.InputName(name)));
   return t;
 }
 
@@ -2136,7 +2237,8 @@ Tensor* OperatorWithKernel::GetTensorFormInputSafely(
  * the kernel data type.
  */
 proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
-    const ExecutionContext& ctx, const std::string& name1,
+    const ExecutionContext& ctx,
+    const std::string& name1,
     const std::string& name2) const {
   // 1. Get tensor
   auto* tensor_a = GetTensorFormInputSafely(ctx, name1);
@@ -2158,10 +2260,11 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 }
 
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
-                      tensor.layout());
+  return OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
@@ -2172,8 +2275,9 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
     if (arg_map_fn) {
       arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
     } else {
-      auto func = [this](
-          const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
+      auto func =
+          [this](
+              const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
       arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
@@ -2183,16 +2287,19 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
 }
 
 Scope* OperatorWithKernel::PreparePhiData(
-    const Scope& scope, const phi::Kernel& pt_kernel,
+    const Scope& scope,
+    const phi::Kernel& pt_kernel,
     const phi::KernelSignature& pt_kernel_signature,
     RuntimeContext* ctx) const {
   const auto& input_names = pt_kernel_signature.input_names;
   auto input_defs = pt_kernel.args_def().input_defs();
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+  PADDLE_ENFORCE_EQ(input_names.size(),
+                    input_defs.size(),
                     platform::errors::InvalidArgument(
                         "The size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+                        input_names.size(),
+                        input_defs.size()));
   Scope* new_scope = nullptr;
   auto& name_map = Inputs();
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
@@ -2279,7 +2386,8 @@ Scope* OperatorWithKernel::PreparePhiData(
 }
 
 void OperatorWithKernel::BuildPhiKernelContext(
-    const RuntimeContext& ctx, platform::DeviceContext* dev_ctx,
+    const RuntimeContext& ctx,
+    platform::DeviceContext* dev_ctx,
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
 
@@ -2291,23 +2399,29 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto attr_defs = pt_kernel_->args_def().attribute_defs();
   auto output_defs = pt_kernel_->args_def().output_defs();
 
-  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+  PADDLE_ENFORCE_EQ(input_names.size(),
+                    input_defs.size(),
                     platform::errors::InvalidArgument(
                         "The size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
-                        input_names.size(), input_defs.size()));
+                        input_names.size(),
+                        input_defs.size()));
 
-  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+  PADDLE_ENFORCE_EQ(output_names.size(),
+                    output_defs.size(),
                     platform::errors::InvalidArgument(
                         "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
-                        output_names.size(), output_defs.size()));
+                        output_names.size(),
+                        output_defs.size()));
 
-  PADDLE_ENFORCE_EQ(attr_names.size(), attr_defs.size(),
+  PADDLE_ENFORCE_EQ(attr_names.size(),
+                    attr_defs.size(),
                     platform::errors::InvalidArgument(
                         "The size of attribute_args names (%d) must be equal "
                         "to the size of kernel attribute_defs (%d).",
-                        attr_names.size(), attr_defs.size()));
+                        attr_names.size(),
+                        attr_defs.size()));
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
@@ -2489,7 +2603,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         break;
       case phi::AttributeType::SCALARS: {
         PADDLE_ENFORCE_NE(
-            attr_iter, Attrs().end(),
+            attr_iter,
+            Attrs().end(),
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
                                        "buildind static KernelContext.",
                                        attr_names[i]));
@@ -2553,7 +2668,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } break;
       default: {
         PADDLE_ENFORCE_NE(
-            attr_iter, Attrs().end(),
+            attr_iter,
+            Attrs().end(),
             platform::errors::NotFound("(%s) is not found in AttributeMap when "
                                        "buildind static KernelContext.",
                                        attr_names[i]));

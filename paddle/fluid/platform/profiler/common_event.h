@@ -17,16 +17,22 @@
 #include <cstring>
 #include <functional>
 #include <string>
+
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/event.h"  // import EventRole, TODO(TIEXING): remove later
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace platform {
 
 struct CommonEvent {
  public:
-  CommonEvent(const char *name, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type)
+  CommonEvent(const char *name,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type)
       : name(name),
         start_ns(start_ns),
         end_ns(end_ns),
@@ -34,8 +40,12 @@ struct CommonEvent {
         type(type) {}
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type, const std::string &attr_str)
+              const std::string &name_str,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type,
+              const std::string &attr_str)
       : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -46,8 +56,11 @@ struct CommonEvent {
   }
 
   CommonEvent(std::function<void *(size_t)> arena_allocator,
-              const std::string &name_str, uint64_t start_ns, uint64_t end_ns,
-              EventRole role, TracerEventType type)
+              const std::string &name_str,
+              uint64_t start_ns,
+              uint64_t end_ns,
+              EventRole role,
+              TracerEventType type)
       : start_ns(start_ns), end_ns(end_ns), role(role), type(type) {
     auto buf = static_cast<char *>(arena_allocator(name_str.length() + 1));
     strncpy(buf, name_str.c_str(), name_str.length() + 1);
@@ -60,6 +73,33 @@ struct CommonEvent {
   EventRole role = EventRole::kOrdinary;
   TracerEventType type = TracerEventType::NumTypes;
   const char *attr = nullptr;  // not owned, designed for performance
+};
+
+struct OperatorSupplementOriginEvent {
+ public:
+  OperatorSupplementOriginEvent(
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::map<std::string, std::vector<framework::DDim>> &input_shapes,
+      const std::map<std::string, std::vector<framework::proto::VarType::Type>>
+          &dtypes,
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns),
+        input_shapes(input_shapes),
+        dtypes(dtypes),
+        callstack(callstack) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    op_type = buf;
+  }
+  uint64_t timestamp_ns;
+  const char *op_type = nullptr;  // not owned, designed for performance
+  // input shapes
+  std::map<std::string, std::vector<framework::DDim>> input_shapes;
+  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
+  // call stack
+  const std::vector<std::string> callstack;
 };
 
 }  // namespace platform

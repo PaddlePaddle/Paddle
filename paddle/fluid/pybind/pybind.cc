@@ -3515,6 +3515,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("process_id",
                      &paddle::platform::HostPythonNode::process_id)
       .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("input_shapes",
+                     &paddle::platform::HostPythonNode::input_shapes)
+      .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
+      .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",

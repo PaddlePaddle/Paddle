@@ -45,7 +45,8 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   ExtraInfo extrainfo;
   for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
     ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
-    extrainfo.AddExtraInfo(extra_info_map.key(), std::string("%s"),
+    extrainfo.AddExtraInfo(extra_info_map.key(),
+                           std::string("%s"),
                            extra_info_map.value().c_str());
   }
   // restore NodeTrees
@@ -89,6 +90,26 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
           runtime_node->AddDeviceTraceEventNode(
               device_node);  // insert into runtime_node
         }
+      }
+      // handle mem node
+      for (int mem_node_index = 0;
+           mem_node_index < host_node_proto.mem_nodes_size();
+           mem_node_index++) {
+        const MemTraceEventNodeProto& mem_node_proto =
+            host_node_proto.mem_nodes(mem_node_index);
+        MemTraceEventNode* mem_node = RestoreMemTraceEventNode(mem_node_proto);
+        host_node->AddMemNode(mem_node);
+      }
+      // handle op supplement node
+      for (int op_supplement_node_index = 0;
+           op_supplement_node_index <
+           host_node_proto.op_supplement_nodes_size();
+           op_supplement_node_index++) {
+        const OperatorSupplementEventNodeProto& op_supplement_node_proto =
+            host_node_proto.op_supplement_nodes(op_supplement_node_index);
+        OperatorSupplementEventNode* op_supplement_node =
+            RestoreOperatorSupplementEventNode(op_supplement_node_proto);
+        host_node->SetOperatorSupplementNode(op_supplement_node);
       }
     }
     // restore parent-child relationship
@@ -174,6 +195,64 @@ HostTraceEventNode* DeserializationReader::RestoreHostTraceEventNode(
   return new HostTraceEventNode(host_event);
 }
 
+MemTraceEventNode* DeserializationReader::RestoreMemTraceEventNode(
+    const MemTraceEventNodeProto& mem_node_proto) {
+  const MemTraceEventProto& mem_event_proto = mem_node_proto.mem_event();
+  MemTraceEvent mem_event;
+  mem_event.timestamp_ns = mem_event_proto.timestamp_ns();
+  mem_event.addr = mem_event_proto.addr();
+  mem_event.type = static_cast<TracerMemEventType>(mem_event_proto.type());
+  mem_event.process_id = mem_event_proto.process_id();
+  mem_event.thread_id = mem_event_proto.thread_id();
+  mem_event.increase_bytes = mem_event_proto.increase_bytes();
+  mem_event.place = mem_event_proto.place();
+  mem_event.current_allocated = mem_event_proto.current_allocated();
+  mem_event.current_reserved = mem_event_proto.current_reserved();
+  mem_event.peak_allocated = mem_event_proto.peak_allocated();
+  mem_event.peak_reserved = mem_event_proto.peak_reserved();
+  return new MemTraceEventNode(mem_event);
+}
+
+OperatorSupplementEventNode*
+DeserializationReader::RestoreOperatorSupplementEventNode(
+    const OperatorSupplementEventNodeProto& op_supplement_node_proto) {
+  const OperatorSupplementEventProto& op_supplement_event_proto =
+      op_supplement_node_proto.op_supplement_event();
+  OperatorSupplementEvent op_supplement_event;
+  op_supplement_event.timestamp_ns = op_supplement_event_proto.timestamp_ns();
+  op_supplement_event.op_type = op_supplement_event_proto.op_type();
+  op_supplement_event.callstack = op_supplement_event_proto.callstack();
+  op_supplement_event.process_id = op_supplement_event_proto.process_id();
+  op_supplement_event.thread_id = op_supplement_event_proto.thread_id();
+  std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
+  std::map<std::string, std::vector<std::string>> dtypes;
+  auto input_shape_proto = op_supplement_event_proto.input_shapes();
+  for (int i = 0; i < input_shape_proto.key_size(); i++) {
+    auto input_shape_vec = input_shapes[input_shape_proto.key(i)];
+    auto shape_vectors_proto = input_shape_proto.shape_vecs(i);
+    for (int j = 0; j < shape_vectors_proto.shapes_size(); j++) {
+      auto shape_vector_proto = shape_vectors_proto.shapes(j);
+      std::vector<int64_t> shape;
+      for (int k = 0; k < shape_vector_proto.size_size(); k++) {
+        shape.push_back(shape_vector_proto.size(k));
+      }
+      input_shape_vec.push_back(shape);
+    }
+  }
+  op_supplement_event.input_shapes = input_shapes;
+  auto dtype_proto = op_supplement_event_proto.dtypes();
+  for (int i = 0; i < dtype_proto.key_size(); i++) {
+    auto dtype_vec = dtypes[dtype_proto.key(i)];
+    auto dtype_vec_proto = dtype_proto.dtype_vecs(i);
+    for (int j = 0; j < dtype_vec_proto.dtype_size(); j++) {
+      auto dtype_string = dtype_vec_proto.dtype(j);
+      dtype_vec.push_back(dtype_string);
+    }
+  }
+  op_supplement_event.dtypes = dtypes;
+  return new OperatorSupplementEventNode(op_supplement_event);
+}
+
 KernelEventInfo DeserializationReader::HandleKernelEventInfoProto(
     const DeviceTraceEventProto& device_event_proto) {
   const KernelEventInfoProto& kernel_info_proto =
@@ -203,11 +282,14 @@ MemcpyEventInfo DeserializationReader::HandleMemcpyEventInfoProto(
       device_event_proto.memcpy_info();
   MemcpyEventInfo memcpy_info;
   memcpy_info.num_bytes = memcpy_info_proto.num_bytes();
-  std::strncpy(memcpy_info.copy_kind, memcpy_info_proto.copy_kind().c_str(),
+  std::strncpy(memcpy_info.copy_kind,
+               memcpy_info_proto.copy_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.src_kind, memcpy_info_proto.src_kind().c_str(),
+  std::strncpy(memcpy_info.src_kind,
+               memcpy_info_proto.src_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.dst_kind, memcpy_info_proto.dst_kind().c_str(),
+  std::strncpy(memcpy_info.dst_kind,
+               memcpy_info_proto.dst_kind().c_str(),
                kMemKindMaxLen - 1);
   return memcpy_info;
 }
@@ -218,7 +300,8 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
       device_event_proto.memset_info();
   MemsetEventInfo memset_info;
   memset_info.num_bytes = memset_info_proto.num_bytes();
-  std::strncpy(memset_info.memory_kind, memset_info_proto.memory_kind().c_str(),
+  std::strncpy(memset_info.memory_kind,
+               memset_info_proto.memory_kind().c_str(),
                kMemKindMaxLen - 1);
   memset_info.value = memset_info_proto.value();
   return memset_info;
