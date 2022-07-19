@@ -180,12 +180,24 @@ class PartialProgramLayer:
         """
         Lazy initialized property of infer_program.
         """
+        return self._create_infer_program()
+
+    def _create_infer_program(self):
+        """
+        Initialized infer_program (clone from _origin_main_program).
+        """
         return self._clone_for_test(self._origin_main_program)
 
     @LazyInitialized
     def _train_program(self):
         """
         Lazy initialized property of train_program.
+        """
+        return self._create_train_program()
+
+    def _create_train_program(self):
+        """
+        Initialized train_program (clone from _origin_main_program and do backward).
         """
         train_program = self._append_backward_desc(self._origin_main_program)
         # Note: Only set grad type once after initializing train program. So we
@@ -200,6 +212,12 @@ class PartialProgramLayer:
         """
         Lazy initialized property of infer_amp_program.
         """
+        return self._create_infer_amp_program()
+
+    def _create_infer_amp_program(self):
+        """
+        Initialized infer_amp_program (clone from _origin_main_program).
+        """
         infer_amp_program = self._origin_main_program.clone()
         with program_guard(infer_amp_program):
             rewrite_program(infer_amp_program, self._amp_list)
@@ -211,7 +229,14 @@ class PartialProgramLayer:
         """
         Lazy initialized property of train_amp_program.
         """
-        train_amp_program = self._append_backward_desc(self._infer_amp_program)
+        return self._create_train_amp_program()
+
+    def _create_train_amp_program(self):
+        """
+        Initialized train_amp_program (clone from _origin_main_program).
+        """
+        train_amp_program = self._append_backward_desc(
+            self._create_infer_amp_program)
         self._set_grad_type(self._params, train_amp_program)
         return train_amp_program
 
@@ -220,6 +245,12 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program(self):
         """
         Lazy initialized property of _infer_pure_fp16_program.
+        """
+        return self._create_infer_pure_fp16_program()
+
+    def _create_infer_pure_fp16_program(self):
+        """
+        Initialized _infer_pure_fp16_program  (clone from _origin_main_program).
         """
         infer_pure_fp16_program = self._origin_main_program.clone()
         with program_guard(infer_pure_fp16_program):
@@ -234,10 +265,65 @@ class PartialProgramLayer:
         """
         Lazy initialized property of _train_pure_fp16_program.
         """
+        return self._create_train_pure_fp16_program()
+
+    def _create_train_pure_fp16_program(self):
+        """
+        Initialized _train_pure_fp16_program (clone from _origin_main_program).
+        """
         train_pure_fp16_program = self._append_backward_desc(
-            self._infer_pure_fp16_program)
+            self._create_infer_pure_fp16_program)
         self._set_grad_type(self._params, train_pure_fp16_program)
         return train_pure_fp16_program
+
+    @LazyInitialized
+    def _backward_program(self):
+        """
+        Lazy initialized property of backward_program.
+        """
+        return self.get_backward_program_from(self._create_train_program())
+
+    @LazyInitialized
+    def _backward_amp_program(self):
+        """
+        Lazy initialized property of backward_amp_program.
+        """
+        return self.get_backward_program_from(self._create_train_amp_program())
+
+    @LazyInitialized
+    def _backward_pure_fp16_program(self):
+        """
+        Lazy initialized property of backward_pure_fp16_program.
+        """
+        return self.get_backward_program_from(
+            self._create_train_pure_fp16_program())
+
+    def get_backward_program_from(self, train_program):
+        forward_program = self._origin_main_program
+        backward_program = train_program
+
+        # delete forward op：
+        for b_i, block in enumerate(forward_program.blocks):
+            for i in range(len(block.ops)):
+                backward_program.block(b_i)._remove_op(0)
+            if b_i == 0:
+                for i in range(2 * len(self._outputs.var_ids)):
+                    backward_program.block(b_i)._remove_op(0)
+
+        # del unused forward var：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
+        for b_i, block in enumerate(backward_program.blocks):
+            if b_i < len(forward_program.blocks):
+                backward_var_set = set()
+                for op in backward_program.block(b_i).ops:
+                    for name in op.input_arg_names:
+                        backward_var_set.add(name)
+                    for name in op.output_arg_names:
+                        backward_var_set.add(name)
+                for var_key in forward_program.block(b_i).vars.keys():
+                    if var_key not in backward_var_set:
+                        backward_program.block(b_i)._remove_var(var_key)
+
+        return backward_program
 
     @LazyInitialized
     def _infer_program_id(self):
@@ -262,6 +348,30 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_pure_fp16_program_id(self):
         program_id = _hash_with_id(self._train_pure_fp16_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    @LazyInitialized
+    def _backward_program_id(self):
+        program_id = _hash_with_id(self._backward_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    @LazyInitialized
+    def _backward_amp_program_id(self):
+        program_id = _hash_with_id(self._backward_amp_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    @LazyInitialized
+    def _backward_pure_fp16_program_id(self):
+        program_id = _hash_with_id(self._backward_pure_fp16_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
 
@@ -347,6 +457,18 @@ class PartialProgramLayer:
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
+        self._cast_fp16_if_pure_fp16(in_vars)
+
+        print("=============>origin program")
+        print(self.origin_program_id)
+        print(self._origin_main_program)
+        print("=============>train program")
+        print(self.program_id)
+        print(self.program)
+        print("=============>backward program")
+        print(self.backward_program_id)
+        print(self.backward_program)
+
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
@@ -357,8 +479,6 @@ class PartialProgramLayer:
             attrs.extend(
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
-
-        self._cast_fp16_if_pure_fp16(in_vars)
 
         _C_ops.run_program(self._valid_vars(in_vars),
                            self._valid_vars(self._params),
@@ -400,6 +520,36 @@ class PartialProgramLayer:
                 return self._train_program_id
         else:
             return self._infer_program_id
+
+    @property
+    def backward_program(self):
+        if self.training:
+            if _in_amp_guard():
+                return self._backward_amp_program
+            elif _in_pure_fp16_guard():
+                return self._backward_pure_fp16_program
+            else:
+                return self._backward_program
+        else:
+            return paddle.static.Program()  # infer: return an empty program
+
+    @property
+    def backward_program_id(self):
+        if self.training:
+            if _in_amp_guard():
+                return self._backward_amp_program_id
+            elif _in_pure_fp16_guard():
+                return self._backward_pure_fp16_program_id
+            else:
+                return self._backward_program_id
+        else:
+            return _hash_with_id(paddle.static.Program(), self)
+
+    @property
+    def origin_program_id(self):
+        program_id = _hash_with_id(self._origin_main_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
 
     def _prepare(self, inputs):
         """
