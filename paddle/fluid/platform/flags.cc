@@ -922,7 +922,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Name: FLAGS_function_type
  * Since Version: 2.3.0
  * Value Range: string, {Executor, PE, Predictor},
- * default=Executor
+ * default=PE
  * Example:
  * Note:
  * FLAGS_function_type == Executor, using ExecutorFunction by default
@@ -930,5 +930,5 @@ PADDLE_DEFINE_EXPORTED_bool(
  * FLAGS_function_type == Predictor, using PredictorFunction by default
  */
 PADDLE_DEFINE_EXPORTED_string(function_type,
-                              "Executor",
+                              "PE",
                               "Choose default funciton type in JitLayer.");

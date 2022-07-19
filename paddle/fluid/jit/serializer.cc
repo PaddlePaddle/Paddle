@@ -104,7 +104,7 @@ void Deserializer::ReadAttributeData(const std::string& file_path,
                                      Name2VariableMap* attrs_dict) const {}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
-  VLOG(3) << "LoadProgram " << file_name;
+  VLOG(3) << "LoadProgram from: " << file_name;
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
