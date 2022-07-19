@@ -125,6 +125,14 @@ float ComputeOutputScale(const ExecutionContext& ctx) {
   return scale_out / (scale_x * scale_y);
 }
 
+dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext& ctx) {
+  dnnl::primitive_attr matmul_attrs;
+  dnnl::post_ops post_operations;
+  paddle::platform::AppendActivation(ctx, post_operations);
+  matmul_attrs.set_post_ops(post_operations);
+  return matmul_attrs;
+}
+
 template <typename T>
 void ExecuteMatMulV2(const ExecutionContext& ctx,
                      const MKLDNNDeviceContext& dev_ctx,
@@ -141,6 +149,7 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
                      int execution_number = 0) {
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
+  const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
   MatMulV2MKLDNNHandler<T> handler(onednn_engine,
                                    ctx.GetPlace(),
                                    x_dims,
@@ -149,7 +158,8 @@ void ExecuteMatMulV2(const ExecutionContext& ctx,
                                    trans_y,
                                    IsOutputFused(ctx),
                                    x_strides_override,
-                                   y_strides_override);
+                                   y_strides_override,
+                                   matmul_attrs);
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(y);
