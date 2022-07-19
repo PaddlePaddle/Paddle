@@ -16,11 +16,15 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature SolveGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "solve_grad", {"X", "Y", "Out@GRAD", "Out"}, {}, {"X@GRAD", "Y@GRAD"});
+KernelSignature AngleOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("angle", {"X"}, {}, {"Out"});
+}
+
+KernelSignature AngleGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("angle_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(solve_grad, phi::SolveGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(angle, phi::AngleOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(angle_grad, phi::AngleGradOpArgumentMapping);

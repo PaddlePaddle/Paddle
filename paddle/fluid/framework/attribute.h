@@ -72,10 +72,10 @@ struct ExtractAttribute<bool> {
 
   bool* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<bool>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      float val = BOOST_GET_CONST(float, attr);
+      float val = PADDLE_GET_CONST(float, attr);
       attr = static_cast<bool>(val);
     }
     bool* attr_value = nullptr;
@@ -100,10 +100,10 @@ struct ExtractAttribute<int64_t> {
 
   int64_t* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<int64_t>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      int val = BOOST_GET_CONST(float, attr);
+      int val = PADDLE_GET_CONST(float, attr);
       attr = static_cast<int64_t>(val);
     }
     int64_t* attr_value = nullptr;
@@ -128,11 +128,11 @@ struct ExtractAttribute<std::vector<int64_t>> {
 
   std::vector<int64_t>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<float> val = PADDLE_GET_CONST(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     }
@@ -159,10 +159,10 @@ struct ExtractAttribute<float> {
 
   float* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = BOOST_GET_CONST(int, attr);
+      int val = PADDLE_GET_CONST(int, attr);
       attr = static_cast<float>(val);
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
-      int64_t val = BOOST_GET_CONST(int64_t, attr);
+      int64_t val = PADDLE_GET_CONST(int64_t, attr);
       attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;
@@ -187,11 +187,11 @@ struct ExtractAttribute<std::vector<double>> {
 
   std::vector<double>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
+      std::vector<int> val = PADDLE_GET_CONST(std::vector<int>, attr);
       std::vector<double> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
+      std::vector<float> val = PADDLE_GET_CONST(std::vector<float>, attr);
       std::vector<double> vec(val.begin(), val.end());
       attr = vec;
     }
