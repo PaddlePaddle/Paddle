@@ -316,10 +316,10 @@
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
   kernel :
-    func : sparse_maxpool{sparse_coo -> sparse_coo, dense, dense}
+    func : maxpool_coo{sparse_coo -> sparse_coo, dense, dense}
     layout : x
   intermediate : rulebook, counter
-  backward : sparse_maxpool_grad
+  backward : maxpool_grad
 
 - api: mv
   args : (Tensor x, Tensor vec)
