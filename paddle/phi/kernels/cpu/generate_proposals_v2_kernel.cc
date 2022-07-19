@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/generate_proposals_v2_kernel.h"
-
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.h"
+// #include "paddle/phi/common/data_type.h"
 
 namespace phi {
 
@@ -28,7 +29,7 @@ static void AppendProposals(DenseTensor* dst,
                             const DenseTensor& src) {
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
-  size_t size_of_t = framework::DataTypeSize(src.dtype());
+  size_t size_of_t = SizeOf(src.dtype());
   offset *= size_of_t;
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
@@ -37,7 +38,7 @@ static void AppendProposals(DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const platform::DeviceContext& ctx,
+void ClipTiledBoxes(const phi::DeviceContext& ctx,
                     const DenseTensor& im_info,
                     const DenseTensor& input_boxes,
                     DenseTensor* out,
@@ -71,7 +72,7 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const platform::DeviceContext& ctx,
+void FilterBoxes(const phi::DeviceContext& ctx,
                  const DenseTensor* boxes,
                  float min_size,
                  const DenseTensor& im_info,
@@ -80,7 +81,7 @@ void FilterBoxes(const platform::DeviceContext& ctx,
                  bool pixel_offset = true) {
   const T* im_info_data = im_info.data<T>();
   const T* boxes_data = boxes->data<T>();
-  keep->Resize({boxes->dims()[0]});
+  keep->Resize(phi::make_ddim({boxes->dims()[0]}));
   min_size = std::max(min_size, 1.0f);
   int* keep_data = ctx.template Alloc<int>(keep);
   T offset = pixel_offset ? static_cast<T>(1.0) : 0;
@@ -108,11 +109,11 @@ void FilterBoxes(const platform::DeviceContext& ctx,
       }
     }
   }
-  keep->Resize({keep_len});
+  keep->Resize(phi::make_ddim({keep_len}));
 }
 
 template <class T>
-static void BoxCoder(const platform::DeviceContext& ctx,
+static void BoxCoder(const phi::DeviceContext& ctx,
                      DenseTensor* all_anchors,
                      DenseTensor* bbox_deltas,
                      DenseTensor* variances,
@@ -178,6 +179,112 @@ static void BoxCoder(const platform::DeviceContext& ctx,
   // return proposals;
 }
 
+template <typename T>
+std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
+    const phi::CPUContext& ctx,
+    const DenseTensor& im_shape_slice,
+    const DenseTensor& anchors,
+    const DenseTensor& variances,
+    const DenseTensor& bbox_deltas_slice,  // [M, 4]
+    const DenseTensor& scores_slice,       // [N, 1]
+    int pre_nms_top_n,
+    int post_nms_top_n,
+    float nms_thresh,
+    float min_size,
+    float eta,
+    bool pixel_offset = true) {
+  auto* scores_data = scores_slice.data<T>();
+
+  // Sort index
+  DenseTensor index_t;
+  index_t.Resize(phi::make_ddim({scores_slice.numel()}));
+  int* index = ctx.template Alloc<int>(&index_t);
+  for (int i = 0; i < scores_slice.numel(); ++i) {
+    index[i] = i;
+  }
+  auto compare = [scores_data](const int64_t& i, const int64_t& j) {
+    return scores_data[i] > scores_data[j];
+  };
+
+  if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
+    std::sort(index, index + scores_slice.numel(), compare);
+  } else {
+    std::nth_element(
+        index, index + pre_nms_top_n, index + scores_slice.numel(), compare);
+    index_t.Resize(phi::make_ddim({pre_nms_top_n}));
+  }
+
+  DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
+  scores_sel.Resize(phi::make_ddim({index_t.numel(), 1}));
+  ctx.template Alloc<T>(&scores_sel);
+
+  bbox_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
+  ctx.template Alloc<T>(&bbox_sel);
+
+  anchor_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
+  ctx.template Alloc<T>(&anchor_sel);
+
+  var_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
+  ctx.template Alloc<T>(&var_sel);
+
+  phi::funcs::CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
+  phi::funcs::CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
+  phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
+  phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
+
+  DenseTensor proposals;
+  proposals.Resize(phi::make_ddim({index_t.numel(), 4}));
+  ctx.template Alloc<T>(&proposals);
+
+  BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals, pixel_offset);
+
+  ClipTiledBoxes<T>(
+      ctx, im_shape_slice, proposals, &proposals, false, pixel_offset);
+
+  DenseTensor keep;
+  FilterBoxes<T>(
+      ctx, &proposals, min_size, im_shape_slice, false, &keep, pixel_offset);
+  // Handle the case when there is no keep index left
+  if (keep.numel() == 0) {
+    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
+    bbox_sel.Resize(phi::make_ddim({1, 4}));
+    ctx.template Alloc<T>(&bbox_sel);
+    set_zero(ctx, &bbox_sel, static_cast<T>(0));
+    DenseTensor scores_filter;
+    scores_filter.Resize(phi::make_ddim({1, 1}));
+    ctx.template Alloc<T>(&scores_filter);
+    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    return std::make_pair(bbox_sel, scores_filter);
+  }
+
+  DenseTensor scores_filter;
+  bbox_sel.Resize(phi::make_ddim({keep.numel(), 4}));
+  ctx.template Alloc<T>(&bbox_sel);
+  scores_filter.Resize(phi::make_ddim({keep.numel(), 1}));
+  ctx.template Alloc<T>(&scores_filter);
+  phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
+  phi::funcs::CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
+  if (nms_thresh <= 0) {
+    return std::make_pair(bbox_sel, scores_filter);
+  }
+
+  DenseTensor keep_nms = paddle::operators::NMS<T>(
+      ctx, &bbox_sel, &scores_filter, nms_thresh, eta, pixel_offset);
+
+  if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
+    keep_nms.Resize(phi::make_ddim({post_nms_top_n}));
+  }
+
+  proposals.Resize(phi::make_ddim({keep_nms.numel(), 4}));
+  ctx.template Alloc<T>(&proposals);
+  scores_sel.Resize(phi::make_ddim({keep_nms.numel(), 1}));
+  ctx.template Alloc<T>(&scores_sel);
+  phi::funcs::CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
+  phi::funcs::CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
+
+  return std::make_pair(proposals, scores_sel);
+}
+
 template <typename T, typename Context>
 void GenerateProposalsV2Kernel(const Context& ctx,
                                const DenseTensor& scores,
@@ -205,18 +312,18 @@ void GenerateProposalsV2Kernel(const Context& ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
-  rpn_rois.Resize(phi::make_ddim({bbox_deltas.numel() / 4, 4}));
+  rpn_rois->Resize(phi::make_ddim({bbox_deltas.numel() / 4, 4}));
   ctx.template Alloc<T>(rpn_rois);
 
-  rpn_roi_probs.Resize(phi::make_ddim({scores.numel(), 1}));
+  rpn_roi_probs->Resize(phi::make_ddim({scores.numel(), 1}));
   ctx.template Alloc<T>(rpn_roi_probs);
 
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize(phi::make_ddim({num, h_bbox, w_bbox, c_bbox}));
-  ctx.template Alloc<T>(bbox_deltas_swap);
+  ctx.template Alloc<T>(&bbox_deltas_swap);
 
   scores_swap.Resize(phi::make_ddim({num, h_score, w_score, c_score}));
-  ctx.template Alloc<T>(scores_swap);
+  ctx.template Alloc<T>(&scores_swap);
 
   phi::funcs::Transpose<phi::CPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
@@ -227,8 +334,10 @@ void GenerateProposalsV2Kernel(const Context& ctx,
   lod.resize(1);
   auto& lod0 = lod[0];
   lod0.push_back(0);
-  anchors.Resize(phi::make_ddim({anchors.numel() / 4, 4}));
-  variances.Resize(phi::make_ddim({variances.numel() / 4, 4}));
+  DenseTensor tmp_anchors = anchors;
+  DenseTensor tmp_variances = variances;
+  tmp_anchors.Resize(phi::make_ddim({tmp_anchors.numel() / 4, 4}));
+  tmp_variances.Resize(phi::make_ddim({tmp_variances.numel() / 4, 4}));
   std::vector<int> tmp_num;
 
   int64_t num_proposals = 0;
@@ -241,29 +350,29 @@ void GenerateProposalsV2Kernel(const Context& ctx,
     scores_slice.Resize(phi::make_ddim({h_score * w_score * c_score, 1}));
 
     std::pair<DenseTensor, DenseTensor> tensor_pair =
-        ProposalForOneImage(ctx,
-                            im_shape_slice,
-                            anchors,
-                            variances,
-                            bbox_deltas_slice,
-                            scores_slice,
-                            pre_nms_top_n,
-                            post_nms_top_n,
-                            nms_thresh,
-                            min_size,
-                            eta,
-                            pixel_offset);
+        ProposalForOneImage<T>(ctx,
+                               im_shape_slice,
+                               tmp_anchors,
+                               tmp_variances,
+                               bbox_deltas_slice,
+                               scores_slice,
+                               pre_nms_top_n,
+                               post_nms_top_n,
+                               nms_thresh,
+                               min_size,
+                               eta,
+                               pixel_offset);
     DenseTensor& proposals = tensor_pair.first;
     DenseTensor& nscores = tensor_pair.second;
 
-    AppendProposals(&rpn_rois, 4 * num_proposals, proposals);
-    AppendProposals(&rpn_roi_probs, num_proposals, nscores);
+    AppendProposals(rpn_rois, 4 * num_proposals, proposals);
+    AppendProposals(rpn_roi_probs, num_proposals, nscores);
     num_proposals += proposals.dims()[0];
     lod0.push_back(num_proposals);
     tmp_num.push_back(proposals.dims()[0]);
   }
-  if (rpn_rois_num->initialized()) {
-    rpn_rois_num.Resize(phi::make_ddim({num}));
+  if (rpn_rois_num != nullptr) {
+    rpn_rois_num->Resize(phi::make_ddim({num}));
     ctx.template Alloc<T>(rpn_rois_num);
     int* num_data = rpn_rois_num->data<int>();
     for (int i = 0; i < num; i++) {
@@ -271,115 +380,10 @@ void GenerateProposalsV2Kernel(const Context& ctx,
     }
     rpn_rois_num->Resize(phi::make_ddim({num}));
   }
-  rpn_rois.set_lod(lod);
-  rpn_roi_probs.set_lod(lod);
-  rpn_rois.Resize(phi::make_ddim({num_proposals, 4}));
-  rpn_roi_probs.Resize(phi::make_ddim({num_proposals, 1}));
-}
-
-std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::CPUContext& ctx,
-    const DenseTensor& im_shape_slice,
-    const DenseTensor& anchors,
-    const DenseTensor& variances,
-    const DenseTensor& bbox_deltas_slice,  // [M, 4]
-    const DenseTensor& scores_slice,       // [N, 1]
-    int pre_nms_top_n,
-    int post_nms_top_n,
-    float nms_thresh,
-    float min_size,
-    float eta,
-    bool pixel_offset = true) const {
-  auto* scores_data = scores_slice.data<T>();
-
-  // Sort index
-  DenseTensor index_t;
-  index_t.Resize(phi::make_ddim({scores_slice.numel()}));
-  int* index = dev_ctx.template Alloc<int>(index_t);
-  for (int i = 0; i < scores_slice.numel(); ++i) {
-    index[i] = i;
-  }
-  auto compare = [scores_data](const int64_t& i, const int64_t& j) {
-    return scores_data[i] > scores_data[j];
-  };
-
-  if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
-    std::sort(index, index + scores_slice.numel(), compare);
-  } else {
-    std::nth_element(
-        index, index + pre_nms_top_n, index + scores_slice.numel(), compare);
-    index_t.Resize(phi::make_ddim({pre_nms_top_n}));
-  }
-
-  DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
-  scores_sel.Resize(phi::make_ddim({index_t.numel(), 1}));
-  ctx.template Alloc<T>(scores_sel);
-
-  bbox_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(bbox_sel);
-
-  anchor_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(anchor_sel);
-
-  var_sel.Resize(phi::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(var_sel);
-
-  phi::funcs::CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
-  phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
-
-  DenseTensor proposals;
-  proposals.Resize(phi::make_ddim({index_t.numel(), 4}));
-  ctx.template Alloc<T>(proposals);
-
-  BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals, pixel_offset);
-
-  ClipTiledBoxes<T>(
-      ctx, im_shape_slice, proposals, &proposals, false, pixel_offset);
-
-  DenseTensor keep;
-  FilterBoxes<T>(
-      ctx, &proposals, min_size, im_shape_slice, false, &keep, pixel_offset);
-  // Handle the case when there is no keep index left
-  if (keep.numel() == 0) {
-    phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
-    bbox_sel.Resize(phi::make_ddim({1, 4}));
-    ctx.template Alloc<T>(bbox_sel);
-    set_zero(ctx, &bbox_sel, static_cast<T>(0));
-    DenseTensor scores_filter;
-    scores_filter.Resize(phi::make_ddim({1, 1}));
-    ctx.template Alloc<T>(scores_filter);
-    set_zero(ctx, &scores_filter, static_cast<T>(0));
-    return std::make_pair(bbox_sel, scores_filter);
-  }
-
-  DenseTensor scores_filter;
-  bbox_sel.Resize(phi::make_ddim({keep.numel(), 4}));
-  ctx.template Alloc<T>(bbox_sel);
-  scores_filter.Resize(phi::make_ddim({keep.numel(), 1}));
-  ctx.template Alloc<T>(scores_filter);
-  phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
-  if (nms_thresh <= 0) {
-    return std::make_pair(bbox_sel, scores_filter);
-  }
-
-  DenseTensor keep_nms =
-      NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta, pixel_offset);
-
-  if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
-    keep_nms.Resize(phi::make_ddim({post_nms_top_n}));
-  }
-
-  proposals.Resize(phi::make_ddim({keep_nms.numel(), 4}));
-  ctx.template Alloc<T>(proposals);
-  scores_sel.Resize(phi::make_ddim({keep_nms.numel(), 1}));
-  ctx.template Alloc<T>(scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
-  phi::funcs::CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
-
-  return std::make_pair(proposals, scores_sel);
+  // rpn_rois->set_lod(lod);
+  // rpn_roi_probs->set_lod(lod);
+  rpn_rois->Resize(phi::make_ddim({num_proposals, 4}));
+  rpn_roi_probs->Resize(phi::make_ddim({num_proposals, 1}));
 }
 
 }  // namespace phi

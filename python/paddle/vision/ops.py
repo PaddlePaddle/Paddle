@@ -1741,7 +1741,15 @@ def generate_proposals(scores,
             print(rois, roi_probs, roi_nums)
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
+                 pixel_offset)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.final_state_generate_proposals_v2(
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
+
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif _non_static_mode():
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
                  'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,

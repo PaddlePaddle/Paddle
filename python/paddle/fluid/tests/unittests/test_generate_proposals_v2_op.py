@@ -155,15 +155,16 @@ class TestGenerateProposalsV2Op(OpTest):
         }
 
         self.outputs = {
-            'RpnRois': (self.rpn_rois[0], [self.rois_num]),
-            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
+            'RpnRois': self.rpn_rois[0],
+            'RpnRoiProbs': self.rpn_roi_probs[0],
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def setUp(self):
         self.op_type = "generate_proposals_v2"
+        self.python_api = paddle.vision.ops.generate_proposals
         self.set_data()
 
     def init_test_params(self):
@@ -200,36 +201,6 @@ class TestGenerateProposalsV2Op(OpTest):
             self.scores, self.bbox_deltas, self.im_shape, self.anchors,
             self.variances, self.pre_nms_topN, self.post_nms_topN,
             self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
-
-
-class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
-
-    def set_data(self):
-        self.init_test_params()
-        self.init_test_input()
-        self.init_test_output()
-        self.inputs = {
-            'Scores': self.scores,
-            'BboxDeltas': self.bbox_deltas,
-            'ImShape': self.im_shape.astype(np.float32),
-            'Anchors': self.anchors,
-            'Variances': self.variances
-        }
-
-        self.attrs = {
-            'pre_nms_topN': self.pre_nms_topN,
-            'post_nms_topN': self.post_nms_topN,
-            'nms_thresh': self.nms_thresh,
-            'min_size': self.min_size,
-            'eta': self.eta,
-            'return_rois_num': True
-        }
-
-        self.outputs = {
-            'RpnRois': (self.rpn_rois[0], [self.rois_num]),
-            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
-        }
 
 
 class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
