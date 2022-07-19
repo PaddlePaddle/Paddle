@@ -338,8 +338,9 @@ class TestStrategyConfig(unittest.TestCase):
         configs = {}
         configs['emb'] = {"sparse_optimizer": "shared_adam"}
         strategy.fleet_desc_configs = configs
-        self.assertEqual(strategy.sparse_table_configs[0]
-                         .accessor.embed_sgd_param.adam.beta1_decay_rate, 0.9)
+        self.assertEqual(
+            strategy.sparse_table_configs[0].accessor.embed_sgd_param.adam.
+            beta1_decay_rate, 0.9)
 
     def test_trainer_desc_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
