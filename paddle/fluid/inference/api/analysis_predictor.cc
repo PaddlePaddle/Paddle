@@ -966,7 +966,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       }
       idx = feed_names_[name];
     } else {
-      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
+      idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, *input, "feed", idx);
   }
@@ -998,7 +998,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
+    int idx = PADDLE_GET_CONST(int, fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
@@ -1008,7 +1008,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -1239,9 +1239,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         for (auto &op_desc : block.AllOps()) {
           if (op_desc->Type() == "tensorrt_engine") {
             std::string engine_key =
-                BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+                PADDLE_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
             int engine_predictor_id =
-                BOOST_GET_CONST(int, op_desc->GetAttr("predictor_id"));
+                PADDLE_GET_CONST(int, op_desc->GetAttr("predictor_id"));
             std::string engine_name =
                 engine_key + std::to_string(engine_predictor_id);
             if (paddle::inference::Singleton<
@@ -1393,7 +1393,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -1401,7 +1401,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
-      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -1837,7 +1837,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
-      std::string engine_name = BOOST_GET_CONST(
+      std::string engine_name = PADDLE_GET_CONST(
           std::string, op_desc->GetAttr("calibration_engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "

@@ -612,7 +612,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool is_pre_layer_norm =
-        BOOST_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+        PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
     if (is_pre_layer_norm) {
       if (this->HasInput("LnScale")) {
         op->SetInput("LnScale", this->Input("LnScale"));
