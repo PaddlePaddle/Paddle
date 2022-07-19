@@ -869,7 +869,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         dtype = x.dtype
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    shape = x.shape
+    shape = paddle.shape(x)
 
     if low >= high:
         raise ValueError(
@@ -888,17 +888,13 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'randint_like')
 
-    inputs = dict()
+    inputs = {"ShapeTensor": shape}
     attrs = {
         'low': low,
         'high': high,
         'seed': 0,
         'dtype': core.VarDesc.VarType.INT64
     }
-    utils.get_shape_tensor_inputs(inputs=inputs,
-                                  attrs=attrs,
-                                  shape=shape,
-                                  op_type='randint_like')
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(

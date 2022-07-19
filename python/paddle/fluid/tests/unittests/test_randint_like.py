@@ -42,24 +42,7 @@ class TestRandintLikeAPI(unittest.TestCase):
             x_bool = paddle.fluid.data(name="x_bool",
                                        shape=[10, 12],
                                        dtype="bool")
-            x_int32 = paddle.fluid.data(name="x_int32",
-                                        shape=[10, 12],
-                                        dtype="int32")
-            x_int64 = paddle.fluid.data(name="x_int64",
-                                        shape=[10, 12],
-                                        dtype="int64")
-            x_float16 = paddle.fluid.data(name="x_float16",
-                                          shape=[10, 12],
-                                          dtype="float16")
-            x_float32 = paddle.fluid.data(name="x_float32",
-                                          shape=[10, 12],
-                                          dtype="float32")
-            x_float64 = paddle.fluid.data(name="x_float64",
-                                          shape=[10, 12],
-                                          dtype="float64")
-
             exe = paddle.static.Executor(self.place)
-
             # x dtype is bool output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist1 = [
                 paddle.randint_like(x_bool, low=-10, high=10, dtype=dtype)
@@ -69,7 +52,11 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out, dtype in zip(outs1, self.dtype):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -10) & (out <= 10)).all(), True)
-
+        with program_guard(Program(), Program()):
+            x_int32 = paddle.fluid.data(name="x_int32",
+                                        shape=[10, 12],
+                                        dtype="int32")
+            exe = paddle.static.Executor(self.place)
             # x dtype is int32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist2 = [
                 paddle.randint_like(x_int32, low=-5, high=10, dtype=dtype)
@@ -80,6 +67,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -5) & (out <= 10)).all(), True)
 
+        with program_guard(Program(), Program()):
+            x_int64 = paddle.fluid.data(name="x_int64",
+                                        shape=[10, 12],
+                                        dtype="int64")
+            exe = paddle.static.Executor(self.place)
             # x dtype is int64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist3 = [
                 paddle.randint_like(x_int64, low=-100, high=100, dtype=dtype)
@@ -90,6 +82,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -100) & (out <= 100)).all(), True)
 
+        with program_guard(Program(), Program()):
+            x_float16 = paddle.fluid.data(name="x_float16",
+                                          shape=[10, 12],
+                                          dtype="float16")
+            exe = paddle.static.Executor(self.place)
             # x dtype is float16 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist4 = [
                 paddle.randint_like(x_float16, low=-3, high=25, dtype=dtype)
@@ -101,6 +98,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -3) & (out <= 25)).all(), True)
 
+        with program_guard(Program(), Program()):
+            x_float32 = paddle.fluid.data(name="x_float32",
+                                          shape=[10, 12],
+                                          dtype="float32")
+            exe = paddle.static.Executor(self.place)
             # x dtype is float32 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist5 = [
                 paddle.randint_like(x_float32, low=-25, high=25, dtype=dtype)
@@ -112,6 +114,11 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.dtype, np.dtype(dtype))
                 self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
+        with program_guard(Program(), Program()):
+            x_float64 = paddle.fluid.data(name="x_float64",
+                                          shape=[10, 12],
+                                          dtype="float64")
+            exe = paddle.static.Executor(self.place)
             # x dtype is float64 output dtype in ["bool", "int32", "int64", "float16", "float32", "float64"]
             outlist6 = [
                 paddle.randint_like(x_float64, low=-16, high=16, dtype=dtype)
