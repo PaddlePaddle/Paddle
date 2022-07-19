@@ -167,6 +167,7 @@ class TestMatrixNMSOp(OpTest):
 
     def setUp(self):
         self.set_argument()
+        self.python_api = paddle.fluid.layers.detection.matrix_nms
         N = 7
         M = 1200
         C = 21
@@ -203,29 +204,23 @@ class TestMatrixNMSOp(OpTest):
         self.op_type = 'matrix_nms'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
         self.outputs = {
-            'Out': (nmsed_outs, [lod]),
-            'Index': (index_outs[:, None], [lod]),
+            'Out': nmsed_outs,
+            'Index': index_outs[:, None],
             'RoisNum': np.array(lod).astype('int32')
         }
         self.attrs = {
-            'background_label': 0,
-            'nms_top_k': nms_top_k,
-            'keep_top_k': keep_top_k,
             'score_threshold': score_threshold,
             'post_threshold': post_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
             'use_gaussian': use_gaussian,
             'gaussian_sigma': gaussian_sigma,
+            'background_label': 0,
             'normalized': True,
         }
 
     def test_check_output(self):
-        self.check_output()
-
-
-class TestMatrixNMSOp2(TestMatrixNMSOp):
-
-    def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):

@@ -3643,14 +3643,14 @@ def matrix_nms(bboxes,
                                           normalized=False)
     """
     if in_dygraph_mode():
-        attrs = ("score_threshold", score_threshold, "post_threshold",
-                 post_threshold, "nms_top_k", nms_top_k, "keep_top_k",
-                 keep_top_k, "use_gaussian", use_gaussian, "gaussian_sigma",
-                 gaussian_sigma, "background_label", background_label,
-                 "normalized", normalized, "return_index", return_index)
+        attrs = (score_threshold, post_threshold, nms_top_k, keep_top_k,
+                 use_gaussian, gaussian_sigma, background_label, normalized)
 
         out, index = _C_ops.final_state_matrix_nms(bboxes, scores, *attrs)
-        return out, index
+        if return_index:
+            return out, index
+        else:
+            return out
 
     check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
                              'matrix_nms')
@@ -3674,13 +3674,13 @@ def matrix_nms(bboxes,
                          'Scores': scores
                      },
                      attrs={
-                         'background_label': background_label,
                          'score_threshold': score_threshold,
                          'post_threshold': post_threshold,
                          'nms_top_k': nms_top_k,
-                         'gaussian_sigma': gaussian_sigma,
-                         'use_gaussian': use_gaussian,
                          'keep_top_k': keep_top_k,
+                         'use_gaussian': use_gaussian,
+                         'gaussian_sigma': gaussian_sigma,
+                         'background_label': background_label,
                          'normalized': normalized
                      },
                      outputs={

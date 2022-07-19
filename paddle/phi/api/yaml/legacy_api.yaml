@@ -1498,7 +1498,6 @@
     func : MatrixNMSInferMeta
   kernel :
     func : MatrixNMSKernel
-  option:
 
 # matrix_power
 - api : matrix_power

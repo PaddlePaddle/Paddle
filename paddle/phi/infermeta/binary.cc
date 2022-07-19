@@ -1689,14 +1689,14 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
 
 void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         const MetaTensor& scores,
-                        int background_label,
                         float score_threshold,
                         float post_threshold,
                         int nms_top_k,
                         int keep_top_k,
-                        bool normalized,
                         bool use_gaussian,
                         float gaussian_sigma,
+                        int background_label,
+                        bool normalized,
                         MetaTensor* out,
                         MetaTensor* index,
                         MetaTensor* roisnum,
@@ -1736,9 +1736,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
             score_dims[2]));
   }
   out->set_dims({box_dims[1], box_dims[2] + 2});
+  out->set_dtype(bboxes.dtype());
   index->set_dims({box_dims[1], 1});
-  if (roisnum->initialized()) {
+  index->set_dtype(phi::DataType::INT32);
+  if (roisnum != nullptr) {
     roisnum->set_dims({-1});
+    roisnum->set_dtype(phi::DataType::INT32);
   }
 }
 

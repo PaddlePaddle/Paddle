@@ -308,15 +308,11 @@ void MatrixNMSKernel(const Context& ctx,
     std::copy(indices.begin(), indices.end(), index->data<int>());
   }
 
-  if (roisnum->initialized()) {
+  if (roisnum != nullptr) {
     roisnum->Resize(phi::make_ddim({batch_size}));
     ctx.template Alloc<int>(roisnum);
     std::copy(num_per_batch.begin(), num_per_batch.end(), roisnum->data<int>());
   }
-  phi::LoD lod;
-  lod.emplace_back(offsets);
-  out->set_lod(lod);
-  index->set_lod(lod);
 }
 
 }  // namespace phi
