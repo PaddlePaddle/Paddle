@@ -12,9 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/c_comm_lib.h"
+#pragma once
+
+#include "paddle/phi/kernels/as_real_kernel.h"
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
-// Even this source file does not contains any code, it is better to keep this
-// source file for cmake dependency.
+template <typename T, typename Context>
+void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  ctx.template Alloc<T>(out);
+  auto out_dims_original = out->dims();
+  Copy(ctx, x, ctx.GetPlace(), false, out);
+  out->Resize(out_dims_original);  // restored the shape.
+  out->set_type(
+      paddle::experimental::CppTypeToDataType<T>::Type());  // restored the
+                                                            // dtype.
+}
+
 }  // namespace phi

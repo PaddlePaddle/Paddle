@@ -21,7 +21,7 @@
 #include "glog/logging.h"                                  // for CHECK
 #include "paddle/fluid/distributed/common/local_random.h"  // for local_uniform_real_distribution
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
