@@ -30,11 +30,12 @@ class FusedTokenPruneOpConverter : public OpConverter {
     auto* NewMask = engine_->GetITensor(op_desc.Input("NewMask").front());
     bool keep_first_token =
         op_desc.HasAttr("keep_first_token")
-            ? BOOST_GET_CONST(bool, op_desc.GetAttr("keep_first_token"))
+            ? PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_first_token"))
             : true;
-    bool keep_order = op_desc.HasAttr("keep_order")
-                          ? BOOST_GET_CONST(bool, op_desc.GetAttr("keep_order"))
-                          : false;
+    bool keep_order =
+        op_desc.HasAttr("keep_order")
+            ? PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_order"))
+            : false;
 
     std::vector<nvinfer1::ITensor*> itensors = {Attn, X, Mask, NewMask};
 

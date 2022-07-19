@@ -160,7 +160,7 @@ class OpConverter {
     // only one out settensordynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       std::string output_name = "";
       if (op_desc.HasOutput("Output")) {
         output_name = op_desc.Output("Output").front();
@@ -183,7 +183,7 @@ class OpConverter {
     // outs settensordynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
-        float out_scale = BOOST_GET_CONST(
+        float out_scale = PADDLE_GET_CONST(
             float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
         std::string output_name =
             op_desc.Output(op_desc.OutputNames()[i]).front();
@@ -204,7 +204,7 @@ class OpConverter {
         std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
         auto* input_itensor = engine->GetITensor(input_tensor_name);
         float input_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
         engine->SetTensorDynamicRange(input_itensor, input_scale);
         VLOG(1) << "Set input tensor scale = " << input_scale
                 << " for tensor: " << input_tensor_name << ".";
@@ -215,7 +215,7 @@ class OpConverter {
         std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
         auto* output_itensor = engine->GetITensor(output_tensor_name);
         float output_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
         engine->SetTensorDynamicRange(output_itensor, output_scale);
         VLOG(1) << "Set output tensor scale = " << output_scale
                 << " for tensor: " << output_tensor_name << ".";

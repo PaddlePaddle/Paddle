@@ -111,69 +111,69 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = BOOST_GET_CONST(
+    int op_role = PADDLE_GET_CONST(
         int,
         adam_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float beta1 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
-    float beta2 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
+    float beta1 = PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
+    float beta2 = PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
     float epsilon =
-        BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
+        PADDLE_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
     bool lazy_mode =
-        BOOST_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
-    int64_t min_row_size_to_use_multithread = BOOST_GET_CONST(
+        PADDLE_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
+    int64_t min_row_size_to_use_multithread = PADDLE_GET_CONST(
         int64_t, adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
     for (auto &adam_op : adam_ops) {
       PADDLE_ENFORCE_EQ(
           beta1,
-          BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(beta1) must be same, but there are two "
               "different "
               "value: %f, %f.",
               beta1,
-              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta1"))));
       PADDLE_ENFORCE_EQ(
           beta2,
-          BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(beta2) must be same, but there are two "
               "different "
               "value: %f, %f.",
               beta2,
-              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta2"))));
       PADDLE_ENFORCE_EQ(
           epsilon,
-          BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
+          PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(epsilon) must be same, but there are two "
               "different "
               "value: %f, %f.",
               epsilon,
-              BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
+              PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("epsilon"))));
       PADDLE_ENFORCE_EQ(
           lazy_mode,
-          BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
+          PADDLE_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(lazy_mode) must be same, but there are two "
               "different "
               "value: %d, %d.",
               lazy_mode,
-              BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
+              PADDLE_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode"))));
       PADDLE_ENFORCE_EQ(
           min_row_size_to_use_multithread,
-          BOOST_GET_CONST(
+          PADDLE_GET_CONST(
               int64_t,
               adam_op->Op()->GetAttr("min_row_size_to_use_multithread")),
           platform::errors::PreconditionNotMet(
               "All adam Op's attr(min_row_size_to_use_multithread) must be "
               "same, but there are two different value: %I64, %I64.",
               min_row_size_to_use_multithread,
-              BOOST_GET_CONST(
+              PADDLE_GET_CONST(
                   int64_t,
                   adam_op->Op()->GetAttr("min_row_size_to_use_multithread"))));
       PADDLE_ENFORCE_EQ(
           op_role,
-          BOOST_GET_CONST(
+          PADDLE_GET_CONST(
               int,
               adam_op->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
@@ -181,9 +181,9 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
               "different "
               "value: %d, %d.",
               op_role,
-              BOOST_GET_CONST(int,
-                              adam_op->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
+              PADDLE_GET_CONST(int,
+                               adam_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
@@ -270,54 +270,54 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = BOOST_GET_CONST(
+    int op_role = PADDLE_GET_CONST(
         int,
         scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float scale = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
-    float bias = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
+    float scale = PADDLE_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
+    float bias = PADDLE_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
     bool bias_after_scale =
-        BOOST_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
+        PADDLE_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
     for (auto &scale_op : scale_ops) {
       PADDLE_ENFORCE_EQ(
           scale,
-          BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(scale) must be same, but there are two "
               "different "
               "value: %f, %f.",
               scale,
-              BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
+              PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"))));
       PADDLE_ENFORCE_EQ(
           bias,
-          BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(bias) must be same, but there are two "
               "different "
               "value: %f, %f.",
               bias,
-              BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
+              PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"))));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
-          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
+          PADDLE_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(bias_after_scale) must be same, but there "
               "are two different value: %d, %d.",
               bias_after_scale,
-              BOOST_GET_CONST(bool,
-                              scale_op->Op()->GetAttr("bias_after_scale"))));
+              PADDLE_GET_CONST(bool,
+                               scale_op->Op()->GetAttr("bias_after_scale"))));
       PADDLE_ENFORCE_EQ(
           op_role,
-          BOOST_GET_CONST(int,
-                          scale_op->Op()->GetAttr(
-                              OpProtoAndCheckerMaker::OpRoleAttrName())),
+          PADDLE_GET_CONST(int,
+                           scale_op->Op()->GetAttr(
+                               OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::PreconditionNotMet(
               "All scale Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
               op_role,
-              BOOST_GET_CONST(int,
-                              scale_op->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
+              PADDLE_GET_CONST(int,
+                               scale_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

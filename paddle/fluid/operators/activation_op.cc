@@ -79,7 +79,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
         FLAGS_use_mkldnn ||
         (op->HasAttr("use_mkldnn") &&
-         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+         PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));  // x
     }
 
