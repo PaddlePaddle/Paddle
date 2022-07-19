@@ -227,7 +227,7 @@ class TestEigStatic(TestEigOp):
             str(np.abs(fetch_vec)))
 
 
-class TestEigDyGraph(TestEigOp):
+class TestEigDyGraph(unittest.TestCase):
 
     def test_check_output_with_place(self):
         input_np = np.random.random([3, 3]).astype('complex')
@@ -248,6 +248,29 @@ class TestEigDyGraph(TestEigOp):
                         1e-6), "The eigen vectors have diff: \nExpected " +
             str(np.abs(expect_vec)) + "\n" + "But got: " +
             str(np.abs(fetch_vec.numpy())))
+
+    def test_check_grad(self):
+        test_shape = [3, 3]
+        test_type = 'float64'
+        paddle.set_device("cpu")
+
+        input_np = np.random.random(test_shape).astype(test_type)
+        real_w, real_v = np.linalg.eig(input_np)
+
+        grad_w = np.ones(real_w.shape, test_type)
+        grad_v = np.ones(real_v.shape, test_type)
+        grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input_np)
+            x.stop_gradient = False
+            w, v = paddle.linalg.eig(x)
+            (w.sum() + v.sum()).backward()
+
+        self.assertTrue(
+            np.allclose(np.abs(x.grad.numpy()), np.abs(grad_x), 1e-5, 1e-5),
+            "The grad x have diff: \nExpected " + str(np.abs(grad_x)) + "\n" +
+            "But got: " + str(np.abs(x.grad.numpy())))
 
 
 class TestEigWrongDimsError(unittest.TestCase):

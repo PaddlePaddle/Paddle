@@ -24,8 +24,7 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-  if (!paddle::framework::IsComplexType(
-          paddle::framework::TransToProtoVarType(x.dtype()))) {
+  if (!IsComplexType(x.dtype())) {
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
 
