@@ -215,10 +215,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     PriorBoxInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL(prior_box,
-                       ops::PriorBoxOpKernel<float, float>,
-                       ops::PriorBoxOpKernel<double, double>);
-
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box,
                                     MKLDNN,
                                     ::paddle::platform::CPUPlace,

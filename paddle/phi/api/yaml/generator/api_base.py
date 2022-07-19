@@ -141,8 +141,6 @@ class BaseAPI(object):
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
             'int[]': 'const std::vector<int>&',
-            'float[]': 'const std::vector<float>&',
-            'double[]': 'const std::vector<double>&'
         }
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',

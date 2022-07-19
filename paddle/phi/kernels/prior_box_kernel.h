@@ -15,27 +15,23 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void PriorBoxKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
+                    const DenseTensor& input,
+                    const DenseTensor& image,
                     const std::vector<float>& min_sizes,
-                    const std::vector<float>& max_sizes,
                     const std::vector<float>& aspect_ratios,
                     const std::vector<float>& variances,
+                    const std::vector<float>& max_sizes,
                     bool flip,
                     bool clip,
                     float step_w,
                     float step_h,
                     float offset,
                     bool min_max_aspect_ratios_order,
-                    bool use_mkldnn,
-                    bool use_quantizer,
-                    const std::string& mkldnn_data_type,
                     DenseTensor* out,
                     DenseTensor* var);
 

@@ -1833,25 +1833,22 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   }
 }
 
-void PriorBoxInferMeta(const MetaTensor& x,
-                       const MetaTensor& y,
+void PriorBoxInferMeta(const MetaTensor& input,
+                       const MetaTensor& image,
                        const std::vector<float>& min_sizes,
-                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
+                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
                        float step_h,
                        float offset,
                        bool min_max_aspect_ratios_order,
-                       bool use_mkldnn,
-                       bool use_quantizer,
-                       const std::string& mkldnn_data_type,
                        MetaTensor* out,
                        MetaTensor* var) {
-  auto image_dims = y.dims();
-  auto input_dims = x.dims();
+  auto image_dims = image.dims();
+  auto input_dims = input.dims();
 
   PADDLE_ENFORCE_EQ(
       image_dims.size(),
@@ -1910,6 +1907,8 @@ void PriorBoxInferMeta(const MetaTensor& x,
   dim_vec[2] = num_priors;
   dim_vec[3] = 4;
 
+  out->set_dtype(input.dtype());
+  var->set_dtype(input.dtype());
   out->set_dims(phi::make_ddim(dim_vec));
   var->set_dims(phi::make_ddim(dim_vec));
 }

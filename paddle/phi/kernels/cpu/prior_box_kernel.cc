@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/prior_box_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -23,21 +21,18 @@ namespace phi {
 
 template <typename T, typename Context>
 void PriorBoxKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
+                    const DenseTensor& input,
+                    const DenseTensor& image,
                     const std::vector<float>& min_sizes,
-                    const std::vector<float>& max_sizes,
                     const std::vector<float>& aspect_ratios,
                     const std::vector<float>& variances,
+                    const std::vector<float>& max_sizes,
                     bool flip,
                     bool clip,
                     float step_w,
                     float step_h,
                     float offset,
                     bool min_max_aspect_ratios_order,
-                    bool use_mkldnn,
-                    bool use_quantizer,
-                    const std::string& mkldnn_data_type,
                     DenseTensor* out,
                     DenseTensor* var) {
   std::vector<float> new_aspect_ratios;
@@ -47,11 +42,11 @@ void PriorBoxKernel(const Context& ctx,
   T new_step_h = static_cast<T>(step_h);
   T new_offset = static_cast<T>(offset);
 
-  auto img_width = y.dims()[3];
-  auto img_height = y.dims()[2];
+  auto img_width = image.dims()[3];
+  auto img_height = image.dims()[2];
 
-  auto feature_width = x.dims()[3];
-  auto feature_height = x.dims()[2];
+  auto feature_width = input.dims()[3];
+  auto feature_height = input.dims()[2];
 
   T step_width, step_height;
   if (new_step_w == 0 || new_step_h == 0) {

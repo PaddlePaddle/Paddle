@@ -108,21 +108,18 @@ __global__ void SetVariance(T* out,
 
 template <typename T, typename Context>
 void PriorBoxKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
+                    const DenseTensor& input,
+                    const DenseTensor& image,
                     const std::vector<float>& min_sizes,
-                    const std::vector<float>& max_sizes,
                     const std::vector<float>& aspect_ratios,
                     const std::vector<float>& variances,
+                    const std::vector<float>& max_sizes,
                     bool flip,
                     bool clip,
                     float step_w,
                     float step_h,
                     float offset,
                     bool min_max_aspect_ratios_order,
-                    bool use_mkldnn,
-                    bool use_quantizer,
-                    const std::string& mkldnn_data_type,
                     DenseTensor* out,
                     DenseTensor* var) {
   std::vector<float> new_aspect_ratios;
@@ -132,11 +129,11 @@ void PriorBoxKernel(const Context& ctx,
   T new_step_h = static_cast<T>(step_h);
   T new_offset = static_cast<T>(offset);
 
-  auto im_width = y.dims()[3];
-  auto im_height = y.dims()[2];
+  auto im_width = image.dims()[3];
+  auto im_height = image.dims()[2];
 
-  auto width = x.dims()[3];
-  auto height = x.dims()[2];
+  auto width = input.dims()[3];
+  auto height = input.dims()[2];
 
   T step_width, step_height;
   if (new_step_w == 0 || new_step_h == 0) {
@@ -159,8 +156,8 @@ void PriorBoxKernel(const Context& ctx,
 
   auto stream = ctx.stream();
 
-  out->mutable_data<T>(ctx.GetPlace());
-  var->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
+  ctx.template Alloc<T>(var);
 
   DenseTensor r;
   paddle::framework::TensorFromVector(new_aspect_ratios, ctx, &r);
