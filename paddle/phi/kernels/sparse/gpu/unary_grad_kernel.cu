@@ -23,6 +23,7 @@
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CooGradKernel,           \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO); \
@@ -32,6 +33,7 @@
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CsrGradKernel,           \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
@@ -56,6 +58,7 @@ PD_REGISTER_KERNEL(cast_coo_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCooGradKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
@@ -69,6 +72,7 @@ PD_REGISTER_KERNEL(cast_csr_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCsrGradKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,

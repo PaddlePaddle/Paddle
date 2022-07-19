@@ -76,7 +76,7 @@
   args : (Tensor x, Tensor kernel, Tensor rulebook, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
   output : Tensor(x_grad), Tensor(kernel_grad)
   kernel :
-    func : sparse_conv3d_grad{sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
+    func : conv3d_coo_grad{sparse_coo, dense, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_api : coo_to_dense_grad
   forward : coo_to_dense(Tensor x) -> Tensor(out)
@@ -125,14 +125,17 @@
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   kernel :
-    func : csr_masked_matmul_grad{dense, dense, sparse_csr -> dense, dense}
+    func : masked_matmul_csr_grad{dense, dense, sparse_csr -> dense, dense}
 
 - backward_api : matmul_grad
   forward : matmul(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
   output : Tensor(x_grad), Tensor(y_grad)
   kernel :
-    func : csr_dense_matmul_grad{sparse_csr, dense, dense -> sparse_csr, dense}
+    func : matmul_csr_dense_grad {sparse_csr, dense, dense -> sparse_csr, dense},
+           matmul_csr_csr_grad {sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr},
+           matmul_coo_dense_grad {sparse_coo, dense, dense -> sparse_coo, dense},
+           matmul_coo_coo_grad {sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo}
 
 - backward_api : multiply_grad
   forward : multiply(Tensor x, Tensor y) -> Tensor(out)

@@ -37,7 +37,7 @@ endif()
 cc_library(
   flags
   SRCS flags.cc
-  DEPS gflags boost)
+  DEPS gflags)
 cc_library(
   denormal
   SRCS denormal.cc
@@ -48,7 +48,7 @@ cc_test(
   SRCS errors_test.cc
   DEPS errors enforce)
 
-set(enforce_deps flags errors boost flags phi_enforce)
+set(enforce_deps flags errors flags phi_enforce)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
@@ -88,18 +88,18 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator_facade cuda_graph)
+    DEPS device_context allocator cuda_graph)
 else()
   cc_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator_facade)
+    DEPS device_context allocator)
 endif()
 
 cc_library(
   place
   SRCS place.cc
-  DEPS enforce boost phi_place)
+  DEPS enforce phi_place)
 cc_test(
   place_test
   SRCS place_test.cc
@@ -185,7 +185,7 @@ endif()
 cc_library(
   cudnn_workspace_helper
   SRCS cudnn_workspace_helper.cc
-  DEPS boost)
+  DEPS)
 
 # separate init from device_context to avoid cycle dependencies
 cc_library(
@@ -195,6 +195,7 @@ cc_library(
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
+
 cc_library(
   device_context
   SRCS device_context.cc
@@ -219,11 +220,16 @@ cc_library(
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
        eigen3
-       cpu_context
        generator)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context xpu_resource_pool)
 endif()
+
+if(WITH_MKLDNN)
+  target_link_libraries(device_context onednn_context)
+endif()
+
+target_link_libraries(device_context cpu_context)
 
 cc_library(
   collective_helper
@@ -366,7 +372,7 @@ add_subdirectory(profiler)
 cc_library(
   device_tracer
   SRCS device_tracer.cc
-  DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
+  DEPS profiler_proto framework_proto ${GPU_CTX_DEPS})
 if(WITH_GPU)
   nv_library(
     profiler
