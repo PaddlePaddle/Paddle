@@ -57,7 +57,8 @@ class Engine:
                  inputs_spec=None,
                  labels_spec=None,
                  cluster=None,
-                 strategy=None):
+                 strategy=None,
+                 user_tuning_config=None):
         self.model = model
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
@@ -67,6 +68,7 @@ class Engine:
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
+        self._user_tuning_config = user_tuning_config
 
         self._executor = None
         self._cur_rank = paddle.distributed.get_rank()
@@ -126,19 +128,22 @@ class Engine:
         self._prepare_single_mode("train")
 
     def _prepare_single_mode(self, mode):
-        self._modes = [mode]
-        self._build(self._modes[0])
-        # Do auto parallel process
-        for mode in self._modes:
-            # Do the planning process
-            self._plan(mode)
-        for mode in self._modes:
-            # Do the parallel process
-            self._parallel(mode, self._all_ranks)
 
-            # Init comm and startup program
-            self._initialize(mode)
-            self._mode_init_states[mode] = True
+        self._build(mode)
+
+        # Do the planning process
+        self._plan(mode)
+
+        # Do the Optimization tuning
+        if self._user_tuning_config and mode == "train":
+            self._optimization_tuning(mode)
+
+        # Do the parallel process
+        self._parallel(mode, self._all_ranks)
+
+        # Init comm and startup program
+        self._initialize(mode)
+        self._mode_init_states[mode] = True
 
     def _build(self, mode):
 
@@ -222,65 +227,8 @@ class Engine:
                         metrics.extend(
                             to_list(metric.compute(*(outputs + labels))))
 
-    def tuning(self,
-               user_configs=None,
-               optimizer=None,
-               loss=None,
-               batch_size=16,
-               gradient_scale=True,
-               metrics=None):
-
-        if optimizer and not isinstance(
-                optimizer,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
-            raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`."
-                )
-        self._optimizer = optimizer
-
-        if loss and not isinstance(loss,
-                                   paddle.nn.Layer) and not callable(loss):
-            raise TypeError(
-                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-            )
-        self._loss = loss
-
-        metrics = metrics or []
-        for metric in to_list(metrics):
-            assert isinstance(metric, Metric), \
-                "{} is not sub class of Metric".format(
-                    metric.__class__.__name__)
-
-        self._metrics = to_list(metrics)
-        self._gradient_scale = gradient_scale
-
-        self._planned_mode = None
-        self._modes = ['tuning']
-
-        # step1 Generate Forward program
-        self._build()
-        # step2 Do Parallelism tuning
-        self._plan(self._modes[0])
-
-        # step3 Do Optimization tuning
-        from .tuner.optimization_tuner import OptimizationTuner
-        self._optimization_tuner = OptimizationTuner(
-            user_configs,
-            self._dist_contexts[self._modes[0]],
-            self._planners[self._modes[0]].completer,
-            self.inputs_spec,
-            self.labels_spec,
-            batch_size=batch_size,
-            rank=self._cur_rank)
-
-        self._optimization_tuner.tune()
-
-        # step4 summary tuning result or continue running
-        print(" end of tunning ! " * 8)
-
-    def _build(self):
-        for mode in self._modes:
+        else:
+            # build program in static mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
             if serial_main_prog is not None:
                 return
@@ -304,25 +252,48 @@ class Engine:
                         metrics.extend(
                             to_list(metric.compute(*(outputs + labels))))
 
-            default_ctx = get_default_distributed_context()
-            if not default_ctx.has_annotation or self._default_strategy:
-                inputs = [self._set_data_parallel(var) for var in inputs]
-                labels = [self._set_data_parallel(var) for var in labels]
+        default_ctx = get_default_distributed_context()
+        if not default_ctx.has_annotation:
+            # We build the world process group because the data parallel
+            # needs all ranks by default.
+            new_process_group(list(range(self._nranks)))
+            default_ctx.data_parallel = True
 
-            feed_vars = {"inputs": inputs, "labels": labels}
+        feed_vars = {"inputs": inputs, "labels": labels}
 
-            fetch_vars = {
-                "outputs": flatten(outputs),
-                "loss": losses,
-                "metrics": metrics
-            }
+        fetch_vars = {
+            "outputs": flatten(outputs),
+            "loss": losses,
+            "metrics": metrics
+        }
 
-            self._dist_contexts[mode] = DistributedContext(
-                serial_main_prog, serial_startup_prog, self._optimizer, losses,
-                feed_vars, fetch_vars, self.cluster, self.strategy)
-            self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        self._dist_contexts[mode] = DistributedContext(
+            serial_main_prog, serial_startup_prog, self._optimizer, losses,
+            feed_vars, fetch_vars, self.cluster, self.strategy)
+        self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        self._dist_contexts[mode]._dygraph_mode = self._dygraph_mode
 
-            print("acutal checkpoint: ", self.model.model.gpt.checkpoints)
+    def _optimization_tuning(self, mode):
+
+        assert "batch_size" in self._user_tuning_config
+        batch_size = self._user_tuning_config["batch_size"]
+
+        from .tuner.optimization_tuner import OptimizationTuner
+        self._optimization_tuner = OptimizationTuner(self._user_tuning_config,
+                                                     self._dist_contexts[mode],
+                                                     self.inputs_spec,
+                                                     self.labels_spec,
+                                                     batch_size=batch_size,
+                                                     rank=self._cur_rank)
+
+        self._optimization_tuner.tune()
+
+        if self._user_tuning_config["run_after_tuning"]:
+            # update the strategy
+            self._dist_contexts[
+                mode]._strategy = self._optimization_tuner.get_best_config()
+        else:
+            return
 
     def _plan(self, mode):
         if self._planned_mode is None:

@@ -106,6 +106,64 @@ def parse_results(results):
         return "Fail with UNKWON ERROR"
 
 
+# TODO only dependent on dist context
+# all env need to be start a new pass are member of dist context
+def _copy_context(ref_dist_context):
+
+    clear_all_process_groups()
+
+    new_dist_context = DistributedContext()
+    new_dist_context._serial_main_program = ref_dist_context.serial_main_program.clone(
+        for_test=False)
+    new_dist_context._serial_startup_program = ref_dist_context.serial_startup_program.clone(
+        for_test=False)
+
+    # mapping variable into new dist context
+    if getattr(ref_dist_context, '_params_grads', None):
+        new_dist_context._params_grads = _get_new_params_grads(
+            new_dist_context.serial_main_program,
+            ref_dist_context.serial_main_program,
+            ref_dist_context._params_grads)
+    new_dist_context._serial_loss = _get_new_loss(
+        new_dist_context.serial_main_program,
+        ref_dist_context.serial_main_program, ref_dist_context.serial_loss)
+
+    for key, var_list in ref_dist_context._serial_feed_vars.items():
+        new_var_list = []
+        for var in var_list:
+            block_idx = var.block.idx
+            var_name = var.name
+            var = new_dist_context._serial_main_program.blocks[
+                block_idx]._var_recursive(var_name)
+            new_var_list.append(var)
+        new_dist_context._serial_feed_vars[key] = new_var_list
+
+    for key, var_list in ref_dist_context._serial_fetch_vars.items():
+        new_var_list = []
+        for var in var_list:
+            block_idx = var.block.idx
+            var_name = var.name
+            var = new_dist_context._serial_main_program.blocks[
+                block_idx]._var_recursive(var_name)
+            new_var_list.append(var)
+        new_dist_context._serial_fetch_vars[key] = new_var_list
+
+    # copy information in forward and backward
+    new_dist_context._serial_optimizer = copy.deepcopy(
+        ref_dist_context.serial_optimizer)
+    new_dist_context._dist_tensors_for_program = copy.deepcopy(
+        ref_dist_context._dist_tensors_for_program)
+    new_dist_context._dist_ops_for_program = copy.deepcopy(
+        ref_dist_context._dist_ops_for_program)
+    for pm in ref_dist_context.process_meshes:
+        new_dist_context.add_process_mesh(pm)
+    new_dist_context._dist_op_context = copy.deepcopy(
+        ref_dist_context._dist_op_context)
+    new_dist_context._block_state = copy.deepcopy(ref_dist_context.block_state)
+
+    return new_dist_context
+
+
 class OptimizationTuner:
     """
     OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
@@ -116,16 +174,17 @@ class OptimizationTuner:
         self,
         user_configs,
         dist_context,
-        completer,
         inputs_spec,
         labels_spec,
         batch_size,
         rank,
     ):
 
-        self._dist_context = dist_context
-        self._completer = completer
-        self._config = TuningConfig(user_configs, self._dist_context._strategy)
+        self._config = TuningConfig(user_configs, dist_context._strategy)
+        # should not modify dist context from calling function
+        self._baseline_dist_context = _copy_context(dist_context)
+        self._baseline_completer = Completer(self._baseline_dist_context)
+
         self._rank_id = rank
         self._inputs_spec = inputs_spec
         self._labels_spec = labels_spec
@@ -155,26 +214,28 @@ class OptimizationTuner:
     # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
 
-        serial_main_program = self._dist_context.serial_main_program
-        serial_startup_program = self._dist_context.serial_startup_program
-        serial_loss = self._dist_context.serial_loss
+        serial_main_program = self._baseline_dist_context.serial_main_program
+        serial_startup_program = self._baseline_dist_context.serial_startup_program
+        serial_loss = self._baseline_dist_context.serial_loss
 
         with program_guard(serial_main_program, serial_startup_program):
             params_grads = append_backward(
-                serial_loss, distop_context=self._dist_context.dist_op_context)
+                serial_loss,
+                distop_context=self._baseline_dist_context.dist_op_context)
 
-        self._completer.complete_backward_annotation(serial_main_program)
-        self._dist_context.block_state.parse_backward_blocks(
+        self._baseline_completer.complete_backward_annotation(
             serial_main_program)
-        self._dist_context._params_grads = params_grads
+        self._baseline_dist_context.block_state.parse_backward_blocks(
+            serial_main_program)
+        self._baseline_dist_context._params_grads = params_grads
 
         if self._config.verbose:
             baseline_dir = os.path.join(self.project_dir, "baseline")
             if not os.path.exists(baseline_dir):
                 pathlib.Path(baseline_dir).mkdir(parents=True, exist_ok=True)
-            debug_program(self._dist_context._serial_main_program, baseline_dir,
-                          "main")
-            debug_program(self._dist_context._serial_startup_program,
+            debug_program(self._baseline_dist_context._serial_main_program,
+                          baseline_dir, "main")
+            debug_program(self._baseline_dist_context._serial_startup_program,
                           baseline_dir, "startup")
 
     def _select_tuning_algorithm(self):
@@ -183,50 +244,11 @@ class OptimizationTuner:
         algorithm_name = "_".join(sorted(selected_passes_set))
         self._algorithm = new_algorithm(algorithm_name, self._config)
 
-    # TODO only dependent on dist context
-    # all env need to be start a new pass are member of dist context
-    def _get_new_context(self):
-
-        clear_all_process_groups()
-
-        new_dist_context = DistributedContext()
-        new_dist_context._serial_main_program = self._dist_context.serial_main_program.clone(
-            for_test=False)
-        new_dist_context._serial_startup_program = self._dist_context.serial_startup_program.clone(
-            for_test=False)
-
-        # mapping variable into new dist context
-        new_dist_context._params_grads = _get_new_params_grads(
-            new_dist_context.serial_main_program,
-            self._dist_context.serial_main_program,
-            self._dist_context._params_grads)
-        new_dist_context._serial_loss = _get_new_loss(
-            new_dist_context.serial_main_program,
-            self._dist_context.serial_main_program,
-            self._dist_context.serial_loss)
-
-        # copy information in forward and backward
-        new_dist_context._serial_optimizer = copy.deepcopy(
-            self._dist_context.serial_optimizer)
-        new_dist_context._dist_tensors_for_program = copy.deepcopy(
-            self._dist_context._dist_tensors_for_program)
-        new_dist_context._dist_ops_for_program = copy.deepcopy(
-            self._dist_context._dist_ops_for_program)
-        for pm in self._dist_context.process_meshes:
-            new_dist_context.add_process_mesh(pm)
-        new_dist_context._dist_op_context = copy.deepcopy(
-            self._dist_context._dist_op_context)
-        new_dist_context._block_state = copy.deepcopy(
-            self._dist_context.block_state)
-
-        pass_context = PassContext()
-        new_completer = Completer(new_dist_context)
-
-        return new_dist_context, pass_context, new_completer
-
     def _apply_optimization(self, trial):
         new_strategy = trial.space
-        dist_context, pass_context, completer = self._get_new_context()
+        dist_context = _copy_context(self._baseline_dist_context)
+        pass_context = PassContext()
+        completer = Completer(dist_context)
 
         main_program = dist_context.serial_main_program
         startup_program = dist_context.serial_startup_program
@@ -239,8 +261,8 @@ class OptimizationTuner:
 
             # TODO AMP Pass should not use loss var
             config["loss"] = dist_context.serial_loss
-            config["input_data"] = self._dist_context.serial_feed_vars["inputs"] \
-                + self._dist_context.serial_feed_vars["labels"]
+            config["input_data"] = self._baseline_dist_context.serial_feed_vars["inputs"] \
+                + self._baseline_dist_context.serial_feed_vars["labels"]
             if config["use_pure_fp16"]:
                 config["base_opt"] = dist_context.optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
@@ -308,7 +330,8 @@ class OptimizationTuner:
         profile_ctx['distributed_env'] = copy.deepcopy(
             paddle.distributed.ParallelEnv())
         profile_ctx['group_map'] = parse_process_groups()
-        profile_ctx["loss_var_name"] = self._dist_context.serial_loss.name
+        profile_ctx[
+            "loss_var_name"] = self._baseline_dist_context.serial_loss.name
 
         profile_ctx["batch_size"] = infer_batch_size(trial.main_program,
                                                      self._inputs_spec)
@@ -478,8 +501,8 @@ The best trial is: [{}], whose configuration is following:
         # pruning the search space of the algorithm
         self._tuning_start_time = time.time()
         self._algorithm.collect_model_info(
-            self._dist_context.serial_main_program,
-            self._dist_context.serial_startup_program)
+            self._baseline_dist_context.serial_main_program,
+            self._baseline_dist_context.serial_startup_program)
 
         # main search loop
         i = 0
