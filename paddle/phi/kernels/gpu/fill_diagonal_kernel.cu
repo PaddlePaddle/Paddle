@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -56,11 +55,6 @@ void FillDiagonalKernel(const Context& ctx,
 #else
   const int64_t kMaxBlockDim = 512;
 #endif
-  //  auto* out = ctx.Output<Tensor>("Out");
-  //  auto offset = ctx.Attr<int>("offset");
-  //  auto wrap = ctx.Attr<bool>("wrap");
-
-  //  auto* x = ctx.Input<framework::Tensor>("X");
   paddle::framework::TensorCopy(x, ctx.GetPlace(), out);
 
   T* out_data = ctx.template Alloc<T>(out);

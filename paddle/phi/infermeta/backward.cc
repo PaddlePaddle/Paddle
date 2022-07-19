@@ -281,8 +281,9 @@ void FillDiagonalGradInferMeta(const MetaTensor& dout,
                                bool wrap,
                                MetaTensor* dx) {
   auto x_dims = dout.dims();
-  if (dx->initialized()) {
+  if (dx) {
     dx->set_dims(x_dims);
+    dx->set_dtype(dout.dtype());
   }
 }
 

@@ -799,6 +799,7 @@
   infer_meta :
     func : UnchangedInferMeta
   invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  
 - backward_api : fill_diagonal_grad
   forward : fill_diagonal (Tensor x, float value, int offset, bool wrap) -> Tensor(out)
   args : (Tensor out_grad, float value, int offset, bool wrap)

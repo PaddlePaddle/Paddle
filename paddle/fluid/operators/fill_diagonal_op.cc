@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -33,14 +34,14 @@ class FillIDiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
         "value",
         "The float values of tensor, whose dim is one, and no need of grad")
         .SetDefault(0);
+    AddAttr<bool>("wrap",
+                  "the diagonal 'wrapped' after N columns for tall matrices")
+        .SetDefault(false);
     AddAttr<int>("offset",
                  "offset of diagonal, zero means no offset, positive means "
                  "offset to up-right corner; negtive means offset to "
                  "bottom-left corner")
         .SetDefault(0);
-    AddAttr<bool>("wrap",
-                  "the diagonal 'wrapped' after N columns for tall matrices")
-        .SetDefault(false);
   }
 };
 
@@ -93,6 +94,11 @@ class FillIDiagonalGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(FillIDiagonalOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(FillIDiagonalGradOpInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
@@ -107,12 +113,14 @@ DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal_grad,
 
 REGISTER_OPERATOR(fill_diagonal,
                   ops::FillIDiagonalOp,
-                  ops::FillIDiagonalOpMaker,
-                  ops::FillIDiagonalOpVarTypeInference,
                   ops::FillIDiagonalGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillIDiagonalGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FillIDiagonalOpMaker,
+                  ops::FillIDiagonalOpInplaceInferer,
+                  ops::FillIDiagonalOpVarTypeInference,
                   FillDiagonalShapeFunctor);
 
 REGISTER_OPERATOR(fill_diagonal_grad,
                   ops::FillIDiagonalGradOp,
+                  ops::FillIDiagonalGradOpInplaceInferer,
                   FillDiagonalGradShapeFunctor);
