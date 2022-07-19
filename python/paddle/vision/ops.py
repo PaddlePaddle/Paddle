@@ -442,7 +442,7 @@ def prior_box(input,
               offset=0.5,
               min_max_aspect_ratios_order=False,
               name=None):
-    """
+    r"""
 
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
@@ -450,60 +450,55 @@ def prior_box(input,
     box is in range(min_size, max_size) interval, which is generated in
     sequence according to the aspect_ratios.
 
-    Parameters:
-       input(Tensor): 4-D tensor(NCHW), the data type should be float32 or float64.
-       image(Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
+    Args:
+        input (Tensor): 4-D tensor(NCHW), the data type should be float32 or float64.
+        image (Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
             the data type should be float32 or float64.
-       min_sizes(list|tuple|float): the min sizes of generated prior boxes.
-       max_sizes(list|tuple|None): the max sizes of generated prior boxes.
+        min_sizes (list|tuple|float): the min sizes of generated prior boxes.
+        max_sizes (list|tuple|None): the max sizes of generated prior boxes.
             Default: None.
-       aspect_ratios(list|tuple|float): the aspect ratios of generated
+        aspect_ratios (list|tuple|float): the aspect ratios of generated
             prior boxes. Default: [1.].
-       variance(list|tuple): the variances to be encoded in prior boxes.
+        variance (list|tuple): the variances to be encoded in prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
-       flip(bool): Whether to flip aspect ratios. Default:False.
-       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|tuple): Prior boxes step across width and height, If
+        flip (bool): Whether to flip aspect ratios. Default:False.
+        clip (bool): Whether to clip out-of-boundary boxes. Default: False.
+        step (list|tuple): Prior boxes step across width and height, If
             step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
             height or weight of the input will be automatically calculated.
             Default: [0., 0.]
-       offset(float): Prior boxes center offset. Default: 0.5
-       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+        offset (float): Prior boxes center offset. Default: 0.5
+        min_max_aspect_ratios_order (bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
-       name(str, optional): The default value is None.  Normally there is no need for 
+        name (str, optional): The default value is None. Normally there is no need for 
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tuple: A tuple with two Variable (boxes, variances)
-
-        boxes(Tensor): the output prior boxes of PriorBox.
-        4-D tensor, the layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input,
-        num_priors is the total box count of each position of input.
-
-        variances(Tensor): the expanded variances of PriorBox.
-        4-D tensor, the layput is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_priors is the total box count of each position of input
+        boxes (Tensor): the output prior boxes of PriorBox.
+            4-D tensor, the layout is [H, W, num_priors, 4].
+            H is the height of input, W is the width of input,
+            num_priors is the total box count of each position of input.
+        variances (Tensor): the expanded variances of PriorBox.
+            4-D tensor, the layput is [H, W, num_priors, 4].
+            H is the height of input, W is the width of input
+            num_priors is the total box count of each position of input
 
     Examples:
         .. code-block:: python
 
-        import paddle
-        from ppdet.modeling import ops
+            import paddle
 
-        paddle.enable_static()
-        input = paddle.static.data(name="input", shape=[None,3,6,9])
-        image = paddle.static.data(name="image", shape=[None,3,9,12])
-        box, var = ops.prior_box(
-                    input=input,
-                    image=image,
-                    min_sizes=[100.],
-                    clip=True,
-                    flip=True)
+            input = paddle.rand([2, 3, 6, 9])
+            image = paddle.rand([2, 3, 9, 12])
+            box, var = paddle.version.ops.prior_box(
+                input=input,
+                image=image,
+                min_sizes=[100.],
+                clip=True,
+                flip=True)
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -532,7 +527,7 @@ def prior_box(input,
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if _in_legacy_dygraph():
+    if _non_static_mode():
         attrs = ('min_sizes', min_sizes, 'aspect_ratios', aspect_ratios,
                  'variances', variance, 'flip', flip, 'clip', clip, 'step_w',
                  steps[0], 'step_h', steps[1], 'offset', offset,
@@ -584,23 +579,24 @@ def box_coder(prior_box,
               axis=0,
               name=None):
     r"""
-    **Box Coder Layer**
+
+    Box Coder Layer:
     Encode/Decode the target bounding box with the priorbox information.
     
     The Encoding schema described below:
     .. math::
         ox = (tx - px) / pw / pxv
         oy = (ty - py) / ph / pyv
-        ow = \log(\abs(tw / pw)) / pwv 
-        oh = \log(\abs(th / ph)) / phv 
+        ow = \log(\abs(tw / pw)) / pwv
+        oh = \log(\abs(th / ph)) / phv
+
     The Decoding schema described below:
-    
     .. math::
-  
         ox = (pw * pxv * tx * + px) - tw / 2
         oy = (ph * pyv * ty * + py) - th / 2
         ow = \exp(pwv * tw) * pw + tw / 2
-        oh = \exp(phv * th) * ph + th / 2   
+        oh = \exp(phv * th) * ph + th / 2
+
     where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
     width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
     the priorbox's (anchor) center coordinates, width and height. `pxv`, 
@@ -612,82 +608,72 @@ def box_coder(prior_box,
     assigned axis. 
 
     Args:
-        prior_box(Tensor): Box list prior_box is a 2-D Tensor with shape 
+        prior_box (Tensor): Box list prior_box is a 2-D Tensor with shape 
             [M, 4] holds M boxes and data type is float32 or float64. Each box
             is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
             left top coordinate of the anchor box, if the input is image feature
             map, they are close to the origin of the coordinate system. 
             [xmax, ymax] is the right bottom coordinate of the anchor box.       
-        prior_box_var(List|Tensor|None): prior_box_var supports three types 
+        prior_box_var (List|Tensor|None): prior_box_var supports three types 
             of input. One is Tensor with shape [M, 4] which holds M group and 
             data type is float32 or float64. The second is list consist of 
             4 elements shared by all boxes and data type is float32 or float64. 
             Other is None and not involved in calculation. 
-        target_box(Tensor): This input can be a 2-D LoDTensor with shape 
+        target_box (Tensor): This input can be a 2-D LoDTensor with shape 
             [N, 4] when code_type is 'encode_center_size'. This input also can 
             be a 3-D Tensor with shape [N, M, 4] when code_type is 
             'decode_center_size'. Each box is represented as 
             [xmin, ymin, xmax, ymax]. The data type is float32 or float64. 
-        code_type(str): The code type used with the target box. It can be
+        code_type (str): The code type used with the target box. It can be
             `encode_center_size` or `decode_center_size`. `encode_center_size` 
             by default.
-        box_normalized(bool): Whether treat the priorbox as a normalized box.
+        box_normalized (bool): Whether treat the priorbox as a normalized box.
             Set true by default.
-        axis(int): Which axis in PriorBox to broadcast for box decode, 
+        axis (int): Which axis in PriorBox to broadcast for box decode, 
             for example, if axis is 0 and TargetBox has shape [N, M, 4] and 
             PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
             for decoding. It is only valid when code type is 
             `decode_center_size`. Set 0 by default. 
-        name(str, optional): For detailed information, please refer 
+        name (str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default. 
 
     Returns:
-        Tensor:
-        output_box(Tensor): When code_type is 'encode_center_size', the 
-        output tensor of box_coder_op with shape [N, M, 4] representing the 
-        result of N target boxes encoded with M Prior boxes and variances. 
-        When code_type is 'decode_center_size', N represents the batch size 
-        and M represents the number of decoded boxes.
+        output_box (Tensor): When code_type is 'encode_center_size', the 
+            output tensor of box_coder_op with shape [N, M, 4] representing the 
+            result of N target boxes encoded with M Prior boxes and variances. 
+            When code_type is 'decode_center_size', N represents the batch size 
+            and M represents the number of decoded boxes.
 
     Examples:
- 
         .. code-block:: python
  
             import paddle
-            from ppdet.modeling import ops
-            paddle.enable_static()
+
             # For encode
-            prior_box_encode = paddle.static.data(name='prior_box_encode',
-                                  shape=[512, 4],
-                                  dtype='float32')
-            target_box_encode = paddle.static.data(name='target_box_encode',
-                                   shape=[81, 4],
-                                   dtype='float32')
-            output_encode = ops.box_coder(prior_box=prior_box_encode,
-                                    prior_box_var=[0.1,0.1,0.2,0.2],
-                                    target_box=target_box_encode,
-                                    code_type="encode_center_size")
+            prior_box_encode = paddle.rand([512, 4], dtype='float32')
+            target_box_encode = paddle.rand([80, 4], dtype='float32')
+            output_encode = paddle.vision.ops.box_coder(prior_box=prior_box_encode,
+                prior_box_var=[0.1, 0.1, 0.2, 0.2],
+                target_box=target_box_encode,
+                code_type="encode_center_size")
+
             # For decode
-            prior_box_decode = paddle.static.data(name='prior_box_decode',
-                                  shape=[512, 4],
-                                  dtype='float32')
-            target_box_decode = paddle.static.data(name='target_box_decode',
-                                   shape=[512, 81, 4],
-                                   dtype='float32')
-            output_decode = ops.box_coder(prior_box=prior_box_decode,
-                                    prior_box_var=[0.1,0.1,0.2,0.2],
-                                    target_box=target_box_decode,
-                                    code_type="decode_center_size",
-                                    box_normalized=False,
-                                    axis=1)
+            prior_box_decode = paddle.rand([512, 4], dtype='float32')
+            target_box_decode = paddle.rand([512, 80, 4], dtype='float32')
+            output_decode = paddle.vision.ops.box_coder(prior_box=prior_box_decode,
+                prior_box_var=[0.1, 0.1, 0.2, 0.2],
+                target_box=target_box_decode,
+                code_type="decode_center_size",
+                box_normalized=False,
+                axis=1)
     """
     check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
                              'box_coder')
     check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
                              'box_coder')
 
-    if _in_legacy_dygraph():
+    if _non_static_mode():
         if isinstance(prior_box_var, Variable):
             output_box = _C_ops.box_coder(prior_box, prior_box_var, target_box,
                                           "code_type", code_type,

@@ -19,6 +19,7 @@ import numpy as np
 import sys
 import math
 from op_test import OpTest
+import paddle
 
 
 class TestPriorBoxOp(OpTest):
@@ -188,6 +189,53 @@ class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
 
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = True
+
+
+class TestPriorBoxAPI(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(678)
+        self.input_np = np.random.rand(2, 10, 32, 32).astype('float32')
+        self.image_np = np.random.rand(2, 10, 40, 40).astype('float32')
+        self.min_sizes = [2, 4]
+
+    def test_dygraph_with_static(self):
+        paddle.enable_static()
+        input = paddle.static.data(name='input',
+                                   shape=[2, 10, 32, 32],
+                                   dtype='float32')
+        image = paddle.static.data(name='image',
+                                   shape=[2, 10, 40, 40],
+                                   dtype='float32')
+
+        box, var = paddle.vision.ops.prior_box(input=input,
+                                               image=image,
+                                               min_sizes=self.min_sizes,
+                                               clip=True,
+                                               flip=True)
+
+        exe = paddle.static.Executor()
+        box_np, var_np = exe.run(paddle.static.default_main_program(),
+                                 feed={
+                                     'input': self.input_np,
+                                     'image': self.image_np,
+                                 },
+                                 fetch_list=[box, var])
+
+        paddle.disable_static()
+        inputs_dy = paddle.to_tensor(self.input_np)
+        image_dy = paddle.to_tensor(self.image_np)
+
+        box_dy, var_dy = paddle.vision.ops.prior_box(input=inputs_dy,
+                                                     image=image_dy,
+                                                     min_sizes=self.min_sizes,
+                                                     clip=True,
+                                                     flip=True)
+        box_dy_np = box_dy.numpy()
+        var_dy_np = var_dy.numpy()
+
+        self.assertTrue(np.array_equal(box_np, box_dy_np))
+        self.assertTrue(np.array_equal(var_np, var_dy_np))
 
 
 if __name__ == '__main__':
