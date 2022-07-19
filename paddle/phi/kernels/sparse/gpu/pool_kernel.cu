@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -48,14 +48,14 @@ __global__ void MaxPoolCudaKernel(const T* in_features_ptr,
  * out: (N, D, H, W, OC)
  **/
 template <typename T, typename IntT = int>
-void MaxPoolGPUKernel(const GPUContext& dev_ctx,
-                      const SparseCooTensor& x,
-                      const std::vector<int>& kernel_sizes,
-                      const std::vector<int>& paddings,
-                      const std::vector<int>& dilations,
-                      const std::vector<int>& strides,
-                      SparseCooTensor* out,
-                      DenseTensor* rulebook) {
+void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
+                         const SparseCooTensor& x,
+                         const std::vector<int>& kernel_sizes,
+                         const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
+                         const std::vector<int>& strides,
+                         SparseCooTensor* out,
+                         DenseTensor* rulebook) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const std::vector<int>& real_kernel_sizes =
@@ -127,34 +127,34 @@ void MaxPoolGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MaxPoolKernel(const Context& dev_ctx,
-                   const SparseCooTensor& x,
-                   const std::vector<int>& kernel_sizes,
-                   const std::vector<int>& paddings,
-                   const std::vector<int>& dilations,
-                   const std::vector<int>& strides,
-                   SparseCooTensor* out,
-                   DenseTensor* rulebook) {
+void MaxPoolCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const std::vector<int>& kernel_sizes,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      const std::vector<int>& strides,
+                      SparseCooTensor* out,
+                      DenseTensor* rulebook) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolGPUKernel", ([&] {
-        MaxPoolGPUKernel<T, data_t>(dev_ctx,
-                                    x,
-                                    kernel_sizes,
-                                    paddings,
-                                    dilations,
-                                    strides,
-                                    out,
-                                    rulebook);
+      x.non_zero_indices().dtype(), "MaxPoolCooGPUKernel", ([&] {
+        MaxPoolCooGPUKernel<T, data_t>(dev_ctx,
+                                       x,
+                                       kernel_sizes,
+                                       paddings,
+                                       dilations,
+                                       strides,
+                                       out,
+                                       rulebook);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_maxpool,
+PD_REGISTER_KERNEL(maxpool_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::MaxPoolKernel,
+                   phi::sparse::MaxPoolCooKernel,
                    float,
                    double,
                    phi::dtype::float16) {

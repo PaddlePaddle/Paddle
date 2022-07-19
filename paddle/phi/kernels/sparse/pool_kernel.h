@@ -22,25 +22,25 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void MaxPoolKernel(const Context& dev_ctx,
-                   const SparseCooTensor& x,
-                   const std::vector<int>& kernel_sizes,
-                   const std::vector<int>& paddings,
-                   const std::vector<int>& dilations,
-                   const std::vector<int>& strides,
-                   SparseCooTensor* out,
-                   DenseTensor* rulebook);
+void MaxPoolCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const std::vector<int>& kernel_sizes,
+                      const std::vector<int>& paddings,
+                      const std::vector<int>& dilations,
+                      const std::vector<int>& strides,
+                      SparseCooTensor* out,
+                      DenseTensor* rulebook);
 
 template <typename T, typename Context>
-SparseCooTensor MaxPool(const Context& dev_ctx,
-                        const SparseCooTensor& x,
-                        const std::vector<int>& kernel_sizes,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations,
-                        const std::vector<int>& strides,
-                        DenseTensor* rulebook) {
+SparseCooTensor MaxPoolCoo(const Context& dev_ctx,
+                           const SparseCooTensor& x,
+                           const std::vector<int>& kernel_sizes,
+                           const std::vector<int>& paddings,
+                           const std::vector<int>& dilations,
+                           const std::vector<int>& strides,
+                           DenseTensor* rulebook) {
   SparseCooTensor coo;
-  MaxPoolKernel<T, Context>(
+  MaxPoolCooKernel<T, Context>(
       dev_ctx, x, kernel_sizes, paddings, dilations, strides, &coo, rulebook);
   return coo;
 }
