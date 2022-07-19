@@ -3719,12 +3719,11 @@ def lgamma(x, name=None):
 
 
     Args:
-        x (Tensor): (Tensor), The input tensor of lgamma op.
-        with_quant_attr (BOOLEAN): Whether the operator has attributes used by quantization. 
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): (Tensor), The output tensor of lgamma op.
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
 
     Examples:
         .. code-block:: python
@@ -3738,9 +3737,8 @@ def lgamma(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.final_state_lgamma(x)
-    else:
-        if _in_legacy_dygraph():
-            return _C_ops.lgamma(x)
+    elif _in_legacy_dygraph():
+        return _C_ops.lgamma(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
     helper = LayerHelper('lgamma', **locals())
