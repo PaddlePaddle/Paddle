@@ -64,7 +64,7 @@ class ReshapePrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     PADDLE_ENFORCE_EQ(product(x_shape),
@@ -75,7 +75,7 @@ class ReshapePrimOpShapeInference : public framework::InferShapeBase {
                           "contains %d elements",
                           product(x_shape),
                           product(shape)));
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
   }
 };
 

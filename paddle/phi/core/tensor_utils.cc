@@ -54,6 +54,10 @@ void Copy(const Context& dev_ctx,
   } else if (paddle::platform::is_xpu_place(dst_place)) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (paddle::platform::is_custom_place(dst_place)) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
   }
 
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
