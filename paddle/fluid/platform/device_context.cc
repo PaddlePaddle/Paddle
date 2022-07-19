@@ -541,17 +541,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
 
 CUDADeviceContext::~CUDADeviceContext() = default;
 
-stream::CUDAStream* CUDADeviceContext::GetCudaStream() const {
-  return cuda_stream_.get();
-}
-
-stream::CUDAStream* CUDADeviceContext::SetCudaStream(
-    stream::CUDAStream* new_stream_ptr) {
-  auto* old_stream_ptr = cuda_stream_.release();
-  cuda_stream_.reset(new_stream_ptr);
-  return old_stream_ptr;
-}
-
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

@@ -279,16 +279,7 @@ class CUDADeviceContext : public phi::GPUContext {
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
 
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  stream::CUDAStream* GetCudaStream() const;
-  stream::CUDAStream* SetCudaStream(stream::CUDAStream*);
-
  private:
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  std::unique_ptr<stream::CUDAStream> cuda_stream_;
-
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 

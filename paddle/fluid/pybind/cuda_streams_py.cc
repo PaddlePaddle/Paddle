@@ -44,9 +44,9 @@ void BindCudaStream(py::module *m_ptr) {
 
   m.def(
       "_set_current_stream",
-      [](paddle::platform::stream::CUDAStream &stream) {
+      [](const paddle::platform::stream::CUDAStream &stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        return paddle::platform::stream::set_current_stream(&stream);
+        return paddle::platform::stream::set_current_stream(stream);
 #else
         PADDLE_THROW(platform::errors::Unavailable(
             "Paddle is not compiled with CUDA. Cannot set cuda current "

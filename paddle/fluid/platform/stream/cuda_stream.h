@@ -154,9 +154,9 @@ class CUDAStream final {
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };
 
-CUDAStream* get_current_stream(int deviceId);
+CUDAStream get_current_stream(int deviceId);
 // NOTE: There is a problem with the interface and needs to be fixed
-CUDAStream* set_current_stream(CUDAStream* stream);
+CUDAStream set_current_stream(const CUDAStream& stream);
 
 }  // namespace stream
 }  // namespace platform

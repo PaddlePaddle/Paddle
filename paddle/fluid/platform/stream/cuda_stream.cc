@@ -110,18 +110,17 @@ void CUDAStream::SetStream(gpuStream_t stream) {
   callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
 }
 
-CUDAStream* get_current_stream(int deviceId) {
+CUDAStream get_current_stream(int deviceId) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (deviceId == -1) {
     deviceId = platform::GetCurrentDeviceId();
   }
 
   auto& pool = platform::DeviceContextPool::Instance();
-
   platform::Place device = CUDAPlace(deviceId);
-
-  return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
-      ->GetCudaStream();
+  auto stream =
+      static_cast<platform::CUDADeviceContext*>(pool.Get(device))->stream();
+  return CUDAStream(stream, device);
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
@@ -129,12 +128,15 @@ CUDAStream* get_current_stream(int deviceId) {
 #endif
 }
 
-CUDAStream* set_current_stream(CUDAStream* stream) {
+CUDAStream set_current_stream(const CUDAStream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto& device = stream->GetPlace();
+  auto& device = stream.GetPlace();
   auto& pool = platform::DeviceContextPool::Instance();
-  return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
-      ->SetCudaStream(stream);
+  static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+      ->SetStream(stream.raw_stream());
+  auto original_stream =
+      static_cast<platform::CUDADeviceContext*>(pool.Get(device))->stream();
+  return CUDAStream(original_stream, device);
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Paddle is not compiled with CUDA. Cannot visit cuda current"
