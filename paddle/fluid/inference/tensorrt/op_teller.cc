@@ -1211,10 +1211,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
-      auto dtype = x_var_desc->GetDataType();
-      if (dtype != 5) {
-        return false;
-      }
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
       // At present, only support float32 or float16 into trt.
@@ -1381,14 +1377,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
     if (op_type == "shape" && !with_dynamic_shape) {
       return false;
-    }
-
-    if (op_type == "sum") {
-      return true;
-    }
-
-    if (op_type == "shape") {
-      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "fused_embedding_eltwise_layernorm") {
