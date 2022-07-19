@@ -12,20 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void EditDistanceKernel(const Context& ctx,
-                        const DenseTensor& hyps,
-                        const DenseTensor& refs,
-                        const paddle::optional<DenseTensor>& hypslength,
-                        const paddle::optional<DenseTensor>& refslength,
-                        bool normalized,
-                        DenseTensor* sequencenum,
-                        DenseTensor* out);
+KernelSignature EditDistanceOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("edit_distance",
+                         {"Hyps", "Refs", "HypsLength", "RefsLength"},
+                         {"normalized"},
+                         {"SequenceNum", "Out"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(edit_distance, phi::EditDistanceOpArgumentMapping);

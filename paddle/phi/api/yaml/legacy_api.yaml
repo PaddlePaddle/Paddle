@@ -660,8 +660,9 @@
   infer_meta :
     func : EditDistanceInferMeta
   kernel :
-    func : EditDistanceKernel
-  optional: hypslength, refslength
+    func : edit_distance
+    data_type: DataType::FLOAT32
+  optional : hypslength, refslength
 
 # eigh
 - api : eigh

@@ -440,10 +440,10 @@ def square_error_cost(input, label):
 
 def edit_distance(input,
                   label,
-                  input_length=None,
-                  label_length=None,
                   normalized=True,
-                  ignored_tokens=None):
+                  ignored_tokens=None,
+                  input_length=None,
+                  label_length=None):
     """
     This op computes the edit distances, also called Levenshtein distance, between a batch of
     hypothesis strings and their references. It measures how dissimilar two strings are by counting
@@ -531,6 +531,10 @@ def edit_distance(input,
                          outputs={"Out": [erased_label]},
                          attrs={"tokens": ignored_tokens})
         label = erased_label
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_edit_distance(input, label, input_length,
+                                                label_length, normalized)
 
     this_inputs = {"Hyps": [input], "Refs": [label]}
     if input_length is not None and label_length is not None:

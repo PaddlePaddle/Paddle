@@ -220,21 +220,6 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
-void GenerateProposalsV2InferMeta(const MetaTensor& scores,
-                                  const MetaTensor& bbox_deltas,
-                                  const MetaTensor& im_shape,
-                                  const MetaTensor& anchors,
-                                  const MetaTensor& variances,
-                                  int pre_nms_top_n,
-                                  int post_nms_top_n,
-                                  float nms_thresh,
-                                  float min_size,
-                                  float eta,
-                                  bool pixel_offset,
-                                  MetaTensor* rpn_rois,
-                                  MetaTensor* rpn_roi_probs,
-                                  MetaTensor* rpn_rois_num);
-
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/edit_distance_kernel.h"
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,23 +26,23 @@ template <typename T, typename Context>
 void EditDistanceKernel(const Context& ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
-                        const DenseTensor& hypslength,
-                        const DenseTensor& refslength,
+                        const paddle::optional<DenseTensor>& hypslength,
+                        const paddle::optional<DenseTensor>& refslength,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {
   int64_t* seq_num_data = ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  phi::Vector<size_t> hyp_lod(batch_size + 1);
-  phi::Vector<size_t> ref_lod(batch_size + 1);
+  paddle::framework::Vector<size_t> hyp_lod(batch_size + 1);
+  paddle::framework::Vector<size_t> ref_lod(batch_size + 1);
 
-  bool use_length = hypslength.initialized();
+  bool use_length = hypslength.get_ptr() != nullptr;
 
   if (use_length) {
     // build lod when using padding
-    auto hyp_length_ptr = hypslength.data<int64_t>();
-    auto ref_length_ptr = refslength.data<int64_t>();
+    auto hyp_length_ptr = hypslength.get_ptr()->data<int64_t>();
+    auto ref_length_ptr = refslength.get_ptr()->data<int64_t>();
 
     for (auto i = 0; i < batch_size; i++) {
       hyp_lod[i + 1] = hyp_lod[i] + hyp_length_ptr[i];
@@ -65,8 +66,8 @@ void EditDistanceKernel(const Context& ctx,
   *seq_num_data = static_cast<int64_t>(num_strs);
 
   out->Resize({static_cast<int64_t>(num_strs), 1});
-  ctx.template Alloc<float>(out);
-  auto out = out->data<T>();
+  ctx.template Alloc<T>(out);
+  auto outdata = out->data<T>();
 
   T distance = 0.0;
   for (size_t num = 0; num < num_strs; ++num) {
@@ -80,7 +81,7 @@ void EditDistanceKernel(const Context& ctx,
     } else {
       DenseTensor dist_t;
       dist_t.Resize({m + 1, n + 1});
-      ctx.template Alloc<T>(dist_t);
+      ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];
@@ -113,11 +114,11 @@ void EditDistanceKernel(const Context& ctx,
                                   n));
       distance = distance / n;
     }
-    out[num] = distance;
+    outdata[num] = distance;
   }
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    edit_distance, CPU, ALL_LAYOUT, phi::EditDistanceKernel, float, double) {}
+    edit_distance, CPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {}

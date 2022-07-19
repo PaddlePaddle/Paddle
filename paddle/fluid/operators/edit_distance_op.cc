@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/edit_distance_op.h"
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
@@ -50,11 +50,11 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
              "1-D Tensor<int64_t>. "
              "Sequence length for refs when refs is a tensor")
         .AsDispensable();
+    AddOutput("SequenceNum", "The sequence count of current batch");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether to normalize "
                   "the edit distance by the length of reference string.")
         .SetDefault(false);
-    AddOutput("SequenceNum", "The sequence count of current batch");
     AddOutput("Out",
               "(2-D Tensor with shape [`batch_size` x 1]) "
               "The output edit distances of EditDistance operator.");
@@ -102,5 +102,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     EditDistanceShapeFunctor);
-REGISTER_OP_CPU_KERNEL(
-    edit_distance, ops::EditDistanceKernel<paddle::platform::CPUPlace, float>);

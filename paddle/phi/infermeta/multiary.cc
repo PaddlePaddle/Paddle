@@ -1029,7 +1029,7 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   auto hyp_dims = hyps.dims();
   auto ref_dims = refs.dims();
 
-  if (hypslength.initialized() && refslength.initialized()) {
+  if (hypslength && refslength) {
     auto hyp_length_dims = hypslength.dims();
     auto ref_length_dims = refslength.dims();
 
@@ -1083,25 +1083,9 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   }
 
   out->set_dims(refs.dims());
+  out->set_dtype(DataType::FLOAT32);
   sequencenum->set_dims(phi::make_ddim({1}));
-}
-
-void GenerateProposalsV2InferMeta(const MetaTensor& scores,
-                                  const MetaTensor& bbox_deltas,
-                                  const MetaTensor& im_shape,
-                                  const MetaTensor& anchors,
-                                  const MetaTensor& variances,
-                                  int pre_nms_top_n,
-                                  int post_nms_top_n,
-                                  float nms_thresh,
-                                  float min_size,
-                                  float eta,
-                                  bool pixel_offset,
-                                  MetaTensor* rpn_rois,
-                                  MetaTensor* rpn_roi_probs,
-                                  MetaTensor* rpn_rois_num) {
-  rpn_rois->set_dims(phi::make_ddim({-1, 4}));
-  rpn_roi_probs->set_dims(phi::make_ddim({-1, 1}));
+  sequencenum->set_dtype(DataType::FLOAT32);
 }
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,

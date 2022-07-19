@@ -17,13 +17,15 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
@@ -75,8 +77,8 @@ template <typename T, typename Context>
 void EditDistanceKernel(const Context& ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
-                        const DenseTensor& hypslength,
-                        const DenseTensor& refslength,
+                        const paddle::optional<DenseTensor>& hypslength,
+                        const paddle::optional<DenseTensor>& refslength,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {
@@ -85,16 +87,18 @@ void EditDistanceKernel(const Context& ctx,
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
-  framework::Vector<size_t> hyp_lod(batch_size + 1);
-  framework::Vector<size_t> ref_lod(batch_size + 1);
+  paddle::framework::Vector<size_t> hyp_lod(batch_size + 1);
+  paddle::framework::Vector<size_t> ref_lod(batch_size + 1);
 
-  bool use_length = hypslength.initialized();
+  bool use_length = hypslength.get_ptr() != nullptr;
 
   if (use_length) {
     DenseTensor hyp_length_cpu;
     DenseTensor ref_length_cpu;
-    phi::Copy(ctx, hypslength, ctx.GetPlace(), false, &hyp_length_cpu);
-    phi::Copy(ctx, refslength, ctx.GetPlace(), false, &ref_length_cpu);
+    phi::Copy(
+        ctx, *(hypslength.get_ptr()), phi::CPUPlace(), false, &hyp_length_cpu);
+    phi::Copy(
+        ctx, *(refslength.get_ptr()), phi::CPUPlace(), false, &ref_length_cpu);
 
     for (auto i = 0; i < batch_size; i++) {
       hyp_lod[i + 1] = hyp_lod[i] + hyp_length_cpu.data<int64_t>()[i];
@@ -116,12 +120,12 @@ void EditDistanceKernel(const Context& ctx,
   }
 
   const size_t num_strs = hyp_lod.size() - 1;
-  phi::funcs::SetConstant<phi::GPUContext, int64_t> set_constant;
+  phi::funcs::SetConstant<GPUContext, int64_t> set_constant;
   set_constant(ctx, sequencenum, static_cast<int64_t>(num_strs));
 
   out->Resize({static_cast<int64_t>(num_strs), 1});
   ctx.template Alloc<T>(out);
-  auto out = out->data<T>();
+  auto out_data = out->data<T>();
 
   T distance = 0.0;
   for (size_t num = 0; num < num_strs; num++) {
@@ -132,12 +136,16 @@ void EditDistanceKernel(const Context& ctx,
       if (normalized) {
         distance = distance / n;
       }
-      memory::Copy(
-          ctx.GetPlace(), out + num, CPUPlace(), &distance, sizeof(T), stream);
+      paddle::memory::Copy(ctx.GetPlace(),
+                           out_data + num,
+                           CPUPlace(),
+                           &distance,
+                           sizeof(T),
+                           stream);
     } else {
       DenseTensor dist_t;
       dist_t.Resize({m + 1, n + 1});
-      ctx.template Alloc<T>(dist_t);
+      ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];
@@ -167,7 +175,7 @@ void EditDistanceKernel(const Context& ctx,
                          0,
                          stream>>>(dist, x1, x2, m, n, start);
       }
-      SetOutput<T><<<1, 1, 0, stream>>>(out + num, dist, m, n, normalized);
+      SetOutput<T><<<1, 1, 0, stream>>>(out_data + num, dist, m, n, normalized);
     }
   }
 }
@@ -175,4 +183,4 @@ void EditDistanceKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float, double) {}
+    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {}
