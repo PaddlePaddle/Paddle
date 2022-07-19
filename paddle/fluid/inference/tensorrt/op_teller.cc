@@ -1466,7 +1466,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           fill_constant_inputs.end()) {
         if (desc.Input("ShapeTensorList").size()) return false;
       }
-      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
       // only support int32, int64, float32
       if (!(dtype == 2 || dtype == 3 || dtype == 5)) {
         return false;
