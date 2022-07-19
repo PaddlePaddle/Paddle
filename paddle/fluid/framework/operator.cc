@@ -1275,6 +1275,7 @@ bool OperatorWithKernel::SupportNPU() const {
 }
 
 bool OperatorWithKernel::SupportXPU() const {
+#ifdef PADDLE_WITH_XPU
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1302,6 +1303,12 @@ bool OperatorWithKernel::SupportXPU() const {
           });
     }
   }
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "should not call OperatorWithKernel::SupportXPU() when not compiled with "
+      "XPU support."));
+  return false;
+#endif
 }
 
 bool OperatorWithKernel::SupportsMKLDNN(
