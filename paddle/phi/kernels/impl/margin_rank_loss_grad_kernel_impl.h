@@ -28,7 +28,7 @@ void MarginRankLossGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               float margin,
                               DenseTensor* left_grad,
-                              DenseTensor* right_grad){
+                              DenseTensor* right_grad) {
   auto d_out = phi::EigenVector<T>::Flatten(out_grad);
   auto act = phi::EigenVector<T>::Flatten(activated);
   auto label_t = phi::EigenVector<T>::Flatten(label);

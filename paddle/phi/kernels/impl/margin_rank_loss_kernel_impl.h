@@ -43,7 +43,7 @@ void MarginRankLossKernel(const Context& dev_ctx,
                           const DenseTensor& right,
                           float margin,
                           DenseTensor* out,
-                          DenseTensor* activated){
+                          DenseTensor* activated) {
   dev_ctx.template Alloc<T>(out);
   dev_ctx.template Alloc<T>(activated);
 

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include <memory>
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -24,27 +24,23 @@ namespace paddle {
 namespace operators {
 
 class MarginRankLossOp : public framework::OperatorWithKernel {
- public:
+public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
-
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
+public:
   void Make() override {
-    AddInput("X1",
-             "(2-D tensor with shape [batch_size x 1]) The score for "
-             "one item X1 to be ranked, from pairwise ranking model.");
+    AddInput("X1", "(2-D tensor with shape [batch_size x 1]) The score for "
+                   "one item X1 to be ranked, from pairwise ranking model.");
     AddInput("X2",
              "(2-D tensor with shape [batch_size x 1]) The score for "
              "another item X2 to be ranked, from pairwise ranking model.");
-    AddInput("Label",
-             "(2-D tensor with shape [batch_size x 1]) "
-             "The label indicating X1 ranked higher than X2 or not, "
-             "can only be +1 or -1.");
-    AddOutput("Out",
-              "(2-D tensor with shape [batch_size x 1]) "
-              "The output loss of MarginRankLoss operator.");
+    AddInput("Label", "(2-D tensor with shape [batch_size x 1]) "
+                      "The label indicating X1 ranked higher than X2 or not, "
+                      "can only be +1 or -1.");
+    AddOutput("Out", "(2-D tensor with shape [batch_size x 1]) "
+                     "The output loss of MarginRankLoss operator.");
     AddOutput("Activated",
               "(2-D tensor with shape [batch_size x 1]) Intermediate tensor "
               "to indicate whether each element of Output(Out) is activated.")
@@ -78,16 +74,16 @@ all have the same shape [batch_size x 1].
 };
 
 class MarginRankLossGradOp : public framework::OperatorWithKernel {
- public:
+public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 
 template <typename T>
 class MarginRankLossGradMaker : public framework::SingleGradOpMaker<T> {
- public:
+public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
- protected:
+protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("margin_rank_loss_grad");
     op->SetInput("Label", this->Input("Label"));
@@ -99,21 +95,18 @@ class MarginRankLossGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+} // namespace operators
+} // namespace paddle
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss, 
-                            MarginRankLossInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss, MarginRankLossInferShapeFunctor,
                             PD_INFER_META(phi::MarginRankLossInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss_grad, 
+DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss_grad,
                             MarginRankLossGradInferShapeFunctor,
                             PD_INFER_META(phi::MarginRankLossGradInferMeta));
-REGISTER_OPERATOR(margin_rank_loss,
-                  ops::MarginRankLossOp,
+REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
                   ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
                   ops::MarginRankLossGradMaker<paddle::imperative::OpBase>,
                   MarginRankLossInferShapeFunctor);
-REGISTER_OPERATOR(margin_rank_loss_grad, 
-                  ops::MarginRankLossGradOp, 
+REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp,
                   MarginRankLossGradInferShapeFunctor);

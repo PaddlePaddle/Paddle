@@ -24,7 +24,7 @@ void MarginRankLossGradKernel(const Context& dev_ctx,
                               const DenseTensor& activated,
                               const DenseTensor& out_grad,
                               float margin,
-                              DenseTensor *left_grad,
-                              DenseTensor *right_grad);
+                              DenseTensor* left_grad,
+                              DenseTensor* right_grad);
 
 }  // namespace phi

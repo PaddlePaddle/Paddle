@@ -29,7 +29,6 @@ KernelSignature MarginRankLossGradMapping(const ArgumentMappingContext& ctx) {
                          {"margin"}, 
                          {"X1@GRAD", "X2@GRAD"});
 }
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(margin_rank_loss, phi::MarginRankLossMapping);

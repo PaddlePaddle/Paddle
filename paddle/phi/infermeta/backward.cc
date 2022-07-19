@@ -397,7 +397,7 @@ void MarginRankLossGradInferMeta(const MetaTensor& label,
                                  const MetaTensor& out_grad,
                                  float margin,
                                  MetaTensor* left_grad,
-                                 MetaTensor* right_grad){
+                                 MetaTensor* right_grad) {
   PADDLE_ENFORCE_NE(
       left_grad,
       nullptr,
