@@ -2115,6 +2115,16 @@
     func : tanh_triple_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
+- backward_api : temporal_shift_grad
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
+  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : temporal_shift_grad
+
 - backward_api : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float threshold)
@@ -2229,16 +2239,6 @@
     param: [xshape, out_grad]
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
-
-- backward_api : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
-  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : temporal_shift_grad
 
 - backward_api : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)

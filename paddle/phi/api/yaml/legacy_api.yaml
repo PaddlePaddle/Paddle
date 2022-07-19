@@ -2091,6 +2091,16 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
+# temporal_shift
+- api : temporal_shift
+  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor
+  infer_meta :
+    func : TemporalShiftInferMeta
+  kernel :
+    func : temporal_shift
+  backward : temporal_shift_grad
+
 # thresholded_relu
 - api : thresholded_relu
   args : (Tensor x, float threshold)
@@ -2271,16 +2281,6 @@
   kernel :
     func : yolo_box
     data_type : x
-
-# temporal_shift
-- api : temporal_shift
-  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor
-  infer_meta :
-    func : TemporalShiftInferMeta
-  kernel :
-    func : temporal_shift
-  backward : temporal_shift_grad
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
