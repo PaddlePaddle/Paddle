@@ -56,29 +56,8 @@ class TestDistBase(unittest.TestCase):
         self._init_env()
 
     def _init_env(self):
-        self._ips = os.environ.get("PADDLE_TRAINERS", "127.0.0.1").split(",")
-        self._trainer_id = int(os.environ.get("PADDLE_TRAINER_ID", 0))
-        self._port_set = set()
-        self._ps_endpoints = ""
-        for i in range(self._trainers):
-            self._ps_endpoints += f"{self._ips[i//(self._trainers // len(self._ips))]}:{6010+i%8},"
-        self._ps_endpoints = self._ps_endpoints[:-1]
         self._python_interp = sys.executable
         self.temp_dir = tempfile.TemporaryDirectory()
-
-    def _find_free_port(self):
-
-        def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
-                s.bind(('', 0))
-                return s.getsockname()[1]
-
-        while True:
-            port = __free_port()
-            if port not in self._port_set:
-                self._port_set.add(port)
-                return port
 
     def check_with_place(self,
                          model_file,
@@ -117,10 +96,12 @@ class TestDistBase(unittest.TestCase):
         self._run_cluster(model_file, required_envs)
 
     def _run_cluster(self, model_file, envs):
-        run_cluster_process = f"{sys.executable} -u -m paddle.distributed.launch --log_dir /tmp/log {model_file}"
+        run_cluster_process = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self.temp_dir.name} {model_file}"
         filted_envs = dict()
         for k in envs.keys():
-            if "PADDLE_" == k[:7]:
+            if "PADDLE_" == k[:7] and k not in [
+                    "PADDLE_NNODES", "PADDLE_MASTER"
+            ]:
                 continue
             filted_envs[k] = envs[k]
 
@@ -131,30 +112,9 @@ class TestDistBase(unittest.TestCase):
         launcher.communicate(timeout=120)
 
         if launcher.poll() is None:
+            self.temp_dir.cleanup()
             raise TimeoutError
         elif launcher.poll() != 0:
+            self.temp_dir.cleanup()
             raise RuntimeError("test failed!")
-
-    def _run_cluster_one(self, model_file, envs, pi):
-        #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        if core.is_compiled_with_cuda():
-            env0 = {}
-        else:
-            raise NotImplementedError("Only support NCCL now")
-        #update environment
-        env0.update(envs)
-
-        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            tr_cmd = "%s -u -m coverage run --branch -p %s"
-        else:
-            tr_cmd = "%s -u %s"
-        tr0_cmd = tr_cmd % (self._python_interp, model_file)
-        path0 = os.path.join(self.temp_dir.name,
-                             f"/tmp/tr{pi}_err_%d.log" % os.getpid())
-        tr0_pipe = open(path0, "w+")
-        print(tr0_cmd)
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr0_pipe,
-                                    env=env0)
-        return tr0_proc, tr0_pipe, path0
+        self.temp_dir.cleanup()
