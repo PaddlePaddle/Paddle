@@ -64,9 +64,10 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
-    float scale_x = ctx.Attr<float>("Scale_x");
-    float scale_y = ctx.Attr<float>("Scale_y");
-    float scale_o = ctx.Attr<float>("Scale_out");
+    float scale_x = ctx.HasAttr("Scale_x") ? ctx.Attr<float>("Scale_x") : 1.0f;
+    float scale_y = ctx.HasAttr("Scale_y") ? ctx.Attr<float>("Scale_y") : 1.0f;
+    float scale_o =
+        ctx.HasAttr("Scale_out") ? ctx.Attr<float>("Scale_out") : 1.0f;
     int axis = ctx.Attr<int>("axis");
 
     platform::BinaryMKLDNNHandler<T> handler(BINARY_OP,
