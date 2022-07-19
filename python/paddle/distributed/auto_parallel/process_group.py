@@ -15,6 +15,7 @@
 from collections import OrderedDict
 
 import paddle
+from paddle import _C_ops
 import paddle.fluid.core as core
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
@@ -134,13 +135,14 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            paddle.framework._in_legacy_dygraph()
+            paddle.disable_static()
             paddle.set_device('gpu:%d' %
                               paddle.distributed.ParallelEnv().dev_id)
             tmp = paddle.to_tensor(
                 [1], dtype="int32") if _non_static_mode() else fill_constant(
                     [0], dtype="int32", value="1")
-            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            _C_ops.c_allreduce_sum_(tmp, 'use_calc_stream', True, 'ring_id',
+                                    self.id)
             paddle.distributed.wait(tmp, group=self)
             paddle.enable_static()
 
