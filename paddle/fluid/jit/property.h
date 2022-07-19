@@ -31,8 +31,7 @@ class Property {
 
   // Explicitly implement the copy constructor for auto parallel
   Property(const Property &other)
-      : property_(other.property_),
-        original_id_(other.original_id_) {}
+      : property_(other.property_), original_id_(other.original_id_) {}
 
   Property &operator=(const Property &other) {
     property_ = other.property_;
@@ -44,32 +43,32 @@ class Property {
 
   const proto::PropertyVals *Proto() const { return &property_; }
 
-  size_t Size() const;
+  int Size() const;
 
-  void SetFloat(const float& f);
-  void SetFloat(const std::string& name, const float& f);
-  void SetFloats(const std::string& name, const std::vector<float>& v);
+  void SetFloat(const float &f);
+  void SetFloat(const std::string &name, const float &f);
+  void SetFloats(const std::string &name, const std::vector<float> &v);
 
-  float GetFloat(const std::string& name) const;
-  float GetFloat(const int& idx) const;
+  float GetFloat(const std::string &name) const;
+  float GetFloat(const int &idx) const;
 
-  void SetInt64(const std::string& name, const int64_t& f);
-  void SetInt64s(const std::string& name, const std::vector<int64_t>& v);
+  void SetInt64(const std::string &name, const int64_t &f);
+  void SetInt64s(const std::string &name, const std::vector<int64_t> &v);
 
-  void SetString(const  std::string& name, const std::string& s);
-  void SetStrings(const std::string& name, const std::vector<std::string>& v);
+  void SetString(const std::string &name, const std::string &s);
+  void SetStrings(const std::string &name, const std::vector<std::string> &v);
 
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
 
-private:
+ private:
   void AddEntry();
 
-private:
+ private:
   proto::PropertyVals property_;
-  
+
   // This thread-safe implementation seems to be redudent since the neural
   // networks are usually constructed in a single thread.
   static uint64_t GenerateId() {
