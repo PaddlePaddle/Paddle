@@ -119,6 +119,7 @@ static PyObject* eager_api_run_backward(PyObject* self,
   EAGER_TRY
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
+  eager_gil_scoped_release guard;
   egr::Backward(tensors,
                 grad_tensors,
                 CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
@@ -138,7 +139,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
-
+  eager_gil_scoped_release guard;
   std::vector<paddle::experimental::Tensor> result = egr::Grad(tensors,
                                                                inputs,
                                                                grad_tensors,

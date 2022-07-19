@@ -250,5 +250,17 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     ssize_t arg_idx,
     bool dispensable);
 
+class eager_gil_scoped_release {
+ public:
+  eager_gil_scoped_release() { tstate = PyEval_SaveThread(); }
+  ~eager_gil_scoped_release() {
+    if (!tstate) return;
+    PyEval_RestoreThread(tstate);
+  }
+
+ private:
+  PyThreadState* tstate{nullptr};
+};
+
 }  // namespace pybind
 }  // namespace paddle
