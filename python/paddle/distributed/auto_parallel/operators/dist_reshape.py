@@ -177,7 +177,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -186,8 +186,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -335,7 +333,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -344,8 +342,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -486,7 +482,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                         idx] = shape_list[idx] // process_mesh_shape[axis]
 
         # create op
-        new_op_desc = main_block.desc.append_op()
+        new_op_desc = main_block.append_op(type='nop').desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -495,8 +491,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
-
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

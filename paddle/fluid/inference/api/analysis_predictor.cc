@@ -1216,7 +1216,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
 
+  // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
+  argument_.SetMixedBlackList(config_.mixed_black_list_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -1359,6 +1361,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
   // Each config can only be used for one predictor.
   config.SetInValid();
   auto predictor_p = dynamic_cast<AnalysisPredictor *>(predictor.get());
+
+#ifdef PADDLE_WITH_TENSORRT
+  paddle::framework::ir::patterns::KeyCounter::Instance().CleanCounter();
+#endif
 
   if (!predictor_p->Init(nullptr)) {
     return nullptr;
@@ -2083,6 +2089,8 @@ USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
 USE_TRT_CONVERTER(squeeze2)
 USE_TRT_CONVERTER(unsqueeze2)
+USE_TRT_CONVERTER(fill_constant)
+USE_TRT_CONVERTER(fused_token_prune)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

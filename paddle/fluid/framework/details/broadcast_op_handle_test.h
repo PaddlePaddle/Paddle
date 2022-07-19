@@ -117,7 +117,7 @@ struct TestBroadcastOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         place_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
 #if defined(PADDLE_WITH_XPU_BKCL)
       bkcl_ctxs_.reset(nullptr);

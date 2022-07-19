@@ -515,51 +515,55 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-#TODO: comment this test for now until bilinear_interp_op added.
-# class TestBilinearInterpOpAPI(unittest.TestCase):
-#     def test_case(self):
-#         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+class TestBilinearInterpOpAPI(unittest.TestCase):
 
-#         dim = fluid.data(name="dim", shape=[1], dtype="int32")
-#         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-#         actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-#         scale_tensor = fluid.data(
-#             name="scale_tensor", shape=[1], dtype="float32")
+    def test_case(self):
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
-#         out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
-#         out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
-#         out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
-#         out4 = fluid.layers.resize_bilinear(
-#             x, out_shape=[4, 4], actual_shape=actual_size)
-#         out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(name="scale_tensor",
+                                  shape=[1],
+                                  dtype="float32")
 
-#         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
-#         dim_data = np.array([12]).astype("int32")
-#         shape_data = np.array([12, 12]).astype("int32")
-#         actual_size_data = np.array([12, 12]).astype("int32")
-#         scale_data = np.array([2.0]).astype("float32")
+        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
+        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
+        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
+        out4 = fluid.layers.resize_bilinear(x,
+                                            out_shape=[4, 4],
+                                            actual_shape=actual_size)
+        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
 
-#         if core.is_compiled_with_mlu():
-#             place = paddle.device.MLUPlace(0)
-#         else:
-#             place = core.CPUPlace()
-#         exe = fluid.Executor(place)
-#         exe.run(fluid.default_startup_program())
-#         results = exe.run(fluid.default_main_program(),
-#                           feed={
-#                               "x": x_data,
-#                               "dim": dim_data,
-#                               "shape_tensor": shape_data,
-#                               "actual_size": actual_size_data,
-#                               "scale_tensor": scale_data
-#                           },
-#                           fetch_list=[out1, out2, out3, out4, out5],
-#                           return_numpy=True)
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        dim_data = np.array([12]).astype("int32")
+        shape_data = np.array([12, 12]).astype("int32")
+        actual_size_data = np.array([12, 12]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
 
-#         expect_res = bilinear_interp_np(
-#             x_data, out_h=12, out_w=12, align_corners=True)
-#         for res in results:
-#             self.assertTrue(np.allclose(res, expect_res))
+        if core.is_compiled_with_mlu():
+            place = paddle.device.MLUPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "x": x_data,
+                              "dim": dim_data,
+                              "shape_tensor": shape_data,
+                              "actual_size": actual_size_data,
+                              "scale_tensor": scale_data
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5],
+                          return_numpy=True)
+
+        expect_res = bilinear_interp_np(x_data,
+                                        out_h=12,
+                                        out_w=12,
+                                        align_corners=True)
+        for res in results:
+            self.assertTrue(np.allclose(res, expect_res))
 
 
 class TestBilinearInterpOpAPI_dy(unittest.TestCase):
@@ -572,8 +576,6 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
-            input_data = np.load('input.npy').astype("float32")
-            # print(input_data)
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(input_data,
                                             out_h=12,

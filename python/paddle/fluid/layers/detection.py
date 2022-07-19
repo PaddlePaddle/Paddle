@@ -3731,52 +3731,13 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-    num_lvl = max_level - min_level + 1
-
-    if _non_static_mode():
-        assert rois_num is not None, "rois_num should not be None in dygraph mode."
-        attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
-                 refer_level, 'refer_scale', refer_scale)
-        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
-            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
-        return multi_rois, restore_ind, rois_num_per_level
-
-    check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
-                             'distribute_fpn_proposals')
-    helper = LayerHelper('distribute_fpn_proposals', **locals())
-    dtype = helper.input_dtype('fpn_rois')
-    multi_rois = [
-        helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
-    ]
-
-    restore_ind = helper.create_variable_for_type_inference(dtype='int32')
-
-    inputs = {'FpnRois': fpn_rois}
-    outputs = {
-        'MultiFpnRois': multi_rois,
-        'RestoreIndex': restore_ind,
-    }
-
-    if rois_num is not None:
-        inputs['RoisNum'] = rois_num
-        rois_num_per_level = [
-            helper.create_variable_for_type_inference(dtype='int32')
-            for i in range(num_lvl)
-        ]
-        outputs['MultiLevelRoIsNum'] = rois_num_per_level
-
-    helper.append_op(type='distribute_fpn_proposals',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs={
-                         'min_level': min_level,
-                         'max_level': max_level,
-                         'refer_level': refer_level,
-                         'refer_scale': refer_scale
-                     })
-    if rois_num is not None:
-        return multi_rois, restore_ind, rois_num_per_level
-    return multi_rois, restore_ind
+    return paddle.vision.ops.distribute_fpn_proposals(fpn_rois=fpn_rois,
+                                                      min_level=min_level,
+                                                      max_level=max_level,
+                                                      refer_level=refer_level,
+                                                      refer_scale=refer_scale,
+                                                      rois_num=rois_num,
+                                                      name=name)
 
 
 @templatedoc()

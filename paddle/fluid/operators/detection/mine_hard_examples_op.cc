@@ -403,7 +403,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    mine_hard_examples,
-    ops::MineHardExamplesKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MineHardExamplesKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(mine_hard_examples,
+                       ops::MineHardExamplesKernel<phi::CPUContext, float>,
+                       ops::MineHardExamplesKernel<phi::CPUContext, double>);

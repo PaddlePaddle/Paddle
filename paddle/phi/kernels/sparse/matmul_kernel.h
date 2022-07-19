@@ -23,35 +23,35 @@ namespace sparse {
 
 // TODO(zhouwei25): implement " COO @ COO -> COO"
 template <typename T, typename Context>
-void CooCooMatmulKernel(const Context& dev_ctx,
+void MatmulCooCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         const SparseCooTensor& y,
                         SparseCooTensor* out);
 
-// TODO(zhouwei25): implement " COO @ DENSE -> DENSE"
+/* COO @ DENSE -> DENSE */
 template <typename T, typename Context>
-void CooDenseMatmulKernel(const Context& dev_ctx,
+void MatmulCooDenseKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out);
 
 // TODO(zhouwei25): implement " CSR @ CSR -> CSR"
 template <typename T, typename Context>
-void CsrCsrMatmulKernel(const Context& dev_ctx,
+void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const SparseCsrTensor& y,
                         SparseCsrTensor* out);
 
 /* CSR @ DENSE -> DENSE */
 template <typename T, typename Context>
-void CsrDenseMatmulKernel(const Context& dev_ctx,
+void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out);
 
 /* DENSE @ DENSE * CSR_MASK -> CSR */
 template <typename T, typename Context>
-void CsrMaskedMatmulKernel(const Context& dev_ctx,
+void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,

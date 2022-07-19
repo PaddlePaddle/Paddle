@@ -24,7 +24,7 @@ set(CUB_PREFIX_DIR ${CUB_PATH})
 
 set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
 
-if(WIN32 AND ${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
+if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
   # cuda_11.6.2_511.65‘s own cub is 1.15.0, which will cause compiling error in windows.
   set(CUB_TAG 1.16.0)
   # cub 1.16.0 is not compitable with current thrust version

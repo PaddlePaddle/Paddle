@@ -31,39 +31,32 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place,
-                     const ProgramDesc& startup_prog,
-                     const ProgramDesc& main_prog,
-                     Scope* scope);
+  StandaloneExecutor(const platform::Place& place, const ProgramDesc& prog);
 
   ~StandaloneExecutor() {}
-
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors,
-      const std::vector<std::string>& fetch_names);
 
   // NOTE(zhiqiu): feed_names are only used for caching interpretercore.
   // fetch_names are used for caching interpretercore and inserting fetch ops,
   // the latter can be moved to python side.
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+  paddle::framework::FetchList Run(Scope* scope,
+                                   const std::vector<std::string>& feed_names,
                                    const std::vector<std::string>& fetch_names);
 
   framework::interpreter::CostInfo DryRun(
+      Scope* scope,
       const std::vector<std::string>& feed_names,
       const std::vector<framework::LoDTensor>& feed_tensors);
 
  private:
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
+      Scope* scope,
       const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,
       const std::vector<std::string>& fetch_names,
       bool add_fetch_op);
 
   platform::Place place_;
-  const ProgramDesc& startup_prog_;
-  const ProgramDesc& main_prog_;
-  Scope* scope_;  // not owned
+  const ProgramDesc& prog_;
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;

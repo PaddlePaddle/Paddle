@@ -89,42 +89,30 @@ __global__ void dy_mf_search_kernel(Table* table,
                                     char* vals,
                                     size_t len,
                                     size_t pull_feature_value_size) {
-  const size_t i = blockIdx.x * blockDim.y + threadIdx.y;
-  const size_t k = threadIdx.x;
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
+
     if (it != table->end()) {
       uint64_t offset = i * pull_feature_value_size;
       FeatureValue* cur = (FeatureValue*)(vals + offset);
       FeatureValue& input = *(FeatureValue*)(it->second);
-      char* cur_p = (char*)cur;
-      char* input_p = (char*)(&input);
-      int len = 9 + input.mf_dim + 1;
-      if (k == 3 || k == 6 || k == 7)
-        *(int*)(cur_p + k * 4) = *(int*)(input_p + k * 4);
-      else if (k < 8)
-        *(float*)(cur_p + k * 4) = *(float*)(input_p + k * 4);
-      else if (k == 8) {
-        *(uint64_t*)(cur_p + k * 4) = *(uint64_t*)(input_p + k * 4);
-      } else {
-        int len_per_thread = (len - 9) / (blockDim.y - 9);
-        int remain = (len - 9) % (blockDim.y - 9);
-        int real_len = len_per_thread;
-        if ((k - 9) < remain) real_len++;
-        int left = -1, right = -1;
-        if ((k - 9) < remain) {
-          left = 9 + (k - 9) * (len_per_thread + 1);
-          right = left + real_len;
-        } else {
-          left = 9 + remain * (len_per_thread + 1) +
-                 (k - 9 - remain) * len_per_thread;
-          right = left + real_len;
-        }
-        for (int j = left; j < right; j++)
-          *(float*)(cur_p + (j + 1) * 4) = *(float*)(input_p + (j + 1) * 4);
+      cur->slot = input.slot;
+      cur->show = input.show;
+      cur->clk = input.clk;
+      cur->mf_dim = input.mf_dim;
+      cur->lr = input.lr;
+      cur->mf_size = input.mf_size;
+      cur->cpu_ptr = input.cpu_ptr;
+      cur->delta_score = input.delta_score;
+      cur->lr_g2sum = input.lr_g2sum;
+      for (int j = 0; j < cur->mf_dim + 1; ++j) {
+        cur->mf[j] = input.mf[j];
       }
     } else {
-      if (keys[i] != 0) printf("pull miss key: %llu", keys[i]);
+      if (keys[i] != 0) {
+        printf("warning::pull miss key: %llu", keys[i]);
+      }
     }
   }
 }
@@ -181,6 +169,7 @@ HashTable<KeyType, ValType>::HashTable(size_t capacity) {
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::~HashTable() {
   delete container_;
+  cudaFree(device_optimizer_config_);
 }
 
 template <typename KeyType, typename ValType>
@@ -231,10 +220,8 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
   if (len == 0) {
     return;
   }
-  dim3 block_dims(32, 32);
-  const int grid_size = (len - 1) / 32 + 1;
-  dim3 grid_dims(grid_size);
-  dy_mf_search_kernel<<<grid_dims, block_dims, 0, stream>>>(
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len, pull_feature_value_size_);
 }
 

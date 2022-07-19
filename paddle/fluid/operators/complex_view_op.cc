@@ -20,7 +20,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -94,17 +96,6 @@ class AsRealOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "as_real");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "as_real");
-
-    auto out_dims_v = phi::vectorize(ctx->GetInputDim("X"));
-    out_dims_v.push_back(2);
-    const framework::DDim out_dims = phi::make_ddim(out_dims_v);
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -148,6 +139,9 @@ class AsRealGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(as_real,
+                            AsRealInferShapeFunctor,
+                            PD_INFER_META(phi::AsRealInferMeta));
 
 REGISTER_OPERATOR(as_complex,
                   ops::AsComplexOp,
@@ -158,15 +152,10 @@ REGISTER_OPERATOR(as_complex,
 REGISTER_OPERATOR(as_real,
                   ops::AsRealOp,
                   ops::AsRealOpMaker,
+                  AsRealInferShapeFunctor,
                   ops::AsRealGradMaker<paddle::framework::OpDesc>,
                   ops::AsRealGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    as_complex,
-    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsComplexKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    as_real,
-    ops::AsRealKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AsRealKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(as_complex,
+                       ops::AsComplexKernel<phi::CPUContext, float>,
+                       ops::AsComplexKernel<phi::CPUContext, double>);

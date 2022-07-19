@@ -200,7 +200,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     auto* match_indices = context.Output<Tensor>("ColToRowMatchIndices");
     auto* match_dist = context.Output<Tensor>("ColToRowMatchDist");
 
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     auto col = dist_mat->dims()[1];
 
@@ -216,9 +216,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     match_indices->mutable_data<int>({n, col}, context.GetPlace());
     match_dist->mutable_data<T>({n, col}, context.GetPlace());
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, int> iset;
+    phi::funcs::SetConstant<phi::CPUContext, int> iset;
     iset(dev_ctx, match_indices, static_cast<int>(-1));
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> tset;
+    phi::funcs::SetConstant<phi::CPUContext, T> tset;
     tset(dev_ctx, match_dist, static_cast<T>(0));
 
     int* indices = match_indices->data<int>();

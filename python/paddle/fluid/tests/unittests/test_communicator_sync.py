@@ -34,7 +34,7 @@ class TestCommunicator(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         return avg_cost
 
     def test_communicator_sync(self):

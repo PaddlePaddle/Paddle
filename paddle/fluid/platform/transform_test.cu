@@ -39,17 +39,17 @@ class Multiply {
 using paddle::memory::Alloc;
 using paddle::memory::Copy;
 
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CPUPlace;
 using paddle::platform::CUDADeviceContext;
 using paddle::platform::CUDAPlace;
+using phi::CPUContext;
 
 using paddle::platform::Transform;
 
 TEST(Transform, CPUUnary) {
-  CPUDeviceContext ctx;
+  CPUContext ctx;
   float buf[4] = {0.1, 0.2, 0.3, 0.4};
-  Transform<CPUDeviceContext> trans;
+  Transform<CPUContext> trans;
   trans(ctx, buf, buf + 4, buf, Scale<float>(10));
   for (int i = 0; i < 4; ++i) {
     ASSERT_NEAR(buf[i], static_cast<float>(i + 1), 1e-5);
@@ -78,8 +78,8 @@ TEST(Transform, GPUUnary) {
 
 TEST(Transform, CPUBinary) {
   int buf[4] = {1, 2, 3, 4};
-  Transform<CPUDeviceContext> trans;
-  CPUDeviceContext ctx;
+  Transform<phi::CPUContext> trans;
+  phi::CPUContext ctx;
   trans(ctx, buf, buf + 4, buf, buf, Multiply<int>());
   for (int i = 0; i < 4; ++i) {
     ASSERT_EQ((i + 1) * (i + 1), buf[i]);

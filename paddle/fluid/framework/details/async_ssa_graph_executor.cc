@@ -174,7 +174,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   HandleException();
 
   FetchList ret;
-  auto &val = boost::get<FetchList>(fetch_data);
+  auto &val = BOOST_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     if (data_is_lod_tensor(val.at(fetch_idx))) {
       std::vector<const LoDTensor *> lodtensor_ptrs;

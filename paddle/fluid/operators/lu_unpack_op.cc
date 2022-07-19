@@ -186,9 +186,8 @@ REGISTER_OPERATOR(lu_unpack_grad,
                   ops::LU_UnpackGradOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lu_unpack,
-                       ops::LU_UnpackKernel<plat::CPUDeviceContext, float>,
-                       ops::LU_UnpackKernel<plat::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    lu_unpack_grad,
-    ops::LU_UnpackGradKernel<plat::CPUDeviceContext, float>,
-    ops::LU_UnpackGradKernel<plat::CPUDeviceContext, double>);
+                       ops::LU_UnpackKernel<phi::CPUContext, float>,
+                       ops::LU_UnpackKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(lu_unpack_grad,
+                       ops::LU_UnpackGradKernel<phi::CPUContext, float>,
+                       ops::LU_UnpackGradKernel<phi::CPUContext, double>);

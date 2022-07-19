@@ -12,19 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import range as paddle_range
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
 from paddle.fluid.layers import assign, fill_constant, slice, reduce_all, reduce_any
 from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_VAR_NAME
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, Dygraph2StaticException
 
 
-def convert_while_loop(cond, body, loop_vars):
+def indexable(x, code=None):
+    if isinstance(x, Variable): return x
+    if hasattr(x, '__len__') and hasattr(x, '__getitem__'): return x
+    if hasattr(x, '__iter__'):
+        return [i for i in x]
+    else:
+        raise RuntimeError("X can't be convert into indexable.")
+
+
+def unpack_by_structure(target, structure):
+    """ unified unpack interface for paddle and python.
+    """
+    if isinstance(target, Variable):
+        return _unpack_by_structure_paddle(target, structure)
+    else:
+        return _unpack_by_structure_python(target, structure)
+
+
+def _unpack_by_structure_python(target, structure):
+    """ TODO(xiongkun): analysis the differences between python and paddle unpack.
+    """
+    return _unpack_by_structure_paddle(target, structure)
+
+
+def _unpack_by_structure_paddle(target, structure):
+    if structure == 1:
+        return target
+    ret = []
+    for idx, ele in enumerate(structure):
+        if ele == 1:
+            ret.append(target[idx])
+            continue
+        if isinstance(ele, list):
+            ret.append(unpack_by_structure(target[idx], ele))
+            continue
+        assert False, "structure element must be 1 or list"
+    return ret
+
+
+def convert_while_loop(cond, body, getter, setter):
     """
     A function representation of a Python ``while`` statement.
 
@@ -39,26 +81,47 @@ def convert_while_loop(cond, body, loop_vars):
 
     # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
     # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
-    pred = cond(*loop_vars)
+    pred = cond()
     if isinstance(pred, Variable):
-        loop_vars = _run_paddle_while_loop(cond, body, loop_vars)
+        _run_paddle_while(cond, body, getter, setter)
     else:
-        loop_vars = _run_py_while(cond, body, loop_vars)
-
-    return loop_vars
+        _run_py_while(cond, body, getter, setter)
 
 
-def _run_paddle_while_loop(cond, body, loop_vars):
+def _run_paddle_while(cond, body, getter, setter):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
-    loop_vars = [to_static_variable(var) for var in loop_vars]
-    loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    def new_body_fn(*args):
+        """ wrap the body() and add return value for `while_loop`
+        """
+        body()
+        return getter()
+
+    def new_cond_fn(*args):
+        """ cond is a zero-args function, which is not 
+            compatible with `while_loop`.
+        """
+        return cond()
+
+    # UndefinedVar will become data layer not check variable with value=NO_VALUE_MAGIC.
+    loop_vars = [
+        to_static_variable(var) if not isinstance(var, UndefinedVar) else var
+        for var in getter()
+    ]
+    setter(loop_vars)  # change the non-local var to variable
+    # variable maybe modified to inner var. change it into
+    loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
+    setter(loop_vars)  # change the non-local var to variable
     return loop_vars
 
 
-def _run_py_while(cond, body, loop_vars):
-    while cond(*loop_vars):
-        loop_vars = body(*loop_vars)
-    return loop_vars
+def _run_py_while(cond, body, getter, setter):
+    while True:
+        pred = cond()
+        if isinstance(pred, Variable):
+            raise Dygraph2StaticException(
+                "python while pred change from bool to variable.")
+        if not pred: break
+        body()
 
 
 def convert_logical_and(x_func, y_func):
@@ -225,17 +288,32 @@ def _run_paddle_cond(pred, true_fn, false_fn, get_args, set_args,
 
     def new_true_fn():
         set_args(init_args)
-        outs = true_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'if_body')
-        return outs
+        ret = true_fn()
+        # IfExpr will return a non-None return value, so we just return ret.
+        # We assume normal return has no return value.
+        if ret is None: return get_args()
+        else: return ret
 
     def new_false_fn():
         set_args(init_args)
-        outs = false_fn()
-        _check_no_undefined_var(outs, return_name_ids, 'else_body')
-        return outs
+        ret = false_fn()
+        if ret is None: return get_args()
+        else: return ret
 
-    cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn)
+    try:
+        cond_outs = control_flow.cond(pred, new_true_fn, new_false_fn, None,
+                                      return_name_ids)
+    except Exception as e:
+        if re.search("Unsupported return type of true_fn and false_fn in cond",
+                     str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different return type. TODO: add link to modifty. {}"
+                .format(str(e)))
+        if re.search("Incompatible return values of", str(e)):
+            raise Dygraph2StaticException(
+                "Your if/else have different number of return value. TODO: add link to modifty. {}"
+                .format(str(e)))
+        raise e
     return _recover_args_state(cond_outs, get_args, set_args, return_name_ids)
 
 
@@ -245,8 +323,7 @@ def _run_py_ifelse(pred, true_fn, false_fn, get_args, set_args,
     Evaluate python original branch function if-else.
     """
     py_outs = true_fn() if pred else false_fn()
-    py_outs = _remove_no_value_return_var(py_outs)
-    return _recover_args_state(py_outs, get_args, set_args, return_name_ids)
+    return py_outs
 
 
 def _remove_no_value_return_var(out):
@@ -307,13 +384,14 @@ def _recover_args_state(outs, get_args, set_args, return_name_ids):
     init_args = get_args()
     # recover args state
     num_outs = len(return_name_ids)
-    num_args = 1 if not isinstance(init_args, tuple) else len(init_args)
+    num_args = len(init_args)
     assert num_outs <= num_args
 
     if num_args == 1:
-        final_outs = outs
+        final_outs = (outs, ) if not isinstance(outs,
+                                                (list, tuple)) else tuple(outs)
     else:
-        outs = (outs, ) if num_outs == 1 else outs
+        outs = (outs, ) if num_outs == 1 else tuple(outs)
         final_outs = outs + init_args[num_outs:]
 
     set_args(final_outs)
@@ -344,6 +422,8 @@ def convert_len(var):
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var))
     else:
+        if isinstance(var, VariableTuple):
+            return var.__len__()
         return len(var)
 
 
@@ -354,6 +434,44 @@ def convert_zip(*args):
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
                 "but found args[{}].shape[0] == -1 in 'zip'".format(str(i)))
     return zip(*args)
+
+
+# TODO(xiongkun): delete when list<variable> is ready.
+class VariableTuple:
+    """ 
+        this class will cause enumerate can't be wrapped by other iterator change function.
+        this will be fixed when list<Variable> is producted.
+        VariableTuple can only deal with variables which is fixed.
+    """
+
+    def __init__(self, var, start=0):
+        self.var = var
+        self.len = convert_len(var)
+        self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+
+    def __getitem__(self, idx):
+        return self.rag[idx], self.var[idx]
+
+    def __len__(self):
+        return self.len
+
+
+def convert_enumerate(*args):
+    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    if has_variable:
+        return VariableTuple(*args)
+    return enumerate(*args)
+
+
+def convert_range(*args):
+    has_variable = any(map(lambda x: isinstance(x, Variable), args))
+    if has_variable:
+        if len(args) == 1: return paddle_range(0, args[0], 1, paddle.int64)
+        if len(args) == 2:
+            return paddle_range(args[0], args[1], 1, paddle.int64)
+        if len(args) == 3:
+            return paddle_range(args[0], args[1], args[2], paddle.int64)
+    return range(*args)
 
 
 def convert_shape(x):

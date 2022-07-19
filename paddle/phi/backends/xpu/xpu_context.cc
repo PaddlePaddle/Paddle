@@ -45,8 +45,8 @@ struct XPUContext::Impl {
         }
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
-          VLOG(3) << "xpu place " << place_.GetDeviceId() << " set l3 size "
-                  << l3_size;
+          VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+                  << " set l3 size " << l3_size;
         }
         break;
       }
@@ -65,6 +65,8 @@ struct XPUContext::Impl {
   }
 
   const Place& GetPlace() const { return place_; }
+
+  void SetStream(XPUStream stream) { context_->xpu_stream = stream; }
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
@@ -114,6 +116,8 @@ XPUContext::XPUContext(const XPUPlace& place)
 XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
+
+void XPUContext::SetXPUStream(XPUStream stream) { impl_->SetStream(stream); }
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;
