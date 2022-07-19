@@ -21,9 +21,10 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/sparse/coalesce_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -75,7 +76,6 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
@@ -114,15 +114,15 @@ void TestConv3dBase(const std::vector<IntT>& indices,
   if (!std::is_same<T, phi::dtype::float16>::value) {
     DenseTensor rulebook = phi::Empty(
         dev_ctx_cpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
-    SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
-                                            x_tensor,
-                                            kernel_tensor,
-                                            paddings,
-                                            dilations,
-                                            strides,
-                                            1,
-                                            subm,
-                                            &rulebook);
+    SparseCooTensor out = sparse::Conv3dCoo<T>(dev_ctx_cpu,
+                                               x_tensor,
+                                               kernel_tensor,
+                                               paddings,
+                                               dilations,
+                                               strides,
+                                               1,
+                                               subm,
+                                               &rulebook);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -139,16 +139,16 @@ void TestConv3dBase(const std::vector<IntT>& indices,
 
     if (backward) {
       std::tuple<SparseCooTensor, DenseTensor> grads =
-          sparse::Conv3dGrad<T>(dev_ctx_cpu,
-                                x_tensor,
-                                kernel_tensor,
-                                rulebook,
-                                out,
-                                paddings,
-                                dilations,
-                                strides,
-                                1,
-                                subm);
+          sparse::Conv3dCooGrad<T>(dev_ctx_cpu,
+                                   x_tensor,
+                                   kernel_tensor,
+                                   rulebook,
+                                   out,
+                                   paddings,
+                                   dilations,
+                                   strides,
+                                   1,
+                                   subm);
       f_verify(std::get<0>(grads).non_zero_elements().data<T>(), features_grad);
       f_verify(std::get<1>(grads).data<T>(), kernel_grad);
     }
@@ -198,15 +198,17 @@ void TestConv3dBase(const std::vector<IntT>& indices,
 
   DenseTensor d_rulebook = phi::Empty(
       dev_ctx_gpu, DenseTensorMeta(indices_dtype, {1}, DataLayout::NCHW));
-  SparseCooTensor d_out = sparse::Conv3d<T>(dev_ctx_gpu,
-                                            d_x_tensor,
-                                            d_kernel_tensor,
-                                            paddings,
-                                            dilations,
-                                            strides,
-                                            1,
-                                            subm,
-                                            &d_rulebook);
+  SparseCooTensor d_out = sparse::Conv3dCoo<T>(dev_ctx_gpu,
+                                               d_x_tensor,
+                                               d_kernel_tensor,
+                                               paddings,
+                                               dilations,
+                                               strides,
+                                               1,
+                                               subm,
+                                               &d_rulebook);
+
+  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -218,7 +220,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       dev_ctx_cpu,
       DenseTensorMeta(indices_dtype, {4, d_out.nnz()}, DataLayout::NCHW));
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_indices(),
+            tmp_d_out.non_zero_indices(),
             phi::CPUPlace(),
             true,
             &h_indices_tensor);
@@ -232,7 +234,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_elements(),
+            tmp_d_out.non_zero_elements(),
             phi::CPUPlace(),
             true,
             &h_features_tensor);
@@ -240,16 +242,16 @@ void TestConv3dBase(const std::vector<IntT>& indices,
 
   if (backward) {
     std::tuple<SparseCooTensor, DenseTensor> grads =
-        sparse::Conv3dGrad<T>(dev_ctx_gpu,
-                              d_x_tensor,
-                              d_kernel_tensor,
-                              d_rulebook,
-                              d_out,
-                              paddings,
-                              dilations,
-                              strides,
-                              1,
-                              subm);
+        sparse::Conv3dCooGrad<T>(dev_ctx_gpu,
+                                 d_x_tensor,
+                                 d_kernel_tensor,
+                                 d_rulebook,
+                                 d_out,
+                                 paddings,
+                                 dilations,
+                                 strides,
+                                 1,
+                                 subm);
     DenseTensor d_features_grad = std::get<0>(grads).non_zero_elements();
     DenseTensor d_kernel_grad = std::get<1>(grads);
     DenseTensor h_features_grad =

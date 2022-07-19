@@ -27,11 +27,25 @@ class ElementwiseMaxMLUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class ElementwiseMaxGradMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    MLUMinMaxGradHelper<MAXIMUM_GRAD, T>(ctx);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(elementwise_max, ops::ElementwiseMaxMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(elementwise_max,
+                       ops::ElementwiseMaxMLUKernel<int>,
                        ops::ElementwiseMaxMLUKernel<float>,
                        ops::ElementwiseMaxMLUKernel<paddle::platform::float16>);
+REGISTER_OP_MLU_KERNEL(
+    elementwise_max_grad,
+    ops::ElementwiseMaxGradMLUKernel<int>,
+    ops::ElementwiseMaxGradMLUKernel<float>,
+    ops::ElementwiseMaxGradMLUKernel<paddle::platform::float16>);
 #endif

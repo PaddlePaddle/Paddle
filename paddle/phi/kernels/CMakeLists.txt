@@ -29,7 +29,8 @@ set(COMMON_KERNEL_DEPS
     arg_map_context
     convert_utils
     lod_utils
-    custom_kernel)
+    custom_kernel
+    phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
     eigen_function
@@ -61,6 +62,7 @@ set(COMMON_KERNEL_DEPS
     pooling
     maxouting
     matrix_inverse
+    matrix_solve
     phi_dynload_warpctc
     sequence_padding
     sequence_scale)
@@ -81,8 +83,6 @@ set(COMMON_KERNEL_DEPS
     utf8proc)
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
-# For strings kernels
-add_subdirectory(strings)
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
@@ -114,11 +114,13 @@ file(
 # file(GLOB kernel_cudnn "gpudnn/*.cu")
 # file(GLOB kernel_kps "kps/*.cu")
 file(GLOB kernel_xpu "xpu/*.cc")
+file(GLOB kernel_onednn "onednn/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
-set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu)
+
+set(ADD_PHI_KERNELS phi_cpu)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
@@ -128,17 +130,36 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   kernel_declare("${kernel_cu}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
-  set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_gpu)
+  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_gpu)
 endif()
 
 if(WITH_XPU)
   if(WITH_XPU_KP)
-    file(GLOB kernel_xpu_kps "kps/*.cu")
-    xpu_add_library(phi_xpu STATIC ${kernel_xpu} ${kernel_xpu_kps})
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
+    foreach(kernel ${kernel_xpu_kps})
+      get_filename_component(name ${kernel} NAME_WE)
+      file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
+    endforeach()
+    file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
+    xpu_add_library(phi_xpu STATIC ${kernel_xpu} ${kernel_xpu_kps} DEPENDS
+                    ${COMMON_KERNEL_DEPS})
   else()
     add_library(phi_xpu ${kernel_xpu})
   endif()
-  kernel_declare(${kernel_xpu})
+  kernel_declare("${kernel_xpu}")
+  kernel_declare("${kernel_xpu_kps}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
-  set_property(GLOBAL PROPERTY PHI_KERNELS phi_cpu phi_xpu)
+  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
 endif()
+
+if(WITH_MKLDNN)
+  add_library(phi_onednn ${kernel_onednn})
+  kernel_declare(${kernel_onednn})
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} onednn_context)
+  target_link_libraries(phi_onednn ${COMMON_KERNEL_DEPS})
+  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_onednn)
+endif()
+
+set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})

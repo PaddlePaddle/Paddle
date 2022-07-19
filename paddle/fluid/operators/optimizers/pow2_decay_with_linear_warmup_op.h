@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +31,8 @@ struct Pow2DecayWithLinearWarmupFunctor {
   HOSTDEVICE Pow2DecayWithLinearWarmupFunctor(RestrictPtr<T> lr,
                                               RestrictPtr<int64_t> step,
                                               size_t warmup_steps,
-                                              size_t total_steps, AttrT base_lr,
+                                              size_t total_steps,
+                                              AttrT base_lr,
                                               AttrT end_lr)
       : lr_(lr),
         step_(step),
@@ -75,25 +76,30 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
     auto *lr_out = ctx.Output<framework::Tensor>("LearningRateOut");
     auto *step_out = ctx.Output<framework::Tensor>("StepOut");
     PADDLE_ENFORCE_EQ(
-        lr, lr_out,
+        lr,
+        lr_out,
         platform::errors::InvalidArgument("Input(LearningRate) and "
                                           "Output(LearningRateOut) "
                                           "must be the same."));
     PADDLE_ENFORCE_NOT_NULL(lr,
                             platform::errors::InvalidArgument(
                                 "Input(LearingRate) should not be nullptr."));
-    PADDLE_ENFORCE_EQ(step, step_out,
+    PADDLE_ENFORCE_EQ(step,
+                      step_out,
                       platform::errors::InvalidArgument(
                           "Input(Step) and Output(StepOut) must be the same."));
-    PADDLE_ENFORCE_NOT_NULL(step, platform::errors::InvalidArgument(
-                                      "Input(Step) should not be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(step,
+                            platform::errors::InvalidArgument(
+                                "Input(Step) should not be nullptr."));
     PADDLE_ENFORCE_EQ(
-        step->IsInitialized(), true,
+        step->IsInitialized(),
+        true,
         platform::errors::InvalidArgument("Input(Step) must be initialized."));
 
     auto warmup_steps = static_cast<size_t>(ctx.Attr<int64_t>("warmup_steps"));
     auto total_steps = static_cast<size_t>(ctx.Attr<int64_t>("total_steps"));
-    PADDLE_ENFORCE_LE(warmup_steps, total_steps,
+    PADDLE_ENFORCE_LE(warmup_steps,
+                      total_steps,
                       platform::errors::InvalidArgument(
                           "warmup_steps must not be larger than total_steps."));
     auto base_lr = ctx.Attr<float>("base_lr");
@@ -105,8 +111,12 @@ class Pow2DecayWithLinearWarmupOpKernel : public framework::OpKernel<T> {
     platform::ForRange<DeviceContext> for_range(dev_ctx, 1);
     using AttrT = double;
     Pow2DecayWithLinearWarmupFunctor<T, AttrT> functor(
-        lr_data, step_data, warmup_steps, total_steps,
-        static_cast<AttrT>(base_lr), static_cast<AttrT>(end_lr));
+        lr_data,
+        step_data,
+        warmup_steps,
+        total_steps,
+        static_cast<AttrT>(base_lr),
+        static_cast<AttrT>(end_lr));
     for_range(functor);
   }
 };

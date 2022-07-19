@@ -371,8 +371,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        # main_block._sync_with_cpp()
-
         # data parallel synchronization for primtive operators
         from paddle.incubate.autograd import prim_enabled
         if prim_enabled():
@@ -431,8 +429,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         op_attr.set_input_dims_mapping(param.name, dims_mapping)
                         ctx.set_op_dist_attr_for_program(new_op, op_attr)
 
-                startup_block._sync_with_cpp()
-
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
@@ -462,7 +458,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # replicate op in dist program
         dist_op_desc = main_block.append_op(type='nop').desc
-        # dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(backward_op.desc)
         # Refer to the related dist op
         set_dist_op_desc_original_id(dist_op_desc, backward_op.desc, ctx)
@@ -470,8 +465,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
-
-        # main_block._sync_with_cpp()
 
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited,
@@ -552,8 +545,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         op_attr.set_input_dims_mapping(grad_var.name,
                                                        dims_mapping)
                         ctx.set_op_dist_attr_for_program(op, op_attr)
-
-                # main_block._sync_with_cpp()
 
 
 register_distributed_operator_impl(

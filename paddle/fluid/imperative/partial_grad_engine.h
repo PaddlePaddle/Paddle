@@ -33,8 +33,11 @@ class PartialGradEngine : public Engine {
                     const std::vector<std::shared_ptr<VarBase>> &output_targets,
                     const std::vector<std::shared_ptr<VarBase>> &output_grads,
                     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-                    const platform::Place &place, bool create_graph,
-                    bool retain_graph, bool allow_unused, bool only_inputs);
+                    const platform::Place &place,
+                    bool create_graph,
+                    bool retain_graph,
+                    bool allow_unused,
+                    bool only_inputs);
 
   ~PartialGradEngine();
 

@@ -230,7 +230,10 @@ def _convert_to_place(device):
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
     elif device in core.get_all_custom_device_type():
-        place = core.CustomPlace(device, 0)
+        selected_devices = os.getenv("FLAGS_selected_{}s".format(device),
+                                     "0").split(",")
+        device_id = int(selected_devices[0])
+        place = core.CustomPlace(device, device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
@@ -349,6 +352,10 @@ def get_device():
     elif isinstance(place, core.MLUPlace):
         device_id = place.get_device_id()
         device = 'mlu:' + str(device_id)
+    elif isinstance(place, core.CustomPlace):
+        device_id = place.get_device_id()
+        device_type = place.get_device_type()
+        device = device_type + ':' + str(device_id)
     else:
         raise ValueError("The device specification {} is invalid".format(place))
 

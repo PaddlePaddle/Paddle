@@ -85,17 +85,23 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
 }
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
-    const std::vector<platform::Place> &places, ir::Graph *graph)
+    const std::vector<platform::Place> &places,
+    ir::Graph *graph)
     // TODO(Yancey1989): Copying graphs is not safely since it deleted the
     // attrs.
     : ParallelSSAGraphExecutor(
-          strategy, local_scopes, local_exec_scopes, places,
+          strategy,
+          local_scopes,
+          local_exec_scopes,
+          places,
           SeparateMultiDevicesGraph(graph, places.size())) {}
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places,
     std::vector<std::unique_ptr<ir::Graph>> graphs)
@@ -105,19 +111,23 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
       places_(places),
       graphs_(std::move(graphs)),
       feed_status_(places.size(), FeedStatus::kNone) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    local_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "The number of places and the number of local scopes "
                         "should be equal, but got number of places is %d and "
                         "number of local scopes is %d.",
-                        places_.size(), local_scopes_.size()));
+                        places_.size(),
+                        local_scopes_.size()));
 
-  PADDLE_ENFORCE_EQ(places_.size(), graphs_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    graphs_.size(),
                     platform::errors::InvalidArgument(
                         "Graph number does not match place number"));
 
   PADDLE_ENFORCE_GT(
-      places_.size(), 0,
+      places_.size(),
+      0,
       platform::errors::InvalidArgument("place number must be larger than 0"));
 
   auto seq_allreduce_pass =
@@ -134,9 +144,12 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
   VLOG(1) << "set num_threads: " << strategy_.num_threads_
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
-    executors_.emplace_back(new details::FastThreadedSSAGraphExecutor(
-        strategy_, local_scopes_, local_exec_scopes, {places_[i]},
-        graphs_.at(i).get()));
+    executors_.emplace_back(
+        new details::FastThreadedSSAGraphExecutor(strategy_,
+                                                  local_scopes_,
+                                                  local_exec_scopes,
+                                                  {places_[i]},
+                                                  graphs_.at(i).get()));
   }
 }
 
@@ -153,8 +166,8 @@ enum ExceptionStatus { kSuccess = 0, kEOF, kOther };
 
 FetchResultType ParallelSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
-  size_t feed_num = std::count(feed_status_.begin(), feed_status_.end(),
-                               FeedStatus::kHasFeed);
+  size_t feed_num = std::count(
+      feed_status_.begin(), feed_status_.end(), FeedStatus::kHasFeed);
   bool has_feed = (feed_num > 0);
 
   VLOG(10) << "Feed num " << feed_num;
@@ -218,7 +231,8 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         if (feed_status_[i] == FeedStatus::kNone) {
           is_valid[i] = false;
         } else if (exception_status[i] != ExceptionStatus::kSuccess) {
-          PADDLE_ENFORCE_EQ(has_exception, true,
+          PADDLE_ENFORCE_EQ(has_exception,
+                            true,
                             platform::errors::InvalidArgument(
                                 "Thread pool raises exception but not caught"));
           VLOG(10) << "Exception rethrow because non-EOF exception raises when "
@@ -229,7 +243,8 @@ FetchResultType ParallelSSAGraphExecutor::Run(
     } else {
       for (size_t i = 0; i < place_num; ++i) {
         if (exception_status[i] == ExceptionStatus::kOther) {
-          PADDLE_ENFORCE_EQ(has_exception, true,
+          PADDLE_ENFORCE_EQ(has_exception,
+                            true,
                             platform::errors::InvalidArgument(
                                 "Thread pool raises exception but not caught"));
           VLOG(10) << "Exception rethrow because non-EOF exception raises when "
@@ -243,7 +258,8 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   }
 
   if (std::count(is_valid.begin(), is_valid.end(), true) == 0) {
-    PADDLE_ENFORCE_EQ(has_exception, true,
+    PADDLE_ENFORCE_EQ(has_exception,
+                      true,
                       platform::errors::InvalidArgument(
                           "Thread pool raises exception but not caught"));
     VLOG(10) << "Raise exception because there is no success worker";
@@ -263,13 +279,13 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            BOOST_GET_CONST(FetchList, fetch_data[scope_idx]);
+            PADDLE_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
-              &(BOOST_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
+              &(PADDLE_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
         } else {
           lodtensorarray_ptrs.push_back(
-              &(BOOST_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
+              &(PADDLE_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
       if (lodtensor_ptrs.size() != 0) {
@@ -302,9 +318,10 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            BOOST_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
+            PADDLE_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
         PADDLE_ENFORCE_EQ(
-            fetch_list[fetch_idx].size(), 1,
+            fetch_list[fetch_idx].size(),
+            1,
             platform::errors::Fatal("Each place must have only one fetched "
                                     "LoDTensor/LoDTensorArray!"));
         ret.back().emplace_back(fetch_list[fetch_idx][0]);

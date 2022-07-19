@@ -81,3 +81,43 @@ if(WITH_MKLDNN)
   add_dependencies(dense_tensor mkldnn)
   add_dependencies(tensor_base mkldnn)
 endif()
+
+if(WITH_GPU)
+  nv_library(
+    phi_tensor_utils
+    SRCS tensor_utils.cc
+    DEPS cpu_context
+         gpu_context
+         dense_tensor
+         selected_rows
+         malloc
+         memcpy
+         device_context)
+elseif(WITH_ROCM)
+  hip_library(
+    phi_tensor_utils
+    SRCS tensor_utils.cc
+    DEPS cpu_context
+         gpu_context
+         dense_tensor
+         selected_rows
+         malloc
+         memcpy
+         device_context)
+elseif(WITH_XPU_KP)
+  xpu_library(
+    phi_tensor_utils
+    SRCS tensor_utils.cc
+    DEPS cpu_context
+         xpu_context
+         dense_tensor
+         selected_rows
+         malloc
+         memcpy
+         device_context)
+else()
+  cc_library(
+    phi_tensor_utils
+    SRCS tensor_utils.cc
+    DEPS cpu_context dense_tensor selected_rows malloc memcpy device_context)
+endif()

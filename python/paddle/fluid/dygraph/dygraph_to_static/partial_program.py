@@ -152,7 +152,6 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._tmp_scope_vec = self._create_scope_vec()
         self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
@@ -363,9 +362,8 @@ class PartialProgramLayer:
 
         _C_ops.run_program(self._valid_vars(in_vars),
                            self._valid_vars(self._params),
-                           self._valid_vars(out_vars), self._tmp_scope_vec,
+                           self._valid_vars(out_vars), self._create_scope_vec(),
                            self._double_grads, self._cuda_graph_vec, *attrs)
-        self.drop_scope_if_no_grad()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -378,13 +376,6 @@ class PartialProgramLayer:
                         == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
-
-    def drop_scope_if_no_grad(self):
-        tracer = framework._dygraph_tracer()
-        scope = self._tmp_scope_vec.value().get_scope() if isinstance(
-            self._tmp_scope_vec, (core.VarBase)) else self._tmp_scope_vec[0]
-        if self.training and not tracer._has_grad:
-            scope.drop_kids()
 
     @property
     def program(self):
@@ -450,11 +441,18 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
+        # mapping from name(string) -> VarBase
+        out_varbase_map = {}
+
         def create_out(var_id):
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
             varbase = None
+
+            if var_desc.name() in out_varbase_map:
+                return out_varbase_map[var_desc.name()]
+
             if not framework._in_eager_mode_:
                 var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
                                         var_desc.name(), var_desc.type(), False)
@@ -462,6 +460,7 @@ class PartialProgramLayer:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
                                              False)
+            out_varbase_map[var_desc.name()] = var_base
             return var_base
 
         # Create VarBase to receive output data.

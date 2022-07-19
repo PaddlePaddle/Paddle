@@ -24,7 +24,8 @@ namespace ir {
 
 PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
                                   const std::string& name_scope) {
-  auto var_is_op_input = [=](Node* x, const std::string& op_type,
+  auto var_is_op_input = [=](Node* x,
+                             const std::string& op_type,
                              const std::string& arg_name = "") -> bool {
     if (!(x && x->IsVar())) {
       return false;
@@ -300,7 +301,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   return last_out_var;
 }
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
+static int BuildFusion(Graph* graph,
+                       const std::string& name_scope,
                        const SquaredMatSubFusePass* pass) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
@@ -310,12 +312,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
+                      0,
                       platform::errors::NotFound(
                           "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
-                                   "Subgraph has no node %s.", name.c_str()));
+    PADDLE_ENFORCE_NOT_NULL(
+        p,
+        platform::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -340,8 +344,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         retrieve_node(name_scope + "/squared_xmuly", subgraph, fused_pattern);
     auto* last_out_var =
         retrieve_node(name_scope + "/out", subgraph, fused_pattern);
-    auto* fill_constant_op = retrieve_node(name_scope + "/fill_constant_op",
-                                           subgraph, fused_pattern);
+    auto* fill_constant_op = retrieve_node(
+        name_scope + "/fill_constant_op", subgraph, fused_pattern);
 
     // Create New OpDesc
     OpDesc op_desc;

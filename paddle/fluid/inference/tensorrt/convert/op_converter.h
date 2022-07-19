@@ -47,14 +47,16 @@ class OpConverter {
   // test_mode: whether the instance executes in an unit test.
   void ConvertOp(const framework::proto::OpDesc& op,
                  const std::unordered_set<std::string>& parameters,
-                 const framework::Scope& scope, TensorRTEngine* engine,
+                 const framework::Scope& scope,
+                 TensorRTEngine* engine,
                  bool test_mode = false) {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
 
     if (op_desc.Type() == "mul") {
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "The input op mul's Input(\"Y\")."
                             "size() should equal to 1, but reveceid "
@@ -70,7 +72,8 @@ class OpConverter {
           "add", "mul", "sub", "div", "max", "min", "pow"};
       static std::unordered_set<std::string> add_weight_op_set{
           "add", "mul", "sub", "div", "pow"};
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "The input op's Input(\"Y\")."
                             "size() should equal to 1, but reveceid "
@@ -81,64 +84,74 @@ class OpConverter {
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
         PADDLE_ENFORCE_GT(
-            add_weight_op_set.count(op_type), 0,
+            add_weight_op_set.count(op_type),
+            0,
             platform::errors::Unimplemented("Unsupported elementwise type %s",
                                             op_type.c_str()));
         it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
                                                     "_weight");
         PADDLE_ENFORCE_NOT_NULL(
-            it, platform::errors::Unimplemented(
-                    "no OpConverter for optype [%s]", op_desc.Type()));
+            it,
+            platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                            op_desc.Type()));
       } else {
         PADDLE_ENFORCE_GT(
-            add_tensor_op_set.count(op_type), 0,
+            add_tensor_op_set.count(op_type),
+            0,
             platform::errors::Unimplemented("Unsupported elementwise type %s",
                                             op_type.c_str()));
         it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
                                                     "_tensor");
       }
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
 
     if (op_desc.Type() == "depthwise_conv2d") {
       it = Registry<OpConverter>::Global().Lookup("conv2d");
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
     if (op_desc.Type() == "depthwise_conv2d_transpose") {
       it = Registry<OpConverter>::Global().Lookup("conv2d_transpose");
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
     if (op_desc.Type() == "transpose2") {
       it = Registry<OpConverter>::Global().Lookup("transpose");
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
     if (op_desc.Type() == "flatten2") {
       it = Registry<OpConverter>::Global().Lookup("flatten");
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
     // reshape2 == reshape
     if (op_desc.Type() == "reshape2") {
       it = Registry<OpConverter>::Global().Lookup("reshape");
       PADDLE_ENFORCE_NOT_NULL(
-          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
+          it,
+          platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                          op_desc.Type()));
     }
     if (!it) {
       it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
     PADDLE_ENFORCE_NOT_NULL(
-        it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                            op_desc.Type()));
+        it,
+        platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                        op_desc.Type()));
 
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
@@ -147,7 +160,7 @@ class OpConverter {
     // only one out settensordynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       std::string output_name = "";
       if (op_desc.HasOutput("Output")) {
         output_name = op_desc.Output("Output").front();
@@ -170,7 +183,7 @@ class OpConverter {
     // outs settensordynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
-        float out_scale = BOOST_GET_CONST(
+        float out_scale = PADDLE_GET_CONST(
             float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
         std::string output_name =
             op_desc.Output(op_desc.OutputNames()[i]).front();
@@ -191,7 +204,7 @@ class OpConverter {
         std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
         auto* input_itensor = engine->GetITensor(input_tensor_name);
         float input_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
         engine->SetTensorDynamicRange(input_itensor, input_scale);
         VLOG(1) << "Set input tensor scale = " << input_scale
                 << " for tensor: " << input_tensor_name << ".";
@@ -202,7 +215,7 @@ class OpConverter {
         std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
         auto* output_itensor = engine->GetITensor(output_tensor_name);
         float output_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
         engine->SetTensorDynamicRange(output_itensor, output_scale);
         VLOG(1) << "Set output tensor scale = " << output_scale
                 << " for tensor: " << output_tensor_name << ".";
@@ -214,30 +227,79 @@ class OpConverter {
   // the INetwork's inputs and outputs should specified in some other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
-                    const framework::Scope& scope, TensorRTEngine* engine) {
+                    const framework::Scope& scope,
+                    TensorRTEngine* engine) {
     std::unique_lock<std::mutex> lk(mut_);
+    for (int i = 0; i < block.ops_size(); i++) {
+      SetEngine(engine);
+      const auto& op = block.ops(i);
+      framework::OpDesc op_desc(op, nullptr);
+      framework::Variable* X_v = nullptr;
+      std::string X_name;
+      // inputs : string -> std::vector<string>
+      auto inputs = op_desc.Inputs();
+      if (inputs.count("X")) {
+        X_name = op_desc.Input("X")[0];
+      } else if (inputs.count("Input")) {
+        X_name = op_desc.Input("Input")[0];
+      } else if (inputs.count("Y")) {
+        X_name = op_desc.Input("Y")[0];
+      }
+      X_v = scope.FindVar(X_name);
+      // If this weight is shared between ops, it needn't to be convtered to
+      // itensor once again
+      if (engine->GetITensorMap()->count(X_name)) {
+        continue;
+      }
+      if (X_v) {
+        ConvertWeight2ITensor(scope, X_name);
+      }
+    }
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
       ConvertOp(op, parameters, scope, engine);
+    }
+    for (int i = 0; i < engine->network()->getNbLayers(); i++) {
+      auto layer = engine->network()->getLayer(i);
+      if (layer->getType() == nvinfer1::LayerType::kSHUFFLE) {
+        auto* input_tensor = layer->getInput(0);
+        auto* output_tensor = layer->getOutput(0);
+        auto output_tensor_name = output_tensor->getName();
+        auto input_tensor_name = input_tensor->getName();
+        if (engine->DynamicRangeIsSet(input_tensor) &&
+            !engine->DynamicRangeIsSet(output_tensor)) {
+          float output_scale = engine->GetTensorDynamicRange(input_tensor);
+          VLOG(1) << "Set output tensor scale = " << output_scale
+                  << " for tensor in TensorRT: " << output_tensor_name << ".";
+          engine->SetTensorDynamicRange(output_tensor, output_scale);
+        } else {
+          VLOG(1) << "Failed to get input tensor scale for tensor in TensorRT: "
+                  << input_tensor_name << ".";
+        }
+      }
     }
   }
 
   // The scope  here should be inited with the parameter vars.
   void ConvertBlockToTRTEngine(
-      framework::BlockDesc* block_desc, const framework::Scope& scope,
+      framework::BlockDesc* block_desc,
+      const framework::Scope& scope,
       const std::vector<std::string>& inputs,
       const std::unordered_set<std::string>& parameters,
-      const std::vector<std::string>& outputs, TensorRTEngine* engine) {
+      const std::vector<std::string>& outputs,
+      TensorRTEngine* engine) {
     engine->InitNetwork();
     bool all_dynamic_shape_set = true;
     for (auto& input : inputs) {
       if (parameters.count(input)) continue;
       auto* var = block_desc->FindVar(input);
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::NotFound("no variable called %s in block.",
-                                          input.c_str()));
+          var,
+          platform::errors::NotFound("no variable called %s in block.",
+                                     input.c_str()));
       PADDLE_ENFORCE_EQ(
-          var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
+          var->GetType(),
+          FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument("TensorRT engine only takes "
                                             "LoDTensor as input"));
       auto var_shape = var->GetShape();
@@ -255,14 +317,15 @@ class OpConverter {
           continue;
         }
         std::vector<int64_t> input_shape;
-        input_shape.push_back(-1);
-        for (size_t i = 1; i < ranks; i++) {
+        // input_shape.push_back(-1);
+        for (size_t i = 0; i < ranks; i++) {
           if (min_input_shape[i] != max_input_shape[i]) {
             input_shape.push_back(-1);
           } else {
             input_shape.push_back(min_input_shape[i]);
             // the i dimension should be same.
-            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i],
+            PADDLE_ENFORCE_EQ(min_input_shape[i],
+                              optim_input_shape[i],
                               platform::errors::InvalidArgument(
                                   "The dim (%d) of the min_input_shape and "
                                   "optim_input_shape should be same."));
@@ -280,9 +343,12 @@ class OpConverter {
             FluidDataType2TRT(
                 var->Proto()->type().lod_tensor().tensor().data_type()),
             Vec2TRT_Dims(var_shape, input));
+        VLOG(1) << "Set trt input [" << input << "] type is "
+                << var->Proto()->type().lod_tensor().tensor().data_type();
       }
     }
-    PADDLE_ENFORCE_EQ(all_dynamic_shape_set, true,
+    PADDLE_ENFORCE_EQ(all_dynamic_shape_set,
+                      true,
                       platform::errors::InvalidArgument(
                           "some trt inputs dynamic shape info not set, "
                           "check the INFO log above for more details."));
@@ -297,7 +363,8 @@ class OpConverter {
 
   // rank(result) = rank(input)
   nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
-                            const std::vector<int32_t> indices, int axis = 0) {
+                            const std::vector<int32_t> indices,
+                            int axis = 0) {
     auto* indices_tensor = Add1DConstantLayer(indices, " ");
     auto* result =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *input, *indices_tensor, axis)
@@ -326,8 +393,8 @@ class OpConverter {
   // Concat not make rank changed
   nvinfer1::ITensor* Concat(const std::vector<nvinfer1::ITensor*>& inputs,
                             int axis = 0) {
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(),
-                                       inputs.size());
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Concatenation, inputs.data(), inputs.size());
     if (axis != 0) layer->setAxis(axis);
     nvinfer1::ITensor* c = layer->getOutput(0);
     return c;
@@ -335,48 +402,59 @@ class OpConverter {
 
   nvinfer1::ITensor* Sum(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kSUM)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kSUM)
             ->getOutput(0);
     return c;
   }
 
   nvinfer1::ITensor* Prod(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kPROD)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kPROD)
             ->getOutput(0);
     return c;
   }
 
   nvinfer1::ITensor* Min(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kMIN)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kMIN)
             ->getOutput(0);
     return c;
   }
 
   nvinfer1::ITensor* Max(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kMAX)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kMAX)
             ->getOutput(0);
     return c;
   }
 
   nvinfer1::ITensor* Sub(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kSUB)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kSUB)
             ->getOutput(0);
     return c;
   }
 
   nvinfer1::ITensor* Div(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
     nvinfer1::ITensor* c =
-        TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *a, *b,
-                             nvinfer1::ElementWiseOperation::kDIV)
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kDIV)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* FloorDiv(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             ElementWise,
+                             *a,
+                             *b,
+                             nvinfer1::ElementWiseOperation::kFLOOR_DIV)
             ->getOutput(0);
     return c;
   }
@@ -390,29 +468,38 @@ class OpConverter {
 
   // Get element tensor of 1D shape tensor
   nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor,
-                                         int index, bool is_scalar = false) {
+                                         int index,
+                                         bool is_scalar = false) {
     auto* tensor =
-        TRT_ENGINE_ADD_LAYER(engine_, Gather, *shape_tensor,
-                             *Add1DConstantLayer(index, " ", is_scalar), 0)
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Gather,
+                             *shape_tensor,
+                             *Add1DConstantLayer(index, " ", is_scalar),
+                             0)
             ->getOutput(0);
     return tensor;
   }
-
-  // Create and add Multi-D constant float layer
-  nvinfer1::ITensor* AddConstantLayer(const float* data,
+  template <typename T>
+  // Create and add Multi-D constant float/int32 layer
+  nvinfer1::ITensor* AddConstantLayer(const T* data,
                                       const std::vector<int32_t>& weight_dims,
                                       const std::string& weight_name) {
+    int data_size = std::accumulate(
+        weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int>());
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
-    int data_size = std::accumulate(weight_dims.begin(), weight_dims.end(), 1,
-                                    std::multiplies<int>());
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
+    if (std::is_integral<T>::value) {
+      trt_dtype = nvinfer1::DataType::kINT32;
+    }
+
+    TensorRTEngine::Weight weight{trt_dtype,
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
     nvinfer1::Dims trt_dims;
@@ -424,44 +511,26 @@ class OpConverter {
     return const_layer->getOutput(0);
   }
 
-  // Create and add 1D constant float layer
-  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<float>& data,
+  // Create and add 1D constant float/int32 layer
+  template <typename T>
+  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<T>& data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
       tmp_data[i] = data[i];
     }
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                  static_cast<void*>(tmp_data),
-                                  static_cast<size_t>(data_size)};
-    nvinfer1::Dims input_shape;
-    input_shape.nbDims = scalar ? 0 : 1;
-    input_shape.d[0] = data_size;
-    auto const_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, input_shape, weight.get());
-    return const_layer->getOutput(0);
-  }
-
-  // Create and add 1D constant layer
-  nvinfer1::ITensor* Add1DConstantLayer(const std::vector<int>& data,
-                                        const std::string& weight_name = "",
-                                        bool scalar = false) {
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
-    int data_size = data.size();
-    tmp_tensor->Resize({data_size});
-    auto* tmp_data = tmp_tensor->mutable_data<int>(platform::CPUPlace());
-    for (int i = 0; i < data_size; i++) {
-      tmp_data[i] = data[i];
+    nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
+    if (std::is_integral<T>::value) {
+      trt_dtype = nvinfer1::DataType::kINT32;
     }
-    engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kINT32,
+    TensorRTEngine::Weight weight{trt_dtype,
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
     nvinfer1::Dims input_shape;
@@ -488,8 +557,38 @@ class OpConverter {
     return Add1DConstantLayer(tmp_data, weight_name, scalar);
   }
 
+  // For cases when input is not middle-tensor , but persistable tensor
+  // you should call this.
+  nvinfer1::ITensor* ConvertWeight2ITensor(const framework::Scope& scope,
+                                           const std::string& name) {
+    auto* var_v = scope.FindVar(name);
+    auto* var_t = var_v->GetMutable<framework::LoDTensor>();
+    auto weight = engine_->GetTrtWeight(name, *var_t);
+
+    // Now we have create weights, then we need create a itensor
+    auto var_dims = var_t->dims();
+    nvinfer1::Dims trt_in_shape;
+    trt_in_shape.nbDims = var_t->dims().size();
+    for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
+      trt_in_shape.d[i] = var_dims[i];
+    }
+    // In fact , this is not always right, because we can't determine if the 0th
+    // dimension is batch. Just for run chenqu's model
+    if (!engine_->with_dynamic_shape()) {
+      trt_in_shape.nbDims--;
+      for (int i = 0; i < trt_in_shape.nbDims; i++) {
+        trt_in_shape.d[i] = trt_in_shape.d[i + 1];
+      }
+    }
+    nvinfer1::ILayer* layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_in_shape, weight.get());
+    engine_->SetITensor(name, layer->getOutput(0));
+    return layer->getOutput(0);
+  }
+
   void RreplenishLayerAndOutput(
-      nvinfer1::ILayer* layer, const std::string& layer_type,
+      nvinfer1::ILayer* layer,
+      const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
       bool test_mode = false) {
     size_t num_out = output_tensor_names.size();

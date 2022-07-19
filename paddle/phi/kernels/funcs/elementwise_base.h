@@ -558,6 +558,9 @@ struct VecSizeGetter {
 template <typename OutT, typename Functor>
 int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
                                 const std::vector<DenseTensor *> &outs) {
+#ifdef PADDLE_WITH_XPU_KP
+  int vec_size = 256;
+#else
   using Traits = paddle::platform::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   const int Arity = Traits::arity;
@@ -569,6 +572,7 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
     vec_size =
         std::min<int>(vec_size, phi::GetVectorizedSize((*iter)->data<OutT>()));
   }
+#endif
   return vec_size;
 }
 
@@ -768,7 +772,7 @@ __global__ void VectorizedElementwiseKernel(
         ins, outs, data_offset, read_lens * BLOCK_NUM_X, read_lens, func);
   }
 
-  int remain = numel - data_offset;
+  kps::IndexType remain = numel - data_offset;
   if (remain > 0) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -776,7 +780,7 @@ __global__ void VectorizedElementwiseKernel(
                                     NumOuts,
                                     VecSize,
                                     true>(
-        ins, outs, data_offset, remain, read_lens, func);
+        ins, outs, data_offset, static_cast<int>(remain), read_lens, func);
   }
 }
 
@@ -784,7 +788,6 @@ template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchElementwiseCudaKernel(const KPDevice &ctx,
                                  const std::vector<const DenseTensor *> &ins,
                                  std::vector<DenseTensor *> *outs,
-                                 int read_lens,
                                  Functor func) {
   // There are at least 1 output, but maybe 0 input (ins.size() == 0).
   // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
@@ -800,6 +803,7 @@ void LaunchElementwiseCudaKernel(const KPDevice &ctx,
 #ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
+  int read_lens = kps::details::GetXpuReadLens(numel, block_size, grid_size);
   auto stream = ctx.x_context()->xpu_stream;
   int64_t main_offset =
       (numel / (read_lens * block_size)) * read_lens * block_size;
@@ -853,32 +857,20 @@ void ElementwiseKernel(const KPDevice &ctx,
     }
   }
 
-#ifdef PADDLE_WITH_XPU_KP
-  const int buf_size = 256;
-  int numel = (*outs)[0]->numel();
-  int block_size = 64;
-  int grid_size = 8;
-  int nthreads = block_size * grid_size;
-  int read_lens =
-      std::min(buf_size, kps::details::RoundUpDiv(numel, 32 * nthreads) * 32);
-  int vec_size = buf_size;
-#else
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
-  int read_lens = vec_size;
-#endif
   switch (vec_size) {
     case VecSizeL:
       LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, read_lens, func);
+          ctx, ins, outs, func);
       break;
     case VecSizeM:
       LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, read_lens, func);
+          ctx, ins, outs, func);
       break;
     case VecSizeS:
       LaunchElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, read_lens, func);
+          ctx, ins, outs, func);
       break;
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(

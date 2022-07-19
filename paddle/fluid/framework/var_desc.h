@@ -33,8 +33,8 @@ inline std::vector<T> RepeatedToVector(
     const google::protobuf::RepeatedField<T> &repeated_field) {
   std::vector<T> ret;
   ret.reserve(repeated_field.size());
-  std::copy(repeated_field.begin(), repeated_field.end(),
-            std::back_inserter(ret));
+  std::copy(
+      repeated_field.begin(), repeated_field.end(), std::back_inserter(ret));
   return ret;
 }
 

@@ -36,8 +36,8 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
     found_inf->mutable_data<bool>(dev_ctx.GetPlace());
 
     MLUCnnlTensorDesc scale_desc(*scale);
-    MLUCnnlTensorDesc found_inf_desc(*found_inf, CNNL_LAYOUT_ARRAY,
-                                     ToCnnlDataType<bool>());
+    MLUCnnlTensorDesc found_inf_desc(
+        *found_inf, CNNL_LAYOUT_ARRAY, ToCnnlDataType<bool>());
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
@@ -56,16 +56,20 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc x_desc(*x);
       MLUCnnlTensorDesc out_desc(*out);
 
-      MLUCnnl::IsNanInf(ctx, x_desc.get(), GetBasePtr(x),
-                        GetBasePtr(&is_finite));
+      MLUCnnl::IsNanInf(
+          ctx, x_desc.get(), GetBasePtr(x), GetBasePtr(&is_finite));
 
       // save is_finite by logical_and op after checking every input
       if (i != 0) {
-        MLUCnnlTensorDesc is_finite_desc(is_finite, CNNL_LAYOUT_ARRAY,
-                                         ToCnnlDataType<bool>());
-        MLUCnnl::Logic(ctx, CNNL_LOGIC_OP_OR, found_inf_desc.get(),
-                       GetBasePtr(found_inf), is_finite_desc.get(),
-                       GetBasePtr(&is_finite), found_inf_desc.get(),
+        MLUCnnlTensorDesc is_finite_desc(
+            is_finite, CNNL_LAYOUT_ARRAY, ToCnnlDataType<bool>());
+        MLUCnnl::Logic(ctx,
+                       CNNL_LOGIC_OP_OR,
+                       found_inf_desc.get(),
+                       GetBasePtr(found_inf),
+                       is_finite_desc.get(),
+                       GetBasePtr(&is_finite),
+                       found_inf_desc.get(),
                        GetBasePtr(found_inf));
       }
 
@@ -86,21 +90,39 @@ class CheckFiniteAndUnscaleMLUKernel : public framework::OpKernel<T> {
         MLUCnnlTensorDesc float_out_desc(float_out);
         auto cast_fp16_type =
             GetCastDataType(DataType::FLOAT16, DataType::FLOAT32);
-        MLUCnnl::Cast(ctx, cast_fp16_type, x_desc.get(), GetBasePtr(x),
-                      float_x_desc.get(), GetBasePtr(&float_x));
+        MLUCnnl::Cast(ctx,
+                      cast_fp16_type,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      float_x_desc.get(),
+                      GetBasePtr(&float_x));
 
-        MLUCnnl::Div(ctx, CNNL_COMPUTATION_HIGH_PRECISION, float_x_desc.get(),
-                     GetBasePtr(&float_x), scale_desc.get(), GetBasePtr(scale),
-                     float_out_desc.get(), GetBasePtr(&float_out));
+        MLUCnnl::Div(ctx,
+                     CNNL_COMPUTATION_HIGH_PRECISION,
+                     float_x_desc.get(),
+                     GetBasePtr(&float_x),
+                     scale_desc.get(),
+                     GetBasePtr(scale),
+                     float_out_desc.get(),
+                     GetBasePtr(&float_out));
 
         auto cast_fp32_type =
             GetCastDataType(DataType::FLOAT32, DataType::FLOAT16);
-        MLUCnnl::Cast(ctx, cast_fp32_type, float_out_desc.get(),
-                      GetBasePtr(&float_out), out_desc.get(), GetBasePtr(out));
+        MLUCnnl::Cast(ctx,
+                      cast_fp32_type,
+                      float_out_desc.get(),
+                      GetBasePtr(&float_out),
+                      out_desc.get(),
+                      GetBasePtr(out));
       } else {
-        MLUCnnl::Div(ctx, CNNL_COMPUTATION_HIGH_PRECISION, x_desc.get(),
-                     GetBasePtr(x), scale_desc.get(), GetBasePtr(scale),
-                     out_desc.get(), GetBasePtr(out));
+        MLUCnnl::Div(ctx,
+                     CNNL_COMPUTATION_HIGH_PRECISION,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     scale_desc.get(),
+                     GetBasePtr(scale),
+                     out_desc.get(),
+                     GetBasePtr(out));
       }
     }
   }

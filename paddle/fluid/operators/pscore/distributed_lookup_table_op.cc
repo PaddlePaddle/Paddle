@@ -27,13 +27,16 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of LookupTableOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(W) of LookupTableOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Outs) of LookupTableOp should not be null."));
 
@@ -41,12 +44,14 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
 
     PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
+        table_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Only 2 dimensions of the 'Embedding' is supported."));
 
     for (auto &ids_dim : ids_dims) {
-      PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(ids_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The dimension of the 'Ids' tensor must be 2."));
     }
@@ -61,9 +66,10 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
       if (lookup_table_version == "lookup_table") {
         outputs_dims.push_back(phi::make_ddim({ids_dim[0], table_dims[1]}));
       } else if (lookup_table_version == "lookup_table_v2") {
-        outputs_dims.push_back(phi::make_ddim(
-            {static_cast<int64_t>(ids_dim[0]), static_cast<int64_t>(ids_dim[1]),
-             static_cast<int64_t>(table_dims[1])}));
+        outputs_dims.push_back(
+            phi::make_ddim({static_cast<int64_t>(ids_dim[0]),
+                            static_cast<int64_t>(ids_dim[1]),
+                            static_cast<int64_t>(table_dims[1])}));
       }
     }
 
@@ -140,9 +146,10 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
+REGISTER_OPERATOR(distributed_lookup_table,
+                  ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
-REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    distributed_lookup_table,
+    ops::DistributedLookupTableKernel<phi::CPUContext, float>);

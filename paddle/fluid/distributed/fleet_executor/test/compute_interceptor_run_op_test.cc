@@ -40,12 +40,13 @@ std::vector<framework::OperatorBase*> GetOps() {
   attrs["shape"] = phi::vectorize<int>({2, 3});
   attrs["value"] = 1.0f;
 
-  auto zero_op = framework::OpRegistry::CreateOp("fill_constant", {},
-                                                 {{"Out", {"x"}}}, attrs);
+  auto zero_op = framework::OpRegistry::CreateOp(
+      "fill_constant", {}, {{"Out", {"x"}}}, attrs);
 
-  auto op = framework::OpRegistry::CreateOp(
-      "elementwise_add", {{"X", {"x"}}, {"Y", {"x"}}}, {{"Out", {"out"}}},
-      framework::AttributeMap());
+  auto op = framework::OpRegistry::CreateOp("elementwise_add",
+                                            {{"X", {"x"}}, {"Y", {"x"}}},
+                                            {{"Out", {"out"}}},
+                                            framework::AttributeMap());
 
   // NOTE: don't delete
   return {zero_op.release(), op.release()};

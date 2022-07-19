@@ -26,11 +26,13 @@ class MessageServiceImpl : public MessageService {
   virtual ~MessageServiceImpl() {}
   virtual void ReceiveInterceptorMessage(
       google::protobuf::RpcController* control_base,
-      const InterceptorMessage* request, InterceptorResponse* response,
+      const InterceptorMessage* request,
+      InterceptorResponse* response,
       google::protobuf::Closure* done);
   virtual void IncreaseBarrierCount(
       google::protobuf::RpcController* control_base,
-      const InterceptorMessage* request, InterceptorResponse* response,
+      const InterceptorMessage* request,
+      InterceptorResponse* response,
       google::protobuf::Closure* done);
 };
 

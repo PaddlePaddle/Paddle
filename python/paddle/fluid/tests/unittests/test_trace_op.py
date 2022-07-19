@@ -28,14 +28,15 @@ class TestTraceOp(OpTest):
 
     def setUp(self):
         self.op_type = "trace"
+        self.python_api = paddle.trace
         self.init_config()
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_eager=True)
 
     def init_config(self):
         self.case = np.random.randn(20, 6).astype('float64')

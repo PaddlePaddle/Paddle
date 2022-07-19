@@ -49,9 +49,12 @@ struct DftiDescriptorDeleter {
 // A RAII wrapper for MKL_DESCRIPTOR*
 class DftiDescriptor {
  public:
-  void init(DFTI_CONFIG_VALUE precision, DFTI_CONFIG_VALUE signal_type,
-            MKL_LONG signal_ndim, MKL_LONG* sizes) {
-    PADDLE_ENFORCE_EQ(desc_.get(), nullptr,
+  void init(DFTI_CONFIG_VALUE precision,
+            DFTI_CONFIG_VALUE signal_type,
+            MKL_LONG signal_ndim,
+            MKL_LONG* sizes) {
+    PADDLE_ENFORCE_EQ(desc_.get(),
+                      nullptr,
                       platform::errors::AlreadyExists(
                           "DftiDescriptor has already been initialized."));
 
@@ -76,8 +79,10 @@ class DftiDescriptor {
 static DftiDescriptor _plan_mkl_fft(
     const framework::proto::VarType::Type& in_dtype,
     const framework::proto::VarType::Type& out_dtype,
-    const framework::DDim& in_strides, const framework::DDim& out_strides,
-    const std::vector<int>& signal_sizes, FFTNormMode normalization,
+    const framework::DDim& in_strides,
+    const framework::DDim& out_strides,
+    const std::vector<int>& signal_sizes,
+    FFTNormMode normalization,
     bool forward) {
   const DFTI_CONFIG_VALUE precision = [&] {
     switch (in_dtype) {
@@ -108,8 +113,8 @@ static DftiDescriptor _plan_mkl_fft(
   descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
 
   // placement inplace or not inplace
-  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(descriptor.get(), DFTI_PLACEMENT,
-                                            DFTI_NOT_INPLACE));
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
+      descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
 
   // number of transformations
   const MKL_LONG batch_size = fft_sizes[0];
@@ -121,8 +126,8 @@ static DftiDescriptor _plan_mkl_fft(
   const MKL_LONG odist = out_strides[0];
   MKL_DFTI_CHECK(
       phi::dynload::DftiSetValue(descriptor.get(), DFTI_INPUT_DISTANCE, idist));
-  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(descriptor.get(),
-                                            DFTI_OUTPUT_DISTANCE, odist));
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
+      descriptor.get(), DFTI_OUTPUT_DISTANCE, odist));
 
   // input & output stride
   std::vector<MKL_LONG> mkl_in_stride(1 + signal_ndim, 0);
@@ -142,9 +147,10 @@ static DftiDescriptor _plan_mkl_fft(
         descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX));
   }
 
-  MKL_LONG signal_numel =
-      std::accumulate(fft_sizes.cbegin() + 1, fft_sizes.cend(), 1UL,
-                      std::multiplies<MKL_LONG>());
+  MKL_LONG signal_numel = std::accumulate(fft_sizes.cbegin() + 1,
+                                          fft_sizes.cend(),
+                                          1UL,
+                                          std::multiplies<MKL_LONG>());
   if (normalization != FFTNormMode::none) {
     const double scale =
         ((normalization == FFTNormMode::by_sqrt_n)
@@ -171,8 +177,11 @@ static DftiDescriptor _plan_mkl_fft(
 
 // Execute a general fft operation (can be c2c, onesided r2c or onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
-void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
-              const std::vector<int64_t>& axes, FFTNormMode normalization,
+void exec_fft(const DeviceContext& ctx,
+              const Tensor* x,
+              Tensor* out,
+              const std::vector<int64_t>& axes,
+              FFTNormMode normalization,
               bool forward) {
   const framework::DDim& in_sizes = x->dims();
   const int ndim = in_sizes.size();
@@ -188,8 +197,9 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     is_transformed_dim[d] = true;
   }
   const auto batch_end =
-      std::partition(dim_permute.begin(), dim_permute.end(),
-                     [&](size_t axis) { return !is_transformed_dim[axis]; });
+      std::partition(dim_permute.begin(), dim_permute.end(), [&](size_t axis) {
+        return !is_transformed_dim[axis];
+      });
   std::copy(axes.cbegin(), axes.cend(), batch_end);
 
   // transpose input according to that permutation
@@ -200,17 +210,20 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   transposed_input.Resize(transposed_input_shape);
   const auto place = ctx.GetPlace();
   transposed_input.mutable_data<Ti>(place);
-  TransCompute<platform::CPUDeviceContext, Ti>(ndim, ctx, *x, &transposed_input,
-                                               dim_permute);
+  TransCompute<phi::CPUContext, Ti>(
+      ndim, ctx, *x, &transposed_input, dim_permute);
 
   // make an collapsed input: collapse batch axes for input
-  const int batch_size = std::accumulate(
-      transposed_input_shape.Get(), transposed_input_shape.Get() + batch_ndim,
-      1L, std::multiplies<int64_t>());
+  const int batch_size =
+      std::accumulate(transposed_input_shape.Get(),
+                      transposed_input_shape.Get() + batch_ndim,
+                      1L,
+                      std::multiplies<int64_t>());
   std::vector<int> collapsed_input_shape_(1 + signal_ndim);
   collapsed_input_shape_[0] = batch_size;
   std::copy(transposed_input_shape_.begin() + batch_ndim,
-            transposed_input_shape_.end(), collapsed_input_shape_.begin() + 1);
+            transposed_input_shape_.end(),
+            collapsed_input_shape_.begin() + 1);
   const framework::DDim collapsed_input_shape =
       phi::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
@@ -243,8 +256,12 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   // make a DFTI_DESCRIPTOR
   DftiDescriptor desc =
       _plan_mkl_fft(framework::TransToProtoVarType(x->dtype()),
-                    framework::TransToProtoVarType(out->dtype()), input_stride,
-                    output_stride, signal_sizes, normalization, forward);
+                    framework::TransToProtoVarType(out->dtype()),
+                    input_stride,
+                    output_stride,
+                    signal_sizes,
+                    normalization,
+                    forward);
 
   const FFTTransformType fft_type =
       GetFFTTransformType(framework::TransToProtoVarType(x->dtype()),
@@ -293,49 +310,58 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   for (int i = 0; i < ndim; i++) {
     reverse_dim_permute[dim_permute[i]] = i;
   }
-  TransCompute<platform::CPUDeviceContext, To>(ndim, ctx, transposed_output,
-                                               out, reverse_dim_permute);
+  TransCompute<phi::CPUContext, To>(
+      ndim, ctx, transposed_output, out, reverse_dim_permute);
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
-    exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
-                                                 normalization, forward);
+struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
+    exec_fft<phi::CPUContext, Ti, To>(
+        ctx, x, out, axes, normalization, forward);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
-    exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
-                                                 normalization, forward);
+struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
+    exec_fft<phi::CPUContext, Ti, To>(
+        ctx, x, out, axes, normalization, forward);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     if (axes.size() > 1) {
       const std::vector<int64_t> c2c_dims(axes.begin(), axes.end() - 1);
       Tensor temp;
       temp.mutable_data<Ti>(x->dims(), ctx.GetPlace());
 
-      FFTC2CFunctor<platform::CPUDeviceContext, Ti, Ti> c2c_functor;
+      FFTC2CFunctor<phi::CPUContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, x, &temp, c2c_dims, normalization, forward);
 
       const std::vector<int64_t> new_axes{axes.back()};
-      exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, &temp, out, new_axes,
-                                                   normalization, forward);
+      exec_fft<phi::CPUContext, Ti, To>(
+          ctx, &temp, out, new_axes, normalization, forward);
     } else {
-      exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
-                                                   normalization, forward);
+      exec_fft<phi::CPUContext, Ti, To>(
+          ctx, x, out, axes, normalization, forward);
     }
   }
 };
@@ -357,10 +383,13 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
 }
 
 template <typename Ti, typename To>
-struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     using R = typename Ti::value_type;
     using C = std::complex<R>;
 
@@ -369,7 +398,9 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
     std::vector<std::ptrdiff_t> in_strides =
         phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     const int64_t data_size = sizeof(C);
-    std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
+    std::transform(in_strides.begin(),
+                   in_strides.end(),
+                   in_strides.begin(),
                    [&](std::ptrdiff_t s) { return s * data_size; });
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
@@ -383,16 +414,25 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
       signal_numel *= in_sizes[i];
     }
     R factor = compute_factor<R>(signal_numel, normalization);
-    pocketfft::c2c(in_sizes, in_strides, in_strides, axes_, forward, in_data,
-                   out_data, factor);
+    pocketfft::c2c(in_sizes,
+                   in_strides,
+                   in_strides,
+                   axes_,
+                   forward,
+                   in_data,
+                   out_data,
+                   factor);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     using R = Ti;
     using C = std::complex<R>;
 
@@ -402,7 +442,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
         phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
-      std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
+      std::transform(in_strides.begin(),
+                     in_strides.end(),
+                     in_strides.begin(),
                      [&](std::ptrdiff_t s) { return s * data_size; });
     }
 
@@ -412,7 +454,8 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
         phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
-      std::transform(out_strides.begin(), out_strides.end(),
+      std::transform(out_strides.begin(),
+                     out_strides.end(),
                      out_strides.begin(),
                      [&](std::ptrdiff_t s) { return s * data_size; });
     }
@@ -428,16 +471,25 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
       signal_numel *= in_sizes[i];
     }
     R factor = compute_factor<R>(signal_numel, normalization);
-    pocketfft::r2c(in_sizes, in_strides, out_strides, axes_, forward, in_data,
-                   out_data, factor);
+    pocketfft::r2c(in_sizes,
+                   in_strides,
+                   out_strides,
+                   axes_,
+                   forward,
+                   in_data,
+                   out_data,
+                   factor);
   }
 };
 
 template <typename Ti, typename To>
-struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
-  void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
-                  Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {
+struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
+  void operator()(const phi::CPUContext& ctx,
+                  const Tensor* x,
+                  Tensor* out,
+                  const std::vector<int64_t>& axes,
+                  FFTNormMode normalization,
+                  bool forward) {
     using R = To;
     using C = std::complex<R>;
 
@@ -447,7 +499,9 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
         phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
-      std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
+      std::transform(in_strides.begin(),
+                     in_strides.end(),
+                     in_strides.begin(),
                      [&](std::ptrdiff_t s) { return s * data_size; });
     }
 
@@ -457,7 +511,8 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
         phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
-      std::transform(out_strides.begin(), out_strides.end(),
+      std::transform(out_strides.begin(),
+                     out_strides.end(),
                      out_strides.begin(),
                      [&](std::ptrdiff_t s) { return s * data_size; });
     }
@@ -473,8 +528,14 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
       signal_numel *= out_sizes[i];
     }
     R factor = compute_factor<R>(signal_numel, normalization);
-    pocketfft::c2r(out_sizes, in_strides, out_strides, axes_, forward, in_data,
-                   out_data, factor);
+    pocketfft::c2r(out_sizes,
+                   in_strides,
+                   out_strides,
+                   axes_,
+                   forward,
+                   in_data,
+                   out_data,
+                   factor);
   }
 };
 

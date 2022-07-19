@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
   framework::Tensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_xpu_place(tensor->place())) {
-    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
-                                      &cpu_tensor);
+    paddle::framework::TensorCopySync(
+        *tensor, platform::CPUPlace(), &cpu_tensor);
     tensor_data = cpu_tensor.data<float>();
   }
   return tensor_data[0];
@@ -47,7 +47,8 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
 
     // check Param & Grad tensor type
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
                           "type is LoDTensor, "
@@ -56,7 +57,8 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     const auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor holds the wrong type，Expected Var(%s)'s "
                           "type is LoDTensor, "
@@ -65,17 +67,18 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(grad_var->Type())));
 
     // inputs
-    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
-                                  "Param", "Rmsprop");
-    auto& meanSquare = GET_DATA_SAFELY(ctx.Input<LoDTensor>("MeanSquare"),
-                                       "Input", "MeanSquare", "Rmsprop");
-    auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input", "Grad",
-                                 "Rmsprop");
-    auto& mom = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment"), "Input",
-                                "Moment", "Rmsprop");
+    auto& param = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Param"), "Input", "Param", "Rmsprop");
+    auto& meanSquare = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("MeanSquare"), "Input", "MeanSquare", "Rmsprop");
+    auto& grad = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Grad"), "Input", "Grad", "Rmsprop");
+    auto& mom = GET_DATA_SAFELY(
+        ctx.Input<LoDTensor>("Moment"), "Input", "Moment", "Rmsprop");
 
     auto* learning_rate = ctx.Input<Tensor>("LearningRate");
-    PADDLE_ENFORCE_EQ(learning_rate->dims().size(), 1,
+    PADDLE_ENFORCE_EQ(learning_rate->dims().size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "learining rate should have dimension = 1."
                           " But received learning rate dim [%s] ",
@@ -87,34 +90,46 @@ class RmspropOpXPUKernel : public framework::OpKernel<T> {
     T decay = static_cast<T>(ctx.Attr<float>("decay"));
     T momentum = static_cast<T>(ctx.Attr<float>("momentum"));
 
+    bool centered = ctx.Attr<bool>("centered");
+    PADDLE_ENFORCE_EQ(centered,
+                      false,
+                      platform::errors::Unimplemented(
+                          "centered=True is not supported in the xpu kernel of "
+                          "rmsprop. use XPU_BLACK_LIST to disable this op."));
+    /*
+      TODO(houj04): when XDNN api supports 'center', add input of
+      mean_grad_input and output of mean_grad_output. auto *mean_grad_input =
+      ctx.Input<Tensor>("MeanGrad"); auto *mean_grad_output =
+      ctx.Output<Tensor>("MeanGradOut");
+      */
+
     // outputs
-    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
-                                      "Output", "ParamOut", "Rmsprop");
-    auto& mom_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("MomentOut"),
-                                    "Output", "MomentOut", "Rmsprop");
+    auto& param_out = GET_DATA_SAFELY(
+        ctx.Output<LoDTensor>("ParamOut"), "Output", "ParamOut", "Rmsprop");
+    auto& mom_out = GET_DATA_SAFELY(
+        ctx.Output<LoDTensor>("MomentOut"), "Output", "MomentOut", "Rmsprop");
     auto& mom_sqrt_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("MeanSquareOut"),
-                                         "Output", "MeanSquareOut", "Rmsprop");
+                                         "Output",
+                                         "MeanSquareOut",
+                                         "Rmsprop");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    ///// rmsprop优化算法
-    ///
-    /// ms_out[i] = rho * ms[i] + (1 - rho) * (g[i] * g[i]);
-    ///
-    /// mom_out[i] = momentum * mom[i] + lr *
-    /// (g[i] / ((float)sqrt(ms_out[i] + epsilon)));
-    ///
-    /// p_out[i] = p[i] - mom_out[i];
-    /// DLL_EXPORT int rmsprop(Context* ctx, const float* p,
-    /// const float* ms, const float* g, const float* mom,
-    /// float epsilon, float rho, float momentum, float lr,
-    /// float *ms_out, float *mom_out, float *p_out, int n)
-    int r = xpu::rmsprop(dev_ctx.x_context(), grad.template data<T>(),
+    // int rmsprop(Context* ctx, const T* g, const T* p, const float* ms, const
+    // float* mom, T* p_out, float* ms_out, float* mom_out, float epsilon, float
+    // rho, float momentum, float lr, int n);
+    int r = xpu::rmsprop(dev_ctx.x_context(),
+                         grad.template data<T>(),
                          param.template data<T>(),
-                         meanSquare.template data<T>(), mom.template data<T>(),
+                         meanSquare.template data<T>(),
+                         mom.template data<T>(),
                          param_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_sqrt_out.template mutable_data<T>(ctx.GetPlace()),
                          mom_out.template mutable_data<T>(ctx.GetPlace()),
-                         epsilon, decay, momentum, lr, param.numel());
+                         epsilon,
+                         decay,
+                         momentum,
+                         lr,
+                         param.numel());
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "rmsprop");
   }

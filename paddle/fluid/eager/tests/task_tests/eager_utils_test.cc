@@ -138,15 +138,15 @@ TEST(EagerUtils, ComputeRequireGrad) {
   VLOG(6) << "Multi Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(false);
   auto_grad1->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == true);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
 }
 
 TEST(EagerUtils, PassStopGradient) {
@@ -158,8 +158,11 @@ TEST(EagerUtils, PassStopGradient) {
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
   CHECK(auto_grad0->StopGradient() == false);
-  egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
-                                    auto_grad2.get(), auto_grad3.get());
+  egr::EagerUtils::PassStopGradient(true,
+                                    auto_grad0.get(),
+                                    auto_grad1.get(),
+                                    auto_grad2.get(),
+                                    auto_grad3.get());
   CHECK(auto_grad0->StopGradient() == false);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);

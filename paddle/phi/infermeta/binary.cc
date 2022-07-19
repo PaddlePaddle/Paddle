@@ -17,8 +17,11 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -160,6 +163,10 @@ void KLDivInferMeta(const MetaTensor& x,
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
+  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
+      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+    out->set_dtype(DataType::FLOAT64);
+  }
 }
 
 void BCELossInferMeta(const MetaTensor& input,
@@ -350,6 +357,37 @@ void CompareAllInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dims(make_ddim({1}));
   out->set_dtype(DataType::BOOL);
+}
+
+void ComplexInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      MetaTensor* out) {
+  if (x.dims() == y.dims()) {
+    auto sizes = vectorize(x.dims());
+    out->set_dims(phi::make_ddim(sizes));
+    out->set_dtype(dtype::ToComplex(x.dtype()));
+    // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
+    // so tensors with lod are not supported here
+  } else {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+
+    // start align axis
+    int axis = std::abs(x_dims.size() - y_dims.size());
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    phi::funcs::GetBroadcastDimsArrays(x_dims,
+                                       y_dims,
+                                       x_dims_array.data(),
+                                       y_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    out->set_dims(phi::make_ddim(out_dims_array));
+    out->set_dtype(dtype::ToComplex(x.dtype()));
+  }
 }
 
 void ConvInferMeta(const MetaTensor& input,
@@ -2042,6 +2080,93 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
+}
+
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
+
+  auto x_dims_n = x_dims_vec.size();
+  auto y_dims_n = y_dims_vec.size();
+
+  PADDLE_ENFORCE_GT(
+      x_dims_n,
+      1,
+      phi::errors::InvalidArgument("The input tensor X's dimensions of SolveOp "
+                                   "should be larger than 1. But received X's "
+                                   "dimensions = %d, X's shape = [%s]",
+                                   x_dims_n,
+                                   x_dims));
+
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The input tensor Y's dimensions of SolveOp "
+                        "should be larger than or equal 1. But received Y's "
+                        "dimensions = %d, Y's shape = [%s]",
+                        y_dims_n,
+                        y_dims));
+
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2],
+                    x_dims[x_dims_n - 1],
+                    phi::errors::InvalidArgument(
+                        "The inner-most 2 dimensions of Input(X) all should "
+                        "be square matrices "
+                        "But received X's shape[-2] = %d and shape[-1] = %d.",
+                        x_dims[x_dims_n - 2],
+                        x_dims[x_dims_n - 1]));
+
+  bool x_broadcasted = false, y_broadcasted = false;
+  bool trans_x = false, trans_y = false;
+  if (x_dims_n == 1) {
+    x_dims_vec.insert(x_dims_vec.begin(), 1);
+    x_dims_n = 2;
+    x_broadcasted = true;
+  }
+
+  if (y_dims_n == 1) {
+    y_dims_vec.push_back(1);
+    y_dims_n = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (trans_x) {
+    M = x_dims_vec[x_dims_n - 1];
+  } else {
+    M = x_dims_vec[x_dims_n - 2];
+  }
+  if (trans_y) {
+    N = y_dims_vec[y_dims_n - 2];
+  } else {
+    N = y_dims_vec[y_dims_n - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (x_dims_n >= y_dims_n) {
+    new_dims.assign(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  } else {
+    new_dims.assign(y_dims_vec.begin(), y_dims_vec.end() - 2);
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  auto out_dims = phi::make_ddim(new_dims);
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace phi

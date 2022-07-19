@@ -22,7 +22,8 @@ namespace tensorrt {
 class SplitOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a fluid split op to tensorrt split layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -32,13 +33,13 @@ class SplitOpConverter : public OpConverter {
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
 
     std::vector<int> output_lengths =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
     int num = 0;
     if (op_desc.HasAttr("num")) {
-      num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
+      num = PADDLE_GET_CONST(int, op_desc.GetAttr("num"));
     }
     nvinfer1::ITensor* shape_tensor = nullptr;
     if (engine_->with_dynamic_shape()) {
@@ -100,8 +101,12 @@ class SplitOpConverter : public OpConverter {
                                                           this_len_tensor};
         auto* start_tensor = Gather(Concat(concat_inputs1), gather_indices);
         auto* size_tensor = Gather(Concat(concat_inputs2), gather_indices);
-        layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_step_dims,
-                                     trt_step_dims, trt_step_dims);
+        layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                     Slice,
+                                     *input,
+                                     trt_step_dims,
+                                     trt_step_dims,
+                                     trt_step_dims);
         layer->setInput(1, *start_tensor);
         layer->setInput(2, *size_tensor);
 
@@ -120,11 +125,15 @@ class SplitOpConverter : public OpConverter {
 
       // input : [C,H,W]
       for (size_t i = 0; i < output_num; i++) {
-        trt_start_dims.d[axis] = std::accumulate(output_lengths.begin(),
-                                                 output_lengths.begin() + i, 0);
+        trt_start_dims.d[axis] = std::accumulate(
+            output_lengths.begin(), output_lengths.begin() + i, 0);
         trt_size_dims.d[axis] = output_lengths[i];
-        layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, trt_start_dims,
-                                     trt_size_dims, trt_step_dims);
+        layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                     Slice,
+                                     *input,
+                                     trt_start_dims,
+                                     trt_size_dims,
+                                     trt_step_dims);
         auto output_name = op_desc.Output("Out")[i];
         RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
       }

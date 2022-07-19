@@ -38,7 +38,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         return avg_cost, x, y
 
     def fake_reader(self):

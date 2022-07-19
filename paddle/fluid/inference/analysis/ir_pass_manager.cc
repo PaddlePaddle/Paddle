@@ -68,12 +68,15 @@ void IRPassManager::CreatePasses(Argument *argument,
     auto precision_mode = argument->tensorrt_precision_mode();
     bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
     pass->Set("enable_int8", new bool(enable_int8));
-    pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
-                                     argument->max_input_shape()));
-    pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
-                                     argument->min_input_shape()));
-    pass->Set("optim_input_shape", new std::map<std::string, std::vector<int>>(
-                                       argument->optim_input_shape()));
+    pass->Set("max_input_shape",
+              new std::map<std::string, std::vector<int>>(
+                  argument->max_input_shape()));
+    pass->Set("min_input_shape",
+              new std::map<std::string, std::vector<int>>(
+                  argument->min_input_shape()));
+    pass->Set("optim_input_shape",
+              new std::map<std::string, std::vector<int>>(
+                  argument->optim_input_shape()));
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -82,6 +85,11 @@ void IRPassManager::CreatePasses(Argument *argument,
                                argument->optim_input_shape().size() > 0) ||
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
+
+    pass->Set("model_precision", new int(argument->model_precision()));
+    pass->Set(
+        "mixed_black_list",
+        new std::unordered_set<std::string>(argument->mixed_black_list()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -143,14 +151,16 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
                           enable_int8 && use_calib_mode);
       PADDLE_ENFORCE_EQ(
-          int8_valid, true,
+          int8_valid,
+          true,
           platform::errors::PreconditionNotMet(
               "When you are in TRT INT8 mode, and load model from "
               "memory, you should set optim_cache_dir using "
               "config.SetOptimCacheDir()"));
       if (model_from_memory && use_static_engine) {
         PADDLE_ENFORCE_EQ(
-            optim_cache_dir.empty(), false,
+            optim_cache_dir.empty(),
+            false,
             platform::errors::PreconditionNotMet(
                 "When you are using Paddle-TRT, and using load model "
                 "from memory, and also set the use_static to true. "
@@ -161,7 +171,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       if (!optim_cache_dir.empty()) {
         if (!PathExists(optim_cache_dir)) {
           PADDLE_ENFORCE_NE(
-              MKDIR(optim_cache_dir.c_str()), -1,
+              MKDIR(optim_cache_dir.c_str()),
+              -1,
               platform::errors::PreconditionNotMet(
                   "Can not create optimize cache directory: %s, Make sure you "
                   "have permission to write",
@@ -187,8 +198,9 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::string(argument->tensorrt_shape_range_info_path()));
       pass->Set("trt_allow_build_at_runtime",
                 new bool(argument->tensorrt_allow_build_at_runtime()));
-      pass->Set("trt_disabled_ops", new std::vector<std::string>(
-                                        argument->tensorrt_disabled_ops()));
+      pass->Set(
+          "trt_disabled_ops",
+          new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
@@ -200,10 +212,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new int(argument->dlnne_min_subgraph_size()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
-    } else if (pass_name == "mixed_precision_configure_pass") {
-      pass->Set("gpu_fp16_disabled_op_types",
-                new std::unordered_set<std::string>(
-                    argument->gpu_fp16_disabled_op_types()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
@@ -272,8 +280,9 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   if (passes_.empty()) {
     return graph;
   }
-  PADDLE_ENFORCE_NOT_NULL(graph.get(), platform::errors::PreconditionNotMet(
-                                           "Graph cannot be NULL."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph.get(),
+      platform::errors::PreconditionNotMet("Graph cannot be NULL."));
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {

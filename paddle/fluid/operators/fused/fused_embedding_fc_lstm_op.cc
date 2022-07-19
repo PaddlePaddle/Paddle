@@ -26,31 +26,35 @@ namespace operators {
 
 void FusedEmbeddingFCLSTMOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  OP_INOUT_CHECK(ctx->HasInput("Embeddings"), "Input", "Embeddings",
+  OP_INOUT_CHECK(ctx->HasInput("Embeddings"),
+                 "Input",
+                 "Embeddings",
                  "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasInput("WeightH"), "Input", "WeightH",
-                 "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
-                 "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasOutput("XX"), "Output", "XX",
-                 "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden",
-                 "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell",
-                 "fused_embedding_fc_lstm");
-  OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids",
-                 "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasInput("WeightH"), "Input", "WeightH", "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Bias"), "Input", "Bias", "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasOutput("XX"), "Output", "XX", "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasOutput("Hidden"), "Output", "Hidden", "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasOutput("Cell"), "Output", "Cell", "fused_embedding_fc_lstm");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Ids"), "Input", "Ids", "fused_embedding_fc_lstm");
 
   auto table_dims = ctx->GetInputDim("Embeddings");
   auto ids_dims = ctx->GetInputDim("Ids");
   int ids_rank = ids_dims.size();
 
   PADDLE_ENFORCE_EQ(
-      table_dims.size(), 2,
+      table_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "The Embeddings's rank should be 2, but received value is:%d.",
           table_dims.size()));
-  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                    1,
                     platform::errors::InvalidArgument(
                         "The last dimension of the 'Ids' tensor must be 1, but "
                         "received value is:%d.",
@@ -58,62 +62,76 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 
   auto x_dims = ctx->GetInputDim("Ids");
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
+      x_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input(Ids)'s rank must be 2, but received value is:%d.",
           x_dims.size()));
 
   if (ctx->HasInput("H0")) {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("C0"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("C0"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Cell) and Input(Hidden) of LSTM should exist "
                           "at the same time."));
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
     PADDLE_ENFORCE_EQ(
-        h_dims, c_dims,
+        h_dims,
+        c_dims,
         platform::errors::InvalidArgument(
             "The dimension of Input(H0) and Input(C0) "
             "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
-            h_dims, c_dims));
+            h_dims,
+            c_dims));
   }
 
   auto wh_dims = ctx->GetInputDim("WeightH");
   int frame_size = wh_dims[1] / 4;
   PADDLE_ENFORCE_EQ(
-      wh_dims.size(), 2,
+      wh_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "The rank of Input(WeightH) should be 2, but received value is:%d.",
           wh_dims.size()));
-  PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) should equal to "
                         "frame size:%d, but received value is:%d.",
-                        frame_size, wh_dims[0]));
-  PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
+                        frame_size,
+                        wh_dims[0]));
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) should equal "
                         "to 4 * %d, but received value is:%d.",
-                        frame_size, wh_dims[1]));
+                        frame_size,
+                        wh_dims[1]));
 
   auto b_dims = ctx->GetInputDim("Bias");
   PADDLE_ENFORCE_EQ(
-      b_dims.size(), 2,
+      b_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "The rank of Input(Bias) should be 2, but received value is:%d.",
           b_dims.size()));
-  PADDLE_ENFORCE_EQ(b_dims[0], 1,
+  PADDLE_ENFORCE_EQ(b_dims[0],
+                    1,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(Bias) "
                         "should be 1, but received value is:%d.",
                         b_dims[0]));
   PADDLE_ENFORCE_EQ(
-      b_dims[1], (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
+      b_dims[1],
+      (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
       platform::errors::InvalidArgument(
           "The second dimension of Input(Bias) should be "
           "7 * %d if enable peepholes connection or"
           "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
-          frame_size, frame_size, b_dims[1],
+          frame_size,
+          frame_size,
+          b_dims[1],
           ctx->Attrs().Get<bool>("use_peepholes")));
 
   framework::DDim out_dims({x_dims[0], frame_size});
@@ -122,15 +140,25 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   ctx->ShareLoD("Ids", "Hidden");
   ctx->ShareLoD("Ids", "Cell");
   if (!ctx->Attrs().Get<bool>("use_seq")) {
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"),
+                   "Output",
+                   "BatchedInput",
                    "fused_embedding_fc_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"), "Output", "BatchedHidden",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"),
+                   "Output",
+                   "BatchedHidden",
                    "fused_embedding_fc_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedCell"), "Output", "BatchedCell",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedCell"),
+                   "Output",
+                   "BatchedCell",
                    "fused_embedding_fc_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
+    OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"),
+                   "Output",
+                   "ReorderedH0",
                    "fused_embedding_fc_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedC0"), "Output", "ReorderedC0",
+    OP_INOUT_CHECK(ctx->HasOutput("ReorderedC0"),
+                   "Output",
+                   "ReorderedC0",
                    "fused_embedding_fc_lstm");
 
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wh_dims[1]});
@@ -297,9 +325,20 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   }
 
 /// Compute LSTM
-#define GEMM_WH_ADDON(bs, prev, out)                                           \
-  blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
-            wh_data, D4, static_cast<T>(1), out, D4)
+#define GEMM_WH_ADDON(bs, prev, out) \
+  blas.GEMM(CblasNoTrans,            \
+            CblasNoTrans,            \
+            bs,                      \
+            D4,                      \
+            D,                       \
+            static_cast<T>(1),       \
+            prev,                    \
+            D,                       \
+            wh_data,                 \
+            D4,                      \
+            static_cast<T>(1),       \
+            out,                     \
+            D4)
 
 // gates: W_ch, W_ih, W_fh, W_oh
 #define GET_Ct(ct_1, gates, ct)                   \
@@ -352,7 +391,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -371,13 +410,16 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
-          ids_data[i], row_number,
+          ids_data[i],
+          row_number,
           platform::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
-      PADDLE_ENFORCE_GE(ids_data[i], 0,
+      PADDLE_ENFORCE_GE(ids_data[i],
+                        0,
                         platform::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
-      memcpy(xx_data + i * row_width, embeddings_data + ids_data[i] * row_width,
+      memcpy(xx_data + i * row_width,
+             embeddings_data + ids_data[i] * row_width,
              row_width * sizeof(T));
     }
 
@@ -454,7 +496,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = platform::CPUDeviceContext;
+    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     if (ids->lod()[0].size() == 2) {
       SeqCompute(ctx);
@@ -482,13 +524,16 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
-          ids_data[i], row_number,
+          ids_data[i],
+          row_number,
           platform::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
-      PADDLE_ENFORCE_GE(ids_data[i], 0,
+      PADDLE_ENFORCE_GE(ids_data[i],
+                        0,
                         platform::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
-      memcpy(xx_data + i * row_width, embeddings_data + ids_data[i] * row_width,
+      memcpy(xx_data + i * row_width,
+             embeddings_data + ids_data[i] * row_width,
              row_width * sizeof(T));
     }
 
@@ -571,8 +616,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          COMPUTE_CtHt_PEEPHOLE(cur_in_data, cur_prev_c_data, cur_c_out_data,
-                                cur_h_out_data);
+          COMPUTE_CtHt_PEEPHOLE(
+              cur_in_data, cur_prev_c_data, cur_c_out_data, cur_h_out_data);
           MOVE_ONE_BATCH;
         }
         MOVE_ONE_STEP;
@@ -583,8 +628,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          COMPUTE_CtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
-                       cur_h_out_data);
+          COMPUTE_CtHt(
+              cur_in_data, cur_prev_c_data, cur_c_out_data, cur_h_out_data);
           MOVE_ONE_BATCH;
         }
         MOVE_ONE_STEP;
@@ -627,7 +672,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_embedding_fc_lstm, ops::FusedEmbeddingFCLSTMOp,
+REGISTER_OPERATOR(fused_embedding_fc_lstm,
+                  ops::FusedEmbeddingFCLSTMOp,
                   ops::FusedEmbeddingFCLSTMOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
