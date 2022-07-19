@@ -702,6 +702,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return in[0] != nullptr;
   }
 
+  size_t InputsSize() {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    return op_proto->inputs().size();
+  }
+
   bool HasOutput(const std::string& name) const override {
     // has only one output
     const auto& outs = ctx_.outputs;
@@ -1195,19 +1201,20 @@ struct OperatorWithKernel::CacheImpl {
 
   bool updateInputsShapesDimCache() {
     bool flag = false;
-    size_t inputs_size = kernel_ctx_->InputsSize();
+    size_t inputs_size =
+        std::min(kernel_ctx_->InputsSize(), infer_shape_ctx_->InputsSize());
     for (size_t i = 0; i < inputs_size; i++) {
       const std::string& in_name = infer_shape_ctx_->GetInputNameByIdx(i);
-      if (!infer_shape_ctx_->HasInput(in_name)) continue;
+      if (!infer_shape_ctx_->HasInputs(in_name)) continue;
       if (!inputs_dim_caches.count(in_name) ||
-          infer_shape_ctx_->GetInputDim(in_name) !=
+          infer_shape_ctx_->GetInputsDim(in_name) !=
               inputs_dim_caches[in_name]) {
-        inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputDim(in_name);
+        inputs_dim_caches[in_name] = infer_shape_ctx_->GetInputsDim(in_name);
         flag = true;
       }
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (!flag) discardCudaGraphCache();
+    if (flag) discardCudaGraphCache();
 #endif
     return flag;
   }
@@ -1254,7 +1261,7 @@ struct OperatorWithKernel::CacheImpl {
 #endif
 
  private:
-  std::map<std::string, DDim> inputs_dim_caches;
+  std::map<std::string, std::vector<DDim>> inputs_dim_caches;
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
 };
@@ -1453,37 +1460,38 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
+
+  auto runOpCache = [&]() {
+    // common cache
+    if (!cudaGraphEnabled()) {
+      if (!all_kernels_must_compute_runtime_shape_)
+        this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+      (*pt_kernel_)(impl_->getKernelContext());
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    // cudaGraph cache
+    if (cudaGraphEnabled()) {
+      if (impl_->updateInputsShapesDimCache()) {
+        if (!all_kernels_must_compute_runtime_shape_)
+          this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+        (*pt_kernel_)(impl_->getKernelContext());
+      } else if (!impl_->cudaGraphGenerated()) {
+        impl_->startCudaGraphCapture();
+        impl_->getKernelContext();
+        RunImpl(scope, place, runtime_ctx_.get());
+        impl_->endCudaGraphCapture();
+      } else {
+        impl_->runCudaGraph();
+      }
+    }
+#endif
+  };
+
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else {
-    auto runOpCache = [&]() {
-      // common cache
-      if (!cudaGraphEnabled()) {
-        if (!all_kernels_must_compute_runtime_shape_)
-          this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-        (*pt_kernel_)(impl_->getKernelContext());
-      }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      // cudaGraph cache
-      if (cudaGraphEnabled()) {
-        if (impl_->updateInputsShapesDimCache()) {
-          if (!all_kernels_must_compute_runtime_shape_)
-            this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
-          (*pt_kernel_)(impl_->getKernelContext());
-        } else if (!impl_->cudaGraphGenerated()) {
-          impl_->startCudaGraphCapture();
-          impl_->getKernelContext();
-          RunImpl(scope, place, runtime_ctx_.get());
-          impl_->endCudaGraphCapture();
-        } else {
-          impl_->runCudaGraph();
-        }
-      }
-#endif
-    };
-
     if (!impl_) {
       InitOpCache(scope, place);
     } else if (cacheEnabled()) {
