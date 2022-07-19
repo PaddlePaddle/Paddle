@@ -47,6 +47,7 @@ float Property::GetFloat(const std::string &name) const {
   }
 
   PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("name not found"));
+  return 0;
 }
 
 float Property::GetFloat(const int &idx) const {
@@ -59,6 +60,17 @@ float Property::GetFloat(const int &idx) const {
   }
 
   PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("idx is not a float"));
+  return 0;
+}
+
+void Property::SetFloats(const std::vector<float> &v) {
+  auto type = proto::ValueProto::FLOATS;
+  auto entry = property_.add_entrys();
+  entry->set_type(type);
+  for (auto i : v) {
+    entry->add_floats(i);
+  }
+  VLOG(3) << "Property: set_floats " << v.size();
 }
 
 void Property::SetFloats(const std::string &name, const std::vector<float> &v) {
@@ -69,7 +81,15 @@ void Property::SetFloats(const std::string &name, const std::vector<float> &v) {
   for (auto i : v) {
     entry->add_floats(i);
   }
-  VLOG(3) << "Property: set_floats " << v[0] << "... name: " << name;
+  VLOG(3) << "Property: set_floats " << v.size() << "... name: " << name;
+}
+
+void Property::SetInt64(const int64_t &i) {
+  auto type = proto::ValueProto::INT;
+  auto entry = property_.add_entrys();
+  entry->set_type(type);
+  entry->set_i(i);
+  VLOG(3) << "Property: set_int " << i;
 }
 
 void Property::SetInt64(const std::string &name, const int64_t &i) {
@@ -79,6 +99,16 @@ void Property::SetInt64(const std::string &name, const int64_t &i) {
   entry->set_type(type);
   entry->set_i(i);
   VLOG(3) << "Property: set_int " << i << " name: " << name;
+}
+
+void Property::SetInt64s(const std::vector<int64_t> &v) {
+  auto type = proto::ValueProto::INTS;
+  auto entry = property_.add_entrys();
+  entry->set_type(type);
+  for (auto e : v) {
+    entry->add_ints(e);
+  }
+  VLOG(3) << "Property: set_ints " << v.size();
 }
 
 void Property::SetInt64s(const std::string &name,
@@ -93,6 +123,14 @@ void Property::SetInt64s(const std::string &name,
   VLOG(3) << "Property: set_ints " << v[0] << " name: " << name;
 }
 
+void Property::SetString(const std::string &s) {
+  auto type = proto::ValueProto::STRING;
+  auto entry = property_.add_entrys();
+  entry->set_type(type);
+  entry->set_s(s);
+  VLOG(3) << "Property: set_string " << s;
+}
+
 void Property::SetString(const std::string &name, const std::string &s) {
   auto type = proto::ValueProto::STRING;
   auto entry = property_.add_entrys();
@@ -100,6 +138,16 @@ void Property::SetString(const std::string &name, const std::string &s) {
   entry->set_type(type);
   entry->set_s(s);
   VLOG(3) << "Property: set_string " << s << " name: " << name;
+}
+
+void Property::SetStrings(const std::vector<std::string> &v) {
+  auto type = proto::ValueProto::STRINGS;
+  auto entry = property_.add_entrys();
+  entry->set_type(type);
+  for (auto i : v) {
+    entry->add_strings(i);
+  }
+  VLOG(3) << "Property: set_strings " << v.size();
 }
 
 void Property::SetStrings(const std::string &name,

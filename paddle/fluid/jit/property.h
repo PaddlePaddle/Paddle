@@ -27,13 +27,13 @@ namespace jit {
 
 class Property {
  public:
-  explicit Property() {}
+  Property() {}
 
   // Explicitly implement the copy constructor for auto parallel
-  Property(const Property &other)
+  explicit Property(const Property &other)
       : property_(other.property_), original_id_(other.original_id_) {}
 
-  Property &operator=(const Property &other) {
+  explicit Property &operator=(const Property &other) {
     property_ = other.property_;
     original_id_ = other.original_id_;
     return *this;
@@ -47,24 +47,29 @@ class Property {
 
   void SetFloat(const float &f);
   void SetFloat(const std::string &name, const float &f);
+
+  void SetFloats(const std::vector<float> &v);
   void SetFloats(const std::string &name, const std::vector<float> &v);
 
   float GetFloat(const std::string &name) const;
   float GetFloat(const int &idx) const;
 
-  void SetInt64(const std::string &name, const int64_t &f);
+  void SetInt64(const int64_t &i);
+  void SetInt64(const std::string &name, const int64_t &i);
+
+  void SetInt64s(const std::vector<int64_t> &v);
   void SetInt64s(const std::string &name, const std::vector<int64_t> &v);
 
+  void SetString(const std::string &s);
   void SetString(const std::string &name, const std::string &s);
+
+  void SetStrings(const std::vector<std::string> &v);
   void SetStrings(const std::string &name, const std::vector<std::string> &v);
 
   // The Id() and OriginalId() are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) { original_id_ = original_id; }
-
- private:
-  void AddEntry();
 
  private:
   proto::PropertyVals property_;
@@ -84,8 +89,6 @@ class Property {
   // current Property is not built from the other one.
   uint64_t original_id_ = id_;
 };
-
-bool operator==(const Property &left, const Property &right);
 
 }  // namespace jit
 }  // namespace paddle
