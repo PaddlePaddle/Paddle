@@ -22,7 +22,7 @@ import paddle
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable, _non_static_mode, static_only
+from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
@@ -1905,6 +1905,12 @@ def prior_box(input,
 		# [6L, 9L, 1L, 4L]
 
     """
+    if in_dygraph_mode():
+        return _C_ops.core.final_state_prior_box(
+            input, image, "min_sizes", min_sizes, "max_sizes", max_sizes,
+            "aspect_ratios", aspect_ratios, "variances", variances, "flip",
+            flip, "clip", clip, "step_w", step_w, "step_h", step_h, "offset",
+            offset, "min_max_aspect_ratios_order", min_max_aspect_ratios_order)
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input',

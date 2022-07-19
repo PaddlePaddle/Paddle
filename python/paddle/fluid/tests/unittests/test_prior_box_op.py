@@ -19,6 +19,7 @@ import numpy as np
 import sys
 import math
 from op_test import OpTest
+import paddle
 
 
 class TestPriorBoxOp(OpTest):
@@ -176,6 +177,17 @@ class TestPriorBoxOp(OpTest):
                           (self.layer_h, self.layer_w, self.num_priors, 1))
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
+
+
+class TestPriorBoxOp2(TestPriorBoxOp):
+
+    def setUp(self):
+        self.python_api = paddle.fluid.layers.detection.prior_box
+        self.op_type = "prior_box"
+        self.set_data()
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 class TestPriorBoxOpWithoutMaxSize(TestPriorBoxOp):
