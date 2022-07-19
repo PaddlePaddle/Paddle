@@ -104,7 +104,8 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if in_dygraph_mode():
         return _C_ops.final_state_diag_embed(input, offset, dim1, dim2)
     elif in_dynamic_mode():
-        return _C_ops.diag_embed(input, offset, dim1, dim2)
+        return _C_ops.diag_embed(input, "offset", offset, "dim1", dim1, "dim2",
+                                 dim2)
 
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
