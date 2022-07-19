@@ -285,7 +285,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     }
 
     // conv_weight fp32 --> fp16
-    auto* conv_weight_tensor = 
+    auto* conv_weight_tensor =
         scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
@@ -295,7 +295,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       weight_float_tensor.Resize(conv_weight_tensor->dims());
       auto* weight_float_data =
           weight_float_tensor.mutable_data<float>(platform::CPUPlace());
-      auto* data = 
+      auto* data =
           conv_weight_tensor->mutable_data<float16>(platform::CPUPlace());
       for (int i = 0; i < conv_weight_tensor->numel(); i++) {
         weight_float_data[i] = static_cast<float>(data[i]);
@@ -347,7 +347,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         weight_float16_tensor.Resize(conv_weight_tensor->dims());
         auto* weight_float16_data =
             weight_float16_tensor.mutable_data<float16>(platform::CPUPlace());
-        auto* data = 
+        auto* data =
             conv_weight_tensor->mutable_data<float>(platform::CPUPlace());
         for (int i = 0; i < conv_weight_tensor->numel(); i++) {
           weight_float16_data[i] = static_cast<float16>(data[i]);
@@ -365,14 +365,15 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         auto* eltwise_y_in_float16_data =
             eltwise_y_in_float16_tensor.mutable_data<float16>(
                 platform::CPUPlace());
-        auto* data = 
+        auto* data =
             eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace());
         for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
           eltwise_y_in_float16_data[i] = static_cast<float16>(data[i]);
         }
         eltwise_y_in_tensor->clear();
-        paddle::framework::TensorCopySync(
-            eltwise_y_in_float16_tensor, platform::CPUPlace(), eltwise_y_in_tensor);
+        paddle::framework::TensorCopySync(eltwise_y_in_float16_tensor,
+                                          platform::CPUPlace(),
+                                          eltwise_y_in_tensor);
       }
     }
 
