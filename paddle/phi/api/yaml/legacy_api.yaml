@@ -676,7 +676,8 @@
   args : (Tensor x, float lambda)
   output : Tensor(out)
   infer_meta :
-    func : ExponentialInferMeta
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : exponential
   inplace : (x -> out)

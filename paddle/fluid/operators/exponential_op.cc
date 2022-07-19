@@ -70,7 +70,7 @@ DECLARE_INPLACE_OP_INFERER(ExponentialInferer, {"X", "Out"});
 
 DECLARE_INFER_SHAPE_FUNCTOR(exponential,
                             ExponentialInfershapeFunctor,
-                            PD_INFER_META(phi::ExponentialInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(exponential,
                   ops::ExponentialOp,

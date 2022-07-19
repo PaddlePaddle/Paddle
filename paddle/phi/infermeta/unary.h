@@ -486,5 +486,4 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
-void ExponentialInferMeta(const MetaTensor& x, float lambda, MetaTensor* out);
 }  // namespace phi
