@@ -24,24 +24,24 @@ namespace paddle {
 namespace operators {
 
 class MarginRankLossOp : public framework::OperatorWithKernel {
-public:
+ public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 };
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X1", 
+    AddInput("X1",
              "(2-D tensor with shape [batch_size x 1]) The score for "
              "one item X1 to be ranked, from pairwise ranking model.");
     AddInput("X2",
              "(2-D tensor with shape [batch_size x 1]) The score for "
              "another item X2 to be ranked, from pairwise ranking model.");
-    AddInput("Label", 
+    AddInput("Label",
              "(2-D tensor with shape [batch_size x 1]) "
              "The label indicating X1 ranked higher than X2 or not, "
              "can only be +1 or -1.");
-    AddOutput("Out", 
+    AddOutput("Out",
               "(2-D tensor with shape [batch_size x 1]) "
               "The output loss of MarginRankLoss operator.");
     AddOutput("Activated",
@@ -97,22 +97,21 @@ class MarginRankLossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss, 
+DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss,
                             MarginRankLossInferShapeFunctor,
                             PD_INFER_META(phi::MarginRankLossInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(margin_rank_loss_grad,
                             MarginRankLossGradInferShapeFunctor,
                             PD_INFER_META(phi::MarginRankLossGradInferMeta));
-REGISTER_OPERATOR(margin_rank_loss, 
+REGISTER_OPERATOR(margin_rank_loss,
                   ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
                   ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
                   ops::MarginRankLossGradMaker<paddle::imperative::OpBase>,
                   MarginRankLossInferShapeFunctor);
-REGISTER_OPERATOR(margin_rank_loss_grad, 
+REGISTER_OPERATOR(margin_rank_loss_grad,
                   ops::MarginRankLossGradOp,
                   MarginRankLossGradInferShapeFunctor);

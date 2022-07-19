@@ -17,20 +17,21 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature MarginRankLossMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("margin_rank_loss", 
-                         {"Label", "X1", "X2"}, 
-                         {"margin"}, 
+  return KernelSignature("margin_rank_loss",
+                         {"Label", "X1", "X2"},
+                         {"margin"},
                          {"Out", "Activated"});
 }
 
 KernelSignature MarginRankLossGradMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("margin_rank_loss_grad", 
-                         {"Label", "Activated", "Out@GRAD"}, 
-                         {"margin"}, 
+  return KernelSignature("margin_rank_loss_grad",
+                         {"Label", "Activated", "Out@GRAD"},
+                         {"margin"},
                          {"X1@GRAD", "X2@GRAD"});
 }
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(margin_rank_loss, phi::MarginRankLossMapping);
-PD_REGISTER_ARG_MAPPING_FN(margin_rank_loss_grad, 
+PD_REGISTER_ARG_MAPPING_FN(margin_rank_loss_grad,
                            phi::MarginRankLossGradMapping);

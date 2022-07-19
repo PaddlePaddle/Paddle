@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/impl/margin_rank_loss_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(margin_rank_loss_grad, 
-                   GPU, 
-                   ALL_LAYOUT, 
-                   phi::MarginRankLossGradKernel, 
+PD_REGISTER_KERNEL(margin_rank_loss_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MarginRankLossGradKernel,
                    float) {}
