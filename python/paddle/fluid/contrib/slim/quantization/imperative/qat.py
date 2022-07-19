@@ -614,6 +614,16 @@ class ImperativeQuantizeOutputs(object):
                         previous_op._set_attr("out_threshold", out_scale)
                         previous_op._set_attr("with_quant_attr", True)
 
+                    # If Conv or FC has bias, its split to conv and elementwise_add after jit.save.
+                    # So add the out_threshold attribute to Conv or FC again.
+                    if previous_op.type == "elementwise_add":
+                        op_name = previous_op.input('X')[0]
+                        add_previous_op = utils.find_previous_op(block, op_name)
+                        if add_previous_op.type == 'conv2d' or add_previous_op.type == 'matmul_v2':
+                            if not add_previous_op.has_attr('out_threshold'):
+                                add_previous_op._set_attr(
+                                    "out_threshold", out_scale)
+
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
                     # If next_op is `fetch` and out_var_name in fetch_targets,

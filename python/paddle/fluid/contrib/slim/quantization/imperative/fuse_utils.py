@@ -44,7 +44,7 @@ def fuse_conv_bn(model):
         if tmp_pair[0] and tmp_pair[1] and len(tmp_pair) == 2:
             fuse_list.append(tmp_pair)
             tmp_pair = [None, None]
-    model = fuse_layers(model, fuse_list)
+    model = fuse_layers(model, fuse_list, inplace=True)
     if is_train:
         model.train()
 
