@@ -2281,6 +2281,7 @@
   kernel :
     func : yolov3_loss
     data_type : x
+  backward : yolov3_loss_grad
 
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
