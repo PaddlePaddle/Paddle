@@ -21,9 +21,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AnagleKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  DenseTensor* out) {
+void AngleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   out->Resize(x.dims());

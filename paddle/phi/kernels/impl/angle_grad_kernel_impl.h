@@ -21,10 +21,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AnagleGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& out_grad,
-                      DenseTensor* x_grad) {
+void AngleGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& out_grad,
+                     DenseTensor* x_grad) {
   auto numel = out_grad.numel();
   auto* dout_data = out_grad.data<phi::dtype::Real<T>>();
   auto* x_data = x.data<T>();

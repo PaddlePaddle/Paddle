@@ -21,7 +21,7 @@
 PD_REGISTER_KERNEL(angle_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AnagleGradKernel,
+                   phi::AngleGradKernel,
                    float,
                    double,
                    phi::dtype::complex<float>,

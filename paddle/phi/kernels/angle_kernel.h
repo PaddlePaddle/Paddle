@@ -23,8 +23,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AnagleKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  DenseTensor* out);
+void AngleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out);
 
 }  // namespace phi

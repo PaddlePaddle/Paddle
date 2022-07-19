@@ -22,7 +22,7 @@
 PD_REGISTER_KERNEL(angle,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AnagleKernel,
+                   phi::AngleKernel,
                    float,
                    double,
                    phi::dtype::complex<float>,
