@@ -807,7 +807,7 @@ class ActivationMKLDNNHandler
 };
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
-                             const dnnl::post_ops& post_ops,
+                             dnnl::post_ops& post_ops,
                              float activation_scale = 1.0f) {
   const auto invalid_attribute =
       ctx.HasAttr("fuse_activation")
