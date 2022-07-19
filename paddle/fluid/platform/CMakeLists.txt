@@ -224,8 +224,6 @@ cc_library(
        phi_device_context
        generator)
 
-# target_link_libraries(device_context phi_backends)
-
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
