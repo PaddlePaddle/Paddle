@@ -113,5 +113,5 @@ void Property::SetStrings(const std::string &name,
   VLOG(3) << "Property: set_strings " << v[0] << " name: " << name;
 }
 
-} // namespace jit
-} // namespace paddle
+}  // namespace jit
+}  // namespace paddle
