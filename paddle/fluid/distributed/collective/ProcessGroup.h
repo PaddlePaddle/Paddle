@@ -71,11 +71,13 @@ class ProcessGroup {
     std::condition_variable cv_;
     std::exception_ptr exception_;
     void finish(std::exception_ptr exception = nullptr);
-    void finishAndThrow(std::exception_ptr exception);
   };
 
   explicit ProcessGroup(int rank, int size, const platform::Place& place,
                         int gid);
+
+  explicit ProcessGroup(int rank, int size, int gid);
+
   virtual ~ProcessGroup() {}
 
   int GetRank() const { return rank_; }

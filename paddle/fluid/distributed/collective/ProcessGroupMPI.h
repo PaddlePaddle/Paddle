@@ -27,6 +27,7 @@
 #include <mutex>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/platform/device_context.h"
 
 constexpr const char* MPI_BACKEND_NAME = "MPI";
@@ -65,7 +66,7 @@ class ProcessGroupMPI : public ProcessGroup {
    public:
     explicit MPITask(std::vector<phi::DenseTensor> outputTensors,
                      const std::vector<phi::DenseTensor>& inputTensors)
-        : ProcessGroup::Task(-1, inputTensors, OpType::UNKNOWN),
+        : ProcessGroup::Task(-1, inputTensors, CommType::UNKNOWN),
           outputTensors_(std::move(outputTensors)) {}
 
    protected:
@@ -81,7 +82,7 @@ class ProcessGroupMPI : public ProcessGroup {
  public:
   class MPIAsyncTask : public ProcessGroup::Task {
    public:
-    MPIAsyncTask(MPI_Request request, std::vector<phi::DenseTensor> outputs,
+    MPIAsyncTask(MPI_Request request,
                  const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
@@ -90,17 +91,19 @@ class ProcessGroupMPI : public ProcessGroup {
 
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
 
-    virtual ~MPITask();
+    virtual ~MPIAsyncTask();
 
-    std::vector<phi::DenseTensor> barrierTensors_;
+   protected:
+    void appearException();
 
    private:
-    const std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
+    std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
     MPI_Request request_;
     MPI_Status status_;
   };
 
   explicit ProcessGroupMPI(int rank, int size, MPI_Comm pgComm, int gid);
+  explicit ~ProcessGroupMPI();
 
   const std::string GetBackendName() const override {
     return std::string(MPI_BACKEND_NAME);
@@ -157,8 +160,6 @@ class ProcessGroupMPI : public ProcessGroup {
 
   // Worker thread loop
   void workLoop();
-  // Helper function that is called by the destructor
-  void destroy();
 
   std::shared_ptr<ProcessGroup::Task> enqueue(
       std::unique_ptr<TaskEntry> entry,
@@ -167,6 +168,8 @@ class ProcessGroupMPI : public ProcessGroup {
  private:
   bool stop_;
   std::mutex pg_mutex;
+
+  // main dispatch thread
   std::thread worker_thread;
 
   std::deque<WorkType> queue_;
@@ -176,7 +179,7 @@ class ProcessGroupMPI : public ProcessGroup {
   // Global states
   static void initOneTimeMPI();
   static void exitMPI();
-  static std::once_flag onceInitMPIFlag;
+  static std::once_flag onceFlag;
 
   static std::mutex pg_global_mutex;
   static int mpi_thread_support;

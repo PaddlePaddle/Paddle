@@ -33,6 +33,13 @@ bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
   return false;
 }
 
+// about mpi
+void ProcessGroup::Task::finish(std::exception_ptr exception) {
+  is_completed_ = true;
+  exception_ = exception;
+  cv_.notify_all();
+}
+
 void ProcessGroup::Task::Synchronize() {}
 
 ProcessGroup::ProcessGroup(int rank, int size, const platform::Place& place,
@@ -44,11 +51,12 @@ ProcessGroup::ProcessGroup(int rank, int size, const platform::Place& place,
   }
 }
 
-// about mpi
-void ProcessGroup::Task::finish(std::exception_ptr exception) {
-  is_completed_ = true;
-  exception_ = exception;
-  cv_.notify_all();
+ProcessGroup::ProcessGroup(int rank, int size, int gid)
+    : rank_(rank), size_(size), gid_(gid) {
+  if (gid != IGNORE_ID) {
+    auto map = ProcessGroupMapFromGid::getInstance();
+    map->insert(gid_, this);
+  }
 }
 
 }  //  namespace distributed
