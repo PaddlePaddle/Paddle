@@ -384,12 +384,12 @@ void BindPropertyDesc(pybind11::module *m) {
            "set list of float",
            py::arg("val"),
            py::arg("name"))
-      .def("set_int64",
+      .def("set_int",
            &jit::Property::SetInt64,
            "set int",
            py::arg("val"),
            py::arg("name"))
-      .def("set_int64s",
+      .def("set_ints",
            &jit::Property::SetInt64s,
            "set list of int",
            py::arg("val"),

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/jit/property.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 namespace paddle {
@@ -44,20 +45,20 @@ float Property::GetFloat(const std::string &name) const {
       return e.f();
     }
   }
-  phi::errors::NotFound("name not found");
-  return 0;
+
+  PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("name not found"));
 }
 
 float Property::GetFloat(const int &idx) const {
-  if (idx >= Size()) {
-    phi::errors::OutOfRange("idx out of range");
-  }
+  PADDLE_ENFORCE_EQ(
+      idx < Size(), true, phi::errors::OutOfRange("idx out of range"));
+
   auto e = property_.entrys(idx);
   if (e.has_f()) {
     return e.f();
   }
-  phi::errors::NotFound("not has float");
-  return 0;
+
+  PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("idx is not a float"));
 }
 
 void Property::SetFloats(const std::string &name, const std::vector<float> &v) {
