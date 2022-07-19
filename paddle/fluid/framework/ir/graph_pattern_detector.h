@@ -1036,6 +1036,21 @@ struct ElementwiseOp : public PatternBase {
   PATTERN_DECL_NODE(elementwise_out);
 };
 
+struct MatmulElementwiseAdd : public PatternBase {
+  MatmulElementwiseAdd(PDPattern* pattern,
+                       const std::string& name_scope,
+                       const std::string& matmul_type,
+                       bool as_x)
+      : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
+
+  PDNode* operator()(const std::string& matmul_type, bool as_x);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(elementwise_addend);
+  PATTERN_DECL_NODE(elementwise_add_op);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
+
 // Residual Elementwise ops
 // This pattern allows operator output to be X or Y
 // and residual data Y or X, based on as_x flag

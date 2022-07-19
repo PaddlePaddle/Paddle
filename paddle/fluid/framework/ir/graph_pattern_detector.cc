@@ -2010,6 +2010,32 @@ PDNode *patterns::ElementwiseOp::operator()(
   return out_var;
 }
 
+PDNode *patterns::MatmulElementwiseAdd::operator()(
+    const std::string &matmul_type, bool as_x) {
+  auto matmul_op =
+      pattern->NewNode(matmul_op_repr())->assert_is_op(matmul_type);
+  auto matmul_out =
+      pattern->NewNode(matmul_out_repr())
+          ->AsOutput()
+          ->assert_is_op_output(matmul_type, "Out")
+          ->assert_is_op_input("elementwise_add", as_x ? "X" : "Y");
+  auto elementwise_addend =
+      pattern->NewNode(elementwise_addend_repr())
+          ->AsInput()
+          ->assert_is_op_input("elementwise_add", as_x ? "Y" : "X");
+  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
+                                ->assert_is_op("elementwise_add");
+  auto elementwise_add_out =
+      pattern->NewNode(elementwise_add_out_repr())
+          ->AsOutput()
+          ->assert_is_op_output("elementwise_add", "Out");
+
+  matmul_op->LinksTo({matmul_out});
+  elementwise_add_op->LinksFrom({matmul_out, elementwise_addend})
+      .LinksTo({elementwise_add_out});
+  return elementwise_add_out;
+}
+
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,
