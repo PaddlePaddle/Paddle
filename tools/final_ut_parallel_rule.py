@@ -150,7 +150,7 @@ def classify_cases_by_mem(rootPath):
                     f_not_0.write(case_mem_1_line + '\n')
             f_not_0.close()
 
-    os.system('cp %s/build/nightly_tests /pre_test/' % rootPath)
+    os.system('cp %s/build/nightly_case /pre_test/' % rootPath)
 
 
 if __name__ == '__main__':

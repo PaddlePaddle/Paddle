@@ -21,7 +21,7 @@ def group_case_for_parallel(rootPath):
 
     #wget file
     for filename in [
-            'nightly_tests', 'single_card_tests', 'single_card_tests_mem0',
+            'nightly_case', 'single_card_tests', 'single_card_tests_mem0',
             'multiple_card_tests', 'multiple_card_tests_mem0',
             'exclusive_card_tests', 'exclusive_card_tests_mem0'
     ]:
@@ -30,7 +30,7 @@ def group_case_for_parallel(rootPath):
             % (rootPath, filename))
 
     #get nightly tests
-    nightly_tests_file = open('%s/tools/nightly_tests' % rootPath, 'r')
+    nightly_tests_file = open('%s/tools/nightly_case' % rootPath, 'r')
     nightly_tests = nightly_tests_file.read().strip().split('\n')
     nightly_tests_file.close()
 
