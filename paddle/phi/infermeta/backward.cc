@@ -19,6 +19,12 @@ limitations under the License. */
 
 namespace phi {
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad) {
+  UnchangedInferMeta(x, x_grad);
+}
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,

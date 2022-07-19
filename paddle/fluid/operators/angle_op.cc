@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -60,20 +61,6 @@ $$out = angle(x)$$
 class AngleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@Grad",
-                   "angle_grad");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Out@Grad", "angle_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output",
-                   "X@Grad",
-                   "angle_grad");
-
-    auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -105,6 +92,10 @@ DECLARE_INFER_SHAPE_FUNCTOR(angle,
                             AngleInferShapeFunctor,
                             PD_INFER_META(phi::RealAndImagInferMeta));
 
+DECLARE_INFER_SHAPE_FUNCTOR(angle_grad,
+                            AngleGradInferShapeFunctor,
+                            PD_INFER_META(phi::AngleGradInferMeta));
+
 REGISTER_OPERATOR(angle,
                   ops::AngleOp,
                   ops::AngleOpMaker,
@@ -112,4 +103,4 @@ REGISTER_OPERATOR(angle,
                   ops::AngleGradMaker<paddle::imperative::OpBase>,
                   AngleInferShapeFunctor);
 
-REGISTER_OPERATOR(angle_grad, ops::AngleGradOp);
+REGISTER_OPERATOR(angle_grad, ops::AngleGradOp, AngleGradInferShapeFunctor);
