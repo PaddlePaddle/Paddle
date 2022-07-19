@@ -184,9 +184,9 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                               .c_str());
     free(plugin_ptr);
     float out_0_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
     float out_1_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("out_1_threshold"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("out_1_threshold"));
     engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_0_scale);
     engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_1_scale);
 

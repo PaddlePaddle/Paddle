@@ -228,7 +228,7 @@ void FetchAsyncOpHandle::RunImpl() {
   }
 
   if (return_merged_) {
-    auto &val = BOOST_GET(FetchList, *data_);
+    auto &val = PADDLE_GET(FetchList, *data_);
     if (src_vars[0]->IsType<LoDTensor>()) {
       // to lodtensor type
       std::vector<const LoDTensor *> src_lodtensors;
@@ -263,7 +263,7 @@ void FetchAsyncOpHandle::RunImpl() {
       val.at(offset_) = std::move(dst_lodtensor_array);
     }
   } else {
-    auto &val = BOOST_GET(FetchUnmergedList, *data_);
+    auto &val = PADDLE_GET(FetchUnmergedList, *data_);
     auto &dst_tensors = val.at(offset_);
     dst_tensors.reserve(src_vars.size());
 

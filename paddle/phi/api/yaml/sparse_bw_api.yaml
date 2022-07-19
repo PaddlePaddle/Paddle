@@ -137,6 +137,13 @@
            matmul_coo_dense_grad {sparse_coo, dense, dense -> sparse_coo, dense},
            matmul_coo_coo_grad {sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo}
 
+- backward_api : maxpool_grad
+  forward : maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook)
+  args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
+  output : Tensor(x_grad)
+  kernel :
+    func : maxpool_coo_grad {sparse_coo, dense, sparse_coo, sparse_coo -> sparse_coo}
+
 - backward_api : multiply_grad
   forward : multiply(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
@@ -198,13 +205,6 @@
   kernel :
     func : softmax_csr_grad{sparse_csr, sparse_csr -> sparse_csr}
 
-- backward_api : sparse_maxpool_grad
-  forward : sparse_maxpool(Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides) -> Tensor(out), Tensor(rulebook)
-  args : (Tensor x, Tensor rulebook, Tensor out, Tensor out_grad, int[] kernel_sizes)
-  output : Tensor(x_grad)
-  kernel :
-    func : sparse_maxpool_grad {sparse_coo, dense, sparse_coo, sparse_coo -> sparse_coo}
-
 - backward_api : sqrt_grad
   forward : sqrt(Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -255,7 +255,7 @@
 - backward_api: fused_attention_grad
   forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
-  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad) 
+  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
   kernel :
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax
