@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -148,6 +146,36 @@ class TestCase8(TestBase):
             "x": np.random.uniform(size=[6, 5, 4, 2, 3]).astype('float32'),
             "y": np.random.uniform(size=[6, 5, 4, 3, 2]).astype('float32'),
         }
+
+
+class TestCase9(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {
+            "transpose_y": True,
+        }
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 2, 3])
+        y = np.random.uniform(size=[2, 3])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+
+class TestCase10(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {
+            "transpose_x": True,
+        }
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[4, 3, 2])
+        y = np.random.uniform(size=[3, 2])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
 
 if __name__ == "__main__":

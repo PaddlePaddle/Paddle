@@ -33,12 +33,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
     if (Y_v) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-      float* weight_data =
-          engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t);
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
-      TensorRTEngine::Weight y_weight{nvinfer1::DataType::kFLOAT,
-                                      static_cast<void*>(weight_data),
-                                      static_cast<size_t>(Y_t->numel())};
+      auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
+
       nvinfer1::Dims trt_dims_y;
       trt_dims_y.nbDims = dims_y.size();
       for (int i = 0; i < trt_dims_y.nbDims; i++) {
@@ -65,11 +62,13 @@ class ElementwiseTensorOpConverter : public OpConverter {
     } else {
       Y = engine_->GetITensor(op_desc.Input("Y").front());
     }
-
+    bool swap_xy = false;
+    // Swap X and Y
     if (X->getDimensions().nbDims < Y->getDimensions().nbDims) {
       auto* tmp = X;
       X = Y;
       Y = tmp;
+      swap_xy = true;
     }
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
@@ -131,6 +130,13 @@ class ElementwiseTensorOpConverter : public OpConverter {
       // In fact , we can remove this `else`, but -> rt_resnet50_test CI in trt
       // 6015 faling, how ridiculous！
       reshape_y_tensor = Y;
+    }
+
+    // We should swap X and Y back, because some operators do not have symmetry
+    if (swap_xy) {
+      auto* tmp = reshape_y_tensor;
+      reshape_y_tensor = X;
+      X = tmp;
     }
 
     auto op_pair = ops.find(op_type_);

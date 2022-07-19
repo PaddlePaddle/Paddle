@@ -441,11 +441,18 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
 
+        # mapping from name(string) -> VarBase
+        out_varbase_map = {}
+
         def create_out(var_id):
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
             varbase = None
+
+            if var_desc.name() in out_varbase_map:
+                return out_varbase_map[var_desc.name()]
+
             if not framework._in_eager_mode_:
                 var_base = core.VarBase(var_desc.dtype(), var_desc.shape(),
                                         var_desc.name(), var_desc.type(), False)
@@ -453,6 +460,7 @@ class PartialProgramLayer:
                 var_base = core.eager.Tensor(var_desc.dtype(), var_desc.shape(),
                                              var_desc.name(), var_desc.type(),
                                              False)
+            out_varbase_map[var_desc.name()] = var_base
             return var_base
 
         # Create VarBase to receive output data.

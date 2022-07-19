@@ -41,20 +41,5 @@ class AsComplexKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class AsRealKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<framework::LoDTensor>("X");
-    auto* out = context.Output<framework::LoDTensor>("Out");
-
-    out->mutable_data<T>(context.GetPlace());
-    const framework::DDim out_dims_original = out->dims();
-    framework::TensorCopy(*x, context.GetPlace(), out);
-    out->Resize(out_dims_original);            // restored the shape
-    out->mutable_data<T>(context.GetPlace());  // restore the dtype
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
