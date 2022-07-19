@@ -72,9 +72,10 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     }
 
     if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type = BOOST_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-                     ? "gelu_tanh"
-                     : "gelu_erf";
+      act_type =
+          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
+              ? "gelu_tanh"
+              : "gelu_erf";
     }
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});

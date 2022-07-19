@@ -77,10 +77,10 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("gelu_tanh"), 0);
     }
   }
@@ -112,10 +112,10 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("gelu_erf"), 0);
     }
   }
@@ -145,10 +145,10 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("gelu"), 0);
     }
   }
@@ -178,10 +178,10 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("tanh"), 0);
     }
   }
@@ -212,10 +212,10 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("sigmoid"), 0);
     }
   }
@@ -245,10 +245,10 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("mish"), 0);
     }
   }
@@ -279,10 +279,10 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
     if (node->IsOp() && node->Op()->Type() == "fc") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
       ASSERT_TRUE(op->HasAttr("activation_type"));
       auto act_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
       EXPECT_EQ(act_type.compare("hard_swish"), 0);
     }
   }

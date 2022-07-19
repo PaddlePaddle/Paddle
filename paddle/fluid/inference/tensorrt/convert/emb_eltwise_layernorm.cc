@@ -220,7 +220,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       free(plugin_ptr);
       if (enable_int8) {
         float out_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+            PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_scale);
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_scale);
       }
@@ -252,7 +252,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+      float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
       plugin::DynamicPluginTensorRT* plugin = nullptr;
       std::vector<float*> input_embs_data;
       for (size_t i = 0; i < input_embs.size(); ++i) {

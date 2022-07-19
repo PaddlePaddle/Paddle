@@ -587,7 +587,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
+      PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     const proto::OpProto::Attr &attr = GetProtoAttr(name);
     switch (attr.type()) {
@@ -638,7 +638,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // In order to set bool attr properly
   if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
       GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-    this->attrs_[name] = static_cast<bool>(BOOST_GET_CONST(int, v));
+    this->attrs_[name] = static_cast<bool>(PADDLE_GET_CONST(int, v));
     need_update_ = true;
     return;
   }
@@ -703,7 +703,7 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
       attrs_.end(),
       platform::errors::NotFound(
           "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
-  auto blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, it->second);
+  auto blocks = PADDLE_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
   for (auto n : blocks) {
@@ -720,7 +720,7 @@ int OpDesc::GetBlockAttrId(const std::string &name) const {
       attrs_.end(),
       platform::errors::NotFound(
           "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
-  return BOOST_GET_CONST(BlockDesc *, it->second)->ID();
+  return PADDLE_GET_CONST(BlockDesc *, it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
@@ -742,7 +742,7 @@ void OpDesc::RenameOutput(const std::string &old_name,
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (it != attrs_.end()) {
-    auto &op_vars = BOOST_GET(std::vector<std::string>, it->second);
+    auto &op_vars = PADDLE_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
@@ -757,7 +757,7 @@ void OpDesc::RenameInput(const std::string &old_name,
 
   auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (it != attrs_.end()) {
-    auto &op_vars = BOOST_GET(std::vector<std::string>, it->second);
+    auto &op_vars = PADDLE_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
