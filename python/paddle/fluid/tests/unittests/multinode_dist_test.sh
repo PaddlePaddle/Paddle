@@ -41,9 +41,9 @@ run_time=$(( $TEST_TIMEOUT - 10 ))
 echo "run_time: ${run_time}"
 
 if [[ ${WITH_COVERAGE} == "ON" ]]; then
-    PYTHON_EXEC="python -u -m coverage run --branch -p "
+    PYTHON_EXEC="python3 -u -m coverage run --branch -p "
 else
-    PYTHON_EXEC="python -u "
+    PYTHON_EXEC="python3 -u "
 fi
 
 timeout -s SIGKILL ${run_time} ${MPIRUN} ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
