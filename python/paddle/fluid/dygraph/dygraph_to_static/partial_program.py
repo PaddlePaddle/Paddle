@@ -281,14 +281,16 @@ class PartialProgramLayer:
         """
         Lazy initialized property of backward_program.
         """
-        return self.get_backward_program_from(self._create_train_program())
+        return self.get_backward_program_from(self._origin_main_program,
+                                              self._create_train_program())
 
     @LazyInitialized
     def _backward_amp_program(self):
         """
         Lazy initialized property of backward_amp_program.
         """
-        return self.get_backward_program_from(self._create_train_amp_program())
+        return self.get_backward_program_from(self._origin_main_program,
+                                              self._create_train_amp_program())
 
     @LazyInitialized
     def _backward_pure_fp16_program(self):
@@ -296,10 +298,9 @@ class PartialProgramLayer:
         Lazy initialized property of backward_pure_fp16_program.
         """
         return self.get_backward_program_from(
-            self._create_train_pure_fp16_program())
+            self._origin_main_program, self._create_train_pure_fp16_program())
 
-    def get_backward_program_from(self, train_program):
-        forward_program = self._origin_main_program
+    def get_backward_program_from(self, forward_program, train_program):
         backward_program = train_program
 
         # delete forward op：
@@ -376,6 +377,12 @@ class PartialProgramLayer:
                                                  self._build_strategy)
 
         return program_id
+
+    @LazyInitialized
+    def _origin_program_id(self):
+        program_id = _hash_with_id(self._origin_main_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
 
     def _verify_program(self, main_program):
         """
@@ -459,15 +466,26 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        print("=============>origin program")
-        print(self.origin_program_id)
-        print(self._origin_main_program)
-        print("=============>train program")
-        print(self.program_id)
-        print(self.program)
-        print("=============>backward program")
-        print(self.backward_program_id)
-        print(self.backward_program)
+        # paddle.enable_static()
+
+        # print(id(self.program))
+        # print(self.program)
+
+        # print("=============>train program")
+        # program = paddle.static.CompiledProgram(self.program, build_strategy=self._build_strategy)
+        # print("=============>complie program")
+        # program._compile(core.Scope(), framework._current_expected_place())
+        # print("=============>complie program1")
+        # ir_graph = framework.IrGraph(program._graph)
+        # print("=============>ir graph")
+        # print(ir_graph)
+        # inner_program = ir_graph.to_program()
+        # print(id(inner_program))
+        # print(inner_program)
+
+        # paddle.disable_static()
+
+        # # 前向转一个、全模型转一个，然后拆分出反向
 
         attrs = [
             'global_block',
@@ -547,9 +565,7 @@ class PartialProgramLayer:
 
     @property
     def origin_program_id(self):
-        program_id = _hash_with_id(self._origin_main_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
+        return self._origin_program_id
 
     def _prepare(self, inputs):
         """
