@@ -330,19 +330,47 @@ void apply_device_guard(const OperatorBase* op_base,
       VLOG(3) << "Switch into CPUPlace by device_guard.";
       expected_kernel_key->place_ = platform::CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
-               (platform::is_gpu_place(place) ||
-                platform::is_npu_place(place))) {
-      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
-      // will be executed and a warning will be given at the same time.
+               platform::is_gpu_place(place)) {
+      // when the Op that does not have GPUKernel is assigned to GPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
       if (op_base->SupportGPU()) {
-        expected_kernel_key->place_ = place;
-      } else if (op_base->SupportNPU()) {
         expected_kernel_key->place_ = place;
       } else {
         expected_kernel_key->place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("npu") != std::string::npos &&
+               platform::is_npu_place(place)) {
+      // when the Op that does not have NPUKernel is assigned to NPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportNPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("xpu") != std::string::npos &&
+               platform::is_xpu_place(place)) {
+      // when the Op that does not have XPUKernel is assigned to XPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportXPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
