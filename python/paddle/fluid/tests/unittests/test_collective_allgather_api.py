@@ -173,7 +173,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                               static_mode="0",
                               dtype="complex128")
 
-    def test_allgatther_gloo_dygraph(self):
+    def test_allgather_gloo_dygraph(self):
         self.check_with_place("collective_allgather_api_dygraph.py",
                               "allgather",
                               "gloo",

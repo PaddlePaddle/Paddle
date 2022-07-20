@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import paddle
-from test_collective_api_base import TestDistBase
+import test_collective_api_base as test_base
 
 
-class TestCollectiveAllgatherObjectAPI(TestDistBase):
+class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
 
     def _setup_config(self):
         pass
@@ -33,7 +34,7 @@ class TestCollectiveAllgatherObjectAPI(TestDistBase):
                               static_mode="0",
                               dtype="pydict")
 
-    def test_allgatther_gloo_dygraph(self):
+    def test_allgather_gloo_dygraph(self):
         self.check_with_place("collective_allgather_object_api_dygraph.py",
                               "allgather_object",
                               "gloo",

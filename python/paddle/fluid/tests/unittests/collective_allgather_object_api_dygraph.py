@@ -16,10 +16,10 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+import test_collective_api_base as test_base
 
 
-class TestCollectiveAllgatherObjectAPI(TestCollectiveAPIRunnerBase):
+class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def __init__(self):
         self.global_ring_id = 0
@@ -32,4 +32,4 @@ class TestCollectiveAllgatherObjectAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherObjectAPI, "allgather_object")
+    test_base.runtime_main(TestCollectiveAllgatherObjectAPI, "allgather_object")

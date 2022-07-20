@@ -14,6 +14,8 @@
 
 import numpy as np
 import os
+import pickle
+import io
 from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
@@ -1032,8 +1034,6 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
 
 def _convert_object_to_tensor(obj):
-    import pickle
-    import io
     _pickler = pickle.Pickler
     f = io.BytesIO()
     _pickler(f).dump(obj)
@@ -1043,8 +1043,6 @@ def _convert_object_to_tensor(obj):
 
 
 def _convert_tensor_to_object(tensor):
-    import pickle
-    import io
     _unpickler = pickle.Unpickler
     return _unpickler(io.BytesIO(tensor.numpy())).load()
 
@@ -1074,10 +1072,10 @@ def all_gather_object(object_list, obj, group=None, use_calc_stream=True):
             # required: distributed
             import numpy as np
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
             paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
+            dist.init_parallel_env()
             object_list = []
             if paddle.distributed.ParallelEnv().local_rank == 0:
                 obj = {"foo": [1, 2, 3]}

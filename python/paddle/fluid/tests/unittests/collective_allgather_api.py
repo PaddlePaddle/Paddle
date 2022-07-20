@@ -34,12 +34,12 @@ import pickle
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main, create_test_data
+import test_collective_api_base as test_base
 
 paddle.enable_static()
 
 
-class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
+class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def __init__(self):
         self.global_ring_id = 0
@@ -69,9 +69,9 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        indata = create_test_data(shape=(10, 1000),
-                                  dtype=args["dtype"],
-                                  seed=os.getpid())
+        indata = test_base.create_test_data(shape=(10, 1000),
+                                            dtype=args["dtype"],
+                                            seed=os.getpid())
         assert args[
             'static_mode'] == 1, "collective_allgather_api only support static mode"
         result = self.get_model(train_prog,
@@ -90,4 +90,4 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherAPI, "allgather")
+    test_base.runtime_main(TestCollectiveAllgatherAPI, "allgather")
