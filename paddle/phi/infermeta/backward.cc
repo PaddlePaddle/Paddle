@@ -67,6 +67,17 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void BmmGradInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      const MetaTensor& out_grad,
+                      MetaTensor* x_grad,
+                      MetaTensor* y_grad) {
+  x_grad->set_dims(x.dims());
+  y_grad->set_dims(y.dims());
+  x_grad->set_dtype(x.dtype());
+  y_grad->set_dtype(y.dtype());
+}
+
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
                                  const std::string& data_format,

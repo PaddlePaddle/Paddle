@@ -290,6 +290,16 @@
   kernel :
     func : bitwise_xor
 
+# bmm
+- api : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
+
 # brelu
 - api : brelu
   args : (Tensor x, float t_min, float t_max)

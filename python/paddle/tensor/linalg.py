@@ -1521,6 +1521,9 @@ def bmm(x, y, name=None):
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}"
             .format(x_shape, y_shape))
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_bmm(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.bmm(x, y)
 

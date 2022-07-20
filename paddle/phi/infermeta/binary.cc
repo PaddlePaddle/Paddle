@@ -257,6 +257,53 @@ void BincountInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  std::vector<int64_t> x_dims = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims = phi::vectorize(y.dims());
+  std::size_t x_ndims = x_dims.size();
+  std::size_t y_ndims = y_dims.size();
+
+  PADDLE_ENFORCE_EQ(x_ndims,
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+                        "but received X's shape: [%s].",
+                        x_ndims));
+  PADDLE_ENFORCE_EQ(y_ndims,
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+                        "but received Y's shape: [%s].",
+                        y_ndims));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      y_dims[0],
+      phi::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+          "but received X's batch size: [%s],"
+          "Y's batch size [%s]",
+          x_dims[0],
+          y_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[2],
+      y_dims[1],
+      phi::errors::InvalidArgument(
+          "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+          "but receive X's width: [%s],"
+          "Y's height: [%s].",
+          x_dims[2],
+          y_dims[1]));
+
+  std::vector<int64_t> dim_out;
+  dim_out.push_back(x_dims[0]);
+  dim_out.push_back(x_dims[1]);
+  dim_out.push_back(y_dims[2]);
+  out->set_dims(phi::make_ddim(dim_out));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
