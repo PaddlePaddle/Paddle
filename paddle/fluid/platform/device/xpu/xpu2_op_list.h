@@ -439,6 +439,10 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sequence_conv_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"log_loss",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"log_loss_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;

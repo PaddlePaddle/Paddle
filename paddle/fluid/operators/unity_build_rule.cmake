@@ -61,7 +61,6 @@ register_unity_group(cc
     cudnn_lstm_op.cc
     cumsum_op.cc
     cvm_op.cc
-    cvm_op_xpu.cc
     data_norm_op.cc
     deformable_conv_op.cc
     deformable_conv_v1_op.cc
@@ -152,6 +151,7 @@ register_unity_group(cc
 register_unity_group(cc
     log_loss_op.cc
     lookup_table_v2_op.cc
+    log_loss_op_xpu.cc
     margin_rank_loss_op.cc
     masked_select_op.cc
     match_matrix_tensor_op.cc

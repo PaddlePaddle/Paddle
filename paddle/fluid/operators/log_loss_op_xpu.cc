@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,47 +23,53 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // auto* predict = ctx.Input<Tensor>("Predicted");
-    // auto* labels = ctx.Input<Tensor>("Labels");
-    // auto* loss = ctx.Output<Tensor>("Loss");
-    // auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
-    // loss->mutable_data<T>(ctx.GetPlace());
-    // int n = predict->numel();
-    // auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // int r = xpu::log_loss(dev_ctx.x_context(), predict->data<T>(),
-    //                       labels->data<T>(), loss->data<T>(), n, epsilon);
-    // PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss");
+      auto* predict = ctx.Input<Tensor>("Predicted");
+      auto* labels = ctx.Input<Tensor>("Labels");
+      auto* loss = ctx.Output<Tensor>("Loss");
+      auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
+      loss->mutable_data<T>(ctx.GetPlace());
+      int n = predict->numel();
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      int r = xpu::log_loss(dev_ctx.x_context(), predict->data<T>(),
+                           labels->data<T>(), loss->data<T>(), n, epsilon);
+      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+               platform::errors::External(
+                          "The log_loss_grad XPU OP return wrong value[%d %s]",
+                           r, XPUAPIErrorMsg[r]));
   }
 };
 template <typename DeviceContext, typename T, typename AttrType = T>
 class LogLossGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // auto* predict = ctx.Input<Tensor>("Predicted");
-    // auto* labels = ctx.Input<Tensor>("Labels");
-    // auto* dloss = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    // auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
-    // if (!dpred) {
-    //   return;
-    // }
-    // auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
-    // dpred->mutable_data<T>(ctx.GetPlace());
-    // int n = predict->numel();
-    // auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // int r = xpu::log_loss_grad(dev_ctx.x_context(), predict->data<T>(),
-    //                            labels->data<T>(), dloss->data<T>(),
-    //                            dpred->data<T>(), n, epsilon);
-    // PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss_grad");
+      auto* predict = ctx.Input<Tensor>("Predicted");
+      auto* labels = ctx.Input<Tensor>("Labels");
+      auto* dloss = ctx.Input<Tensor>(framework::GradVarName("Loss"));
+      auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
+      if (!dpred) {
+         return;
+       }
+       auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
+       dpred->mutable_data<T>(ctx.GetPlace());
+       int n = predict->numel();
+       auto& dev_ctx = ctx.template device_context<DeviceContext>();
+       int r = xpu::log_loss_grad(dev_ctx.x_context(), predict->data<T>(),
+                                 labels->data<T>(), dloss->data<T>(),
+                                 dpred->data<T>(), n, epsilon);
+       PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+                platform::errors::External(
+                            "The log_loss_grad XPU OP return wrong value[%d %s]",
+                            r, XPUAPIErrorMsg[r]));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
-// namespace ops = paddle::operators;
-// REGISTER_OP_XPU_KERNEL(
-//     log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
-// REGISTER_OP_XPU_KERNEL(
-//     log_loss_grad,
-//     ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+namespace ops = paddle::operators;
+REGISTER_OP_XPU_KERNEL(
+     log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(
+     log_loss_grad,
+     ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 
 #endif
