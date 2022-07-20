@@ -72,8 +72,8 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
-        "Unsupported data layout cast from CPU to GPU."));
+    VLOG(3) << "Unsupported data layout cast from CPU to GPU.";
+    return tensor;
   }
 }
 

@@ -455,6 +455,7 @@ void BatchNormInferMeta(const MetaTensor& x,
                         MetaConfig config) {
   const auto x_dims = x.dims();
   for (int i = 0; i < x_dims.size(); i++) {
+    VLOG(4) << " X_DDIMS " << x_dims[i] << " i: " << i;
     PADDLE_ENFORCE_EQ(
         (x_dims[i] == -1) || (x_dims[i] > 0),
         true,
@@ -464,7 +465,9 @@ void BatchNormInferMeta(const MetaTensor& x,
             x_dims[i],
             x_dims));
   }
-
+  VLOG(4) << "this is data_layout_str " << data_layout_str
+          << " x_1 : " << x_dims[1] << " x_3 : " << x_dims[x_dims.size() - 1]
+          << "is_mkldnn :" << config.is_run_mkldnn_kernel;
   const DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_layout_str);
 

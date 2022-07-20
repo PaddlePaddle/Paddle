@@ -24,13 +24,13 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector) {
-  VLOG(3) << "asdf Optimze Layout agnostic op: " << op_name;
+  VLOG(3) << " Optimze Layout agnostic op: " << op_name;
   std::shared_ptr<EagerLayoutTransformer> transposer = nullptr;
   transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 
-// lightly and heavily
+// lightly T can be int vector<int> vector<int64_t> IntArray
 template <typename T>  // default int
 inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
@@ -41,7 +41,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
   return transposer;
 }
 
-// lightly
+// lightly int
 template <typename T1, typename T2>
 inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,

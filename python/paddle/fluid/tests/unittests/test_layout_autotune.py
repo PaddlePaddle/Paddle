@@ -65,35 +65,35 @@ class LayoutAutoTune(unittest.TestCase):
             os.remove(tfile.name)
             return paddle.fluid.core.use_layout_autotune()
 
-#    def train(self, data_format):
-#        model = SimpleNet(data_format="NCHW", class_num=2)
-#        data = paddle.rand([1, 3, 16, 16])
-#        if (data_format == "NHWC"):
-#            data = paddle.rand([1, 16, 16, 3])
-#        label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
-#        optimizer = paddle.optimizer.SGD(learning_rate=0.0001,
-#                                         parameters=model.parameters())
-#        scaler = paddle.amp.GradScaler()
-#        for i in range(2):
-#            with paddle.amp.auto_cast(level="O2"):
-#                conv_out, predict = model(data)
-#                loss = F.cross_entropy(predict, label=label_data)
-#                loss = loss.mean()
-#
-#            scaled = scaler.scale(loss)
-#            scaled.backward()
-#            scaler.minimize(optimizer, scaled)
-#        return conv_out, predict
-#
-#    def test_enable_autotune(self):
-#        if self.use_autoune():
-#            conv_out, predict = self.train(data_format="NCHW")
-#            self.assertEqual(conv_out.shape, [1, 14, 14, 8])
-#            self.assertEqual(predict.shape, [1, 2])
-#        else:
-#            conv_out, predict = self.train(data_format="NCHW")
-#            self.assertEqual(conv_out.shape, [1, 8, 14, 14])
-#            self.assertEqual(predict.shape, [1, 2])
+    def train(self, data_format):
+        model = SimpleNet(data_format="NCHW", class_num=2)
+        data = paddle.rand([1, 3, 16, 16])
+        if (data_format == "NHWC"):
+            data = paddle.rand([1, 16, 16, 3])
+        label_data = paddle.randint(0, 1, shape=[1, 1], dtype="int64")
+        optimizer = paddle.optimizer.SGD(learning_rate=0.0001,
+                                         parameters=model.parameters())
+        scaler = paddle.amp.GradScaler()
+        for i in range(2):
+            with paddle.amp.auto_cast(level="O2"):
+                conv_out, predict = model(data)
+                loss = F.cross_entropy(predict, label=label_data)
+                loss = loss.mean()
+
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.minimize(optimizer, scaled)
+        return conv_out, predict
+
+    def test_enable_autotune(self):
+        if self.use_autoune():
+            conv_out, predict = self.train(data_format="NCHW")
+            self.assertEqual(conv_out.shape, [1, 14, 14, 8])
+            self.assertEqual(predict.shape, [1, 2])
+        else:
+            conv_out, predict = self.train(data_format="NCHW")
+            self.assertEqual(conv_out.shape, [1, 8, 14, 14])
+            self.assertEqual(predict.shape, [1, 2])
 
     def test_transpose_op_transposer(self):
         if not self.use_autoune():

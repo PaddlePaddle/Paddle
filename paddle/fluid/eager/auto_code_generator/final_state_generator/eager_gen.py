@@ -358,8 +358,10 @@ LAYOUT_LOGIC_TEMPLATE=\
     {} 
     paddle::imperative::LayoutAutoTune::Instance().DisableLayoutAutoTune(); 
     {}
+    {}
     paddle::imperative::LayoutAutoTune::Instance().EnableLayoutAutoTune();
-    return out_tensor;
+    // Returns
+    return {};
   }}
 """
 CREATE_PLAIN_OPTIONAL_TENSOR_TEMPLATE = \
@@ -991,7 +993,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             layout_autotune_attr_code_list.append(
                 f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector, {len(layout_autotune_attr)});\n"
             )
-        # layout autotune tensor
 
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
@@ -1163,16 +1164,29 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_inputs_call_args_str = amp_inputs_call_args_str
 
         # Forward layout autotune
+        layout_tmp_result_list = []
+        layout_autotune_outs_list = ""
+        if num_outputs == 1:
+            layout_autotune_outs_list += f"{indent}auto& {returns_str} = api_result;\n"
+            layout_autotune_outs_list += f"{indent}transformer -> SetOutTensorLayout(&{returns_str});\n"
+        else:
+            for name, (rtype, pos) in forward_outputs_position_map.items():
+                if name in intermediate_outputs:
+                    continue
+                layout_autotune_outs_list += f"{indent}auto& {name} = std::get<{len(layout_tmp_result_list)}>(api_result);\n"
+                layout_autotune_outs_list += f"{indent}transformer -> SetOutTensorLayout(&{name});\n"
+                layout_tmp_result_list.append(f"{name}")
+
         if returns_type_str == "paddle::experimental::Tensor&" or forward_api_name == "slice" or forward_api_name == "strided_slice":
             layout_logic_str = ""
         else:
             # after_call_str = f"return {forward_function_name}({layout_inputs_call_args_str});\n"
-            after_call_str = f"auto out_tensor = {forward_function_name}({layout_inputs_call_args_str});\n"
-            after_call_str += f"    transformer->SetOutTensorLayout<{returns_type_str}>(&out_tensor);\n"
+            after_call_str = f"auto api_result = {forward_function_name}({layout_inputs_call_args_str});\n"
             layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
                 amp_tensors_vector_list_str,
                 "    ".join(layout_autotune_attr_code_list) + "    " +
-                "    ".join(layout_autotune_list), after_call_str)
+                "    ".join(layout_autotune_list), after_call_str,
+                layout_autotune_outs_list, returns_str)
 
         # Generate forward_definition_str and forward_declaration_str
         self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(

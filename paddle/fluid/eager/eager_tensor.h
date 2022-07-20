@@ -130,7 +130,10 @@ class VariableCompatTensor
         "VariableCompatTensor does not support `place` method."));
   }
 
-  bool valid() const override { return IsInitialized(); }
+  bool valid() const override {
+    VLOG(4) << "asdfasdfasd valid";
+    return IsInitialized();
+  }
 
   bool initialized() const override { return IsInitialized(); }
 

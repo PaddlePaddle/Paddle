@@ -957,15 +957,28 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
       "batch_norm", {kernel_backend, kernel_layout, kernel_data_type});
   VLOG(6) << "batch_norm API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
-  VLOG(6) << "batch_norm API kernel: " << kernel;
+  VLOG(6) << "batch_norm API kernel: " << kernel << " asdf "
+          << kernel.InputAt(0).layout << "asdfasdf " << kernel_layout;
+  phi::TensorArgDef args0 = kernel.InputAt(0);
+  phi::TensorArgDef args1 = kernel.InputAt(1);
+  phi::TensorArgDef args2 = kernel.InputAt(2);
+  phi::TensorArgDef args3 = kernel.InputAt(3);
+  phi::TensorArgDef args4 = kernel.InputAt(4);
+  if (kernel_backend == Backend::GPU) {
+    args0.layout = x.layout();
+    args1.layout = scale.layout();
+    args2.layout = bias.layout();
+    args3.layout = mean.layout();
+    args4.layout = variance.layout();
+  }
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
-  auto input_x = PrepareData(x, kernel.InputAt(0), {});
-  auto input_scale = PrepareData(scale, kernel.InputAt(1), {});
-  auto input_bias = PrepareData(bias, kernel.InputAt(2), {});
-  auto input_mean = PrepareData(mean, kernel.InputAt(3), {});
-  auto input_variance = PrepareData(variance, kernel.InputAt(4), {});
+  auto input_x = PrepareData(x, args0, {});
+  auto input_scale = PrepareData(scale, args1, {});
+  auto input_bias = PrepareData(bias, args2, {});
+  auto input_mean = PrepareData(mean, args3, {});
+  auto input_variance = PrepareData(variance, args4, {});
 
   std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
   auto kernel_out_0 = SetKernelOutput(kernel_backend, &std::get<0>(api_output));

@@ -41,7 +41,7 @@ class EagerLayoutTransformer {
   explicit EagerLayoutTransformer(const std::string& op_name)
       : op_name_(op_name) {
     use_autotune_ = false;
-    desired_layout_ = "UNDEFINED";
+    final_layout_ = "UNDEFINED";
   }
 
   EagerLayoutTransformer(const EagerLayoutTransformer&) = delete;
@@ -53,13 +53,13 @@ class EagerLayoutTransformer {
   template <typename T1>
   void SetAttr(T1* attr) {
     use_autotune_ = false;
-    desired_layout_ = "UNDEFINED";
+    final_layout_ = "UNDEFINED";
   }
 
   template <typename T1, typename T2>
   void SetAttr(T1* attr1, T2* attr2) {
     use_autotune_ = false;
-    desired_layout_ = "UNDEFINED";
+    final_layout_ = "UNDEFINED";
   }
 
   virtual paddle::experimental::Tensor TransInTensor(
@@ -68,20 +68,41 @@ class EagerLayoutTransformer {
     return in;
   }
 
-  template <typename T>
-  void SetOutTensorLayout(T* out_tensor) {}
+  virtual void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+    VLOG(4) << op_name_ << " SetOutTensorLayout update from "
+            << paddle::framework::DataLayoutToString(out_tensor->layout())
+            << " to " << final_layout_;
+    // out_tensor->set_layout(paddle::framework::StringToDataLayout(final_layout_));
+  }
+
+  virtual void SetOutTensorLayout(
+      std::vector<paddle::experimental::Tensor*>* out_tensor) {
+    VLOG(4) << op_name_ << " SetOutTensorLayout update from ";
+    for (size_t i = 0; i < out_tensor->size(); i++) {
+      // (*out_tensor)[i]->set_layout(paddle::framework::StringToDataLayout(final_layout_));
+    }
+  }
+
+  virtual void SetOutTensorLayout(
+      std::vector<paddle::experimental::Tensor>* out_tensor) {
+    VLOG(4) << op_name_ << " SetOutTensorLayout update from ";
+    for (size_t i = 0; i < out_tensor->size(); i++) {
+      // (*out_tensor)[i].set_layout(paddle::framework::StringToDataLayout(final_layout_));
+    }
+  }
 
  protected:
   bool use_autotune_;
-  const std::string op_name_;
-  std::string desired_layout_;
+  std::string op_name_;
+  std::string final_layout_;
 };
 
 class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
  public:
-  EagerHeavilyLayoutSensitiveOpTransformer() : op_name_("") {}
-  explicit EagerHeavilyLayoutSensitiveOpTransformer(const std::string& op_name)
-      : op_name_(op_name) {
+  EagerHeavilyLayoutSensitiveOpTransformer() {}
+  explicit EagerHeavilyLayoutSensitiveOpTransformer(
+      const std::string& op_name) {
+    VLOG(4) << op_name << " EagerHeavilyLayoutSensitiveOpTransformer ";
     use_autotune_ = false;
     final_layout_ = "UNDEFINED";
   }
@@ -93,7 +114,7 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     std::string desired_layout_str =
         paddle::framework::DataLayoutToString(desired_layout);
     if (*layout != desired_layout_str) {
-      VLOG(4) << op_name_ << " origin layout attr: " << *layout
+      VLOG(4) << " origin layout attr: " << *layout
               << ", Desired layout attr: " << desired_layout_str;
       final_layout_ = desired_layout_str;
       use_autotune_ = true;
@@ -106,8 +127,8 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
     auto desired_layout =
         paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
     if (heavily_input_.count(in_name) != 0 && in.layout() != desired_layout) {
-      VLOG(4) << op_name_ << "EagerHeavilyLayoutSensitiveOpTransformer "
-              << in_name << " need transpose from "
+      VLOG(4) << " EagerHeavilyLayoutSensitiveOpTransformer " << in_name
+              << " need transpose from "
               << paddle::framework::DataLayoutToString(in.layout()) << " to "
               << paddle::framework::DataLayoutToString(desired_layout);
       auto out_tensor = EagerTraceTransposeOp(desired_layout, in);
@@ -115,14 +136,38 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
       out_tensor.set_layout(desired_layout);
       return out_tensor;
     }
-    VLOG(4) << op_name_ << "EagerHeavilyLayoutSensitiveOpTransformer "
-            << in_name << "'s layout is equal to Desired";
+    VLOG(4) << " EagerHeavilyLayoutSensitiveOpTransformer " << in_name
+            << "'s layout is equal to Desired";
     return in;
   }
 
+  void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+    VLOG(4) << op_name_ << "Heavily SetOutTensorLayout update from "
+            << paddle::framework::DataLayoutToString(out_tensor->layout())
+            << " to " << final_layout_;
+    out_tensor->set_layout(
+        paddle::framework::StringToDataLayout(final_layout_));
+  }
+
+  void SetOutTensorLayout(
+      std::vector<paddle::experimental::Tensor*>* out_tensor) {
+    VLOG(4) << op_name_ << "Heavily SetOutTensorLayout update from ";
+    for (size_t i = 0; i < out_tensor->size(); i++) {
+      (*out_tensor)[i]->set_layout(
+          paddle::framework::StringToDataLayout(final_layout_));
+    }
+  }
+
+  void SetOutTensorLayout(
+      std::vector<paddle::experimental::Tensor>* out_tensor) {
+    VLOG(4) << op_name_ << "Heavily SetOutTensorLayout update from ";
+    for (size_t i = 0; i < out_tensor->size(); i++) {
+      (*out_tensor)[i].set_layout(
+          paddle::framework::StringToDataLayout(final_layout_));
+    }
+  }
+
  protected:
-  bool use_autotune_;
-  const std::string op_name_;
   std::string final_layout_;
   std::unordered_set<std::string> heavily_input_{"x", "y", "input"};
 };
