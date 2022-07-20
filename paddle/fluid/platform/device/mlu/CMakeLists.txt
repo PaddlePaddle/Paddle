@@ -13,7 +13,7 @@ cc_library(
 cc_library(
   mlu_stream
   SRCS mlu_stream.cc
-  DEPS boost mlu_info stream_callback_manager eigen3 ${MKLDNN_CTX_DEPS})
+  DEPS mlu_info stream_callback_manager eigen3 ${MKLDNN_CTX_DEPS})
 cc_library(
   mlu_device_context
   SRCS device_context.cc

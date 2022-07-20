@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_utils.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -329,19 +330,47 @@ void apply_device_guard(const OperatorBase* op_base,
       VLOG(3) << "Switch into CPUPlace by device_guard.";
       expected_kernel_key->place_ = platform::CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
-               (platform::is_gpu_place(place) ||
-                platform::is_npu_place(place))) {
-      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
-      // will be executed and a warning will be given at the same time.
+               platform::is_gpu_place(place)) {
+      // when the Op that does not have GPUKernel is assigned to GPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
       if (op_base->SupportGPU()) {
-        expected_kernel_key->place_ = place;
-      } else if (op_base->SupportNPU()) {
         expected_kernel_key->place_ = place;
       } else {
         expected_kernel_key->place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("npu") != std::string::npos &&
+               platform::is_npu_place(place)) {
+      // when the Op that does not have NPUKernel is assigned to NPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportNPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("xpu") != std::string::npos &&
+               platform::is_xpu_place(place)) {
+      // when the Op that does not have XPUKernel is assigned to XPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportXPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
@@ -705,33 +734,6 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
   var2min_rw_op->at(rw_var).push_back(cur_op);
 }
 
-void AddDownstreamOp(int prior_op_idx,
-                     int posterior_op_idx,
-                     std::map<int, std::list<int>>* op_downstream_map) {
-  if (op_downstream_map->find(prior_op_idx) == op_downstream_map->end()) {
-    op_downstream_map->emplace(std::make_pair(prior_op_idx, std::list<int>()));
-  }
-  op_downstream_map->at(prior_op_idx).push_back(posterior_op_idx);
-}
-
-void AddDownstreamOp(int prior_op_idx,
-                     int posterior_op_idx,
-                     std::map<int, std::list<int>>* op_downstream_map,
-                     const std::vector<std::vector<bool>>& op_happens_before) {
-  if (op_downstream_map->find(prior_op_idx) != op_downstream_map->end()) {
-    for (int op_idx : op_downstream_map->at(prior_op_idx)) {
-      if (op_happens_before[op_idx][posterior_op_idx]) {
-        VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx
-                << "->" << posterior_op_idx << ", skip adding " << prior_op_idx
-                << "->" << posterior_op_idx;
-        return;
-      }
-    }
-  }
-
-  AddDownstreamOp(prior_op_idx, posterior_op_idx, op_downstream_map);
-}
-
 size_t CountDownstreamMap(const std::map<int, std::list<int>>& downstream_map) {
   size_t count = 0;
   for (auto pair : downstream_map) {
@@ -973,7 +975,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
       }
       dependence_op_idx = op_idx;
     }
@@ -1000,7 +1002,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
         VLOG(4) << "Add depend from "
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
@@ -1029,7 +1031,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
       }
     }
   }
@@ -1089,7 +1091,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
             AddDownstreamOp(j,
                             first_read_fused_out_op,
                             &op_downstream_map,
-                            *op_happens_before);
+                            op_happens_before);
             VLOG(4) << j << " -> " << first_read_fused_out_op;
             VLOG(4)
                 << "Add depend from " << vec_instruction[j].OpBase()->Type()
@@ -1122,7 +1124,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
 
         for (auto var_id : outputs) {
           if (is_read(vec_instruction[j], var_id)) {
-            AddDownstreamOp(target, j, &op_downstream_map, *op_happens_before);
+            AddDownstreamOp(target, j, &op_downstream_map, op_happens_before);
             VLOG(4) << target << " -> " << j;
             VLOG(4) << "Add depend from "
                     << vec_instruction[target].OpBase()->Type() << " to "
@@ -1138,10 +1140,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
     for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
       if (!IsCpuOp(vec_instruction[op_idx])) {
         if (dependence_op_idx != -1) {
-          AddDownstreamOp(dependence_op_idx,
-                          op_idx,
-                          &op_downstream_map,
-                          *op_happens_before);
+          AddDownstreamOp(
+              dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
           VLOG(4) << "Add depend from "
                   << vec_instruction[dependence_op_idx].OpBase()->Type() << "("
                   << dependence_op_idx << ") to "
@@ -1153,6 +1153,10 @@ std::map<int, std::list<int>> build_op_downstream_map(
     }
   }
 
+  AddDependencyForReadOp(
+      vec_instruction, &op_downstream_map, op_happens_before);
+
+  VLOG(8) << "build_op_downstream_map finished";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map);

@@ -118,6 +118,15 @@
   kernel :
     func : allclose
 
+- api : angle
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : angle
+  backward : angle_grad
+
 - api : any
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -167,6 +176,23 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_complex
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsComplexInferMeta
+  kernel :
+    func : as_complex
+  backward : as_complex_grad
+
+- api : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+  backward : as_real_grad
 # asin
 - api : asin
   args : (Tensor x)
@@ -2276,3 +2302,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+# eig
+- api: eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad

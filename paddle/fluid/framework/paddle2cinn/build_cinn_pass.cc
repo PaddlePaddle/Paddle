@@ -131,7 +131,7 @@ int ExtractOpRole(const GraphNodeSet& cluster) {
   std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
   for (auto* n : cluster) {
     if (n->Op() && n->Op()->HasAttr(attr_name)) {
-      op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
+      op_roles.insert(PADDLE_GET_CONST(int, n->Op()->GetAttr(attr_name)));
     }
   }
   if (op_roles.size() == 1U) {
