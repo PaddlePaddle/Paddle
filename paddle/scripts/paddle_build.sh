@@ -60,17 +60,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
-
-    # set CI_SKIP_CPP_TEST if only *.py changed
-    # In order to avoid using in some CI(such as daily performance), the current
-    # branch must not be `${BRANCH}` which is usually develop.
-    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
-        echo "CI_SKIP_CPP_TEST=OFF"
-    else
-        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
-            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
-        fi
-    fi
 }
 
 function cmake_base() {
@@ -3232,7 +3221,6 @@ function reuse_so_cache() {
     down_proto_so=`echo $?`
     set -e
     if [ "${down_proto_so}" -eq 0 ];then
-        export CI_SKIP_CPP_TEST=ON
         cd build && mv ../proto_so.tar.gz .
         tar --use-compress-program=pigz -xpf proto_so.tar.gz
         cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
