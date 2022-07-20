@@ -199,6 +199,17 @@ void Copy(const Context& dev_ctx,
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
+             paddle::platform::is_cpu_place(dst_place)) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (paddle::platform::is_cpu_place(src_place) &&
+             paddle::platform::is_custom_place(dst_place)) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (paddle::platform::is_custom_place(src_place) &&
+             paddle::platform::is_custom_place(dst_place)) {
+    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+#endif
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (paddle::platform::is_xpu_place(src_place) &&  // NOLINT
@@ -215,26 +226,10 @@ void Copy(const Context& dev_ctx,
       return;
     }
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
-             paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (paddle::platform::is_cpu_place(src_place) &&
-             paddle::platform::is_custom_place(dst_place)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (paddle::platform::is_custom_place(src_place) &&
-             paddle::platform::is_custom_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-              << dst_place;
-      return;
-    }
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
+#endif
   }
 }
 
@@ -372,6 +367,14 @@ template void Copy(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU
 template void Copy(const XPUContext& dev_ctx,
+                   const DenseTensor& src,
+                   Place dst_place,
+                   bool blocking,
+                   DenseTensor* dst);
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template void Copy(const CustomContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
                    bool blocking,

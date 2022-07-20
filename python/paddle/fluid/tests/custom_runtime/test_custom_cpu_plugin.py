@@ -39,6 +39,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_custom_device_dataloader()
             self._test_custom_device_mnist()
             self._test_eager_backward_api()
+            self._test_to_tensor()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -132,6 +133,17 @@ class TestCustomCPUPlugin(unittest.TestCase):
         paddle.autograd.backward([z1_tensor, z2_tensor], [grad_tensor, None])
 
         self.assertTrue(x_tensor.grad.place.is_custom_place())
+
+    def _test_to_tensor(self):
+        import paddle
+        paddle.set_device('cpu')
+        x_cpu = paddle.to_tensor([1, 2])
+
+        paddle.set_device('custom_cpu')
+        x_gpu = paddle.to_tensor(x_cpu)
+
+        paddle.set_device('cpu')
+        x_cpu = paddle.to_tensor(x_gpu)
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']
