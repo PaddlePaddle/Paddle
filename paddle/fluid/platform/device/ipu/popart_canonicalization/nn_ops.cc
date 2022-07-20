@@ -656,30 +656,14 @@ Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
         CreateBaseOp(
             graph, node, "popart_shape", {GetInputVarNode("X", node)}, {})
             ->outputs[0];
-    Node *start = CreateConst(graph,
-                              node,
-                              std::vector<int>{0},
-                              std::vector<int64_t>{1},
-                              ONNXDataType::INT32)
-                      ->outputs[0];
-    Node *end = CreateConst(graph,
-                            node,
-                            std::vector<int>{2},
-                            std::vector<int64_t>{1},
-                            ONNXDataType::INT32)
-                    ->outputs[0];
-    Node *axes = CreateConst(graph,
-                             node,
-                             std::vector<int>{0},
-                             std::vector<int64_t>{1},
-                             ONNXDataType::INT32)
-                     ->outputs[0];
-    Node *nc = CreateBaseOp(graph,
-                            node,
-                            "popart_slice",
-                            {input_shape, start, end, axes},
-                            {},
-                            {})
+    Node *nc = CreateSlice(graph,
+                           node,
+                           {input_shape},
+                           {},
+                           std::vector<int>{0},
+                           std::vector<int>{2},
+                           std::vector<int>{0},
+                           std::vector<int>{1})
                    ->outputs[0];
     size = CreateBaseOp(graph,
                         node,
