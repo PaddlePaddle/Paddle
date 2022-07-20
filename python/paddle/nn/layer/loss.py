@@ -1695,8 +1695,7 @@ class TripletMarginLoss(Layer):
 
 class SoftMarginLoss(Layer):
     r"""
-    Creates a criterion that measures a two-class
-    soft margin loss between input predictions ``input``
+    Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
     .. math::
