@@ -289,7 +289,7 @@ class TestBoxCoderAPI(unittest.TestCase):
                                                box_normalized=False)
         boxes_dy_np = boxes_dy.numpy()
 
-        self.assertTrue(np.array_equal(boxes_np, boxes_dy_np))
+        self.assertTrue(np.array_equal(boxes_np[0], boxes_dy_np))
 
 
 if __name__ == '__main__':
