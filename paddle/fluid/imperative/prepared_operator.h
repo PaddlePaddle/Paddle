@@ -643,7 +643,9 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if (in_def.backend == tensor_backend ||
             (in_def.backend == phi::Backend::GPUDNN &&
-             tensor_backend == phi::Backend::GPU)) {
+             tensor_backend == phi::Backend::GPU) 
+            (in_def.backend == phi::Backend::XPU &&
+             tensor_backend == phi::Backend::KPS)) {
           continue;
         }
 
