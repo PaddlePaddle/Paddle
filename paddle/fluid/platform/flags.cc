@@ -921,7 +921,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * JitLayer related FLAG
  * Name: FLAGS_function_type
  * Since Version: 2.3.0
- * Value Range: string, {Executor, PE, Predictor},
+ * Value Range: string, {Executor, PE},
  * default=PE
  * Example:
  * Note:
