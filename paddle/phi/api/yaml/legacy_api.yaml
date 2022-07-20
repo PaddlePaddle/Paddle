@@ -2043,6 +2043,15 @@
     func : square
   backward : square_grad
 
+- api : squared_l2_norm
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : SquaredL2NormInferMeta
+  kernel :
+    func : squared_l2_norm
+  backward : squared_l2_norm_grad
+
 - api : squeeze
   args : (Tensor x, int[] axes)
   output : Tensor(out), Tensor(xshape)
