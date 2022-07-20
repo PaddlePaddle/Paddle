@@ -1727,8 +1727,7 @@ class SoftMarginLoss(Layer):
             same as ``input`` , else the shape of output is [1].
 
     Returns:
-
-        A callable object of SoftMarginLoss
+        A callable object of SoftMarginLoss.
 
     Examples:
         .. code-block:: python
