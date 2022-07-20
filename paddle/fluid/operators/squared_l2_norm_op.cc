@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/squared_l2_norm_op.h"
-
-#include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -90,15 +91,16 @@ $$Out = \sum_{i} X_{i}^2$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(squared_l2_norm,
+                            SquaredL2NormInferShapeFunctor,
+                            PD_INFER_META(phi::SquaredL2NormInferMeta));
+
 REGISTER_OPERATOR(squared_l2_norm,
                   ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
                   ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>,
+                  SquaredL2NormInferShapeFunctor);
+
 REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
-REGISTER_OP_CPU_KERNEL(squared_l2_norm,
-                       ops::SquaredL2NormKernel<phi::CPUContext, float>,
-                       ops::SquaredL2NormKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(squared_l2_norm_grad,
-                       ops::SquaredL2NormGradKernel<phi::CPUContext, float>,
-                       ops::SquaredL2NormGradKernel<phi::CPUContext, double>);

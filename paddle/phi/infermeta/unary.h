@@ -343,6 +343,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
                       MetaTensor* out);
