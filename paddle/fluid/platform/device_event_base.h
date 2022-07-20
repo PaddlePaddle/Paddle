@@ -28,7 +28,8 @@ class DeviceEvent;
 constexpr int MaxDeviceTypes =
     static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
-typedef void (*EventCreateFunction)(DeviceEvent*, const platform::Place&,
+typedef void (*EventCreateFunction)(DeviceEvent*,
+                                    const platform::Place&,
                                     unsigned int flag);
 typedef void (*EventRecordFunction)(DeviceEvent*, const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
@@ -57,12 +58,15 @@ class DeviceEvent {
   explicit DeviceEvent(const platform::Place& place, unsigned int flag = 0)
       : event_(), place_(place), flag_(flag) {
     type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
-    PADDLE_ENFORCE_LT(type_id_, MaxDeviceTypes,
+    PADDLE_ENFORCE_LT(type_id_,
+                      MaxDeviceTypes,
                       platform::errors::PreconditionNotMet(
                           "Required type < %d, but received type = %d",
-                          MaxDeviceTypes, type_id_));
-    // TODO(Aurelius84): only support CPU/CUDA, need consider XPU/NPU later
-    PADDLE_ENFORCE_LT(type_id_, 3,
+                          MaxDeviceTypes,
+                          type_id_));
+    // TODO(Aurelius84): only support CPU/CUDA/XPU/NPU.
+    PADDLE_ENFORCE_LT(type_id_,
+                      4,
                       platform::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
     PADDLE_ENFORCE_NOT_NULL(
@@ -119,7 +123,8 @@ class DeviceEvent {
     PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
                             platform::errors::Unavailable(
                                 "event_waiter_[%d][%d] shall not be nullptr.",
-                                waiter_idx, type_id_));
+                                waiter_idx,
+                                type_id_));
     event_waiter_[waiter_idx][type_id_](this, context);
   }
 

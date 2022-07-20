@@ -59,11 +59,15 @@ class LgammaGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "LgammaGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "LgammaGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LgammaGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "LgammaGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "LgammaGrad");
 
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
@@ -76,10 +80,13 @@ class LgammaGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(lgamma, LgammaInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(lgamma,
+                            LgammaInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
-REGISTER_OPERATOR(lgamma, ops::LgammaOp, ops::LgammaOpMaker,
+REGISTER_OPERATOR(lgamma,
+                  ops::LgammaOp,
+                  ops::LgammaOpMaker,
                   ops::LgammaGradMaker<paddle::framework::OpDesc>,
                   ops::LgammaGradMaker<paddle::imperative::OpBase>,
                   LgammaInferShapeFunctor);

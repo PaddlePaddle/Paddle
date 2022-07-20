@@ -28,6 +28,8 @@ __all__ = [  #noqa
     'yolo_box',
     'deform_conv2d',
     'DeformConv2D',
+    'distribute_fpn_proposals',
+    'generate_proposals',
     'read_file',
     'decode_jpeg',
     'roi_pool',
@@ -835,6 +837,123 @@ class DeformConv2D(Layer):
         return out
 
 
+def distribute_fpn_proposals(fpn_rois,
+                             min_level,
+                             max_level,
+                             refer_level,
+                             refer_scale,
+                             pixel_offset=False,
+                             rois_num=None,
+                             name=None):
+    r"""
+        In Feature Pyramid Networks (FPN) models, it is needed to distribute 
+    all proposals into different FPN level, with respect to scale of the proposals, 
+    the referring scale and the referring level. Besides, to restore the order of 
+    proposals, we return an array which indicates the original index of rois 
+    in current proposals. To compute FPN level for each roi, the formula is given as follows:
+    
+    .. math::
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
+        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+    where BBoxArea is a function to compute the area of each roi.
+
+    Args:
+        fpn_rois (Tensor): The input fpn_rois. 2-D Tensor with shape [N, 4] and data type can be
+            float32 or float64.
+        min_level (int): The lowest level of FPN layer where the proposals come 
+            from.
+        max_level (int): The highest level of FPN layer where the proposals
+            come from.
+        refer_level (int): The referring level of FPN layer with specified scale.
+        refer_scale (int): The referring scale of FPN layer with specified level.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of 
+            image shape will be 1. 'False' by default.
+        rois_num (Tensor, optional): 1-D Tensor contains the number of RoIs in each image. 
+            The shape is [B] and data type is int32. B is the number of images.
+            If rois_num not None, it will return a list of 1-D Tensor. Each element 
+            is the output RoIs' number of each image on the corresponding level
+            and the shape is [B]. None by default.
+        name (str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
+    Returns:
+        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+            and data type is same as `fpn_rois` . The length is max_level-min_level+1.         
+        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+            , where N is the number of total rois. The data type is int32. 
+        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is 
+            the RoIs' number in each image on the corresponding level. The shape 
+            is [B] and data type of int32, where B is the number of images.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            fpn_rois = paddle.rand((10, 4))
+            rois_num = paddle.to_tensor([3, 1, 4, 2], dtype=paddle.int32)
+
+            multi_rois, restore_ind, rois_num_per_level = paddle.vision.ops.distribute_fpn_proposals(
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224,
+                rois_num=rois_num)
+    """
+    num_lvl = max_level - min_level + 1
+
+    if _non_static_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
+                 refer_level, 'refer_scale', refer_scale, 'pixel_offset',
+                 pixel_offset)
+        multi_rois, restore_ind, rois_num_per_level = _C_ops.distribute_fpn_proposals(
+            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
+        return multi_rois, restore_ind, rois_num_per_level
+
+    else:
+        check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                                 'distribute_fpn_proposals')
+        helper = LayerHelper('distribute_fpn_proposals', **locals())
+        dtype = helper.input_dtype('fpn_rois')
+        multi_rois = [
+            helper.create_variable_for_type_inference(dtype)
+            for i in range(num_lvl)
+        ]
+
+        restore_ind = helper.create_variable_for_type_inference(dtype='int32')
+
+        inputs = {'FpnRois': fpn_rois}
+        outputs = {
+            'MultiFpnRois': multi_rois,
+            'RestoreIndex': restore_ind,
+        }
+
+        if rois_num is not None:
+            inputs['RoisNum'] = rois_num
+            rois_num_per_level = [
+                helper.create_variable_for_type_inference(dtype='int32')
+                for i in range(num_lvl)
+            ]
+            outputs['MultiLevelRoIsNum'] = rois_num_per_level
+        else:
+            rois_num_per_level = None
+
+        helper.append_op(type='distribute_fpn_proposals',
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs={
+                             'min_level': min_level,
+                             'max_level': max_level,
+                             'refer_level': refer_level,
+                             'refer_scale': refer_scale,
+                             'pixel_offset': pixel_offset
+                         })
+        return multi_rois, restore_ind, rois_num_per_level
+
+
 def read_file(filename, name=None):
     """
     Reads and outputs the bytes contents of a file as a uint8 Tensor
@@ -855,15 +974,14 @@ def read_file(filename, name=None):
             import cv2
             import paddle
 
-            fake_img = (np.random.random(
-                        (400, 300, 3)) * 255).astype('uint8')
+            fake_img = (paddle.rand((400, 300, 3)).numpy() * 255).astype('uint8')            
 
             cv2.imwrite('fake.jpg', fake_img)
 
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
+            # [142915]
     """
 
     if _non_static_mode():
@@ -1541,3 +1659,146 @@ def nms(boxes,
         return keep_boxes_idxs[topk_sub_indices]
 
     return keep_boxes_idxs[sorted_sub_indices][:top_k]
+
+
+def generate_proposals(scores,
+                       bbox_deltas,
+                       img_size,
+                       anchors,
+                       variances,
+                       pre_nms_top_n=6000,
+                       post_nms_top_n=1000,
+                       nms_thresh=0.5,
+                       min_size=0.1,
+                       eta=1.0,
+                       pixel_offset=False,
+                       return_rois_num=False,
+                       name=None):
+    """
+    This operation proposes RoIs according to each box with their
+    probability to be a foreground object. And 
+    the proposals of RPN output are  calculated by anchors, bbox_deltas and scores. Final proposals 
+    could be used to train detection net.
+
+    For generating proposals, this operation performs following steps:
+
+    1. Transpose and resize scores and bbox_deltas in size of
+       (H * W * A, 1) and (H * W * A, 4)
+    2. Calculate box locations as proposals candidates. 
+    3. Clip boxes to image
+    4. Remove predicted boxes with small area. 
+    5. Apply non-maximum suppression (NMS) to get final proposals as output.
+
+    Args:
+        scores (Tensor): A 4-D Tensor with shape [N, A, H, W] represents
+            the probability for each box to be an object.
+            N is batch size, A is number of anchors, H and W are height and
+            width of the feature map. The data type must be float32.
+        bbox_deltas (Tensor): A 4-D Tensor with shape [N, 4*A, H, W]
+            represents the difference between predicted box location and
+            anchor location. The data type must be float32.
+        img_size (Tensor): A 2-D Tensor with shape [N, 2] represents origin
+            image shape information for N batch, including height and width of the input sizes.
+            The data type can be float32 or float64.
+        anchors (Tensor):   A 4-D Tensor represents the anchors with a layout
+            of [H, W, A, 4]. H and W are height and width of the feature map,
+            num_anchors is the box count of each position. Each anchor is
+            in (xmin, ymin, xmax, ymax) format an unnormalized. The data type must be float32.
+        variances (Tensor): A 4-D Tensor. The expanded variances of anchors with a layout of
+            [H, W, num_priors, 4]. Each variance is in
+            (xcenter, ycenter, w, h) format. The data type must be float32.
+        pre_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image before NMS. `6000` by default.
+        post_nms_top_n (float, optional): Number of total bboxes to be kept per
+            image after NMS. `1000` by default.
+        nms_thresh (float, optional): Threshold in NMS. The data type must be float32. `0.5` by default.
+        min_size (float, optional): Remove predicted boxes with either height or
+            width less than this value. `0.1` by default.
+        eta(float, optional): Apply in adaptive NMS, only works if adaptive `threshold > 0.5`,
+            `adaptive_threshold = adaptive_threshold * eta` in each iteration. 1.0 by default.
+        pixel_offset (bool, optional): Whether there is pixel offset. If True, the offset of `img_size` will be 1. 'False' by default.
+        return_rois_num (bool, optional): Whether to return `rpn_rois_num` . When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
+            num of each image in one batch. 'False' by default.
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
+    Returns:
+        - rpn_rois (Tensor): The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_roi_probs (Tensor): The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
+        - rpn_rois_num (Tensor): Rois's num of each image in one batch. 1-D Tensor with shape ``[B,]`` while ``B`` is the batch size. And its sum equals to RoIs number ``N`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            scores = paddle.rand((2,4,5,5), dtype=paddle.float32)
+            bbox_deltas = paddle.rand((2, 16, 5, 5), dtype=paddle.float32)
+            img_size = paddle.to_tensor([[224.0, 224.0], [224.0, 224.0]])
+            anchors = paddle.rand((2,5,4,4), dtype=paddle.float32)
+            variances = paddle.rand((2,5,10,4), dtype=paddle.float32)
+            rois, roi_probs, roi_nums = paddle.vision.ops.generate_proposals(scores, bbox_deltas,
+                         img_size, anchors, variances, return_rois_num=True)
+            print(rois, roi_probs, roi_nums)
+    """
+
+    if _non_static_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
+                 'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta,
+                 'pixel_offset', pixel_offset)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
+            scores, bbox_deltas, img_size, anchors, variances, *attrs)
+
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+
+    helper = LayerHelper('generate_proposals_v2', **locals())
+
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(img_size, 'img_size', ['float32', 'float64'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(anchors, 'anchors', ['float32'],
+                             'generate_proposals_v2')
+    check_variable_and_dtype(variances, 'variances', ['float32'],
+                             'generate_proposals_v2')
+
+    rpn_rois = helper.create_variable_for_type_inference(
+        dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
+    outputs = {
+        'RpnRois': rpn_rois,
+        'RpnRoiProbs': rpn_roi_probs,
+    }
+    if return_rois_num:
+        rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
+        rpn_rois_num.stop_gradient = True
+        outputs['RpnRoisNum'] = rpn_rois_num
+
+    helper.append_op(type="generate_proposals_v2",
+                     inputs={
+                         'Scores': scores,
+                         'BboxDeltas': bbox_deltas,
+                         'ImShape': img_size,
+                         'Anchors': anchors,
+                         'Variances': variances
+                     },
+                     attrs={
+                         'pre_nms_topN': pre_nms_top_n,
+                         'post_nms_topN': post_nms_top_n,
+                         'nms_thresh': nms_thresh,
+                         'min_size': min_size,
+                         'eta': eta,
+                         'pixel_offset': pixel_offset
+                     },
+                     outputs=outputs)
+    rpn_rois.stop_gradient = True
+    rpn_roi_probs.stop_gradient = True
+    if not return_rois_num:
+        rpn_rois_num = None
+
+    return rpn_rois, rpn_roi_probs, rpn_rois_num

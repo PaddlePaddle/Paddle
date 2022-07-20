@@ -66,29 +66,30 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_out = out->GetMutable<f::LoDTensor>();
 
   // sync data
-  auto sync_op0 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                          {{"Out", {"Out"}}}, attrs);
+  auto sync_op0 = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op0->Run(*scope, place);
 
   // run
 
-  auto op =
-      f::OpRegistry::CreateOp("elementwise_add", {{"X", {"X"}}, {"Y", {"Y"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("elementwise_add",
+                                    {{"X", {"X"}}, {"Y", {"Y"}}},
+                                    {{"Out", {"Out"}}},
+                                    attrs);
 
   op->Run(*scope, place);
 
   // sync op run
-  auto sync_op = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                         {{"Out", {"Out"}}}, attrs);
+  auto sync_op = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op->Run(*scope, place);
 
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   // sync op copy
-  auto sync_op2 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                          {{"Out", {"Out"}}}, attrs);
+  auto sync_op2 = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op2->Run(*scope, place);
 
   float expected = 3.0;

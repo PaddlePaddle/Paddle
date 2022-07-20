@@ -105,8 +105,8 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   auto* tmp_9 = layers.elementwise_mul(tmp_7, tmp_8);
   auto* tmp_10 = layers.mul(tmp_6, tmp_9);
 
-  std::vector<VarDesc*> elementwise_vars = {tmp_0, tmp_1, tmp_2, tmp_3, tmp_4,
-                                            tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
+  std::vector<VarDesc*> elementwise_vars = {
+      tmp_0, tmp_1, tmp_2, tmp_3, tmp_4, tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
   for (auto* var : elementwise_vars) {
     var->SetShape(shape);
   }

@@ -38,7 +38,8 @@ struct RecordInstantEvent {
    * @param level: Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
-  explicit RecordInstantEvent(const char* name, TracerEventType type,
+  explicit RecordInstantEvent(const char* name,
+                              TracerEventType type,
                               uint32_t level = kDefaultTraceLevel);
 };
 
@@ -77,7 +78,8 @@ class RecordEvent {
       uint32_t level = kDefaultTraceLevel,
       const EventRole role = EventRole::kOrdinary);
 
-  RecordEvent(const std::string& name, const std::string& attr,
+  RecordEvent(const std::string& name,
+              const std::string& attr,
               const TracerEventType type = TracerEventType::UserDefined,
               uint32_t level = kDefaultTraceLevel,
               const EventRole role = EventRole::kOrdinary);
@@ -89,7 +91,8 @@ class RecordEvent {
   ~RecordEvent() { End(); }
 
  private:
-  void OriginalConstruct(const std::string& name, const EventRole role,
+  void OriginalConstruct(const std::string& name,
+                         const EventRole role,
                          const std::string& attr);
 
   bool is_enabled_{false};

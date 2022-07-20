@@ -465,7 +465,7 @@ class StaticGraphAdapter(object):
                     idx] == core.VarDesc.VarType.FP16:
                 if isinstance(feed[n], core.LoDTensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
-                elif isinstance(feed[n], numpy.array):
+                elif isinstance(feed[n], np.array):
                     feed[n] = feed[n].astype('float16')
 
         if labels is not None:
@@ -1076,7 +1076,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-train-batch
             
                 import paddle
                 import paddle.nn as nn
@@ -1128,7 +1127,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-eval-batch
 
                 import paddle
                 import paddle.nn as nn
@@ -1176,7 +1174,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-predict-batch
 
                 import paddle
                 import paddle.nn as nn
@@ -1236,7 +1233,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-save
 
                 import paddle
                 import paddle.nn as nn
@@ -1317,7 +1313,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-load
 
                 import paddle
                 import paddle.nn as nn
@@ -1404,7 +1399,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-              :name: code-example-parameters
             
                 import paddle
                 import paddle.nn as nn
@@ -1648,7 +1642,7 @@ class Model(object):
                How to make a batch is done internally.
 
             .. code-block:: python
-              :name: code-example-fit-1
+              :name: code-example1
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1688,7 +1682,7 @@ class Model(object):
                DataLoader.
 
             .. code-block:: python
-              :name: code-example-fit-2
+              :name: code-example2
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1844,7 +1838,6 @@ class Model(object):
         Examples:
 
           .. code-block:: python
-            :name: code-example-evaluate
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1946,7 +1939,6 @@ class Model(object):
         Examples:
 
           .. code-block:: python
-            :name: code-example-predict
 
                 import numpy as np
                 import paddle
@@ -2179,7 +2171,6 @@ class Model(object):
 
         Examples:
             .. code-block:: python
-              :name: code-example-summary
 
                 import paddle
                 from paddle.static import InputSpec

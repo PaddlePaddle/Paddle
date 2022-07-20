@@ -51,16 +51,25 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
-                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
-                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
-                          Node* eltadd_qk_b, Node* reshape2,
-                          Node* reshape2_qkv_out, Node* scale,
+  auto fuse_creater = [&](Node* input0,
+                          Node* mul0,
+                          Node* mul1,
+                          Node* mul2,
+                          Node* mul0_out,
+                          Node* mul1_out,
+                          Node* mul2_out,
+                          Node* eltadd0_b,
+                          Node* eltadd1_b,
+                          Node* eltadd2_b,
+                          Node* eltadd_qk_b,
+                          Node* reshape2,
+                          Node* reshape2_qkv_out,
+                          Node* scale,
                           Node* scale_out) {
-    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
-    // auto scale_bias = BOOST_GET_CONST(float, scale->Op()->GetAttr("bias"));
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    // auto scale_bias = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
     // bool after_scale =
-    //    BOOST_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
+    //    PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
     OpDesc multihead_op_desc(mul0->Op()->Block());
@@ -80,7 +89,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     ReplaceOutputVar(mul0, mul0_out, q_var_node);
     ReplaceOutputVar(mul1, mul1_out, k_var_node);
@@ -123,11 +133,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0_out, reshape2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0_out, transpose2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale, scale, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, multihead_pattern);
 
@@ -135,21 +145,21 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1_out, reshape2_1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1_out, transpose2_1_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2_out, reshape2_2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2_out, transpose2_2_out, multihead_pattern);
 
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(eltadd0, eltadd0, multihead_pattern);
@@ -172,24 +182,36 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk_out, softmax_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv_out, matmul_qkv_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out, reshape2_qkv_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv_out, reshape2_qkv_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv, transpose2_qkv, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
-    fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out,
-                 eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b, reshape2_0,
-                 reshape2_qkv_out, scale, scale_out);
+    fuse_creater(input0,
+                 mul0,
+                 mul1,
+                 mul2,
+                 mul0_out,
+                 mul1_out,
+                 mul2_out,
+                 eltadd0_b,
+                 eltadd1_b,
+                 eltadd2_b,
+                 eltadd_qk_b,
+                 reshape2_0,
+                 reshape2_qkv_out,
+                 scale,
+                 scale_out);
 
     std::unordered_set<const Node*> marked_nodes(
         {eltadd0,
@@ -424,7 +446,8 @@ PDNode* MultiHeadMatmulPattern::operator()() {
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  // Add mul op to support huggingface onnx model convertsion by x2paddle
+  std::unordered_set<std::string> matmul_ops{"mul", "matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
 
@@ -757,15 +780,31 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
-                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
-                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
-                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
-                          Node* eltadd_qk_b, Node* reshape2,
-                          Node* reshape2_qkv_out, Node* scale, Node* scale_out,
-                          Node* softmax_qk, Node* eltadd0, Node* eltadd1,
-                          Node* eltadd2, Node* matmul_qk, Node* reshape2_qkv) {
-    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
+  auto fuse_creater = [&](Node* input0,
+                          Node* mul0,
+                          Node* mul1,
+                          Node* mul2,
+                          Node* mul0_out,
+                          Node* mul1_out,
+                          Node* mul2_out,
+                          Node* mul0_w,
+                          Node* mul1_w,
+                          Node* mul2_w,
+                          Node* eltadd0_b,
+                          Node* eltadd1_b,
+                          Node* eltadd2_b,
+                          Node* eltadd_qk_b,
+                          Node* reshape2,
+                          Node* reshape2_qkv_out,
+                          Node* scale,
+                          Node* scale_out,
+                          Node* softmax_qk,
+                          Node* eltadd0,
+                          Node* eltadd1,
+                          Node* eltadd2,
+                          Node* matmul_qk,
+                          Node* reshape2_qkv) {
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -822,7 +861,8 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     wq_tensor->Resize(combined_w_dims);
     auto* new_combined_w_data =
         wq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_w_data, tmp_combined_w_data,
+    memcpy(new_combined_w_data,
+           tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
@@ -834,22 +874,25 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + bias_size, bk_data,
-           sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
+    memcpy(
+        tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + 2 * bias_size,
+           bv_data,
            sizeof(float) * bias_size);
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
         bq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_bias_data, tmp_combined_bias_data,
+    memcpy(new_combined_bias_data,
+           tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
@@ -875,11 +918,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* add2_op_desc = eltadd2->Op();
     if (add0_op_desc->HasAttr("out_threshold")) {
       auto out_scale0 =
-          BOOST_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
       auto out_scale1 =
-          BOOST_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
       auto out_scale2 =
-          BOOST_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
       auto out_scale_max = std::max(out_scale0, out_scale1);
       out_scale_max = std::max(out_scale_max, out_scale2);
       multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
@@ -890,7 +933,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     if (matmul_qk_op_desc->HasAttr("Input_scale")) {
       multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
       if (softmax_qk_op_desc->HasAttr("out_threshold")) {
-        auto qkv_plugin_scale = BOOST_GET_CONST(
+        auto qkv_plugin_scale = PADDLE_GET_CONST(
             float, softmax_qk_op_desc->GetAttr("out_threshold"));
         multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
       }
@@ -924,11 +967,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0_out, reshape2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0_out, transpose2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale, scale, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, multihead_pattern);
 
@@ -936,21 +979,21 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1_out, reshape2_1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1_out, transpose2_1_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2_out, reshape2_2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2_out, transpose2_2_out, multihead_pattern);
 
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(eltadd0, eltadd0, multihead_pattern);
@@ -973,20 +1016,20 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk_out, softmax_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv_out, matmul_qkv_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out, reshape2_qkv_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv_out, reshape2_qkv_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv, transpose2_qkv, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
     // If weights or biases in qkv's fc are shared by multiple multihead_matmul
     // patterns, we do not support this kind of fusion, this pass will not take
@@ -998,10 +1041,30 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
-                 mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
-                 reshape2_0, reshape2_qkv_out, scale, scale_out, softmax_qk,
-                 eltadd0, eltadd1, eltadd2, matmul_qk, reshape2_qkv);
+    fuse_creater(input0,
+                 mul0,
+                 mul1,
+                 mul2,
+                 mul0_out,
+                 mul1_out,
+                 mul2_out,
+                 mul0_w,
+                 mul1_w,
+                 mul2_w,
+                 eltadd0_b,
+                 eltadd1_b,
+                 eltadd2_b,
+                 eltadd_qk_b,
+                 reshape2_0,
+                 reshape2_qkv_out,
+                 scale,
+                 scale_out,
+                 softmax_qk,
+                 eltadd0,
+                 eltadd1,
+                 eltadd2,
+                 matmul_qk,
+                 reshape2_qkv);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
@@ -1209,13 +1272,25 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0, Node* mul0, Node* mul1, Node* mul2,
-                          Node* mul0_out, Node* mul1_out, Node* mul2_out,
-                          Node* mul0_w, Node* mul1_w, Node* mul2_w,
-                          Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b,
-                          Node* eltadd_qk_b, Node* reshape2,
-                          Node* reshape2_qkv_out, Node* matmul_qk) {
-    auto scale_attr = BOOST_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
+  auto fuse_creater = [&](Node* input0,
+                          Node* mul0,
+                          Node* mul1,
+                          Node* mul2,
+                          Node* mul0_out,
+                          Node* mul1_out,
+                          Node* mul2_out,
+                          Node* mul0_w,
+                          Node* mul1_w,
+                          Node* mul2_w,
+                          Node* eltadd0_b,
+                          Node* eltadd1_b,
+                          Node* eltadd2_b,
+                          Node* eltadd_qk_b,
+                          Node* reshape2,
+                          Node* reshape2_qkv_out,
+                          Node* matmul_qk) {
+    auto scale_attr =
+        PADDLE_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -1272,7 +1347,8 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     wq_tensor->Resize(combined_w_dims);
     auto* new_combined_w_data =
         wq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_w_data, tmp_combined_w_data,
+    memcpy(new_combined_w_data,
+           tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
@@ -1284,22 +1360,25 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + bias_size, bk_data,
-           sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
+    memcpy(
+        tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + 2 * bias_size,
+           bv_data,
            sizeof(float) * bias_size);
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
         bq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_bias_data, tmp_combined_bias_data,
+    memcpy(new_combined_bias_data,
+           tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
@@ -1333,31 +1412,31 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0_out, reshape2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0_out, transpose2_0_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul1, mul1, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1_out, reshape2_1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1_out, transpose2_1_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2_out, reshape2_2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2_out, transpose2_2_out, multihead_pattern);
 
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(eltadd0, eltadd0, multihead_pattern);
@@ -1380,20 +1459,20 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk_out, softmax_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv_out, matmul_qkv_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out, reshape2_qkv_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv_out, reshape2_qkv_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv, transpose2_qkv, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
     // If weights or biases in qkv's fc are shared by multiple multihead_matmul
     // patterns, we do not support this kind of fusion, this pass will not take
@@ -1405,9 +1484,23 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
-                 mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
-                 reshape2_0, reshape2_qkv_out, matmul_qk);
+    fuse_creater(input0,
+                 mul0,
+                 mul1,
+                 mul2,
+                 mul0_out,
+                 mul1_out,
+                 mul2_out,
+                 mul0_w,
+                 mul1_w,
+                 mul2_w,
+                 eltadd0_b,
+                 eltadd1_b,
+                 eltadd2_b,
+                 eltadd_qk_b,
+                 reshape2_0,
+                 reshape2_qkv_out,
+                 matmul_qk);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,

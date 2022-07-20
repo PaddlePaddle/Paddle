@@ -96,7 +96,7 @@ class LinerNetWithLabel(paddle.nn.Layer):
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return out, avg_loss
 
 
@@ -113,7 +113,7 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return out
 
 
@@ -142,7 +142,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
-        loss = fluid.layers.mean(z)
+        loss = paddle.mean(z)
         return z, loss
 
 
@@ -160,7 +160,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
-        loss = fluid.layers.mean(x_out + y_out)
+        loss = paddle.mean(x_out + y_out)
         return x_out, y_out, loss
 
 
@@ -176,7 +176,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
-        loss = fluid.layers.mean(x_out + y_out)
+        loss = paddle.mean(x_out + y_out)
         return x_out, y_out, loss
 
 
@@ -208,7 +208,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear_1(x)
         z = self._linear_2(y)
-        loss = fluid.layers.mean(z)
+        loss = paddle.mean(z)
         return y, loss
 
 
@@ -224,7 +224,7 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
         y = self._linear_1(x)
         z = self._linear_2(y)
         out = y + z
-        loss = fluid.layers.mean(out)
+        loss = paddle.mean(out)
         return y, [(z, loss), out]
 
 
@@ -316,7 +316,7 @@ def train(layer, input_size=784, label_size=1):
         cost = layer(img)
 
         loss = fluid.layers.cross_entropy(cost, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         avg_loss.backward()
         sgd.minimize(avg_loss)
@@ -1151,6 +1151,65 @@ class LayerSaved(paddle.nn.Layer):
         else:
             y += self._linear_1_1(y + self._scale)
         return self._linear_2(y)
+
+
+class Net(paddle.nn.Layer):
+
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = paddle.nn.Linear(4, 4)
+        self.fc2 = paddle.nn.Linear(4, 4)
+        self.bias = 0.4
+        self.flag = paddle.ones([2], dtype="int32")
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def log_softmax(self, input):
+        return paddle.nn.functional.log_softmax(input, axis=-1)
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def forward(self, x):
+        out = self.fc1(x)
+        out = paddle.nn.functional.relu(out)
+        out = paddle.mean(out)
+        return out
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def infer(self, input):
+        out = self.fc2(input)
+        out = out + self.bias
+        out = paddle.mean(out)
+        return out
+
+    # For extra Python float
+    @paddle.jit.to_static(property=True)
+    def fbias(self):
+        return self.bias + 1
+
+    # For extra Tensor
+    @paddle.jit.to_static(property=True)
+    def fflag(self):
+        return self.flag
+
+
+class TestJitSaveCombine(unittest.TestCase):
+
+    def setUp(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_save_load_finetune_load(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+
+        # Use new namespace
+        with unique_name.guard():
+            net = Net()
+        #save
+        paddle.jit.save(net, model_path, combine_params=True)
 
 
 class LayerLoadFinetune(paddle.nn.Layer):

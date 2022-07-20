@@ -28,7 +28,8 @@ void DistModelDataBuf::Reset(void* data, size_t length) {
 
 void DistModelDataBuf::Free() {
   if (memory_owned_ && data_) {
-    PADDLE_ENFORCE_GT(length_, 0UL,
+    PADDLE_ENFORCE_GT(length_,
+                      0UL,
                       platform::errors::PreconditionNotMet(
                           "Error occurred when deconstruct DistModelDataBuf: "
                           "it contains no data!"));

@@ -47,7 +47,8 @@ struct SigmoidMultiplyGradFunctor {
   //  dx = dout * y
   //  dy = dout * x
   // Gradient of Sigmoid: dx = dout * out * (1 - out)
-  inline HOSTDEVICE phi::Array<T, 2> operator()(const T dout, const T x,
+  inline HOSTDEVICE phi::Array<T, 2> operator()(const T dout,
+                                                const T x,
                                                 T y) const {
     MPType x_mp = static_cast<MPType>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
@@ -63,7 +64,8 @@ struct SigmoidMultiplyGradFunctor {
 template <typename T>
 void ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                    const GateAttentionConfig<T> &config,
-                                   const Tensor *query, Tensor *qkv_out) {
+                                   const Tensor *query,
+                                   Tensor *qkv_out) {
   // query: shape=[batch_size, seq_len_m, seq_len_r, qkv_dim]
   // qkv_weight: shape=[3, num_heads, head_dim, qkv_dim]
   // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
@@ -83,7 +85,8 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                                     const GateAttentionGradConfig<T> &config,
                                     const Tensor *query,
                                     const Tensor *qkv_out_grad,
-                                    Tensor *query_grad, bool use_addto) {
+                                    Tensor *query_grad,
+                                    bool use_addto) {
   auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
   auto *qkv_weight_grad =
       ctx.Output<Tensor>(framework::GradVarName("QKVWeight"));
@@ -95,15 +98,22 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int k = config.q_dim;
   auto qkv_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
-  qkv_compute.ComputeBackward(query, qkv_weight, qkv_out_grad, query_grad,
-                              qkv_weight_grad, nullptr, use_addto);
+  qkv_compute.ComputeBackward(query,
+                              qkv_weight,
+                              qkv_out_grad,
+                              query_grad,
+                              qkv_weight_grad,
+                              nullptr,
+                              use_addto);
 }
 
 template <typename T>
 void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                       const GateAttentionConfig<T> &config,
-                                      const Tensor *query, const Tensor *key,
-                                      Tensor *query_out, Tensor *key_out,
+                                      const Tensor *query,
+                                      const Tensor *key,
+                                      Tensor *query_out,
+                                      Tensor *key_out,
                                       Tensor *value_out) {
   auto *query_weight = ctx.Input<Tensor>("QueryWeight");
   auto *key_weight = ctx.Input<Tensor>("KeyWeight");
@@ -116,8 +126,8 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, q_m,
-                                 q_n, q_k, false);
+  auto q_compute = AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
   q_compute.ComputeForward(query_weight, query, nullptr, query_out, nullptr);
 
   // k_out = GEMM(key, key_weight)
@@ -127,8 +137,8 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, kv_m,
-                                  kv_n, kv_k, false);
+  auto kv_compute = AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeForward(key_weight, key, nullptr, key_out, nullptr);
 
   // value_out = GEMM(value, value_weight)
@@ -138,11 +148,13 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
 template <typename T>
 void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                                        const GateAttentionGradConfig<T> &config,
-                                       const Tensor *query, const Tensor *key,
+                                       const Tensor *query,
+                                       const Tensor *key,
                                        const Tensor *query_out_grad,
                                        const Tensor *key_out_grad,
                                        const Tensor *value_out_grad,
-                                       Tensor *query_grad, Tensor *key_grad,
+                                       Tensor *query_grad,
+                                       Tensor *key_grad,
                                        bool use_addto) {
   // Gradient of GEMM(key, k_weight)
   const auto *key_weight = ctx.Input<Tensor>("KeyWeight");
@@ -153,10 +165,10 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, kv_m,
-                                  kv_n, kv_k, false);
-  kv_compute.ComputeBackward(key, key_weight, key_out_grad, key_grad,
-                             key_weight_grad, nullptr, false);
+  auto kv_compute = AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
+  kv_compute.ComputeBackward(
+      key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
 
   // Gradient of GEMM(value, v_weight)
   auto *value_weight = ctx.Input<Tensor>("ValueWeight");
@@ -164,8 +176,13 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
       ctx.Output<Tensor>(framework::GradVarName("ValueWeight"));
   value_weight_grad->mutable_data<T>(ctx.GetPlace());
 
-  kv_compute.ComputeBackward(key, value_weight, value_out_grad, key_grad,
-                             value_weight_grad, nullptr, true);
+  kv_compute.ComputeBackward(key,
+                             value_weight,
+                             value_out_grad,
+                             key_grad,
+                             value_weight_grad,
+                             nullptr,
+                             true);
 
   // Gradient of GEMM(query, query_weight)
   const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
@@ -176,16 +193,22 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, false, q_m,
-                                 q_n, q_k, false);
-  q_compute.ComputeBackward(query, query_weight, query_out_grad, query_grad,
-                            query_weight_grad, nullptr, use_addto);
+  auto q_compute = AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
+  q_compute.ComputeBackward(query,
+                            query_weight,
+                            query_out_grad,
+                            query_grad,
+                            query_weight_grad,
+                            nullptr,
+                            use_addto);
 }
 
 template <typename T>
 void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
-                                const Tensor *query, const Tensor *fmha_out,
+                                const Tensor *query,
+                                const Tensor *fmha_out,
                                 Tensor *gate_out) {
   auto *gate_weight = ctx.Input<Tensor>("GateWeight");
   auto *gate_bias = ctx.Input<Tensor>("GateBias");
@@ -199,22 +222,24 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   int k = config.q_dim;
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  gate_attn_compute.ComputeForward(gate_weight, query, gate_bias, gate_out,
-                                   gate_out);
+  gate_attn_compute.ComputeForward(
+      gate_weight, query, gate_bias, gate_out, gate_out);
 
   // gate_out = sigmoid(gate_out) * fmha_out
   std::vector<const Tensor *> ins = {gate_out, fmha_out};
   std::vector<Tensor *> outs = {gate_out};
-  phi::funcs::ElementwiseKernel<T>(ctx.cuda_device_context(), ins, &outs,
-                                   SigmoidMultiplyFunctor<T>());
+  phi::funcs::ElementwiseKernel<T>(
+      ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
 }
 
 template <typename T>
 void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                  const GateAttentionGradConfig<T> &config,
-                                 const Tensor *query, const Tensor *fmha_out,
+                                 const Tensor *query,
+                                 const Tensor *fmha_out,
                                  const Tensor *gate_out_grad,
-                                 Tensor *query_grad, Tensor *fmha_out_grad) {
+                                 Tensor *query_grad,
+                                 Tensor *fmha_out_grad) {
   const auto *gate_weight = ctx.Input<Tensor>("GateWeight");
   const auto *gate_bias = ctx.Input<Tensor>("GateBias");
 
@@ -228,8 +253,8 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   int k = config.q_dim;
   auto gate_attn_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  gate_attn_compute.ComputeForward(gate_weight, query, gate_bias,
-                                   &gate_bias_out, &gate_bias_out);
+  gate_attn_compute.ComputeForward(
+      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out);
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
@@ -245,15 +270,19 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   gate_weight_grad->mutable_data<T>(ctx.GetPlace());
   gate_bias_grad->mutable_data<T>(ctx.GetPlace());
 
-  gate_attn_compute.ComputeBackward(query, gate_weight, &gate_bias_out,
-                                    query_grad, gate_weight_grad,
+  gate_attn_compute.ComputeBackward(query,
+                                    gate_weight,
+                                    &gate_bias_out,
+                                    query_grad,
+                                    gate_weight_grad,
                                     gate_bias_grad);
 }
 
 template <typename T>
 void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
-                                const Tensor *fmha_or_gate_out, Tensor *out) {
+                                const Tensor *fmha_or_gate_out,
+                                Tensor *out) {
   const auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
   const auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
 
@@ -263,14 +292,15 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   int k = config.num_heads * config.head_dim;
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  out_linear_compute.ComputeForward(out_linear_weight, fmha_or_gate_out,
-                                    out_linear_bias, out, out);
+  out_linear_compute.ComputeForward(
+      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out);
 }
 
 template <typename T>
 void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                  const GateAttentionGradConfig<T> &config,
-                                 const Tensor *input, Tensor *input_grad) {
+                                 const Tensor *input,
+                                 Tensor *input_grad) {
   const auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
   const auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
 
@@ -287,8 +317,11 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   int k = config.num_heads * config.head_dim;
   auto out_linear_compute =
       AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  out_linear_compute.ComputeBackward(input, out_linear_weight, out_grad,
-                                     input_grad, out_linear_weight_grad,
+  out_linear_compute.ComputeBackward(input,
+                                     out_linear_weight,
+                                     out_grad,
+                                     input_grad,
+                                     out_linear_weight_grad,
                                      out_linear_bias_grad);
 }
 
@@ -326,15 +359,18 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
     // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-    GateAttentionConfig<T> config(dev_ctx, query, key, query_weight, qkv_weight,
-                                  merge_qkv, has_gating);
+    GateAttentionConfig<T> config(
+        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
 
     if (merge_qkv) {
-      PADDLE_ENFORCE_EQ(!key || query == key, true,
-                        platform::errors::InvalidArgument(
-                            "key is expected to be nullptr or the same as "
-                            "query, but recieved key=%p, query=%p.",
-                            key, query));
+      PADDLE_ENFORCE_EQ(
+          !key || query == key || query->data<T>() == key->data<T>(),
+          true,
+          platform::errors::InvalidArgument(
+              "key is expected to be nullptr or the same as "
+              "query, but recieved key=%p, query=%p.",
+              key,
+              query));
 
       // 1. Merged QKV Matmul: einsum(nbhqk,nbkhc -> nbqhc)
       Tensor *qkv_out = config.GetQKVOut();
@@ -346,8 +382,8 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       Tensor *query_out = config.GetQueryOut();
       Tensor *key_out = config.GetKeyOut();
       Tensor *value_out = config.GetValueOut();
-      ComputeSeparatedQKVMatmulForward<T>(ctx, config, query, key, query_out,
-                                          key_out, value_out);
+      ComputeSeparatedQKVMatmulForward<T>(
+          ctx, config, query, key, query_out, key_out, value_out);
 
       AllocWithDebugInfo<T>(dev_ctx, "q_transpose_out", q_transpose_out);
       AllocWithDebugInfo<T>(dev_ctx, "k_transpose_out", k_transpose_out);
@@ -356,10 +392,16 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
 
     // 2. FMHA
     auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeForward(nonbatched_bias, src_mask, q_transpose_out,
-                                k_transpose_out, v_transpose_out,
-                                qkv_transpose_out, softmax_out, fmha_out,
-                                gate_out, &config);
+    fmha_compute.ComputeForward(nonbatched_bias,
+                                src_mask,
+                                q_transpose_out,
+                                k_transpose_out,
+                                v_transpose_out,
+                                qkv_transpose_out,
+                                softmax_out,
+                                fmha_out,
+                                gate_out,
+                                &config);
 
     // 3. Gating Linear
     if (has_gating) {
@@ -402,8 +444,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
-    GateAttentionGradConfig<T> config(dev_ctx, query, key, query_weight,
-                                      qkv_weight, merge_qkv, has_gating);
+    GateAttentionGradConfig<T> config(
+        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
 
     Tensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
@@ -417,8 +459,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
       // 2. Gradient of Gating Linear
       // Forward: gate_out = Sigmoid(Linear(fmha_out)) * fmha_out
-      ComputeGatingLinearBackward<T>(ctx, config, query, fmha_out,
-                                     &gate_out_grad, query_grad,
+      ComputeGatingLinearBackward<T>(ctx,
+                                     config,
+                                     query,
+                                     fmha_out,
+                                     &gate_out_grad,
+                                     query_grad,
                                      &fmha_out_grad);
     } else {
       // 1. Gradient of Output Linear: out = Linear(fmha_grad)
@@ -427,21 +473,27 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     // 3. Gradient of FMHA
     if (nonbatched_bias_grad) {
-      AllocWithDebugInfo<T>(dev_ctx, "nonbatched_bias_grad",
-                            nonbatched_bias_grad);
+      AllocWithDebugInfo<T>(
+          dev_ctx, "nonbatched_bias_grad", nonbatched_bias_grad);
     }
 
     auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeBackward(
-        q_transpose_out, k_transpose_out, v_transpose_out, qkv_transpose_out,
-        softmax_out, &fmha_out_grad, nullptr, nonbatched_bias_grad, &config);
+    fmha_compute.ComputeBackward(q_transpose_out,
+                                 k_transpose_out,
+                                 v_transpose_out,
+                                 qkv_transpose_out,
+                                 softmax_out,
+                                 &fmha_out_grad,
+                                 nullptr,
+                                 nonbatched_bias_grad,
+                                 &config);
 
     bool use_addto = has_gating ? true : false;
     if (merge_qkv) {
       // 4. Gradient of Merged QKV Matmul
       Tensor *qkv_out_grad = config.GetQKVOutGrad();
-      ComputeMergedQKVMatmulBackward<T>(ctx, config, query, qkv_out_grad,
-                                        query_grad, use_addto);
+      ComputeMergedQKVMatmulBackward<T>(
+          ctx, config, query, qkv_out_grad, query_grad, use_addto);
     } else {
       // 4. Gradient of Separated QKV Matmul
       auto *key_grad = ctx.Output<Tensor>(framework::GradVarName("Key"));
@@ -451,9 +503,16 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       Tensor *query_out_grad = config.GetQueryOutGrad();
       Tensor *key_out_grad = config.GetKeyOutGrad();
       Tensor *value_out_grad = config.GetValueOutGrad();
-      ComputeSeparatedQKVMatmulBackward<T>(
-          ctx, config, query, key, query_out_grad, key_out_grad, value_out_grad,
-          query_grad, key_grad, use_addto);
+      ComputeSeparatedQKVMatmulBackward<T>(ctx,
+                                           config,
+                                           query,
+                                           key,
+                                           query_out_grad,
+                                           key_out_grad,
+                                           value_out_grad,
+                                           query_grad,
+                                           key_grad,
+                                           use_addto);
     }
   }
 };

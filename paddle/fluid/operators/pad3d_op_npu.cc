@@ -26,8 +26,8 @@ static inline std::vector<int> GetPaddings(
   std::vector<int> paddings(6);
   auto* paddings_t = context.Input<Tensor>("Paddings");
   if (paddings_t) {
-    paddle::framework::TensorToVector(*paddings_t, context.device_context(),
-                                      &paddings);
+    paddle::framework::TensorToVector(
+        *paddings_t, context.device_context(), &paddings);
   } else {
     auto pads = context.Attr<std::vector<int>>("paddings");
     std::copy(pads.begin(), pads.end(), paddings.data());
@@ -49,13 +49,15 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
 
     auto* out = context.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE_LT(abs(value), 1e-5,
+    PADDLE_ENFORCE_LT(abs(value),
+                      1e-5,
                       platform::errors::Unimplemented(
                           "Ascend npu only support constant_values=0 right now,"
                           "but received constant_value is %f .",
                           value));
 
-    PADDLE_ENFORCE_EQ(mode, "constant",
+    PADDLE_ENFORCE_EQ(mode,
+                      "constant",
                       platform::errors::Unimplemented(
                           "Ascend npu only support mode=constant right now,"
                           "but received mode is %s .",
@@ -64,15 +66,19 @@ class Pad3dNPUKernel : public framework::OpKernel<T> {
     std::vector<int> paddings(
         {0, 0, 0, 0, pads[4], pads[5], pads[2], pads[3], pads[0], pads[1]});
     if (data_format == "NCDHW") {
-      out->Resize({in_dims[0], in_dims[1], in_dims[2] + pads[4] + pads[5],
+      out->Resize({in_dims[0],
+                   in_dims[1],
+                   in_dims[2] + pads[4] + pads[5],
                    in_dims[3] + pads[2] + pads[3],
                    in_dims[4] + pads[0] + pads[1]});
     } else {
-      out->Resize({in_dims[0], in_dims[1] + pads[4] + pads[5],
+      out->Resize({in_dims[0],
+                   in_dims[1] + pads[4] + pads[5],
                    in_dims[2] + pads[2] + pads[3],
-                   in_dims[3] + pads[0] + pads[1], in_dims[4]});
-      paddings = {0,       0,       pads[4], pads[5], pads[2],
-                  pads[3], pads[0], pads[1], 0,       0};
+                   in_dims[3] + pads[0] + pads[1],
+                   in_dims[4]});
+      paddings = {
+          0, 0, pads[4], pads[5], pads[2], pads[3], pads[0], pads[1], 0, 0};
     }
     out->mutable_data<T>(context.GetPlace());
 
@@ -120,8 +126,8 @@ class Pad3dGradNPUKernel : public framework::OpKernel<T> {
       if (data_format == "NDHWC") {
         offsets = {0, pad_front, pad_top, pad_left, 0};
       }
-      const auto& runner = NpuOpRunner("SliceD", {*d_out}, {*d_in},
-                                       {{"offsets", offsets}, {"size", size}});
+      const auto& runner = NpuOpRunner(
+          "SliceD", {*d_out}, {*d_in}, {{"offsets", offsets}, {"size", size}});
       runner.Run(stream);
     }
   }
@@ -133,8 +139,11 @@ class Pad3dGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(pad3d, ops::Pad3dNPUKernel<plat::float16>,
-                       ops::Pad3dNPUKernel<float>, ops::Pad3dNPUKernel<int>);
+REGISTER_OP_NPU_KERNEL(pad3d,
+                       ops::Pad3dNPUKernel<plat::float16>,
+                       ops::Pad3dNPUKernel<float>,
+                       ops::Pad3dNPUKernel<int>);
 
-REGISTER_OP_NPU_KERNEL(pad3d_grad, ops::Pad3dNPUKernel<plat::float16>,
+REGISTER_OP_NPU_KERNEL(pad3d_grad,
+                       ops::Pad3dNPUKernel<plat::float16>,
                        ops::Pad3dGradNPUKernel<float>);

@@ -1737,6 +1737,7 @@ class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
         self.init_dtype()
+        self.python_api = paddle.nn.functional.relu6
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
@@ -1750,7 +1751,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRelu6API(unittest.TestCase):

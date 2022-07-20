@@ -33,8 +33,10 @@ namespace ir {
 
 // Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
-    const framework::proto::OpDesc& base_desc, const std::string& bias,
-    const std::string& activation, const std::string& output) {
+    const framework::proto::OpDesc& base_desc,
+    const std::string& bias,
+    const std::string& activation,
+    const std::string& output) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
   desc.SetType("conv2d_fusion");
@@ -100,6 +102,22 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
+  AddOpCompat(OpCompat("sigmoid"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+
+  AddOpCompat(OpCompat("tanh"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -137,7 +155,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Link inputs and outputs.
     PADDLE_ENFORCE_NE(
-        subgraph.count(x), 0,
+        subgraph.count(x),
+        0,
         platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
@@ -147,8 +166,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(new_conv_op, act_out);               // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op,
-                                 elementwise_add_out, act_op});
+    GraphSafeRemoveNodes(
+        graph,
+        {conv_op, conv_out, elementwise_add_op, elementwise_add_out, act_op});
   };
 
   gpd(graph, handler);
@@ -166,4 +186,6 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .LE("conv2d", 1)
             .LE("elementwise_add", 1)
             .EQ("relu", 0)
+            .EQ("sigmoid", 0)
+            .EQ("tanh", 0)
             .EQ("identity", 0));

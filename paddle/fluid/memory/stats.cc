@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/stats.h"
 
 #include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/variant.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace memory {
@@ -32,7 +32,8 @@ class StatRegistry {
     if (it == stat_map_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The STAT type \"%s\" for device %d has not been regeistered.",
-          stat_type.c_str(), dev_id));
+          stat_type.c_str(),
+          dev_id));
     }
     return it->second;
   }
@@ -82,7 +83,8 @@ int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id) {
                                                    dev_id);
 }
 
-void DeviceMemoryStatUpdate(const std::string& stat_type, int dev_id,
+void DeviceMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
                             int64_t increment) {
   StatRegistry::GetInstance()->Update("Device" + stat_type, dev_id, increment);
 }
@@ -96,7 +98,8 @@ int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id) {
   return StatRegistry::GetInstance()->GetPeakValue("Host" + stat_type, dev_id);
 }
 
-void HostMemoryStatUpdate(const std::string& stat_type, int dev_id,
+void HostMemoryStatUpdate(const std::string& stat_type,
+                          int dev_id,
                           int64_t increment) {
   StatRegistry::GetInstance()->Update("Host" + stat_type, dev_id, increment);
 }

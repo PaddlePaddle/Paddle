@@ -12,21 +12,62 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/sparse/matmul_grad_kernel.h"
+
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
-#include "paddle/phi/kernels/sparse/matmul_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void CsrDenseMatmulGradKernel(const Context& dev_ctx,
+void MatmulCooDenseGradKernel(const Context& dev_ctx,
+                              const SparseCooTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              SparseCooTensor* dx,
+                              DenseTensor* dy) {
+#if CUDA_VERSION >= 11030
+  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+
+  // dx{SparseCoo} = dout{Dense} * y'{Dense}
+  if (dx) {
+    // 'cusparseSDDMM' only support CSR now, so use COO->CSR->COO,
+    // which will increase some expenses.
+    EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+    SparseCsrTensor dx_csr = SparseCooToCsr<T, Context>(dev_ctx, *dx);
+    sparse_blas.SDDMM(
+        false, true, static_cast<T>(1), dout, y, static_cast<T>(0), &dx_csr);
+    SparseCsrToCooKernel<T, Context>(dev_ctx, dx_csr, dx);
+  }
+
+  // dy{Dense} = x'{SparseCoo} * dout{Dense}
+  if (dy) {
+    MetaTensor meta_dy(dy);
+    meta_dy.set_dims(y.dims());
+    meta_dy.set_dtype(y.dtype());
+    dev_ctx.template Alloc<T>(dy);
+
+    sparse_blas.SPMM(
+        true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
+  }
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
+      "CUDA 11.3"));
+#endif
+}
+
+template <typename T, typename Context>
+void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const SparseCsrTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
@@ -37,23 +78,8 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
   if (dx) {
-    // InferMeta of SparseCsrTensor 'dx'
-    dx->set_dims(x.dims());
-
-    phi::Copy(dev_ctx,
-              x.non_zero_crows(),
-              dev_ctx.GetPlace(),
-              false,
-              dx->mutable_non_zero_crows());
-    phi::Copy(dev_ctx,
-              x.non_zero_cols(),
-              dev_ctx.GetPlace(),
-              false,
-              dx->mutable_non_zero_cols());
-
-    DenseTensor* values = dx->mutable_non_zero_elements();
-    values->Resize(x.non_zero_elements().dims());
-    dev_ctx.template Alloc<T>(values);
+    // InferMeta of SparseCsrTensor 'dx', CreateLikeInferMeta
+    EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
 
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), dx);
@@ -68,18 +94,18 @@ void CsrDenseMatmulGradKernel(const Context& dev_ctx,
 
     dev_ctx.template Alloc<T>(dy);
 
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
   }
 #else
   PADDLE_THROW(phi::errors::Unimplemented(
-      " backward of 'sparse.mm' use cusparseSDDMM, Only "
-      "support it from CUDA 11.3"));
+      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
+      "CUDA 11.3"));
 #endif
 }
 
 template <typename T, typename Context>
-void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
+void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const SparseCsrTensor& dout,
@@ -96,7 +122,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
     meta_dx.set_dtype(x.dtype());
 
     dev_ctx.template Alloc<T>(dx);
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), dx);
   }
 
@@ -108,7 +134,7 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
     DenseTensor trans_dy = phi::Empty<T, Context>(dev_ctx, trans_dim_vec);
 
-    sparse_blas.DSDMM(
+    sparse_blas.SPMM(
         true, false, static_cast<T>(1), dout, x, static_cast<T>(0), &trans_dy);
 
     // InferMeta of DenseTensor 'dy'
@@ -132,18 +158,27 @@ void CsrMaskedMatmulGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(csr_dense_matmul_grad,
+PD_REGISTER_KERNEL(matmul_coo_dense_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrDenseMatmulGradKernel,
+                   phi::sparse::MatmulCooDenseGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(matmul_csr_dense_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrDenseGradKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_matmul_grad,
+PD_REGISTER_KERNEL(masked_matmul_csr_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrMaskedMatmulGradKernel,
+                   phi::sparse::MaskedMatmulCsrGradKernel,
                    float,
                    double) {}

@@ -33,18 +33,21 @@ class FrameOp : public framework::OperatorWithKernel {
     const int x_rank = x_dims.size();
 
     PADDLE_ENFORCE_GE(
-        x_rank, 1,
+        x_rank,
+        1,
         platform::errors::InvalidArgument(
             "Input(X) of FrameOp should be a tensor which contains "
             "at least 1 dimension, but got rank %s.",
             x_rank));
-    PADDLE_ENFORCE_GT(hop_length, 0,
+    PADDLE_ENFORCE_GT(hop_length,
+                      0,
                       platform::errors::InvalidArgument(
                           "Attribute(hop_length) of FrameOp should be greater "
                           "than 0, but got %s.",
                           hop_length));
     PADDLE_ENFORCE_EQ(
-        (axis == 0 || axis == -1), true,
+        (axis == 0 || axis == -1),
+        true,
         platform::errors::InvalidArgument(
             "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
 
@@ -68,11 +71,13 @@ class FrameOp : public framework::OperatorWithKernel {
     bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
-      PADDLE_ENFORCE_LE(frame_length, seq_length,
+      PADDLE_ENFORCE_LE(frame_length,
+                        seq_length,
                         platform::errors::InvalidArgument(
                             "Attribute(frame_length) of FrameOp should be less "
                             "equal than sequence length, but got (%s) > (%s).",
-                            frame_length, seq_length));
+                            frame_length,
+                            seq_length));
     }
 
     // It won't go into for loop when x_rank == 1U.
@@ -133,8 +138,10 @@ class FrameOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "frame_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "frame_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "frame_grad");
     const auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -168,28 +175,28 @@ class FrameOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(frame, ops::FrameOp, ops::FrameOpMaker,
+REGISTER_OPERATOR(frame,
+                  ops::FrameOp,
+                  ops::FrameOpMaker,
                   ops::FrameOpGradMaker<paddle::framework::OpDesc>,
                   ops::FrameOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(frame_grad, ops::FrameOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    frame, ops::FrameKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<float>>,
-    ops::FrameKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex<double>>);
+    frame,
+    ops::FrameKernel<phi::CPUContext, int>,
+    ops::FrameKernel<phi::CPUContext, int64_t>,
+    ops::FrameKernel<phi::CPUContext, float>,
+    ops::FrameKernel<phi::CPUContext, double>,
+    ops::FrameKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::FrameKernel<phi::CPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<float>>,
-    ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+    frame_grad,
+    ops::FrameGradKernel<phi::CPUContext, int>,
+    ops::FrameGradKernel<phi::CPUContext, int64_t>,
+    ops::FrameGradKernel<phi::CPUContext, float>,
+    ops::FrameGradKernel<phi::CPUContext, double>,
+    ops::FrameGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::FrameGradKernel<phi::CPUContext, paddle::platform::complex<double>>);

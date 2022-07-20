@@ -45,7 +45,8 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
 class GradOpBaseMakerBase {
  public:
   explicit GradOpBaseMakerBase(
-      const std::string& type, const NameVarBaseMap& var_base_map_in,
+      const std::string& type,
+      const NameVarBaseMap& var_base_map_in,
       const NameVarBaseMap& var_base_map_out,
       const framework::AttributeMap& attrs,
       const std::map<std::string, std::string>& inplace_map)
@@ -127,7 +128,8 @@ class GradOpBaseMakerBase {
   virtual const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     PADDLE_ENFORCE_EQ(
-        it != attrs_.end(), true,
+        it != attrs_.end(),
+        true,
         platform::errors::NotFound(
             "Cannot find attribute [%s] in operator [%s]", name, type_));
     return it->second;
@@ -135,7 +137,7 @@ class GradOpBaseMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   const std::string& ForwardOpType() const { return type_; }
@@ -251,8 +253,8 @@ class TracedGradOp {
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
 
     if (!var_wrappers.empty()) {
-      op_->SetInput(name, std::move(var_wrappers),
-                    kRole == TracedVarRole::kBackward);
+      op_->SetInput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 
@@ -292,8 +294,8 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
-      op_->SetOutput(name, std::move(var_wrappers),
-                     kRole == TracedVarRole::kBackward);
+      op_->SetOutput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 

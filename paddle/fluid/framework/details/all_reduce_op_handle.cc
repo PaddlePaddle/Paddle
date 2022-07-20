@@ -33,12 +33,14 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLCommunicator *ctxs)
     : NCCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    local_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "The number of places and the number of local scopes "
                         "should be equal, but got number of places is %d and "
                         "number of local scopes is %d.",
-                        places_.size(), local_scopes_.size()));
+                        places_.size(),
+                        local_scopes_.size()));
 }
 #elif defined(PADDLE_WITH_XPU_BKCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -46,24 +48,28 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<platform::Place> &places,
                                      const platform::BKCLCommunicator *ctxs)
     : BKCLOpHandleBase(node, places, ctxs), local_scopes_(local_scopes) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    local_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "The number of places and the number of local scopes "
                         "should be equal, but got number of places is %d and "
                         "number of local scopes is %d.",
-                        places_.size(), local_scopes_.size()));
+                        places_.size(),
+                        local_scopes_.size()));
 }
 #else
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
     : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size(),
+  PADDLE_ENFORCE_EQ(places_.size(),
+                    local_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "The number of places and the number of local scopes "
                         "should be equal, but got number of places is %d and "
                         "number of local scopes is %d.",
-                        places_.size(), local_scopes_.size()));
+                        places_.size(),
+                        local_scopes_.size()));
 }
 #endif
 
@@ -82,25 +88,31 @@ void AllReduceOpHandle::AllReduceImpl(
     const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles) {
   size_t num_places = places_.size();
-  PADDLE_ENFORCE_EQ(in_var_handles.size(), num_places,
+  PADDLE_ENFORCE_EQ(in_var_handles.size(),
+                    num_places,
                     platform::errors::InvalidArgument(
                         "The NoDummyInputSize should be equal "
                         "to the number of places, but got NoDummyInputSize is "
                         "%d and the number of places is %d.",
-                        in_var_handles.size(), num_places));
+                        in_var_handles.size(),
+                        num_places));
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), out_var_handles.size(),
+      in_var_handles.size(),
+      out_var_handles.size(),
       platform::errors::InvalidArgument(
           "The NoDummyInputSize and NoDummyOutputSize should be "
           "equal, but got NoDummyInputSize is %d and NoDummyOutputSize is %d.",
-          in_var_handles.size(), out_var_handles.size()));
+          in_var_handles.size(),
+          out_var_handles.size()));
   PADDLE_ENFORCE_EQ(
-      local_exec_scopes_.size(), num_places,
+      local_exec_scopes_.size(),
+      num_places,
       platform::errors::InvalidArgument(
           "The number of local scopes should be equal "
           "to the number of places, but got the number of local scopes is "
           "%d and the number of places is %d.",
-          in_var_handles.size(), num_places));
+          in_var_handles.size(),
+          num_places));
 
   std::vector<const void *> lod_tensor_data;
   std::vector<platform::Place> places;
@@ -115,19 +127,22 @@ void AllReduceOpHandle::AllReduceImpl(
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     auto &local_scope = local_exec_scopes_[i];
     auto var = local_scope->FindVar(in_var_handles[i]->name());
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
-                                     "Variable %s is not found in local scope.",
-                                     in_var_handles[i]->name()));
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::NotFound("Variable %s is not found in local scope.",
+                                   in_var_handles[i]->name()));
     auto &lod_tensor = var->Get<LoDTensor>();
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
       // only enforce place0, we will enforce other palce numel == place0 numel
       PADDLE_ENFORCE_GT(
-          numel, 0,
+          numel,
+          0,
           platform::errors::PreconditionNotMet(
               "The numel of tensor %s should be > 0, but got numel is %d.",
-              in_var_handles[i]->name(), numel));
+              in_var_handles[i]->name(),
+              numel));
       dtype = framework::TransToProtoVarType(lod_tensor.dtype());
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -135,22 +150,26 @@ void AllReduceOpHandle::AllReduceImpl(
 #endif
     }
     PADDLE_ENFORCE_EQ(
-        numel, static_cast<int64_t>(lod_tensor.numel()),
+        numel,
+        static_cast<int64_t>(lod_tensor.numel()),
         platform::errors::PreconditionNotMet(
             "The size of tensors of the same variable in different local "
             "scopes should be equal."));
     PADDLE_ENFORCE_EQ(
-        dtype, framework::TransToProtoVarType(lod_tensor.dtype()),
+        dtype,
+        framework::TransToProtoVarType(lod_tensor.dtype()),
         platform::errors::PreconditionNotMet(
             "The dtype of tensors of the same variable in different local "
             "scopes should be equal."));
 #if defined(PADDLE_WITH_XPU_BKCL)
-    PADDLE_ENFORCE_EQ(is_xpu_place, platform::is_xpu_place(lod_tensor.place()),
+    PADDLE_ENFORCE_EQ(is_xpu_place,
+                      platform::is_xpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
 #endif
-    PADDLE_ENFORCE_EQ(is_gpu_place, platform::is_gpu_place(lod_tensor.place()),
+    PADDLE_ENFORCE_EQ(is_gpu_place,
+                      platform::is_gpu_place(lod_tensor.place()),
                       platform::errors::PreconditionNotMet(
                           "The place type of tensors of the same variable "
                           "in different local scopes should be equal."));
@@ -162,11 +181,13 @@ void AllReduceOpHandle::AllReduceImpl(
              << ", out_name:" << out_var_handles[i]->name();
 
     PADDLE_ENFORCE_EQ(
-        in_var_handles[i]->name(), out_var_handles[i]->name(),
+        in_var_handles[i]->name(),
+        out_var_handles[i]->name(),
         platform::errors::InvalidArgument(
             "The name of input and output of all_reduce op should be equal, "
             "but got input is %s and output is %s.",
-            in_var_handles[i]->name(), out_var_handles[i]->name()));
+            in_var_handles[i]->name(),
+            out_var_handles[i]->name()));
   }
 
   std::vector<std::string> grad_var_names;
@@ -180,7 +201,8 @@ void AllReduceOpHandle::AllReduceImpl(
 
 void AllReduceOpHandle::AllReduceFunc(
     std::vector<const void *> lod_tensor_data,
-    const framework::proto::VarType::Type &dtype, int64_t numel,
+    const framework::proto::VarType::Type &dtype,
+    int64_t numel,
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
   if (platform::is_gpu_place(places[0])) {
@@ -255,13 +277,15 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
       all_reduce_calls[0]();
     } else {
       PADDLE_ENFORCE_EQ(
-          bkcl_group_start(), BKCL_SUCCESS,
+          bkcl_group_start(),
+          BKCL_SUCCESS,
           platform::errors::PreconditionNotMet("bkcl_group_start failed"));
       for (auto &call : all_reduce_calls) {
         call();
       }
       PADDLE_ENFORCE_EQ(
-          bkcl_group_end(), BKCL_SUCCESS,
+          bkcl_group_end(),
+          BKCL_SUCCESS,
           platform::errors::PreconditionNotMet("bkcl_group_end failed"));
     }
   });

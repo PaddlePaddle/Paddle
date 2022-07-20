@@ -42,6 +42,7 @@ from paddle.distributed.collective import _set_default_backend
 from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
+from paddle.distributed.collective import _set_group_map_backend
 
 __all__ = []
 
@@ -240,7 +241,7 @@ def init_parallel_env():
                                       master_port,
                                       is_master,
                                       world_size,
-                                      stop_check_timeout=stop_check_timeout)
+                                      timeout=stop_check_timeout)
         _set_default_store(default_store)
         pg = _new_process_group_impl(backend,
                                      default_store,
@@ -257,6 +258,7 @@ def init_parallel_env():
                       name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
+        _set_group_map_backend(group, backend)
         parallel_helper._set_parallel_ctx(True)
 
         paddle.distributed.barrier(group=group)

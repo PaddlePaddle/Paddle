@@ -68,8 +68,12 @@ TEST(BestFitAllocator, concurrent_cuda) {
                                                                 allocate_size);
       for_range(fill);
 
-      memory::Copy(platform::CPUPlace(), buf.data(), gpu, data,
-                   sizeof(size_t) * allocate_size, dev_ctx.stream());
+      memory::Copy(platform::CPUPlace(),
+                   buf.data(),
+                   gpu,
+                   data,
+                   sizeof(size_t) * allocate_size,
+                   dev_ctx.stream());
 
       dev_ctx.Wait();
       for (size_t j = 0; j < allocate_size; ++j) {

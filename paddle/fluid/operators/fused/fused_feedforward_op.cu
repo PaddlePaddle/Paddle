@@ -17,11 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -37,16 +39,30 @@ static void AllReduce(framework::Tensor& tensor,  // NOLINT
                       const platform::CUDADeviceContext& ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
-  int64_t numel = tensor.numel();
-  const void* sendbuff = tensor.data<T>();
-  auto place = ctx.GetPlace();
-  void* recvbuff = tensor.mutable_data<T>(place);
-  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-  auto stream = ctx.stream();
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+
+  if (map->has(ring_id)) {
+    paddle::distributed::ProcessGroup* pg = map->get(ring_id);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(tensor);
+    out_tensor.push_back(tensor);
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    auto dtype = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(tensor.dtype()));
+    int64_t numel = tensor.numel();
+    const void* sendbuff = tensor.data<T>();
+    auto place = ctx.GetPlace();
+    void* recvbuff = tensor.mutable_data<T>(place);
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto stream = ctx.stream();
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+  }
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
@@ -58,7 +74,8 @@ template <typename DeviceContext, typename T>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const platform::CUDADeviceContext& ctx,
-              const framework::Tensor& a, const framework::Tensor& b,
+              const framework::Tensor& a,
+              const framework::Tensor& b,
               framework::Tensor* c) const {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
@@ -69,7 +86,8 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
   }
 
-  void FFN(const platform::CUDADeviceContext& ctx, const framework::Tensor& x,
+  void FFN(const platform::CUDADeviceContext& ctx,
+           const framework::Tensor& x,
            const framework::Tensor& linear1_weight,
            const framework::Tensor* linear1_bias,
            const framework::Tensor& linear2_weight,
@@ -77,16 +95,28 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
            const framework::Tensor* ln1_scale,
            const framework::Tensor* ln1_bias,
            const framework::Tensor* ln2_scale,
-           const framework::Tensor* ln2_bias, framework::Tensor* out,
-           framework::Tensor* dropout1_mask, framework::Tensor* dropout2_mask,
-           framework::Tensor* ln1_mean, framework::Tensor* ln1_variance,
-           framework::Tensor* ln2_mean, framework::Tensor* ln2_variance,
-           framework::Tensor* linear1_out, framework::Tensor* ln1_out,
-           framework::Tensor* dropout1_out, framework::Tensor* dropout2_out,
-           const int bsz_seq, const int d_model, const int dim_feedforward,
-           const std::string& act_method, const bool pre_layer_norm,
-           const float epsilon1, const float epsilon2, const bool add_residual,
-           const int ring_id, const DropoutParam& dropout_param1,
+           const framework::Tensor* ln2_bias,
+           framework::Tensor* out,
+           framework::Tensor* dropout1_mask,
+           framework::Tensor* dropout2_mask,
+           framework::Tensor* ln1_mean,
+           framework::Tensor* ln1_variance,
+           framework::Tensor* ln2_mean,
+           framework::Tensor* ln2_variance,
+           framework::Tensor* linear1_out,
+           framework::Tensor* ln1_out,
+           framework::Tensor* dropout1_out,
+           framework::Tensor* dropout2_out,
+           const int bsz_seq,
+           const int d_model,
+           const int dim_feedforward,
+           const std::string& act_method,
+           const bool pre_layer_norm,
+           const float epsilon1,
+           const float epsilon2,
+           const bool add_residual,
+           const int ring_id,
+           const DropoutParam& dropout_param1,
            const DropoutParam& dropout_param2) const {
     FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
         bsz_seq, d_model, epsilon1);
@@ -111,15 +141,22 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
         linear2_bias == nullptr ? nullptr : linear2_bias->data<T>();
 
     if (pre_layer_norm) {
-      pre_layernorm_helper.LayerNorm(
-          ctx, x.data<T>(), ln1_scale_ptr, ln1_bias_ptr, ln1_out->data<T>(),
-          ln1_mean->data<U>(), ln1_variance->data<U>());
+      pre_layernorm_helper.LayerNorm(ctx,
+                                     x.data<T>(),
+                                     ln1_scale_ptr,
+                                     ln1_bias_ptr,
+                                     ln1_out->data<T>(),
+                                     ln1_mean->data<U>(),
+                                     ln1_variance->data<U>());
       in = ln1_out;
     }
     MatMul(ctx, *in, linear1_weight, linear1_out);
-    fused_act_dropout_helper.DropoutActBias(
-        ctx, linear1_out->data<T>(), linear1_bias_ptr, act_method,
-        dropout1_out->data<T>(), dropout1_mask->data<uint8_t>());
+    fused_act_dropout_helper.DropoutActBias(ctx,
+                                            linear1_out->data<T>(),
+                                            linear1_bias_ptr,
+                                            act_method,
+                                            dropout1_out->data<T>(),
+                                            dropout1_mask->data<uint8_t>());
     framework::Tensor linear2_out;
     linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
     MatMul(ctx, *dropout1_out, linear2_weight, &linear2_out);
@@ -130,20 +167,32 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     const T* residual_ptr = add_residual ? x.data<T>() : nullptr;
     if (!pre_layer_norm) {
       // TODO(Xreki): support post layer_norm case when add_residual is false.
-      PADDLE_ENFORCE_EQ(add_residual, true,
+      PADDLE_ENFORCE_EQ(add_residual,
+                        true,
                         platform::errors::InvalidArgument(
                             "Attribute add_residual is expected to be true "
                             "when pre_layer_norm is false."));
 
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-          ctx, linear2_out.data<T>(), residual_ptr, linear2_bias_ptr,
-          ln2_scale_ptr, ln2_bias_ptr, dropout2_out->data<T>(),
-          dropout2_mask->data<uint8_t>(), out->data<T>(), ln2_mean->data<U>(),
+          ctx,
+          linear2_out.data<T>(),
+          residual_ptr,
+          linear2_bias_ptr,
+          ln2_scale_ptr,
+          ln2_bias_ptr,
+          dropout2_out->data<T>(),
+          dropout2_mask->data<uint8_t>(),
+          out->data<T>(),
+          ln2_mean->data<U>(),
           ln2_variance->data<U>());
     } else {
       fused_dropout_layernorm_helper.ResidualDropoutBias(
-          ctx, linear2_out.data<T>(), residual_ptr, linear2_bias_ptr,
-          out->data<T>(), dropout2_mask->data<uint8_t>());
+          ctx,
+          linear2_out.data<T>(),
+          residual_ptr,
+          linear2_bias_ptr,
+          out->data<T>(),
+          dropout2_mask->data<uint8_t>());
     }
   }
 
@@ -222,12 +271,38 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     int dim_feedforward = dim[dim.size() - 1];
     int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
 
-    FFN(context.cuda_device_context(), *x, *linear1_weight, linear1_bias,
-        *linear2_weight, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias,
-        out, dropout1_mask, dropout2_mask, ln1_mean, ln1_variance, ln2_mean,
-        ln2_variance, linear1_out, ln1_out, dropout1_out, dropout2_out, bsz_seq,
-        d_model, dim_feedforward, act_method, pre_layer_norm, epsilon1,
-        epsilon2, add_residual, ring_id, dropout_param1, dropout_param2);
+    FFN(context.cuda_device_context(),
+        *x,
+        *linear1_weight,
+        linear1_bias,
+        *linear2_weight,
+        linear2_bias,
+        ln1_scale,
+        ln1_bias,
+        ln2_scale,
+        ln2_bias,
+        out,
+        dropout1_mask,
+        dropout2_mask,
+        ln1_mean,
+        ln1_variance,
+        ln2_mean,
+        ln2_variance,
+        linear1_out,
+        ln1_out,
+        dropout1_out,
+        dropout2_out,
+        bsz_seq,
+        d_model,
+        dim_feedforward,
+        act_method,
+        pre_layer_norm,
+        epsilon1,
+        epsilon2,
+        add_residual,
+        ring_id,
+        dropout_param1,
+        dropout_param2);
   }
 };
 
@@ -235,8 +310,10 @@ template <typename DeviceContext, typename T>
 class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
  public:
   void MatMulGrad(const platform::CUDADeviceContext& ctx,
-                  const framework::Tensor& d_out, const framework::Tensor& a,
-                  const framework::Tensor& b, framework::Tensor* d_a,
+                  const framework::Tensor& d_out,
+                  const framework::Tensor& a,
+                  const framework::Tensor& b,
+                  framework::Tensor* d_a,
                   framework::Tensor* d_b) const {
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
@@ -250,29 +327,46 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
   }
 
-  void FFNGrad(
-      const platform::CUDADeviceContext& ctx, const framework::Tensor& d_out,
-      const framework::Tensor& x, const framework::Tensor& dropout1_mask,
-      const framework::Tensor& dropout2_mask,
-      const framework::Tensor& linear1_out, const framework::Tensor* ln1_out,
-      const framework::Tensor& dropout1_out,
-      const framework::Tensor& dropout2_out,
-      const framework::Tensor& linear1_weight,
-      const framework::Tensor* linear1_bias,
-      const framework::Tensor& linear2_weight,
-      const framework::Tensor* ln1_gamma, const framework::Tensor* ln1_beta,
-      const framework::Tensor* ln1_mean, const framework::Tensor* ln1_variance,
-      const framework::Tensor* ln2_gamma, const framework::Tensor* ln2_beta,
-      const framework::Tensor* ln2_mean, const framework::Tensor* ln2_variance,
-      framework::Tensor* d_x, framework::Tensor* d_linear1_weight,
-      framework::Tensor* d_linear1_bias, framework::Tensor* d_linear2_weight,
-      framework::Tensor* d_linear2_bias, framework::Tensor* d_ln1_gamma,
-      framework::Tensor* d_ln1_beta, framework::Tensor* d_ln2_gamma,
-      framework::Tensor* d_ln2_beta, const int bsz_seq, const int d_model,
-      const int dim_feedforward, const DropoutParam& dropout_param1,
-      const DropoutParam& dropout_param2, const std::string& act_method,
-      const bool pre_layer_norm, const float epsilon1, const float epsilon2,
-      const bool add_residual, const int ring_id) const {
+  void FFNGrad(const platform::CUDADeviceContext& ctx,
+               const framework::Tensor& d_out,
+               const framework::Tensor& x,
+               const framework::Tensor& dropout1_mask,
+               const framework::Tensor& dropout2_mask,
+               const framework::Tensor& linear1_out,
+               const framework::Tensor* ln1_out,
+               const framework::Tensor& dropout1_out,
+               const framework::Tensor& dropout2_out,
+               const framework::Tensor& linear1_weight,
+               const framework::Tensor* linear1_bias,
+               const framework::Tensor& linear2_weight,
+               const framework::Tensor* ln1_gamma,
+               const framework::Tensor* ln1_beta,
+               const framework::Tensor* ln1_mean,
+               const framework::Tensor* ln1_variance,
+               const framework::Tensor* ln2_gamma,
+               const framework::Tensor* ln2_beta,
+               const framework::Tensor* ln2_mean,
+               const framework::Tensor* ln2_variance,
+               framework::Tensor* d_x,
+               framework::Tensor* d_linear1_weight,
+               framework::Tensor* d_linear1_bias,
+               framework::Tensor* d_linear2_weight,
+               framework::Tensor* d_linear2_bias,
+               framework::Tensor* d_ln1_gamma,
+               framework::Tensor* d_ln1_beta,
+               framework::Tensor* d_ln2_gamma,
+               framework::Tensor* d_ln2_beta,
+               const int bsz_seq,
+               const int d_model,
+               const int dim_feedforward,
+               const DropoutParam& dropout_param1,
+               const DropoutParam& dropout_param2,
+               const std::string& act_method,
+               const bool pre_layer_norm,
+               const float epsilon1,
+               const float epsilon2,
+               const bool add_residual,
+               const int ring_id) const {
     FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
         bsz_seq, d_model, epsilon1);
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
@@ -311,40 +405,69 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     }
     if (pre_layer_norm) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
-          ctx, d_out.data<T>(), dropout2_mask.data<uint8_t>(),
-          d_linear2_out.data<T>(), d_residual_ptr, d_linear2_bias_ptr);
+          ctx,
+          d_out.data<T>(),
+          dropout2_mask.data<uint8_t>(),
+          d_linear2_out.data<T>(),
+          d_residual_ptr,
+          d_linear2_bias_ptr);
     } else {
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
-          ctx, d_out.data<T>(), dropout2_out.data<T>(),
-          dropout2_mask.data<uint8_t>(), ln2_gamma_ptr, ln2_mean->data<U>(),
-          ln2_variance->data<U>(), d_dropout2_out.data<T>(), d_ln2_gamma_ptr,
-          d_ln2_beta_ptr, d_linear2_out.data<T>(), d_linear2_bias_ptr,
+          ctx,
+          d_out.data<T>(),
+          dropout2_out.data<T>(),
+          dropout2_mask.data<uint8_t>(),
+          ln2_gamma_ptr,
+          ln2_mean->data<U>(),
+          ln2_variance->data<U>(),
+          d_dropout2_out.data<T>(),
+          d_ln2_gamma_ptr,
+          d_ln2_beta_ptr,
+          d_linear2_out.data<T>(),
+          d_linear2_bias_ptr,
           d_residual_ptr);
     }
 
     framework::Tensor d_dropout1_out;
     d_dropout1_out.mutable_data<T>({bsz_seq, dim_feedforward}, place);
-    MatMulGrad(ctx, d_linear2_out, dropout1_out, linear2_weight,
-               &d_dropout1_out, d_linear2_weight);
+    MatMulGrad(ctx,
+               d_linear2_out,
+               dropout1_out,
+               linear2_weight,
+               &d_dropout1_out,
+               d_linear2_weight);
 
     framework::Tensor d_linear1_out;
     d_linear1_out.mutable_data<T>({bsz_seq, dim_feedforward}, place);
-    fused_act_dropout_helper.DropoutActBiasGrad(
-        ctx, d_dropout1_out.data<T>(), linear1_out.data<T>(), linear1_bias_ptr,
-        dropout1_mask.data<uint8_t>(), d_linear1_out.data<T>(),
-        d_linear1_bias_ptr, act_method);
+    fused_act_dropout_helper.DropoutActBiasGrad(ctx,
+                                                d_dropout1_out.data<T>(),
+                                                linear1_out.data<T>(),
+                                                linear1_bias_ptr,
+                                                dropout1_mask.data<uint8_t>(),
+                                                d_linear1_out.data<T>(),
+                                                d_linear1_bias_ptr,
+                                                act_method);
 
     if (pre_layer_norm) {
       framework::Tensor d_ln1_out;
       d_ln1_out.mutable_data<T>({bsz_seq, d_model}, place);
-      MatMulGrad(ctx, d_linear1_out, *ln1_out, linear1_weight, &d_ln1_out,
+      MatMulGrad(ctx,
+                 d_linear1_out,
+                 *ln1_out,
+                 linear1_weight,
+                 &d_ln1_out,
                  d_linear1_weight);
       // tensor model parallel
       AllReduce<T>(d_ln1_out, ring_id, ctx);
-      pre_layernorm_helper.LayerNormGrad(
-          ctx, d_ln1_out.data<T>(), x.data<T>(), ln1_gamma_ptr,
-          ln1_mean->data<U>(), ln1_variance->data<U>(), d_x->data<T>(),
-          d_ln1_gamma_ptr, d_ln1_beta_ptr);
+      pre_layernorm_helper.LayerNormGrad(ctx,
+                                         d_ln1_out.data<T>(),
+                                         x.data<T>(),
+                                         ln1_gamma_ptr,
+                                         ln1_mean->data<U>(),
+                                         ln1_variance->data<U>(),
+                                         d_x->data<T>(),
+                                         d_ln1_gamma_ptr,
+                                         d_ln1_beta_ptr);
     } else {
       MatMulGrad(ctx, d_linear1_out, x, linear1_weight, d_x, d_linear1_weight);
       // tensor model parallel
@@ -355,8 +478,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
       // gradient accumulation
       std::vector<const Tensor*> ins = {&d_residual, d_x};
       std::vector<Tensor*> outs = {d_x};
-      phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs,
-                                       phi::funcs::AddFunctor<T>());
+      phi::funcs::ElementwiseKernel<T>(
+          ctx, ins, &outs, phi::funcs::AddFunctor<T>());
     }
   }
 
@@ -459,14 +582,45 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     int dim_feedforward = linear1_weight_dim[linear1_weight_dim.size() - 1];
     int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
 
-    FFNGrad(context.cuda_device_context(), d_out, x, dropout1_mask,
-            dropout2_mask, linear1_out, ln1_out, dropout1_out, dropout2_out,
-            linear1_weight, linear1_bias, linear2_weight, ln1_scale, ln1_bias,
-            ln1_mean, ln1_variance, ln2_scale, ln2_bias, ln2_mean, ln2_variance,
-            d_x, d_linear1_weight, d_linear1_bias, d_linear2_weight,
-            d_linear2_bias, d_ln1_scale, d_ln1_bias, d_ln2_scale, d_ln2_bias,
-            bsz_seq, d_model, dim_feedforward, dropout_param1, dropout_param2,
-            act_method, pre_layer_norm, epsilon1, epsilon2, add_residual,
+    FFNGrad(context.cuda_device_context(),
+            d_out,
+            x,
+            dropout1_mask,
+            dropout2_mask,
+            linear1_out,
+            ln1_out,
+            dropout1_out,
+            dropout2_out,
+            linear1_weight,
+            linear1_bias,
+            linear2_weight,
+            ln1_scale,
+            ln1_bias,
+            ln1_mean,
+            ln1_variance,
+            ln2_scale,
+            ln2_bias,
+            ln2_mean,
+            ln2_variance,
+            d_x,
+            d_linear1_weight,
+            d_linear1_bias,
+            d_linear2_weight,
+            d_linear2_bias,
+            d_ln1_scale,
+            d_ln1_bias,
+            d_ln2_scale,
+            d_ln2_bias,
+            bsz_seq,
+            d_model,
+            dim_feedforward,
+            dropout_param1,
+            dropout_param2,
+            act_method,
+            pre_layer_norm,
+            epsilon1,
+            epsilon2,
+            add_residual,
             ring_id);
   }
 };

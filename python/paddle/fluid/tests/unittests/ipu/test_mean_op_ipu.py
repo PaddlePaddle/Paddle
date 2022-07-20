@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -48,7 +46,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
-        out = paddle.fluid.layers.mean(x)
+        out = paddle.mean(x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

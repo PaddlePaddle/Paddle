@@ -16,7 +16,8 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    fill_any, ops::FillAnyKernel<paddle::platform::CUDADeviceContext, float>,
+    fill_any,
+    ops::FillAnyKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FillAnyKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FillAnyKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FillAnyKernel<paddle::platform::CUDADeviceContext, int>,

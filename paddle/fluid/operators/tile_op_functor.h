@@ -32,8 +32,8 @@ inline std::vector<int> get_repeat_times(
         platform::is_xpu_place(repeat_tensor->place()) ||
         platform::is_mlu_place(repeat_tensor->place()) ||
         platform::is_npu_place(repeat_tensor->place())) {
-      paddle::framework::TensorCopySync(*repeat_tensor, platform::CPUPlace(),
-                                        &cpu_repeat_tensor);
+      paddle::framework::TensorCopySync(
+          *repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
       repeat_data = cpu_repeat_tensor.data<int>();
     }
     auto vec_repeat_times =

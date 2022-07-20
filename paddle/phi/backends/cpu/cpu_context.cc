@@ -14,8 +14,8 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 // NOTE: The paddle framework should add WITH_EIGEN option to support compile
 // without eigen.
@@ -41,7 +41,10 @@ struct CPUContext::Impl {
   }
 
   Eigen::DefaultDevice* GetEigenDevice() const {
-    PD_CHECK(eigen_device_ != nullptr, "the cpu eigen_device is nullptr.");
+    PADDLE_ENFORCE_NE(
+        eigen_device_,
+        nullptr,
+        phi::errors::Unavailable("the cpu eigen_device is nullptr."));
     return eigen_device_;
   }
 
@@ -51,18 +54,20 @@ struct CPUContext::Impl {
 };
 
 CPUContext::CPUContext()
-    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {}
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>()) {
+  impl_->Init();
+}
 
 CPUContext::CPUContext(const Place& place)
-    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<CPUContext::Impl>(place)) {
+  impl_->Init();
+}
 
 CPUContext::~CPUContext() = default;
 
 CPUContext::CPUContext(CPUContext&&) = default;
 
 CPUContext& CPUContext::operator=(CPUContext&&) = default;
-
-void CPUContext::Init() { impl_->Init(); }
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
   return impl_->GetEigenDevice();

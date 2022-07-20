@@ -29,6 +29,8 @@ from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import _test_eager_guard
 
+paddle.enable_static()
+
 
 class TestWhereOp(OpTest):
 
@@ -107,7 +109,7 @@ class TestWhereAPI(unittest.TestCase):
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
                     result = paddle.where(cond, x, y)
-                    append_backward(layers.mean(result))
+                    append_backward(paddle.mean(result))
                     for use_mlu in [False, True]:
                         place = (paddle.device.MLUPlace(0)
                                  if use_mlu else fluid.CPUPlace())
@@ -396,5 +398,4 @@ class TestWhereOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

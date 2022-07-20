@@ -62,18 +62,19 @@ struct VarIdToTypeIndexMapInitializerImpl {
     constexpr int kId = VarTypeTrait<Type>::kId;
     auto type = std::type_index(typeid(Type));
     PADDLE_ENFORCE_EQ(
-        id_to_type->count(kId), 0,
+        id_to_type->count(kId),
+        0,
         platform::errors::AlreadyExists(
             "Registered duplicate type id %d for type %s.", kId, type.name()));
     PADDLE_ENFORCE_EQ(
-        type_to_id->count(type), 0,
+        type_to_id->count(type),
+        0,
         platform::errors::AlreadyExists(
             "Registered duplicate type index %s for id %d.", type.name(), kId));
     id_to_type->emplace(kId, type);
     type_to_id->emplace(type, kId);
-    VarIdToTypeIndexMapInitializerImpl<kStart + 1, kEnd,
-                                       kStart + 1 == kEnd>::Init(id_to_type,
-                                                                 type_to_id);
+    VarIdToTypeIndexMapInitializerImpl<kStart + 1, kEnd, kStart + 1 == kEnd>::
+        Init(id_to_type, type_to_id);
   }
 };
 
@@ -86,7 +87,8 @@ struct VarIdToTypeIndexMapInitializerImpl<kStart, kEnd, true> {
 // VarIdToTypeIndexMapInitializer is designed to initialize var_id ->
 // std::type_index map and std::type_index -> var_id map
 using VarIdToTypeIndexMapInitializer =
-    VarIdToTypeIndexMapInitializerImpl<0, VarTypeRegistry::kRegisteredTypeNum,
+    VarIdToTypeIndexMapInitializerImpl<0,
+                                       VarTypeRegistry::kRegisteredTypeNum,
                                        VarTypeRegistry::kRegisteredTypeNum ==
                                            0>;
 
@@ -96,7 +98,8 @@ struct VarIdToTypeIndexMapHolder {
  public:
   static const std::type_index &ToTypeIndex(int var_id) {
     auto it = Instance().id_to_type_map_.find(var_id);
-    PADDLE_ENFORCE_NE(it, Instance().id_to_type_map_.end(),
+    PADDLE_ENFORCE_NE(it,
+                      Instance().id_to_type_map_.end(),
                       platform::errors::NotFound(
                           "Variable Id %d is not registered.", var_id));
     return it->second;
@@ -104,7 +107,8 @@ struct VarIdToTypeIndexMapHolder {
 
   static int ToTypeId(const std::type_index &type) {
     auto it = Instance().type_to_id_map_.find(type);
-    PADDLE_ENFORCE_NE(it, Instance().type_to_id_map_.end(),
+    PADDLE_ENFORCE_NE(it,
+                      Instance().type_to_id_map_.end(),
                       platform::errors::NotFound(
                           "Variable Type %s is not registered.", type.name()));
     return it->second;

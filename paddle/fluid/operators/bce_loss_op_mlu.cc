@@ -33,9 +33,16 @@ class BCELossMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*labels);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::BceLoss(ctx, CNNL_BCE_LOSS_NONE, x_desc.get(), GetBasePtr(x),
-                     label_desc.get(), GetBasePtr(labels), nullptr, nullptr,
-                     out_desc.get(), GetBasePtr(out));
+    MLUCnnl::BceLoss(ctx,
+                     CNNL_BCE_LOSS_NONE,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     label_desc.get(),
+                     GetBasePtr(labels),
+                     nullptr,
+                     nullptr,
+                     out_desc.get(),
+                     GetBasePtr(out));
   }
 };
 
@@ -53,10 +60,18 @@ class BCELossGradMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*labels);
     MLUCnnlTensorDesc dout_desc(*dout);
-    MLUCnnl::BceLossBackward(ctx, CNNL_BCE_LOSS_NONE, dout_desc.get(),
-                             GetBasePtr(dout), x_desc.get(), GetBasePtr(x),
-                             label_desc.get(), GetBasePtr(labels), nullptr,
-                             nullptr, x_desc.get(), GetBasePtr(dx));
+    MLUCnnl::BceLossBackward(ctx,
+                             CNNL_BCE_LOSS_NONE,
+                             dout_desc.get(),
+                             GetBasePtr(dout),
+                             x_desc.get(),
+                             GetBasePtr(x),
+                             label_desc.get(),
+                             GetBasePtr(labels),
+                             nullptr,
+                             nullptr,
+                             x_desc.get(),
+                             GetBasePtr(dx));
   }
 };
 
@@ -66,8 +81,10 @@ class BCELossGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(bce_loss, ops::BCELossMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(bce_loss,
+                       ops::BCELossMLUKernel<float>,
                        ops::BCELossMLUKernel<plat::float16>);
 
-REGISTER_OP_MLU_KERNEL(bce_loss_grad, ops::BCELossGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(bce_loss_grad,
+                       ops::BCELossGradMLUKernel<float>,
                        ops::BCELossGradMLUKernel<plat::float16>);

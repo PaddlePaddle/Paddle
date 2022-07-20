@@ -33,16 +33,19 @@ void BroadcastOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
-  PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
+  PADDLE_ENFORCE_EQ(in_var_handles.size(),
+                    1UL,
                     platform::errors::PreconditionNotMet(
                         "The number of inputs should be 1, but got %d.",
                         in_var_handles.size()));
-  PADDLE_ENFORCE_EQ(out_var_handles.size(), places_.size(),
+  PADDLE_ENFORCE_EQ(out_var_handles.size(),
+                    places_.size(),
                     platform::errors::PreconditionNotMet(
                         "The number of outputs and the number of places should "
                         "be equal, but got the number of outputs is %d and the "
                         "number of places is %d.",
-                        out_var_handles.size(), places_.size()));
+                        out_var_handles.size(),
+                        places_.size()));
 
   VarHandle *in_var_handle = in_var_handles[0];
 
@@ -56,8 +59,9 @@ void BroadcastOpHandle::BroadcastOneVar(
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
   PADDLE_ENFORCE_NOT_NULL(
-      in_var, platform::errors::NotFound("Variable %s is not found in scopes.",
-                                         in_var_handle.name()));
+      in_var,
+      platform::errors::NotFound("Variable %s is not found in scopes.",
+                                 in_var_handle.name()));
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
   if (UNLIKELY(!in_tensor.IsInitialized())) {
     VLOG(3) << "in var " << in_var_handle.name() << "not inited, return!";
@@ -78,7 +82,8 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       RunAndRecordEvent(out_p, [in_tensor, out_var] {
         paddle::framework::TensorCopy(
-            in_tensor, platform::CPUPlace(),
+            in_tensor,
+            platform::CPUPlace(),
             &VariableVisitor::GetMutableTensor(out_var));
       });
     }
@@ -112,9 +117,13 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       broadcast_calls.emplace_back(
           [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-                send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
-                root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                platform::dynload::ncclBcast(send_recv_buffer,
+                                             numel,
+                                             static_cast<ncclDataType_t>(type),
+                                             root_id,
+                                             nccl_ctx.comm_,
+                                             nccl_ctx.stream()));
           });
     }
 
@@ -131,7 +140,8 @@ void BroadcastOpHandle::BroadcastOneVar(
         auto out_var = var_scopes.at(in_var_handle.scope_idx())
                            ->FindVar(out_var_handles[0]->name());
         paddle::framework::TensorCopy(
-            in_tensor, in_var_handle.place(),
+            in_tensor,
+            in_var_handle.place(),
             *(dev_ctxes_.at(in_var_handle.place())),
             &VariableVisitor::GetMutableTensor(out_var));
       }
@@ -171,28 +181,34 @@ void BroadcastOpHandle::BroadcastOneVar(
                                .mutable_data(out_var_handle->place());
       }
 
-      broadcast_calls.emplace_back([send_recv_buffer, numel, type, root_id,
-                                    &bkcl_ctx] {
-        PADDLE_ENFORCE_EQ(
-            bkcl_broadcast(bkcl_ctx.comm(), send_recv_buffer, send_recv_buffer,
-                           numel, static_cast<BKCLDataType>(type), root_id,
-                           nullptr),
-            BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl_broadcast failed"));
-      });
+      broadcast_calls.emplace_back(
+          [send_recv_buffer, numel, type, root_id, &bkcl_ctx] {
+            PADDLE_ENFORCE_EQ(
+                bkcl_broadcast(bkcl_ctx.comm(),
+                               send_recv_buffer,
+                               send_recv_buffer,
+                               numel,
+                               static_cast<BKCLDataType>(type),
+                               root_id,
+                               nullptr),
+                BKCL_SUCCESS,
+                platform::errors::Unavailable("bkcl_broadcast failed"));
+          });
     }
 
     WaitInputVarGenerated();
     this->RunAndRecordEvent([&] {
       {
         PADDLE_ENFORCE_EQ(
-            bkcl_group_start(), BKCL_SUCCESS,
+            bkcl_group_start(),
+            BKCL_SUCCESS,
             platform::errors::Unavailable("bkcl_group_start failed"));
         for (auto &call : broadcast_calls) {
           call();
         }
         PADDLE_ENFORCE_EQ(
-            bkcl_group_end(), BKCL_SUCCESS,
+            bkcl_group_end(),
+            BKCL_SUCCESS,
             platform::errors::Unavailable("bkcl_group_end failed"));
       }
 
@@ -200,7 +216,8 @@ void BroadcastOpHandle::BroadcastOneVar(
         auto out_var = var_scopes.at(in_var_handle.scope_idx())
                            ->FindVar(out_var_handles[0]->name());
         paddle::framework::TensorCopy(
-            in_tensor, in_var_handle.place(),
+            in_tensor,
+            in_var_handle.place(),
             *(dev_ctxes_.at(in_var_handle.place())),
             &VariableVisitor::GetMutableTensor(out_var));
       }
@@ -230,11 +247,13 @@ void BroadcastOpHandle::InitOutputValue(
     auto t_out_p = out_var_handle->place();
     auto *out_var = var_scopes.at(out_var_handle->scope_idx())
                         ->FindVar(out_var_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
-                                         "Variable %s is not found in scopes.",
-                                         out_var_handle->name()));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var,
+        platform::errors::NotFound("Variable %s is not found in scopes.",
+                                   out_var_handle->name()));
     if (platform::is_gpu_place(in_tensor.place())) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p),
+                        true,
                         platform::errors::PreconditionNotMet(
                             "Places of input and output must be all on GPU."));
     } else {

@@ -38,9 +38,10 @@ class CAllGatherOpMLUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto comm = platform::CNCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(
-        nranks, comm->nranks(),
-        platform::errors::InvalidArgument("nranks: %s should equal to %s",
-                                          nranks, comm->nranks()));
+        nranks,
+        comm->nranks(),
+        platform::errors::InvalidArgument(
+            "nranks: %s should equal to %s", nranks, comm->nranks()));
 
     framework::DDim out_dims = x->dims();
     out_dims[0] *= nranks;
@@ -58,8 +59,8 @@ class CAllGatherOpMLUKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(send_buff, recv_buff, send_numel,
-                                             dtype, comm->comm(), stream));
+    PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(
+        send_buff, recv_buff, send_numel, dtype, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with MLU."));
@@ -73,7 +74,8 @@ class CAllGatherOpMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(c_allgather, ops::CAllGatherOpMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(c_allgather,
+                       ops::CAllGatherOpMLUKernel<float>,
                        ops::CAllGatherOpMLUKernel<uint8_t>,
                        ops::CAllGatherOpMLUKernel<int>,
                        ops::CAllGatherOpMLUKernel<int8_t>,
