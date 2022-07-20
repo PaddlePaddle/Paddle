@@ -176,6 +176,15 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_complex
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsComplexInferMeta
+  kernel :
+    func : as_complex
+  backward : as_complex_grad
+
 - api : as_real
   args : (Tensor x)
   output : Tensor
@@ -183,8 +192,7 @@
     func : AsRealInferMeta
   kernel :
     func : as_real
-#  backward : as_complex
-
+  backward : as_real_grad
 # asin
 - api : asin
   args : (Tensor x)

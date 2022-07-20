@@ -156,6 +156,33 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   output->share_lod(input);
 }
 
+void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
+  auto in_dims = input.dims();
+  const int input_rank = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      input_rank,
+      1,
+      phi::errors::InvalidArgument(
+          "The rank of input(X) is less than 1. "
+          "Expected the rank of input(X) to be equal to or greater than 1."
+          "But received rank of input(X) = %d",
+          input_rank));
+  const int last_dim_size = in_dims[input_rank - 1];
+  PADDLE_ENFORCE_EQ(
+      last_dim_size,
+      2,
+      phi::errors::InvalidArgument(
+          "The size of the last dimension of input(X)"
+          "does not equals 2."
+          "Expected the size of last dimension of input(X) to be 2."
+          "But received %d",
+          last_dim_size));
+
+  const phi::DDim out_dims(in_dims.Get(), input_rank - 1);
+  output->set_dims(out_dims);
+  output->share_lod(input);
+}
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
