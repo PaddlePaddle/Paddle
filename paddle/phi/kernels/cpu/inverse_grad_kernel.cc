@@ -15,5 +15,6 @@
 #include "paddle/phi/kernels/impl/inverse_grad_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+
 PD_REGISTER_KERNEL(
     inverse_grad, CPU, ALL_LAYOUT, phi::InverseGradKernel, float, double) {}

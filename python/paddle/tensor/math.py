@@ -1932,7 +1932,9 @@ def inverse(x, name=None):
             print(inv) # [[0.5, 0], [0, 0.5]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_inverse(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.inverse(x)
 
     def _check_input(x):

@@ -18,7 +18,7 @@ namespace phi {
 KernelSignature InverseGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "inverse_grad", {"Output", "Output@GRAD"}, {}, {"Inpute@GRAD"});
+      "inverse_grad", {"Output", "Output@GRAD"}, {}, {"Input@GRAD"});
 }
 
 }  // namespace phi

@@ -28,9 +28,6 @@ void InverseGradKernel(const Context& dev_ctx,
                        const DenseTensor& out,
                        const DenseTensor& out_grad,
                        DenseTensor* in_grad) {
-  // a_inv -> out
-  // a_inv_grad -> out_grad
-  // a_grad -> in_grad
   if (in_grad) {
     dev_ctx.template Alloc<T>(in_grad);
 

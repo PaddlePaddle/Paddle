@@ -912,6 +912,15 @@
   optional : scale
   backward : instance_norm_double_grad
 
+- backward_api : inverse_grad
+  forward : inverse(Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta:
+    func : InverseGradInferMeta
+  kernel :
+    func : inverse_grad
+
 - backward_api : kldiv_loss_grad
   forward : kldiv_loss(Tensor x, Tensor label, str reduction) -> Tensor(out)
   args : (Tensor x, Tensor label, Tensor out_grad, str reduction)
