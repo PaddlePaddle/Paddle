@@ -69,7 +69,7 @@ class TestPropertySave(unittest.TestCase):
             a.set_strings(["1", "2", "3"])
             a.set_strings('strs', ["1", "2", "3"])
         except Exception as e:
-            self.assertEqual(False)
+            self.assertEqual(False, True)
 
 
 if __name__ == '__main__':

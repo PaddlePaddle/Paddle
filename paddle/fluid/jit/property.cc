@@ -46,22 +46,25 @@ float Property::GetFloat(const std::string &name) const {
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound("name: %s not found", name));
+  PADDLE_THROW(phi::errors::NotFound(
+      "JIT::Property GetFloat: name: %s not found", name));
   return 0;
 }
 
 float Property::GetFloat(const int &idx) const {
-  PADDLE_ENFORCE_EQ(idx < Size() && idx >= 0,
-                    true,
-                    phi::errors::OutOfRange("idx out of range"));
+  PADDLE_ENFORCE_EQ(
+      idx < Size() && idx >= 0,
+      true,
+      phi::errors::OutOfRange(
+          "JIT::Property GetFloat: idx=%d out of range %d", idx, Size()));
 
   auto e = property_.entrys(idx);
   if (e.has_f()) {
     return e.f();
   }
 
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("get_float: idx (%d) is not a float.", idx));
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "JIT::Property GetFloat: input idx (%d) element is not a float.", idx));
   return 0;
 }
 
