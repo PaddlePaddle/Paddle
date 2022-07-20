@@ -1,7 +1,7 @@
 cc_library(
   jit_serializer
   SRCS serializer.cc
-  DEPS lod_tensor device_context paddle_inference_api analysis_predictor)
+  DEPS lod_tensor device_context)
 
 cc_library(
   jit_function_utils
@@ -39,6 +39,7 @@ if(WITH_TESTING
     COMMAND tar zxf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
+      phi_api
       elementwise_add_op
       matmul_v2_op
       activation_op

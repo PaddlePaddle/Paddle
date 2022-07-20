@@ -927,7 +927,6 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note:
  * FLAGS_function_type == Executor, using ExecutorFunction by default
  * FLAGS_function_type == PE, using PEFunction by default
- * FLAGS_function_type == Predictor, using PredictorFunction by default
  */
 PADDLE_DEFINE_EXPORTED_string(function_type,
                               "PE",

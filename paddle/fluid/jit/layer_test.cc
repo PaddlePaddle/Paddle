@@ -18,11 +18,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/fluid/jit/function_utils.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
 
@@ -73,6 +75,11 @@ TEST(CpuLayerTest, Construct) {
   auto outs = layer.forward(inputs);
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
+
+  auto pow_out = paddle::experimental::pow(utils::ToTensors(outs)[0],
+                                           paddle::experimental::Scalar(2));
+  out_data = utils::ToDenseTensors({pow_out})[0].data<float>();
+  EXPECT_NEAR(out_data[0], 0.02194316 * 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
   outs = (*func)(inputs);

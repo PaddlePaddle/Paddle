@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/jit/executor_function.h"
 #include "paddle/fluid/jit/pe_function.h"
-#include "paddle/fluid/jit/predictor_function.h"
 #include "paddle/fluid/jit/serializer_utils.h"
 
 DECLARE_string(function_type);
@@ -69,11 +68,6 @@ Layer Deserializer::operator()(const std::string& path,
       layer.SetFunction(
           info->FunctionName(),
           utils::MakeFunction<PEFunction>(info, params_dict, place));
-    } else if (FLAGS_function_type == "Predictor") {
-      VLOG(3) << "Add function type: PredictorFunction.";
-      layer.SetFunction(
-          info->FunctionName(),
-          utils::MakeFunction<PredictorFunction>(info, params_dict, place));
     } else {
       PD_THROW("Invalid JitLayer funciton type.");
     }
