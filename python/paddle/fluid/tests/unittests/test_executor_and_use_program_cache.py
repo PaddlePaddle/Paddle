@@ -24,7 +24,7 @@ from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 class TestExecutor(unittest.TestCase):
 
-    def _test_mul(self):
+    def test_mul(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
@@ -98,7 +98,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                 dirname="padding_rnn." + rnn_model + ".inference_model",
                 params_filename="__params__")
 
-    def _test_inference_output(self):
+    def test_inference_output(self):
         for rnn_model in ["static", "padding"]:
             # Set parallel to False to use the default executor.
             self.train_and_save_inference_program(rnn_model=rnn_model,
