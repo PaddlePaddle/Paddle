@@ -2272,6 +2272,17 @@
     func : yolo_box
     data_type : x
 
+# yolov3_loss
+- api : yolov3_loss
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
+  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  infer_meta :
+    func : Yolov3LossInferMeta
+  kernel :
+    func : yolov3_loss
+    data_type : x
+  backward : yolov3_loss_grad
+
 - api : zeros_like
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor

@@ -174,6 +174,7 @@ class TestYolov3LossOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolov3_loss'
+        self.python_api = paddle.vision.ops.yolo_loss
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float64'))
         gtbox = np.random.random(size=self.gtbox_shape).astype('float64')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
@@ -209,14 +210,18 @@ class TestYolov3LossOp(OpTest):
             'ObjectnessMask': objness,
             "GTMatchMask": gt_matches
         }
+        self.python_out_sig = ['Loss', 'ObjectnessMask', 'GTMatchMask']
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_eager=True)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
+        self.check_grad_with_place(place, ['X'],
+                                   'Loss',
+                                   max_relative_error=0.2,
+                                   check_eager=True)
 
     def initTestCase(self):
         self.anchors = [

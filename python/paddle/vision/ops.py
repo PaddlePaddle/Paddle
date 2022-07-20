@@ -195,6 +195,12 @@ def yolo_loss(x,
                                              scale_x_y=1.)
     """
 
+    if in_dygraph_mode():
+        loss, _, _ = _C_ops.final_state_yolov3_loss(
+            x, gt_box, gt_label, gt_score, anchors, anchor_mask, class_num,
+            ignore_thresh, downsample_ratio, use_label_smooth, scale_x_y)
+        return loss
+
     if _non_static_mode():
         loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, gt_score, 'anchors', anchors, 'anchor_mask',
