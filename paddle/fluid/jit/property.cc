@@ -46,7 +46,7 @@ float Property::GetFloat(const std::string &name) const {
     }
   }
 
-  PADDLE_THROW(phi::errors::NotFound("name not found"));
+  PADDLE_THROW(phi::errors::NotFound("name: %s not found", name));
   return 0;
 }
 
@@ -60,7 +60,8 @@ float Property::GetFloat(const int &idx) const {
     return e.f();
   }
 
-  PADDLE_THROW(phi::errors::NotFound("idx is not a float"));
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("get_float: idx (%d) is not a float.", idx));
   return 0;
 }
 
