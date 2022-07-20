@@ -123,6 +123,21 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out);
 
+void MultiClassNMSInferMeta(const MetaTensor& bboxes,
+                            const MetaTensor& scores,
+                            const MetaTensor& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            MetaTensor* out,
+                            MetaTensor* index,
+                            MetaTensor* nms_rois_num,
+                            MetaConfig config = MetaConfig());
+
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
                          const MetaTensor& weight,
