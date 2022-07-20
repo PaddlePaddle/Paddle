@@ -412,7 +412,9 @@ void MarginRankLossGradInferMeta(const MetaTensor& label,
 
   auto label_dims = label.dims();
   left_grad->set_dims(label_dims);
+  left_grad->set_dtype(label.dtype());
   right_grad->set_dims(label_dims);
+  right_grad->set_dtype(label.dtype());
 }
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
