@@ -156,6 +156,33 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   output->share_lod(input);
 }
 
+void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
+  auto in_dims = input.dims();
+  const int input_rank = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      input_rank,
+      1,
+      phi::errors::InvalidArgument(
+          "The rank of input(X) is less than 1. "
+          "Expected the rank of input(X) to be equal to or greater than 1."
+          "But received rank of input(X) = %d",
+          input_rank));
+  const int last_dim_size = in_dims[input_rank - 1];
+  PADDLE_ENFORCE_EQ(
+      last_dim_size,
+      2,
+      phi::errors::InvalidArgument(
+          "The size of the last dimension of input(X)"
+          "does not equals 2."
+          "Expected the size of last dimension of input(X) to be 2."
+          "But received %d",
+          last_dim_size));
+
+  const phi::DDim out_dims(in_dims.Get(), input_rank - 1);
+  output->set_dims(out_dims);
+  output->share_lod(input);
+}
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
@@ -237,6 +264,18 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
+  PADDLE_ENFORCE_GT(
+      max_norm,
+      0,
+      phi::errors::InvalidArgument("max_norm should be greater than 0. "
+                                   "Received max_norm is %f.",
+                                   max_norm));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
@@ -259,6 +298,69 @@ void CumInferMeta(const MetaTensor& x,
   }
 
   out->share_lod(x);
+}
+
+void DiagEmbedInferMeta(
+    const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_GE(
+      dim1,
+      -(x_dims.size() + 1),
+      phi::errors::OutOfRange(
+          "Dim1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim1));
+  PADDLE_ENFORCE_LE(
+      dim1,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Dim1 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim1));
+
+  PADDLE_ENFORCE_GE(
+      dim2,
+      -(x_dims.size() + 1),
+      phi::errors::OutOfRange(
+          "Dim2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim2));
+  PADDLE_ENFORCE_LE(
+      dim2,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Dim2 is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size() + 1),
+          x_dims.size(),
+          dim2));
+
+  int dim1_ = dim1 < 0 ? x_dims.size() + dim1 + 1 : dim1;
+  int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
+  int offset_ = std::abs(offset);
+
+  PADDLE_ENFORCE_NE(dim1_,
+                    dim2_,
+                    phi::errors::InvalidArgument(
+                        "diagonal dimensions should not be identical "
+                        "%ld vs %ld.",
+                        dim1,
+                        dim2));
+
+  int new_dim_len = offset_ + x_dims[x_dims.size() - 1];
+  auto sizes = vectorize(x_dims);
+  sizes.pop_back();
+  sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
+  sizes.insert(sizes.begin() + std::max(dim1_, dim2_), new_dim_len);
+  out->set_dims(phi::make_ddim(sizes));
+  out->set_dtype(x.dtype());
 }
 
 void DiagInferMeta(const MetaTensor& x,

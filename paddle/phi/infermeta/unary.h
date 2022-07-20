@@ -50,6 +50,8 @@ void ArgsortInferMeta(const MetaTensor& input,
 
 void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
+void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
+
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
@@ -60,6 +62,8 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
+void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CumInferMeta(const MetaTensor& x,
@@ -68,6 +72,9 @@ void CumInferMeta(const MetaTensor& x,
                   bool exclusive,
                   bool reverse,
                   MetaTensor* out);
+
+void DiagEmbedInferMeta(
+    const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out);
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
