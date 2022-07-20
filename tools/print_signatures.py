@@ -292,6 +292,11 @@ def parse_args():
                         help="using get_all_api or from_modulelist")
     parser.add_argument('module', type=str, help='module',
                         default='paddle')  # not used
+    parser.add_argument('--skipped',
+                        dest='skipped',
+                        type=str,
+                        help='Skip Checking submodules',
+                        default='paddle.fluid.core_avx.eager.ops')
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -320,6 +325,8 @@ if __name__ == '__main__':
             all_api_names_to_k[api_name] = k
         all_api_names_sorted = sorted(all_api_names_to_k.keys())
         for api_name in all_api_names_sorted:
+            if args.skipped != '' and api_name.find(args.skipped) >= 0:
+                continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
             print("{0} ({2}, ('document', '{1}'))".format(
                 api_name, md5(api_info['docstring']), api_info['signature']

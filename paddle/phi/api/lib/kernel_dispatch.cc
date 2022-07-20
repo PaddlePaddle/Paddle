@@ -57,7 +57,7 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
     BackendSet backend_set(phi::TransToPhiBackend(t.place()));
     switch (t.layout()) {
       case DataLayout::MKLDNN:
-        backend_set = backend_set | BackendSet(Backend::MKLDNN);
+        backend_set = backend_set | BackendSet(Backend::ONEDNN);
         break;
       default:
         // do nothing

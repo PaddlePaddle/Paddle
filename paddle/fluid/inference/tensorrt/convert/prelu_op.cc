@@ -34,11 +34,11 @@ class PReluOpConverter : public OpConverter {
     size_t input_num = op_desc.Input("X").size();
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
-    std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
+    std::string mode = PADDLE_GET_CONST(std::string, op_desc.GetAttr("mode"));
     std::string data_format = "NCHW";
     if (op_desc.HasAttr("data_format")) {
       data_format =
-          BOOST_GET_CONST(std::string, op_desc.GetAttr("data_format"));
+          PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_format"));
     }
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();

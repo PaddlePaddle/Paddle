@@ -1473,6 +1473,27 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
+                                                 PyObject* args,
+                                                 PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(
+      self->tensor.is_sparse_coo_tensor() ||
+          self->tensor.is_sparse_csr_tensor(),
+      paddle::platform::errors::Fatal("this method is only effective for "
+                                      "SparseCooTensor or SparseCsrTensor"));
+  if (self->tensor.is_sparse_coo_tensor()) {
+    auto sparse_coo_tensor =
+        std::dynamic_pointer_cast<phi::SparseCooTensor>(self->tensor.impl());
+    return ToPyObject(sparse_coo_tensor->nnz());
+  } else {
+    auto sparse_csr_tensor =
+        std::dynamic_pointer_cast<phi::SparseCsrTensor>(self->tensor.impl());
+    return ToPyObject(sparse_csr_tensor->nnz());
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1962,6 +1983,10 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /***the method of sparse tensor****/
+    {"nnz",
+     (PyCFunction)(void (*)(void))tensor_method_get_non_zero_nums,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"indices",
      (PyCFunction)(void (*)(void))tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS,
