@@ -132,10 +132,10 @@ class TestRandintLikeAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        # x dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
+        # x dtype ["bool", "int32", "int64", "float32", "float64"]
         for x in [
-                self.x_bool, self.x_int32, self.x_int64, self.x_float16,
-                self.x_float32, self.x_float64
+                self.x_bool, self.x_int32, self.x_int64, self.x_float32,
+                self.x_float64
         ]:
             x_inputs = paddle.to_tensor(x)
             # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
@@ -147,7 +147,18 @@ class TestRandintLikeAPI(unittest.TestCase):
                 self.assertTrue(out.numpy().dtype, np.dtype(dtype))
                 self.assertTrue(
                     ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True)
-
+        # x dtype ["float16"]
+        if paddle.is_compiled_with_cuda():
+            x_inputs = paddle.to_tensor(self.x_float16)
+            # self.dtype ["bool", "int32", "int64", "float16", "float32", "float64"]
+            for dtype in self.dtype:
+                out = paddle.randint_like(x_inputs,
+                                          low=-100,
+                                          high=100,
+                                          dtype=dtype)
+                self.assertTrue(out.numpy().dtype, np.dtype(dtype))
+                self.assertTrue(
+                    ((out.numpy() >= -100) & (out.numpy() <= 100)).all(), True)
         paddle.enable_static()
 
     def test_errors(self):
@@ -210,21 +221,22 @@ class TestRandintLikeAPI(unittest.TestCase):
 
             # x dtype is float16
             # low is 5 and high is 5, low must less then high
-            self.assertRaises(ValueError,
-                              paddle.randint_like,
-                              x_float16,
-                              low=5,
-                              high=5)
-            # low(default value) is 0 and high is -5, low must less then high
-            self.assertRaises(ValueError,
-                              paddle.randint_like,
-                              x_float16,
-                              high=-5)
-            # if high is None, low must be greater than 0
-            self.assertRaises(ValueError,
-                              paddle.randint_like,
-                              x_float16,
-                              low=-5)
+            if paddle.is_compiled_with_cuda():
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  low=5,
+                                  high=5)
+                # low(default value) is 0 and high is -5, low must less then high
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  high=-5)
+                # if high is None, low must be greater than 0
+                self.assertRaises(ValueError,
+                                  paddle.randint_like,
+                                  x_float16,
+                                  low=-5)
 
             # x dtype is float32
             # low is 5 and high is 5, low must less then high
