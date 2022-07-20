@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/as_real_kernel.h"
+#include "paddle/phi/kernels/as_complex_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/as_real_impl.h"
-
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+#include "paddle/phi/kernels/impl/as_complex_impl.h"
 
 PD_REGISTER_KERNEL(
-    as_real, GPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {}
+    as_complex, CPU, ALL_LAYOUT, phi::AsComplexKernel, float, double) {}

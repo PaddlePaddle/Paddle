@@ -39,6 +39,7 @@ class TestViewAsComplexOp(OpTest):
 
     def setUp(self):
         self.op_type = "as_complex"
+        self.python_api = paddle.as_complex
         x = np.random.randn(10, 10, 2).astype("float64")
         out_ref = ref_view_as_complex(x)
         self.out_grad = np.ones(
