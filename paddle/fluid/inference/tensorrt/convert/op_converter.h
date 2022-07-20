@@ -615,6 +615,7 @@ class OpConverter {
 
   // TensorRT engine
   TensorRTEngine* engine_{nullptr};
+  framework::BlockDesc* block_desc_;
 
  protected:
   bool test_mode_;
@@ -625,7 +626,6 @@ class OpConverter {
   std::unordered_map<std::string, OpConverter*> converters_;
   // fluid inference scope
   framework::Scope* scope_{nullptr};
-  framework::BlockDesc* block_desc_;
   std::mutex mut_;
 };
 

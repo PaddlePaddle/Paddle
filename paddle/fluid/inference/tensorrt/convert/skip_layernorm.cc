@@ -29,7 +29,7 @@ class SkipLayerNormOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert fused skip layernorm op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
-    auto* x_var_desc = block_->FindVar(op_desc.Input("X")[0]);
+    auto* x_var_desc = block_desc_->FindVar(op_desc.Input("X")[0]);
     const auto x_shape = x_var_desc->GetShape();
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
