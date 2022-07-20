@@ -239,34 +239,6 @@ class PartialProgramLayer:
         self._set_grad_type(self._params, train_pure_fp16_program)
         return train_pure_fp16_program
 
-    @LazyInitialized
-    def _infer_program_id(self):
-        return _hash_with_id(self._infer_program, self)
-
-    @LazyInitialized
-    def _train_program_id(self):
-        program_id = _hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-
-        return program_id
-
-    @LazyInitialized
-    def _train_amp_program_id(self):
-        program_id = _hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-
-        return program_id
-
-    @LazyInitialized
-    def _train_pure_fp16_program_id(self):
-        program_id = _hash_with_id(self._train_pure_fp16_program, self)
-        core._set_cached_executor_build_strategy(program_id,
-                                                 self._build_strategy)
-
-        return program_id
-
     def _verify_program(self, main_program):
         """
         Verify that the program parameter is initialized, prune some unused params,
@@ -341,7 +313,7 @@ class PartialProgramLayer:
         elif _in_pure_fp16_guard():
             infer_program = self._infer_pure_fp16_program
         else:
-            infer_program = self._infer_program
+            infer_program = self.infer_program
         return infer_program.desc.block(0).op_size()
 
     def __call__(self, inputs):
@@ -380,26 +352,37 @@ class PartialProgramLayer:
     @property
     def program(self):
         if self.training:
-            if _in_amp_guard():
-                return self._train_amp_program
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_program
-            else:
-                return self._train_program
+            return self.train_program
         else:
-            return self._infer_program
+            return self.infer_program
 
     @property
     def program_id(self):
         if self.training:
-            if _in_amp_guard():
-                return self._train_amp_program_id
-            elif _in_pure_fp16_guard():
-                return self._train_pure_fp16_program_id
-            else:
-                return self._train_program_id
+            program_id = _hash_with_id(self.train_program, self)
+            core._set_cached_executor_build_strategy(program_id,
+                                                     self._build_strategy)
+            return program_id
         else:
-            return self._infer_program_id
+            return _hash_with_id(self.infer_program, self)
+
+    @property
+    def train_program(self):
+        if _in_amp_guard():
+            return self._train_amp_program
+        elif _in_pure_fp16_guard():
+            return self._train_pure_fp16_program
+        else:
+            return self._train_program
+
+    @property
+    def infer_program(self):
+        if _in_amp_guard():
+            return self._infer_amp_program
+        elif _in_pure_fp16_guard():
+            return self._infer_pure_fp16_program
+        else:
+            return self._infer_program
 
     def _prepare(self, inputs):
         """
