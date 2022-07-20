@@ -30,10 +30,10 @@ class Property {
   Property() {}
 
   // Explicitly implement the copy constructor for auto parallel
-  explicit Property(const Property &other)
+  Property(const Property &other)
       : property_(other.property_), original_id_(other.original_id_) {}
 
-  explicit Property &operator=(const Property &other) {
+  Property &operator=(const Property &other) {
     property_ = other.property_;
     original_id_ = other.original_id_;
     return *this;
