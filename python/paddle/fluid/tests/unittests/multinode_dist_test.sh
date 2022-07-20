@@ -46,6 +46,7 @@ else
     PYTHON_EXEC="python3 -u "
 fi
 
+unset PYTHONPATH
 timeout -s SIGKILL ${run_time} ${MPIRUN} ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
 
 exit_code=$?
