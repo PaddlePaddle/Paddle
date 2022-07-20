@@ -128,7 +128,7 @@ void Property::SetString(const std::string &s) {
   auto entry = property_.add_entrys();
   entry->set_type(type);
   entry->set_s(s);
-  VLOG(3) << "Property: set_string " << s;
+  VLOG(3) << "Property: set_string with value : " << s;
 }
 
 void Property::SetString(const std::string &name, const std::string &s) {
