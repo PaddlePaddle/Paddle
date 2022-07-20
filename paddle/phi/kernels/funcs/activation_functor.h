@@ -2145,7 +2145,7 @@ struct CudaSeluFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T x) const {
     T res = x;
     if (res <= zero) {
-      res = alpha * exp(res) - alpha;
+      res = alpha * expf(res) - alpha;
     }
     res *= scale;
     return res;
