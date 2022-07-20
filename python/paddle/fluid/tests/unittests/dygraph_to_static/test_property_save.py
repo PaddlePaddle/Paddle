@@ -41,7 +41,7 @@ class TestPropertySave(unittest.TestCase):
         self.assertEqual(self.a.size(), 2)
 
     def test_load_float(self):
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ValueError):
             self.a.get_float(1)
 
     def test_set_float_wo_name(self):
