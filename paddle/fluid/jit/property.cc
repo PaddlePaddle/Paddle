@@ -46,20 +46,21 @@ float Property::GetFloat(const std::string &name) const {
     }
   }
 
-  PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("name not found"));
+  PADDLE_THROW(phi::errors::NotFound("name not found"));
   return 0;
 }
 
 float Property::GetFloat(const int &idx) const {
-  PADDLE_ENFORCE_EQ(
-      idx < Size(), true, phi::errors::OutOfRange("idx out of range"));
+  PADDLE_ENFORCE_EQ(idx < Size() && idx >= 0,
+                    true,
+                    phi::errors::OutOfRange("idx out of range"));
 
   auto e = property_.entrys(idx);
   if (e.has_f()) {
     return e.f();
   }
 
-  PADDLE_ENFORCE_EQ(false, true, phi::errors::NotFound("idx is not a float"));
+  PADDLE_THROW(phi::errors::NotFound("idx is not a float"));
   return 0;
 }
 
@@ -81,7 +82,8 @@ void Property::SetFloats(const std::string &name, const std::vector<float> &v) {
   for (auto i : v) {
     entry->add_floats(i);
   }
-  VLOG(3) << "Property: set_floats  with length " << v.size() << " for name: " << name;
+  VLOG(3) << "Property: set_floats  with length " << v.size()
+          << " for name: " << name;
 }
 
 void Property::SetInt64(const int64_t &i) {

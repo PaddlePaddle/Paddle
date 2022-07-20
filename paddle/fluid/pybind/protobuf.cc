@@ -356,7 +356,7 @@ void BindOpDesc(pybind11::module *m) {
 }
 
 // Serialize Class Property
-void BindPropertyDesc(pybind11::module *m) {
+void BindJitProperty(pybind11::module *m) {
   pybind11::class_<jit::Property> property(*m, "Property");
   property
       .def(
@@ -372,8 +372,8 @@ void BindPropertyDesc(pybind11::module *m) {
            py::overload_cast<const std::string &, const float &>(
                &jit::Property::SetFloat),
            "set float",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("var"))
       .def("get_float",
            py::overload_cast<const int &>(&jit::Property::GetFloat, py::const_))
       .def("get_float",
@@ -388,8 +388,8 @@ void BindPropertyDesc(pybind11::module *m) {
            py::overload_cast<const std::string &, const std::vector<float> &>(
                &jit::Property::SetFloats),
            "set list of float",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("val"))
       .def("set_int",
            py::overload_cast<const int64_t &>(&jit::Property::SetInt64),
            "set int",
@@ -398,8 +398,8 @@ void BindPropertyDesc(pybind11::module *m) {
            py::overload_cast<const std::string &, const int64_t &>(
                &jit::Property::SetInt64),
            "set int",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("val"))
       .def("set_ints",
            py::overload_cast<const std::vector<int64_t> &>(
                &jit::Property::SetInt64s),
@@ -409,8 +409,8 @@ void BindPropertyDesc(pybind11::module *m) {
            py::overload_cast<const std::string &, const std::vector<int64_t> &>(
                &jit::Property::SetInt64s),
            "set list of int",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("val"))
       .def("set_string",
            py::overload_cast<const std::string &>(&jit::Property::SetString),
            "set string",
@@ -419,8 +419,8 @@ void BindPropertyDesc(pybind11::module *m) {
            py::overload_cast<const std::string &, const std::string &>(
                &jit::Property::SetString),
            "set string",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("val"))
       .def("set_strings",
            py::overload_cast<const std::vector<std::string> &>(
                &jit::Property::SetStrings),
@@ -431,8 +431,8 @@ void BindPropertyDesc(pybind11::module *m) {
                              const std::vector<std::string> &>(
                &jit::Property::SetStrings),
            "set list of string",
-           py::arg("val"),
-           py::arg("name"))
+           py::arg("name"),
+           py::arg("val"))
       .def("set_tensor",
            [](const pd::VarDesc &tensor, const std::string name) {
              throw platform::errors::Unimplemented("Not implement set_tensor.");

@@ -35,7 +35,7 @@ void BindBlockDesc(pybind11::module* m);
 void BindVarDsec(pybind11::module* m);
 void BindOpDesc(pybind11::module* m);
 void BindProcessMeshDesc(pybind11::module* m);
-void BindPropertyDesc(pybind11::module* m);
+void BindJitProperty(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle
