@@ -58,7 +58,7 @@ void NMSKernel(const Context& dev_ctx,
                    const DenseTensor& boxes,
                    float threshold,
                    DenseTensor* output){
-    auto* output_data = dev_ctx.template Alloc<T>(output);
+    auto* output_data = dev_ctx.template Alloc<int64_t>(output);
     const int64_t num_boxes = boxes.dims()[0];
     const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
     dim3 block(threadsPerBlock);
