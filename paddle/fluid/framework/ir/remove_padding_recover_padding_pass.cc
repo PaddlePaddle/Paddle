@@ -453,7 +453,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
          multihead_matmul_input_shape.size()) ||
         (activation_input_shape.size() != 3)) {
       check_flag = false;
-      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+      VLOG(3) << "Activation: Transformer model remove_padding "
+                 "shape(activation_input_shape.size()) check failed, return "
                  "remove_padding pass.";
       return;
     }
@@ -468,7 +469,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       check_flag = false;
     }
     if (!check_flag) {
-      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+      VLOG(3) << "Activation: Transformer model remove_padding "
+                 "shape(activation_input_shape[i]) check failed, return "
                  "remove_padding pass.";
       return;
     }
