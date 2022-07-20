@@ -66,11 +66,11 @@ def start_local_trainers(cluster,
 
         print("start trainer proc:{} env:{}".format(cmd, proc_env))
 
-        fn = open("log/workerlog.%d" % idx, "a")
+        fn = open("workerlog.%d" % idx, "a")
         proc = subprocess.Popen(cmd.split(" "),
                                 env=current_env,
-                                stdout=sys.stdout,
-                                stderr=sys.stdout)
+                                stdout=fn,
+                                stderr=fn)
 
         tp = TrainerProc()
         tp.proc = proc

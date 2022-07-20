@@ -53,7 +53,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         self.dtype = "float32"
         self.shape = (2, 10, 5)
 
-    def test_create_process_group_nccl(self):
+    def test_create_process_group_xccl(self):
         with _test_eager_guard():
             paddle.set_device('custom_cpu:%d' %
                               paddle.distributed.ParallelEnv().dev_id)

@@ -68,7 +68,7 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     processgroup_custom
     SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
-    DEPS device_manager
+    DEPS phi_backends
          place
          enforce
          collective_helper
