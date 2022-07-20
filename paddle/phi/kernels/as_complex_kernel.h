@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/as_real_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/as_real_impl.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+namespace phi {
 
-PD_REGISTER_KERNEL(
-    as_real, GPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {}
+template <typename T, typename Context>
+void AsComplexKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out);
+
+}  // namespace phi
