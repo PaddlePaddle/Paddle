@@ -71,6 +71,9 @@ void CumInferMeta(const MetaTensor& x,
                   bool reverse,
                   MetaTensor* out);
 
+void DiagEmbedInferMeta(
+    const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out);
+
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
                    float padding_value,
