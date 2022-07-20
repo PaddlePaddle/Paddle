@@ -174,31 +174,31 @@ void ConvertAllFp64ToFp32(framework::ir::Graph* graph) {
     if (op_type == "feed" || op_type == "fetch") continue;
 
     if (op_type == "fill_constant") {
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "dtype", static_cast<int>(framework::proto::VarType::FP32));
     } else if (op_type == "assign_value") {
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "dtype", static_cast<int>(framework::proto::VarType::FP32));
     } else if (op_type == "eye") {
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "dtype", static_cast<int>(framework::proto::VarType::FP32));
     } else if (op_type == "fill_any_like") {
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "dtype", static_cast<int>(framework::proto::VarType::FP32));
     } else if (op_type == "cast") {
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("in_dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("in_dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "in_dtype", static_cast<int>(framework::proto::VarType::FP32));
-      if (BOOST_GET_CONST(int, op_node->Op()->GetAttr("out_dtype")) ==
+      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("out_dtype")) ==
           static_cast<int>(framework::proto::VarType::FP64))
         op_node->Op()->SetAttr(
             "out_dtype", static_cast<int>(framework::proto::VarType::FP32));
@@ -220,22 +220,22 @@ void ConvertAllFp64ToFp32(framework::ir::Graph* graph) {
 // assign_value.
 void HandleSpecialOps(framework::OpDesc* op_desc) {
   if (op_desc->Type() == "fill_constant") {
-    if (BOOST_GET_CONST(int, op_desc->GetAttr("dtype")) ==
+    if (PADDLE_GET_CONST(int, op_desc->GetAttr("dtype")) ==
         static_cast<int>(framework::proto::VarType::FP32))
       op_desc->SetAttr("dtype",
                        static_cast<int>(framework::proto::VarType::FP16));
   } else if (op_desc->Type() == "assign_value") {
-    if (BOOST_GET_CONST(int, op_desc->GetAttr("dtype")) ==
+    if (PADDLE_GET_CONST(int, op_desc->GetAttr("dtype")) ==
         static_cast<int>(framework::proto::VarType::FP32))
       op_desc->SetAttr("dtype",
                        static_cast<int>(framework::proto::VarType::FP16));
   } else if (op_desc->Type() == "eye") {
-    if (BOOST_GET_CONST(int, op_desc->GetAttr("dtype")) ==
+    if (PADDLE_GET_CONST(int, op_desc->GetAttr("dtype")) ==
         static_cast<int>(framework::proto::VarType::FP32))
       op_desc->SetAttr("dtype",
                        static_cast<int>(framework::proto::VarType::FP16));
   } else if (op_desc->Type() == "fill_any_like") {
-    if (BOOST_GET_CONST(int, op_desc->GetAttr("dtype")) ==
+    if (PADDLE_GET_CONST(int, op_desc->GetAttr("dtype")) ==
         static_cast<int>(framework::proto::VarType::FP32))
       op_desc->SetAttr("dtype",
                        static_cast<int>(framework::proto::VarType::FP16));
@@ -293,10 +293,6 @@ void ConvertTensorDtype(framework::ProgramDesc* program_desc,
   }
 
   auto weight_name_in_multi_block = GetMultiBlockPersistableNames(program_desc);
-  for (auto n : weight_name_in_multi_block) {
-    LOG(INFO) << n << " appear in multi block";
-  }
-
   int num_low_precision = 0;
   int suffix = 0;
   framework::BlockDesc* block_desc{nullptr};
