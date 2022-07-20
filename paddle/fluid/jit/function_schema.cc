@@ -82,5 +82,9 @@ const std::vector<std::string> FunctionInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
 }
 
+void FunctionInfo::RemoveDescFeedFetch() {
+  utils::RemoveFeedFetch(&program_desc_);
+}
+
 }  // namespace jit
 }  // namespace paddle

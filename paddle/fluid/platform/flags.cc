@@ -919,15 +919,15 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * JitLayer related FLAG
- * Name: FLAGS_function_type
+ * Name: FLAGS_jit_engine_type
  * Since Version: 2.3.0
  * Value Range: string, {Executor, PE},
  * default=PE
  * Example:
  * Note:
- * FLAGS_function_type == Executor, using ExecutorFunction by default
- * FLAGS_function_type == PE, using PEFunction by default
+ * FLAGS_jit_engine_type == Executor, using ExecutorFunction by default
+ * FLAGS_jit_engine_type == PE, using PEFunction by default
  */
-PADDLE_DEFINE_EXPORTED_string(function_type,
+PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",
                               "Choose default funciton type in JitLayer.");

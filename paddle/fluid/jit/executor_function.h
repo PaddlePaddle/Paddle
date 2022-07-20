@@ -38,6 +38,7 @@ class ExecutorFunction : public BaseFunction {
       : info_(info), place_(place), inner_exe_(place_) {
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+    info_->RemoveDescFeedFetch();
   }
 
   ~ExecutorFunction() noexcept {}
@@ -49,9 +50,7 @@ class ExecutorFunction : public BaseFunction {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
     utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
-    framework::ProgramDesc desc(info_->ProgramDesc());
-    utils::RemoveFeedFetch(&desc);
-    inner_exe_.Run(desc,
+    inner_exe_.Run(info_->ProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
