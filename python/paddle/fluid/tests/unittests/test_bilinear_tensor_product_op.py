@@ -41,6 +41,7 @@ class TestBilinearTensorProductOp(OpTest):
 
     def setUp(self):
         self.op_type = "bilinear_tensor_product"
+        self.python_api = paddle.nn.functional.bilinear
         batch_size = 6
         size0 = 5
         size1 = 4
