@@ -198,7 +198,8 @@ function cmake_base() {
     gloo_flag=${distibuted_flag}
 
     if [ "$CMD" != "assert_file_approvals" ];then
-      python -m pip install distro
+      which python
+      python -V
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
