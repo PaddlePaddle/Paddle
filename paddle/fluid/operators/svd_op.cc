@@ -148,6 +148,7 @@ class SvdGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("U", this->Output("U"));
     retv->SetInput("VH", this->Output("VH"));
     retv->SetInput("S", this->Output("S"));
+    retv->SetInput("X", this->Input("X"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }

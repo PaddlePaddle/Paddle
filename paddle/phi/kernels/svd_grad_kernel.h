@@ -20,6 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void SvdGradKernel(const Context& dev_ctx,
+                   const DenseTensor& X,
                    const DenseTensor& U,
                    const DenseTensor& VH,
                    const DenseTensor& S,

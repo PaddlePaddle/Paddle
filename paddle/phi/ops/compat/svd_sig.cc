@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature SvdGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("svd_grad",
-                         {"U", "VH", "S", "U@GRAD", "VH@GRAD", "S@GRAD"},
+                         {"X", "U", "VH", "S", "U@GRAD", "VH@GRAD", "S@GRAD"},
                          {"full_matrices"},
                          {"X@GRAD"});
 }

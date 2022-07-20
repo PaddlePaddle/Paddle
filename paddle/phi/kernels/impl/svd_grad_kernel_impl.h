@@ -67,6 +67,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
 
 template <typename T, typename Context>
 void SvdGradKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
