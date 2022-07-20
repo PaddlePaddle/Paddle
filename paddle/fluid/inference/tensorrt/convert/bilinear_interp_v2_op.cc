@@ -115,18 +115,29 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     std::vector<float> scales;
     std::vector<nvinfer1::ITensor*> outsize_tensor_vec;
+    nvinfer1::ITensor* input_shape_tensor = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      outsize_tensor_vec.push_back(Add1DConstantLayer(1));
+      input_shape_tensor = Shape(input);
+      outsize_tensor_vec.push_back(GetEleTensorOfShape(input_shape_tensor, 0));
       scales.push_back(1.f);
     }
 
     if (data_layout == framework::DataLayout::kNCHW) {
-      outsize_tensor_vec.push_back(Add1DConstantLayer(3));
+      if(with_dynamic) {
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(input_shape_tensor, 1));
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(outsize_tensor, 0));
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(outsize_tensor, 1));
+      }
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
     } else if (data_layout == framework::DataLayout::kNHWC) {
+      if(with_dynamic) {
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(outsize_tensor, 0));
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(outsize_tensor, 1));
+        outsize_tensor_vec.push_back(GetEleTensorOfShape(input_shape_tensor, 3));
+      }
       scales.push_back(scale_h);
       scales.push_back(scale_w);
       scales.push_back(1.f);
@@ -136,9 +147,9 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     }
 
     if (outsize_tensor) {
-      auto* tmp_tensor = Concat(outsize_tensor_vec);
-      std::vector<nvinfer1::ITensor*> tmp_vec{tmp_tensor, outsize_tensor};
-      layer->setInput(1, *Concat(tmp_vec));
+     // auto* tmp_tensor = Concat(outsize_tensor_vec);
+     // std::vector<nvinfer1::ITensor*> tmp_vec{tmp_tensor, outsize_tensor};
+      layer->setInput(1, *Concat(outsize_tensor_vec));
     } else {
       layer->setScales(scales.data(), scales.size());
     }

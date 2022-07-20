@@ -133,7 +133,7 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.ones([32, 32]).astype(np.float32)
+            return np.ones([35, 32]).astype(np.float32)
 
         for data_layout in ["NCHW"]:
             for scale_y in [
@@ -201,15 +201,15 @@ class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
         def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 64, 64],
-                "input2": [32, 32]
+                "input2": [35, 32]
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data": [4, 3, 64, 64],
-                "input2": [32, 32]
+                "input2": [38, 38]
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data": [1, 3, 64, 64],
-                "input2": [32, 32]
+                "input2": [35, 32]
             }
 
         def clear_dynamic_shape():
