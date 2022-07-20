@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+unset GREP_OPTIONS
+set -e
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # 
@@ -17,11 +19,11 @@
 
 ## CUDA_MODULE_LOADING=EAGER,DEFAULT,LAZY
 
-# check nvcc version, if nvcc >= 11.6, just run nvcc itself
-CUDA_VERSION=$(nvcc --version | grep -oP '(?<=cuda_)\d*\.\d*')
+# check nvcc version, if nvcc >= 11.7, just run nvcc itself
+CUDA_VERSION=$(nvcc --version | grep -oP '(?<=V)\d*\.\d*')
 CUDA_VERSION_MAJOR=${CUDA_VERSION%.*}
 CUDA_VERSION_MINOR=${CUDA_VERSION#*.}
-if (( CUDA_VERSION_MAJOR > 11 || (CUDA_VERSION_MAJOR == 11 && CUDA_VERSION_MINOR >= 6) )); then
+if (( CUDA_VERSION_MAJOR > 11 || (CUDA_VERSION_MAJOR == 11 && CUDA_VERSION_MINOR >= 7) )); then
   nvcc "$@"
   exit
 fi

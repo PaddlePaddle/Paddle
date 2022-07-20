@@ -26,16 +26,17 @@ cc_library(
 cc_library(
   jit_layer
   SRCS layer.cc
-  DEPS jit_compilation_unit)
+  DEPS jit_serializer jit_function_utils jit_serializer_utils
+       jit_compilation_unit jit_function_schema)
 
 if(WITH_TESTING
    AND NOT WIN32
    AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
   add_custom_target(
     jit_download_program
-    COMMAND wget -nc
+    COMMAND wget -nc -q
             https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load.tar.gz
-    COMMAND tar zxvf multi_program_load.tar.gz)
+    COMMAND tar zxf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
       elementwise_add_op
@@ -45,12 +46,7 @@ if(WITH_TESTING
       feed_op
       fetch_op
       scale_op
-      jit_serializer
-      jit_layer
-      jit_function_utils
-      jit_function_schema
-      jit_compilation_unit
-      jit_serializer_utils)
+      jit_layer)
   cc_test(
     layer_test
     SRCS layer_test.cc

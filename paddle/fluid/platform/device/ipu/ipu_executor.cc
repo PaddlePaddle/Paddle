@@ -213,8 +213,13 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
       optimizer = compiler_resources_->eval_optimizer.get();
     } else {
       VLOG(10) << "Update learning_rate";
-      auto new_lr =
-          GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      float new_lr;
+      if (ipu_strategy_->is_dynamic) {
+        new_lr = ipu_strategy_->lr;
+      } else {
+        new_lr =
+            GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      }
       VLOG(10) << "New Lr: " << new_lr;
       optimizer = compiler_resources_->UpdateOptimizer(new_lr);
     }
@@ -257,6 +262,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
@@ -269,6 +275,7 @@ void Executor::AcquireDevice() {
             "numIPUs",
             std::to_string(ipu_strategy_->num_ipus),
         },
+        {"tilesPerIPU", std::to_string(ipu_strategy_->tiles_per_ipu)},
         {"ipuVersion", "ipu2"},
     };
     device_ =

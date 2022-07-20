@@ -22,8 +22,3 @@ REGISTER_OP_CUDA_KERNEL(
     as_complex,
     ops::AsComplexKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AsComplexKernel<paddle::platform::CUDADeviceContext, double>);
-
-REGISTER_OP_CUDA_KERNEL(
-    as_real,
-    ops::AsRealKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AsRealKernel<paddle::platform::CUDADeviceContext, double>);

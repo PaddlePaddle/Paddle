@@ -871,49 +871,6 @@ std::tuple<Tensor, Tensor, Tensor> momentum_impl(
 
 ////////////////// Backward(grad) api impls //////////////////////
 
-// TODO(chenweihang):  the original sum grad op can support higher-level
-// differentiation,
-// but if we use this impl, it will not support. We need to be able to reuse
-// the autograd API here, which is not yet implemented
-// TODO(chenweihang): we should support call generated api in custom api impl
-void add_n_grad_impl(const std::vector<Tensor>& x,
-                     const Tensor& out_grad,
-                     std::vector<Tensor*> x_grad) {
-  auto kernel_key_set = ParseKernelKeyByInputArgs(out_grad);
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-
-  Backend kernel_backend = kernel_key.backend();
-  DataLayout kernel_layout = kernel_key.layout();
-  DataType kernel_data_type = kernel_key.dtype();
-
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "scale", {kernel_backend, kernel_layout, kernel_data_type});
-  VLOG(6) << "add_n_grad API kernel key: [" << kernel_backend << ", "
-          << kernel_layout << ", " << kernel_data_type << "]";
-  VLOG(6) << "add_n_grad API kernel: " << kernel;
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-
-  auto dense_out_grad = PrepareData(out_grad, kernel.InputAt(0), {});
-
-  auto dense_x_grad = SetKernelOutput(&x_grad);
-
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    const phi::Scalar&,
-                                    float,
-                                    bool,
-                                    phi::DenseTensor*);
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
-  for (auto* dense_x_grad_t : dense_x_grad) {
-    phi::MetaTensor meta_out(dense_x_grad_t);
-    phi::UnchangedInferMeta(MakeMetaTensor(*dense_out_grad), &meta_out);
-    (*kernel_fn)(
-        *dev_ctx, *dense_out_grad, phi::Scalar(1.0), 0.0, true, dense_x_grad_t);
-  }
-}
-
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     const Tensor& x,
     const Tensor& scale,

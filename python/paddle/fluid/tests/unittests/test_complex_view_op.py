@@ -67,6 +67,7 @@ class TestViewAsRealOp(OpTest):
         out_ref = ref_view_as_real(x)
         self.inputs = {'X': x}
         self.outputs = {'Out': out_ref}
+        self.python_api = paddle.as_real
         self.out_grad = np.ones([10, 10, 2], dtype="float64")
 
     def test_check_output(self):

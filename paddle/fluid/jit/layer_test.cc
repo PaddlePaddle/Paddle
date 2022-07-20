@@ -52,17 +52,16 @@ namespace paddle {
 namespace jit {
 using DenseTensor = phi::DenseTensor;
 
-std::vector<Variable> PrepareInputs(const phi::Place& place) {
+std::vector<DenseTensor> PrepareInputs(const phi::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
 
-  Variable v;
-  auto* dense_tensor = v.GetMutable<DenseTensor>();
-  dense_tensor->Resize(phi::make_ddim({2, 4}));
-  dense_tensor->mutable_data<float>(place);
-  phi::funcs::set_constant(dev_ctx, dense_tensor, 2.);
+  DenseTensor t;
+  t.Resize(phi::make_ddim({2, 4}));
+  t.mutable_data<float>(place);
+  phi::funcs::set_constant(dev_ctx, &t, 2.);
 
-  return {v};
+  return {t};
 }
 
 TEST(CpuLayerTest, Construct) {
@@ -72,16 +71,12 @@ TEST(CpuLayerTest, Construct) {
   auto inputs = PrepareInputs(place);
 
   auto outs = layer.forward(inputs);
-  auto out_vars = outs[0];
-  auto out_dense_tensor = out_vars.Get<DenseTensor>();
-  auto out_data = out_dense_tensor.data<float>();
+  auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
   outs = (*func)(inputs);
-  out_vars = outs[0];
-  out_dense_tensor = out_vars.Get<DenseTensor>();
-  out_data = out_dense_tensor.data<float>();
+  out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
 }
 
@@ -98,8 +93,7 @@ TEST(GpuLayerTest, Construct) {
   auto inputs = PrepareInputs(place);
 
   auto outs = layer.forward(inputs);
-  auto out_vars = outs[0];
-  auto out_dense_tensor = out_vars.Get<DenseTensor>();
+  auto out_dense_tensor = outs[0];
   phi::Copy(
       *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
   auto out_data = cpu_dense_tensor.data<float>();
@@ -107,8 +101,7 @@ TEST(GpuLayerTest, Construct) {
 
   auto func = layer.Function("infer");
   outs = (*func)(inputs);
-  out_vars = outs[0];
-  out_dense_tensor = out_vars.Get<DenseTensor>();
+  out_dense_tensor = outs[0];
   phi::Copy(
       *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
   out_data = cpu_dense_tensor.data<float>();

@@ -49,45 +49,45 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role =
-        BOOST_GET_CONST(int,
-                        momentum_ops[0]->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float mu = BOOST_GET_CONST(float, momentum_ops[0]->Op()->GetAttr("mu"));
+        PADDLE_GET_CONST(int,
+                         momentum_ops[0]->Op()->GetAttr(
+                             OpProtoAndCheckerMaker::OpRoleAttrName()));
+    float mu = PADDLE_GET_CONST(float, momentum_ops[0]->Op()->GetAttr("mu"));
     bool use_nesterov =
-        BOOST_GET_CONST(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
+        PADDLE_GET_CONST(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
 
     for (auto &momentum_op : momentum_ops) {
       PADDLE_ENFORCE_EQ(
           mu,
-          BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
+          PADDLE_GET_CONST(float, momentum_op->Op()->GetAttr("mu")),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(mu) must be same, but there are two "
               "different "
               "value: %f, %f.",
               mu,
-              BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu"))));
+              PADDLE_GET_CONST(float, momentum_op->Op()->GetAttr("mu"))));
       PADDLE_ENFORCE_EQ(
           use_nesterov,
-          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
+          PADDLE_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(use_nesterov) must be same, but there "
               "are two different value: %d, %d.",
               use_nesterov,
-              BOOST_GET_CONST(bool,
-                              momentum_op->Op()->GetAttr("use_nesterov"))));
+              PADDLE_GET_CONST(bool,
+                               momentum_op->Op()->GetAttr("use_nesterov"))));
       PADDLE_ENFORCE_EQ(
           op_role,
-          BOOST_GET_CONST(int,
-                          momentum_op->Op()->GetAttr(
-                              OpProtoAndCheckerMaker::OpRoleAttrName())),
+          PADDLE_GET_CONST(int,
+                           momentum_op->Op()->GetAttr(
+                               OpProtoAndCheckerMaker::OpRoleAttrName())),
           platform::errors::InvalidArgument(
               "All momentum Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
               op_role,
-              BOOST_GET_CONST(int,
-                              momentum_op->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName()))));
+              PADDLE_GET_CONST(int,
+                               momentum_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName()))));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

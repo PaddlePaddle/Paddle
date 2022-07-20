@@ -71,13 +71,6 @@
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
 
-- backward_api : add_n_grad
-  forward : add_n (Tensor[] x) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad)
-  output : Tensor[](x_grad){x.size()}
-  invoke : add_n_grad_impl(x, out_grad, x_grad)
-  no_need_buffer : x
-
 - backward_api : add_triple_grad
   forward : add_double_grad (Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, int axis = -1) -> Tensor(grad_grad_out)
   args : (Tensor grad_grad_x, Tensor grad_grad_y, Tensor grad_grad_out_grad, int axis = -1)
@@ -98,6 +91,18 @@
     param : [input, x, y]
   kernel :
     func : addmm_grad
+
+- backward_api : angle_grad
+  forward : angle (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : angle_grad
+  data_transform:
+    skip_transform : out_grad
 
 - backward_api : argsort_grad
   forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
@@ -133,6 +138,17 @@
     func : asinh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : assign_double_grad
+  forward : assign_grad (Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  backward: assign_triple_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
 - backward_api : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -141,6 +157,7 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
+  backward: assign_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_api : assign_out__grad
@@ -152,6 +169,16 @@
   kernel :
     func : assign
   inplace : (out_grad -> x_grad)
+
+- backward_api : assign_triple_grad
+  forward : assign_double_grad (Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_api : atan_grad
   forward : atan (Tensor x) -> Tensor(out)
@@ -290,6 +317,16 @@
     func : clip_grad
   backward : clip_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_api : complex_grad
+  forward : complex (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : ComplexGradInferMeta
+  kernel :
+    func : complex_grad
+    data_type : x
 
 - backward_api : concat_double_grad
   forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
@@ -531,6 +568,19 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
+
+- backward_api : eig_grad
+  forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
+  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_v]
+  kernel :
+    func : eig_grad
+    data_type : out_v
+  data_transform:
+    skip_transform : out_w, out_w_grad
 
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
@@ -1823,6 +1873,16 @@
     func : sinh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : slice_double_grad
+  forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
+  args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_input_grad]
+  kernel :
+    func : slice
+
 - backward_api : slice_grad
   forward : slice (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(out)
   args : (Tensor input, Tensor out_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -1832,6 +1892,7 @@
     param : [input]
   kernel :
     func : slice_grad
+  backward : slice_double_grad
   no_need_buffer : input
 
 - backward_api : soft_shrink_grad

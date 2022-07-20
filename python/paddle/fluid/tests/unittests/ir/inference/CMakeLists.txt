@@ -28,6 +28,13 @@ if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_c_allreduce")
 endif()
 
+if(WIN32)
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_convert_fused_token_prune")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fused_token_prune")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fused_token_prune")
+endif()
+
 # Only for cpu(mkl + openblas)
 set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
@@ -52,15 +59,18 @@ if(WITH_GPU AND TENSORRT_FOUND)
          "7.1")
         py_test_modules(${target} MODULES ${target})
         set_tests_properties(${target} PROPERTIES TIMEOUT 60)
+        set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
       endif()
     else()
       py_test_modules(${target} MODULES ${target})
+      set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
     endif()
   endforeach()
 
   foreach(target ${TEST_TRT_CONVERTER})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 300)
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 endif()
 
@@ -76,6 +86,7 @@ endforeach()
 if(WITH_MKLDNN)
   foreach(target ${TEST_MKLDNN_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 endif()
 
@@ -84,6 +95,7 @@ if(WITH_MKLDNN
    AND WITH_GPU)
   foreach(target ${TEST_INFERENCE_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 endif()
 
@@ -92,6 +104,7 @@ if(NOT WITH_MKLDNN
    AND NOT WITH_GPU)
   foreach(target ${TEST_INFERENCE_CPU_UT})
     py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 
   set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 300)
