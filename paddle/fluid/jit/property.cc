@@ -70,7 +70,7 @@ void Property::SetFloats(const std::vector<float> &v) {
   for (auto i : v) {
     entry->add_floats(i);
   }
-  VLOG(3) << "Property: set_floats " << v.size();
+  VLOG(3) << "Property: set_floats  with length: " << v.size();
 }
 
 void Property::SetFloats(const std::string &name, const std::vector<float> &v) {
