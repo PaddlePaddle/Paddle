@@ -128,7 +128,7 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
 
   PD_DataType dtype() const {
     C_Status status;
-    auto data_type = PD_TensorGetDataType(raw_data(), &status);
+    auto data_type = PD_TensorGetPDDataType(raw_data(), &status);
     PD_CHECK_STATUS(status);
     return data_type;
   }

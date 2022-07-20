@@ -2272,7 +2272,9 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eig(x)
+    elif paddle.in_dynamic_mode():
         w, v = _C_ops.eig(x)
         return w, v
 
@@ -2342,7 +2344,9 @@ def eigvals(x, name=None):
             "The last two dimensions of Input(x) should be equal, but received x's shape = {}"
             .format(x_shape))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eigvals(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())
@@ -2854,7 +2858,10 @@ def solve(x, y, name=None):
         print(out)
         # [2., 3.])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_solve(x, y)
+
+    if _in_legacy_dygraph():
         return _C_ops.solve(x, y)
 
     inputs = {"X": [x], "Y": [y]}

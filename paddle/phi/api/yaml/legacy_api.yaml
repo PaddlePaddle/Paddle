@@ -118,6 +118,15 @@
   kernel :
     func : allclose
 
+- api : angle
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : angle
+  backward : angle_grad
+
 - api : any
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -167,6 +176,23 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_complex
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsComplexInferMeta
+  kernel :
+    func : as_complex
+  backward : as_complex_grad
+
+- api : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+  backward : as_real_grad
 # asin
 - api : asin
   args : (Tensor x)
@@ -352,6 +378,15 @@
     func : clip
   backward : clip_grad
 
+- api : complex
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+  backward : complex_grad
+
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -499,13 +534,13 @@
     func : determinant
   backward : det_grad
 
-- api : diag
-  args : (Tensor x, int offset, float padding_value)
+- api : diag_embed
+  args : (Tensor x, int offset, int dim1, int dim2)
   output : Tensor
   infer_meta :
-    func : DiagInferMeta
+    func : DiagEmbedInferMeta
   kernel :
-    func : diag
+    func : diag_embed
 
 - api : divide
   args : (Tensor x, Tensor y)
@@ -536,6 +571,14 @@
   kernel :
     func : eigh
   backward : eigh_grad
+
+- api : eigvals
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : EigvalsInferMeta
+  kernel :
+    func : eigvals
 
 - api : einsum
   args : (Tensor[] x, str equation)
@@ -663,6 +706,17 @@
   kernel :
     func : expm1
   backward : expm1_grad
+
+- api : exponential_
+  args : (Tensor x, float lambda)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : exponential
+  inplace : (x -> out)
+  backward : exponential__grad
 
 - api : eye
   args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
@@ -2050,6 +2104,16 @@
     func : swish
   backward : swish_grad
 
+# sync_batch_norm
+- api : sync_batch_norm
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm
+  backward : sync_batch_norm_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
@@ -2215,6 +2279,15 @@
     func : unique
     data_type : x
 
+- api : unique_consecutive
+  args : (Tensor x, bool return_inverse, bool return_counts, int[] axis, int dtype)
+  output : Tensor(out), Tensor(index), Tensor(counts)
+  infer_meta :
+      func : UniqueConsecutiveInferMeta
+  kernel :
+    func : unique_consecutive
+    data_type : x
+
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)
@@ -2268,3 +2341,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+# eig
+- api: eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad

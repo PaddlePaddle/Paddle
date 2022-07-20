@@ -72,7 +72,10 @@ list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 list(APPEND DIST_TEST_OPS test_collective_process_group)
+list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
+list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
+list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -201,8 +204,6 @@ endif()
 
 # Temporally disable test_deprecated_decorator
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
-
-list(REMOVE_ITEM TEST_OPS test_tensordot)
 
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
@@ -334,7 +335,11 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
   list(REMOVE_ITEM TEST_OPS test_collective_process_group)
+  list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
+  list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
     list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -1412,7 +1417,7 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
-#set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
+set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_save_load PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1569,8 +1574,10 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT 60)
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
-
+  set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1706,3 +1713,10 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
+
+py_test_modules(
+  test_add_reader_dependency_for_interpretercore MODULES
+  test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(test_add_reader_dependency_for_interpretercore
+                     PROPERTIES TIMEOUT 120)

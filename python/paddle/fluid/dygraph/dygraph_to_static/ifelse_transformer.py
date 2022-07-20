@@ -34,6 +34,7 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_un
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_nodes
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX, FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -304,7 +305,6 @@ def transform_if_else(node, root):
     """
 
     # TODO(liym27): Consider variable like `self.a` modified in if/else node.
-    new_vars_to_create = sorted(list(node.pd_scope.created_vars()))
     return_name_ids = sorted(list(node.pd_scope.modified_vars()))
     # NOTE: Python can create variable only in if body or only in else body, and use it out of if/else.
     # E.g.
@@ -315,10 +315,6 @@ def transform_if_else(node, root):
     #
     # Create static variable for those variables
     create_new_vars_in_parent_stmts = []
-    for name in new_vars_to_create:
-        # NOTE: Consider variable like `self.a` modified in if/else node.
-        if "." not in name:
-            create_new_vars_in_parent_stmts.append(create_undefined_var(name))
 
     nonlocal_names = list(return_name_ids)
     nonlocal_names.sort()
@@ -326,8 +322,21 @@ def transform_if_else(node, root):
     nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
 
     # TODO(dev): Need a better way to deal this.
-    if ARGS_NAME in nonlocal_names:
-        nonlocal_names.remove(ARGS_NAME)
+    # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
+    filter_names = [
+        ARGS_NAME, FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX,
+        FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX,
+        FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX,
+        FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX
+    ]
+
+    def remove_if(x):
+        for name in filter_names:
+            if x.startswith(name): return False
+        return True
+
+    nonlocal_names = list(filter(remove_if, nonlocal_names))
+    return_name_ids = nonlocal_names
 
     nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
 

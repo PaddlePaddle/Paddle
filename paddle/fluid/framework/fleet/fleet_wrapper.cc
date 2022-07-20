@@ -37,6 +37,7 @@ namespace framework {
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
 bool FleetWrapper::is_initialized_ = false;
+std::mutex FleetWrapper::ins_mutex;
 
 #ifdef PADDLE_WITH_PSLIB
 std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
