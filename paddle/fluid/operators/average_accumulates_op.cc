@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/average_accumulates_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -208,7 +210,12 @@ And for a mini-batch in training, accumulators were computed as below steps:
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(average_accumulates,
+                            AverageAccumulatesInferShapeFunctor,
+                            PD_INFER_META(phi::AverageAccumulatesMeta));
+
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(
     average_accumulates,
     ops::AverageAccumulatesOp,

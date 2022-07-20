@@ -434,6 +434,31 @@ void AucInferMeta(const MetaTensor& input,
   }
 }
 
+void AverageAccumulatesMeta(const MetaTensor& param,
+                            const MetaTensor& in_sum_1,
+                            const MetaTensor& in_sum_2,
+                            const MetaTensor& in_sum_3,
+                            const MetaTensor& in_num_accumulates,
+                            const MetaTensor& in_old_num_accumulates,
+                            const MetaTensor& in_num_updates,
+                            float average_window,
+                            int64_t max_average_window,
+                            int64_t min_average_window,
+                            MetaTensor* out_sum_1,
+                            MetaTensor* out_sum_2,
+                            MetaTensor* out_sum_3,
+                            MetaTensor* out_num_accumulates,
+                            MetaTensor* out_old_num_accumulates,
+                            MetaTensor* out_num_updates){
+  auto in_dim = param.dims();
+  out_sum_1->set_dims(in_dim);      
+  out_sum_2->set_dims(in_dim);
+  out_sum_3->set_dims(in_dim);
+  out_num_accumulates->set_dims({1});
+  out_old_num_accumulates->set_dims({1});
+  out_num_updates->set_dims({1});                      
+}
+
 void BatchNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
                         const MetaTensor& bias,
