@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cmath>
 #include <string>
 
 #include "gtest/gtest.h"
@@ -54,7 +55,7 @@ namespace paddle {
 namespace jit {
 using DenseTensor = phi::DenseTensor;
 
-std::vector<DenseTensor> PrepareInputs(const phi::Place& place) {
+std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
 
@@ -63,7 +64,7 @@ std::vector<DenseTensor> PrepareInputs(const phi::Place& place) {
   t.mutable_data<float>(place);
   phi::funcs::set_constant(dev_ctx, &t, 2.);
 
-  return {t};
+  return utils::ToTensors({t});
 }
 
 TEST(CpuLayerTest, Construct) {
@@ -76,43 +77,42 @@ TEST(CpuLayerTest, Construct) {
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
-  auto pow_out = paddle::experimental::pow(utils::ToTensors(outs)[0],
-                                           paddle::experimental::Scalar(2));
-  out_data = utils::ToDenseTensors({pow_out})[0].data<float>();
-  EXPECT_NEAR(out_data[0], 0.02194316 * 0.02194316, 1e-6);
-
   auto func = layer.Function("infer");
   outs = (*func)(inputs);
   out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
+  auto pow_out =
+      paddle::experimental::pow(outs[0], paddle::experimental::Scalar(2));
+  out_data = pow_out.data<float>();
+  EXPECT_NEAR(out_data[0], pow(1.41562390, 2.0), 1e-6);
 }
 
 #if defined(PADDLE_WITH_CUDA)
 TEST(GpuLayerTest, Construct) {
   auto place = phi::GPUPlace();
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(place);
-  const auto* dev_ctx_gpu = static_cast<const phi::GPUContext*>(&dev_ctx);
-  DenseTensor cpu_dense_tensor;
 
   std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
   auto inputs = PrepareInputs(place);
 
   auto outs = layer.forward(inputs);
-  auto out_dense_tensor = outs[0];
-  phi::Copy(
-      *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
-  auto out_data = cpu_dense_tensor.data<float>();
+  auto gpu_tensor = outs[0];
+  auto cpu_tensor =
+      paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
+  auto out_data = cpu_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
   outs = (*func)(inputs);
-  out_dense_tensor = outs[0];
-  phi::Copy(
-      *dev_ctx_gpu, out_dense_tensor, phi::CPUPlace(), true, &cpu_dense_tensor);
-  out_data = cpu_dense_tensor.data<float>();
+  gpu_tensor = outs[0];
+  cpu_tensor = paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
+  out_data = cpu_tensor.data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
+
+  auto sqrt_out = paddle::experimental::sqrt(outs[0]);
+  cpu_tensor = paddle::experimental::copy_to(sqrt_out, phi::CPUPlace(), true);
+  out_data = cpu_tensor.data<float>();
+  EXPECT_NEAR(out_data[0], sqrt(1.41562390), 1e-6);
 }
 #endif
 
