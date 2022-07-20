@@ -35,7 +35,6 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};
   valid = valid && (dtype != DataType::UNDEFINED);
-  valid = valid && (layout != DataLayout::UNDEFINED);
   valid = valid && (is_scalar || product(dims) >= 0);
   return valid;
 }
