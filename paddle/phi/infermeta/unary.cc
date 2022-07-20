@@ -891,6 +891,43 @@ void InferMetaFromVecValue(const MetaTensor& x,
   }
 }
 
+void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto input_dims = x.dims();
+  int64_t input_rank = input_dims.size();
+  PADDLE_ENFORCE_GE(
+      input_rank,
+      2,
+      errors::InvalidArgument(
+          "The dimension of Input(Input) is expected to be no less than 2. "
+          "But received: Input(Input)'s dimension = %d, shape = [%s].",
+          input_rank,
+          input_dims));
+  for (int64_t i = 0; i < input_rank; ++i) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[i] == -1) || (input_dims[i] > 0),
+        true,
+        errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but received %d. Input's shape is [%s].",
+            input_dims[i],
+            input_dims));
+  }
+  if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
+    PADDLE_ENFORCE_EQ(input_dims[input_rank - 2],
+                      input_dims[input_rank - 1],
+                      errors::InvalidArgument(
+                          "The last two dimensions are expected to be equal. "
+                          "But received: %d and %d; "
+                          "Input(Input)'s shape = [%s].",
+                          input_dims[input_rank - 2],
+                          input_dims[input_rank - 1],
+                          input_dims));
+  }
+
+  out->set_dims(input_dims);
+  out->share_lod(x);
+}
+
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(phi::make_ddim({1}));
   out->set_dtype(DataType::BOOL);

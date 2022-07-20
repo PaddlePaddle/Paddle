@@ -133,6 +133,8 @@ void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);
 
+void InverseInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
