@@ -315,6 +315,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
                          : platform::is_npu_place(dst_place) ? 1
+                         : platform::is_ipu_place(dst_place) ? 3
                          : platform::is_xpu_place(dst_place) ? 2
                                                              : -1;
     attr_map = {{"dst_place_type", dst_place_type}};

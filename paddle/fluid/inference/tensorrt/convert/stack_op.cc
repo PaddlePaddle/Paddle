@@ -48,12 +48,12 @@ class StackOpConverter : public OpConverter {
       inputs[i] = engine_->GetITensor(input[i]);
       if (op_desc.HasAttr("out_threshold")) {
         float out_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+            PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         engine_->SetTensorDynamicRange(inputs[i], out_scale);
       }
     }
 
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis < 0) {
       axis = axis + inputs[0]->getDimensions().nbDims + 1;
     }

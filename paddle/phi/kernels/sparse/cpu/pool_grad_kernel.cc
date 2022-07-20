@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -25,13 +25,13 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT = int>
-void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
-                          const SparseCooTensor& x,
-                          const DenseTensor& rulebook,
-                          const SparseCooTensor& out,
-                          const SparseCooTensor& out_grad,
-                          const std::vector<int>& kernel_sizes,
-                          SparseCooTensor* x_grad) {
+void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
+                             const SparseCooTensor& x,
+                             const DenseTensor& rulebook,
+                             const SparseCooTensor& out,
+                             const SparseCooTensor& out_grad,
+                             const std::vector<int>& kernel_sizes,
+                             SparseCooTensor* x_grad) {
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   const int channels = x.dims()[4];
   int rulebook_len = rulebook.dims()[1];
@@ -75,16 +75,16 @@ void MaxPoolGradCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MaxPoolGradKernel(const Context& dev_ctx,
-                       const SparseCooTensor& x,
-                       const DenseTensor& rulebook,
-                       const SparseCooTensor& out,
-                       const SparseCooTensor& out_grad,
-                       const std::vector<int>& kernel_sizes,
-                       SparseCooTensor* x_grad) {
+void MaxPoolCooGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const DenseTensor& rulebook,
+                          const SparseCooTensor& out,
+                          const SparseCooTensor& out_grad,
+                          const std::vector<int>& kernel_sizes,
+                          SparseCooTensor* x_grad) {
   PD_VISIT_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolGradCPUKernel", ([&] {
-        MaxPoolGradCPUKernel<T, data_t>(
+      x.non_zero_indices().dtype(), "MaxPoolCooGradCPUKernel", ([&] {
+        MaxPoolCooGradCPUKernel<T, data_t>(
             dev_ctx, x, rulebook, out, out_grad, kernel_sizes, x_grad);
       }));
 }
@@ -92,10 +92,10 @@ void MaxPoolGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_maxpool_grad,
+PD_REGISTER_KERNEL(maxpool_coo_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::MaxPoolGradKernel,
+                   phi::sparse::MaxPoolCooGradKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);

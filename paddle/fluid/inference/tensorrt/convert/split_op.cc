@@ -33,13 +33,13 @@ class SplitOpConverter : public OpConverter {
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
 
     std::vector<int> output_lengths =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
     int num = 0;
     if (op_desc.HasAttr("num")) {
-      num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
+      num = PADDLE_GET_CONST(int, op_desc.GetAttr("num"));
     }
     nvinfer1::ITensor* shape_tensor = nullptr;
     if (engine_->with_dynamic_shape()) {
