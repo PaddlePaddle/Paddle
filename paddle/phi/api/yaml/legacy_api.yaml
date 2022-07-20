@@ -689,6 +689,17 @@
     func : expm1
   backward : expm1_grad
 
+- api : exponential_
+  args : (Tensor x, float lambda)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : exponential
+  inplace : (x -> out)
+  backward : exponential__grad
+
 - api : eye
   args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)

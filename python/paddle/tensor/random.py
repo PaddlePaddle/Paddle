@@ -1052,7 +1052,9 @@ def exponential_(x, lam=1.0, name=None):
             #  [0.72520673, 0.45208144, 0.30234432]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_exponential_(x, lam)
+    elif paddle.in_dynamic_mode():
         return _C_ops.exponential_(x, "lambda", lam)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
