@@ -29,6 +29,8 @@ class SkipLayerNormOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert fused skip layernorm op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
+    auto* x_var_desc = block_->FindVar(op_desc.Input("X")[0]);
+    const auto x_shape = x_var_desc->GetShape();
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
@@ -107,7 +109,10 @@ class SkipLayerNormOpConverter : public OpConverter {
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
-        int ld = input1->getDimensions().d[2];  // hidden dimension
+        // Don't acquire ld from input1->getDimensions().d[2], because we can't
+        // guarantee that TRT having infered it correctly when this line of code
+        // is executed
+        int ld = x_shape[2];  // hidden dimension
         PADDLE_ENFORCE_GT(ld,
                           0,
                           platform::errors::InvalidArgument(
