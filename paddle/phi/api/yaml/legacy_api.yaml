@@ -2281,6 +2281,7 @@
   kernel :
     func : yolov3_loss
     data_type : x
+  optional : gt_score
   backward : yolov3_loss_grad
 
 - api : zeros_like

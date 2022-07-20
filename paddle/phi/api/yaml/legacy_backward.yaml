@@ -2250,3 +2250,4 @@
     param : [x, gt_box, gt_label, gt_score]
   kernel :
     func : yolov3_loss_grad
+  optional : gt_score
