@@ -90,6 +90,7 @@ class TestExponentialAPI(unittest.TestCase):
         x.stop_gradient = False
         y = 2 * x
         y.exponential_(0.5)
+        print(y)
         self.assertTrue(np.min(y.numpy()) >= 0)
 
         y.backward()
