@@ -820,6 +820,15 @@
     func : FillDiagonalGradInferMeta
   kernel :
     func : fill_diagonal_grad
+
+- backward_api : fill_diagonal_tensor_grad
+  forward : fill_diagonal_tensor (Tensor x, Tensor y, int64_t offset, int dim1, int dim2) -> Tensor(out)
+  args : (Tensor out_grad, int64_t offset, int dim1, int dim2)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FillDiagonalTensorGradInferMeta
+  kernel :
+    func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
 - backward_api : flatten_grad

@@ -874,6 +874,16 @@
   inplace : (x -> out)
   backward : fill_diagonal_grad
 
+- api : fill_diagonal_tensor
+  args : (Tensor x, Tensor y, int64_t offset, int dim1, int dim2)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalTensorInferMeta
+  kernel :
+    func : fill_diagonal_tensor
+  inplace : (x -> out)
+  backward : fill_diagonal_tensor_grad
+
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)

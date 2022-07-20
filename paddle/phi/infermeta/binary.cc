@@ -1174,6 +1174,16 @@ void ExpandAsInferMeta(const MetaTensor& x,
 #undef MAX_RANK_SUPPORTED
 }
 
+void FillDiagonalTensorInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 int64_t offset,
+                                 int dim1,
+                                 int dim2,
+                                 MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,

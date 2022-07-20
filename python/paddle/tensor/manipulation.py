@@ -888,10 +888,17 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                            'offset', offset)
-    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                       'offset', offset)
+        if in_dygraph_mode():
+            return _C_ops.final_state_fill_diagonal_tensor_(
+                x, y, offset, dim1, dim2)
+        else:
+            return _C_ops.fill_diagonal_tensor_(x, y, 'offset', offset, 'dim1',
+                                                dim1, 'dim2', dim2)
+    if in_dygraph_mode():
+        return _C_ops.final_state_fill_diagonal_tensor(x, y, offset, dim1, dim2)
+    else:
+        return _C_ops.fill_diagonal_tensor(x, y, 'offset', offset, 'dim1', dim1,
+                                           'dim2', dim2)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):

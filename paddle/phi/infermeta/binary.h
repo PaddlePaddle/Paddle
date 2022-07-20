@@ -182,6 +182,13 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
 
+void FillDiagonalTensorInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 int64_t offset,
+                                 int dim1,
+                                 int dim2,
+                                 MetaTensor* out);
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
