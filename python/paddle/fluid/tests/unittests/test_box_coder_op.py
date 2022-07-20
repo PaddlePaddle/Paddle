@@ -282,11 +282,11 @@ class TestBoxCoderAPI(unittest.TestCase):
         prior_box_var_dy = paddle.to_tensor(self.prior_box_var_np)
         target_box_dy = paddle.to_tensor(self.target_box_np)
 
-        boxes_dy = ops.box_coder(prior_box=prior_box_dy,
-                                 prior_box_var=prior_box_var_dy,
-                                 target_box=target_box_dy,
-                                 code_type="decode_center_size",
-                                 box_normalized=False)
+        boxes_dy = paddle.vision.ops.box_coder(prior_box=prior_box_dy,
+                                               prior_box_var=prior_box_var_dy,
+                                               target_box=target_box_dy,
+                                               code_type="decode_center_size",
+                                               box_normalized=False)
         boxes_dy_np = boxes_dy.numpy()
 
         self.assertTrue(np.array_equal(boxes_np, boxes_dy_np))
