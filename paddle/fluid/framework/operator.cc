@@ -1274,6 +1274,43 @@ bool OperatorWithKernel::SupportNPU() const {
   }
 }
 
+bool OperatorWithKernel::SupportXPU() const {
+#ifdef PADDLE_WITH_XPU
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::XPU;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [this](OpKernelMap::const_reference kern_pair) {
+            return platform::is_xpu_place(kern_pair.first.place_) &&
+                   paddle::platform::is_xpu_support_op(type_,
+                                                       kern_pair.first) &&
+                   !paddle::platform::is_in_xpu_black_list(type_);
+          });
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "should not call OperatorWithKernel::SupportXPU() when not compiled with "
+      "XPU support."));
+  return false;
+#endif
+}
+
 bool OperatorWithKernel::SupportsMKLDNN(
     const proto::VarType::Type data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
@@ -1733,8 +1770,9 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
             << "Device index is only supported under pipeline parallelism, "
             << "so it will be ignored.";
       }
-      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
-      // will be executed and a warning will be given at the same time.
+      // when the Op that does not have GPUKernel is assigned to GPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
       expected_kernel_key.place_ = platform::CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (SupportGPU()) {
@@ -1742,6 +1780,25 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
         expected_kernel_key.place_ = dev_ctx.GetPlace();
       }
 #endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    } else if (Attr<std::string>("op_device").find("npu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
+      // when the Op that does not have NPUKernel is assigned to NPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      expected_kernel_key.place_ = platform::CPUPlace();
 #ifdef PADDLE_WITH_ASCEND_CL
       if (SupportNPU()) {
         auto& dev_ctx = ctx.device_context();
@@ -1751,7 +1808,32 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       if (platform::is_cpu_place(expected_kernel_key.place_)) {
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << type_
-            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+    } else if (Attr<std::string>("op_device").find("xpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
+      // when the Op that does not have XPUKernel is assigned to XPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#ifdef PADDLE_WITH_XPU
+      if (SupportXPU()) {
+        auto& dev_ctx = ctx.device_context();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
       }
     }
   }
