@@ -42,8 +42,14 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                 for dtype in [5, 2, 3]:
                     for str_value in ["2", "23", "-1"]:
                         self.num_input = num_input
+                        value = float(str_value)
+                        if np.random.choice([True, False]):
+                            str_value = str_value
+                        else:
+                            str_value = ""
                         dics = [{
                             "str_value": str_value,
+                            "value": value,
                             "shape": shape,
                             "dtype": dtype
                         }, {
