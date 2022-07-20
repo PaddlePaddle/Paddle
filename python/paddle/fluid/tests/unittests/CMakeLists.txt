@@ -183,6 +183,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
   list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
   list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+  list(REMOVE_ITEM TEST_OPS test_collective_allgather_object_api)
   list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
   list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
   list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
@@ -1599,6 +1600,8 @@ endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_collective_allgather_object_api PROPERTIES TIMEOUT
+                                                                       120)
   set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
   set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
@@ -1629,6 +1632,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
       test_new_group_api
       test_collective_broadcast_api
       test_collective_allgather_api
+      test_collective_allgather_object_api
       test_collective_alltoall_api
       test_collective_global_gather
       test_collective_global_scatter
