@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+from re import X
 
 import unittest
 import numpy as np
@@ -102,6 +103,15 @@ class TestBucketizeAPI(unittest.TestCase):
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             self.assertRaises(ValueError, paddle.bucketize, self.x,
                               sorted_sequence)
+
+    def test_empty_input_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            sorted_sequence = paddle.to_tensor(self.sorted_sequence)
+            x = paddle.to_tensor(self.x)
+            self.assertRaises(ValueError, paddle.bucketize, None,
+                              sorted_sequence)
+            self.assertRaises(AttributeError, paddle.bucketize, x, None)
 
 
 if __name__ == "__main__":

@@ -964,7 +964,7 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
                              'paddle.searchsorted')
     if sorted_sequence.dim() != 1:
         raise ValueError(
-            f"boundaries tensor must be 1 dimension, but got dim {sorted_sequence.dim()}"
+            f"sorted_sequence tensor must be 1 dimension, but got dim {sorted_sequence.dim()}"
         )
     return searchsorted(sorted_sequence, x, out_int32, right, name)
 
