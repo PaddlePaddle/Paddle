@@ -1853,7 +1853,7 @@ def prior_box(input,
 		# [6L, 9L, 1L, 4L]
 
     """
-    return paddle.version.ops.prior_box(
+    return paddle.vision.ops.prior_box(
         input=input,
         image=image,
         min_sizes=min_sizes,

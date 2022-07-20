@@ -493,7 +493,7 @@ def prior_box(input,
 
             input = paddle.rand([2, 3, 6, 9])
             image = paddle.rand([2, 3, 9, 12])
-            box, var = paddle.version.ops.prior_box(
+            box, var = paddle.vision.ops.prior_box(
                 input=input,
                 image=image,
                 min_sizes=[100.],
