@@ -2075,6 +2075,16 @@
     func : swish
   backward : swish_grad
 
+# sync_batch_norm
+- api : sync_batch_norm
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm
+  backward : sync_batch_norm_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
