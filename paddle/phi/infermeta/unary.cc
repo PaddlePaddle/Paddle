@@ -264,6 +264,18 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
+  PADDLE_ENFORCE_GT(
+      max_norm,
+      0,
+      phi::errors::InvalidArgument("max_norm should be greater than 0. "
+                                   "Received max_norm is %f.",
+                                   max_norm));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
