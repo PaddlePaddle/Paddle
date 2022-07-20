@@ -31,10 +31,6 @@ class TestCustomKernelDot(unittest.TestCase):
             cur_dir, sys.executable)
         os.system(cmd)
 
-        # set environment for loading and registering compiled custom kernels
-        # only valid in current process
-        os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
-
     def test_custom_kernel_dot_run(self):
         # test dot run
         x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
@@ -51,9 +47,6 @@ class TestCustomKernelDot(unittest.TestCase):
             np.array_equal(out.numpy(), result),
             "custom kernel dot out: {},\n numpy dot out: {}".format(
                 out.numpy(), result))
-
-    def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
 
 
 class TestCustomKernelDotC(unittest.TestCase):
@@ -67,10 +60,6 @@ class TestCustomKernelDotC(unittest.TestCase):
             cur_dir, sys.executable)
         os.system(cmd)
 
-        # set environment for loading and registering compiled custom kernels
-        # only valid in current process
-        os.environ['CUSTOM_DEVICE_ROOT'] = cur_dir
-
     def test_custom_kernel_dot_run(self):
         # test dot run
         x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
@@ -87,9 +76,6 @@ class TestCustomKernelDotC(unittest.TestCase):
             np.array_equal(out.numpy(), result),
             "custom kernel dot out: {},\n numpy dot out: {}".format(
                 out.numpy(), result))
-
-    def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
 
 
 if __name__ == '__main__':

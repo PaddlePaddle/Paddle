@@ -46,9 +46,17 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
     return empty_kernel;
   }
   auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
+
   if (kernel_iter == iter->second.end()) {
     return empty_kernel;
   }
+
   return kernel_iter->second;
 }
 

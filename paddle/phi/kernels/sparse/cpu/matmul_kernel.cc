@@ -22,7 +22,7 @@ namespace sparse {
 
 // TODO(zhouwei25): implement CPU kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
-void CsrDenseMatmulKernel(const Context& dev_ctx,
+void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
@@ -32,7 +32,7 @@ void CsrDenseMatmulKernel(const Context& dev_ctx,
 
 // TODO(zhouwei25): implement CPU kernel of " DENSE @ DENSE * CSR_MASK -> CSR"
 template <typename T, typename Context>
-void CsrMaskedMatmulKernel(const Context& dev_ctx,
+void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,
@@ -44,18 +44,18 @@ void CsrMaskedMatmulKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(csr_dense_matmul,
+PD_REGISTER_KERNEL(matmul_csr_dense,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrDenseMatmulKernel,
+                   phi::sparse::MatmulCsrDenseKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-PD_REGISTER_KERNEL(csr_masked_matmul,
+PD_REGISTER_KERNEL(masked_matmul_csr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::sparse::CsrMaskedMatmulKernel,
+                   phi::sparse::MaskedMatmulCsrKernel,
                    float,
                    double) {}

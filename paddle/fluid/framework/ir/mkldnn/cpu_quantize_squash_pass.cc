@@ -179,9 +179,9 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
 
     auto* next_op_desc = next_op->Op();
     float dequant_scale =
-        BOOST_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"));
+        PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"));
     float quant_scale =
-        BOOST_GET_CONST(float, quant_op->Op()->GetAttr("Scale"));
+        PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Scale"));
     float dequant_shift = dequant_op->Op()->GetAttrIfExists<float>("Shift");
     float quant_shift = quant_op->Op()->GetAttrIfExists<float>("Shift");
     PADDLE_ENFORCE_NE(
@@ -275,7 +275,7 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
                                      requant_in->Name()));
 
       float requant_scale_out =
-          BOOST_GET_CONST(float, requant_op->Op()->GetAttr("Scale_out"));
+          PADDLE_GET_CONST(float, requant_op->Op()->GetAttr("Scale_out"));
       any_op->Op()->SetAttr("Scale_out", requant_scale_out);
       any_op->Op()->SetOutput(any_op_output_name,
                               std::vector<std::string>({requant_out->Name()}));
@@ -488,10 +488,10 @@ void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, dequant_scale_pattern);
 
     if (dequant_out->outputs.size() == 1 &&
-        BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")) == 0.0f) {
+        PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias")) == 0.0f) {
       auto dequant_scale = dequant_op->Op()->GetAttrIfExists<float>("Scale");
       float scale_scale =
-          BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
 
       PADDLE_ENFORCE_GT(dequant_scale,
                         0.0f,
@@ -540,10 +540,10 @@ void CPUQuantizeSquashPass::ScaleQuantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(quant_op, quant_op, scale_quant_pattern);
 
     if (quant_in->outputs.size() == 1 &&
-        BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")) == 0.0f) {
+        PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias")) == 0.0f) {
       auto quant_scale = quant_op->Op()->GetAttrIfExists<float>("Scale");
       float scale_scale =
-          BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
+          PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
 
       PADDLE_ENFORCE_GT(
           quant_scale,

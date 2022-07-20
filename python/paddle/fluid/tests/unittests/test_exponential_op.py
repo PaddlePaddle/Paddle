@@ -18,13 +18,13 @@ import numpy as np
 from op_test import OpTest
 import os
 
-paddle.enable_static()
 paddle.seed(100)
 
 
 class TestExponentialOp1(OpTest):
 
     def setUp(self):
+        paddle.enable_static()
         self.op_type = "exponential"
         self.config()
 
@@ -87,8 +87,14 @@ class TestExponentialAPI(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.full([10, 10], -1., dtype='float32')
-        x.exponential_(0.5)
-        self.assertTrue(np.min(x.numpy()) >= 0)
+        x.stop_gradient = False
+        y = 2 * x
+        y.exponential_(0.5)
+        print(y)
+        self.assertTrue(np.min(y.numpy()) >= 0)
+
+        y.backward()
+        self.assertTrue(np.array_equal(x.grad.numpy(), np.zeros([10, 10])))
         paddle.enable_static()
 
     def test_fixed_random_number(self):

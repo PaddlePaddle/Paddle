@@ -27,6 +27,117 @@ import utils
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
     (('matmul', paddle.matmul,
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'), ))
+class TestWithoutProgramGuard(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
+
+    def test_forward_grad_without_program_guard(self):
+
+        def with_program_guard():
+            paddle.incubate.autograd.enable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                ys_grad = paddle.incubate.autograd.forward_grad(
+                    ys, static_xs, static_v)
+                paddle.incubate.autograd.prim2orig(mp.block(0))
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        def without_program_guard():
+            paddle.incubate.autograd.enable_prim()
+            feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                self.xs, self.v, stop_gradient=False)
+            ys = self.fun(*static_xs) if isinstance(
+                static_xs, typing.Sequence) else self.fun(static_xs)
+            ys_grad = paddle.incubate.autograd.forward_grad(
+                ys, static_xs, static_v)
+            sp = paddle.fluid.framework.default_startup_program()
+            mp = paddle.fluid.framework.default_main_program()
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        expected = with_program_guard()
+        actual = without_program_guard()
+        self.assertEqual(type(actual), type(expected))
+        np.testing.assert_allclose(np.concatenate(actual),
+                                   np.concatenate(expected),
+                                   rtol=self._rtol,
+                                   atol=self._atol)
+
+    def test_grad_without_program_guard(self):
+
+        def with_program_guard():
+            paddle.incubate.autograd.enable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                xs_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
+                paddle.incubate.autograd.prim2orig(mp.block(0))
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=xs_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        def without_program_guard():
+            paddle.incubate.autograd.enable_prim()
+            feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                self.xs, self.v, stop_gradient=False)
+            ys = self.fun(*static_xs) if isinstance(
+                static_xs, typing.Sequence) else self.fun(static_xs)
+            xs_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
+            sp = paddle.fluid.framework.default_startup_program()
+            mp = paddle.fluid.framework.default_main_program()
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=xs_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        expected = with_program_guard()
+        actual = without_program_guard()
+        for i, j in zip(actual, expected):
+            self.assertEqual(type(i), type(j))
+            np.testing.assert_allclose(np.concatenate(i),
+                                       np.concatenate(j),
+                                       rtol=self._rtol,
+                                       atol=self._atol)
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+    (('matmul', paddle.matmul,
       (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
      ('multiply', paddle.multiply,
       (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
@@ -161,7 +272,7 @@ class TestGrad(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup)
         outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.allclose(outs, result)
+        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
         paddle.incubate.autograd.disable_prim()
 
     def test_fourth_order(self):
@@ -196,7 +307,43 @@ class TestGrad(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup)
         outs = exe.run(main, feed=feed, fetch_list=fetch_list)
-        np.allclose(outs, result)
+        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
+        paddle.incubate.autograd.disable_prim()
+
+    def test_fifth_order(self):
+        paddle.incubate.autograd.enable_prim()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
+            x2 = paddle.multiply(x, x)
+            x3 = paddle.multiply(x2, x)
+            x4 = paddle.multiply(x3, x)
+            x5 = paddle.multiply(x4, x)
+            x6 = paddle.multiply(x5, x)
+            out = x6 + x5
+
+            grad1, = paddle.incubate.autograd.grad([out], [x])
+            grad2, = paddle.incubate.autograd.grad([grad1], [x])
+            grad3, = paddle.incubate.autograd.grad([grad2], [x])
+            grad4, = paddle.incubate.autograd.grad([grad3], [x])
+            grad5, = paddle.incubate.autograd.grad([grad4], [x])
+
+            paddle.incubate.autograd.prim2orig()
+
+        feed = {
+            x.name: np.array([2.]).astype('float32'),
+        }
+        fetch_list = [grad5.name]
+        result = [np.array([1560.0])]
+
+        place = paddle.CPUPlace()
+        if paddle.device.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(startup)
+        outs = exe.run(main, feed=feed, fetch_list=fetch_list)
+        np.testing.assert_allclose(outs, result, rtol=1e-5, atol=1e-5)
         paddle.incubate.autograd.disable_prim()
 
     def test_disable_prim(self):

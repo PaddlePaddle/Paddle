@@ -205,8 +205,6 @@ endif()
 # Temporally disable test_deprecated_decorator
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
 
-list(REMOVE_ITEM TEST_OPS test_tensordot)
-
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
@@ -1419,7 +1417,7 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
-#set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
+set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_save_load PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1716,3 +1714,10 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
+
+py_test_modules(
+  test_add_reader_dependency_for_interpretercore MODULES
+  test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(test_add_reader_dependency_for_interpretercore
+                     PROPERTIES TIMEOUT 120)
