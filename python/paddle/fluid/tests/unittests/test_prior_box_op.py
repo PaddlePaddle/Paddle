@@ -46,9 +46,6 @@ class TestPriorBoxOp(OpTest):
 
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
-    def test_check_output(self):
-        self.check_output()
-
     def setUp(self):
         self.op_type = "prior_box"
         self.set_data()

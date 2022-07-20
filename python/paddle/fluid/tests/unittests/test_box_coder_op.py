@@ -105,9 +105,6 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 class TestBoxCoderOp(OpTest):
 
-    def test_check_output(self):
-        self.check_output()
-
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
@@ -131,9 +128,6 @@ class TestBoxCoderOp(OpTest):
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
-
-    def test_check_output(self):
-        self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -159,9 +153,6 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 class TestBoxCoderOpWithLoD(OpTest):
 
-    def test_check_output(self):
-        self.check_output()
-
     def setUp(self):
         self.op_type = "box_coder"
         lod = [[10, 20, 20]]
@@ -183,9 +174,6 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
-
-    def test_check_output(self):
-        self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -213,9 +201,6 @@ class TestBoxCoderOpWithAxis(OpTest):
 
 
 class TestBoxCoderOpWithVariance(OpTest):
-
-    def test_check_output(self):
-        self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
