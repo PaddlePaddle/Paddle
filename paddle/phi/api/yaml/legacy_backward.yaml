@@ -720,6 +720,15 @@
     func : expm1_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : exponential__grad
+  forward : exponential_ (Tensor x, float lambda) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  inplace : (out_grad -> x_grad)
+
 - backward_api : flatten_grad
   forward : flatten(Tensor x, int start_axis, int stop_axis) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
