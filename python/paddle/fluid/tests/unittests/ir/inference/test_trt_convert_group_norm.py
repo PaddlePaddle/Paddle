@@ -43,7 +43,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         for batch in [1, 2, 4]:
             for group in [1, 4, 32]:
                 for epsilon in [0.1, 0.7]:
-                    for data_layout in ['NCHW', 'NHWC']:
+                    for data_layout in ['NCHW']:
                         for i in [0, 1]:
                             dics = [{
                                 "epsilon": epsilon,
@@ -147,7 +147,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         )
 
     def test(self):
-        self.add_skip_trt_case()
+        #self.add_skip_trt_case()
         self.run_test()
 
 

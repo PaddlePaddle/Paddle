@@ -8,6 +8,7 @@ list(
   gelu_op_plugin.cu
   pool_op_plugin.cu
   swish_op_plugin.cu
+  group_norm_op_plugin.cu
   layer_norm_op_plugin.cu
   instance_norm_op_plugin.cu
   emb_eltwise_layernorm_plugin.cu

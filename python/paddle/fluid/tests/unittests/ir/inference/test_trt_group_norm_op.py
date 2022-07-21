@@ -40,8 +40,8 @@ class TRTGroupNormTest(InferencePassTest):
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
         self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam(
             #//TODO wangbojun why data in dynamic shape param all share same size?
-            {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]},
-            {'data': [1, 512, 12, 12]}, False)
+            {'data': [1, 16, 32, 32]}, {'data': [4, 64, 128, 64]},
+            {'data': [2, 32, 64, 64]}, False)
         self.fetch_list = [out]
 
     def append_group_norm(self, data):

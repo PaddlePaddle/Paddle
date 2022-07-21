@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +33,7 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op";
+    VLOG(3) << "@@ convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -59,19 +60,37 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
-
+    
     if(engine_->with_dynamic_shape()){
-        //TODO
+
+        //TODO wang bojun PADDLE_ENFORCE_NE CHECK
+        int gn_num= input_itensor->getDimensions().d[0]*groups;
+        std::vector<int64_t> mean_shape(gn_num);
+        std::vector<int64_t> variance_shape(gn_num);
+        plugin::GroupNormPluginDynamic* plugin =
+            new plugin::GroupNormPluginDynamic(
+                static_cast<const float*>(scale_weights.get().values),
+                scale_weights.get().count,
+                static_cast<const float*>(bias_weights.get().values),
+                bias_weights.get().count,
+                groups,
+                epsilon,
+                mean_shape,
+                variance_shape);
+        nvinfer1::ILayer* groupnorm_layer=engine_->AddDynamicPlugin(&input_itensor,1,plugin);
+        auto output_name = op_desc.Output("Y")[0];
+        RreplenishLayerAndOutput(
+            groupnorm_layer,"group_norm",{output_name}, test_mode);
     }else{
         nvinfer1::Dims scale_nv_dims;
         nvinfer1::Dims bias_nv_dims;
         scale_nv_dims.nbDims = scale_dims.size();
         bias_nv_dims.nbDims = bias_dims.size();
         for (int i = 0; i < scale_dims.size(); i++) {
-        scale_nv_dims.d[i] = scale_dims.at(i);
+            scale_nv_dims.d[i] = scale_dims.at(i);
         }
         for (int i = 0; i < bias_dims.size(); i++) {
-        bias_nv_dims.d[i] = bias_dims.at(i);
+            bias_nv_dims.d[i] = bias_dims.at(i);
         }
         auto* scale_layer = TRT_ENGINE_ADD_LAYER(
             engine_, Constant, scale_nv_dims, scale_weights.get());

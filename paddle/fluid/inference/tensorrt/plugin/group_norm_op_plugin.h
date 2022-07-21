@@ -1,3 +1,17 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -7,6 +21,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
     class GroupNormPluginDynamic : public DynamicPluginTensorRT{
         public:
         GroupNormPluginDynamic(
@@ -16,12 +31,10 @@ namespace plugin {
             const int bias_num,
             float eps,
             int groups,
-            const std::string& data_layout_str,
             std::vector<int64_t> mean_shape,
             std::vector<int64_t> variance_shape)
         : groups_(groups),
           eps_(eps),
-          data_layout_str_(data_layout_str),
           mean_shape_(mean_shape),
           variance_shape_(variance_shape) {
             bias_.resize(bias_num);
@@ -35,7 +48,6 @@ namespace plugin {
             DeserializeValue(&serialData,&serialLength,&bias_);
             DeserializeValue(&serialData,&serialLength,&groups_);
             DeserializeValue(&serialData,&serialLength,&eps_);
-            DeserializeValue(&serialData,&serialLength,&data_layout_str_);
             DeserializeValue(&serialData,&serialLength,&mean_shape_);
             DeserializeValue(&serialData,&serialLength,&variance_shape_);
         }
@@ -106,6 +118,7 @@ namespace plugin {
             TRT_NOEXCEPT override;
 
         void destroy() TRT_NOEXCEPT override { delete this; }
+        //void terminate() TRT_NOEXCEPT override;
 
         private:
         std::vector<float> scale_;
@@ -119,7 +132,7 @@ namespace plugin {
         std::vector<int64_t> mean_shape_;
         std::vector<int64_t> variance_shape_;
     };
-    class GroupNormPluginDynamicCreater : public TensorRTPluginCreator{
+    class GroupNormPluginDynamicCreator : public TensorRTPluginCreator{
         public:
         const char* getPluginName() const TRT_NOEXCEPT override {
             return "groupnorm_plugin_dynamic";
@@ -127,14 +140,42 @@ namespace plugin {
         const char* getPluginVersion() const TRT_NOEXCEPT override{
             return "1";
         }
+        /*
+        const nvinfer1::PluginFieldCollection * getFieldNames() TRT_NOEXCEPT override {
+            return &field_collection_;
+        }
+        */
+
+        nvinfer1::IPluginV2* createPlugin(const char* name,
+                                          const nvinfer1::PluginFieldCollection* fc)
+            TRT_NOEXCEPT override {
+                return nullptr;
+            }
+
         nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                                const void* serial_data,
                                                size_t serial_length) TRT_NOEXCEPT override 
-            {
-                return new GroupNormPluginDynamic(serial_data,serial_length);
-            }
+        {
+            return new GroupNormPluginDynamic(serial_data,serial_length);
+        }
+        /*
+        void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {
+            plugin_namespace_=lib_namespace;
+        }
+        const char* getPluginNamespace() const TRT_NOEXCEPT override {
+            return plugin_namespace_.c_str();
+        }
+        */
+        /*
+        private:
+            std::string plugin_namespace_;
+            std::string plugin_name_;
+            nvinfer1::PluginFieldCollection field_collection_;
+            std::vector<nvinfer1::PluginField> plugin_attributes_;
+            */
+
     };
-    REGISTER_TRT_PLUGIN_V2(GroupNormPluginDynamicCreater);
+    REGISTER_TRT_PLUGIN_V2(GroupNormPluginDynamicCreator);
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

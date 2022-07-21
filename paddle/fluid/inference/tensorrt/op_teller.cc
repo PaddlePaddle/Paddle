@@ -36,6 +36,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 // not -1 failed when dynamic shape mode.
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
+    VLOG(3)<<"@@ insert group norm to teller";
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
@@ -572,15 +573,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto x_shape = x_var_desc->GetShape();
     }
     if (op_type == "group_norm") {
-#if IS_TRT_VERSION_GE(7130) //TODO wangbojun check the verison depends of trt
-#else
-      if (with_dynamic_shape) return false;
-#endif
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
       if (has_attrs == false) return false;
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
-      //TODO wangbojun, add restraction for only NHCW support
+      std::string layout_str=BOOST_GET_CONST(std::string,desc.GetAttr("data_layout"));
+      if (layout_str!="NCHW") return false;
+      VLOG(3)<<"@@group norm tell not false";
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
