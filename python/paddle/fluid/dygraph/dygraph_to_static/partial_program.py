@@ -242,7 +242,7 @@ class PartialProgramLayer:
     @LazyInitialized
     def _infer_program_id(self):
         return _hash_with_id(self._infer_program, self)
-        
+
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
         return _hash_with_id(self._infer_pure_fp16_program, self)
