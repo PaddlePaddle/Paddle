@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid import core
 from paddle.fluid.core import Load
 
 
@@ -39,7 +40,7 @@ class Function():
         self.info = FunctionInfo(function.info())
 
     def __call__(self, *args):
-        return self.function(args)
+        return core.eager.jit_function_call(self.function, args)
 
 
 class FunctionInfo():

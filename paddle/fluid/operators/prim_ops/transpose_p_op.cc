@@ -56,7 +56,7 @@ class TransposePrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     size_t x_rank = x_shape.size();
@@ -101,7 +101,7 @@ class TransposePrimOpShapeInference : public framework::InferShapeBase {
     for (size_t i = 0; i < axis_size; i++) {
       y_shape[i] = x_shape[axis[i]];
     }
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(y_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(y_shape);
   }
 };
 

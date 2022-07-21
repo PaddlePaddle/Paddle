@@ -325,8 +325,8 @@ add_custom_command(
           ${dygraph_api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dygraph_api_source_file_tmp}
           ${dygraph_api_source_file}
-  DEPENDS ${api_yaml_file} ${sparse_api_yaml_file} ${im_api_gen_file}
-          ${api_gen_base} ${api_gen_file}
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${sparse_api_yaml_file}
+          ${im_api_gen_file} ${api_gen_base} ${api_gen_file}
   VERBATIM)
 
 # generate wrapped infermeta
@@ -351,12 +351,12 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_context phi_enforce place init)
+  DEPS phi_backends phi_enforce place init)
 
 cc_library(
   kernel_dispatch
   SRCS kernel_dispatch.cc
-  DEPS phi_tensor_raw phi_context kernel_factory context_pool)
+  DEPS phi_tensor_raw phi_backends kernel_factory context_pool)
 cc_library(
   api_gen_utils
   SRCS api_gen_utils.cc

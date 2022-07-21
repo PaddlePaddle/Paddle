@@ -20,7 +20,7 @@ cc_library(
        xpulib
        device_context
        place
-       phi_xpu_info)
+       phi_backends)
 cc_library(
   xpu_op_list
   SRCS xpu_op_list.cc
