@@ -157,6 +157,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "strided_slice",
+      "rnn",
+      "fill_constant_batch_size_like",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_residual_bias",
       "c_allreduce_sum",
@@ -264,6 +266,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "strided_slice",
+      "rnn",
+      "fill_constant_batch_size_like",
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "preln_residual_bias",
@@ -1245,6 +1249,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           !desc.HasAttr("ends") || !desc.HasAttr("strides")) {
         VLOG(3)
             << "The necessary attributes of the strided_slice operator miss ";
+        return false;
+      }
+    }
+
+    if (op_type == "rnn") {
+      if (desc.HasAttr("mode")) {
+        std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
+        if (mode != "LSTM") return false;
+      }
+    }
+
+    if (op_type == "fill_constant_batch_size_like") {
+      if (!with_dynamic_shape) {
         return false;
       }
     }
