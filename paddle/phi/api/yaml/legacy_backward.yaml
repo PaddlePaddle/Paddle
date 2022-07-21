@@ -1657,6 +1657,22 @@
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : reverse_array_grad
+  forward : reverse_array (Tensor[] x, int[] axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, int[] axis)
+  output : Tensor[](x_grad){out_grad.size()}
+  infer_meta :
+    func : ReverseInferMeta
+  invoke : reverse_array(out_grad, axis)
+
+- backward_api : reverse_grad
+  forward : reverse (Tensor x, int[] axis) -> Tensor(out)
+  args : (Tensor out_grad, int[] axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : ReverseInferMeta
+  invoke : reverse(out_grad, axis)
+
 - backward_api : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
