@@ -223,17 +223,17 @@ void SvdKernel(const Context& dev_ctx,
   auto info = Empty<int, Context>(dev_ctx, {batch_count});
   int* info_ptr = reinterpret_cast<int*>(info.data());
 
-  GesvdjBatched(dev_ctx,
-                batch_count,
-                n,
-                m,
-                std::min(m, n),
-                x_tmp.mutable_data<T>(dev_ctx.GetPlace()),
-                vh_data,
-                u_data,
-                s_data,
-                info_ptr,
-                !full_matrices);
+  GesvdjBatched<T>(dev_ctx,
+                   batch_count,
+                   n,
+                   m,
+                   std::min(m, n),
+                   dev_ctx.template Alloc<T>(&x_tmp),
+                   vh_data,
+                   u_data,
+                   s_data,
+                   info_ptr,
+                   !full_matrices);
 
   auto UT_dim = U->dims();
   std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
