@@ -56,7 +56,9 @@ def train():
 class TestParamsNoGrad(unittest.TestCase):
 
     def test_two_card(self):
-        dist.spawn(train, nprocs=2, gpus='0,1')
+        if paddle.is_compiled_with_cuda() and len(
+                paddle.static.cuda_places()) > 1:
+            dist.spawn(train, nprocs=2, gpus='0,1')
 
 
 if __name__ == '__main__':
