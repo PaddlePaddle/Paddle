@@ -92,6 +92,18 @@
   kernel :
     func : addmm_grad
 
+- backward_api : angle_grad
+  forward : angle (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : angle_grad
+  data_transform:
+    skip_transform : out_grad
+
 - backward_api : argsort_grad
   forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
   args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
@@ -103,6 +115,18 @@
     func : argsort_grad
     data_type : out_grad
   no_need_buffer : x
+
+- backward_api : as_complex_grad
+  forward : as_complex (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : as_real(out_grad)
+
+- backward_api : as_real_grad
+  forward : as_real (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : as_complex(out_grad)
 
 - backward_api : asin_grad
   forward : asin (Tensor x) -> Tensor(out)
@@ -557,6 +581,19 @@
   kernel :
     func : dropout_grad
 
+- backward_api : eig_grad
+  forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
+  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_v]
+  kernel :
+    func : eig_grad
+    data_type : out_v
+  data_transform:
+    skip_transform : out_w, out_w_grad
+
 - backward_api : eigh_grad
   forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
   args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
@@ -681,6 +718,15 @@
     param : [out]
   kernel :
     func : expm1_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_api : exponential__grad
+  forward : exponential_ (Tensor x, float lambda) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
   inplace : (out_grad -> x_grad)
 
 - backward_api : flatten_grad
@@ -2047,6 +2093,18 @@
   kernel :
     func : swish_grad
   inplace : (out_grad -> x_grad)
+
+- backward_api : sync_batch_norm_grad
+  forward : sync_batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, scale, bias]
+  kernel :
+    func : sync_batch_norm_grad
+    data_type : out_grad
+  optional : mean_out, variance_out, reserve_space
 
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)

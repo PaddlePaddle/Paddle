@@ -41,8 +41,8 @@ class ClipOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    float min = BOOST_GET_CONST(float, op_desc.GetAttr("min"));
-    float max = BOOST_GET_CONST(float, op_desc.GetAttr("max"));
+    float min = PADDLE_GET_CONST(float, op_desc.GetAttr("min"));
+    float max = PADDLE_GET_CONST(float, op_desc.GetAttr("max"));
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kCLIP);
     layer->setAlpha(min);

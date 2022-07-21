@@ -347,7 +347,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
                             SqueezeInferShapeFunctor,
-                            PD_INFER_META(phi::SqueezeInferMeta));
+                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
 
 REGISTER_OPERATOR(squeeze,
                   ops::SqueezeOp,

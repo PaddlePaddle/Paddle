@@ -77,7 +77,7 @@ class EmptyOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, context->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, context->GetAttr("dtype")));
     context->SetOutputDataType("Out", data_type);
   }
 };
