@@ -72,6 +72,7 @@ void MasterDaemon::_do_add(SocketType socket) {
   VLOG(4) << "TCPStore: new value (" << new_value << ") for key (" << key
           << ") " << GetSockName(socket);
   tcputils::send_value<int64_t>(socket, new_value);
+  _notify_waiting_sockets(key);
 }
 
 void MasterDaemon::_do_set(SocketType socket) {
@@ -80,6 +81,19 @@ void MasterDaemon::_do_set(SocketType socket) {
 
   auto value = tcputils::receive_vector<uint8_t>(socket);
   _store[key] = value;
+  _notify_waiting_sockets(key);
+}
+
+void MasterDaemon::_notify_waiting_sockets(const std::string& key) {
+  if (_waiting_sockets.find(key) != _waiting_sockets.end()) {
+    for (auto waiting_socket : _waiting_sockets.at(key)) {
+      auto reply = ReplyType::STOP_WAIT;
+      VLOG(3) << "TCPStore: nofify the socket: " << GetSockName(waiting_socket)
+              << " that key: " << key << " is ready.";
+      tcputils::send_value<ReplyType>(waiting_socket, reply);
+    }
+    _waiting_sockets.erase(key);
+  }
 }
 
 void MasterDaemon::_do_get(SocketType socket) {
@@ -146,13 +160,15 @@ void MasterDaemon::_do_wait(SocketType socket) {
           << GetSockName(socket);
 
   auto iter = _store.find(key);
-  auto reply = ReplyType::STOP_WAIT;
   if (iter == _store.end()) {
-    reply = ReplyType::WAITING;
+    // The key can not be found in store currently. Record and check later.
+    _waiting_sockets[key].emplace_back(socket);
+  } else {
+    auto reply = ReplyType::STOP_WAIT;
+    VLOG(3) << "TCPStore: wait reply (" << static_cast<int>(reply)
+            << ") for key (" << key << ").";
+    tcputils::send_value<ReplyType>(socket, reply);
   }
-  VLOG(3) << "TCPStore: wait reply (" << static_cast<int>(reply)
-          << ") for key (" << key << ").";
-  tcputils::send_value<ReplyType>(socket, reply);
 }
 
 void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
@@ -165,6 +181,10 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
   // 0: listen socket, 1:controller pipe, so loop from 2.
   for (size_t i = 2; i < fds.size(); i++) {
 #endif
+    // NOTE(liyurui): There are various scenes may meet throwing errors.
+    // 1. The client fd capture recv_bytes=0 when socket is closed.
+    // 2. Met error when call system functions recv or send.
+    // 3. Try to interact with the socket which is already closed.
     try {
       if (fds[i].revents == 0) {
         continue;
@@ -194,14 +214,33 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
-      fds.erase(fds.begin() + i);
-      tcputils::close_socket(fds[i].fd);
+      // remove this socket from waiting list if exists
+      auto map_iter = _waiting_sockets.begin();
+      while (map_iter != _waiting_sockets.end()) {
+        auto vec_iter = map_iter->second.begin();
+        while (vec_iter != map_iter->second.end()) {
+          if (*vec_iter == fds[i].fd) {
+            vec_iter = map_iter->second.erase(vec_iter);
+          } else {
+            ++vec_iter;
+          }
+        }
+        if (map_iter->second.empty()) {
+          map_iter = _waiting_sockets.erase(map_iter);
+        } else {
+          ++map_iter;
+        }
+      }
 #ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 1);
 #else
       _sockets.erase(_sockets.begin() + i - 2);
 #endif
-
+      // NOTE(liyurui): Close specific client socket should not influence other
+      // clients.
+      tcputils::close_socket(fds[i].fd);
+      fds.erase(fds.begin() + i);
+      --i;
       VLOG(3) << "Meet some exceptions during run:" << ex.what();
     }
   }
@@ -287,8 +326,12 @@ std::unique_ptr<TCPServer> TCPServer::create(uint16_t port,
 }
 
 std::unique_ptr<TCPClient> TCPClient::connect(const std::string host,
-                                              uint16_t port) {
+                                              uint16_t port,
+                                              int timeout) {
   int socket = tcputils::tcp_connect(host, std::to_string(port), AF_INET);
+  VLOG(3) << "Set receive waiting timeout=" << timeout << " for client socket "
+          << GetSockName(socket);
+  tcputils::set_timeout(socket, timeout);
   return std::make_unique<TCPClient>(socket);
 }
 
@@ -341,7 +384,7 @@ TCPStore::TCPStore(std::string host,
     _server = detail::TCPServer::create(port, num_workers, timeout);
   }
 
-  _client = detail::TCPClient::connect(host, port);
+  _client = detail::TCPClient::connect(host, port, _timeout);
   waitWorkers();
 }
 
@@ -405,15 +448,31 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
 void TCPStore::wait(const std::string& key) {
   ReplyType reply;
   VLOG(3) << "TCPStore wait.";
-  do {
-    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
-
-    reply = _client->receive_value<ReplyType>();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (reply != ReplyType::STOP_WAIT);
+  _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+  reply = _client->receive_value<ReplyType>();
+  PADDLE_ENFORCE(
+      reply == ReplyType::STOP_WAIT,
+      platform::errors::InvalidArgument("Stop_waiting response is expected"));
 }
 
-TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }
+TCPStore::~TCPStore() {
+  VLOG(3) << "TCPStore destructure";
+  // NOTE(liyurui): Maybe we need to ensure all workers exit before master.
+  // If the TCPStore of master destroy before workers, it may cause errors
+  // when the thread in MasterDaemon is already joined.
+  if (_is_master) {
+    while (true) {
+      const auto& value = get(_init_key);
+      int alive_num = std::stoi(std::string(value.begin(), value.end()));
+      if (alive_num == 1) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  } else {
+    add(_init_key, -1);
+  }
+}
 
 }  // namespace distributed
 }  // namespace paddle

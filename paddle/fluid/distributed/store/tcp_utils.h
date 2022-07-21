@@ -17,6 +17,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+typedef SSIZE_T ssize_t;
 #pragma comment(lib, "Ws2_32.lib")
 #else
 #include <fcntl.h>
@@ -67,6 +68,9 @@ SocketType tcp_accept(SocketType socket);
 
 void send_string(SocketType socket, const std::string& s);
 std::string receive_string(SocketType socket);
+void set_timeout(SocketType socket, int timeout);
+void check_syscall(std::function<bool()> sys_call,
+                   const std::string& syscall_name);
 
 template <typename T>
 void send_bytes(SocketType socket, const T* buffer, size_t len) {
@@ -78,12 +82,13 @@ void send_bytes(SocketType socket, const T* buffer, size_t len) {
   auto ptr = reinterpret_cast<const char*>(buffer);
 
   while (to_send > 0) {
-    auto byte_sent = ::send(socket, ptr, to_send, 0);
-    PADDLE_ENFORCE_GT(
-        byte_sent,
-        0,
-        platform::errors::InvalidArgument("TCP send error. Details: %s.",
-                                          socket_error().message()));
+    ssize_t byte_sent;
+    check_syscall(
+        [&byte_sent, socket, ptr, to_send]() {
+          byte_sent = ::send(socket, ptr, to_send, 0);
+          return (byte_sent != -1);
+        },
+        "send");
     to_send -= byte_sent;
     ptr += byte_sent;
   }
@@ -98,13 +103,16 @@ void receive_bytes(SocketType socket, T* buffer, size_t len) {
   auto ptr = reinterpret_cast<char*>(buffer);
 
   while (to_recv > 0) {
-    auto byte_received = ::recv(socket, ptr, to_recv, 0);
-    PADDLE_ENFORCE_GT(
-        byte_received,
-        0,
-        platform::errors::InvalidArgument("TCP receive error. Details: %s.",
-                                          socket_error().message()));
-
+    ssize_t byte_received;
+    check_syscall(
+        [&byte_received, socket, ptr, to_recv]() {
+          byte_received = ::recv(socket, ptr, to_recv, 0);
+          return (byte_received != -1);
+        },
+        "recv");
+    if (byte_received == 0) {
+      PADDLE_THROW(platform::errors::Unavailable("Connection closed by peer."));
+    }
     to_recv -= byte_received;
     ptr += byte_received;
   }

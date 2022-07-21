@@ -61,6 +61,7 @@ class MasterDaemon {
   void _do_get(SocketType socket);
   void _do_set(SocketType socket);
   void _do_stop(SocketType socket);
+  void _notify_waiting_sockets(const std::string&);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
@@ -70,6 +71,8 @@ class MasterDaemon {
   bool _stop = false;  // all workers stopped
   std::chrono::time_point<std::chrono::system_clock> _stop_time;
   bool _has_stop = false;  // at least one worker stopped
+  std::unordered_map<std::string, std::vector<SocketType>>
+      _waiting_sockets;  // key -> list of waiting sockets
 
   void InitControlFd();
   void CloseControlFd();
@@ -95,7 +98,8 @@ class TCPClient {
  public:
   explicit TCPClient(SocketType socket) : _socket{socket} {}
   static std::unique_ptr<TCPClient> connect(const std::string host,
-                                            uint16_t port);
+                                            uint16_t port,
+                                            int timeout);
   ~TCPClient() { tcputils::close_socket(_socket); }
   void send_command_for_key(Command type, const std::string& key);
 

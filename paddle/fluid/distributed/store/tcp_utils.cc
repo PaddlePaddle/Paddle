@@ -209,6 +209,19 @@ SocketType tcp_accept(SocketType socket) {
   return new_socket;
 }
 
+void set_timeout(SocketType socket, int timeout) {
+#ifdef _WIN32
+  struct timeval timeout_tv = {static_cast<int64_t>(timeout)};
+#else
+  struct timeval timeout_tv = {.tv_sec = timeout, .tv_usec = 0};
+#endif
+  ::setsockopt(socket,
+               SOL_SOCKET,
+               SO_RCVTIMEO,
+               reinterpret_cast<char*>(&timeout_tv),
+               sizeof(timeout_tv));
+}
+
 void send_string(SocketType socket, const std::string& s) {
   std::string::size_type size = s.size();
   send_bytes<std::string::size_type>(socket, &size, 1);
@@ -221,6 +234,42 @@ std::string receive_string(SocketType socket) {
   std::vector<char> v(size);
   receive_bytes<char>(socket, v.data(), size);
   return std::string(v.data(), v.size());
+}
+
+void check_syscall(std::function<bool()> sys_call,
+                   const std::string& syscall_name) {
+  while (true) {
+    if (!sys_call()) {
+      if (errno == EINTR) {
+        LOG(WARNING) << "Retry for receiving EINTR.";
+        continue;
+      }
+#ifdef _WIN32
+      auto errno_local = WSAGetLastError();
+      if (errno_local == WSAETIMEDOUT || errno_local == WSAEWOULDBLOCK)
+#else
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+#endif
+      {
+        PADDLE_THROW(platform::errors::Unavailable(
+            "TCPStore wait timeout. The following two things may cause this "
+            "problem:\n"
+            "1. The key you want to get from TCPStore may not exist. [High "
+            "Probability]\n"
+            "2. The waiting time is to short. You can use "
+            "'export FLAGS_stop_check_timeout=3600'"
+            " to change the timeout value in seconds. The default one is "
+            "900."));
+      } else {
+        PADDLE_THROW(platform::errors::Unavailable(
+            "TCP system call %s error. Details: %s.",
+            syscall_name,
+            socket_error().message()));
+      }
+    } else {
+      break;
+    }
+  }
 }
 
 }  // namespace tcputils
