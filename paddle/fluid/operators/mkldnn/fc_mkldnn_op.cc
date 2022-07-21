@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace phi {
 class DenseTensor;
@@ -491,47 +492,7 @@ class FCPrimitiveFactory {
       post_operations.append_sum(sum_scale);
     }
 
-    if (ctx.Attr<std::string>("activation_type") == "relu") {
-      constexpr float negative_slope = 0.0f;
-      constexpr float placeholder = 1.0f;  // beta
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_relu, negative_slope, placeholder);
-    } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_gelu, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_gelu_tanh, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_gelu_erf, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_tanh, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_logistic, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "mish") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_mish, alpha, beta);
-    } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_hardswish, alpha, beta);
-    }
+    platform::AppendActivation(ctx, post_operations, scale);
 
     attributes.set_post_ops(post_operations);
     return attributes;

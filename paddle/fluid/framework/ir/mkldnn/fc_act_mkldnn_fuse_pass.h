@@ -23,21 +23,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * \brief   Fuse the FC and activation operators into single OneDNN's
- *          FC with post-op.
- *
- * \note    Currently only GeLU, hardswish, sigmoid, mish and tanh are supported
- * as an activation function.
- */
 class FuseFCActOneDNNPass : public FusePassBase {
  public:
+  FuseFCActOneDNNPass();
   virtual ~FuseFCActOneDNNPass() {}
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  void FuseFCAct(ir::Graph *graph, const std::string &act_types) const;
+  void FuseFCAct(ir::Graph *graph, std::string &act_types) const;
 };
 
 }  // namespace ir
