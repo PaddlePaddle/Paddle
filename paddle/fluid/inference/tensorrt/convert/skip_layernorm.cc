@@ -30,10 +30,11 @@ class SkipLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    // We should expand input1 to 4 dimensions
-    if (input1->getDimensions().nbDims < 4) {
+    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+    // We should expand input1 to input2's nbDims
+    if (input1->getDimensions().nbDims < input2->getDimensions().nbDims) {
       nvinfer1::Dims reshape_input1_dim;
-      reshape_input1_dim.nbDims = 4;
+      reshape_input1_dim.nbDims = input2->getDimensions().nbDims;
       for (int i = 0; i < reshape_input1_dim.nbDims; i++) {
         if (i < input1->getDimensions().nbDims) {
           reshape_input1_dim.d[i] = 0;
@@ -46,7 +47,7 @@ class SkipLayerNormOpConverter : public OpConverter {
       reshape_input1_layer->setReshapeDimensions(reshape_input1_dim);
       input1 = reshape_input1_layer->getOutput(0);
     }
-    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+    
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);
