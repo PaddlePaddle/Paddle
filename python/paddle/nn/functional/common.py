@@ -850,8 +850,10 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_bilinear_tensor_product(x1, x2, weight, bias)
+    elif _non_static_mode():
+        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
     check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
