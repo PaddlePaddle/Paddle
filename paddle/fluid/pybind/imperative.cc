@@ -2048,7 +2048,7 @@ void BindImperative(py::module *m_ptr) {
               auto tensor = self.Var().Get<framework::LoDTensor>();
               auto tmp_value = value;
               bool use_autotune = tensor.autotune();
-              if (use_autotune) {
+              if (false && use_autotune) {
                 if (value.size() == 4 &&
                     tensor.layout() == paddle::experimental::DataLayout::NCHW) {
                   // NCHW -> NHWC
