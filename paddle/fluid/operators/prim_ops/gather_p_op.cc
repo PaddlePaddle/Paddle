@@ -66,7 +66,7 @@ class GatherPrimOpShapeInference : public framework::InferShapeBase {
       framework::InferShapeVarPtr index_var_ptr =
           ctx->GetInputVarPtrs("IndexTensor")[0];
       framework::VarDesc *index_var =
-          BOOST_GET(framework::VarDesc *, index_var_ptr);
+          PADDLE_GET(framework::VarDesc *, index_var_ptr);
       auto index_shape = index_var->GetShape();
       PADDLE_ENFORCE_EQ(index_shape.size(),
                         1,
@@ -80,11 +80,11 @@ class GatherPrimOpShapeInference : public framework::InferShapeBase {
     }
     auto axis = ctx->Attrs().Get<int64_t>("axis");
 
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     x_shape[axis] = num_index;
 
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
+    PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_shape);
   }
 };
 

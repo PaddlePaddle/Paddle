@@ -45,7 +45,7 @@ class BatchNormOpConverter : public OpConverter {
     auto* Mean_v = scope.FindVar(op_desc.Input("Mean").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
     auto* Variance_v = scope.FindVar(op_desc.Input("Variance").front());
-    const float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
+    const float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
     auto output_name = op_desc.Output("Y").front();
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,

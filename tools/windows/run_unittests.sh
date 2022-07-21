@@ -18,6 +18,7 @@
 disable_wingpu_test="^test_model$|\
 ^test_dataloader_early_reset$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
@@ -152,6 +153,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_add_reader_dependency$|\
+^test_add_reader_dependency_for_interpretercore$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
 ^test_generator_dataloader$|\
