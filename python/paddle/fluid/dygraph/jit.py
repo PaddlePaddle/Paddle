@@ -868,7 +868,7 @@ def save(layer, path, input_spec=None, **configs):
             layer,
         ]
 
-    all_vars = set()
+    combine_vars = {}
     property_vals = []  # (value, key)
     for attr_func in functions:
         if isinstance(layer, Layer):
@@ -1020,19 +1020,28 @@ def save(layer, path, input_spec=None, **configs):
                 program_only=configs._program_only,
                 clip_extra=configs.clip_extra)
 
-        # collect all vars
-        for var in concrete_program.main_program.list_vars():
-            all_vars.add(var)
+        if combine_params:
+            clone_main_program = concrete_program.main_program.clone()
+            clone_main_program = clone_main_program._prune_with_input(
+                input_var_names, output_vars)
+            for block in clone_main_program.blocks:
+                combine_vars.update(block.vars)
 
     # save shared params
     if combine_params:
+        # sort vars by name
+        combine_vars = sorted(combine_vars.items(), key=lambda item: item[0])
+        ordered_vars = []
+        for name, var in combine_vars:
+            ordered_vars.append(var)
+
         params_filename = file_prefix + INFER_PARAMS_SUFFIX
         with scope_guard(scope):
             paddle.static.save_vars(Executor(_current_expected_place()),
                                     dirname=model_path,
                                     vars=list(
                                         filter(paddle.fluid.io.is_persistable,
-                                               all_vars)),
+                                               ordered_vars)),
                                     filename=params_filename)
         # TODO: save property
 
