@@ -64,7 +64,6 @@ def rewrite_host_ip(ctx):
 def test_mode(ctx):
     if ctx.args.training_script == 'test':
         ctx.logger.info('Paddle Distributed Test begin...')
-        ctx.args.log_level = 'ERROR'
         if int(ctx.args.nnodes) < 2:
             ctx.args.nnodes = 2
         ctx.args.training_script = '{}/test.py'.format(
