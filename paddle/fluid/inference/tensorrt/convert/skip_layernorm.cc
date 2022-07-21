@@ -26,11 +26,39 @@ class SkipLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert fused skip layernorm op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
+auto* x_var_desc = block_desc_->FindVar(op_desc.Input("X")[0]);
+     const auto x_shape = x_var_desc->GetShape();
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+
+    
+    // Don't acquire ld from input1->getDimensions().d[2], because we can't
+    // guarantee that TRT having infered it correctly when this line of code
+    // is executed
+    int ld = x_shape[2];  // hidden dimension
+    PADDLE_ENFORCE_GT(ld,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "in CustomSkipLayerNormPluginDynamic hidden "
+                        "dimension should > 0"));
+    nvinfer1::Dims reshape_input1_dim;
+    reshape_input1_dim.nbDims = input1->getDimensions().nbDims;
+    for (int i = 0; i < reshape_input1_dim.nbDims; i++) {
+        reshape_input1_dim.d[i] = 0;
+    }
+    reshape_input1_dim.d[reshape_input1_dim.nbDims - 1] = ld;
+
+    auto* reshape_input1_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+    reshape_input1_layer->setReshapeDimensions(reshape_input1_dim);
+    input1 = reshape_input1_layer->getOutput(0);
+
+std::cout << input1->getDimensions().d[0] << std::endl;
+std::cout << input1->getDimensions().d[1] << std::endl;
+std::cout << input1->getDimensions().d[2] << std::endl;
+std::cout << input1->getDimensions().d[3] << std::endl;
+
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
@@ -107,12 +135,6 @@ class SkipLayerNormOpConverter : public OpConverter {
         int type = static_cast<int>((engine_->WithFp16() == 1)
                                         ? nvinfer1::DataType::kHALF
                                         : nvinfer1::DataType::kFLOAT);
-        int ld = input1->getDimensions().d[2];  // hidden dimension
-        PADDLE_ENFORCE_GT(ld,
-                          0,
-                          platform::errors::InvalidArgument(
-                              "in CustomSkipLayerNormPluginDynamic hidden "
-                              "dimension should > 0"));
         if (enable_int8) {
           type = static_cast<int>(nvinfer1::DataType::kHALF);
         }
@@ -178,11 +200,6 @@ class SkipLayerNormOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
   }
 };
 

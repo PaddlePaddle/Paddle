@@ -154,6 +154,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
+    it->SetBlockDesc(block_desc_);
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
@@ -353,6 +354,7 @@ class OpConverter {
                           "some trt inputs dynamic shape info not set, "
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
+    block_desc_ = block_desc;
     ConvertBlock(*block_proto, parameters, scope, engine);
     for (auto& output : outputs) {
       engine->DeclareOutput(output);
@@ -605,11 +607,14 @@ class OpConverter {
     layer->setName((layer_name + ")").c_str());
   }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
-
+void SetBlockDesc(framework::BlockDesc* block_desc) {
+     block_desc_ = block_desc;
+   }
   virtual ~OpConverter() {}
 
   // TensorRT engine
   TensorRTEngine* engine_{nullptr};
+  framework::BlockDesc* block_desc_{nullptr};
 
  protected:
   bool test_mode_;
