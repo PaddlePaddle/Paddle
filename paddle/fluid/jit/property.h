@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "glog/logging.h"
 #include "paddle/fluid/jit/property.pb.h"
 
 namespace paddle {
