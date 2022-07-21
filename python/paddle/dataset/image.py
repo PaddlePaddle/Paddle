@@ -45,18 +45,22 @@ if six.PY3:
     # will be the C++ execubable on Windows
     if sys.platform == 'win32' and 'python.exe' not in interpreter:
         interpreter = sys.exec_prefix + os.sep + 'python.exe'
-    import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-    out, err = import_cv2_proc.communicate()
-    retcode = import_cv2_proc.poll()
-    if retcode != 0:
-        cv2 = None
-    else:
-        try:
-            import cv2
-        except ImportError:
+    try:
+        import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+        out, err = import_cv2_proc.communicate()
+        retcode = import_cv2_proc.poll()
+        if retcode != 0:
             cv2 = None
+        else:
+            try:
+                import cv2
+            except ImportError:
+                cv2 = None
+    except FileNotFoundError:
+        # Fix for breaking standalone installations using PyInstaller.
+        cv2 = None
 else:
     try:
         import cv2
