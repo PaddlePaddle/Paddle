@@ -67,7 +67,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph)
+  DEPS graph program_utils)
 cc_library(
   pass
   SRCS pass.cc
