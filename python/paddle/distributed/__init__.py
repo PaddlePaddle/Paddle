@@ -27,28 +27,7 @@ from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
-from .collective import broadcast  # noqa: F401
-from .collective import all_reduce  # noqa: F401
-from .collective import reduce  # noqa: F401
-from .collective import all_gather  # noqa: F401
-from .collective import scatter  # noqa: F401
-from .collective import barrier  # noqa: F401
-from .collective import ReduceOp  # noqa: F401
-from .collective import split  # noqa: F401
-from .collective import new_group  # noqa: F401
-from .collective import alltoall  # noqa: F401
-from .collective import recv  # noqa: F401
-from .collective import get_group  # noqa: F401
-from .collective import send  # noqa: F401
-from .collective import wait  # noqa: F401
-from .collective import is_initialized  # noqa: F401
-from .collective import destroy_process_group  # noqa: F401
-from .collective import alltoall_single  # noqa: F401
-from .collective import isend  # noqa: F401
-from .collective import irecv  # noqa: F401
-from .collective import batch_isend_irecv  # noqa: F401
-from .collective import P2POp  # noqa: F401
-from .collective import reduce_scatter  # noqa: F401
+from .communication import *
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
