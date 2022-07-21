@@ -34,7 +34,7 @@ class TestVarBase(unittest.TestCase):
 
     def func_test_to_tensor(self):
 
-        def _test_place(place):
+        def check_with_place(place):
             with fluid.dygraph.guard():
                 paddle.set_default_dtype('float32')
                 # set_default_dtype should not take effect on int
@@ -76,17 +76,19 @@ class TestVarBase(unittest.TestCase):
                 y = x.cpu()
                 self.assertEqual(y.place.__repr__(), "Place(cpu)")
                 if core.is_compiled_with_cuda():
+                    res_place = paddle.framework._current_expected_place()
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "Place(gpu_pinned)")
                     y = x.cuda()
+                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
                     y = x.cuda(None)
-                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
                     y = x.cuda(device_id=0)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=False)
-                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
                     y = x.cuda(blocking=True)
-                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 
@@ -266,20 +268,18 @@ class TestVarBase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
-        _test_place(core.CPUPlace())
-        _test_place("cpu")
+        check_with_place(core.CPUPlace())
+        check_with_place("cpu")
         if core.is_compiled_with_cuda():
-            _test_place(core.CUDAPinnedPlace())
-            _test_place("gpu_pinned")
-            _test_place(core.CUDAPlace(0))
-            _test_place("gpu:0")
+            check_with_place(core.CUDAPinnedPlace())
+            check_with_place("gpu_pinned")
+            check_with_place(core.CUDAPlace(0))
+            check_with_place("gpu:0")
         if core.is_compiled_with_npu():
-            _test_place(core.NPUPlace(0))
-            _test_place("npu:0")
+            check_with_place(core.NPUPlace(0))
+            check_with_place("npu:0")
 
     def test_to_tensor(self):
-        with _test_eager_guard():
-            self.func_test_to_tensor()
         self.func_test_to_tensor()
 
     def func_test_to_tensor_not_change_input_stop_gradient(self):
