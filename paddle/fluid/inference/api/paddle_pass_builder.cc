@@ -136,7 +136,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
 
 const std::vector<std::string> kDlnneSubgraphPasses({
     "is_test_pass",                  //
-    "delete_dropout_op_pass"         //
+    "delete_dropout_op_pass",        //
     "simplify_with_basic_ops_pass",  //
     "conv_bn_fuse_pass",             //
     "depthwise_conv_bn_fuse_pass",   //
