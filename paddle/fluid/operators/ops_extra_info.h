@@ -48,6 +48,11 @@ class ExtraInfoUtils {
     return extra_info_utils;
   }
 
+  const std::unordered_map<std::string, paddle::framework::AttributeMap>&
+  GetAllExtraAttrsMap() const {
+    return g_extra_attrs_map_;
+  }
+
   const paddle::framework::AttributeMap& GetExtraAttrsMap(
       const std::string& op_type) const {
     auto iter = g_extra_attrs_map_.find(op_type);
