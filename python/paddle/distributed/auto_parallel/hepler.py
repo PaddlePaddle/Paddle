@@ -65,7 +65,7 @@ class ProxyLayer(Layer):
 
     def _eval(self, inputs, labels):
         """
-        Train process of inner_layer with forward/loss/metric logic.
+        Evaluate process of inner_layer with forward/loss/metric logic.
         """
         # TODO(dev): we can reuse codes with self._train after making
         # sure if they can.
@@ -86,7 +86,7 @@ class ProxyLayer(Layer):
 
     def _predict(self, inputs):
         """
-        Train process of inner_layer with forward logic.
+        Predict process of inner_layer with forward logic.
         """
         # step 1. save feed variables of Program
         self.input_vars = inputs
@@ -97,9 +97,9 @@ class ProxyLayer(Layer):
     @not_to_static
     def _prepare(self, outputs, labels):
         """
-        Concat outputs and labels as single list
+        Concat outputs and labels as a single list
 
-        NOTE(dev): We use @not_to_static to avoid AST Aanlysis.
+        NOTE(dev): We use @not_to_static to avoid AST Analysis.
         """
         return to_list(outputs) + to_list(labels)
 
