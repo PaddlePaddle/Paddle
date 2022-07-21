@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
@@ -283,6 +284,44 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
     x_grad->set_dims(dims);
     x_grad->set_dtype(out_v.dtype());
   }
+}
+
+void FFTC2RGradInferMeta(const MetaTensor& x,
+                         const std::vector<int64_t>& axes,
+                         const std::string& normalization,
+                         bool forward,
+                         int64_t last_dim_size,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  const phi::DDim x_dim = x.dims();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToComplexType(x.dtype()));
+
+  phi::DDim out_dim = x.dims();
+  const int64_t last_fft_axis = axes.back();
+  if (last_dim_size > 0) {
+    out_dim.at(last_fft_axis) = last_dim_size / 2 + 1;
+  } else if (config.is_runtime) {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) = last_fft_dim_size / 2 + 1;
+  } else {
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) =
+        last_fft_dim_size == -1 ? -1 : last_fft_dim_size / 2 + 1;
+  }
+  out->set_dims(out_dim);
 }
 
 void FillDiagonalGradInferMeta(const MetaTensor& dout,

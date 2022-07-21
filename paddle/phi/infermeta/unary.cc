@@ -866,6 +866,103 @@ void FillDiagonalInferMeta(
   out->set_dtype(x.dtype());
 }
 
+void FFTC2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    const phi::DDim x_dim = x.dims();
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+  out->share_meta(x);
+}
+
+void FFTC2RInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     int64_t last_dim_size,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  const phi::DDim x_dim = x.dims();
+  const int64_t last_fft_axis = axes.back();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    size_t signal_dims = axes.size();
+    for (size_t i = 0; i < signal_dims - 1; i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToRealType(x.dtype()));
+  phi::DDim out_dim = x_dim;
+
+  if (last_dim_size > 0) {
+    out_dim.at(last_fft_axis) = last_dim_size;
+  } else if (config.is_runtime) {
+    const int64_t input_last_dim_size = x_dim[last_fft_axis];
+    const int64_t fft_n_point = (input_last_dim_size - 1) * 2;
+    PADDLE_ENFORCE_GT(
+        fft_n_point,
+        0,
+        phi::errors::InvalidArgument("Invalid fft n-point (%d).", fft_n_point));
+    out_dim.at(last_fft_axis) = fft_n_point;
+  } else {
+    const int64_t input_last_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) =
+        input_last_dim_size == -1 ? -1 : (input_last_dim_size - 1) * 2;
+  }
+  out->set_dims(out_dim);
+}
+
+void FFTR2CInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::string& normalization,
+                     bool forward,
+                     bool onesided,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  const phi::DDim x_dim = x.dims();
+
+  // only ensure that fft axes' size greater than zero at runtime
+  // they might be -1 to indicate unknown size ar compile time
+  if (config.is_runtime) {
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+  }
+
+  out->set_layout(x.layout());
+  out->set_dtype(ToComplexType(x.dtype()));
+  if (!onesided) {
+    out->share_dims(x);
+  } else {
+    phi::DDim out_dim = x.dims();
+    const int64_t last_fft_axis = axes.back();
+    const int64_t last_fft_dim_size = x_dim[last_fft_axis];
+    out_dim.at(last_fft_axis) = last_fft_dim_size / 2 + 1;
+    out->set_dims(out_dim);
+  }
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
