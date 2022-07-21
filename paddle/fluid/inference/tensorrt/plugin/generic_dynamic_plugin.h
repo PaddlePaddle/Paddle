@@ -36,6 +36,7 @@
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace inference {
@@ -47,15 +48,16 @@ class GenericDynamicPlugin : public DynamicPluginTensorRT {
   
   GenericDynamicPlugin() { }
   
-  GenericDynamicPlugin(const paddle::framework::proto::OpDesc &proto_op_desc) {
+  GenericDynamicPlugin(const paddle::framework::proto::OpDesc &proto_op_desc, tensorrt::TensorRTEngine::Weight *weight = nullptr) {
     proto_op_desc_ = proto_op_desc;
     op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
     proto_op_desc_.SerializeToString(&op_meta_data_);  
   }
-  
+
   // It was used for tensorrt deserialization.
   // It should not be called by users.
   GenericDynamicPlugin(void const* serialData, size_t serialLength) {
+    //op_meta_data
     std::string op_meta_data((char*)serialData, serialLength);
     op_meta_data_ = std::move(op_meta_data);
   }
@@ -66,15 +68,30 @@ class GenericDynamicPlugin : public DynamicPluginTensorRT {
   }
   
   int getNbOutputs() const TRT_NOEXCEPT override { 
-    // framework::OpDesc op_desc(proto_op_desc_, nullptr);
-    return op_desc_.OutputNames().size();
+    int res = 0;
+    for(auto &i : op_desc_.Outputs()) {
+      if(!i.second.empty())
+        res++;
+    }
+    return res;
+  }
+
+  int getNbInputs() const TRT_NOEXCEPT { 
+    int res = 0;
+    for(auto &i : op_desc_.Inputs()) {
+      if(!i.second.empty())
+        res++;
+    }
+    return res;
   }
   
   // Initialize the layer for execution.
   int initialize() TRT_NOEXCEPT override;
 
   // Shutdown the layer. This is called when the engine is destroyed
-  void terminate() TRT_NOEXCEPT override { free(dev_ctx_); }
+  void terminate() TRT_NOEXCEPT override { 
+    // free(dev_ctx_);
+  }
 
   void destroy() TRT_NOEXCEPT { };
 
@@ -135,10 +152,12 @@ class GenericDynamicPlugin : public DynamicPluginTensorRT {
  private:
   std::shared_ptr<phi::KernelContext> phi_kernel_context_;
   paddle::platform::CUDADeviceContext *dev_ctx_;
+  paddle::platform::stream::CUDAStream* cs_;
  private:
   const phi::Kernel *phi_kernel_;
-  static platform::CUDAPlace place_;
   static paddle::memory::allocation::CUDAAllocator allocator_;
+  static platform::CUDAPlace place_;
+  
 };
 
 class GenericDynamicPluginCreator : public TensorRTPluginCreator {

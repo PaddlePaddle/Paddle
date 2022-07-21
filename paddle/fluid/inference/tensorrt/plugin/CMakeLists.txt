@@ -1,6 +1,8 @@
 list(
   APPEND
   TRT_FILES
+  generic_plugin.cu
+  generic_dynamic_plugin.cu
   trt_plugin.cc
   split_op_plugin.cu
   elementwise_op_plugin.cu
@@ -30,10 +32,11 @@ list(
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
-  fused_token_prune_op_plugin.cu
   generic_plugin.cu
   generic_dynamic_plugin.cu
-  )
+  fused_token_prune_op_plugin.cu
+  generic_plugin.cu
+  generic_dynamic_plugin.cu)
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)

@@ -141,9 +141,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
     if (!is_ok)
-      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+      LOG(INFO) << node->Op()->Type().c_str() << " op is not in TensorRT";
     return is_ok;
   };
+
+  LOG(INFO) << "\nbefore fuse";
+  for (auto *op_node : framework::ir::TopologySortOperations(*graph)) {
+    LOG(INFO) << op_node->Name();
+  }
 
   framework::ir::SubGraphFuser fuser(
       graph,
@@ -168,6 +173,12 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
+
+  LOG(INFO) << "\nafter CreateTensorRTOp";
+  for (auto *op_node : framework::ir::TopologySortOperations(*graph)) {
+    LOG(INFO) << op_node->Name();
+  }
+
 
   std::unordered_set<const Node *> nodes2remove;
   for (auto *node : graph->Nodes()) {
