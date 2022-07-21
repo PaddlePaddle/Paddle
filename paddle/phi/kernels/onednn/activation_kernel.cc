@@ -23,10 +23,6 @@
 
 namespace phi {
 
-using dnnl::memory;
-using dnnl::primitive;
-using dnnl::stream;
-
 #define DEFINE_ONEDNN_ACTIVATION_KERNEL(name, functor_class)            \
   template <typename T, typename Context>                               \
   void name##Kernel(                                                    \
