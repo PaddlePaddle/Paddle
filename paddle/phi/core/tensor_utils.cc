@@ -220,25 +220,29 @@ void Copy(const Context& dev_ctx,
   } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
              paddle::platform::is_cpu_place(dst_place)) {
     auto stream =
-        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx)
-            .stream();
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
              paddle::platform::is_custom_place(dst_place)) {
     auto stream =
-        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx)
-            .stream();
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (paddle::platform::is_custom_place(src_place) &&  // NOLINT
              paddle::platform::is_custom_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-              << dst_place;
-      return;
-    }
     auto stream =
-        reinterpret_cast<const paddle::platform::CustomDeviceContext&>(dev_ctx)
-            .stream();
+        blocking
+            ? nullptr
+            : reinterpret_cast<const paddle::platform::CustomDeviceContext&>(
+                  dev_ctx)
+                  .stream();
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
   } else {
