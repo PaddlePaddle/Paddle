@@ -22,19 +22,18 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/funcs/axis_utils.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
 
@@ -195,19 +194,19 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
       logits_grad_2d.Resize({n, d});
       int grid = (n * remain + block - 1) / block;
       const auto* label_data = label.data<LabelT>();
-      HardLabelCrossEntropyGradientKernel<T,
-                                          LabelT><<<grid, block, 0, stream>>>(
-          logit_grad_data, label_data, n, d, remain, ignore_index);
+      HardLabelCrossEntropyGradientKernel<T, LabelT>
+          <<<grid, block, 0, stream>>>(
+              logit_grad_data, label_data, n, d, remain, ignore_index);
       int num = n * d;
       grid = (num + block - 1) / block;
-      ScaleCrossEntropyGradient<T, LabelT><<<grid, block, 0, stream>>>(
-          logit_grad_data,
-          loss_grad_data,
-          num,
-          d,
-          remain,
-          label_data,
-          ignore_index);
+      ScaleCrossEntropyGradient<T, LabelT>
+          <<<grid, block, 0, stream>>>(logit_grad_data,
+                                       loss_grad_data,
+                                       num,
+                                       d,
+                                       remain,
+                                       label_data,
+                                       ignore_index);
     }
 
     return;
@@ -224,15 +223,15 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
     int grid = (n * d + block - 1) / block;
-    SoftmaxWithCrossEntropyGradHardLabel<T><<<grid, block, 0, stream>>>(
-        logit_grad_data,
-        loss_grad_data,
-        softmax_data,
-        label_data,
-        n,
-        d / remain,
-        remain,
-        ignore_index);
+    SoftmaxWithCrossEntropyGradHardLabel<T>
+        <<<grid, block, 0, stream>>>(logit_grad_data,
+                                     loss_grad_data,
+                                     softmax_data,
+                                     label_data,
+                                     n,
+                                     d / remain,
+                                     remain,
+                                     ignore_index);
   }
 }
 

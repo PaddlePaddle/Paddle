@@ -18,6 +18,7 @@ limitations under the License. */
 #include <array>
 #include <functional>
 #include <mutex>
+
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"

@@ -60,11 +60,16 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
+std::string PrintLodTensor(Tensor* tensor,
+                           int64_t start,
+                           int64_t end,
                            char separator = ',',
                            bool need_leading_separator = false);
-void PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
-                    std::string& output_str, char separator = ',',
+void PrintLodTensor(Tensor* tensor,
+                    int64_t start,
+                    int64_t end,
+                    std::string& output_str,
+                    char separator = ',',
                     bool need_leading_separator = false);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
@@ -213,7 +218,8 @@ class DeviceWorker {
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
-  virtual void DumpField(const Scope& scope, int dump_mode,
+  virtual void DumpField(const Scope& scope,
+                         int dump_mode,
                          int dump_interval = 10000);
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
@@ -656,10 +662,12 @@ class SectionWorker : public DeviceWorker {
     skip_vars_ = skip_vars;
   }
   void RunBackward(
-      int micro_id, std::unique_ptr<GarbageCollector>&,
+      int micro_id,
+      std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
   void RunForward(
-      int micro_id, std::unique_ptr<GarbageCollector>&,
+      int micro_id,
+      std::unique_ptr<GarbageCollector>&,
       std::unordered_map<const OperatorBase*, std::vector<std::string>>&);
   void RunUpdate(
       std::unique_ptr<GarbageCollector>&,
@@ -731,7 +739,8 @@ class HeterSectionWorker : public DeviceWorker {
   void SetThreadQueue(SHARED_THREAD_QUEUE thread_queue) {
     thread_queue_ = thread_queue;
   }
-  void CopyParameters(int microbatch_id, const ProgramDesc& program,
+  void CopyParameters(int microbatch_id,
+                      const ProgramDesc& program,
                       const platform::Place& place);
   void SetMinibatchScope(Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }

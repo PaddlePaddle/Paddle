@@ -14,6 +14,7 @@
 #pragma once
 
 #include <array>
+
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/common/place.h"
 

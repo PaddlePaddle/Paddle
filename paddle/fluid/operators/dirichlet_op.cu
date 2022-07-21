@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/dirichlet_op.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
@@ -48,8 +48,8 @@ struct GammaCUDAFunctor {
   DEVICE void operator()(int64_t index) {
     // curand initialization
     COMPAT_RANDSTATEPHILOX4_32_10_T state;
-    COMPAT_RAND_INIT(/*seed=*/seed_, /*subsequence=*/index, /*offset=*/offset_,
-                     &state);
+    COMPAT_RAND_INIT(
+        /*seed=*/seed_, /*subsequence=*/index, /*offset=*/offset_, &state);
 
     // sample
     auto uniform_lambda = [&state]() { return COMPAT_RAND_UNIFORM(&state); };
@@ -72,12 +72,13 @@ struct GammaCUDAFunctor {
 template <typename T>
 struct DirichletSampler<platform::CUDADeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* alpha, framework::Tensor* out) {
+                  const framework::Tensor* alpha,
+                  framework::Tensor* out) {
     auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
 
     // init state, seed & offset for all threads
     int device_id = ctx.GetPlace().GetDeviceId();
-    auto p_gen = framework::GetDefaultCUDAGenerator(device_id);
+    auto p_gen = framework::DefaultCUDAGenerator(device_id);
     auto seed_and_offset = p_gen->IncrementOffset(10);  // hard-coded offset
     auto seed = seed_and_offset.first;
     auto offset = seed_and_offset.second;
@@ -85,8 +86,8 @@ struct DirichletSampler<platform::CUDADeviceContext, T> {
     // sample from K gamma distributions, where K=alpha.numel()
     framework::Tensor gamma_samples;
     gamma_samples.mutable_data<T>(alpha->dims(), dev_ctx.GetPlace());
-    GammaCUDAFunctor<T> gamma_functor(alpha->data<T>(), gamma_samples.data<T>(),
-                                      seed, offset);
+    GammaCUDAFunctor<T> gamma_functor(
+        alpha->data<T>(), gamma_samples.data<T>(), seed, offset);
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
                                                               out->numel());
     for_range(gamma_functor);
@@ -110,5 +111,6 @@ struct DirichletSampler<platform::CUDADeviceContext, T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    dirichlet, ops::DirichletKernel<paddle::platform::CUDADeviceContext, float>,
+    dirichlet,
+    ops::DirichletKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DirichletKernel<paddle::platform::CUDADeviceContext, double>);

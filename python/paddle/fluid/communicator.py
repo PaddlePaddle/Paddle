@@ -38,6 +38,7 @@ __all__ = ['Communicator', 'LargeScaleKV']
 
 
 class Communicator(object):
+
     def __init__(self, mode, kwargs=None, envs=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
@@ -67,8 +68,8 @@ class Communicator(object):
                 envs = {}
         else:
             if mode == DistributedMode.SYNC:
-                envs["pserver_endpoints"] = ','.join(kwargs[
-                    "pserver_endpoints"])
+                envs["pserver_endpoints"] = ','.join(
+                    kwargs["pserver_endpoints"])
 
             envs["trainers"] = str(kwargs["trainers"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
@@ -208,6 +209,7 @@ class Communicator(object):
 
 
 class LargeScaleKV(object):
+
     def __init__(self):
         self.scale_kv = core.LargeScaleKV()
 
@@ -222,6 +224,7 @@ class LargeScaleKV(object):
 
 
 class HeterClient(object):
+
     def __init__(self, endpoint, previous_endpoint, trainer_id):
         self.heter_client_ = core.HeterClient(endpoint, previous_endpoint,
                                               trainer_id)

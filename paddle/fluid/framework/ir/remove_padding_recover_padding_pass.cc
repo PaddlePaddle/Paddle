@@ -22,6 +22,38 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+void EmbEltwiseLayernorm::operator()() {
+  // Create nodes for fused_embedding_eltwise_layernorm.
+  auto* emb_elt_layernorm_op =
+      pattern->NewNode(emb_elt_layernorm_op_repr())
+          ->assert_is_op("fused_embedding_eltwise_layernorm");
+  auto* emb_elt_layernorm_out =
+      pattern->NewNode(emb_elt_layernorm_out_repr())
+          ->assert_is_op_output("fused_embedding_eltwise_layernorm", "Out");
+
+  // Add links for fused_embedding_eltwise_layernorm op.
+  emb_elt_layernorm_op->LinksTo({emb_elt_layernorm_out});
+}
+
+void PrelnEmbEltwiseLayernorm::operator()() {
+  // Create nodes for fused_preln_embedding_eltwise_layernorm.
+  auto* preln_emb_elt_layernorm_op =
+      pattern->NewNode(preln_emb_elt_layernorm_op_repr())
+          ->assert_is_op("fused_preln_embedding_eltwise_layernorm");
+  auto* preln_emb_elt_layernorm_out_0 =
+      pattern->NewNode(preln_emb_elt_layernorm_out_0_repr())
+          ->assert_is_op_output("fused_preln_embedding_eltwise_layernorm",
+                                "Out_0");
+  auto* preln_emb_elt_layernorm_out_1 =
+      pattern->NewNode(preln_emb_elt_layernorm_out_1_repr())
+          ->assert_is_op_output("fused_preln_embedding_eltwise_layernorm",
+                                "Out_1");
+
+  // Add links for fused_preln_embedding_eltwise_layernorm op.
+  preln_emb_elt_layernorm_op->LinksTo(
+      {preln_emb_elt_layernorm_out_0, preln_emb_elt_layernorm_out_1});
+}
+
 void SkipLayernorm::operator()() {
   // Create nodes for skip_layernorm.
   auto* skip_layernorm_x = pattern->NewNode(skip_layernorm_x_repr())
@@ -36,6 +68,30 @@ void SkipLayernorm::operator()() {
   // Add links for skip_layernorm op.
   skip_layernorm_op->LinksFrom({skip_layernorm_x, skip_layernorm_y})
       .LinksTo({skip_layernorm_out});
+}
+
+void PrelnSkipLayernorm::operator()() {
+  // Create nodes for preln_skip_layernorm.
+  auto* preln_skip_layernorm_x =
+      pattern->NewNode(preln_skip_layernorm_x_repr())
+          ->assert_is_op_input("preln_skip_layernorm", "X");
+  auto* preln_skip_layernorm_y =
+      pattern->NewNode(preln_skip_layernorm_y_repr())
+          ->assert_is_op_input("preln_skip_layernorm", "Y");
+  auto* preln_skip_layernorm_op =
+      pattern->NewNode(preln_skip_layernorm_op_repr())
+          ->assert_is_op("preln_skip_layernorm");
+  auto* preln_skip_layernorm_out_0 =
+      pattern->NewNode(preln_skip_layernorm_out_0_repr())
+          ->assert_is_op_output("preln_skip_layernorm", "Out_0");
+  auto* preln_skip_layernorm_out_1 =
+      pattern->NewNode(preln_skip_layernorm_out_1_repr())
+          ->assert_is_op_output("preln_skip_layernorm", "Out_1");
+
+  // Add links for preln_skip_layernorm op.
+  preln_skip_layernorm_op
+      ->LinksFrom({preln_skip_layernorm_x, preln_skip_layernorm_y})
+      .LinksTo({preln_skip_layernorm_out_0, preln_skip_layernorm_out_1});
 }
 
 void MultiheadMatmul::operator()() {
@@ -59,16 +115,12 @@ void Fc::operator()() {
   auto* fc_input =
       pattern->NewNode(fc_input_repr())->assert_is_op_input("fc", "Input");
   auto* fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
-  auto* fc_out =
-      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
-
-  // Add links for fc op.
-  fc_op->LinksFrom({fc_input}).LinksTo({fc_out});
+  fc_op->LinksFrom({fc_input});
 }
 
 void Activation::operator()() {
   // Create nodes for activation.
-  std::unordered_set<std::string> activation_ops{"relu", "sigmoid", "tanh"};
+  std::unordered_set<std::string> activation_ops{"relu", "sigmoid", "gelu"};
   auto* activation_input = pattern->NewNode(activation_input_repr())
                                ->assert_is_ops_input(activation_ops);
   auto* activation_op =
@@ -82,6 +134,20 @@ void Activation::operator()() {
 }  // namespace patterns
 
 void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
+  bool use_varseqlen = Get<bool>("use_varseqlen");
+  std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+  std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+  if (use_varseqlen && pos_id != "" && mask_id != "" &&
+      (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+       graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
+      graph->Has(framework::ir::kMultiheadMatmulPass)) {
+    VLOG(3) << "start varseqlen remove_padding_recover_padding_pass";
+  } else {
+    VLOG(3) << "remove_padding_recover_padding_pass check failed";
+    return;
+  }
+
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init(name_scope_, graph);
@@ -91,14 +157,14 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   // Create an remove_padding op node
   auto insert_remove_padding_op = [&](Node* input_node, Node* op_node) {
     // create op, var in graph
-    OpDesc remove_padding;
+    OpDesc remove_padding(op_node->Op()->Block());
     std::string remove_padding_out_name =
         input_node->Name() + ".remove_padding";
-
-    VarDesc remove_padding_out(remove_padding_out_name);
-    remove_padding_out.SetDataType(input_node->Var()->GetDataType());
-    remove_padding_out.SetShape(input_node->Var()->GetShape());
-    remove_padding_out.SetPersistable(false);
+    auto* remove_padding_out =
+        op_node->Op()->Block()->Var(remove_padding_out_name);
+    remove_padding_out->SetDataType(input_node->Var()->GetDataType());
+    remove_padding_out->SetShape(input_node->Var()->GetShape());
+    remove_padding_out->SetPersistable(false);
 
     // remove_padding_op
     remove_padding.SetType("remove_padding");
@@ -109,8 +175,17 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // output
     remove_padding.SetOutput("Out", {remove_padding_out_name});
 
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("Input_scale")) {
+      remove_padding.SetAttr("out_threshold",
+                             op_node->Op()->GetAttr("Input_scale"));
+    } else {
+      VLOG(3) << "remove_padding_op has not out_threshold, because next op has "
+                 "not Input_scale.";
+    }
+
     auto remove_padding_op_node = graph->CreateOpNode(&remove_padding);
-    auto remove_padding_out_node = graph->CreateVarNode(&remove_padding_out);
+    auto remove_padding_out_node = graph->CreateVarNode(remove_padding_out);
 
     // replace link
     for (size_t i = 0; i < input_node->outputs.size(); ++i) {
@@ -145,13 +220,14 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   // create an remove_padding op node
   auto insert_recover_padding_op = [&](Node* op_node, Node* out_node) {
     // create op, var in graph
-    OpDesc recover_padding;
+    OpDesc recover_padding(op_node->Op()->Block());
     std::string recover_padding_input_name =
         out_node->Name() + ".recover_padding";
-    VarDesc recover_padding_input(recover_padding_input_name);
-    recover_padding_input.SetDataType(out_node->Var()->GetDataType());
-    recover_padding_input.SetShape(out_node->Var()->GetShape());
-    recover_padding_input.SetPersistable(false);
+    auto* recover_padding_input =
+        op_node->Op()->Block()->Var(recover_padding_input_name);
+    recover_padding_input->SetDataType(out_node->Var()->GetDataType());
+    recover_padding_input->SetShape(out_node->Var()->GetShape());
+    recover_padding_input->SetPersistable(false);
 
     // recover_padding_op
     recover_padding.SetType("recover_padding");
@@ -162,9 +238,24 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // output
     recover_padding.SetOutput("Out", {out_node->Name()});
 
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("out_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_threshold"));
+    } else if (op_node->Op()->HasAttr("out_0_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_0_threshold"));
+    } else if (op_node->Op()->HasAttr("out_1_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_1_threshold"));
+    } else {
+      VLOG(3) << "recover_padding_op has not out_threshold, because previous "
+                 "op has not out_*_threshold.";
+    }
+
     auto recover_padding_op_node = graph->CreateOpNode(&recover_padding);
     auto recover_padding_input_node =
-        graph->CreateVarNode(&recover_padding_input);
+        graph->CreateVarNode(recover_padding_input);
 
     // replace link
     for (size_t i = 0; i < op_node->outputs.size(); ++i) {
@@ -195,53 +286,98 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     op_node->Op()->RenameOutput(out_node->Name(), recover_padding_input_name);
   };
 
-  GraphPatternDetector gpd1;
-  patterns::SkipLayernorm skip_layernorm(gpd1.mutable_pattern(),
-                                         "remove_padding_recover_padding_pass");
-  skip_layernorm();
+  bool check_flag = true;
 
+  GraphPatternDetector gpd0;
+  patterns::EmbEltwiseLayernorm fused_embedding_eltwise_layernorm(
+      gpd0.mutable_pattern(), "remove_padding_recover_padding_pass");
+  fused_embedding_eltwise_layernorm();
+
+  auto handler0 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "fused_embedding_eltwise_layernorm";
+
+    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_op,
+                              emb_elt_layernorm_op,
+                              fused_embedding_eltwise_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_out,
+                              emb_elt_layernorm_out,
+                              fused_embedding_eltwise_layernorm);
+
+    insert_recover_padding_op(emb_elt_layernorm_op, emb_elt_layernorm_out);
+
+    found_subgraph_count++;
+  };
+  gpd0(graph, handler0);
+
+  GraphPatternDetector gpd1;
+  patterns::MultiheadMatmul multihead_matmul(
+      gpd1.mutable_pattern(), "remove_padding_recover_padding_pass");
+  multihead_matmul();
+
+  std::vector<int64_t> multihead_matmul_input_shape;
   auto handler1 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
-               "skip_layernorm";
+               "multihead_matmul";
 
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_x, skip_layernorm_x,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_y, skip_layernorm_y,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_op, skip_layernorm_op,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_out, skip_layernorm_out,
-                              skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_input, multihead_matmul_input, multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_op, multihead_matmul_op, multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_out, multihead_matmul_out, multihead_matmul);
 
-    insert_remove_padding_op(skip_layernorm_x, skip_layernorm_op);
-    insert_remove_padding_op(skip_layernorm_y, skip_layernorm_op);
-    insert_recover_padding_op(skip_layernorm_op, skip_layernorm_out);
+    multihead_matmul_input_shape = multihead_matmul_input->Var()->GetShape();
+
+    insert_remove_padding_op(multihead_matmul_input, multihead_matmul_op);
+    insert_recover_padding_op(multihead_matmul_op, multihead_matmul_out);
 
     found_subgraph_count++;
   };
   gpd1(graph, handler1);
 
   GraphPatternDetector gpd2;
-  patterns::MultiheadMatmul multihead_matmul(
-      gpd2.mutable_pattern(), "remove_padding_recover_padding_pass");
-  multihead_matmul();
+  patterns::SkipLayernorm skip_layernorm(gpd2.mutable_pattern(),
+                                         "remove_padding_recover_padding_pass");
+  skip_layernorm();
 
   auto handler2 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
-               "multihead_matmul";
+               "skip_layernorm";
 
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input,
-                              multihead_matmul);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_op, multihead_matmul_op,
-                              multihead_matmul);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out,
-                              multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_x, skip_layernorm_x, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_y, skip_layernorm_y, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_op, skip_layernorm_op, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_out, skip_layernorm_out, skip_layernorm);
 
-    insert_remove_padding_op(multihead_matmul_input, multihead_matmul_op);
-    insert_recover_padding_op(multihead_matmul_op, multihead_matmul_out);
-
+    std::vector<int64_t> skip_layernorm_x_shape =
+        skip_layernorm_x->Var()->GetShape();
+    if (skip_layernorm_x_shape.size() != multihead_matmul_input_shape.size()) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    for (size_t i = 0; i < skip_layernorm_x_shape.size(); ++i) {
+      if (skip_layernorm_x_shape[i] != multihead_matmul_input_shape[i]) {
+        check_flag = false;
+      }
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    insert_remove_padding_op(skip_layernorm_x, skip_layernorm_op);
+    insert_remove_padding_op(skip_layernorm_y, skip_layernorm_op);
+    insert_recover_padding_op(skip_layernorm_op, skip_layernorm_out);
     found_subgraph_count++;
   };
   gpd2(graph, handler2);
@@ -257,11 +393,39 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc);
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, fc_out, fc);
+
+    std::vector<int64_t> fc_input_shape = fc_input->Var()->GetShape();
+    if ((fc_input_shape.size() != multihead_matmul_input_shape.size()) ||
+        (fc_input_shape.size() != 3)) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    if (fc_input_shape[0] != multihead_matmul_input_shape[0]) {
+      check_flag = false;
+    }
+    if (fc_input_shape[1] != multihead_matmul_input_shape[1]) {
+      check_flag = false;
+    }
+    if ((fc_input_shape[2] != multihead_matmul_input_shape[2]) &&
+        (fc_input_shape[2] != 4 * multihead_matmul_input_shape[2])) {
+      check_flag = false;
+    }
+
+    if (BOOST_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
+      check_flag = false;
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    fc_op->Op()->RemoveAttr("in_num_col_dims");
+    fc_op->Op()->SetAttr("in_num_col_dims", 1);
 
     insert_remove_padding_op(fc_input, fc_op);
-    insert_recover_padding_op(fc_op, fc_out);
-
+    insert_recover_padding_op(fc_op, fc_op->outputs[0]);
     found_subgraph_count++;
   };
   gpd3(graph, handler3);
@@ -280,12 +444,117 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(activation_op, activation_op, activation);
     GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, activation);
 
+    std::vector<int64_t> activation_input_shape =
+        activation_input->Var()->GetShape();
+    if ((activation_input_shape.size() !=
+         multihead_matmul_input_shape.size()) ||
+        (activation_input_shape.size() != 3)) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    if (activation_input_shape[0] != multihead_matmul_input_shape[0]) {
+      check_flag = false;
+    }
+    if (activation_input_shape[1] != multihead_matmul_input_shape[1]) {
+      check_flag = false;
+    }
+    if ((activation_input_shape[2] != multihead_matmul_input_shape[2]) &&
+        (activation_input_shape[2] != 4 * multihead_matmul_input_shape[2])) {
+      check_flag = false;
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
     insert_remove_padding_op(activation_input, activation_op);
     insert_recover_padding_op(activation_op, activation_out);
 
     found_subgraph_count++;
   };
   gpd4(graph, handler4);
+
+  GraphPatternDetector gpd5;
+  patterns::PrelnEmbEltwiseLayernorm fused_preln_embedding_eltwise_layernorm(
+      gpd5.mutable_pattern(), "remove_padding_recover_padding_pass");
+  fused_preln_embedding_eltwise_layernorm();
+
+  auto handler5 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "fused_preln_embedding_eltwise_layernorm";
+
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_op,
+                              fused_preln_embedding_eltwise_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_out_0,
+                              preln_emb_elt_layernorm_out_0,
+                              fused_preln_embedding_eltwise_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_out_1,
+                              preln_emb_elt_layernorm_out_1,
+                              fused_preln_embedding_eltwise_layernorm);
+
+    insert_recover_padding_op(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_out_0);
+    insert_recover_padding_op(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_out_1);
+
+    found_subgraph_count++;
+  };
+  gpd5(graph, handler5);
+
+  GraphPatternDetector gpd6;
+  patterns::PrelnSkipLayernorm preln_skip_layernorm(
+      gpd6.mutable_pattern(), "remove_padding_recover_padding_pass");
+  preln_skip_layernorm();
+
+  auto handler6 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "preln_skip_layernorm";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_x, preln_skip_layernorm_x, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_y, preln_skip_layernorm_y, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_op, preln_skip_layernorm_op, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_skip_layernorm_out_0,
+                              preln_skip_layernorm_out_0,
+                              preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_skip_layernorm_out_1,
+                              preln_skip_layernorm_out_1,
+                              preln_skip_layernorm);
+
+    std::vector<int64_t> skip_layernorm_x_shape =
+        preln_skip_layernorm_x->Var()->GetShape();
+    if (skip_layernorm_x_shape.size() != multihead_matmul_input_shape.size()) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    for (size_t i = 0; i < skip_layernorm_x_shape.size(); ++i) {
+      if (skip_layernorm_x_shape[i] != multihead_matmul_input_shape[i]) {
+        check_flag = false;
+      }
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    insert_remove_padding_op(preln_skip_layernorm_x, preln_skip_layernorm_op);
+    insert_remove_padding_op(preln_skip_layernorm_y, preln_skip_layernorm_op);
+    insert_recover_padding_op(preln_skip_layernorm_op,
+                              preln_skip_layernorm_out_0);
+    insert_recover_padding_op(preln_skip_layernorm_op,
+                              preln_skip_layernorm_out_1);
+    found_subgraph_count++;
+  };
+  gpd6(graph, handler6);
 
   AddStatis(found_subgraph_count);
 }

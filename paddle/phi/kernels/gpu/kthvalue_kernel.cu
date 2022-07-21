@@ -55,9 +55,9 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;
-  paddle::operators::InitIndex<
-      int64_t><<<grid_size, block_size, 0, cu_stream>>>(
-      input_indices.data<int64_t>(), num_rows, num_cols);
+  paddle::operators::InitIndex<int64_t>
+      <<<grid_size, block_size, 0, cu_stream>>>(
+          input_indices.data<int64_t>(), num_rows, num_cols);
   cub::CountingInputIterator<int64_t> counting_iter(0);
   cub::TransformInputIterator<int64_t,
                               paddle::operators::SegmentOffsetIter,

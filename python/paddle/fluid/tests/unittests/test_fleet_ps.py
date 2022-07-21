@@ -17,10 +17,12 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_optimizer_input_shape
+
 main_program = default_main_program()
 
 
 class TestFleetPS(unittest.TestCase):
+
     def test_version(self):
         from paddle.fluid.incubate.fleet.parameter_server import version
         transpiler = version.is_transpiler()

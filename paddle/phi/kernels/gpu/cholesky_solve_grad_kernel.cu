@@ -15,10 +15,9 @@
 #ifndef PADDLE_WITH_HIP
 // backward reuse forward, HIP not support forward
 
-#include "paddle/phi/kernels/impl/cholesky_solve_grad_kernel_impl.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/cholesky_solve_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(cholesky_solve_grad,  // cuda_only
                    GPU,

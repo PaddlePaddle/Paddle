@@ -25,11 +25,12 @@ import parameterize
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'dist'), [('test-mock-exp',
-                                             mock.Exponential(rate=paddle.rand(
-                                                 [100, 200, 99],
-                                                 dtype=config.DEFAULT_DTYPE)))])
+    (parameterize.TEST_CASE_NAME, 'dist'),
+    [('test-mock-exp',
+      mock.Exponential(
+          rate=paddle.rand([100, 200, 99], dtype=config.DEFAULT_DTYPE)))])
 class TestExponentialFamily(unittest.TestCase):
+
     def test_entropy(self):
         np.testing.assert_allclose(
             self.dist.entropy(),
@@ -43,11 +44,12 @@ class TestExponentialFamily(unittest.TestCase):
     (config.TEST_CASE_NAME, 'dist'),
     [('test-dummy', mock.DummyExpFamily(0.5, 0.5)),
      ('test-dirichlet',
-      paddle.distribution.Dirichlet(paddle.to_tensor(parameterize.xrand()))), (
-          'test-beta', paddle.distribution.Beta(
-              paddle.to_tensor(parameterize.xrand()),
-              paddle.to_tensor(parameterize.xrand())))])
+      paddle.distribution.Dirichlet(paddle.to_tensor(parameterize.xrand()))),
+     ('test-beta',
+      paddle.distribution.Beta(paddle.to_tensor(parameterize.xrand()),
+                               paddle.to_tensor(parameterize.xrand())))])
 class TestExponentialFamilyException(unittest.TestCase):
+
     def test_entropy_exception(self):
         with self.assertRaises(NotImplementedError):
             paddle.distribution.ExponentialFamily.entropy(self.dist)

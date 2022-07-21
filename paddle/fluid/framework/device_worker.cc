@@ -32,7 +32,9 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
+std::string PrintLodTensorType(Tensor* tensor,
+                               int64_t start,
+                               int64_t end,
                                char separator = ':',
                                bool need_leading_separator = true) {
   auto count = tensor->numel();
@@ -53,8 +55,11 @@ std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
   return os.str();
 }
 template <typename T>
-void PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
-                        std::string& out_val, char separator = ':',
+void PrintLodTensorType(Tensor* tensor,
+                        int64_t start,
+                        int64_t end,
+                        std::string& out_val,
+                        char separator = ':',
                         bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -79,8 +84,11 @@ void PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end,
 #define FLOAT_EPS 1e-8
 #define MAX_FLOAT_BUFF_SIZE 40
 template <>
-void PrintLodTensorType<float>(Tensor* tensor, int64_t start, int64_t end,
-                               std::string& out_val, char separator,
+void PrintLodTensorType<float>(Tensor* tensor,
+                               int64_t start,
+                               int64_t end,
+                               std::string& out_val,
+                               char separator,
                                bool need_leading_separator) {
   char buf[MAX_FLOAT_BUFF_SIZE];
   auto count = tensor->numel();
@@ -101,7 +109,9 @@ void PrintLodTensorType<float>(Tensor* tensor, int64_t start, int64_t end,
     }
   }
 }
-std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
+std::string PrintLodTensorIntType(Tensor* tensor,
+                                  int64_t start,
+                                  int64_t end,
                                   char separator = ':',
                                   bool need_leading_separator = true) {
   auto count = tensor->numel();
@@ -122,8 +132,11 @@ std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
   return os.str();
 }
 
-void PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
-                           std::string& out_val, char separator = ':',
+void PrintLodTensorIntType(Tensor* tensor,
+                           int64_t start,
+                           int64_t end,
+                           std::string& out_val,
+                           char separator = ':',
                            bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -147,40 +160,46 @@ void PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end,
   // return os.str();
 }
 
-std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
-                           char separator, bool need_leading_separator) {
+std::string PrintLodTensor(Tensor* tensor,
+                           int64_t start,
+                           int64_t end,
+                           char separator,
+                           bool need_leading_separator) {
   std::string out_val;
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
-    out_val = PrintLodTensorType<float>(tensor, start, end, separator,
-                                        need_leading_separator);
+    out_val = PrintLodTensorType<float>(
+        tensor, start, end, separator, need_leading_separator);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::INT64) {
-    out_val = PrintLodTensorIntType(tensor, start, end, separator,
-                                    need_leading_separator);
+    out_val = PrintLodTensorIntType(
+        tensor, start, end, separator, need_leading_separator);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::FP64) {
-    out_val = PrintLodTensorType<double>(tensor, start, end, separator,
-                                         need_leading_separator);
+    out_val = PrintLodTensorType<double>(
+        tensor, start, end, separator, need_leading_separator);
   } else {
     out_val = "unsupported type";
   }
   return out_val;
 }
 
-void PrintLodTensor(Tensor* tensor, int64_t start, int64_t end,
-                    std::string& out_val, char separator,
+void PrintLodTensor(Tensor* tensor,
+                    int64_t start,
+                    int64_t end,
+                    std::string& out_val,
+                    char separator,
                     bool need_leading_separator) {
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
-    PrintLodTensorType<float>(tensor, start, end, out_val, separator,
-                              need_leading_separator);
+    PrintLodTensorType<float>(
+        tensor, start, end, out_val, separator, need_leading_separator);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::INT64) {
-    PrintLodTensorIntType(tensor, start, end, out_val, separator,
-                          need_leading_separator);
+    PrintLodTensorIntType(
+        tensor, start, end, out_val, separator, need_leading_separator);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::FP64) {
-    PrintLodTensorType<double>(tensor, start, end, out_val, separator,
-                               need_leading_separator);
+    PrintLodTensorType<double>(
+        tensor, start, end, out_val, separator, need_leading_separator);
   } else {
     out_val += "unsupported type";
   }
@@ -252,7 +271,8 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   dump_interval_ = desc.dump_interval();
 }
 
-void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
+void DeviceWorker::DumpField(const Scope& scope,
+                             int dump_mode,
                              int dump_interval) {  // dump_mode: 0: no random,
                                                    // 1: random with insid hash,
                                                    // 2: random with random
@@ -295,8 +315,8 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
     if (dump_fields_ == NULL || (*dump_fields_).size() == 0) {
       return;
     }
-    auto set_output_str = [&, this](size_t begin, size_t end,
-                                    LoDTensor* tensor) {
+    auto set_output_str = [&, this](
+                              size_t begin, size_t end, LoDTensor* tensor) {
       std::pair<int64_t, int64_t> bound;
       auto& dims = tensor->dims();
       for (size_t i = begin; i < end; ++i) {
@@ -333,9 +353,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       }
       auto& dims = tensor->dims();
       if (dims.size() != 2 || dims[0] <= 0) {
-        VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
-                                              "skipped. Maybe the dimension is "
-                                              "wrong ";
+        VLOG(0) << "Note: field[" << field
+                << "] cannot pass check, so it was "
+                   "skipped. Maybe the dimension is "
+                   "wrong ";
         VLOG(0) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
@@ -415,9 +436,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field << "] cannot pass check, so it was "
-                                            "skipped. Maybe the dimension is "
-                                            "wrong ";
+      VLOG(0) << "Note: field[" << field
+              << "] cannot pass check, so it was "
+                 "skipped. Maybe the dimension is "
+                 "wrong ";
       continue;
     }
     for (size_t i = 0; i < batch_size; ++i) {

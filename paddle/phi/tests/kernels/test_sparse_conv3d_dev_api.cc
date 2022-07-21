@@ -13,17 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <memory>
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/sparse/coalesce_kernel.h"
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -75,7 +76,6 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(paddle::platform::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
@@ -208,6 +208,8 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                             subm,
                                             &d_rulebook);
 
+  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
+
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
   for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -218,7 +220,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       dev_ctx_cpu,
       DenseTensorMeta(indices_dtype, {4, d_out.nnz()}, DataLayout::NCHW));
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_indices(),
+            tmp_d_out.non_zero_indices(),
             phi::CPUPlace(),
             true,
             &h_indices_tensor);
@@ -232,7 +234,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
       phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_elements(),
+            tmp_d_out.non_zero_elements(),
             phi::CPUPlace(),
             true,
             &h_features_tensor);

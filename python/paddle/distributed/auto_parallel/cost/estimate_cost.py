@@ -14,6 +14,7 @@
 
 
 class CostEstimator:
+
     def __init__(self,
                  program,
                  cluster=None,

@@ -18,8 +18,9 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/naive_executor.h"
-#include "paddle/fluid/framework/op_compatible_info.h"
+
+#include "onnxruntime_c_api.h"    // NOLINT
+#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
@@ -27,9 +28,6 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
-
-#include "onnxruntime_c_api.h"    // NOLINT
-#include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle2onnx/converter.h"
 
 #ifdef PADDLE_WITH_TESTING
@@ -94,7 +92,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : config_(config), env_(ORT_LOGGING_LEVEL_WARNING, "onnx") {
+      : env_(ORT_LOGGING_LEVEL_WARNING, "onnx"), config_(config) {
     predictor_id_ = inference::GetUniqueId();
   }
   ///
@@ -174,7 +172,12 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \return get a new predictor
   ///
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
+
+  std::shared_ptr<framework::Scope> scope_;
+
+ protected:
+  const void *GetDeviceContexts() const override;
 
  private:
   ///
@@ -188,17 +191,28 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   bool FindONNXDesc(const std::string &name, bool is_input);
 
- private:
-  AnalysisConfig config_;
+  /// \brief get the Ort Value(input Tensor).
+  ///
+  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  ///
+  /// \param[in] device_name "cpu" or "gpu" of device
+  ///
+  /// \return get a Ort::Value
+  ///
+  Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
 
+ private:
   // ONNXRuntime
   Ort::Env env_;
   Ort::Session session_{nullptr};
   std::shared_ptr<Ort::IoBinding> binding_;
 
+  AnalysisConfig config_;
+  std::mutex clone_mutex_;
   platform::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
+  std::map<std::string, std::shared_ptr<std::vector<int8_t>>> input_buffers_;
   int predictor_id_;
 
 // Some more detailed tests, they are made the friends of the predictor, so that

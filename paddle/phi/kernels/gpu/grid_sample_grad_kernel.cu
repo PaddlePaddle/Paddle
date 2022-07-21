@@ -14,14 +14,13 @@
 
 #include "paddle/phi/kernels/grid_sample_grad_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/grid_sample_utils.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -295,23 +294,23 @@ void GridSampleGradKernel(const Context& dev_ctx,
   auto cu_stream = dev_ctx.stream();
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-  GridSamplerCudaBackwardKernel<
-      T><<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-      count,
-      out_grad.data<T>(),
-      x.data<T>(),
-      grid.data<T>(),
-      n,
-      c,
-      out_h,
-      out_w,
-      in_h,
-      in_w,
-      x_grad->data<T>(),
-      grid_grad_data,
-      enum_mode,
-      enum_padding_mode,
-      align_corners);
+  GridSamplerCudaBackwardKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
+          count,
+          out_grad.data<T>(),
+          x.data<T>(),
+          grid.data<T>(),
+          n,
+          c,
+          out_h,
+          out_w,
+          in_h,
+          in_w,
+          x_grad->data<T>(),
+          grid_grad_data,
+          enum_mode,
+          enum_padding_mode,
+          align_corners);
 }
 
 }  // namespace phi

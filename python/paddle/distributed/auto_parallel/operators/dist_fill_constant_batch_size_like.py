@@ -31,6 +31,7 @@ from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedFillConstantBatchSizeLike(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super(DistributedFillConstantBatchSizeLike, self).__init__(op_type)
 
@@ -40,6 +41,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super(DistributedFillConstantBatchSizeLikeImpl0, self).__init__(name)
         self._forward_implemented = True
@@ -116,7 +118,6 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
                 shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
 
         op._set_attr("shape", shape_list)
-        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

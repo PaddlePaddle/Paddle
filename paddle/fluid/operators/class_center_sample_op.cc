@@ -21,15 +21,20 @@ class ClassCenterSampleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "ClassCenterSample");
+    OP_INOUT_CHECK(ctx->HasOutput("RemappedLabel"),
+                   "Output",
+                   "RemappedLabel",
                    "ClassCenterSample");
-    OP_INOUT_CHECK(ctx->HasOutput("RemappedLabel"), "Output", "RemappedLabel",
+    OP_INOUT_CHECK(ctx->HasOutput("SampledLocalClassCenter"),
+                   "Output",
+                   "SampledLocalClassCenter",
                    "ClassCenterSample");
-    OP_INOUT_CHECK(ctx->HasOutput("SampledLocalClassCenter"), "Output",
-                   "SampledLocalClassCenter", "ClassCenterSample");
 
     auto x_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 1,
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Rank of Input(Label) should be equal to 1, "
                           "but the value given is %d.",
@@ -139,7 +144,8 @@ class ClassCenterSampleOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_WITHOUT_GRADIENT(class_center_sample, ops::ClassCenterSampleOp,
+REGISTER_OP_WITHOUT_GRADIENT(class_center_sample,
+                             ops::ClassCenterSampleOp,
                              ops::ClassCenterSampleOpMaker);
 REGISTER_OP_CPU_KERNEL(class_center_sample,
                        ops::ClassCenterSampleCPUKernel<int64_t>,

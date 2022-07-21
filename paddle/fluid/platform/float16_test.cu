@@ -14,6 +14,7 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <bitset>
 #include <iostream>
 
@@ -321,8 +322,8 @@ TEST(float16, lod_tensor_on_gpu) {
   float16 *src_ptr =
       src_tensor.mutable_data<float16>(phi::make_ddim({2, 2}), CPUPlace());
 
-  float16 arr[4] = {float16(1.0f), float16(0.5f), float16(0.33333f),
-                    float16(0.0f)};
+  float16 arr[4] = {
+      float16(1.0f), float16(0.5f), float16(0.33333f), float16(0.0f)};
   memcpy(src_ptr, arr, 4 * sizeof(float16));
 
   // CPU LoDTensor to GPU LoDTensor
@@ -363,10 +364,12 @@ TEST(float16, typeid) {
 
   // compile time assert
   PADDLE_ENFORCE_EQ(
-      functor(a), true,
+      functor(a),
+      true,
       platform::errors::Unavailable("The float16 support in GPU failed."));
   PADDLE_ENFORCE_EQ(
-      functor2(b), false,
+      functor2(b),
+      false,
       platform::errors::Unavailable("The float16 support in GPU failed."));
 }
 

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,6 +50,45 @@ atype_to_parsing_function = {
     "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
+# This list contains ops that do not need to generate amp logic
+# All optimizer ops in this list
+no_amp_list = [
+    'adam_',
+    'adam',
+    'adamw_',
+    'adamw',
+    'decayed_adagrad_',
+    'decayed_adagrad',
+    'dgc_momentum_',
+    'dgc_momentum',
+    'distributed_fused_lamb_',
+    'distributed_fused_lamb',
+    'dpsgd_',
+    'dpsgd',
+    'ftrl_',
+    'ftrl',
+    'lamb_',
+    'lamb',
+    'lars_momentum_',
+    'lars_momentum',
+    'merged_adam_',
+    'merged_adam',
+    'merged_momentum_',
+    'merged_momentum',
+    'momentum_',
+    'momentum',
+    'proximal_adagrad_',
+    'proximal_adagrad',
+    'proximal_gd_',
+    'proximal_gd',
+    'rmsprop_',
+    'rmsprop',
+    'sgd_',
+    'sgd',
+    'sparse_momentum_',
+    'sparse_momentum',
+]
+
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
@@ -77,9 +116,7 @@ RECORD_EVENT_TEMPLATE = \
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \
 """
-    ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_args_info, \"final_state_{}\", \"{}\");
-    ssize_t return_id = GetIdxFromCoreOpsInfoMap(core_ops_final_state_returns_info, \"final_state_{}\", \"{}\");
-    return ToPyObject(out, return_id, args, arg_id);
+    inplace_var_idx_map[{}] = {};
 """
 
 
@@ -101,7 +138,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
     // Set Device ID
 {}
     // Call dygraph function
-    decltype({}({})) out = {}({});
+    {}
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
@@ -114,6 +151,25 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
     return nullptr;
   }}
 }}
+"""
+
+NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});\n"
+
+AMP_DYGRAPH_FUNCTION_TEMPLATE = \
+"""
+    decltype({}({})) out;
+    // AMP Logic
+    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+        VLOG(5) << "Check and Prepare For AMP";
+        {}
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+        {}
+        {}
+        {}
+        out = {}({});
+    }} else {{
+        out = {}({});
+    }}
 """
 
 FUNCTION_SET_DEVICE_TEMPLATE = \
@@ -141,22 +197,18 @@ PYTHON_C_FUNCTION_REG_TEMPLATE = \
 
 PYTHON_C_WRAPPER_TEMPLATE = \
 """
-#pragma once
-
-#include  "pybind11/detail/common.h"
-#include  "paddle/phi/api/all.h"
-#include  "paddle/phi/api/lib/dygraph_api.h"
-#include  "paddle/phi/common/backend.h"
-#include  "paddle/phi/common/data_type.h"
-#include  "paddle/phi/common/scalar.h"
-#include  "paddle/phi/common/int_array.h"
-#include  "paddle/phi/api/include/sparse_api.h"
-#include  "paddle/phi/api/include/strings_api.h"
-#include  "paddle/fluid/pybind/op_function_common.h"
-#include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include  "paddle/fluid/pybind/exception.h"
-#include  "paddle/fluid/platform/profiler/event_tracing.h"
-#include  <Python.h>
+#include <Python.h>
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/api/include/strings_api.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/pybind/eager_final_state_custom_python_api.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/eager/amp_utils.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 
 namespace paddle {{
 namespace pybind {{
@@ -166,6 +218,16 @@ namespace pybind {{
 static PyMethodDef EagerFinalStateMethods[] = {{
     {}
 }};
+
+void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
+  if (PyModule_AddFunctions(module->ptr(), EagerFinalStateMethods) < 0) {{
+    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+  }}
+
+  if (PyModule_AddFunctions(module->ptr(), CustomEagerFinalStateMethods) < 0) {{
+    PADDLE_THROW(platform::errors::Fatal ("Add functions to core.eager.ops failed!"));
+  }}
+}}
 
 }} // namespace pybind
 }} // namespace paddle
@@ -246,6 +308,7 @@ NAMESPACE_WRAPPER_TEMPLATE = \
 ## Generator Classes ##
 #######################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
+
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
         #self.namespace
@@ -258,8 +321,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         #self.forward_outputs_position_map
         #self.optional_inputs
         #self.no_need_buffers
-        #self.intermediate_outputs   
-        #self.inplace_map
+        #self.intermediate_outputs
+        #self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
 
         self.is_forward_only = True
@@ -275,7 +338,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
     def GeneratePythonCFunction(self):
         namespace = self.namespace
-        inplace_map = self.inplace_map
+        forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
         orig_forward_attrs_list = self.orig_forward_attrs_list
         forward_inputs_position_map = self.forward_inputs_position_map
@@ -283,9 +346,13 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
 
+        inplace_args_pos_map = {}
+        inplace_returns_pos_map = {}
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
         for name, (ttype, pos) in forward_inputs_position_map.items():
+            if forward_inplace_map and name in forward_inplace_map.keys():
+                inplace_args_pos_map[name] = pos
             is_optional = (name in optional_inputs)
             if IsVectorTensorType(ttype):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
@@ -300,6 +367,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,
                         "false")
+
+        if forward_inplace_map:
+            for name, (ttype, pos) in forward_outputs_position_map.items():
+                if name in forward_inplace_map.values():
+                    inplace_returns_pos_map[name] = pos
 
         parse_attributes_str = ""
         expected_place_str = "    auto place = egr::Controller::Instance().GetExpectedPlace();\n"
@@ -320,14 +392,18 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 
         # Generate Dygraph Function Call Logic
-        num_args = len(forward_inputs_position_map.keys()) + len(
-            orig_forward_attrs_list)
+        num_args = len(
+            forward_inputs_position_map.keys()) + len(orig_forward_attrs_list)
         dygraph_function_call_list = ["" for i in range(num_args)]
+        amp_dygraph_function_call_list = ["" for i in range(num_args)]
         for name, (_, pos) in forward_inputs_position_map.items():
             dygraph_function_call_list[pos] = f"{name}"
+            amp_dygraph_function_call_list[pos] = f"NEW_{name}"
         for name, _, _, pos in orig_forward_attrs_list:
             dygraph_function_call_list[pos] = f"{name}"
+            amp_dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
+        amp_dygraph_function_call_str = ",".join(amp_dygraph_function_call_list)
 
         # Generate Python-C Function Definitions
         if is_forward_only:
@@ -343,12 +419,82 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
             "pythonc_record_event", forward_api_name, "pybind_imperative_func")
 
-        # Generate Python-C Function Definetion
-        self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
-            forward_api_name, pythonc_record_event_str, forward_api_name,
-            get_eager_tensor_str, parse_attributes_str, set_device_str,
+        # Forward amp logic
+        amp_tensors_vector_list = []
+        amp_tensors_vector_optional_list = []
+        amp_autocast_list = []
+        amp_autocast_optional_list = []
+
+        for name, (ttype, pos) in forward_inputs_position_map.items():
+            is_optional = (name in optional_inputs)
+            if IsVectorTensorType(ttype):
+                if is_optional:
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}.is_initialized()) amp_tensors_vector.push_back({name}.get());\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = {name}.is_initialized() ? egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name, false) : {name};\n"
+                    )
+                else:
+                    amp_tensors_vector_list.append(f"{name}")
+                    amp_autocast_list.append(
+                        f"auto NEW_{name} = egr::EagerAmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name, false);\n"
+                    )
+            else:
+                if is_optional:
+                    amp_tensors_vector_optional_list.append(
+                        f"if ({name}.is_initialized()) amp_tensors_vector.push_back({{{name}.get()}});\n"
+                    )
+                    amp_autocast_optional_list.append(
+                        f"auto NEW_{name} = {name}.is_initialized() ? egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name, false) : {name};\n"
+                    )
+                else:
+                    if forward_inplace_map and name in forward_inplace_map.keys(
+                    ):
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name, false);\n"
+                        )
+                    else:
+                        amp_tensors_vector_list.append(f"{{{name}}}")
+                        amp_autocast_list.append(
+                            f"auto NEW_{name} = egr::EagerAmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name, false);\n"
+                        )
+        amp_tensors_vector_list_str = "{ " + ",".join(
+            amp_tensors_vector_list) + " }"
+        amp_tensors_vector_optional_list_str = "".join(
+            amp_tensors_vector_optional_list)
+        amp_autocast_list_str = "    ".join(
+            amp_autocast_list) + "        " + "    ".join(
+                amp_autocast_optional_list)
+
+        kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
+        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+
+        noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
             fwd_function_name, dygraph_function_call_str, fwd_function_name,
-            dygraph_function_call_str, return_str)
+            dygraph_function_call_str)
+
+        amp_dygraph_function_str = AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+            fwd_function_name, dygraph_function_call_str,
+            kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+            amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
+            amp_autocast_list_str, fwd_function_name,
+            amp_dygraph_function_call_str, fwd_function_name,
+            dygraph_function_call_str)
+
+        # Generate Python-C Function Definetion
+        if (is_forward_only) and (len(amp_tensors_vector_list) >
+                                  0) and (forward_api_name not in no_amp_list):
+            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                forward_api_name, pythonc_record_event_str, forward_api_name,
+                get_eager_tensor_str, parse_attributes_str, set_device_str,
+                amp_dygraph_function_str, return_str)
+        else:
+            self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                forward_api_name, pythonc_record_event_str, forward_api_name,
+                get_eager_tensor_str, parse_attributes_str, set_device_str,
+                noamp_dygraph_function_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -359,7 +505,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_api_name_prefix, forward_api_name, namespace,
             forward_api_name, forward_api_name)
 
-        if inplace_map:
+        if forward_inplace_map:
             inplaced_forward_api_name = GetInplacedFunctionName(
                 self.forward_api_name)
             if is_forward_only:
@@ -371,28 +517,53 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     "::", namespace,
                     GetForwardFunctionName(inplaced_forward_api_name))
 
-            assert len(
-                inplace_map
-            ) == 1, f"size of inplace_map must be 1, but inplace_map of \"{forward_api_name}\" op got {len(inplace_map)}"
-            for inplace_input, inplace_output in inplace_map.items():
-                return_str = RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
-                    inplaced_forward_api_name, inplace_input,
-                    inplaced_forward_api_name, inplace_output)
-                break
+            inplace_noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                inplaced_fwd_function_name, dygraph_function_call_str,
+                inplaced_fwd_function_name, dygraph_function_call_str)
+
+            inplace_amp_dygraph_function_str = AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+                inplaced_fwd_function_name, dygraph_function_call_str,
+                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+                amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
+                amp_autocast_list_str, inplaced_fwd_function_name,
+                amp_dygraph_function_call_str, inplaced_fwd_function_name,
+                dygraph_function_call_str)
+
+            return_str = "    std::map<ssize_t, ssize_t> inplace_var_idx_map;"
+            for inplace_input, inplace_output in forward_inplace_map.items():
+                return_str += RETURN_INPLACE_PYOBJECT_TEMPLATE.format(
+                    inplace_returns_pos_map[inplace_output],
+                    inplace_args_pos_map[inplace_input])
+            return_str += "    return ToPyObject(out, args, inplace_var_idx_map);"
 
             # Generate Python-C Function Definetion
-            self.python_c_function_str += PYTHON_C_FUNCTION_TEMPLATE.format(
-                inplaced_forward_api_name, pythonc_record_event_str,
-                inplaced_forward_api_name, get_eager_tensor_str,
-                parse_attributes_str, set_device_str,
-                inplaced_fwd_function_name, dygraph_function_call_str,
-                inplaced_fwd_function_name, dygraph_function_call_str,
-                return_str)
+            if (is_forward_only) and (len(amp_tensors_vector_list) > 0) and (
+                    inplaced_forward_api_name not in no_amp_list):
+                python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                    inplaced_forward_api_name, pythonc_record_event_str,
+                    inplaced_forward_api_name, get_eager_tensor_str,
+                    parse_attributes_str, set_device_str,
+                    inplace_amp_dygraph_function_str, return_str)
+            else:
+                python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
+                    inplaced_forward_api_name, pythonc_record_event_str,
+                    inplaced_forward_api_name, get_eager_tensor_str,
+                    parse_attributes_str, set_device_str,
+                    inplace_noamp_dygraph_function_str, return_str)
 
-            # Generate Python-C Function Registration
-            self.python_c_function_reg_str += "\n," + PYTHON_C_FUNCTION_REG_TEMPLATE.format(
+            python_c_inplace_func_reg_str = PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                 forward_api_name_prefix, inplaced_forward_api_name, namespace,
                 inplaced_forward_api_name, inplaced_forward_api_name)
+
+            # self.forward_api_name ending with '_' means it only has inplace api
+            if self.forward_api_name[-1] == '_':
+                self.python_c_function_str = python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str = python_c_inplace_func_reg_str
+            else:
+                self.python_c_function_str += python_c_inplace_func_str
+                # Generate Python-C Function Registration
+                self.python_c_function_reg_str += "\n," + python_c_inplace_func_reg_str
 
     def run(self):
         # Initialized is_forward_only
@@ -401,8 +572,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # Initialized optional_inputs
         self.ParseDispensable()
 
-        # Initialized inplace_map
-        self.ParseInplaceInfo()
+        # Initialized forward_inplace_map
+        self.ParseForwardInplaceInfo()
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
@@ -420,8 +591,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCGenerator(GeneratorBase):
+
     def __init__(self, path):
-        # Parent members: 
+        # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
@@ -433,11 +605,11 @@ class PythonCGenerator(GeneratorBase):
 
     def GeneratePythonCFunctions(self):
         namespace = self.namespace
-        forward_api_list = self.forward_api_list
 
+        forward_api_list = self.forward_api_list
         for forward_api_content in forward_api_list:
-            f_generator = PythonCSingleFunctionGenerator(forward_api_content,
-                                                         namespace)
+            f_generator = PythonCSingleFunctionGenerator(
+                forward_api_content, namespace)
             status = f_generator.run()
 
             if status == True:

@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#include <boost/variant.hpp>
 #include "glog/logging.h"
 
 namespace phi {
@@ -28,8 +27,10 @@ namespace framework {
 
 class Variable;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index) {
+void SetFeedVariable(Scope* scope,
+                     const LoDTensor& input,
+                     const std::string& var_name,
+                     size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
@@ -45,8 +46,10 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   val.set_lod(input.lod());
 }
 
-void SetFeedVariable(Scope* scope, const Strings& input,
-                     const std::string& var_name, size_t index) {
+void SetFeedVariable(Scope* scope,
+                     const Strings& input,
+                     const std::string& var_name,
+                     size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedStringVariable name=" << var_name << " index=" << index;
@@ -59,7 +62,8 @@ void SetFeedVariable(Scope* scope, const Strings& input,
   feed_inputs[index] = input;
 }
 
-FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
+FetchType& GetFetchVariable(const Scope& scope,
+                            const std::string& var_name,
                             size_t index) {
   // Since we want to fetch FetchType from a variable, the variable must
   // be created alreadly.
@@ -67,14 +71,16 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
   PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", var_name));
-  PADDLE_ENFORCE_EQ(g_fetch_value->IsType<FetchList>(), true,
+  PADDLE_ENFORCE_EQ(g_fetch_value->IsType<FetchList>(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Only %s can be invoked by GetFetchVariable",
                         typeid(FetchList).name()));
   auto& fetch_outputs = *g_fetch_value->GetMutable<FetchList>();
   auto& tensor = fetch_outputs[index];
   VLOG(3) << "Fetch " << var_name << " with index " << index;
-  PADDLE_ENFORCE_LT(index, fetch_outputs.size(),
+  PADDLE_ENFORCE_LT(index,
+                    fetch_outputs.size(),
                     platform::errors::InvalidArgument(
                         "index must less than fetch_outputs size."));
   return tensor;
@@ -82,10 +88,11 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                      var_name));
-  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+  PADDLE_ENFORCE_NOT_NULL(var,
+                          platform::errors::NotFound(
+                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Only support lod tensor in GetVariableTensor now."));
   return *var->GetMutable<LoDTensor>();

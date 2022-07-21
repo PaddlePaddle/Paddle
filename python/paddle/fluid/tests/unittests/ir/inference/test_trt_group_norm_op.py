@@ -24,10 +24,12 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTGroupNormTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 512, 12, 12], dtype="float32")
+            data = fluid.data(name="data",
+                              shape=[-1, 512, 12, 12],
+                              dtype="float32")
             out = self.append_group_norm(data)
 
         self.feeds = {
@@ -36,9 +38,9 @@ class TRTGroupNormTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TRTGroupNormTest.TensorRTParam(
             1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam({
-            'data': [1, 512, 12, 12]
-        }, {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]}, False)
+        self.dynamic_shape_params = TRTGroupNormTest.DynamicShapeParam(
+            {'data': [1, 512, 12, 12]}, {'data': [1, 512, 12, 12]},
+            {'data': [1, 512, 12, 12]}, False)
         self.fetch_list = [out]
 
     def append_group_norm(self, data):
@@ -48,12 +50,11 @@ class TRTGroupNormTest(InferencePassTest):
         bias_attr = fluid.ParamAttr(
             name='group_norm_bias',
             initializer=fluid.initializer.Constant(value=0.0))
-        return fluid.layers.group_norm(
-            data,
-            groups=32,
-            epsilon=0.000009999999747378752,
-            param_attr=param_attr,
-            bias_attr=bias_attr)
+        return fluid.layers.group_norm(data,
+                                       groups=32,
+                                       epsilon=0.000009999999747378752,
+                                       param_attr=param_attr,
+                                       bias_attr=bias_attr)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

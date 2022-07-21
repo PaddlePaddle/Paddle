@@ -19,8 +19,8 @@ limitations under the License. */
 // "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include <iostream>
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -62,8 +62,8 @@ class HBMMemoryPool : public managed {
     VLOG(3) << "hbm memory pool with capacity" << capacity_
             << " bs: " << block_size_;
     CUDA_CHECK(cudaMalloc(&mem_, block_size_ * capacity_));
-    CUDA_CHECK(cudaMemcpy(mem_, mem_pool->mem(), mem_pool->byte_size(),
-               cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(
+        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice));
   }
 
   ~HBMMemoryPool() {

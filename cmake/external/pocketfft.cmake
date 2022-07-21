@@ -14,30 +14,29 @@
 
 include(ExternalProject)
 
+set(POCKETFFT_PATH
+    "${THIRD_PARTY_PATH}/pocketfft"
+    CACHE STRING "A path setting for external_pocketfft path.")
+set(POCKETFFT_PREFIX_DIR ${POCKETFFT_PATH})
 
-set(POCKETFFT_PATH           "${THIRD_PARTY_PATH}/pocketfft" CACHE STRING "A path setting for external_pocketfft path.")
-set(POCKETFFT_PREFIX_DIR     ${POCKETFFT_PATH})
+set(POCKETFFT_REPOSITORY https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git)
+set(POCKETFFT_TAG release_for_eigen)
 
-set(POCKETFFT_REPOSITORY  https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git)
-set(POCKETFFT_TAG         release_for_eigen)
-
-SET(POCKETFFT_INCLUDE_DIR  ${POCKETFFT_PREFIX_DIR}/src)
+set(POCKETFFT_INCLUDE_DIR ${POCKETFFT_PREFIX_DIR}/src)
 message("POCKETFFT_INCLUDE_DIR is ${POCKETFFT_INCLUDE_DIR}")
 include_directories(${POCKETFFT_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_pocketfft
-  ${EXTERNAL_PROJECT_LOG_ARGS}
-  ${SHALLOW_CLONE}
-  GIT_REPOSITORY  ${POCKETFFT_REPOSITORY}
-  GIT_TAG         ${POCKETFFT_TAG}
-  PREFIX          ${POCKETFFT_PREFIX_DIR}
-  UPDATE_COMMAND    ""
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${POCKETFFT_REPOSITORY}
+  GIT_TAG ${POCKETFFT_TAG}
+  PREFIX ${POCKETFFT_PREFIX_DIR}
+  UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND     ""
-  INSTALL_COMMAND   ""
-  TEST_COMMAND      ""
-)
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  TEST_COMMAND "")
 
 add_library(pocketfft INTERFACE)
 

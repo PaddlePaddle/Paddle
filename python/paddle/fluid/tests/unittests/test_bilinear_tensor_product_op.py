@@ -21,13 +21,15 @@ from op_test import OpTest
 
 
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            layer = fluid.dygraph.nn.BilinearTensorProduct(
-                input1_dim=5, input2_dim=4, output_dim=1000)
+            layer = fluid.dygraph.nn.BilinearTensorProduct(input1_dim=5,
+                                                           input2_dim=4,
+                                                           output_dim=1000)
             # the input must be Variable.
-            x0 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x0 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, layer, x0)
             # the input dtype must be float32 or float64
             x1 = fluid.data(name='x1', shape=[-1, 5], dtype="float16")
@@ -36,6 +38,7 @@ class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
 
 
 class TestBilinearTensorProductOp(OpTest):
+
     def setUp(self):
         self.op_type = "bilinear_tensor_product"
         batch_size = 6

@@ -15,9 +15,9 @@
 #pragma once
 
 #include <error.h>
+
 #include <string>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
@@ -26,6 +26,7 @@
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace distributed {
@@ -66,11 +67,13 @@ class NPUEventManager {
     if (!is_created_) {
       CreateEvent(device_index);
     }
-    PADDLE_ENFORCE_EQ(device_index, device_index_,
+    PADDLE_ENFORCE_EQ(device_index,
+                      device_index_,
                       platform::errors::PreconditionNotMet(
                           "NPUDeviceContext's device %d does not match"
                           "Event's device %d",
-                          device_index, device_index_));
+                          device_index,
+                          device_index_));
 
     platform::NPUDeviceGuard guard(device_index_);
     platform::NPUEventRecord(event_, ctx.stream());
@@ -88,11 +91,13 @@ class NPUEventManager {
   void Block(const paddle::platform::NPUDeviceContext& ctx) const {
     if (is_created_) {
       auto device_index = ctx.GetPlace().device;
-      PADDLE_ENFORCE_EQ(device_index, device_index_,
+      PADDLE_ENFORCE_EQ(device_index,
+                        device_index_,
                         platform::errors::PreconditionNotMet(
                             "CUDADeviceContext's device %d does not match"
                             "Event's device %d",
-                            device_index, device_index_));
+                            device_index,
+                            device_index_));
       platform::NPUDeviceGuard guard(device_index_);
       platform::NPUStreamWaitEvent(ctx.stream(), event_);
     }
@@ -125,12 +130,13 @@ class HCCLCommManager {
     }
   }
 
-  static std::shared_ptr<HCCLCommManager> Create(int num_ranks, int rank,
+  static std::shared_ptr<HCCLCommManager> Create(int num_ranks,
+                                                 int rank,
                                                  HcclRootInfo* comm_id,
                                                  HcclComm hccl_comm) {
     auto hccl_manager = std::make_shared<HCCLCommManager>();
-    auto ret = platform::dynload::HcclCommInitRootInfo(num_ranks, comm_id, rank,
-                                                       &hccl_comm);
+    auto ret = platform::dynload::HcclCommInitRootInfo(
+        num_ranks, comm_id, rank, &hccl_comm);
     using __NPU_STATUS_TYPE__ = decltype(ret);
     constexpr auto __success_type__ =
         platform::details::NPUStatusType<__NPU_STATUS_TYPE__>::kSuccess;

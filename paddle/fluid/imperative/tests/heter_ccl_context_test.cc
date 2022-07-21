@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/imperative/heter_ccl_context.h"
+
 #include <chrono>
 #include <thread>  // NOLINT
 
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/imperative/heter_ccl_context.h"
-
-#include "gtest/gtest.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;

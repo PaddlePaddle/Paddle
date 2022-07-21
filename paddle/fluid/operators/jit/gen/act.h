@@ -84,8 +84,13 @@ class VActFunc : public JitCode {
 
   // compute EXP with ymm, xmm
   template <typename JMM>
-  void exp_jmm(JMM& dst, JMM& src, int src_idx = 11, int fx_idx = 12,  // NOLINT
-               int fy_idx = 13, int mask_idx = 14, int tmp_idx = 15) {
+  void exp_jmm(JMM& dst,
+               JMM& src,
+               int src_idx = 11,
+               int fx_idx = 12,  // NOLINT
+               int fy_idx = 13,
+               int mask_idx = 14,
+               int tmp_idx = 15) {
     using namespace platform;  // NOLINT
     // check all idx can not equal
     JMM jmm_src = JMM(src_idx);
@@ -154,8 +159,9 @@ class VActFunc : public JitCode {
       vmovdqa(ptr[reg_ptr_tmp], xtmp1);
       // next 128bits
       vmovdqa(xtmp1, ptr[reg_ptr_tmp + XMM_FLOAT_BLOCK * sizeof(float)]);
-      vmovdqa(xtmp2, ptr[reg_ptr_tmp +
-                         (YMM_FLOAT_BLOCK + XMM_FLOAT_BLOCK) * sizeof(float)]);
+      vmovdqa(xtmp2,
+              ptr[reg_ptr_tmp +
+                  (YMM_FLOAT_BLOCK + XMM_FLOAT_BLOCK) * sizeof(float)]);
       vpaddd(xtmp1, xtmp1, xtmp2);
       vpslld(xtmp1, xtmp1, 23);
       vmovdqa(ptr[reg_ptr_tmp + XMM_FLOAT_BLOCK * sizeof(float)], xtmp1);
@@ -168,8 +174,12 @@ class VActFunc : public JitCode {
 
   // compute SIGMOID with ymm, xmm
   template <typename JMM>
-  void sigmoid_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
-                   int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+  void sigmoid_jmm(JMM& dst,
+                   JMM& src,
+                   int src_idx = 11,  // NOLINT
+                   int fx_idx = 12,
+                   int fy_idx = 13,
+                   int mask_idx = 14,
                    int tmp_idx = 15) {
     // y = 1 / (1 + e^-x)
     JMM jmm_tmp = JMM(tmp_idx);
@@ -193,8 +203,12 @@ class VActFunc : public JitCode {
 
   // compute TANH with ymm, xmm
   template <typename JMM>
-  void tanh_jmm(JMM& dst, JMM& src, int src_idx = 11,  // NOLINT
-                int fx_idx = 12, int fy_idx = 13, int mask_idx = 14,
+  void tanh_jmm(JMM& dst,
+                JMM& src,
+                int src_idx = 11,  // NOLINT
+                int fx_idx = 12,
+                int fy_idx = 13,
+                int mask_idx = 14,
                 int tmp_idx = 15) {
     // y = 2 / (1 + e^(-2x)) - 1
     JMM jmm_src = JMM(src_idx);
@@ -260,7 +274,9 @@ class VActFunc : public JitCode {
 
 class VActJitCode : public VActFunc {
  public:
-  explicit VActJitCode(int d, operand_type type, size_t code_size,
+  explicit VActJitCode(int d,
+                       operand_type type,
+                       size_t code_size,
                        void* code_ptr = nullptr)
       : VActFunc(code_size, code_ptr), num_(d), type_(type) {
     if (!(type_ == operand_type::RELU || type_ == operand_type::EXP ||

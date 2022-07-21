@@ -54,8 +54,9 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
   paddle::any Attr(const std::string& name) const override {
     auto* attr = ctx_.Attrs().GetAttr(name);
     PADDLE_ENFORCE_NOT_NULL(
-        attr, platform::errors::NotFound(
-                  "Attribute (%s) should be in AttributeMap.", name));
+        attr,
+        platform::errors::NotFound("Attribute (%s) should be in AttributeMap.",
+                                   name));
     return GetAttrValue(*attr);
   }
 
@@ -79,7 +80,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInputs(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return std::all_of(var_types.begin(), var_types.end(),
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
                        [](const proto::VarType::Type& type) {
                          return type == proto::VarType::LOD_TENSOR;
                        });
@@ -92,7 +94,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     auto var_types = ctx_.GetInputsVarType(name);
-    return std::all_of(var_types.begin(), var_types.end(),
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
                        [](const proto::VarType::Type& type) {
                          return type == proto::VarType::LOD_TENSOR_ARRAY;
                        });
@@ -100,7 +103,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return std::all_of(var_types.begin(), var_types.end(),
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
                        [](const proto::VarType::Type& type) {
                          return type == proto::VarType::LOD_TENSOR;
                        });
@@ -108,7 +112,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsSelectedRowsOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
-    return std::all_of(var_types.begin(), var_types.end(),
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
                        [](const proto::VarType::Type& type) {
                          return type == proto::VarType::SELECTED_ROWS;
                        });
@@ -214,7 +219,8 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       // Note: Here I want enforce `tensor_array->size() == 0UL`, because
       // inplace using on LoDTensorArray is dangerous, but the unittest
       // `test_list` contains this behavior
-      PADDLE_ENFORCE_EQ(dims.size(), 1UL,
+      PADDLE_ENFORCE_EQ(dims.size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "LoDTensorArray can only have one dimension."));
       // only set the array size for LoDTensorArray input
@@ -349,14 +355,6 @@ const phi::MetaTensor& CompatInferMetaContext::InputAt(size_t idx) const {
   return compat_inputs_.at(idx);
 }
 
-paddle::optional<const phi::MetaTensor&>
-CompatInferMetaContext::OptionalInputAt(size_t idx) const {
-  const auto& input = compat_inputs_.at(idx);
-  return input.initialized()
-             ? paddle::optional<const phi::MetaTensor&>{input}
-             : paddle::optional<const phi::MetaTensor&>{paddle::none};
-}
-
 std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
     size_t start, size_t end) const {
   std::vector<const phi::MetaTensor*> result;
@@ -370,7 +368,7 @@ std::vector<const phi::MetaTensor*> CompatInferMetaContext::InputsBetween(
   return result;
 }
 
-paddle::optional<const std::vector<const phi::MetaTensor*>>
+paddle::optional<std::vector<const phi::MetaTensor*>>
 CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
   const auto& first = compat_inputs_.at(start);
 
@@ -383,10 +381,10 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<const std::vector<const phi::MetaTensor*>>(result);
+    return paddle::optional<std::vector<const phi::MetaTensor*>>(
+        std::move(result));
   }
-  return paddle::optional<const std::vector<const phi::MetaTensor*>>(
-      paddle::none);
+  return paddle::none;
 }
 
 phi::MetaTensor* CompatInferMetaContext::MutableOutputAt(size_t idx) {
@@ -495,7 +493,8 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             PADDLE_THROW(platform::errors::InvalidArgument(
                 "Invalid input.size() when cast op attribute `%s` to Scalar, "
                 "expected 1, but actually is %d .",
-                attr_name, infershape_input.size()));
+                attr_name,
+                infershape_input.size()));
           }
         } else {
           // do nothing, skip current attr

@@ -43,9 +43,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
 #if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #endif
 
 DECLARE_int32(record_pool_max_size);
@@ -398,7 +398,8 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len, const char* str,
+  virtual int ParseInstance(int len,
+                            const char* str,
                             std::vector<Record>* instances) {
     return 0;
   };
@@ -479,7 +480,8 @@ struct HostBuffer {
   void malloc(size_t len) {
     buf_size = len;
     CUDA_CHECK(cudaHostAlloc(reinterpret_cast<void**>(&host_buffer),
-                             buf_size * sizeof(T), cudaHostAllocDefault));
+                             buf_size * sizeof(T),
+                             cudaHostAllocDefault));
     CHECK(host_buffer != NULL);
   }
   void free() {
@@ -599,8 +601,8 @@ class MiniBatchGpuPack {
       return;
     }
     buf->resize(size);
-    CUDA_CHECK(cudaMemcpyAsync(buf->data(), val, size * sizeof(T),
-                               cudaMemcpyHostToDevice, stream_));
+    CUDA_CHECK(cudaMemcpyAsync(
+        buf->data(), val, size * sizeof(T), cudaMemcpyHostToDevice, stream_));
   }
   template <typename T>
   void copy_host2device(CudaBuffer<T>* buf, const HostBuffer<T>& val) {
@@ -807,7 +809,8 @@ struct BufState {
   BufState() {}
   ~BufState() {}
 
-  void Init(int graph_batch_size, int graph_walk_len,
+  void Init(int graph_batch_size,
+            int graph_walk_len,
             std::vector<int>* graph_window) {
     batch_size = graph_batch_size;
     walk_len = graph_walk_len;
@@ -898,8 +901,12 @@ class GraphDataGenerator {
   int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
-  void FillOneStep(uint64_t* start_ids, uint64_t* walk, int len,
-                   NeighborSampleResult& sample_res, int cur_degree, int step,
+  void FillOneStep(uint64_t* start_ids,
+                   uint64_t* walk,
+                   int len,
+                   NeighborSampleResult& sample_res,
+                   int cur_degree,
+                   int step,
                    int* len_per_row);
   int FillInsBuf();
   void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
@@ -1142,7 +1149,8 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   // This function is used to put instance to vec_ins
-  virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
+  virtual void AddInstanceToInsVec(T* vec_ins,
+                                   const T& instance,
                                    int index) = 0;
   // This function is used to put ins_vec to feed_vec
   virtual void PutToFeedVec(const T& ins_vec) = 0;
@@ -1196,9 +1204,11 @@ class InMemoryDataFeed : public DataFeed {
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void ParseOneInstanceFromSo(const char* str, T* instance,
+  virtual void ParseOneInstanceFromSo(const char* str,
+                                      T* instance,
                                       CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len, const char* str,
+  virtual int ParseInstanceFromSo(int len,
+                                  const char* str,
                                   std::vector<T>* instances,
                                   CustomParser* parser) {
     return 0;
@@ -1341,7 +1351,8 @@ class MultiSlotType {
 
  private:
   void CheckType(const std::string& type) const {
-    PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"), true,
+    PADDLE_ENFORCE_EQ((type == "uint64" || type == "float"),
+                      true,
                       platform::errors::InvalidArgument(
                           "MultiSlotType error, expect type is uint64 or "
                           "float, but received type is %s.",
@@ -1349,13 +1360,15 @@ class MultiSlotType {
   }
   void CheckFloat() const {
     PADDLE_ENFORCE_EQ(
-        type_[0], 'f',
+        type_[0],
+        'f',
         platform::errors::InvalidArgument(
             "MultiSlotType error, add %s value to float slot.", type_));
   }
   void CheckUint64() const {
     PADDLE_ENFORCE_EQ(
-        type_[0], 'u',
+        type_[0],
+        'u',
         platform::errors::InvalidArgument(
             "MultiSlotType error, add %s value to uint64 slot.", type_));
   }
@@ -1474,10 +1487,12 @@ class RecordCandidateList {
   }
   const RecordCandidate& Get(size_t index) const {
     PADDLE_ENFORCE_LT(
-        index, candidate_list_.size(),
+        index,
+        candidate_list_.size(),
         platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
                                      "elements in candidate_list[%lu].",
-                                     index, candidate_list_.size()));
+                                     index,
+                                     candidate_list_.size()));
     return candidate_list_[index];
   }
   void SetSlotIndexToReplace(
@@ -1576,14 +1591,18 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
-  virtual void ParseOneInstanceFromSo(const char* str, Record* instance,
+  virtual void ParseOneInstanceFromSo(const char* str,
+                                      Record* instance,
                                       CustomParser* parser){};
-  virtual int ParseInstanceFromSo(int len, const char* str,
+  virtual int ParseInstanceFromSo(int len,
+                                  const char* str,
                                   std::vector<Record>* instances,
                                   CustomParser* parser);
   virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
-  virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
-                                uint32_t* cmatch, uint32_t* rank);
+  virtual void GetMsgFromLogKey(const std::string& log_key,
+                                uint64_t* search_id,
+                                uint32_t* cmatch,
+                                uint32_t* rank);
   virtual void PutToFeedVec(const Record* ins_vec, int num);
 };
 
@@ -1622,18 +1641,26 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void AssignFeedVar(const Scope& scope);
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   void BuildSlotBatchGPU(const int ins_num);
-  void FillSlotValueOffset(const int ins_num, const int used_slot_num,
+  void FillSlotValueOffset(const int ins_num,
+                           const int used_slot_num,
                            size_t* slot_value_offsets,
                            const int* uint64_offsets,
-                           const int uint64_slot_size, const int* float_offsets,
+                           const int uint64_slot_size,
+                           const int* float_offsets,
                            const int float_slot_size,
                            const UsedSlotGpuType* used_slots);
-  void CopyForTensor(const int ins_num, const int used_slot_num, void** dest,
+  void CopyForTensor(const int ins_num,
+                     const int used_slot_num,
+                     void** dest,
                      const size_t* slot_value_offsets,
-                     const uint64_t* uint64_feas, const int* uint64_offsets,
-                     const int* uint64_ins_lens, const int uint64_slot_size,
-                     const float* float_feas, const int* float_offsets,
-                     const int* float_ins_lens, const int float_slot_size,
+                     const uint64_t* uint64_feas,
+                     const int* uint64_offsets,
+                     const int* uint64_ins_lens,
+                     const int uint64_slot_size,
+                     const float* float_feas,
+                     const int* float_offsets,
+                     const int* float_ins_lens,
+                     const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
 #endif
   float sample_rate_ = 1.0f;

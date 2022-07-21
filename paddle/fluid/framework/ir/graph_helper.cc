@@ -13,13 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+
 #include <queue>
 #include <stack>
+
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 DECLARE_bool(convert_all_blocks);
-PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir, "",
+PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
+                              "",
                               "FLAGS_print_sub_graph_dir is used "
                               "to print the nodes of sub_graphs.");
 
@@ -29,9 +32,11 @@ namespace ir {
 namespace {
 
 template <class NodeComparator = ir::NodeComp>
-void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
+void SortHelper(const std::map<ir::Node *,
+                               std::set<ir::Node *, NodeComparator>,
                                NodeComparator> &adj_list,
-                ir::Node *node, std::unordered_set<ir::Node *> *visited,
+                ir::Node *node,
+                std::unordered_set<ir::Node *> *visited,
                 std::vector<ir::Node *> *ret) {
   visited->insert(node);
 
@@ -47,21 +52,21 @@ void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
 }
 
 template <class NodeComparator = ir::NodeComp>
-bool HasCircleHelper(
-    ir::Node *node,
-    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
-                   NodeComparator> &adj_list,
-    std::unordered_set<ir::Node *> *visited,
-    std::unordered_set<ir::Node *> *in_trace,
-    std::vector<std::vector<ir::Node *>> *circles) {
+bool HasCircleHelper(ir::Node *node,
+                     const std::map<ir::Node *,
+                                    std::set<ir::Node *, NodeComparator>,
+                                    NodeComparator> &adj_list,
+                     std::unordered_set<ir::Node *> *visited,
+                     std::unordered_set<ir::Node *> *in_trace,
+                     std::vector<std::vector<ir::Node *>> *circles) {
   if (visited->find(node) == visited->end()) {
     visited->insert(node);
     in_trace->insert(node);
 
     for (ir::Node *in : adj_list.at(node)) {
       if (visited->find(in) == visited->end() &&
-          HasCircleHelper<NodeComparator>(in, adj_list, visited, in_trace,
-                                          circles)) {
+          HasCircleHelper<NodeComparator>(
+              in, adj_list, visited, in_trace, circles)) {
         return true;
       } else if (in_trace->find(in) != in_trace->end()) {
         if (circles != nullptr) {
@@ -85,15 +90,15 @@ bool HasCircleHelper(
 }
 
 template <class NodeComparator = ir::NodeComp>
-bool HasCircleInternal(
-    const std::map<ir::Node *, std::set<ir::Node *, NodeComparator>,
-                   NodeComparator> &adj_list,
-    std::vector<std::vector<ir::Node *>> *circles) {
+bool HasCircleInternal(const std::map<ir::Node *,
+                                      std::set<ir::Node *, NodeComparator>,
+                                      NodeComparator> &adj_list,
+                       std::vector<std::vector<ir::Node *>> *circles) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
   for (auto &adj : adj_list) {
-    if (HasCircleHelper<NodeComparator>(adj.first, adj_list, &visited,
-                                        &in_trace, circles)) {
+    if (HasCircleHelper<NodeComparator>(
+            adj.first, adj_list, &visited, &in_trace, circles)) {
       return true;
     }
   }
@@ -115,13 +120,15 @@ bool VarDescIsConsistency(const Graph &graph) {
   }
   for (auto &iter : var_name2node_set) {
     auto &first_node = *iter.second.begin();
-    bool is_persistable = std::any_of(iter.second.begin(), iter.second.end(),
+    bool is_persistable = std::any_of(iter.second.begin(),
+                                      iter.second.end(),
                                       [&first_node](const ir::Node *node) {
                                         return node->Var()->Persistable();
                                       });
     if (is_persistable) {
       bool is_consistency =
-          std::all_of(iter.second.begin(), iter.second.end(),
+          std::all_of(iter.second.begin(),
+                      iter.second.end(),
                       [&first_node](const ir::Node *node) {
                         return *node->Var() == *first_node->Var();
                       });
@@ -138,7 +145,8 @@ bool FindCircleSubGraph(const Graph &graph,
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
       adj_list = BuildOperationAdjList(graph);
-  PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr), false,
+  PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr),
+                    false,
                     platform::errors::InvalidArgument(
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
@@ -190,11 +198,12 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
     }
     for (auto &var : n->outputs) {
       for (auto &adj_n : var->outputs) {
-        PADDLE_ENFORCE_EQ(
-            adj_n->NodeType(), ir::Node::Type::kOperation,
-            platform::errors::InvalidArgument(
-                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
-                static_cast<int>(adj_n->NodeType())));
+        PADDLE_ENFORCE_EQ(adj_n->NodeType(),
+                          ir::Node::Type::kOperation,
+                          platform::errors::InvalidArgument(
+                              "Node(%s)'s type(%d) must be kOperation type.",
+                              adj_n->Name(),
+                              static_cast<int>(adj_n->NodeType())));
         VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                  << " -> " << n->Name() << reinterpret_cast<void *>(n)
                  << "  via " << var->Name() << reinterpret_cast<void *>(var);
@@ -306,15 +315,15 @@ size_t GraphNum(const Graph &graph) {
   std::unordered_set<ir::Node *> q_set;
   size_t graph_count = 0;
 
-  auto traverse_nodes = [&visited_nodes, &q_nodes,
-                         &q_set](const std::vector<ir::Node *> &nodes) {
-    for (auto n : nodes) {
-      if (visited_nodes.count(n) == 0 && q_set.count(n) == 0) {
-        q_nodes.push_back(n);
-        q_set.insert(n);
-      }
-    }
-  };
+  auto traverse_nodes =
+      [&visited_nodes, &q_nodes, &q_set](const std::vector<ir::Node *> &nodes) {
+        for (auto n : nodes) {
+          if (visited_nodes.count(n) == 0 && q_set.count(n) == 0) {
+            q_nodes.push_back(n);
+            q_set.insert(n);
+          }
+        }
+      };
 
   while (visited_nodes.size() != nodes.size()) {
     if (!q_nodes.empty()) {
@@ -369,7 +378,8 @@ size_t GraphNum(const Graph &graph) {
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
-      PADDLE_ENFORCE_EQ(fout->good(), true,
+      PADDLE_ENFORCE_EQ(fout->good(),
+                        true,
                         platform::errors::Unavailable(
                             "Can not open file %s for printing the graph.",
                             FLAGS_print_sub_graph_dir));
@@ -417,12 +427,14 @@ class DescOrderComparator {
 };
 
 std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
-  std::map<ir::Node *, std::set<ir::Node *, DescOrderComparator>,
+  std::map<ir::Node *,
+           std::set<ir::Node *, DescOrderComparator>,
            DescOrderComparator>
       adj_list = BuildOperationAdjList<DescOrderComparator>(graph);
   PADDLE_ENFORCE_EQ(HasCircleInternal<DescOrderComparator>(adj_list, nullptr),
-                    false, platform::errors::InvalidArgument(
-                               "Generated graph shouldn't contain cycle."));
+                    false,
+                    platform::errors::InvalidArgument(
+                        "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
@@ -440,6 +452,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
       OpProtoAndCheckerMaker::OpRoleAttrName(),
       (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
   desc->SetAttr("value", 1.0f);
+  desc->SetAttr("shape", std::vector<int64_t>({1}));
   std::vector<std::string> output_names;
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
@@ -499,7 +512,8 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
   }
 }
 
-static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
+static void GraphToBlock(const Graph &graph,
+                         proto::BlockDesc *block,
                          const SortKind *sort_kind) {
   // Remove the unneeded variables after memory optimization.
   std::unordered_set<std::string> vars2remove;
@@ -543,9 +557,11 @@ static void GraphToBlock(const Graph &graph, proto::BlockDesc *block,
   }
 }
 
-void GraphToProgram(const Graph &graph, ProgramDesc *program,
+void GraphToProgram(const Graph &graph,
+                    ProgramDesc *program,
                     const SortKind *sort_kind) {
-  PADDLE_ENFORCE_EQ(graph.IsMainGraph(), true,
+  PADDLE_ENFORCE_EQ(graph.IsMainGraph(),
+                    true,
                     platform::errors::InvalidArgument(
                         "This graph is a sub_graph, "
                         "and can't convert to program individually"));
@@ -637,7 +653,8 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
   for (const auto *op_desc : block_ops) {
     size_t op_idx = op_id_to_idx.size();
     PADDLE_ENFORCE_EQ(
-        op_id_to_idx.emplace(op_desc->OriginalId(), op_idx).second, true,
+        op_id_to_idx.emplace(op_desc->OriginalId(), op_idx).second,
+        true,
         platform::errors::InvalidArgument(
             "There should not be duplicate op id: %d", op_desc->OriginalId()));
   }
@@ -650,7 +667,8 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
 
   auto get_op_idx_by_id = [&op_id_to_idx](uint64_t op_id) {
     auto iter = op_id_to_idx.find(op_id);
-    PADDLE_ENFORCE_NE(iter, op_id_to_idx.end(),
+    PADDLE_ENFORCE_NE(iter,
+                      op_id_to_idx.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find OpDesc with id %d", op_id));
     return iter->second;

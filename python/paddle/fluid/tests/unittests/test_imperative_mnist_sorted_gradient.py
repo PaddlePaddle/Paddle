@@ -30,6 +30,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
+
     def func_test_mnist_sort_gradient_float32(self):
         seed = 90
         epoch_num = 1
@@ -40,20 +41,21 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist2 = MNIST()
-            sgd2 = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=mnist2.parameters())
-            train_reader2 = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+            sgd2 = SGDOptimizer(learning_rate=1e-3,
+                                parameter_list=mnist2.parameters())
+            train_reader2 = paddle.batch(paddle.dataset.mnist.train(),
+                                         batch_size=128,
+                                         drop_last=True)
 
             mnist2.train()
             dy_param_init_value2 = {}
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader2()):
-                    dy_x_data2 = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data2 = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(128, 1)
+                    dy_x_data2 = np.array([
+                        x[0].reshape(1, 28, 28) for x in data
+                    ]).astype('float32')
+                    y_data2 = np.array([x[1] for x in data
+                                        ]).astype('int64').reshape(128, 1)
 
                     img2 = to_variable(dy_x_data2)
                     label2 = to_variable(y_data2)
@@ -61,7 +63,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
                     cost2 = mnist2(img2)
                     loss2 = fluid.layers.cross_entropy(cost2, label2)
-                    avg_loss2 = fluid.layers.mean(loss2)
+                    avg_loss2 = paddle.mean(loss2)
 
                     dy_out2 = avg_loss2.numpy()
 
@@ -88,15 +90,17 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+            train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                        batch_size=128,
+                                        drop_last=True)
 
-            img = fluid.layers.data(
-                name='pixel', shape=[1, 28, 28], dtype='float32')
+            img = fluid.layers.data(name='pixel',
+                                    shape=[1, 28, 28],
+                                    dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
-            avg_loss = fluid.layers.mean(loss)
+            avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
             # initialize params and fetch them
@@ -113,25 +117,26 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
-                    static_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape([128, 1])
+                    static_x_data = np.array([
+                        x[0].reshape(1, 28, 28) for x in data
+                    ]).astype('float32')
+                    y_data = np.array([x[1] for x in data
+                                       ]).astype('int64').reshape([128, 1])
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)
-                    out = exe.run(
-                        fluid.default_main_program(),
-                        feed={"pixel": static_x_data,
-                              "label": y_data},
-                        fetch_list=fetch_list)
+                    out = exe.run(fluid.default_main_program(),
+                                  feed={
+                                      "pixel": static_x_data,
+                                      "label": y_data
+                                  },
+                                  fetch_list=fetch_list)
 
                     static_param_value = {}
                     static_out = out[0]
                     for i in range(1, len(out)):
-                        static_param_value[static_param_name_list[i - 1]] = out[
-                            i]
+                        static_param_value[static_param_name_list[i -
+                                                                  1]] = out[i]
                     if batch_id == 20:
                         break
 

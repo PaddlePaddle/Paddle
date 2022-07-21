@@ -145,9 +145,11 @@ class Multinomial(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
-        samples = self._categorical.sample([self.total_count, ] + list(shape))
-        return paddle.nn.functional.one_hot(
-            samples, self.probs.shape[-1]).cast(self.probs.dtype).sum(0)
+        samples = self._categorical.sample([
+            self.total_count,
+        ] + list(shape))
+        return paddle.nn.functional.one_hot(samples, self.probs.shape[-1]).cast(
+            self.probs.dtype).sum(0)
 
     def entropy(self):
         """entropy of multinomial distribution
@@ -155,16 +157,18 @@ class Multinomial(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
-        n = paddle.full(
-            shape=[1], fill_value=self.total_count, dtype=self.probs.dtype)
+        n = paddle.full(shape=[1],
+                        fill_value=self.total_count,
+                        dtype=self.probs.dtype)
         support = paddle.arange(
-            self.total_count + 1, dtype=self.probs.dtype).reshape((-1, ) + (
-                1, ) * len(self.probs.shape))[1:]
+            self.total_count + 1,
+            dtype=self.probs.dtype).reshape((-1, ) +
+                                            (1, ) * len(self.probs.shape))[1:]
 
         binomial_pmf = paddle.exp(self._binomial_logpmf(n, support))
 
-        return ((n * self._categorical.entropy() - paddle.lgamma(n + 1)) + (
-            (binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])))
+        return ((n * self._categorical.entropy() - paddle.lgamma(n + 1)) +
+                ((binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])))
 
     def _binomial_logpmf(self, count, value):
         logits = self._probs_to_logits(self.probs, is_binary=True)
@@ -173,8 +177,9 @@ class Multinomial(distribution.Distribution):
         factor_k = paddle.lgamma(value + 1)
         factor_nmk = paddle.lgamma(count - value + 1)
 
-        norm = (count * _clip_by_zero(logits) + count *
-                paddle.log1p(paddle.exp(-paddle.abs(logits))) - factor_n)
+        norm = (count * _clip_by_zero(logits) +
+                count * paddle.log1p(paddle.exp(-paddle.abs(logits))) -
+                factor_n)
 
         return value * logits - factor_k - factor_nmk - norm
 

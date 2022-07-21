@@ -20,9 +20,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -46,16 +45,25 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32')
-        x = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
-        x = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
-        x = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
-        x = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False)
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        x = paddle.static.nn.conv2d(x,
+                                    num_filters=3,
+                                    filter_size=3,
+                                    bias_attr=False)
+        x = paddle.static.nn.conv2d(x,
+                                    num_filters=3,
+                                    filter_size=3,
+                                    bias_attr=False)
+        x = paddle.static.nn.conv2d(x,
+                                    num_filters=3,
+                                    filter_size=3,
+                                    bias_attr=False)
+        x = paddle.static.nn.conv2d(x,
+                                    num_filters=3,
+                                    filter_size=3,
+                                    bias_attr=False)
         self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):

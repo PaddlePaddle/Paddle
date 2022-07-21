@@ -85,19 +85,25 @@ if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 set task_name=%1
 set UPLOAD_TP_FILE=OFF
 
+set error_code=0
+type %cache_dir%\error_code.txt
+
 rem ------initialize set git config------
 git config --global core.longpaths true
 
 rem ------initialize the python environment------
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-set PATH=%PYTHON_ROOT%\Scripts;%PYTHON_ROOT%;%PATH%
+set PYTHON_VENV_ROOT=%cache_dir%\python_venv
+set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
+%PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel --user
-    pip install pyyaml --user
-    pip install wget --user
-    pip install -r %work_dir%\python\requirements.txt --user
+    pip install wheel
+    pip install pyyaml
+    pip install wget
+    pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -118,8 +124,6 @@ if "%WITH_CACHE%"=="OFF" (
     goto :mkbuild
 )
 
-set error_code=0
-type %cache_dir%\error_code.txt
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
     rmdir %BUILD_DIR% /s/q
@@ -631,7 +635,7 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 @ECHO ON
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN% --user
+pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
@@ -658,7 +662,7 @@ echo    ========================================
 : set CI_SKIP_CPP_TEST if only *.py changed
 git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 
-pip install -r %work_dir%\python\unittest_py\requirements.txt --user
+pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
@@ -679,7 +683,13 @@ pip install requests
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%PATH%
+
+REM TODO: make ut find .dll in install\onnxruntime\lib
+xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu

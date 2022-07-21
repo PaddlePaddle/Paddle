@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/infrt/tensor/phi/tensor_map.h"
+
+#include "glog/logging.h"
 #include "llvm/Support/ErrorHandling.h"
 
 namespace infrt {

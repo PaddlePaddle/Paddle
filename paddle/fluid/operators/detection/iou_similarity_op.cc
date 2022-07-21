@@ -29,21 +29,25 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2UL,
+        x_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The rank of Input(X) must be 2, but got dimension = %d.",
             x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        x_dims[1], 4UL,
+        x_dims[1],
+        4UL,
         platform::errors::InvalidArgument(
             "The shape of X is [N, 4], bug got dimension = %d.", x_dims[1]));
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2UL,
+        y_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The rank of Input(Y) must be 2, but got dimension = %d.",
             y_dims.size()));
     PADDLE_ENFORCE_EQ(
-        y_dims[1], 4UL,
+        y_dims[1],
+        4UL,
         platform::errors::InvalidArgument(
             "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
@@ -103,11 +107,12 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    iou_similarity, ops::IOUSimilarityOp, ops::IOUSimilarityOpMaker,
+    iou_similarity,
+    ops::IOUSimilarityOp,
+    ops::IOUSimilarityOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    iou_similarity,
-    ops::IOUSimilarityKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IOUSimilarityKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(iou_similarity,
+                       ops::IOUSimilarityKernel<phi::CPUContext, float>,
+                       ops::IOUSimilarityKernel<phi::CPUContext, double>);

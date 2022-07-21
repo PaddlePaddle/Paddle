@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/vol2col.h"
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -74,8 +75,13 @@ void testVol2col() {
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
-  output.mutable_data<float>({1, filter_size, filter_size, filter_size,
-                              output_depth, output_height, output_width},
+  output.mutable_data<float>({1,
+                              filter_size,
+                              filter_size,
+                              filter_size,
+                              output_depth,
+                              output_height,
+                              output_width},
                              *place);
 
   paddle::operators::math::Vol2ColFunctor<DeviceContext, float> vol2col;
@@ -86,8 +92,8 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -111,8 +117,8 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 
@@ -187,8 +193,13 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   } else {
     paddle::framework::TensorCopySync(input_tmp, *place, &input);
   }
-  output.mutable_data<float>({1, filter_size, filter_size, filter_size,
-                              output_depth, output_height, output_width},
+  output.mutable_data<float>({1,
+                              filter_size,
+                              filter_size,
+                              filter_size,
+                              output_depth,
+                              output_height,
+                              output_width},
                              *place);
 
   paddle::operators::math::Vol2ColFunctor<paddle::platform::CUDADeviceContext,
@@ -201,8 +212,8 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    paddle::framework::TensorCopySync(output, paddle::platform::CPUPlace(),
-                                      &output_tmp);
+    paddle::framework::TensorCopySync(
+        output, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -228,8 +239,8 @@ void testVol2col<paddle::platform::CUDADeviceContext,
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    paddle::framework::TensorCopySync(input, paddle::platform::CPUPlace(),
-                                      &input_tmp);
+    paddle::framework::TensorCopySync(
+        input, paddle::platform::CPUPlace(), &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 
@@ -243,7 +254,7 @@ void testVol2col<paddle::platform::CUDADeviceContext,
 #endif
 
 TEST(math, vol2col) {
-  testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
+  testVol2col<phi::CPUContext, paddle::platform::CPUPlace>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   testVol2col<paddle::platform::CUDADeviceContext,
               paddle::platform::CUDAPlace>();

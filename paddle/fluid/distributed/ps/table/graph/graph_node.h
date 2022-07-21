@@ -151,7 +151,7 @@ class FeatureNode : public Node {
 
       size_t num = s.length() / sizeof(uint64_t);
       CHECK((s.length() % sizeof(uint64_t)) == 0)
-                << "bad feature_item: [" << s << "]";
+          << "bad feature_item: [" << s << "]";
       res->resize(num);
       for (size_t i = 0; i < num; ++i) {
         (*res)[i] = feas[i];
@@ -193,7 +193,8 @@ class FeatureNode : public Node {
   template <typename T>
   static void parse_value_to_bytes(
       std::vector<std::string>::iterator feat_str_begin,
-      std::vector<std::string>::iterator feat_str_end, std::string *output) {
+      std::vector<std::string>::iterator feat_str_end,
+      std::string *output) {
     T v;
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;

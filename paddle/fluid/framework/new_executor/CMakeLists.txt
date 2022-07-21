@@ -1,26 +1,79 @@
-set(INTERPRETERCORE_DEPS op_registry device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog 
-lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method
-graph_to_program_pass variable_helper timer monitor nan_inf_utils)
-
+set(INTERPRETERCORE_DEPS
+    op_registry
+    device_context
+    scope
+    framework_proto
+    data_feed_proto
+    heter_service_proto
+    trainer_desc_proto
+    glog
+    lod_rank_table
+    fs
+    shell
+    fleet_wrapper
+    heter_wrapper
+    ps_gpu_wrapper
+    box_wrapper
+    lodtensor_printer
+    feed_fetch_method
+    graph_to_program_pass
+    variable_helper
+    timer
+    monitor
+    nan_inf_utils)
 
 add_subdirectory(workqueue)
 add_subdirectory(garbage_collector)
 
-cc_library(data_transfer SRCS data_transfer.cc DEPS enforce scope glog)
-cc_library(new_executor_defs SRCS new_executor_defs.cc DEPS enforce glog scope)
-cc_library(interpretercore_util SRCS interpretercore_util.cc DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer)
-cc_library(event_manager SRCS event_manager.cc DEPS ${DEVICE_EVENT_LIBS} glog new_executor_defs)
-cc_library(stream_analyzer SRCS stream_analyzer.cc DEPS ${DEVICE_EVENT_LIBS} glog device_context new_executor_defs)
+cc_library(
+  data_transfer
+  SRCS data_transfer.cc
+  DEPS enforce scope glog)
+cc_library(
+  new_executor_defs
+  SRCS new_executor_defs.cc
+  DEPS enforce glog scope)
+cc_library(
+  interpretercore_util
+  SRCS interpretercore_util.cc
+  DEPS ${INTERPRETERCORE_DEPS} workqueue new_executor_defs data_transfer)
+cc_library(
+  event_manager
+  SRCS event_manager.cc
+  DEPS ${DEVICE_EVENT_LIBS} glog new_executor_defs)
+cc_library(
+  stream_analyzer
+  SRCS stream_analyzer.cc
+  DEPS ${DEVICE_EVENT_LIBS} glog device_context new_executor_defs)
 
 if(WITH_GPU OR WITH_ROCM)
-cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_event_garbage_collector interpretercore_fast_garbage_collector stream_analyzer event_manager)
+  cc_library(
+    interpretercore
+    SRCS interpretercore.cc
+    DEPS workqueue
+         ${DEVICE_EVENT_LIBS}
+         interpretercore_util
+         interpretercore_event_garbage_collector
+         interpretercore_fast_garbage_collector
+         stream_analyzer
+         event_manager)
 else()
-cc_library(interpretercore SRCS interpretercore.cc DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util interpretercore_event_garbage_collector  stream_analyzer event_manager)
+  cc_library(
+    interpretercore
+    SRCS interpretercore.cc
+    DEPS workqueue ${DEVICE_EVENT_LIBS} interpretercore_util
+         interpretercore_event_garbage_collector stream_analyzer event_manager)
 endif()
 
-cc_library(standalone_executor SRCS standalone_executor.cc DEPS interpretercore)
+cc_library(
+  standalone_executor
+  SRCS standalone_executor.cc
+  DEPS interpretercore)
 
-cc_library(staticgraph_executor_statistics SRCS executor_statistics.cc DEPS enforce glog os_info)
+cc_library(
+  staticgraph_executor_statistics
+  SRCS executor_statistics.cc
+  DEPS enforce glog os_info)
 
 # cc_binary(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 # skip win32 since wget is not installed by default on windows machine.
@@ -65,12 +118,21 @@ if (WITH_GPU AND WITH_TESTING AND NOT WIN32 AND NOT "$ENV{CI_SKIP_CPP_TEST}" STR
         concat_and_split
         cross_entropy)
 
-    cc_test(standalone_executor_test SRCS standalone_executor_test.cc DEPS interpretercore standalone_executor operator op_registry executor ${OPS} ${OP_DEPS})
-    set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
+  cc_test(
+    standalone_executor_test
+    SRCS standalone_executor_test.cc
+    DEPS interpretercore
+         standalone_executor
+         operator
+         op_registry
+         executor
+         ${OPS}
+         ${OP_DEPS})
+  set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
 
-    add_dependencies(standalone_executor_test download_program)
-    if (WITH_PROFILER)
-        target_link_libraries(standalone_executor_test profiler)
-        add_dependencies(standalone_executor_test profiler)
-    endif()
+  add_dependencies(standalone_executor_test download_program)
+  if(WITH_PROFILER)
+    target_link_libraries(standalone_executor_test profiler)
+    add_dependencies(standalone_executor_test profiler)
+  endif()
 endif()

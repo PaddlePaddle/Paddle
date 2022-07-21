@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 
 
 class ApiMinimumTest(unittest.TestCase):
+
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -47,8 +48,10 @@ class ApiMinimumTest(unittest.TestCase):
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.minimum(data_x, data_y)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "y": self.input_y},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "y": self.input_y
+            },
                            fetch_list=[result_max])
         self.assertTrue(np.allclose(res, self.np_expected1))
 
@@ -58,8 +61,10 @@ class ApiMinimumTest(unittest.TestCase):
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_max = paddle.minimum(data_x, data_z)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"x": self.input_x,
-                                 "z": self.input_z},
+            res, = exe.run(feed={
+                "x": self.input_x,
+                "z": self.input_z
+            },
                            fetch_list=[result_max])
         self.assertTrue(np.allclose(res, self.np_expected2))
 
@@ -69,8 +74,10 @@ class ApiMinimumTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.minimum(data_a, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"a": self.input_a,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "a": self.input_a,
+                "c": self.input_c
+            },
                            fetch_list=[result_max])
         self.assertTrue(np.allclose(res, self.np_expected3))
 
@@ -80,8 +87,10 @@ class ApiMinimumTest(unittest.TestCase):
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.minimum(data_b, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={"b": self.input_b,
-                                 "c": self.input_c},
+            res, = exe.run(feed={
+                "b": self.input_b,
+                "c": self.input_c
+            },
                            fetch_list=[result_max])
         self.assertTrue(np.allclose(res, self.np_expected4))
 

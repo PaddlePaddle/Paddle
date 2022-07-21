@@ -28,13 +28,20 @@ paddle.enable_static()
 
 
 class TestWhileOp(unittest.TestCase):
+
     def simple_net(self):
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -74,7 +81,7 @@ class TestWhileOp(unittest.TestCase):
                 layers.array_write(result2, i=j, array=mem_array)
                 layers.less_than(x=j, y=array_len2, cond=cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
         return loss, sum_result
 
     def test_simple_net(self):
@@ -92,9 +99,11 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            outs = exe.run(feed={'d0': d[0],
-                                 'd1': d[1],
-                                 'd2': d[2]},
+            outs = exe.run(feed={
+                'd0': d[0],
+                'd1': d[1],
+                'd2': d[2]
+            },
                            fetch_list=[sum_result])
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
@@ -127,6 +136,7 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
+
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -138,7 +148,9 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
+
     def test_ignore_var(self):
+
         def cond(i, ten, temp, y):
             return i < ten
 
@@ -169,8 +181,10 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = input_y.reshape(3, 1, 1)
 
         res, = exe.run(fluid.default_main_program(),
-                       feed={'x': input_x,
-                             'y': input_y},
+                       feed={
+                           'x': input_x,
+                           'y': input_y
+                       },
                        fetch_list=[output])
 
         self.assertListEqual(list(res.shape), [3, 1, 5])

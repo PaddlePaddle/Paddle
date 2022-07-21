@@ -23,6 +23,7 @@ from paddle.fluid.backward import calc_gradient
 
 
 class TestCalcGradient(unittest.TestCase):
+
     def test_calc_gradient(self):
         main = fluid.Program()
         startup = fluid.Program()
@@ -30,7 +31,7 @@ class TestCalcGradient(unittest.TestCase):
             x = layers.create_parameter(dtype="float32", shape=[5, 10])
             y = layers.create_parameter(dtype="float32", shape=[10, 8])
             mul_out = layers.mul(x=x, y=y)
-            mean_out = layers.mean(mul_out)
+            mean_out = paddle.mean(mul_out)
             a = calc_gradient(mean_out, mul_out)
             b = calc_gradient(mean_out, x)
         place = fluid.CPUPlace()
@@ -40,6 +41,7 @@ class TestCalcGradient(unittest.TestCase):
 
 
 class TestDoubleGrad(unittest.TestCase):
+
     def test1(self):
         main = fluid.Program()
         startup = fluid.Program()
@@ -83,6 +85,7 @@ class TestDoubleGrad(unittest.TestCase):
 
 
 class TestGradientWithPrune(unittest.TestCase):
+
     def test_prune(self):
         with paddle.fluid.scope_guard(paddle.static.Scope()):
             x = fluid.data(name='x', shape=[3], dtype='float32')
@@ -101,6 +104,7 @@ class TestGradientWithPrune(unittest.TestCase):
 
 
 class TestDoubleGradient(unittest.TestCase):
+
     def build_program(self):
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
@@ -135,6 +139,7 @@ class TestDoubleGradient(unittest.TestCase):
 
 
 class TestDoubleGradient2(unittest.TestCase):
+
     def build_program(self):
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()

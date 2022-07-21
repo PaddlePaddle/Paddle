@@ -47,6 +47,7 @@ custom_module = load(
 
 
 class TestJITLoad(unittest.TestCase):
+
     def setUp(self):
         self.custom_ops = [
             custom_module.custom_relu, custom_module.custom_relu_dup,
@@ -84,8 +85,8 @@ class TestJITLoad(unittest.TestCase):
                 for custom_op in self.custom_ops:
                     out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
                                                       x)
-                    pd_out, pd_x_grad = custom_relu_dynamic(custom_op, device,
-                                                            dtype, x, False)
+                    pd_out, pd_x_grad = custom_relu_dynamic(
+                        custom_op, device, dtype, x, False)
                     self.assertTrue(
                         np.array_equal(out, pd_out),
                         "custom op out: {},\n paddle api out: {}".format(
@@ -132,8 +133,8 @@ class TestJITLoad(unittest.TestCase):
                 "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32`"
                 in str(e))
             self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in
-                str(e))
+                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in str(
+                    e))
         self.assertTrue(caught_exception)
 
     def test_exception(self):

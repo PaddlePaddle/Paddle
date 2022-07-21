@@ -31,7 +31,10 @@ template <typename DeviceContext, typename T>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
-  void ActCompute(const int act_type, const Device& d, X x, Y y,
+  void ActCompute(const int act_type,
+                  const Device& d,
+                  X x,
+                  Y y,
                   platform::Place place) const {
     if (act_type == identity) {
       y.device(d) = x;
@@ -77,9 +80,9 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     // calculate unactivated gate outputs
     if (bias) {
       auto b = framework::EigenMatrix<T>::From(*bias);
-      g.device(place) = x +
-                        b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
-                            .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
+      g.device(place) =
+          x + b.reshape(Eigen::array<int, 2>({{1, frame_size * 3}}))
+                  .broadcast(Eigen::array<int, 2>({{batch_size, 1}}));
     } else {
       g.device(place) = x;
     }
@@ -88,31 +91,56 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     T* gate_data = gate->data<T>();
     T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-    blas.GEMM(false, false, batch_size, 2 * frame_size, frame_size, 1,
-              hidden_prev_data, frame_size, weight_data, frame_size * 2, 1,
-              gate_data, frame_size * 3);
+    blas.GEMM(false,
+              false,
+              batch_size,
+              2 * frame_size,
+              frame_size,
+              1,
+              hidden_prev_data,
+              frame_size,
+              weight_data,
+              frame_size * 2,
+              1,
+              gate_data,
+              frame_size * 3);
 
     // calculate activited gate
     Eigen::array<int, 2> extents{{batch_size, frame_size}};
     Eigen::array<int, 2> u_offsets{{0, 0}};
-    ActCompute(context.Attr<int>("gate_activation"), place,
-               g.slice(u_offsets, extents), g.slice(u_offsets, extents),
+    ActCompute(context.Attr<int>("gate_activation"),
+               place,
+               g.slice(u_offsets, extents),
+               g.slice(u_offsets, extents),
                context.GetPlace());
     auto u = g.slice(u_offsets, extents);  // update gate
     Eigen::array<int, 2> r_offsets{{0, frame_size}};
-    ActCompute(context.Attr<int>("gate_activation"), place,
-               g.slice(r_offsets, extents), g.slice(r_offsets, extents),
+    ActCompute(context.Attr<int>("gate_activation"),
+               place,
+               g.slice(r_offsets, extents),
+               g.slice(r_offsets, extents),
                context.GetPlace());
     auto r = g.slice(r_offsets, extents);  // reset gate
     r_h_p.device(place) = r * h_p;         // reset previous hidden state
-    blas.GEMM(false, false, batch_size, frame_size, frame_size, 1,
-              reset_hidden_prev_data, frame_size,
-              weight_data + frame_size * frame_size * 2, frame_size, 1,
-              gate_data + frame_size * 2, frame_size * 3);
+    blas.GEMM(false,
+              false,
+              batch_size,
+              frame_size,
+              frame_size,
+              1,
+              reset_hidden_prev_data,
+              frame_size,
+              weight_data + frame_size * frame_size * 2,
+              frame_size,
+              1,
+              gate_data + frame_size * 2,
+              frame_size * 3);
 
     Eigen::array<int, 2> c_offsets{{0, frame_size * 2}};
-    ActCompute(context.Attr<int>("activation"), place,
-               g.slice(c_offsets, extents), g.slice(c_offsets, extents),
+    ActCompute(context.Attr<int>("activation"),
+               place,
+               g.slice(c_offsets, extents),
+               g.slice(c_offsets, extents),
                context.GetPlace());
     auto c = g.slice(c_offsets, extents);  // output candidate
 
@@ -129,8 +157,8 @@ template <typename DeviceContext, typename T>
 class GRUUnitGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>
-  void ActGradCompute(const int act_type, const Device& d, X x, Y y, DX dx,
-                      DY dy) const {
+  void ActGradCompute(
+      const int act_type, const Device& d, X x, Y y, DX dx, DY dy) const {
     // x is dummy and won't be used even in Relu(use y instead)
     if (act_type == identity)
       dx.device(d) = dy;
@@ -191,40 +219,88 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
 
     // backward for unactivated update gate
     if (context.Attr<bool>("origin_mode")) {
-      ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
-                     d_g.slice(u_offsets, extents), d_h * (h_p - c));
+      ActGradCompute(context.Attr<int>("gate_activation"),
+                     place,
+                     u,
+                     u,
+                     d_g.slice(u_offsets, extents),
+                     d_h * (h_p - c));
       // backward for unactivated output candidate
-      ActGradCompute(context.Attr<int>("activation"), place, c, c,
-                     d_g.slice(c_offsets, extents), d_h * (1 - u));
+      ActGradCompute(context.Attr<int>("activation"),
+                     place,
+                     c,
+                     c,
+                     d_g.slice(c_offsets, extents),
+                     d_h * (1 - u));
     } else {
-      ActGradCompute(context.Attr<int>("gate_activation"), place, u, u,
-                     d_g.slice(u_offsets, extents), d_h * (c - h_p));
+      ActGradCompute(context.Attr<int>("gate_activation"),
+                     place,
+                     u,
+                     u,
+                     d_g.slice(u_offsets, extents),
+                     d_h * (c - h_p));
       // backward for unactivated output candidate
-      ActGradCompute(context.Attr<int>("activation"), place, c, c,
-                     d_g.slice(c_offsets, extents), d_h * u);
+      ActGradCompute(context.Attr<int>("activation"),
+                     place,
+                     c,
+                     c,
+                     d_g.slice(c_offsets, extents),
+                     d_h * u);
     }
     // backward for reset_hidden_prev
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
-    blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
-              gate_grad_data + frame_size * 2, frame_size * 3,
-              weight_data + frame_size * frame_size * 2, frame_size, 0,
-              reset_hidden_prev_grad_data, frame_size);
+    blas.GEMM(false,
+              true,
+              batch_size,
+              frame_size,
+              frame_size,
+              1,
+              gate_grad_data + frame_size * 2,
+              frame_size * 3,
+              weight_data + frame_size * frame_size * 2,
+              frame_size,
+              0,
+              reset_hidden_prev_grad_data,
+              frame_size);
     // backward for unactivated reset gate
-    ActGradCompute(context.Attr<int>("gate_activation"), place, r, r,
-                   d_g.slice(r_offsets, extents), d_r_h_p * h_p);
+    ActGradCompute(context.Attr<int>("gate_activation"),
+                   place,
+                   r,
+                   r,
+                   d_g.slice(r_offsets, extents),
+                   d_r_h_p * h_p);
     // backward for weight
     if (weight_grad) {
       T* weight_grad_data = weight_grad->mutable_data<T>(context.GetPlace());
       // backward for state_weight
-      blas.GEMM(true, false, frame_size, frame_size, batch_size, 1,
-                reset_hidden_prev_data, frame_size,
-                gate_grad_data + frame_size * 2, frame_size * 3, 0,
-                weight_grad_data + frame_size * frame_size * 2, frame_size);
+      blas.GEMM(true,
+                false,
+                frame_size,
+                frame_size,
+                batch_size,
+                1,
+                reset_hidden_prev_data,
+                frame_size,
+                gate_grad_data + frame_size * 2,
+                frame_size * 3,
+                0,
+                weight_grad_data + frame_size * frame_size * 2,
+                frame_size);
 
       // backward for update_gate_weight and reset_gate_weight
-      blas.GEMM(true, false, frame_size, frame_size * 2, batch_size, 1,
-                hidden_prev_data, frame_size, gate_grad_data, frame_size * 3, 0,
-                weight_grad_data, frame_size * 2);
+      blas.GEMM(true,
+                false,
+                frame_size,
+                frame_size * 2,
+                batch_size,
+                1,
+                hidden_prev_data,
+                frame_size,
+                gate_grad_data,
+                frame_size * 3,
+                0,
+                weight_grad_data,
+                frame_size * 2);
     }
     // backward for hidden_prev
     if (hidden_prev_grad) {
@@ -236,9 +312,19 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
       } else {
         d_h_p.device(place) = d_r_h_p * r + d_h * (1 - u);
       }
-      blas.GEMM(false, true, batch_size, frame_size, frame_size * 2, 1,
-                gate_grad_data, frame_size * 3, weight_data, frame_size * 2, 1,
-                hidden_prev_grad_data, frame_size);
+      blas.GEMM(false,
+                true,
+                batch_size,
+                frame_size,
+                frame_size * 2,
+                1,
+                gate_grad_data,
+                frame_size * 3,
+                weight_data,
+                frame_size * 2,
+                1,
+                hidden_prev_grad_data,
+                frame_size);
     }
     // backward for input
     if (input_grad) {

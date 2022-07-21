@@ -25,12 +25,13 @@ from paddle.static import Program
 # - Related paddle dtypes:
 #  - int type: int64, (no test here: uint8, int8, int16, int32)
 #  - float type: float32, (no test here: float64)
-# - Python scalar dtypes: 
+# - Python scalar dtypes:
 #  - int(64)
 #  - float(64)
 
 
 class TestTensorScalarTypePromotionStatic(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
 

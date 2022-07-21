@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +16,15 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
 import copy
 
 
 class TestSparseBatchNorm(unittest.TestCase):
+
     def test(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             paddle.seed(0)
             channels = 4
@@ -38,7 +41,7 @@ class TestSparseBatchNorm(unittest.TestCase):
             dense_x2 = copy.deepcopy(dense_x)
             dense_x2.stop_gradient = False
             sparse_x = dense_x2.to_sparse_coo(sparse_dim)
-            sparse_batch_norm = paddle.sparse.BatchNorm(channels)
+            sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
             # set same params
             sparse_batch_norm._mean.set_value(batch_norm._mean)
             sparse_batch_norm._variance.set_value(batch_norm._variance)
@@ -46,11 +49,10 @@ class TestSparseBatchNorm(unittest.TestCase):
 
             sparse_y = sparse_batch_norm(sparse_x)
             # compare the result with dense batch_norm
-            assert np.allclose(
-                dense_y.flatten().numpy(),
-                sparse_y.values().flatten().numpy(),
-                atol=1e-5,
-                rtol=1e-5)
+            assert np.allclose(dense_y.flatten().numpy(),
+                               sparse_y.values().flatten().numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)
 
             # test backward
             sparse_y.backward(sparse_y)
@@ -59,6 +61,7 @@ class TestSparseBatchNorm(unittest.TestCase):
                 sparse_x.grad.values().flatten().numpy(),
                 atol=1e-5,
                 rtol=1e-5)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_error_layout(self):
         with _test_eager_guard():
@@ -66,7 +69,7 @@ class TestSparseBatchNorm(unittest.TestCase):
                 shape = [2, 3, 6, 6, 3]
                 x = paddle.randn(shape)
                 sparse_x = x.to_sparse_coo(4)
-                sparse_batch_norm = paddle.sparse.BatchNorm(
+                sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(
                     3, data_format='NCDHW')
                 sparse_batch_norm(sparse_x)
 
@@ -77,7 +80,7 @@ class TestSparseBatchNorm(unittest.TestCase):
             x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
             dense_x = paddle.to_tensor(x_data)
             sparse_x = dense_x.to_sparse_coo(4)
-            batch_norm = paddle.sparse.BatchNorm(channels)
+            batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
             batch_norm_out = batch_norm(sparse_x)
             print(batch_norm_out.shape)
             # [1, 6, 6, 6, 3]

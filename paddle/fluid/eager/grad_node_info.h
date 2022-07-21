@@ -56,7 +56,8 @@ class Edge {
   // indicate which edge it is.
   // Since we have slot design in operators we will have to locate an edge with
   // slot and rank.
-  Edge(const std::shared_ptr<GradNodeBase>& grad_node, size_t in_slot_id,
+  Edge(const std::shared_ptr<GradNodeBase>& grad_node,
+       size_t in_slot_id,
        size_t in_rank)
       : in_slot_id_(in_slot_id), in_rank_(in_rank), grad_node_(grad_node) {}
 
@@ -103,6 +104,12 @@ class Edge {
         return true;
       }
     }
+  }
+
+  void Clear() {
+    grad_node_.reset();
+    in_slot_id_ = 0;
+    in_rank_ = 0;
   }
 
  private:
@@ -185,8 +192,8 @@ class GradNodeBase {
   virtual void ClearTensorWrappers() = 0;
 
   /**
-       * Self-Copy interface designed for use in DoubleGrad
-       * **/
+   * Self-Copy interface designed for use in DoubleGrad
+   * **/
   virtual std::shared_ptr<GradNodeBase> Copy() const = 0;
 
   // adj_edges were moved inside OutputMeta(), so no available direct access
@@ -226,12 +233,13 @@ class GradNodeBase {
   /**
    * Register GradientHook
    * **/
-  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
+  int64_t RegisterGradientHook(size_t slot_id,
+                               size_t rank,
                                std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
-  * Remove GradientHook
-  * **/
+   * Remove GradientHook
+   * **/
   bool RemoveGradientHook(const int64_t& hook_id) {
     auto remove_cnt = gradient_hooks_.erase(hook_id);
     if (remove_cnt == 0) {
@@ -252,8 +260,8 @@ class GradNodeBase {
                                  kSlotSmallVectorSize>& tensors);
 
   /**
-    * Handle Complex - Real Type Promotion
-    * **/
+   * Handle Complex - Real Type Promotion
+   * **/
   void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                            kSlotSmallVectorSize>* out_grads);
@@ -262,8 +270,8 @@ class GradNodeBase {
   virtual std::string name() { return "GradNodeBase"; }
 
   /**
-       * The following interfaces are designed for no_need_buffer
-       * **/
+   * The following interfaces are designed for no_need_buffer
+   * **/
   bool IsTensorWrappersCleared() { return is_tensor_wrappers_cleared_; }
 
   void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
@@ -283,9 +291,11 @@ class GradNodeBase {
   // backward
   // Each entry consists one pair of
   // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
-  std::map<int64_t, std::tuple<
-                        /* slot id */ size_t, /* rank */ size_t,
-                        /* hook */ std::shared_ptr<TensorHook>>>
+  std::map<int64_t,
+           std::tuple<
+               /* slot id */ size_t,
+               /* rank */ size_t,
+               /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
   int64_t next_hook_id_{0};
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
 
@@ -32,7 +33,8 @@ namespace tensorrt {
 
 class DeformableConvOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a deformable conv op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -46,8 +48,6 @@ class DeformableConvOpConverter : public OpConverter {
     auto* mask_tensor = engine_->GetITensor(mask_name);
     auto* filter_var = scope.FindVar(filter_name);
     auto* filter_tensor = filter_var->GetMutable<framework::LoDTensor>();
-
-    float* filter_data = engine_->GetWeightCPUData(filter_name, filter_tensor);
 
     const int c_o = filter_tensor->dims()[0];
     const int c_i = filter_tensor->dims()[1];
@@ -71,35 +71,48 @@ class DeformableConvOpConverter : public OpConverter {
     weights.count = filter_tensor->numel();
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (with_fp16) {
-      auto half_filter_data = new half[filter_tensor->numel()];
-      for (int i = 0; i < filter_tensor->numel(); i++) {
-        half_filter_data[i] = static_cast<half>(filter_data[i]);
+      auto filter_weight = engine_->GetTrtWeight(filter_name, *filter_tensor);
+      if (filter_weight.get().type == nvinfer1::DataType::kFLOAT) {
+        auto half_filter_data = new half[filter_tensor->numel()];
+        for (int i = 0; i < filter_tensor->numel(); i++) {
+          half_filter_data[i] = static_cast<half>(
+              static_cast<const float*>(filter_weight.get().values)[i]);
+        }
+        weights.type = nvinfer1::DataType::kHALF;
+        weights.values = half_filter_data;
+      } else if (filter_weight.get().type == nvinfer1::DataType::kHALF) {
+        weights = filter_weight.get();
       }
-      weights.type = nvinfer1::DataType::kHALF;
-      weights.values = half_filter_data;
     } else {
-      weights.type = nvinfer1::DataType::kFLOAT;
-      weights.values = filter_data;
+      weights = engine_->GetFp32TrtWeight(filter_name, *filter_tensor).get();
     }
     auto* deformable_conv_plugin = new plugin::DeformableConvPlugin(
         with_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
-        weights, kernel_dims, strides, paddings, dilations, groups,
-        deformable_groups, im2col_step, with_fp16);
+        weights,
+        kernel_dims,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        deformable_groups,
+        im2col_step,
+        with_fp16);
 
     std::vector<nvinfer1::ITensor*> deformable_conv_inputs;
     deformable_conv_inputs.push_back(input_tensor);
     deformable_conv_inputs.push_back(offset_tensor);
     deformable_conv_inputs.push_back(mask_tensor);
 
-    auto* deformable_conv_layer = engine_->network()->addPluginV2(
-        deformable_conv_inputs.data(), deformable_conv_inputs.size(),
-        *deformable_conv_plugin);
+    auto* deformable_conv_layer =
+        engine_->network()->addPluginV2(deformable_conv_inputs.data(),
+                                        deformable_conv_inputs.size(),
+                                        *deformable_conv_plugin);
 
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Output").front());
 
-    RreplenishLayerAndOutput(deformable_conv_layer, "deformable_conv",
-                             output_names, test_mode);
+    RreplenishLayerAndOutput(
+        deformable_conv_layer, "deformable_conv", output_names, test_mode);
   }
 };
 

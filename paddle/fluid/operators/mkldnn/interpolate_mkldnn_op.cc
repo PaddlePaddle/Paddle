@@ -19,12 +19,12 @@
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using dnnl::stream;
 using dnnl::resampling_forward;
+using dnnl::stream;
+using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
@@ -33,15 +33,17 @@ class InterpolateMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
  public:
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
-                           const dnnl::engine engine, platform::Place cpu_place,
-                           const Tensor* x, Tensor* out)
+                           const dnnl::engine engine,
+                           platform::Place cpu_place,
+                           const Tensor* x,
+                           Tensor* out)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
-    const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                     MKLDNNMemoryFormat::any);
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
-                                            algo, x->mem_desc(), dst_md);
+    const auto dst_md = memory::desc(
+        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }
 };
 
@@ -107,16 +109,20 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
         int j = 0;
         std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
         std::transform(
-            in_dhw_vec.begin(), in_dhw_vec.end(), out_dims.begin(),
+            in_dhw_vec.begin(),
+            in_dhw_vec.end(),
+            out_dims.begin(),
             [&](int64_t i) -> int { return static_cast<int>(i * scale[j++]); });
       }
     }
 
-    PADDLE_ENFORCE_GT(std::all_of(out_dims.begin(), out_dims.end(),
-                                  [](int i) { return i > 0; }),
-                      0, platform::errors::InvalidArgument(
-                             "out_d, out_h, out_w of Op(interpolate) "
-                             "should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        std::all_of(
+            out_dims.begin(), out_dims.end(), [](int i) { return i > 0; }),
+        0,
+        platform::errors::InvalidArgument(
+            "out_d, out_h, out_w of Op(interpolate) "
+            "should be greater than 0."));
 
     const std::vector<int64_t> nc_dims = {in_dims[0], in_dims[1]};
     out_dims.insert(out_dims.begin(), nc_dims.begin(), nc_dims.end());
@@ -141,8 +147,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
-    InterpolateMKLDNNHandler<T> handler(algo, mkldnn_engine, ctx.GetPlace(), x,
-                                        out);
+    InterpolateMKLDNNHandler<T> handler(
+        algo, mkldnn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -164,17 +170,25 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(nearest_interp, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(nearest_interp,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
-REGISTER_OP_KERNEL(bilinear_interp, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(bilinear_interp,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);
 
-REGISTER_OP_KERNEL(nearest_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(nearest_interp_v2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>,
                    ops::InterpolateMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::InterpolateMKLDNNKernel<int8_t>,
                    ops::InterpolateMKLDNNKernel<uint8_t>);
-REGISTER_OP_KERNEL(bilinear_interp_v2, MKLDNN, ::paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(bilinear_interp_v2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
                    ops::InterpolateMKLDNNKernel<float>);

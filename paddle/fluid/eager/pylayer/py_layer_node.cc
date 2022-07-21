@@ -13,18 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
+
+#include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-
-#include "glog/logging.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
 
@@ -50,7 +48,8 @@ GradNodePyLayer::operator()(
                     paddle::platform::errors::InvalidArgument(
                         "%s's grad input size(%s) mast be equal with it's "
                         "forward's output size(%s).",
-                        name(), grads.size(),
+                        name(),
+                        grads.size(),
                         ctx->forward_output_tensor_is_duplicable.size()));
 
   auto backward_args = PyTuple_New(grads.size());
@@ -64,12 +63,15 @@ GradNodePyLayer::operator()(
           dense_tensor->set_meta(forward_outputs_meta_[i][j]);
           tensor_tmp.set_impl(dense_tensor);
           PyList_SET_ITEM(
-              pylist, static_cast<Py_ssize_t>(i),
+              pylist,
+              static_cast<Py_ssize_t>(i),
               paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
-                  tensor_tmp, tensor_tmp.dtype(),
+                  tensor_tmp,
+                  tensor_tmp.dtype(),
                   forward_outputs_place_[i][j])));
         } else {
-          PyList_SET_ITEM(pylist, static_cast<Py_ssize_t>(i),
+          PyList_SET_ITEM(pylist,
+                          static_cast<Py_ssize_t>(i),
                           paddle::pybind::ToPyObject(grads[i][0], true));
         }
       }
@@ -81,12 +83,13 @@ GradNodePyLayer::operator()(
         dense_tensor->set_meta(forward_outputs_meta_[i][0]);
         tensor_tmp.set_impl(dense_tensor);
         PyTuple_SET_ITEM(
-            backward_args, i,
+            backward_args,
+            i,
             paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
                 tensor_tmp, tensor_tmp.dtype(), forward_outputs_place_[i][0])));
       } else {
-        PyTuple_SET_ITEM(backward_args, i,
-                         paddle::pybind::ToPyObject(grads[i][0], true));
+        PyTuple_SET_ITEM(
+            backward_args, i, paddle::pybind::ToPyObject(grads[i][0], true));
       }
     }
   }
@@ -123,7 +126,8 @@ GradNodePyLayer::operator()(
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The number of outputs of `PyLayer.backward` should be %d, but "
         "received %d.",
-        ctx->forward_input_tensor_is_duplicable.size(), outputs_size));
+        ctx->forward_input_tensor_is_duplicable.size(),
+        outputs_size));
   }
 
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
@@ -135,11 +139,13 @@ GradNodePyLayer::operator()(
       PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
       if (this->OutputMeta()[i][0].IsStopGradient()) {
         PADDLE_ENFORCE_EQ(
-            obj, Py_None,
+            obj,
+            Py_None,
             paddle::platform::errors::InvalidArgument(
                 "%s's backward function should return None at %d position, "
                 "because it's forward Tensor's stopgradient is true.",
-                name(), i));
+                name(),
+                i));
         grad_out.push_back({});
       } else {
         if (ctx->forward_input_tensor_is_duplicable[i]) {
@@ -150,10 +156,12 @@ GradNodePyLayer::operator()(
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          this->OutputMeta()[i][0].IsStopGradient(), true,
+          this->OutputMeta()[i][0].IsStopGradient(),
+          true,
           paddle::platform::errors::InvalidArgument(
               "%s's backward function should not return empyt at %d position.",
-              name(), i));
+              name(),
+              i));
       grad_out.push_back({});
     }
   }

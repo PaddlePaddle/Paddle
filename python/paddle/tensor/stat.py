@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define statistical functions of a tensor  
+# TODO: define statistical functions of a tensor
 
 import numpy as np
 from ..static import Variable
@@ -107,8 +107,10 @@ def mean(x, axis=None, keepdim=False, name=None):
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='reduce_mean',
+                     inputs={'X': x},
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -241,6 +243,104 @@ def numel(x, name=None):
     return out
 
 
+def nanmedian(x, axis=None, keepdim=True, name=None):
+    r"""
+    Compute the median along the specified axis, while ignoring NaNs.
+
+    If the valid count of elements is a even number,
+    the average value of both elements in the middle is calculated as the median.
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
+        axis (None|int|list|tuple, optional):
+            The axis along which to perform median calculations ``axis`` should be int or list of int.
+            ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
+            If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of median along ``axis`` of ``x``. The output dtype is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+            :name: nanmedian-example
+
+            import paddle
+            x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
+
+            y1 = x.nanmedian()
+            # y1 is [[2.]]
+
+            y2 = x.nanmedian(0)
+            # y2 is [[0.,  1.5, 2.5]]
+
+            y3 = x.nanmedian(0, keepdim=False)
+            # y3 is [0.,  1.5, 2.5]
+
+            y4 = x.nanmedian((0, 1))
+            # y4 is [[2.]]
+    """
+    if not isinstance(x, Variable):
+        raise TypeError("In median, the input x should be a Tensor.")
+
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
+
+    dims = len(x.shape)
+    if axis is None:
+        axis = []
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+    elif isinstance(axis, int):
+        axis = [axis]
+
+    if not isinstance(axis, list):
+        raise ValueError(
+            "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+        )
+
+    for i in range(len(axis)):
+        if not isinstance(axis[i], int) or not (axis[i] < dims
+                                                and axis[i] >= -dims):
+            raise ValueError(
+                "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
+            )
+        if axis[i] < 0:
+            axis[i] += dims
+
+    if len(axis) != len(set(axis)):
+        raise ValueError("Axis has duplicated elements.")
+
+    if _in_legacy_dygraph():
+        median_index, out = _C_ops.nanmedian(x, 'axis', axis, 'keepdim',
+                                             keepdim)
+        return out
+
+    check_variable_and_dtype(
+        x, 'X', ['int32', 'int64', 'float16', 'float32', 'float64'],
+        'nanmedian')
+
+    helper = LayerHelper('nanmedian', **locals())
+    attrs = {'axis': axis, 'keepdim': keepdim}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    medians = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='nanmedian',
+                     inputs={'X': x},
+                     outputs={
+                         'Out': out,
+                         'MedianIndex': medians
+                     },
+                     attrs=attrs)
+    return out
+
+
 def median(x, axis=None, keepdim=False, name=None):
     """
     Compute the median along the specified axis.
@@ -315,13 +415,13 @@ def median(x, axis=None, keepdim=False, name=None):
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1])
         out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
     else:
-        out_tensor = paddle.cast(
-            paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
-            dtype=dtype)
+        out_tensor = paddle.cast(paddle.slice(tensor_topk,
+                                              axes=[axis],
+                                              starts=[kth],
+                                              ends=[kth + 1]),
+                                 dtype=dtype)
     out_tensor = out_tensor + paddle.sum(
-        paddle.cast(
-            paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
+        paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
     if not keepdim or is_flatten:
         if not is_flatten:
             newshape = x.shape[:axis] + x.shape[axis + 1:]
@@ -440,14 +540,15 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for index in indices:
         indices_below = paddle.floor(index).astype(paddle.int32)
         indices_upper = paddle.ceil(index).astype(paddle.int32)
-        tensor_upper = paddle.take_along_axis(
-            sorted_tensor, indices_upper, axis=axis)
-        tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below, axis=axis)
+        tensor_upper = paddle.take_along_axis(sorted_tensor,
+                                              indices_upper,
+                                              axis=axis)
+        tensor_below = paddle.take_along_axis(sorted_tensor,
+                                              indices_below,
+                                              axis=axis)
         weights = (index - indices_below.astype('float64'))
-        out = paddle.lerp(
-            tensor_below.astype('float64'),
-            tensor_upper.astype('float64'), weights)
+        out = paddle.lerp(tensor_below.astype('float64'),
+                          tensor_upper.astype('float64'), weights)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:

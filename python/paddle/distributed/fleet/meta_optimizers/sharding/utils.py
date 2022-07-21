@@ -38,10 +38,11 @@ def check_broadcast(block):
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if var_name in broadcast_vars:
-                        raise ValueError("var_name areadly exist: {}"
-                                         "the old pos is {}, the new pos is {}".
-                                         format(var_name, broadcast_vars[
-                                             var_name]["broadcast_pos"], idx))
+                        raise ValueError(
+                            "var_name areadly exist: {}"
+                            "the old pos is {}, the new pos is {}".format(
+                                var_name,
+                                broadcast_vars[var_name]["broadcast_pos"], idx))
                     broadcast_vars[var_name] = {
                         "fill_constant_pos": -1,
                         "broadcast_pos": idx,
@@ -149,9 +150,9 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     else:
                         _status = dp_grads_status[var_name]
                     if _status == -1:
-                        raise ValueError("{} is not generated, but you are"
-                                         "trying to all-reduce it".format(
-                                             var_name))
+                        raise ValueError(
+                            "{} is not generated, but you are"
+                            "trying to all-reduce it".format(var_name))
                     if _status == 0:
                         raise ValueError("There should be a sync_calc op "
                                          "after generate Var: {} and before the"
@@ -190,18 +191,19 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
             for input_name in op.desc.input_arg_names():
                 if input_name in vars_status:
                     if vars_status[input_name] != 3:
-                        raise ValueError("There should be a sync_comm op "
-                                         "after allreduce the Var: {}".format(
-                                             input_name))
+                        raise ValueError(
+                            "There should be a sync_comm op "
+                            "after allreduce the Var: {}".format(input_name))
                     raise ValueError(
-                        "The reduce output grad [{}] should NOT be be used in Non-root rank.".
-                        format(input_name))
+                        "The reduce output grad [{}] should NOT be be used in Non-root rank."
+                        .format(input_name))
                 if input_name in dp_grads_status:
                     if dp_ring_id == -1:
                         if dp_grads_status[input_name] != 3:
-                            raise ValueError("There should be a sync_comm op "
-                                             "after allreduce the Var: {}".
-                                             format(input_name))
+                            raise ValueError(
+                                "There should be a sync_comm op "
+                                "after allreduce the Var: {}".format(
+                                    input_name))
                     else:
                         if dp_grads_status[input_name] != 5:
                             raise ValueError(
@@ -232,8 +234,9 @@ def get_valid_op_role(block, insert_idx):
     return OpRole.Forward or OpRole.Backward
     """
     op_role = block.ops[insert_idx].attr('op_role')
-    if (insert_idx >= len(block.ops)) or (
-            op_role in [int(OpRole.Backward), int(OpRole.Optimize)]):
+    if (insert_idx >= len(block.ops)) or (op_role in [
+            int(OpRole.Backward), int(OpRole.Optimize)
+    ]):
         return OpRole.Backward
     if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
         return OpRole.Forward
@@ -246,12 +249,11 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     _insert_sync_calc_op
     """
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_calc_stream',
-        inputs={'X': calc_dep_vars},
-        outputs={'Out': calc_dep_vars},
-        attrs={OP_ROLE_KEY: op_role})
+    block._insert_op_without_sync(insert_idx,
+                                  type='c_sync_calc_stream',
+                                  inputs={'X': calc_dep_vars},
+                                  outputs={'Out': calc_dep_vars},
+                                  attrs={OP_ROLE_KEY: op_role})
     return
 
 
@@ -260,13 +262,14 @@ def insert_sync_comm_op(block, insert_idx, ring_id, comm_dep_vars):
     insert sync_comm_op for single var
     """
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_comm_stream',
-        inputs={'X': comm_dep_vars},
-        outputs={'Out': comm_dep_vars},
-        attrs={'ring_id': ring_id,
-               OP_ROLE_KEY: op_role})
+    block._insert_op_without_sync(insert_idx,
+                                  type='c_sync_comm_stream',
+                                  inputs={'X': comm_dep_vars},
+                                  outputs={'Out': comm_dep_vars},
+                                  attrs={
+                                      'ring_id': ring_id,
+                                      OP_ROLE_KEY: op_role
+                                  })
     return 1
 
 
@@ -274,18 +277,19 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for vars
     """
-    # NOTE (JZ-LIANG) to be check, may result undefined case 
+    # NOTE (JZ-LIANG) to be check, may result undefined case
     if len(comm_dep_vars) == 0:
         return 0
 
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(
-        insert_idx,
-        type='c_sync_comm_stream',
-        inputs={'X': comm_dep_vars},
-        outputs={'Out': comm_dep_vars},
-        attrs={'ring_id': int(ring_id),
-               OP_ROLE_KEY: op_role})
+    block._insert_op_without_sync(insert_idx,
+                                  type='c_sync_comm_stream',
+                                  inputs={'X': comm_dep_vars},
+                                  outputs={'Out': comm_dep_vars},
+                                  attrs={
+                                      'ring_id': int(ring_id),
+                                      OP_ROLE_KEY: op_role
+                                  })
     return 1
 
 
@@ -296,16 +300,15 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name in fill_constant_vars:
         broadcast_var = block.var(broadcast_name)
-        block._insert_op_without_sync(
-            insert_idx,
-            type="fill_constant",
-            outputs={"Out": broadcast_var.name},
-            attrs={
-                "shape": broadcast_var.shape,
-                "dtype": broadcast_var.dtype,
-                "value": 0.0,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx,
+                                      type="fill_constant",
+                                      outputs={"Out": broadcast_var.name},
+                                      attrs={
+                                          "shape": broadcast_var.shape,
+                                          "dtype": broadcast_var.dtype,
+                                          "value": 0.0,
+                                          OP_ROLE_KEY: op_role
+                                      })
     return
 
 
@@ -315,16 +318,16 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     """
     op_role = get_valid_op_role(block, insert_idx)
     for fp16_name, fp32_name in cast_ops.items():
-        block._insert_op_without_sync(
-            insert_idx,
-            type="cast",
-            inputs={"X": fp32_name},
-            outputs={"Out": fp16_name},
-            attrs={
-                "in_dtype": core.VarDesc.VarType.FP32,
-                "out_dtype": core.VarDesc.VarType.FP16,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx,
+                                      type="cast",
+                                      inputs={"X": fp32_name},
+                                      outputs={"Out": fp16_name},
+                                      attrs={
+                                          "in_dtype": core.VarDesc.VarType.FP32,
+                                          "out_dtype":
+                                          core.VarDesc.VarType.FP16,
+                                          OP_ROLE_KEY: op_role
+                                      })
     return
 
 
@@ -351,21 +354,22 @@ def insert_allreduce_ops(block,
                                    user_defined_strategy.fuse_grad_size_in_MB)
     else:
         for var in allreduce_vars:
-            block._insert_op_without_sync(
-                insert_idx,
-                type='c_allreduce_sum',
-                inputs={'X': var},
-                outputs={'Out': var},
-                attrs={
-                    'ring_id': ring_id,
-                    'use_calc_stream': use_calc_stream,
-                    OP_ROLE_KEY: op_role
-                })
+            block._insert_op_without_sync(insert_idx,
+                                          type='c_allreduce_sum',
+                                          inputs={'X': var},
+                                          outputs={'Out': var},
+                                          attrs={
+                                              'ring_id': ring_id,
+                                              'use_calc_stream':
+                                              use_calc_stream,
+                                              OP_ROLE_KEY: op_role
+                                          })
 
     return
 
 
 class FuseHelper(object):
+
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []
@@ -419,25 +423,25 @@ class FuseHelper(object):
                 fused_vars.append(group[0])
                 continue
 
-            fused_var = block.create_var(
-                name=unique_name.generate('Fused{}_{}'.format(prefix, group[0]
-                                                              .name)),
-                dtype=group[0].dtype,
-                persistable=False,
-                stop_gradient=True)
+            fused_var = block.create_var(name=unique_name.generate(
+                'Fused{}_{}'.format(prefix, group[0].name)),
+                                         dtype=group[0].dtype,
+                                         persistable=False,
+                                         stop_gradient=True)
             fused_vars.append(fused_var)
-            block._insert_op_without_sync(
-                index,
-                type="coalesce_tensor",
-                inputs={"Input": group},
-                outputs={"Output": group,
-                         "FusedOutput": fused_var},
-                attrs={
-                    "copy_data": True,
-                    "use_align": True,
-                    "dtype": group[0].dtype,
-                    OP_ROLE_KEY: op_role
-                })
+            block._insert_op_without_sync(index,
+                                          type="coalesce_tensor",
+                                          inputs={"Input": group},
+                                          outputs={
+                                              "Output": group,
+                                              "FusedOutput": fused_var
+                                          },
+                                          attrs={
+                                              "copy_data": True,
+                                              "use_align": True,
+                                              "dtype": group[0].dtype,
+                                              OP_ROLE_KEY: op_role
+                                          })
             insert_num += 1
         return fused_vars, insert_num
 
@@ -452,27 +456,28 @@ def insert_fused_allreduce_ops(block,
     groups = FuseHelper.get_fused_groups(block, allreduce_vars,
                                          fuse_grad_size_in_MB)
 
-    fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
-        block, insert_idx, groups, op_role, prefix="Grad")
+    fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(block,
+                                                               insert_idx,
+                                                               groups,
+                                                               op_role,
+                                                               prefix="Grad")
 
     for fused_var in fused_vars:
-        block._insert_op_without_sync(
-            insert_idx + insert_num,
-            type='c_allreduce_sum',
-            inputs={'X': fused_var},
-            outputs={'Out': fused_var},
-            attrs={
-                'ring_id': ring_id,
-                'use_calc_stream': use_calc_stream,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx + insert_num,
+                                      type='c_allreduce_sum',
+                                      inputs={'X': fused_var},
+                                      outputs={'Out': fused_var},
+                                      attrs={
+                                          'ring_id': ring_id,
+                                          'use_calc_stream': use_calc_stream,
+                                          OP_ROLE_KEY: op_role
+                                      })
         if not use_calc_stream:
-            block._insert_op_without_sync(
-                insert_idx + insert_num,
-                type='c_sync_calc_stream',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={OP_ROLE_KEY: op_role})
+            block._insert_op_without_sync(insert_idx + insert_num,
+                                          type='c_sync_calc_stream',
+                                          inputs={'X': fused_var},
+                                          outputs={'Out': fused_var},
+                                          attrs={OP_ROLE_KEY: op_role})
 
 
 def insert_fused_reduce_ops(block,
@@ -501,24 +506,23 @@ def insert_fused_reduce_ops(block,
             block, insert_idx, groups, op_role, prefix="Grad")
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(
-                insert_idx + insert_num,
-                type='c_reduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={
-                    'ring_id': ring_id,
-                    'root_id': root_id,
-                    'use_calc_stream': use_calc_stream,
-                    OP_ROLE_KEY: op_role
-                })
+            block._insert_op_without_sync(insert_idx + insert_num,
+                                          type='c_reduce_sum',
+                                          inputs={'X': fused_var},
+                                          outputs={'Out': fused_var},
+                                          attrs={
+                                              'ring_id': ring_id,
+                                              'root_id': root_id,
+                                              'use_calc_stream':
+                                              use_calc_stream,
+                                              OP_ROLE_KEY: op_role
+                                          })
             if not use_calc_stream:
-                block._insert_op_without_sync(
-                    insert_idx + insert_num,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: op_role})
+                block._insert_op_without_sync(insert_idx + insert_num,
+                                              type='c_sync_calc_stream',
+                                              inputs={'X': fused_var},
+                                              outputs={'Out': fused_var},
+                                              attrs={OP_ROLE_KEY: op_role})
 
     return [] if rank is None else device_to_vars[rank]
 
@@ -554,17 +558,16 @@ def insert_reduce_ops(block,
             root_id)
         if rank is not None and rank == root_id:
             grad_in_this_device.append(var)
-        block._insert_op_without_sync(
-            insert_idx,
-            type='c_reduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
-            attrs={
-                'ring_id': ring_id,
-                'root_id': root_id,
-                'use_calc_stream': use_calc_stream,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx,
+                                      type='c_reduce_sum',
+                                      inputs={'X': var},
+                                      outputs={'Out': var},
+                                      attrs={
+                                          'ring_id': ring_id,
+                                          'root_id': root_id,
+                                          'use_calc_stream': use_calc_stream,
+                                          OP_ROLE_KEY: op_role
+                                      })
 
     return grad_in_this_device
 
@@ -595,24 +598,23 @@ def insert_fused_broadcast_param_ops(block,
             block, insert_idx, groups, op_role, prefix="Param")
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(
-                insert_idx + insert_num,
-                type='c_broadcast',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': root_id,
-                    'use_calc_stream': use_calc_stream,
-                    OP_ROLE_KEY: op_role
-                })
+            block._insert_op_without_sync(insert_idx + insert_num,
+                                          type='c_broadcast',
+                                          inputs={'X': fused_var},
+                                          outputs={'Out': fused_var},
+                                          attrs={
+                                              'ring_id': ring_id,
+                                              'root': root_id,
+                                              'use_calc_stream':
+                                              use_calc_stream,
+                                              OP_ROLE_KEY: op_role
+                                          })
             if not use_calc_stream:
-                block._insert_op_without_sync(
-                    insert_idx + insert_num,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: op_role})
+                block._insert_op_without_sync(insert_idx + insert_num,
+                                              type='c_sync_calc_stream',
+                                              inputs={'X': fused_var},
+                                              outputs={'Out': fused_var},
+                                              attrs={OP_ROLE_KEY: op_role})
 
     return [] if rank is None else device_to_vars[rank]
 
@@ -631,9 +633,10 @@ def insert_broadcast_param_ops(block,
     """
     if strategy and strategy.fuse_all_reduce_ops:
         # TODO(wangxi): put fused var in startup_program, only need exec once
-        return insert_fused_broadcast_param_ops(
-            block, insert_idx, ring_id, params, shard, op_role, use_calc_stream,
-            rank, strategy.fuse_grad_size_in_MB)
+        return insert_fused_broadcast_param_ops(block, insert_idx, ring_id,
+                                                params, shard, op_role,
+                                                use_calc_stream, rank,
+                                                strategy.fuse_grad_size_in_MB)
 
     param_in_this_device = []
     for param in params:
@@ -642,17 +645,16 @@ def insert_broadcast_param_ops(block,
             root_id)
         if rank is not None and rank == root_id:
             param_in_this_device.append(param)
-        block._insert_op_without_sync(
-            insert_idx,
-            type='c_broadcast',
-            inputs={'X': param},
-            outputs={'Out': param},
-            attrs={
-                'ring_id': ring_id,
-                'root': root_id,
-                'use_calc_stream': use_calc_stream,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx,
+                                      type='c_broadcast',
+                                      inputs={'X': param},
+                                      outputs={'Out': param},
+                                      attrs={
+                                          'ring_id': ring_id,
+                                          'root': root_id,
+                                          'use_calc_stream': use_calc_stream,
+                                          OP_ROLE_KEY: op_role
+                                      })
 
     return param_in_this_device
 
@@ -690,17 +692,16 @@ def fuse_opt_broadcast_param_ops(block,
             block, insert_idx, groups, op_role, prefix="Param")
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(
-                insert_idx + insert_num,
-                type='c_broadcast',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': root_id,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: op_role
-                })
+            block._insert_op_without_sync(insert_idx + insert_num,
+                                          type='c_broadcast',
+                                          inputs={'X': fused_var},
+                                          outputs={'Out': fused_var},
+                                          attrs={
+                                              'ring_id': ring_id,
+                                              'root': root_id,
+                                              'use_calc_stream': True,
+                                              OP_ROLE_KEY: op_role
+                                          })
 
     block._sync_with_cpp()
 
@@ -759,16 +760,15 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     """
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
-        block._insert_op_without_sync(
-            insert_idx,
-            type='c_broadcast',
-            inputs={'X': broadcast_name},
-            outputs={'Out': broadcast_name},
-            attrs={
-                'ring_id': ring_id,
-                'root': root_device,
-                OP_ROLE_KEY: op_role
-            })
+        block._insert_op_without_sync(insert_idx,
+                                      type='c_broadcast',
+                                      inputs={'X': broadcast_name},
+                                      outputs={'Out': broadcast_name},
+                                      attrs={
+                                          'ring_id': ring_id,
+                                          'root': root_device,
+                                          OP_ROLE_KEY: op_role
+                                      })
 
     return
 
@@ -825,8 +825,8 @@ def comm_analyse(main_program):
         if op.type == "c_broadcast":
             var_name = op.desc.input_arg_names()[0]
             # convert MB to KB
-            broadcast_vars[var_name] = get_var_size(block.var(
-                var_name)) * 1024.0
+            broadcast_vars[var_name] = get_var_size(
+                block.var(var_name)) * 1024.0
         elif op.type == "c_allreduce_sum":
             var_name = op.desc.input_arg_names()[0]
             reduce_vars[var_name] = get_var_size(block.var(var_name)) * 1024.0
@@ -877,14 +877,15 @@ def add_sync_comm(program, sharding_ring_id):
             for input_name in op.desc.input_arg_names():
                 not_sync_vars.remove(input_name)
     if not_sync_vars:
-        block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': list(not_sync_vars)},
-            outputs={'Out': list(not_sync_vars)},
-            attrs={
-                'ring_id': sharding_ring_id,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
-            })
+        block.append_op(type='c_sync_comm_stream',
+                        inputs={'X': list(not_sync_vars)},
+                        outputs={'Out': list(not_sync_vars)},
+                        attrs={
+                            'ring_id':
+                            sharding_ring_id,
+                            'op_role':
+                            core.op_proto_and_checker_maker.OpRole.Forward
+                        })
     return
 
 
@@ -926,41 +927,39 @@ def save_persistables(exe, dirname, main_program, filename=None):
             var)
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
-        paddle.fluid.io.save_persistables(
-            exe, dirname, main_program=main_program, filename=None)
+        paddle.fluid.io.save_persistables(exe,
+                                          dirname,
+                                          main_program=main_program,
+                                          filename=None)
     else:
-        paddle.fluid.io.save_vars(
-            exe,
-            dirname,
-            main_program=main_program,
-            predicate=sharding_predicate,
-            filename=None)
+        paddle.fluid.io.save_vars(exe,
+                                  dirname,
+                                  main_program=main_program,
+                                  predicate=sharding_predicate,
+                                  filename=None)
 
     return
 
 
 def append_naive_sync(block, sync_var, ring_id):
     # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
-    # sync within global 
-    block.append_op(
-        type="fill_constant",
-        outputs={"Out": sync_var},
-        attrs={
-            "shape": sync_var.shape,
-            "dtype": sync_var.dtype,
-            "value": int(1),
-        })
-    block.append_op(
-        type='c_allreduce_sum',
-        inputs={'X': sync_var},
-        outputs={'Out': sync_var},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            OP_ROLE_KEY: OpRole.Forward
-        })
-    block.append_op(
-        type='c_sync_calc_stream',
-        inputs={'X': [sync_var]},
-        outputs={'Out': [sync_var]},
-        attrs={OP_ROLE_KEY: OpRole.Forward})
+    # sync within global
+    block.append_op(type="fill_constant",
+                    outputs={"Out": sync_var},
+                    attrs={
+                        "shape": sync_var.shape,
+                        "dtype": sync_var.dtype,
+                        "value": int(1),
+                    })
+    block.append_op(type='c_allreduce_sum',
+                    inputs={'X': sync_var},
+                    outputs={'Out': sync_var},
+                    attrs={
+                        'ring_id': ring_id,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
+    block.append_op(type='c_sync_calc_stream',
+                    inputs={'X': [sync_var]},
+                    outputs={'Out': [sync_var]},
+                    attrs={OP_ROLE_KEY: OpRole.Forward})

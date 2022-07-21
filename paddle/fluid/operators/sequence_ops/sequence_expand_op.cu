@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -23,13 +24,15 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-__global__ void sequence_expand_kernel(const T* x_data, const size_t* x_lod,
+__global__ void sequence_expand_kernel(const T* x_data,
+                                       const size_t* x_lod,
                                        const size_t* ref_lod,
                                        const size_t* offset,
                                        const size_t lod_size,
                                        /* default=1,
                                           the instance length*/
-                                       const int x_item_length, T* out_data) {
+                                       const int x_item_length,
+                                       T* out_data) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
 
@@ -49,12 +52,15 @@ __global__ void sequence_expand_kernel(const T* x_data, const size_t* x_lod,
 }
 
 template <typename T>
-__global__ void sequence_expand_grad_kernel(
-    const T* dout_data, const size_t* ref_lod, const size_t* dx_lod,
-    const size_t* offset, const size_t lod_size,
-    /* default=1,
-       the instance length*/
-    const int x_item_length, T* dx_data) {
+__global__ void sequence_expand_grad_kernel(const T* dout_data,
+                                            const size_t* ref_lod,
+                                            const size_t* dx_lod,
+                                            const size_t* offset,
+                                            const size_t lod_size,
+                                            /* default=1,
+                                               the instance length*/
+                                            const int x_item_length,
+                                            T* dx_data) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
   int x_item_count = dx_lod[bid + 1] - dx_lod[bid];
@@ -91,7 +97,8 @@ void GetOutputOffset(const framework::Vector<size_t>& x_lod,
 
 template <typename T>
 static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
-                              const LoDTensor& x, LoDTensor* out,
+                              const LoDTensor& x,
+                              LoDTensor* out,
                               const framework::Vector<size_t>& x_lod,
                               const framework::Vector<size_t>& ref_lod,
                               bool do_copy) {
@@ -119,8 +126,10 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
             memory::Copy(
                 gpu_place,
                 out_data + (out_start + j * x_seq_len + k) * x_item_length,
-                gpu_place, x_data + (x_start + k) * x_item_length,
-                sizeof(T) * x_item_length, context.stream());
+                gpu_place,
+                x_data + (x_start + k) * x_item_length,
+                sizeof(T) * x_item_length,
+                context.stream());
           }
         }
       } else {
@@ -135,7 +144,8 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
 template <typename T>
 struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
   void operator()(
-      const platform::CUDADeviceContext& context, const LoDTensor& x,
+      const platform::CUDADeviceContext& context,
+      const LoDTensor& x,
       const framework::Vector<size_t>& x_lod,   /*expand source lod*/
       const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
       LoDTensor* out) {
@@ -172,8 +182,13 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
       dim3 grid_size(block_x, 1);
 
       sequence_expand_kernel<<<grid_size, block_size, 0, context.stream()>>>(
-          x.data<T>(), x_lod_data, ref_lod_data, out_offset_data, x_lod_size,
-          x_item_length, out->mutable_data<T>(context.GetPlace()));
+          x.data<T>(),
+          x_lod_data,
+          ref_lod_data,
+          out_offset_data,
+          x_lod_size,
+          x_item_length,
+          out->mutable_data<T>(context.GetPlace()));
     }
   }
 };
@@ -199,10 +214,13 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
     paddle::framework::MixVector<size_t> mixv_x_lod(&x_lod);
     paddle::framework::MixVector<size_t> mixv_out_offset(&out_offset);
     sequence_expand_grad_kernel<<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()),
+        dout.data<T>(),
+        mixv_ref_lod.CUDAData(context.GetPlace()),
         mixv_x_lod.CUDAData(context.GetPlace()),
-        mixv_out_offset.CUDAData(context.GetPlace()), ref_lod.size(),
-        x_item_length, dx->mutable_data<T>(context.GetPlace()));
+        mixv_out_offset.CUDAData(context.GetPlace()),
+        ref_lod.size(),
+        x_item_length,
+        dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

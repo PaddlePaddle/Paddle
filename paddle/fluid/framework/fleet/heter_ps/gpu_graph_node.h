@@ -17,6 +17,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -31,39 +32,44 @@ struct GpuPsNodeInfo {
 };
 
 struct GpuPsCommGraph {
-  uint64_t *node_list; //locate on both side
-  int64_t node_size;    //  the size of node_list
-  GpuPsNodeInfo *node_info_list; // only locate on host side
-  uint64_t *neighbor_list; //locate on both side
-  int64_t neighbor_size;    //the size of neighbor_list
+  uint64_t *node_list;            // locate on both side
+  int64_t node_size;              //  the size of node_list
+  GpuPsNodeInfo *node_info_list;  // only locate on host side
+  uint64_t *neighbor_list;        // locate on both side
+  int64_t neighbor_size;          // the size of neighbor_list
   GpuPsCommGraph()
-      : node_list(nullptr), node_size(0), node_info_list(nullptr),
-         neighbor_list(nullptr), neighbor_size(0) {}
-  GpuPsCommGraph(uint64_t *node_list_, int64_t node_size_,
-       GpuPsNodeInfo *node_info_list_,
-       uint64_t *neighbor_list_, int64_t neighbor_size_)
-     : node_list(node_list_), node_size(node_size_),
-       node_info_list(node_info_list_),
-       neighbor_list(neighbor_list_),
-       neighbor_size(neighbor_size_) {}
+      : node_list(nullptr),
+        node_size(0),
+        node_info_list(nullptr),
+        neighbor_list(nullptr),
+        neighbor_size(0) {}
+  GpuPsCommGraph(uint64_t *node_list_,
+                 int64_t node_size_,
+                 GpuPsNodeInfo *node_info_list_,
+                 uint64_t *neighbor_list_,
+                 int64_t neighbor_size_)
+      : node_list(node_list_),
+        node_size(node_size_),
+        node_info_list(node_info_list_),
+        neighbor_list(neighbor_list_),
+        neighbor_size(neighbor_size_) {}
   void init_on_cpu(int64_t neighbor_size_, int64_t node_size_) {
     if (node_size_ > 0) {
-        this->node_size = node_size_;
-        this->node_list = new uint64_t[node_size_];
-        this->node_info_list = new paddle::framework::GpuPsNodeInfo[node_size_];
+      this->node_size = node_size_;
+      this->node_list = new uint64_t[node_size_];
+      this->node_info_list = new paddle::framework::GpuPsNodeInfo[node_size_];
     }
     if (neighbor_size_) {
-        this->neighbor_size = neighbor_size_;
-        this->neighbor_list = new uint64_t[neighbor_size_];
+      this->neighbor_size = neighbor_size_;
+      this->neighbor_list = new uint64_t[neighbor_size_];
     }
   }
   void release_on_cpu() {
-
 #define DEL_PTR_ARRAY(p) \
-        if (p != nullptr) { \
-            delete [] p; \
-            p = nullptr; \
-        }
+  if (p != nullptr) {    \
+    delete[] p;          \
+    p = nullptr;         \
+  }
     DEL_PTR_ARRAY(node_list);
     DEL_PTR_ARRAY(neighbor_list);
     DEL_PTR_ARRAY(node_info_list);
@@ -77,9 +83,10 @@ struct GpuPsCommGraph {
       VLOG(0) << "neighbor " << i << " " << neighbor_list[i];
     }
     for (int64_t i = 0; i < node_size; i++) {
-        auto id = node_list[i];
-        auto val = node_info_list[i];
-        VLOG(0) << "node id " << id << "," << val.neighbor_offset << ":" << val.neighbor_size;
+      auto id = node_list[i];
+      auto val = node_info_list[i];
+      VLOG(0) << "node id " << id << "," << val.neighbor_offset << ":"
+              << val.neighbor_size;
     }
   }
 };
@@ -131,8 +138,8 @@ struct NeighborSampleQuery {
   uint64_t *src_nodes;
   int len;
   int sample_size;
-  void initialize(int gpu_id, int table_idx, uint64_t src_nodes,
-                  int sample_size, int len) {
+  void initialize(
+      int gpu_id, int table_idx, uint64_t src_nodes, int sample_size, int len) {
     this->table_idx = table_idx;
     this->gpu_id = gpu_id;
     this->src_nodes = (uint64_t *)src_nodes;
@@ -144,8 +151,8 @@ struct NeighborSampleQuery {
     VLOG(0) << "device_id " << gpu_id << " sample_size = " << sample_size;
     VLOG(0) << "there are " << len << " keys to sample for graph " << table_idx;
     std::string key_str;
-    cudaMemcpy(sample_keys, src_nodes, len * sizeof(uint64_t),
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(
+        sample_keys, src_nodes, len * sizeof(uint64_t), cudaMemcpyDeviceToHost);
 
     for (int i = 0; i < len; i++) {
       if (key_str.size() > 0) key_str += ";";
@@ -183,18 +190,24 @@ struct NeighborSampleResult {
   }
   void display() {
     VLOG(0) << "in node sample result display ------------------";
-    uint64_t *res = new uint64_t[sample_size * key_size];
-    cudaMemcpy(res, val, sample_size * key_size * sizeof(uint64_t),
+    int64_t *res = new int64_t[sample_size * key_size];
+    cudaMemcpy(res,
+               val,
+               sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
     int *ac_size = new int[key_size];
-    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+    cudaMemcpy(ac_size,
+               actual_sample_size,
+               key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
     int total_sample_size = 0;
     for (int i = 0; i < key_size; i++) {
       total_sample_size += ac_size[i];
     }
-    uint64_t *res2 = new uint64_t[total_sample_size];  // r
-    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(uint64_t),
+    int64_t *res2 = new int64_t[total_sample_size];  // r
+    cudaMemcpy(res2,
+               actual_val,
+               total_sample_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);  // r
 
     int start = 0;
@@ -220,20 +233,28 @@ struct NeighborSampleResult {
     std::vector<uint64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];
     std::string key_str;
-    cudaMemcpy(sample_keys, q.src_nodes, q.len * sizeof(uint64_t),
+    cudaMemcpy(sample_keys,
+               q.src_nodes,
+               q.len * sizeof(uint64_t),
                cudaMemcpyDeviceToHost);
     uint64_t *res = new uint64_t[sample_size * key_size];
-    cudaMemcpy(res, val, sample_size * key_size * sizeof(int64_t),
+    cudaMemcpy(res,
+               val,
+               sample_size * key_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);
     int *ac_size = new int[key_size];
-    cudaMemcpy(ac_size, actual_sample_size, key_size * sizeof(int),
+    cudaMemcpy(ac_size,
+               actual_sample_size,
+               key_size * sizeof(int),
                cudaMemcpyDeviceToHost);  // 3, 1, 3
     int total_sample_size = 0;
     for (int i = 0; i < key_size; i++) {
       total_sample_size += ac_size[i];
     }
-    uint64_t *res2 = new uint64_t[total_sample_size];  // r
-    cudaMemcpy(res2, actual_val, total_sample_size * sizeof(uint64_t),
+    int64_t *res2 = new int64_t[total_sample_size];  // r
+    cudaMemcpy(res2,
+               actual_val,
+               total_sample_size * sizeof(int64_t),
                cudaMemcpyDeviceToHost);  // r
 
     int start = 0;
@@ -271,7 +292,9 @@ struct NodeQueryResult {
   void display() {
     VLOG(0) << "in node query result display ------------------";
     uint64_t *res = new uint64_t[actual_sample_size];
-    cudaMemcpy(res, val, actual_sample_size * sizeof(uint64_t),
+    cudaMemcpy(res,
+               val,
+               actual_sample_size * sizeof(uint64_t),
                cudaMemcpyDeviceToHost);
 
     VLOG(0) << "actual_sample_size =" << actual_sample_size;
@@ -298,10 +321,11 @@ struct GpuPsFeaInfo {
 };
 
 struct GpuPsCommGraphFea {
-  uint64_t *node_list; // only locate on host side, the list of node id
-  uint64_t *feature_list; //locate on both side
-  uint8_t *slot_id_list;  //locate on both side
-  GpuPsFeaInfo *fea_info_list;// only locate on host side, the list of fea_info
+  uint64_t *node_list;     // only locate on host side, the list of node id
+  uint64_t *feature_list;  // locate on both side
+  uint8_t *slot_id_list;   // locate on both side
+  GpuPsFeaInfo
+      *fea_info_list;  // only locate on host side, the list of fea_info
   uint64_t feature_size, node_size;
   // the size of feature array and graph_node_list array
   GpuPsCommGraphFea()
@@ -311,8 +335,11 @@ struct GpuPsCommGraphFea {
         fea_info_list(NULL),
         feature_size(0),
         node_size(0) {}
-  GpuPsCommGraphFea(uint64_t *node_list_, uint64_t *feature_list_, uint8_t *slot_id_list_,
-          GpuPsFeaInfo *fea_info_list_, uint64_t feature_size_,
+  GpuPsCommGraphFea(uint64_t *node_list_,
+                    uint64_t *feature_list_,
+                    uint8_t *slot_id_list_,
+                    GpuPsFeaInfo *fea_info_list_,
+                    uint64_t feature_size_,
                     uint64_t node_size_)
       : node_list(node_list_),
         feature_list(feature_list_),
@@ -320,7 +347,8 @@ struct GpuPsCommGraphFea {
         fea_info_list(fea_info_list_),
         feature_size(feature_size_),
         node_size(node_size_) {}
-  void init_on_cpu(uint64_t feature_size, uint64_t node_size,
+  void init_on_cpu(uint64_t feature_size,
+                   uint64_t node_size,
                    uint32_t slot_num) {
     PADDLE_ENFORCE_LE(slot_num, 255);
     this->feature_size = feature_size;
@@ -332,10 +360,10 @@ struct GpuPsCommGraphFea {
   }
   void release_on_cpu() {
 #define DEL_PTR_ARRAY(p) \
-        if (p != nullptr) { \
-            delete [] p; \
-            p = nullptr; \
-        }
+  if (p != nullptr) {    \
+    delete[] p;          \
+    p = nullptr;         \
+  }
     DEL_PTR_ARRAY(node_list);
     DEL_PTR_ARRAY(feature_list);
     DEL_PTR_ARRAY(slot_id_list);

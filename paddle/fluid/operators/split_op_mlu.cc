@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/split_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/fluid/operators/split_op.h"
 
 namespace paddle {
 namespace operators {
@@ -66,12 +66,17 @@ class SplitMLUKernel : public framework::OpKernel<T> {
       vct_tensor.push_back(GetBasePtr(outs[i]));
     }
     // init in tensors
-    MLUCnnlTensorDesc input_desc(*in, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(in->dtype()));
+    MLUCnnlTensorDesc input_desc(
+        *in, CNNL_LAYOUT_ARRAY, ToCnnlDataType(in->dtype()));
 
     // MLU should do sth
-    MLUCnnl::Split(ctx, num_tensor, axis, input_desc.get(), GetBasePtr(in),
-                   desc_vector.data(), vct_tensor.data());
+    MLUCnnl::Split(ctx,
+                   num_tensor,
+                   axis,
+                   input_desc.get(),
+                   GetBasePtr(in),
+                   desc_vector.data(),
+                   vct_tensor.data());
   }
 };
 
@@ -81,7 +86,9 @@ class SplitMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(split, ops::SplitMLUKernel<float>,
-                       ops::SplitMLUKernel<int64_t>, ops::SplitMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(split,
+                       ops::SplitMLUKernel<float>,
+                       ops::SplitMLUKernel<int64_t>,
+                       ops::SplitMLUKernel<int>,
                        ops::SplitMLUKernel<bool>,
                        ops::SplitMLUKernel<plat::float16>);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <iostream>
 
 #include "paddle/phi/api/ext/exception.h"

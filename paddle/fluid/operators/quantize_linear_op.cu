@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_dequantize_op.cu.h"
 #include "paddle/fluid/operators/fake_quantize_op.cu.h"
@@ -25,8 +26,11 @@ namespace operators {
 template <typename T>
 struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const framework::Tensor* in, const framework::Tensor* scale,
-                  T max_range, const int quant_axis, framework::Tensor* out) {
+                  const framework::Tensor* in,
+                  const framework::Tensor* scale,
+                  T max_range,
+                  const int quant_axis,
+                  framework::Tensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
@@ -46,10 +50,14 @@ struct ChannelDequantizeFunctorV2<platform::CUDADeviceContext, T> {
       quant_stride *= in_dims[i];
     }
 
-    DequantizeOneScaleQuantAxisN<
-        T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-        in_data, scale_factor, max_range, num, in_dims[quant_axis],
-        quant_stride, out_data);
+    DequantizeOneScaleQuantAxisN<T>
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_data,
+                                                         scale_factor,
+                                                         max_range,
+                                                         num,
+                                                         in_dims[quant_axis],
+                                                         quant_stride,
+                                                         out_data);
   }
 };
 

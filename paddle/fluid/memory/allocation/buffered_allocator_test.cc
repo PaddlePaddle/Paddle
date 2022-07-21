@@ -71,8 +71,9 @@ class StubAllocator : public Allocator {
   void FreeImpl(phi::Allocation *allocation) override {
     auto *alloc = dynamic_cast<StubAllocation *>(allocation);
     PADDLE_ENFORCE_NOT_NULL(
-        alloc, platform::errors::InvalidArgument(
-                   "The input allocation is not type of StubAllocation."));
+        alloc,
+        platform::errors::InvalidArgument(
+            "The input allocation is not type of StubAllocation."));
     if (alloc->ptr()) delete[] static_cast<uint8_t *>(alloc->ptr());
     ++destruct_count_;
     delete allocation;

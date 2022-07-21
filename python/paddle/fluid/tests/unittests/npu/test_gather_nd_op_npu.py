@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -38,6 +39,7 @@ def gather_nd_grad(x, index):
 
 
 def test_class1(op_type, typename):
+
     class TestGatherNdOpWithEmptyIndex(OpTest):
         #Index has empty element, which means copy entire tensor
 
@@ -72,7 +74,9 @@ def test_class1(op_type, typename):
 
 
 def test_class2(op_type, typename):
+
     class TestGatherNdOpWithIndex1(OpTest):
+
         def setUp(self):
             self.set_npu()
             self.place = paddle.NPUPlace(0)
@@ -99,6 +103,7 @@ def test_class2(op_type, typename):
 
 
 def test_class3(op_type, typename):
+
     class TestGatherNdOpWithLowIndex(OpTest):
         #Index has low rank, X has high rank
 
@@ -123,8 +128,9 @@ def test_class3(op_type, typename):
             if typename == "float16" or typename == "int64":
                 self.__class__.no_need_check_grad = True
             else:
-                self.check_grad_with_place(
-                    self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])
+                self.check_grad_with_place(self.place, ['X'],
+                                           'Out',
+                                           user_defined_grads=[self.x_grad])
 
     cls_name = "{0}_{1}_3".format(op_type, typename)
     TestGatherNdOpWithLowIndex.__name__ = cls_name
@@ -132,6 +138,7 @@ def test_class3(op_type, typename):
 
 
 def test_class4(op_type, typename):
+
     class TestGatherNdOpIndex1(OpTest):
         #Index has low rank, X has high rank
 
@@ -164,6 +171,7 @@ def test_class4(op_type, typename):
 
 
 def test_class5(op_type, typename):
+
     class TestGatherNdOpWithSameIndexAsX(OpTest):
         #Index has same rank as X's rank
 
@@ -195,6 +203,7 @@ def test_class5(op_type, typename):
 
 
 def test_class6(op_type, typename):
+
     class TestGatherNdOpWithHighRankSame(OpTest):
         #Both Index and X have high rank, and Rank(Index) = Rank(X)
 
@@ -204,8 +213,8 @@ def test_class6(op_type, typename):
             self.op_type = "gather_nd"
             shape = (5, 2, 3, 1, 10)
             xnp = np.random.rand(*shape).astype(typename)
-            index = np.vstack([np.random.randint(
-                0, s, size=2) for s in shape]).T
+            index = np.vstack([np.random.randint(0, s, size=2)
+                               for s in shape]).T
 
             self.inputs = {'X': xnp, 'Index': index.astype("int32")}
             self.outputs = {'Out': xnp[tuple(index.T)]}
@@ -228,6 +237,7 @@ def test_class6(op_type, typename):
 
 
 def test_class7(op_type, typename):
+
     class TestGatherNdOpWithHighRankDiff(OpTest):
         #Both Index and X have high rank, Rank(Index) < Rank(X)
 
@@ -238,8 +248,7 @@ def test_class7(op_type, typename):
             shape = (2, 3, 4, 1, 10)
             xnp = np.random.rand(*shape).astype(typename)
             index = np.vstack(
-                [np.random.randint(
-                    0, s, size=200) for s in shape]).T
+                [np.random.randint(0, s, size=200) for s in shape]).T
             index_re = index.reshape([20, 5, 2, 5])
 
             self.inputs = {'X': xnp, 'Index': index_re.astype("int32")}
@@ -263,6 +272,7 @@ def test_class7(op_type, typename):
 
 
 class TestGatherNdAPI(unittest.TestCase):
+
     def test_imperative(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]])

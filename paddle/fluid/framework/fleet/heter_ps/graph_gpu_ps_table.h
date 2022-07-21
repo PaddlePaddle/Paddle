@@ -14,7 +14,9 @@
 
 #pragma once
 #include <thrust/host_vector.h>
+
 #include <chrono>
+
 #include "heter_comm.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -34,7 +36,8 @@ class GpuPsGraphTable : public HeterComm<uint64_t, uint64_t, int> {
     return gpu_id * (graph_table_num_ + feature_table_num_) +
            type_id * graph_table_num_ + idx;
   }
-  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource, int topo_aware,
+  GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource,
+                  int topo_aware,
                   int graph_table_num)
       : HeterComm<uint64_t, uint64_t, int>(1, resource) {
     load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
@@ -108,8 +111,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, uint64_t, int> {
       }
     }
   }
-  ~GpuPsGraphTable() {
-  }
+  ~GpuPsGraphTable() {}
   void build_graph_on_single_gpu(const GpuPsCommGraph &g, int gpu_id, int idx);
   void build_graph_fea_on_single_gpu(const GpuPsCommGraphFea &g, int gpu_id);
   void clear_graph_info(int gpu_id, int index);
@@ -118,28 +120,37 @@ class GpuPsGraphTable : public HeterComm<uint64_t, uint64_t, int> {
   void clear_feature_info(int index);
   void build_graph_from_cpu(const std::vector<GpuPsCommGraph> &cpu_node_list,
                             int idx);
-  void build_graph_fea_from_cpu(const std::vector<GpuPsCommGraphFea> &cpu_node_list,
-                                int idx);
+  void build_graph_fea_from_cpu(
+      const std::vector<GpuPsCommGraphFea> &cpu_node_list, int idx);
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch);
-  NeighborSampleResult graph_neighbor_sample(int gpu_id, uint64_t *key,
-                                             int sample_size, int len);
-  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id, int idx,
-                                                uint64_t *key, int sample_size,
-                                                int len, bool cpu_query_switch);
+  NeighborSampleResult graph_neighbor_sample(int gpu_id,
+                                             uint64_t *key,
+                                             int sample_size,
+                                             int len);
+  NeighborSampleResult graph_neighbor_sample_v2(int gpu_id,
+                                                int idx,
+                                                uint64_t *key,
+                                                int sample_size,
+                                                int len,
+                                                bool cpu_query_switch);
 
-  int get_feature_of_nodes(int gpu_id, uint64_t* d_walk,
-                        uint64_t* d_offset, int size, int slot_num);
+  int get_feature_of_nodes(
+      int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num);
 
-  NodeQueryResult query_node_list(int gpu_id, int idx, int start,
+  NodeQueryResult query_node_list(int gpu_id,
+                                  int idx,
+                                  int start,
                                   int query_size);
   void display_sample_res(void *key, void *val, int len, int sample_len);
-  void move_result_to_source_gpu(int gpu_id, int gpu_num,
-                                                 int sample_size, int *h_left,
-                                                 int *h_right,
-                                                 uint64_t *src_sample_res,
-                                                 int *actual_sample_size);
+  void move_result_to_source_gpu(int gpu_id,
+                                 int gpu_num,
+                                 int sample_size,
+                                 int *h_left,
+                                 int *h_right,
+                                 uint64_t *src_sample_res,
+                                 int *actual_sample_size);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph);
 
   int gpu_num;
@@ -155,7 +166,7 @@ class GpuPsGraphTable : public HeterComm<uint64_t, uint64_t, int> {
   std::condition_variable cv_;
   int cpu_table_status;
 };
-}
-};
+}  // namespace framework
+};  // namespace paddle
 //#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table_inl.h"
 #endif

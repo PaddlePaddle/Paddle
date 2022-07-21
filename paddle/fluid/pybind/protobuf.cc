@@ -40,7 +40,8 @@ static pybind11::bytes SerializeMessage(
     T &self) {  // NOLINT due to pybind11 convention.
   // Check IsInitialized in Python
   std::string retv;
-  PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv), true,
+  PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv),
+                    true,
                     platform::errors::InvalidArgument(
                         "Failed to serialize input Desc to string."));
   return retv;
@@ -59,9 +60,11 @@ void BindProgramDesc(pybind11::module *m) {
              std::string str(binary_str);
              new (&self) pd::ProgramDesc(str);
            })
-      .def("append_block", &pd::ProgramDesc::AppendBlock,
+      .def("append_block",
+           &pd::ProgramDesc::AppendBlock,
            pybind11::return_value_policy::reference)
-      .def("block", &pd::ProgramDesc::MutableBlock,
+      .def("block",
+           &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)
       .def("num_blocks", &pd::ProgramDesc::Size)
       .def("flush", &pd::ProgramDesc::Flush)
@@ -72,15 +75,17 @@ void BindProgramDesc(pybind11::module *m) {
            [](pd::ProgramDesc &program_desc, const std::string &data) {
              pd::proto::ProgramDesc *desc = program_desc.Proto();
              PADDLE_ENFORCE_EQ(
-                 desc->ParseFromString(data), true,
+                 desc->ParseFromString(data),
+                 true,
                  platform::errors::InvalidArgument(
                      "Failed to parse ProgramDesc from binary string."));
            })
-      .def("_set_version",
-           [](pd::ProgramDesc &self, int64_t version) {
-             return self.SetVersion(version);
-           },
-           pybind11::arg("version") = pd::kCurProgramVersion)
+      .def(
+          "_set_version",
+          [](pd::ProgramDesc &self, int64_t version) {
+            return self.SetVersion(version);
+          },
+          pybind11::arg("version") = pd::kCurProgramVersion)
       .def("_version",
            [](pd::ProgramDesc &self) -> int64_t { return self.Version(); })
       .def("get_op_deps", [](const framework::ProgramDesc &program) {
@@ -91,7 +96,8 @@ void BindProgramDesc(pybind11::module *m) {
 void BindProcessMeshDesc(pybind11::module *m) {
   pybind11::class_<pd::ProcessMeshDesc>(*m, "ProcessMeshDesc", "")
       .def(pybind11::init<const std::vector<int32_t> &,
-                          const std::vector<int32_t> &, int32_t>())
+                          const std::vector<int32_t> &,
+                          int32_t>())
       .def_property_readonly("id", &pd::ProcessMeshDesc::ID)
       .def_property_readonly("parent", &pd::ProcessMeshDesc::Parent)
       .def_property_readonly("topology", &pd::ProcessMeshDesc::Topology)
@@ -106,27 +112,33 @@ void BindBlockDesc(pybind11::module *m) {
       .def_property_readonly("parent", &pd::BlockDesc::Parent)
       .def("get_forward_block_idx", &pd::BlockDesc::ForwardBlockID)
       .def("_set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
-      .def("append_op", &pd::BlockDesc::AppendOp,
+      .def("append_op",
+           &pd::BlockDesc::AppendOp,
            pybind11::return_value_policy::reference)
-      .def("_prepend_op", &pd::BlockDesc::PrependOp,
+      .def("_prepend_op",
+           &pd::BlockDesc::PrependOp,
            pybind11::return_value_policy::reference)
-      .def("_insert_op", &pd::BlockDesc::InsertOp,
+      .def("_insert_op",
+           &pd::BlockDesc::InsertOp,
            pybind11::return_value_policy::reference)
       .def("_remove_op", &pd::BlockDesc::RemoveOp)
-      .def("var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.Var(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("has_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.HasVar(name);
-           },
-           pybind11::return_value_policy::reference)
+      .def(
+          "var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.Var(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "has_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.HasVar(name);
+          },
+          pybind11::return_value_policy::reference)
       .def("_rename_var",
-           [](pd::BlockDesc &self, const pybind11::bytes &byte_name,
+           [](pd::BlockDesc &self,
+              const pybind11::bytes &byte_name,
               const pybind11::bytes &byte_name_new) {
              std::string name = byte_name;
              std::string new_name = byte_name_new;
@@ -137,25 +149,29 @@ void BindBlockDesc(pybind11::module *m) {
              std::string name = byte_name;
              return self.HasVarRecursive(name);
            })
-      .def("find_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.FindVar(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("find_var_recursive",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.FindVarRecursive(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("_remove_var",
-           [](pd::BlockDesc &self, pybind11::bytes byte_name) {
-             std::string name = byte_name;
-             return self.RemoveVar(name);
-           },
-           pybind11::return_value_policy::reference)
-      .def("all_vars", &pd::BlockDesc::AllVars,
+      .def(
+          "find_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.FindVar(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "find_var_recursive",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.FindVarRecursive(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def(
+          "_remove_var",
+          [](pd::BlockDesc &self, pybind11::bytes byte_name) {
+            std::string name = byte_name;
+            return self.RemoveVar(name);
+          },
+          pybind11::return_value_policy::reference)
+      .def("all_vars",
+           &pd::BlockDesc::AllVars,
            pybind11::return_value_policy::reference)
       .def("op_size", &pd::BlockDesc::OpSize)
       .def("op", &pd::BlockDesc::Op, pybind11::return_value_policy::reference)
@@ -173,18 +189,24 @@ void BindVarDsec(pybind11::module *m) {
       .def("get_shape", &pd::VarDesc::GetShape)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
-      .def("shape", &pd::VarDesc::GetShape,
+      .def("shape",
+           &pd::VarDesc::GetShape,
            pybind11::return_value_policy::reference)
-      .def("shapes", &pd::VarDesc::GetShapes,
+      .def("shapes",
+           &pd::VarDesc::GetShapes,
            pybind11::return_value_policy::reference)
-      .def("dtype", &pd::VarDesc::GetDataType,
+      .def("dtype",
+           &pd::VarDesc::GetDataType,
            pybind11::return_value_policy::reference)
-      .def("element_size", &pd::VarDesc::ElementSize,
+      .def("element_size",
+           &pd::VarDesc::ElementSize,
            pybind11::return_value_policy::reference)
-      .def("dtypes", &pd::VarDesc::GetDataTypes,
+      .def("dtypes",
+           &pd::VarDesc::GetDataTypes,
            pybind11::return_value_policy::reference)
       .def("lod_level", &pd::VarDesc::GetLoDLevel)
-      .def("lod_levels", &pd::VarDesc::GetLoDLevels,
+      .def("lod_levels",
+           &pd::VarDesc::GetLoDLevels,
            pybind11::return_value_policy::reference)
       .def("set_lod_level", &pd::VarDesc::SetLoDLevel)
       .def("set_lod_levels", &pd::VarDesc::SetLoDLevels)
@@ -258,8 +280,10 @@ void BindOpDesc(pybind11::module *m) {
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
-      .def("__init__", [](pd::OpDesc &self) { new (&self) pd::OpDesc(); },
-           pybind11::return_value_policy::reference)
+      .def(
+          "__init__",
+          [](pd::OpDesc &self) { new (&self) pd::OpDesc(); },
+          pybind11::return_value_policy::reference)
       .def("copy_from", &pd::OpDesc::CopyFrom)
       .def("type", &pd::OpDesc::Type)
       .def("set_type", &pd::OpDesc::SetType)
@@ -268,12 +292,14 @@ void BindOpDesc(pybind11::module *m) {
       .def("output", &pd::OpDesc::Output)
       .def("output_names", &pd::OpDesc::OutputNames)
       .def("set_input",
-           [](pd::OpDesc &self, const std::string &name,
+           [](pd::OpDesc &self,
+              const std::string &name,
               const std::vector<std::string> &vec_var_name) {
              self.SetInput(name, vec_var_name);
            })
       .def("set_output",
-           [](pd::OpDesc &self, const std::string &name,
+           [](pd::OpDesc &self,
+              const std::string &name,
               const std::vector<std::string> &vec_var_name) {
              self.SetOutput(name, vec_var_name);
            })
@@ -292,7 +318,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
-           [](pd::OpDesc &self, const std::string &name,
+           [](pd::OpDesc &self,
+              const std::string &name,
               const pybind11::bytes &seriralized) {
              std::string ser(seriralized);
              self.SetAttr(name, ser);
@@ -304,8 +331,10 @@ void BindOpDesc(pybind11::module *m) {
       .def("infer_var_type", &pd::OpDesc::InferVarType)
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
-      .def("block", [](pd::OpDesc &self) { return self.Block(); },
-           pybind11::return_value_policy::reference)
+      .def(
+          "block",
+          [](pd::OpDesc &self) { return self.Block(); },
+          pybind11::return_value_policy::reference)
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)

@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 
 
 class TestInferShape(unittest.TestCase):
+
     def test_sum_op(self):
         prog = core.ProgramDesc()
         self.assertIsNotNone(prog)

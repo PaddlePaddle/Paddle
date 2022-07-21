@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -29,9 +31,12 @@ namespace inference {
 namespace tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
-void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
-                   const framework::Scope& scope, bool test_mode,
-                   RegistFunc fadd_layer, SetDilationFunc fset_dilation,
+void ConvertConv2d(TensorRTEngine* engine,
+                   const framework::proto::OpDesc& op,
+                   const framework::Scope& scope,
+                   bool test_mode,
+                   RegistFunc fadd_layer,
+                   SetDilationFunc fset_dilation,
                    const std::string& name) {
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
@@ -41,10 +46,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   std::string filter_var_name = op_desc.Input("Filter").front();
   auto* Y_v = scope.FindVar(filter_var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      Y_v, platform::errors::NotFound(
-               "Can not find %s presistale var in scope.", filter_var_name));
+      Y_v,
+      platform::errors::NotFound("Can not find %s presistale var in scope.",
+                                 filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-  float* weight_data = nullptr;
+
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
@@ -53,9 +59,9 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     engine->SetTensorDynamicRange(X, in_scale);
 #endif
   }
-  weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t);
 
-  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
+  PADDLE_ENFORCE_EQ(Y_t->dims().size(),
+                    4UL,
                     platform::errors::InvalidArgument(
                         "The conv2d filter's dims size should be 4, but got %d",
                         Y_t->dims().size()));
@@ -99,33 +105,38 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     nv_post_paddings.d[1] = paddings[3];
   }
 
-  TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(weight_data),
-                                static_cast<size_t>(Y_t->numel())};
-  float* bias_data = nullptr;
-  size_t bias_size = 0;
+  auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
+
+  TensorRTEngine::Weight bias;
+  bias.SetDataType(weight.get().type);
+  bias.SetCount(0);
+  bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
     auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
-    bias_data = engine->GetWeightCPUData(op_desc.Input("Bias").front(),
-                                         bias_tensor_data);
-    bias_size = static_cast<size_t>(bias_tensor_data->numel());
+    bias =
+        engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }
 
-  TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
-                              static_cast<void*>(bias_data), bias_size};
   // In conv2d_transpose and depthwise_conv2d_transpose,
   // output channels = filter_dims[1] * groups
   auto* layer = (op_desc.Type() == "conv2d_transpose" ||
                  op_desc.Type() == "depthwise_conv2d_transpose")
                     ? fadd_layer(const_cast<nvinfer1::ITensor*>(X),
-                                 n_input * groups, nv_ksize, weight, bias)
-                    : fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output,
-                                 nv_ksize, weight, bias);
+                                 n_input * groups,
+                                 nv_ksize,
+                                 weight,
+                                 bias)
+                    : fadd_layer(const_cast<nvinfer1::ITensor*>(X),
+                                 n_output,
+                                 nv_ksize,
+                                 weight,
+                                 bias);
 
   PADDLE_ENFORCE_NOT_NULL(
-      layer, platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
-                                     " layer failed."));
+      layer,
+      platform::errors::Fatal("TensorRT create conv2d/conv2d_transpose"
+                              " layer failed."));
   layer->setStride(nv_strides);
   if (paddings.size() == 2) {
     layer->setPadding(nv_paddings);
@@ -156,15 +167,25 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 class Conv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     ConvertConv2d(
-        engine_, op, scope, test_mode,
-        [&](nvinfer1::ITensor* inputs, int n_output, /* Conv output maps */
-            nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
+        engine_,
+        op,
+        scope,
+        test_mode,
+        [&](nvinfer1::ITensor* inputs,
+            int n_output, /* Conv output maps */
+            nvinfer1::DimsHW& ksize,
+            TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IConvolutionLayer* {
-          auto* layer =
-              TRT_ENGINE_ADD_LAYER(engine_, Convolution, *inputs, n_output,
-                                   ksize, weight.get(), bias.get());
+          auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                             Convolution,
+                                             *inputs,
+                                             n_output,
+                                             ksize,
+                                             weight.get(),
+                                             bias.get());
           return layer;
         },
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
@@ -177,15 +198,25 @@ class Conv2dOpConverter : public OpConverter {
 class Deconv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     ConvertConv2d(
-        engine_, op, scope, test_mode,
-        [&](nvinfer1::ITensor* inputs, int n_output, /* Deconv input maps */
-            nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
+        engine_,
+        op,
+        scope,
+        test_mode,
+        [&](nvinfer1::ITensor* inputs,
+            int n_output, /* Deconv input maps */
+            nvinfer1::DimsHW& ksize,
+            TensorRTEngine::Weight& weight,
             TensorRTEngine::Weight& bias) -> nvinfer1::IDeconvolutionLayer* {
-          auto* layer =
-              TRT_ENGINE_ADD_LAYER(engine_, Deconvolution, *inputs, n_output,
-                                   ksize, weight.get(), bias.get());
+          auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                             Deconvolution,
+                                             *inputs,
+                                             n_output,
+                                             ksize,
+                                             weight.get(),
+                                             bias.get());
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {

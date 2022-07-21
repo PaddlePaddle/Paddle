@@ -21,7 +21,6 @@
 
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -47,6 +46,7 @@ enum class CommType : std::uint8_t {
   SEND = 9,
   RECV = 10,
   BARRIER = 11,
+  ALLTOALL_SINGLE = 12,
   UNKNOWN = 100,
 };
 
@@ -54,7 +54,8 @@ class ProcessGroup {
  public:
   class Task {
    public:
-    Task(int rank, const std::vector<phi::DenseTensor>& inputTensors,
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputTensors,
          CommType opType = CommType::UNKNOWN);
 
     virtual ~Task();
@@ -69,7 +70,9 @@ class ProcessGroup {
     bool is_completed_ = false;
   };
 
-  explicit ProcessGroup(int rank, int size, const platform::Place& place,
+  explicit ProcessGroup(int rank,
+                        int size,
+                        const platform::Place& place,
                         int gid);
   virtual ~ProcessGroup() {}
 
@@ -113,6 +116,20 @@ class ProcessGroup {
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor&,
+                                                           int,
+                                                           int,
+                                                           int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
+      phi::DenseTensor& tensors, int, int, int) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>&,    // NOLINT
       std::vector<phi::DenseTensor>&) {  // NOLINT
@@ -125,6 +142,15 @@ class ProcessGroup {
       std::vector<phi::DenseTensor>&) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<int64_t>&,
+      std::vector<int64_t>&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllToAll_Single", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
@@ -141,6 +167,14 @@ class ProcessGroup {
       const ScatterOptions&) {         // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,              // NOLINT
+      phi::DenseTensor&,              // NOLINT
+      const ReduceScatterOptions&) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support ReduceScatter", GetBackendName()));
   }
 
  protected:

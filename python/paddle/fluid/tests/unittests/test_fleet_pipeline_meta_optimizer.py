@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -31,12 +32,15 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def net(self):
         with static.device_guard("gpu:0"):
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32')
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64')
-            input_z = paddle.fluid.layers.data(
-                name="z", shape=[1], dtype="float32")
+            input_x = paddle.fluid.layers.data(name="x",
+                                               shape=[32],
+                                               dtype='float32')
+            input_y = paddle.fluid.layers.data(name="y",
+                                               shape=[1],
+                                               dtype='int64')
+            input_z = paddle.fluid.layers.data(name="z",
+                                               shape=[1],
+                                               dtype="float32")
             with static.device_guard("gpu:all"):
                 input_z = input_z * 1.0
                 input_z.stop_gradient = True
@@ -51,9 +55,9 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
                                                 act='softmax')
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y)
-            avg_cost = paddle.fluid.layers.mean(x=cost)
+            cost = paddle.fluid.layers.cross_entropy(input=prediction,
+                                                     label=input_y)
+            avg_cost = paddle.mean(x=cost)
         return avg_cost
 
     def test_pipeline_optimizer(self):
@@ -73,8 +77,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 avg_cost = self.net()
 
                 optimizer = paddle.fluid.optimizer.Adam(0.01)
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, strategy=strategy)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
                 optimizer.minimize(avg_cost)
 
     def test_pipeline_amp_optimizer(self):
@@ -96,8 +100,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 avg_cost = self.net()
 
                 optimizer = paddle.fluid.optimizer.Adam(0.01)
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, strategy=strategy)
+                optimizer = fleet.distributed_optimizer(optimizer,
+                                                        strategy=strategy)
                 optimizer.minimize(avg_cost)
 
         ops = train_prog._pipeline_opt['section_program'].global_block().ops

@@ -33,8 +33,8 @@ namespace allocation {
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
-      : err_str_(platform::GetCompleteTraceBackString(std::move(err_msg), file,
-                                                      line)) {}
+      : err_str_(platform::GetCompleteTraceBackString(
+            std::move(err_msg), file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
 
@@ -89,7 +89,9 @@ class Allocation : public phi::Allocation {
  public:
   Allocation(void* ptr, size_t size, platform::Place place)
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
-  Allocation(void* ptr, void* base_ptr, size_t size,
+  Allocation(void* ptr,
+             void* base_ptr,
+             size_t size,
              const platform::Place& place)
       : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 

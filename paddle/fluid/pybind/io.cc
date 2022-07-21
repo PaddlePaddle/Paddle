@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/io.h"
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -23,59 +24,69 @@ namespace paddle {
 namespace pybind {
 
 void BindIO(pybind11::module *m) {
-  m->def("save_lod_tensor", [](const paddle::framework::LoDTensor &tensor,
-                               const std::string &str_file_name) {
-    std::ofstream fout(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", str_file_name));
-    paddle::framework::SerializeToStream(fout, tensor);
+  m->def("save_lod_tensor",
+         [](const paddle::framework::LoDTensor &tensor,
+            const std::string &str_file_name) {
+           std::ofstream fout(str_file_name, std::ios::binary);
+           PADDLE_ENFORCE_EQ(
+               static_cast<bool>(fout),
+               true,
+               platform::errors::Unavailable(
+                   "Cannot open %s to save variables.", str_file_name));
+           paddle::framework::SerializeToStream(fout, tensor);
 
-    int64_t tellp = fout.tellp();
-    fout.close();
-    return tellp;
-  });
+           int64_t tellp = fout.tellp();
+           fout.close();
+           return tellp;
+         });
 
-  m->def("load_lod_tensor", [](paddle::framework::LoDTensor &tensor,
-                               const std::string &str_file_name) {
-    std::ifstream fin(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fin), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to load variables.", str_file_name));
+  m->def("load_lod_tensor",
+         [](paddle::framework::LoDTensor &tensor,
+            const std::string &str_file_name) {
+           std::ifstream fin(str_file_name, std::ios::binary);
+           PADDLE_ENFORCE_EQ(
+               static_cast<bool>(fin),
+               true,
+               platform::errors::Unavailable(
+                   "Cannot open %s to load variables.", str_file_name));
 
-    paddle::framework::DeserializeFromStream(fin, &tensor);
-    int64_t tellg = fin.tellg();
-    fin.close();
-    return tellg;
-  });
+           paddle::framework::DeserializeFromStream(fin, &tensor);
+           int64_t tellg = fin.tellg();
+           fin.close();
+           return tellg;
+         });
 
-  m->def("save_selected_rows", [](const phi::SelectedRows &selected_rows,
-                                  const std::string &str_file_name) {
-    std::ofstream fout(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fout), true,
-        platform::errors::Unavailable("Cannot open %s to save SelectedRows.",
-                                      str_file_name));
+  m->def("save_selected_rows",
+         [](const phi::SelectedRows &selected_rows,
+            const std::string &str_file_name) {
+           std::ofstream fout(str_file_name, std::ios::binary);
+           PADDLE_ENFORCE_EQ(
+               static_cast<bool>(fout),
+               true,
+               platform::errors::Unavailable(
+                   "Cannot open %s to save SelectedRows.", str_file_name));
 
-    paddle::framework::SerializeToStream(fout, selected_rows);
-    int64_t tellp = fout.tellp();
-    fout.close();
-    return tellp;
-  });
+           paddle::framework::SerializeToStream(fout, selected_rows);
+           int64_t tellp = fout.tellp();
+           fout.close();
+           return tellp;
+         });
 
-  m->def("load_selected_rows", [](phi::SelectedRows &selected_rows,
-                                  const std::string &str_file_name) {
-    std::ifstream fin(str_file_name, std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin), true,
-        platform::errors::Unavailable("Cannot open %s to load SelectedRows.",
-                                      str_file_name));
+  m->def(
+      "load_selected_rows",
+      [](phi::SelectedRows &selected_rows, const std::string &str_file_name) {
+        std::ifstream fin(str_file_name, std::ios::binary);
+        PADDLE_ENFORCE_EQ(
+            static_cast<bool>(fin),
+            true,
+            platform::errors::Unavailable(
+                "Cannot open %s to load SelectedRows.", str_file_name));
 
-    paddle::framework::DeserializeFromStream(fin, &selected_rows);
-    int64_t tellg = fin.tellg();
-    fin.close();
-    return tellg;
-  });
+        paddle::framework::DeserializeFromStream(fin, &selected_rows);
+        int64_t tellg = fin.tellg();
+        fin.close();
+        return tellg;
+      });
 
   m->def("save_lod_tensor_to_memory",
          [](const paddle::framework::LoDTensor &tensor) -> py::bytes {
@@ -84,11 +95,13 @@ void BindIO(pybind11::module *m) {
            return ss.str();
          });
 
-  m->def("load_lod_tensor_from_memory", [](paddle::framework::LoDTensor &tensor,
-                                           const std::string &tensor_bytes) {
-    std::istringstream fin(tensor_bytes, std::ios::in | std::ios::binary);
-    paddle::framework::DeserializeFromStream(fin, &tensor);
-  });
+  m->def("load_lod_tensor_from_memory",
+         [](paddle::framework::LoDTensor &tensor,
+            const std::string &tensor_bytes) {
+           std::istringstream fin(tensor_bytes,
+                                  std::ios::in | std::ios::binary);
+           paddle::framework::DeserializeFromStream(fin, &tensor);
+         });
 
   m->def("save_selected_rows_to_memory",
          [](const phi::SelectedRows &selected_rows) -> py::bytes {

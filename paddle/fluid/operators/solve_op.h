@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -40,14 +40,20 @@ using framework::To32BitIndex;
 constexpr int kMULMKLDNNINT8 = 1;
 
 template <typename DeviceContext, typename T>
-void ReduceSumForSolve(const Tensor* input, Tensor* output,
-                       const std::vector<int>& reduce_dims, bool keep_dim,
+void ReduceSumForSolve(const Tensor* input,
+                       Tensor* output,
+                       const std::vector<int>& reduce_dims,
+                       bool keep_dim,
                        const paddle::framework::ExecutionContext& ctx) {
 #if defined(__NVCC__) || defined(__HIPCC__)
   auto stream = ctx.cuda_device_context().stream();
   TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      ctx.cuda_device_context(), *input, output, kps::IdentityFunctor<T>(),
-      reduce_dims, stream);
+      ctx.cuda_device_context(),
+      *input,
+      output,
+      kps::IdentityFunctor<T>(),
+      reduce_dims,
+      stream);
 #else
   ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
       input, output, reduce_dims, keep_dim, false, ctx)
@@ -84,7 +90,8 @@ static framework::DDim GetOutputShapeUnsqueeze(
   std::vector<int64_t> output_shape(output_size, 0);
 
   // Validity Check: rank range.
-  PADDLE_ENFORCE_LE(output_size, 6,
+  PADDLE_ENFORCE_LE(output_size,
+                    6,
                     platform::errors::InvalidArgument(
                         "The output "
                         "tensor's rank should be less than 6."));
@@ -92,10 +99,13 @@ static framework::DDim GetOutputShapeUnsqueeze(
   for (int axis : unsqz_dims) {
     int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
     // Vaildity Check: the axis bound
-    PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
-                                  "The insert dimension value should "
-                                  "not be less than 0"));
-    PADDLE_ENFORCE_LE(cur, cur_output_size,
+    PADDLE_ENFORCE_GE(
+        cur,
+        0,
+        platform::errors::InvalidArgument("The insert dimension value should "
+                                          "not be less than 0"));
+    PADDLE_ENFORCE_LE(cur,
+                      cur_output_size,
                       platform::errors::InvalidArgument(
                           "The insert dimension value shoule not be larger "
                           "than the dimension size of input tensor"));
@@ -124,27 +134,33 @@ static framework::DDim GetOutputShapeUnsqueeze(
 
 // operation like squeeze(-1)
 static void to_squeeze(const framework::ExecutionContext& context,
-                       const framework::Tensor& in, framework::Tensor* out) {
+                       const framework::Tensor& in,
+                       framework::Tensor* out) {
   auto x_dims = in.dims();
   std::vector<int> sqz_dims = {-1};
   auto out_dims = GetOutputShape(sqz_dims, x_dims, true);
   out->mutable_data(context.GetPlace(), in.type());
   framework::TensorCopy(
-      in, context.GetPlace(),
-      context.template device_context<platform::DeviceContext>(), out);
+      in,
+      context.GetPlace(),
+      context.template device_context<platform::DeviceContext>(),
+      out);
   out->Resize(out_dims);
 }
 
 // vector_case, need to operate like unsqueeze(-1)
 static void to_unsqueeze(const framework::ExecutionContext& context,
-                         const framework::Tensor& in, framework::Tensor* out) {
+                         const framework::Tensor& in,
+                         framework::Tensor* out) {
   auto x_dims = in.dims();
   std::vector<int> unsqz_dims = {-1};
   framework::DDim out_dims = out->dims();
   out_dims = GetOutputShapeUnsqueeze(unsqz_dims, x_dims);
   framework::TensorCopy(
-      in, context.GetPlace(),
-      context.template device_context<platform::DeviceContext>(), out);
+      in,
+      context.GetPlace(),
+      context.template device_context<platform::DeviceContext>(),
+      out);
   out->Resize(out_dims);
 }
 
@@ -165,11 +181,14 @@ static std::vector<int64_t> get_broadcast_batch_portion(
     int64_t y_size = (dim_y >= 0) ? y[dim_y] : 1;
 
     PADDLE_ENFORCE_EQ(
-        (x_size == y_size || x_size == 1 || y_size == 1), true,
+        (x_size == y_size || x_size == 1 || y_size == 1),
+        true,
         platform::errors::PreconditionNotMet(
             "The size of tensor x (%d) must match the size of tensor y "
             "(%d) at non-singleton dimension %d.",
-            x_size, y_size, i));
+            x_size,
+            y_size,
+            i));
 
     batchPortion[i] = x_size != 1 ? x_size : y_size;
   }
@@ -207,7 +226,9 @@ get_broadcast_dims(const Tensor& x, const Tensor& y) {
 }
 
 template <int Rank, typename T, typename DeviceContext>
-void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
+void expand_impl(const DeviceContext& context,
+                 const Tensor& in,
+                 Tensor* out,
                  const std::vector<int64_t>& expand_shape) {
   auto vec_in_dims = phi::vectorize<int>(in.dims());
   auto diff = expand_shape.size() - vec_in_dims.size();
@@ -216,11 +237,13 @@ void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
 
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
-        expand_shape[i], 0,
+        expand_shape[i],
+        0,
         platform::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {
       PADDLE_ENFORCE_GT(
-          expand_shape[i], 0,
+          expand_shape[i],
+          0,
           platform::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand operation.",
@@ -229,18 +252,21 @@ void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
     } else if (expand_shape[i] > 0) {
       if (vec_in_dims[i] != 1) {
         PADDLE_ENFORCE_EQ(
-            vec_in_dims[i], expand_shape[i],
+            vec_in_dims[i],
+            expand_shape[i],
             platform::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand operation.",
-                vec_in_dims[i], expand_shape[i]));
+                vec_in_dims[i],
+                expand_shape[i]));
         repeat_times[i] = 1;
       } else {
         repeat_times[i] = expand_shape[i];
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          expand_shape[i], -1,
+          expand_shape[i],
+          -1,
           platform::errors::InvalidArgument(
               "When the value in shape is negative for expand_v2 op, "
               "only -1 is supported, but the value received is %d.",
@@ -271,24 +297,30 @@ void expand_impl(const DeviceContext& context, const Tensor& in, Tensor* out,
     EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
         place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
   } else {
-    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
-                                                                 bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+        place, y, x, bcast_dims);
   }
 }
 
 template <typename T, typename DeviceContext>
-void TensorExpand(const DeviceContext& context, const Tensor& in, Tensor* out,
+void TensorExpand(const DeviceContext& context,
+                  const Tensor& in,
+                  Tensor* out,
                   const std::vector<int64_t>& expand_shape) {
   // necessary check before expand operation
-  PADDLE_ENFORCE_GE(expand_shape.size(), in.dims().size(),
+  PADDLE_ENFORCE_GE(expand_shape.size(),
+                    in.dims().size(),
                     platform::errors::InvalidArgument(
                         "The size of 'expand_shape' (%d) should >= the input "
                         "Tensor's rank (%d).",
-                        expand_shape.size(), in.dims().size()));
-  PADDLE_ENFORCE_LE(expand_shape.size(), MAX_RANK_SUPPORTED,
+                        expand_shape.size(),
+                        in.dims().size()));
+  PADDLE_ENFORCE_LE(expand_shape.size(),
+                    MAX_RANK_SUPPORTED,
                     platform::errors::InvalidArgument(
                         "The size of 'expand_shape' (%d) should be <= %d",
-                        expand_shape.size(), MAX_RANK_SUPPORTED));
+                        expand_shape.size(),
+                        MAX_RANK_SUPPORTED));
   switch (expand_shape.size()) {
     case 1:
       expand_impl<1, T, DeviceContext>(context, in, out, expand_shape);
@@ -313,12 +345,13 @@ void TensorExpand(const DeviceContext& context, const Tensor& in, Tensor* out,
 
 template <typename DeviceContext, typename T>
 static void linalg_solve(const framework::ExecutionContext& context,
-                         const framework::Tensor* x, const framework::Tensor* y,
+                         const framework::Tensor* x,
+                         const framework::Tensor* y,
                          framework::Tensor* out) {
   out->mutable_data<T>(context.GetPlace());
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  math::MatrixSolveFunctor<DeviceContext, T> mat_solve;
+  phi::funcs::MatrixSolveFunctor<DeviceContext, T> mat_solve;
 
   // input y can be vector or matrix
   // but need to be unsqueezed if y is a vector
@@ -333,16 +366,20 @@ static void linalg_solve(const framework::ExecutionContext& context,
     tmp_y.Resize(y->dims());
     tmp_y.mutable_data(context.GetPlace(), y->dtype());
     framework::TensorCopy(
-        *y, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), &tmp_y);
+        *y,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        &tmp_y);
   }
 
   Tensor tmp_x;
   tmp_x.Resize(x->dims());
   tmp_x.mutable_data(context.GetPlace(), x->dtype());
   framework::TensorCopy(
-      *x, context.GetPlace(),
-      context.template device_context<platform::DeviceContext>(), &tmp_x);
+      *x,
+      context.GetPlace(),
+      context.template device_context<platform::DeviceContext>(),
+      &tmp_x);
 
   std::vector<int64_t> x_broadcast_dims;
   std::vector<int64_t> y_broadcast_dims;
@@ -370,77 +407,22 @@ static void linalg_solve(const framework::ExecutionContext& context,
     to_squeeze(context, out_tmp, out);  // out.squeeze(-1)
   } else {
     PADDLE_ENFORCE_EQ(
-        x_dim[x_dim_size - 1], y_dim[y_dim_size - 2],
+        x_dim[x_dim_size - 1],
+        y_dim[y_dim_size - 2],
         platform::errors::InvalidArgument(
             "Matrix X1 with dimension greater than 2 and any matrix Y1,"
             "the matrix X1's width must be equal with matrix Y1's "
             "height. But received X's shape = [%s], X1's shape = [%s], X1's "
             "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = "
             "%s.",
-            x_dim, x_dim, x_dim[x_dim_size - 1], y_dim, y_dim,
+            x_dim,
+            x_dim,
+            x_dim[x_dim_size - 1],
+            y_dim,
+            y_dim,
             y_dim[y_dim_size - 2]));
     mat_solve(dev_ctx, tmp_x_bc, tmp_y_bc, out);
   }
-}
-
-// for TransposeNormal
-static std::vector<int> getNewAxis(const int b_rank) {
-  std::vector<int> axis_1 = {0};
-  std::vector<int> axis_2 = {1, 0};
-  std::vector<int> axis_3 = {0, 2, 1};
-  std::vector<int> axis_4 = {0, 1, 3, 2};
-  std::vector<int> axis_5 = {0, 1, 2, 4, 3};
-  std::vector<int> axis_6 = {0, 1, 2, 3, 5, 4};
-  std::vector<int> axis_7 = {0, 1, 2, 3, 4, 6, 5};
-  std::vector<int> axis_8 = {0, 1, 2, 3, 4, 5, 7, 6};
-  std::vector<int> axis_9 = {0, 1, 2, 3, 4, 5, 6, 8, 7};
-  switch (b_rank) {
-    case 1:
-      return axis_1;
-      break;
-    case 2:
-      return axis_2;
-      break;
-    case 3:
-      return axis_3;
-      break;
-    case 4:
-      return axis_4;
-      break;
-    case 5:
-      return axis_5;
-      break;
-    case 6:
-      return axis_6;
-      break;
-    case 7:
-      return axis_7;
-      break;
-    case 8:
-      return axis_8;
-      break;
-    default:
-      return axis_9;
-  }
-}
-
-// for Resize
-static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = phi::vectorize(b_dims);
-  int size = b_dims_vec.size();
-  if (size >= 2) {
-    // swap the last 2 elements in b_dims_vec
-    int64_t temp = b_dims_vec[size - 1];
-    b_dims_vec[size - 1] = b_dims_vec[size - 2];
-    b_dims_vec[size - 2] = temp;
-    return b_dims_vec;
-  }
-  PADDLE_ENFORCE_NE(
-      b_dims_vec.empty(), true,
-      platform::errors::PreconditionNotMet(
-          "The size of tensor b must not be %d after getting new dims", 0));
-  // if b_dims_vec.size() == 1, just retun original vec
-  return b_dims_vec;
 }
 
 template <typename DeviceContext, typename T>
@@ -479,16 +461,20 @@ class SolveGradKernel : public framework::OpKernel<T> {
       tmp_y.Resize(y->dims());
       tmp_y.mutable_data(ctx.GetPlace(), y->dtype());
       framework::TensorCopy(
-          *y, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &tmp_y);
+          *y,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &tmp_y);
     }
 
     Tensor tmp_x;
     tmp_x.Resize(input->dims());
     tmp_x.mutable_data(ctx.GetPlace(), input->dtype());
     framework::TensorCopy(
-        *input, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), &tmp_x);
+        *input,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        &tmp_x);
 
     std::vector<int64_t> x_broadcast_dims;
     std::vector<int64_t> y_broadcast_dims;
@@ -506,11 +492,11 @@ class SolveGradKernel : public framework::OpKernel<T> {
     tmp_dy.mutable_data<T>(ctx.GetPlace());
 
     Tensor tmp_input(input->dtype());
-    const auto& new_dims_vec = getNewDimsVec(input->dims());
+    const auto& new_dims_vec = phi::funcs::getNewDimsVec(input->dims());
     tmp_input.Resize(phi::make_ddim(new_dims_vec));
     tmp_input.mutable_data<T>(ctx.GetPlace());
     phi::funcs::TransposeNormal<DeviceContext, T> trans;
-    std::vector<int> new_axis = getNewAxis(input->dims().size());
+    std::vector<int> new_axis = phi::funcs::getNewAxis(input->dims().size());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, *input, &tmp_input, new_axis);
 
@@ -543,8 +529,8 @@ class SolveGradKernel : public framework::OpKernel<T> {
             phi::funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
         auto mat_dim_b1 =
             phi::funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);
-        blas.MatMul(tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx,
-                    T(0));
+        blas.MatMul(
+            tmp_dy_, mat_dim_a1, tmp_out_, mat_dim_b1, T(-1), &tmp_dx, T(0));
       } else {
         auto mat_dim_a1 =
             phi::funcs::CreateMatrixDescriptor(tmp_dy.dims(), 0, false);
@@ -559,8 +545,10 @@ class SolveGradKernel : public framework::OpKernel<T> {
       dy_help.Resize(tmp_dy.dims());
       dy_help.mutable_data(ctx.GetPlace(), tmp_dy.dtype());
       framework::TensorCopy(
-          tmp_dy, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &dy_help);
+          tmp_dy,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &dy_help);
 
       // get dims
       std::vector<std::int64_t> x_dims = vectorize(input->dims());
@@ -578,8 +566,10 @@ class SolveGradKernel : public framework::OpKernel<T> {
       std::vector<std::int64_t> dy_broadcast_dims(ndim);
 
       std::fill(dy_broadcast_dims.data(),
-                dy_broadcast_dims.data() + ndim - y_ndim, 1);
-      std::copy(y_dims.data(), y_dims.data() + y_ndim,
+                dy_broadcast_dims.data() + ndim - y_ndim,
+                1);
+      std::copy(y_dims.data(),
+                y_dims.data() + y_ndim,
                 dy_broadcast_dims.data() + ndim - y_ndim);
 
       std::vector<int> dy_reduce_dims;
@@ -597,15 +587,17 @@ class SolveGradKernel : public framework::OpKernel<T> {
           if (dy_help.dims().size() != dy->dims().size()) {
             keep_dim = false;
           }
-          ReduceSumForSolve<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
-                                              keep_dim, ctx);
+          ReduceSumForSolve<DeviceContext, T>(
+              &dy_help, dy, dy_reduce_dims, keep_dim, ctx);
         }
         dy->Resize(y->dims());
       }
     } else {
       framework::TensorCopy(
-          tmp_dy, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), dy);
+          tmp_dy,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          dy);
     }
 
     if (input->dims() != tmp_dx.dims()) {
@@ -613,8 +605,10 @@ class SolveGradKernel : public framework::OpKernel<T> {
       dx_help.Resize(tmp_dx.dims());
       dx_help.mutable_data(ctx.GetPlace(), tmp_dx.dtype());
       framework::TensorCopy(
-          tmp_dx, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &dx_help);
+          tmp_dx,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &dx_help);
 
       // get dims
       std::vector<std::int64_t> x_dims = vectorize(input->dims());
@@ -627,8 +621,10 @@ class SolveGradKernel : public framework::OpKernel<T> {
       std::vector<std::int64_t> dx_broadcast_dims(ndim);
 
       std::fill(dx_broadcast_dims.data(),
-                dx_broadcast_dims.data() + ndim - x_ndim, 1);
-      std::copy(x_dims.data(), x_dims.data() + x_ndim,
+                dx_broadcast_dims.data() + ndim - x_ndim,
+                1);
+      std::copy(x_dims.data(),
+                x_dims.data() + x_ndim,
                 dx_broadcast_dims.data() + ndim - x_ndim);
 
       std::vector<int> dx_reduce_dims;
@@ -647,15 +643,17 @@ class SolveGradKernel : public framework::OpKernel<T> {
           if (dx_help.dims().size() != dx->dims().size()) {
             keep_dim = false;
           }
-          ReduceSumForSolve<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
-                                              keep_dim, ctx);
+          ReduceSumForSolve<DeviceContext, T>(
+              &dx_help, dx, dx_reduce_dims, keep_dim, ctx);
         }
         dx->Resize(input->dims());
       }
     } else {
       framework::TensorCopy(
-          tmp_dx, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), dx);
+          tmp_dx,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          dx);
     }
   }
 };

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Notice that the following codes are modified from KerasTuner to implement our own tuner. 
+# Notice that the following codes are modified from KerasTuner to implement our own tuner.
 # Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
 
 import collections
@@ -103,13 +103,19 @@ class TunableSpace(object):
         return self._retrieve(tv)
 
     def int_range(self, name, start, stop, step=1, default=None):
-        tv = IntRange(
-            name=name, start=start, stop=stop, step=step, default=default)
+        tv = IntRange(name=name,
+                      start=start,
+                      stop=stop,
+                      step=step,
+                      default=default)
         return self._retrieve(tv)
 
     def float_range(self, name, start, stop, step=None, default=None):
-        tv = FloatRange(
-            name=name, start=start, stop=stop, step=step, default=default)
+        tv = FloatRange(name=name,
+                        start=start,
+                        stop=stop,
+                        step=step,
+                        default=default)
         return self._retrieve(tv)
 
     def get_state(self):
@@ -118,7 +124,8 @@ class TunableSpace(object):
                 "class_name": v.__class__.__name__,
                 "state": v.get_state()
             } for v in self._variables.values()],
-            "values": dict((k, v) for (k, v) in self.values.items())
+            "values":
+            dict((k, v) for (k, v) in self.values.items())
         }
 
     @classmethod
@@ -138,8 +145,8 @@ def _deserialize_tunable_variable(state):
     if isinstance(state, classes):
         return state
 
-    if (not isinstance(state, dict) or "class_name" not in state or
-            "state" not in state):
+    if (not isinstance(state, dict) or "class_name" not in state
+            or "state" not in state):
         raise ValueError(
             "Expect state to be a python dict containing class_name and state as keys, but found {}"
             .format(state))

@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,11 +15,13 @@
 import unittest
 import numpy as np
 import paddle
-from paddle.incubate.autograd.primops import (
-    neg, set_value, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
-    transpose, split, concat, reduce, matmul, slice_select, slice_assign,
-    gather, scatter_add, fill_const)
-from paddle.incubate.autograd.primx import Transform, topo_path, orig2prim, prim2orig, _gradients
+from paddle.incubate.autograd.primops import (neg, set_value, add, sub, mul,
+                                              div, sqrt, tanh, reshape,
+                                              broadcast, transpose, split,
+                                              concat, reduce, matmul,
+                                              slice_select, slice_assign,
+                                              gather, scatter_add, fill_const)
+from paddle.incubate.autograd.primx import Transform, topo_path, orig2prim, prim2orig
 from paddle.incubate.autograd.utils import enable_prim, disable_prim, prim_enabled
 
 
@@ -104,19 +106,29 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(matmul_1.dtype, d.dtype)
         self.assertEqual(matmul_1.shape, (2, 2))
 
-        slice_select_1 = slice_select(
-            e, axis=[0], starts=[0], ends=[2], strides=[1])
+        slice_select_1 = slice_select(e,
+                                      axis=[0],
+                                      starts=[0],
+                                      ends=[2],
+                                      strides=[1])
         self.assertEqual(slice_select_1.dtype, e.dtype)
         self.assertEqual(slice_select_1.shape, (2, 2))
 
-        slice_select_2 = slice_select(
-            d, axis=[0, 1], starts=[0, 1], ends=[2, 3], strides=[1, 2])
+        slice_select_2 = slice_select(d,
+                                      axis=[0, 1],
+                                      starts=[0, 1],
+                                      ends=[2, 3],
+                                      strides=[1, 2])
         self.assertEqual(slice_select_2.dtype, d.dtype)
         self.assertEqual(slice_select_2.shape, (2, 1))
 
         y = broadcast(b, [2, 2])
-        slice_assign_1 = slice_assign(
-            d, y, axis=[1], starts=[1], ends=[3], strides=[1])
+        slice_assign_1 = slice_assign(d,
+                                      y,
+                                      axis=[1],
+                                      starts=[1],
+                                      ends=[3],
+                                      strides=[1])
         self.assertEqual(slice_assign_1.dtype, d.dtype)
         self.assertEqual(slice_assign_1.shape, d.shape)
 
@@ -138,8 +150,13 @@ class TestPyPrimOps(unittest.TestCase):
         self.assertEqual(neg_1.shape, b.shape)
         self.assertEqual(neg_1.dtype, b.dtype)
 
-        set_value_1 = set_value(
-            d, a, axis=[1], starts=[1], ends=[3], strides=[1], out=d)
+        set_value_1 = set_value(d,
+                                a,
+                                axis=[1],
+                                starts=[1],
+                                ends=[3],
+                                strides=[1],
+                                out=d)
         self.assertEqual(set_value_1.shape, d.shape)
         self.assertEqual(set_value_1.dtype, d.dtype)
 

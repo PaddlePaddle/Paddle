@@ -1,6 +1,6 @@
 include(operators)
 
-# solve "math constants not defined" problems caused by the order of inclusion 
+# solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
 
@@ -107,7 +107,8 @@ register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combin
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
-op_library(quantize_linear_op DEPS cast_kernel)
+target_link_libraries(run_program_op cuda_graph_with_memory_pool)
+op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array)
 op_library(load_combine_op DEPS string_array)
 
@@ -148,6 +149,10 @@ if (WITH_ASCEND_CL)
   op_library(sync_batch_norm_op)
 endif()
 
+if (WITH_MLU)
+  op_library(sync_batch_norm_op)
+endif()
+
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
@@ -172,6 +177,9 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)
 if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
+endif()
+if(WITH_XPU)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)

@@ -15,17 +15,19 @@
 #pragma once
 
 #include <math.h>
+
 #include <algorithm>
 #include <complex>
+
 #include "paddle/fluid/operators/eig_op.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
-#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 
 #define EPSILON 1e-6
 
@@ -152,20 +154,54 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     int iwkopt = 0;
 
     if (driver == LapackDriverType::Gels) {
-      phi::funcs::lapackGels('N', m, n, nrhs, x_vector, lda, y_vector, ldb,
-                             &wkopt, lwork, &info);
+      phi::funcs::lapackGels(
+          'N', m, n, nrhs, x_vector, lda, y_vector, ldb, &wkopt, lwork, &info);
     } else if (driver == LapackDriverType::Gelsd) {
-      phi::funcs::lapackGelsd(m, n, nrhs, x_vector, lda, y_vector, ldb,
-                              s_working_ptr, static_cast<ValueType>(rcond),
-                              &rank_32, &wkopt, lwork, &rwkopt, &iwkopt, &info);
+      phi::funcs::lapackGelsd(m,
+                              n,
+                              nrhs,
+                              x_vector,
+                              lda,
+                              y_vector,
+                              ldb,
+                              s_working_ptr,
+                              static_cast<ValueType>(rcond),
+                              &rank_32,
+                              &wkopt,
+                              lwork,
+                              &rwkopt,
+                              &iwkopt,
+                              &info);
     } else if (driver == LapackDriverType::Gelsy) {
-      phi::funcs::lapackGelsy(m, n, nrhs, x_vector, lda, y_vector, ldb,
-                              jpvt_data, static_cast<ValueType>(rcond),
-                              &rank_32, &wkopt, lwork, &rwkopt, &info);
+      phi::funcs::lapackGelsy(m,
+                              n,
+                              nrhs,
+                              x_vector,
+                              lda,
+                              y_vector,
+                              ldb,
+                              jpvt_data,
+                              static_cast<ValueType>(rcond),
+                              &rank_32,
+                              &wkopt,
+                              lwork,
+                              &rwkopt,
+                              &info);
     } else if (driver == LapackDriverType::Gelss) {
-      phi::funcs::lapackGelss(m, n, nrhs, x_vector, lda, y_vector, ldb,
-                              s_working_ptr, static_cast<ValueType>(rcond),
-                              &rank_32, &wkopt, lwork, &rwkopt, &info);
+      phi::funcs::lapackGelss(m,
+                              n,
+                              nrhs,
+                              x_vector,
+                              lda,
+                              y_vector,
+                              ldb,
+                              s_working_ptr,
+                              static_cast<ValueType>(rcond),
+                              &rank_32,
+                              &wkopt,
+                              lwork,
+                              &rwkopt,
+                              &info);
     }
 
     lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
@@ -205,25 +241,68 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       s_working_ptr = s_working_ptr ? &s_data[i * s_stride] : nullptr;
 
       if (driver == LapackDriverType::Gels) {
-        phi::funcs::lapackGels('N', m, n, nrhs, x_input, lda, y_input, ldb,
-                               work_data, lwork, &info);
+        phi::funcs::lapackGels('N',
+                               m,
+                               n,
+                               nrhs,
+                               x_input,
+                               lda,
+                               y_input,
+                               ldb,
+                               work_data,
+                               lwork,
+                               &info);
       } else if (driver == LapackDriverType::Gelsd) {
-        phi::funcs::lapackGelsd(m, n, nrhs, x_input, lda, y_input, ldb,
-                                s_working_ptr, static_cast<ValueType>(rcond),
-                                &rank_32, work_data, lwork, rwork_data,
-                                iwork_data, &info);
+        phi::funcs::lapackGelsd(m,
+                                n,
+                                nrhs,
+                                x_input,
+                                lda,
+                                y_input,
+                                ldb,
+                                s_working_ptr,
+                                static_cast<ValueType>(rcond),
+                                &rank_32,
+                                work_data,
+                                lwork,
+                                rwork_data,
+                                iwork_data,
+                                &info);
       } else if (driver == LapackDriverType::Gelsy) {
-        phi::funcs::lapackGelsy(m, n, nrhs, x_input, lda, y_input, ldb,
-                                jpvt_data, static_cast<ValueType>(rcond),
-                                &rank_32, work_data, lwork, rwork_data, &info);
+        phi::funcs::lapackGelsy(m,
+                                n,
+                                nrhs,
+                                x_input,
+                                lda,
+                                y_input,
+                                ldb,
+                                jpvt_data,
+                                static_cast<ValueType>(rcond),
+                                &rank_32,
+                                work_data,
+                                lwork,
+                                rwork_data,
+                                &info);
       } else if (driver == LapackDriverType::Gelss) {
-        phi::funcs::lapackGelss(m, n, nrhs, x_input, lda, y_input, ldb,
-                                s_working_ptr, static_cast<ValueType>(rcond),
-                                &rank_32, work_data, lwork, rwork_data, &info);
+        phi::funcs::lapackGelss(m,
+                                n,
+                                nrhs,
+                                x_input,
+                                lda,
+                                y_input,
+                                ldb,
+                                s_working_ptr,
+                                static_cast<ValueType>(rcond),
+                                &rank_32,
+                                work_data,
+                                lwork,
+                                rwork_data,
+                                &info);
       }
 
       PADDLE_ENFORCE_EQ(
-          info, 0,
+          info,
+          0,
           platform::errors::PreconditionNotMet(
               "For batch [%d]: Lapack info is not zero but [%d]", i, info));
 
@@ -248,9 +327,19 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-void BatchedOrmqr(const DeviceContext& dev_ctx, bool left, bool transpose,
-                  int batch_size, int m, int n, int k, T* a, int a_stride,
-                  T* tau, int tau_stride, T* other, int other_stride);
+void BatchedOrmqr(const DeviceContext& dev_ctx,
+                  bool left,
+                  bool transpose,
+                  int batch_size,
+                  int m,
+                  int n,
+                  int k,
+                  T* a,
+                  int a_stride,
+                  T* tau,
+                  int tau_stride,
+                  T* other,
+                  int other_stride);
 
 }  // namespace operators
 }  // namespace paddle

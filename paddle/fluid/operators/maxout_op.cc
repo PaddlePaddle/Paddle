@@ -81,8 +81,10 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "maxout_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "maxout_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "maxout_grad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -90,10 +92,13 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(maxout, MaxOutInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(maxout,
+                            MaxOutInferShapeFunctor,
                             PD_INFER_META(phi::MaxOutInferMeta));
 REGISTER_OPERATOR(
-    maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
+    maxout,
+    ops::MaxOutOp,
+    ops::MaxOutOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     MaxOutInferShapeFunctor);

@@ -25,13 +25,14 @@ paddle.enable_static()
 
 
 class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
+
     def test_amp_optimizer_backward(self):
         """ test amp optimizer backward """
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')
@@ -48,8 +49,8 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')
@@ -68,8 +69,8 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
+                                                momentum=0.9)
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')

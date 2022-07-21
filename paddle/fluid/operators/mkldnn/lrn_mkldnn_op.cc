@@ -22,16 +22,17 @@ using paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
 class LRNMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward,
-                                               dnnl::lrn_backward> {
+    : public platform::
+          MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
-                   const dnnl::engine mkldnn_engine, platform::Place cpu_place,
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
                    const Tensor* input)
 
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward,
-                                          dnnl::lrn_backward>(mkldnn_engine,
-                                                              cpu_place) {
+      : platform::
+            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+                mkldnn_engine, cpu_place) {
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
     // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
@@ -47,19 +48,26 @@ class LRNMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
                 : dnnl::prop_kind::forward_training,
-        dnnl::algorithm::lrn_across_channels, input->mem_desc(), n, alpha, beta,
+        dnnl::algorithm::lrn_across_channels,
+        input->mem_desc(),
+        n,
+        alpha,
+        beta,
         k);
   }
 
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
-                   const dnnl::engine mkldnn_engine, platform::Place cpu_place,
-                   const Tensor* in_x, const Tensor* out_grad,
+                   const dnnl::engine mkldnn_engine,
+                   platform::Place cpu_place,
+                   const Tensor* in_x,
+                   const Tensor* out_grad,
                    Tensor* in_x_grad)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward,
-                                          dnnl::lrn_backward>(mkldnn_engine,
-                                                              cpu_place) {
+      : platform::
+            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+                mkldnn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
-        ctx.Attr<bool>("is_test"), false,
+        ctx.Attr<bool>("is_test"),
+        false,
         platform::errors::PreconditionNotMet(
             "is_test attribute should be set to False in training phase."));
 
@@ -69,12 +77,22 @@ class LRNMKLDNNHandler
     const float k = ctx.Attr<float>("k");
 
     this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_training, dnnl::algorithm::lrn_across_channels,
-        in_x->mem_desc(), n, alpha, beta, k);
+        dnnl::prop_kind::forward_training,
+        dnnl::algorithm::lrn_across_channels,
+        in_x->mem_desc(),
+        n,
+        alpha,
+        beta,
+        k);
 
     this->AcquireBackwardPrimitiveDescriptor(
-        dnnl::algorithm::lrn_across_channels, in_x->mem_desc(),
-        out_grad->mem_desc(), n, alpha, beta, k);
+        dnnl::algorithm::lrn_across_channels,
+        in_x->mem_desc(),
+        out_grad->mem_desc(),
+        n,
+        alpha,
+        beta,
+        k);
   }
 
   std::shared_ptr<dnnl::memory> AcquireWorkspaceMemory(Tensor* workspace) {
@@ -99,9 +117,11 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     const bool is_float_type = std::is_same<T, float>::value;
     PADDLE_ENFORCE_EQ(
-        is_float_type, true,
+        is_float_type,
+        true,
         platform::errors::PreconditionNotMet("DNNL LRN must use float data."));
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                      true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRN must use CPUPlace"));
     auto& dev_ctx =
@@ -124,18 +144,18 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
-      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
-      lrn_p->execute(astream, {{DNNL_ARG_SRC, *src_memory},
-                               {DNNL_ARG_DST, *dst_memory},
-                               {DNNL_ARG_WORKSPACE, *workspace_memory}});
+      mid->set_mem_desc(workspace_memory->get_desc());
+      lrn_p->execute(astream,
+                     {{DNNL_ARG_SRC, *src_memory},
+                      {DNNL_ARG_DST, *dst_memory},
+                      {DNNL_ARG_WORKSPACE, *workspace_memory}});
     } else {
       lrn_p->execute(
           astream, {{DNNL_ARG_SRC, *src_memory}, {DNNL_ARG_DST, *dst_memory}});
     }
     astream.wait();
 
-    out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    out->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -144,10 +164,12 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     const bool is_float_type = std::is_same<T, float>::value;
-    PADDLE_ENFORCE_EQ(is_float_type, true,
+    PADDLE_ENFORCE_EQ(is_float_type,
+                      true,
                       platform::errors::PreconditionNotMet(
                           "DNNL LRN GradOpKernel must use float data."));
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                      true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL LRNGrad must use CPUPlace"));
 
@@ -160,8 +182,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    LRNMKLDNNHandler<T> handler(ctx, mkldnn_engine, ctx.GetPlace(), in_x,
-                                out_grad, in_x_grad);
+    LRNMKLDNNHandler<T> handler(
+        ctx, mkldnn_engine, ctx.GetPlace(), in_x, out_grad, in_x_grad);
 
     auto src_memory = handler.AcquireSrcMemory(in_x);
     auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
@@ -171,14 +193,14 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    lrn_bwd->execute(astream, {{DNNL_ARG_SRC, *src_memory},
-                               {DNNL_ARG_DIFF_DST, *diff_dst_memory},
-                               {DNNL_ARG_DIFF_SRC, *diff_src_memory},
-                               {DNNL_ARG_WORKSPACE, *workspace}});
+    lrn_bwd->execute(astream,
+                     {{DNNL_ARG_SRC, *src_memory},
+                      {DNNL_ARG_DIFF_DST, *diff_dst_memory},
+                      {DNNL_ARG_DIFF_SRC, *diff_src_memory},
+                      {DNNL_ARG_WORKSPACE, *workspace}});
     astream.wait();
 
-    in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    in_x_grad->set_mem_desc(diff_src_memory->get_desc());
   }
 };
 }  // namespace operators
@@ -186,7 +208,11 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(lrn, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(lrn,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::LRNMKLDNNOpKernel<float>);
-REGISTER_OP_KERNEL(lrn_grad, MKLDNN, paddle::platform::CPUPlace,
+REGISTER_OP_KERNEL(lrn_grad,
+                   MKLDNN,
+                   paddle::platform::CPUPlace,
                    ops::LRNMKLDNNGradOpKernel<float>);

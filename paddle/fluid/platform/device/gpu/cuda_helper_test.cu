@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <iostream>
 #ifdef _WIN32
@@ -22,13 +23,12 @@
 
 #define PADDLE_CUDA_FP16
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
-
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
+using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {
@@ -66,8 +66,14 @@ void TestCase(size_t num) {
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
   hipMemcpy(d_in2, in2, size, hipMemcpyHostToDevice);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<T>), dim3(1),
-                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2, num);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<T>),
+                     dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS),
+                     0,
+                     0,
+                     d_in1,
+                     d_in2,
+                     num);
   hipDeviceSynchronize();
   hipMemcpy(out, d_in2, size, hipMemcpyDeviceToHost);
   hipDeviceSynchronize();
@@ -83,7 +89,8 @@ void TestCase(size_t num) {
     // NOTE(dzhwinter): the float16 add has small underflow/overflow
     // so we use EXPECT_NEAR to check the result.
     EXPECT_NEAR(static_cast<float>(out[i]),
-                static_cast<float>(AddFunctor<T>()(in1[i], in2[i])), 0.001);
+                static_cast<float>(AddFunctor<T>()(in1[i], in2[i])),
+                0.001);
   }
   free(in1);
   free(in2);
@@ -149,8 +156,13 @@ void TestUnalign(size_t num, const int shift_bit) {
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(d_in1, r_in1, array_size, hipMemcpyHostToDevice);
   hipMemcpy(d_in2, r_in2, array_size, hipMemcpyHostToDevice);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<float16>), dim3(1),
-                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2,
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(AddKernel<float16>),
+                     dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS),
+                     0,
+                     0,
+                     d_in1,
+                     d_in2,
                      num / 2);
   hipDeviceSynchronize();
   hipMemcpy(out, d_in2, array_size, hipMemcpyDeviceToHost);
@@ -261,8 +273,14 @@ void TestReduce(size_t num, float atol = 0.01) {
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(d_in1, in1, size, hipMemcpyHostToDevice);
   hipDeviceSynchronize();
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(DeviceReduceSum<T>), dim3(1),
-                     dim3(PADDLE_CUDA_NUM_THREADS), 0, 0, d_in1, d_in2, num);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(DeviceReduceSum<T>),
+                     dim3(1),
+                     dim3(PADDLE_CUDA_NUM_THREADS),
+                     0,
+                     0,
+                     d_in1,
+                     d_in2,
+                     num);
   hipMemcpy(in1, d_in2, sizeof(T), hipMemcpyDeviceToHost);
   hipDeviceSynchronize();
 #else

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -29,6 +30,7 @@ paddle.enable_static()
 
 
 class TestLogSoftmaxNPUOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -63,17 +65,18 @@ class TestLogSoftmaxNPUOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            self.check_grad_with_place(
-                self.place, ['X'], ['Out'],
-                user_defined_grads=[self.x_grad],
-                max_relative_error=0.02)
+            self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                       user_defined_grads=[self.x_grad],
+                                       max_relative_error=0.02)
         else:
-            self.check_grad_with_place(
-                self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad])
+            self.check_grad_with_place(self.place, ['X'], ['Out'],
+                                       user_defined_grads=[self.x_grad])
 
 
 def test_class(op_type, typename):
+
     class TestLogSoftmaxShape(TestLogSoftmaxNPUOp):
+
         def set_attrs(self):
             self.shape = [12, 10]
 
@@ -86,7 +89,9 @@ def test_class(op_type, typename):
 
 
 def test_class2(op_type, typename):
+
     class TestLogSoftmaxAxis(TestLogSoftmaxNPUOp):
+
         def set_attrs(self):
             self.axis = 0
 
@@ -105,6 +110,7 @@ for _typename in {np.float32, np.float16}:
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
@@ -137,6 +143,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)

@@ -25,6 +25,7 @@ import paddle.fluid.core as core
 
 
 class SimpleNet(nn.Layer):
+
     def __init__(self, in_size, out_size):
         super(SimpleNet, self).__init__()
         self.linear1 = nn.Linear(in_size, in_size)
@@ -43,6 +44,7 @@ class SimpleNet(nn.Layer):
 
 
 class SimpleNetForStatic(nn.Layer):
+
     def __init__(self, in_size, out_size):
         super(SimpleNetForStatic, self).__init__()
         self.linear1 = nn.Linear(in_size, in_size)
@@ -58,6 +60,7 @@ class SimpleNetForStatic(nn.Layer):
 
 
 class TestTensorRegisterHook(unittest.TestCase):
+
     def setUp(self):
         self.seed = 2021
         self.in_size = 10
@@ -68,6 +71,7 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.devices.append("gpu")
 
     def func_hook_for_interior_var(self):
+
         def run_double_hook_for_interior_var(double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
@@ -158,11 +162,14 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_print_hook_for_interior_var(print_hook, removed=True)
 
     def test_hook_for_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_interior_var()
         self.func_hook_for_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_leaf_var(self):
+
         def run_double_hook_for_leaf_var(double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
@@ -202,13 +209,16 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_leaf_var(lambda grad: grad * 2, removed=True)
 
     def test_hook_for_leaf_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_leaf_var()
         self.func_hook_for_leaf_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_interior_var(self):
-        def run_double_hook_for_accumulated_grad_interior_var(double_hook,
-                                                              removed=False):
+
+        def run_double_hook_for_accumulated_grad_interior_var(
+                double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
 
@@ -248,27 +258,30 @@ class TestTensorRegisterHook(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.grad.numpy(), base_grad))
                 # b.grad is changed by x.hook
                 self.assertTrue(
-                    np.array_equal(b.grad.numpy(), base_grad * 2
-                                   if not removed else base_grad))
+                    np.array_equal(b.grad.numpy(),
+                                   base_grad * 2 if not removed else base_grad))
                 # a.grad is changed by x.hook and a.hook
                 self.assertTrue(
-                    np.array_equal(a.grad.numpy(), base_grad * 4
-                                   if not removed else base_grad))
+                    np.array_equal(a.grad.numpy(),
+                                   base_grad * 4 if not removed else base_grad))
 
         # register hook
         run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2)
         # register hook and removed
-        run_double_hook_for_accumulated_grad_interior_var(
-            lambda grad: grad * 2, removed=True)
+        run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2,
+                                                          removed=True)
 
     def test_hook_for_accumulated_grad_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_for_accumulated_grad_interior_var()
         self.func_hook_for_accumulated_grad_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_leaf_var(self):
-        def run_double_hook_for_accumulated_grad_leaf_var(double_hook,
-                                                          removed=False):
+
+        def run_double_hook_for_accumulated_grad_leaf_var(
+                double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
 
@@ -298,14 +311,14 @@ class TestTensorRegisterHook(unittest.TestCase):
                 base_grad = np.array([5., 9., 13., 19.])
                 # x.grad is changed by x.hook
                 self.assertTrue(
-                    np.array_equal(x.grad.numpy(), base_grad * 2
-                                   if not removed else base_grad))
+                    np.array_equal(x.grad.numpy(),
+                                   base_grad * 2 if not removed else base_grad))
 
         # register hook
         run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2)
         # register hook and removed
-        run_double_hook_for_accumulated_grad_leaf_var(
-            lambda grad: grad * 2, removed=True)
+        run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2,
+                                                      removed=True)
 
     def test_hook_for_accumulated_grad_leaf_var(self):
         with _test_eager_guard():
@@ -313,6 +326,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         self.func_hook_for_accumulated_grad_leaf_var()
 
     def func_hook_in_model(self):
+
         def run_double_hook_in_model(data,
                                      label,
                                      hook=None,
@@ -360,11 +374,14 @@ class TestTensorRegisterHook(unittest.TestCase):
         self.assertTrue(np.array_equal(linear1_b_grad, linear1_b_grad_rm))
 
     def test_func_hook_in_model(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_hook_in_model()
         self.func_hook_in_model()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_multiple_hooks_for_interior_var(self):
+
         def run_multiple_hooks_for_interior_var(device,
                                                 hooks,
                                                 remove1=False,
@@ -443,11 +460,14 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.assertTrue(np.array_equal(y_grad, z))
 
     def test_multiple_hooks_for_interior_var(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with _test_eager_guard():
             self.func_multiple_hooks_for_interior_var()
         self.func_multiple_hooks_for_interior_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_in_double_grad(self):
+
         def double_print_hook(grad):
             grad = grad * 2
             print(grad)
@@ -463,8 +483,10 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         y = x * x
         # Since y = x * x, dx = 2 * x
-        dx = paddle.grad(
-            outputs=[y], inputs=[x], create_graph=True, retain_graph=True)[0]
+        dx = paddle.grad(outputs=[y],
+                         inputs=[x],
+                         create_graph=True,
+                         retain_graph=True)[0]
 
         z = y + dx
         self.assertTrue(x.grad is None)
@@ -524,8 +546,9 @@ class TestTensorRegisterHook(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data(
-                    name='x', shape=[None, self.in_size], dtype='float32')
+                x = paddle.static.data(name='x',
+                                       shape=[None, self.in_size],
+                                       dtype='float32')
 
                 net = SimpleNetForStatic(self.in_size, self.out_size)
                 with self.assertRaises(AssertionError):
@@ -563,6 +586,7 @@ def global_void_hook():
 
 
 class TestTensorRegisterBackwardHook(unittest.TestCase):
+
     def setUp(self):
         self.devices = ["cpu"]
         if paddle.is_compiled_with_cuda():

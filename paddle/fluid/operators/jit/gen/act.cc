@@ -122,9 +122,8 @@ bool VTanhCreator::CanBeUsed(const int& d) const {
 }
 
 size_t VReluCreator::CodeSize(const int& d) const {
-  return 96 /* init size */ +
-         (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *
-             8 /* average bytes for each instruction */;
+  return 96 /* init size */ + (d / YMM_FLOAT_BLOCK + 3) * 4 /* instructions */ *
+                                  8 /* average bytes for each instruction */;
 }
 
 size_t VSquareCreator::CodeSize(const int& d) const {

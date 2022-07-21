@@ -17,6 +17,7 @@ import test_pipeline
 
 
 class TestPipelineWithIRPass(test_pipeline.TestPipeline):
+
     def need_envs(self):
         return {'FLAGS_apply_pass_to_program': '1'}
 

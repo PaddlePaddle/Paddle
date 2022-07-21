@@ -32,7 +32,7 @@ void WarpctcGradKernel(const Context& dev_ctx,
                        const DenseTensor& warpctc_grad,
                        const DenseTensor& logits,
                        const DenseTensor& loss_grad,
-                       const paddle::optional<const DenseTensor&> logits_length,
+                       const paddle::optional<DenseTensor>& logits_length,
                        int blank,
                        bool norm_by_times,
                        DenseTensor* logits_grad) {

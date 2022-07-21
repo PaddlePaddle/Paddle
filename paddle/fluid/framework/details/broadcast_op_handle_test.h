@@ -117,7 +117,7 @@ struct TestBroadcastOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CPUPlace();
         place_list_.push_back(p);
-        ctxs_.emplace_back(new p::CPUDeviceContext(p));
+        ctxs_.emplace_back(new phi::CPUContext(p));
       }
 #if defined(PADDLE_WITH_XPU_BKCL)
       bkcl_ctxs_.reset(nullptr);
@@ -144,31 +144,34 @@ struct TestBroadcastOpHandle {
         ir::CreateNodeForTest("node0", ir::Node::Type::kOperation));
     if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
-                                         place_list_, nccl_ctxs_.get());
+      op_handle_ = new BroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else if (use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU_BKCL)
-      op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
-                                         place_list_, bkcl_ctxs_.get());
+      op_handle_ = new BroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_, bkcl_ctxs_.get());
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with BKCL."));
 #endif
     } else {
-      op_handle_ = new BroadcastOpHandle(nodes_.back().get(), local_scopes_,
-                                         place_list_);
+      op_handle_ = new BroadcastOpHandle(
+          nodes_.back().get(), local_scopes_, place_list_);
     }
 
     op_handle_->SetLocalExecScopes(scope_map);
 
     nodes_.emplace_back(
         ir::CreateNodeForTest("node1", ir::Node::Type::kVariable));
-    auto* in_var_handle = new VarHandle(nodes_.back().get(), 1, input_scope_idx,
-                                        "input", place_list_[input_scope_idx]);
+    auto* in_var_handle = new VarHandle(nodes_.back().get(),
+                                        1,
+                                        input_scope_idx,
+                                        "input",
+                                        place_list_[input_scope_idx]);
     vars_.emplace_back(in_var_handle);
     op_handle_->AddInput(in_var_handle);
 
@@ -205,13 +208,14 @@ struct TestBroadcastOpHandle {
   }
 
   std::vector<float> InitLoDTensor(const std::string& varname,
-                                   size_t input_scope_idx, const f::LoD& lod,
+                                   size_t input_scope_idx,
+                                   const f::LoD& lod,
                                    float val_scalar = 0.0) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
 
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                        varname));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", varname));
     auto lod_tensor = var->GetMutable<f::LoDTensor>();
     std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
@@ -227,16 +231,17 @@ struct TestBroadcastOpHandle {
   std::vector<float> InitSelectedRows(const std::string& varname,
                                       size_t input_scope_idx,
                                       const std::vector<int64_t>& rows,
-                                      int height, float value_scalar = 0.0) {
+                                      int height,
+                                      float value_scalar = 0.0) {
     std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + value_scalar;
     }
 
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                        varname));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", varname));
     auto selected_rows = var->GetMutable<phi::SelectedRows>();
     auto value = selected_rows->mutable_value();
     value->mutable_data<float>(kDims, place_list_[input_scope_idx]);
@@ -249,28 +254,35 @@ struct TestBroadcastOpHandle {
     return send_vector;
   }
 
-  void SelectedRowsEqual(const std::string& varname, int input_scope_idx,
+  void SelectedRowsEqual(const std::string& varname,
+                         int input_scope_idx,
                          const std::vector<float>& send_vector,
-                         const std::vector<int64_t>& rows, int height) {
+                         const std::vector<int64_t>& rows,
+                         int height) {
     auto var = param_scopes_[input_scope_idx]->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                        varname));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", varname));
     auto& selected_rows = var->Get<phi::SelectedRows>();
     auto rt = selected_rows.value();
-    PADDLE_ENFORCE_EQ(selected_rows.height(), height,
+    PADDLE_ENFORCE_EQ(selected_rows.height(),
+                      height,
                       platform::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
                           "the expected, expect %d, but got %ld.",
-                          height, selected_rows.height()));
+                          height,
+                          selected_rows.height()));
 
     for (size_t k = 0; k < selected_rows.rows().size(); ++k) {
       PADDLE_ENFORCE_EQ(
-          selected_rows.rows()[k], rows[k],
+          selected_rows.rows()[k],
+          rows[k],
           platform::errors::InvalidArgument(
               "The item at position %zu of rows of SelectedRows "
               "is not equal to the expected, expect %ld, but got %ld.",
-              k, rows[k], selected_rows.rows()[k]));
+              k,
+              rows[k],
+              selected_rows.rows()[k]));
     }
 
     p::CPUPlace cpu_place;
@@ -284,19 +296,22 @@ struct TestBroadcastOpHandle {
   }
 
   void LoDTensorEqual(const std::string& varname,
-                      const std::vector<float>& send_vec, const f::LoD& lod,
+                      const std::vector<float>& send_vec,
+                      const f::LoD& lod,
                       framework::Scope* scope) {
     p::CPUPlace cpu_place;
     auto var = scope->FindVar(varname);
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                        varname));
+    PADDLE_ENFORCE_NOT_NULL(var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", varname));
     auto tensor = var->Get<f::LoDTensor>();
-    PADDLE_ENFORCE_EQ(tensor.lod(), lod,
+    PADDLE_ENFORCE_EQ(tensor.lod(),
+                      lod,
                       platform::errors::InvalidArgument(
                           "The LoD of tensor is not equal to "
                           "the expected, expect %s, but got %s.",
-                          lod, tensor.lod()));
+                          lod,
+                          tensor.lod()));
     f::Tensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);

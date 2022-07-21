@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stdint.h>
+
 #include "paddle/phi/core/ddim.h"
 
 namespace phi {

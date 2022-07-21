@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
@@ -41,13 +41,15 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The size of input X's dimensions should be larger than 1."
             "But received: the size of input X's dimensions is [%d]",
             x_dims.size()));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
+        x_dims.size(),
+        5,
         platform::errors::InvalidArgument(
             "The size of input X's dimensions should be less than 6."
             "But received: the size of input X's dimensions is [%d]",
@@ -80,8 +82,10 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     Tensor transformed_y;
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
-    MLUCnnlTensorDesc transformed_desc(transformed_dim_size, transformed_shape,
-                                       ToCnnlDataType<T>(), CNNL_LAYOUT_NHWC);
+    MLUCnnlTensorDesc transformed_desc(transformed_dim_size,
+                                       transformed_shape,
+                                       ToCnnlDataType<T>(),
+                                       CNNL_LAYOUT_NHWC);
     MLUCnnlTensorDesc others_input_desc(*scale);
     // input dimension is 2 and the format is NCHW. The input can be regarded as
     // NHWC format. Don't need to transpose.
@@ -95,11 +99,15 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
           framework::DDim(transformed_shape, transformed_dim_size), dev_ctx);
 
       const int x_reshaped[] = {N, C, sample_size, 1};
-      MLUCnnlTensorDesc x_reshaped_desc(transformed_dim_size, x_reshaped,
-                                        ToCnnlDataType<T>());
+      MLUCnnlTensorDesc x_reshaped_desc(
+          transformed_dim_size, x_reshaped, ToCnnlDataType<T>());
       const std::vector<int> perm = {0, 2, 3, 1};
-      MLUCnnl::Transpose(ctx, perm, transformed_dim_size, x_reshaped_desc.get(),
-                         GetBasePtr(x), transformed_desc.get(),
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         transformed_dim_size,
+                         x_reshaped_desc.get(),
+                         GetBasePtr(x),
+                         transformed_desc.get(),
                          GetBasePtr(&transformed_x));
     } else {
       transformed_x = *x;
@@ -113,22 +121,36 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
       momentum = mom_cpu.data<float>()[0];
     }
 
-    MLUCnnl::FusedBatchNorm(
-        ctx, !global_stats, transformed_desc.get(), GetBasePtr(&transformed_x),
-        others_input_desc.get(), GetBasePtr(scale), GetBasePtr(bias),
-        GetBasePtr(running_mean), GetBasePtr(running_var), epsilon, momentum,
-        transformed_desc.get(), GetBasePtr(&transformed_y),
-        GetBasePtr(mean_out), GetBasePtr(variance_out), GetBasePtr(saved_mean),
-        GetBasePtr(saved_variance));
+    MLUCnnl::FusedBatchNorm(ctx,
+                            !global_stats,
+                            transformed_desc.get(),
+                            GetBasePtr(&transformed_x),
+                            others_input_desc.get(),
+                            GetBasePtr(scale),
+                            GetBasePtr(bias),
+                            GetBasePtr(running_mean),
+                            GetBasePtr(running_var),
+                            epsilon,
+                            momentum,
+                            transformed_desc.get(),
+                            GetBasePtr(&transformed_y),
+                            GetBasePtr(mean_out),
+                            GetBasePtr(variance_out),
+                            GetBasePtr(saved_mean),
+                            GetBasePtr(saved_variance));
 
     if (need_transpose) {
       const int y_reshaped[] = {N, C, sample_size, 1};
-      MLUCnnlTensorDesc y_reshaped_desc(transformed_dim_size, y_reshaped,
-                                        ToCnnlDataType<T>());
+      MLUCnnlTensorDesc y_reshaped_desc(
+          transformed_dim_size, y_reshaped, ToCnnlDataType<T>());
       const std::vector<int> perm = {0, 3, 1, 2};
-      MLUCnnl::Transpose(ctx, perm, transformed_y.dims().size(),
-                         transformed_desc.get(), GetBasePtr(&transformed_y),
-                         y_reshaped_desc.get(), GetBasePtr(y));
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         transformed_y.dims().size(),
+                         transformed_desc.get(),
+                         GetBasePtr(&transformed_y),
+                         y_reshaped_desc.get(),
+                         GetBasePtr(y));
     }
   }
 };
@@ -183,13 +205,15 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The size of input X's dimensions should be larger than 1."
             "But received: the size of input X's dimensions is [%d]",
             x_dims.size()));
     PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
+        x_dims.size(),
+        5,
         platform::errors::InvalidArgument(
             "The size of input X's dimensions should be less than 6."
             "But received: the size of input X's dimensions is [%d]",
@@ -206,8 +230,10 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     const int transformed_dim_size = 4;
     const int transformed_shape[transformed_dim_size] = {N, sample_size, 1, C};
 
-    MLUCnnlTensorDesc transformed_desc(transformed_dim_size, transformed_shape,
-                                       ToCnnlDataType<T>(), CNNL_LAYOUT_NHWC);
+    MLUCnnlTensorDesc transformed_desc(transformed_dim_size,
+                                       transformed_shape,
+                                       ToCnnlDataType<T>(),
+                                       CNNL_LAYOUT_NHWC);
     MLUCnnlTensorDesc others_input_desc(*scale);
 
     bool need_transpose =
@@ -220,15 +246,23 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
       transformed_d_x = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
           framework::DDim(transformed_shape, transformed_dim_size), dev_ctx);
       const int org_reshaped[] = {N, C, sample_size, 1};
-      MLUCnnlTensorDesc org_reshaped_desc(transformed_dim_size, org_reshaped,
-                                          ToCnnlDataType<T>());
+      MLUCnnlTensorDesc org_reshaped_desc(
+          transformed_dim_size, org_reshaped, ToCnnlDataType<T>());
       const std::vector<int> perm = {0, 2, 3, 1};
-      MLUCnnl::Transpose(ctx, perm, transformed_dim_size,
-                         org_reshaped_desc.get(), GetBasePtr(d_y),
-                         transformed_desc.get(), GetBasePtr(&transformed_d_y));
-      MLUCnnl::Transpose(ctx, perm, transformed_dim_size,
-                         org_reshaped_desc.get(), GetBasePtr(x),
-                         transformed_desc.get(), GetBasePtr(&transformed_x));
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         transformed_dim_size,
+                         org_reshaped_desc.get(),
+                         GetBasePtr(d_y),
+                         transformed_desc.get(),
+                         GetBasePtr(&transformed_d_y));
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         transformed_dim_size,
+                         org_reshaped_desc.get(),
+                         GetBasePtr(x),
+                         transformed_desc.get(),
+                         GetBasePtr(&transformed_x));
     } else {
       transformed_d_y = *d_y;
       transformed_x = *x;
@@ -238,33 +272,51 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     if (use_global_stats) {
       const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
-      MLUCnnl::FusedBatchNormGrad(
-          ctx, true /*is_training*/, transformed_desc.get(),
-          GetBasePtr(&transformed_d_y), transformed_desc.get(),
-          GetBasePtr(&transformed_x), others_input_desc.get(),
-          GetBasePtr(scale), GetBasePtr(running_mean),
-          GetBasePtr(running_variance), epsilon, transformed_desc.get(),
-          GetBasePtr(&transformed_d_x), GetBasePtr(d_scale),
-          GetBasePtr(d_bias));
+      MLUCnnl::FusedBatchNormGrad(ctx,
+                                  true /*is_training*/,
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_d_y),
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_x),
+                                  others_input_desc.get(),
+                                  GetBasePtr(scale),
+                                  GetBasePtr(running_mean),
+                                  GetBasePtr(running_variance),
+                                  epsilon,
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_d_x),
+                                  GetBasePtr(d_scale),
+                                  GetBasePtr(d_bias));
     } else {
-      MLUCnnl::FusedBatchNormGrad(
-          ctx, true /*is_training*/, transformed_desc.get(),
-          GetBasePtr(&transformed_d_y), transformed_desc.get(),
-          GetBasePtr(&transformed_x), others_input_desc.get(),
-          GetBasePtr(scale), GetBasePtr(saved_mean),
-          GetBasePtr(saved_inv_variance), epsilon, transformed_desc.get(),
-          GetBasePtr(&transformed_d_x), GetBasePtr(d_scale),
-          GetBasePtr(d_bias));
+      MLUCnnl::FusedBatchNormGrad(ctx,
+                                  true /*is_training*/,
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_d_y),
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_x),
+                                  others_input_desc.get(),
+                                  GetBasePtr(scale),
+                                  GetBasePtr(saved_mean),
+                                  GetBasePtr(saved_inv_variance),
+                                  epsilon,
+                                  transformed_desc.get(),
+                                  GetBasePtr(&transformed_d_x),
+                                  GetBasePtr(d_scale),
+                                  GetBasePtr(d_bias));
     }
 
     if (need_transpose) {
       const int d_x_reshaped[] = {N, C, sample_size, 1};
-      MLUCnnlTensorDesc d_x_reshaped_desc(transformed_dim_size, d_x_reshaped,
-                                          ToCnnlDataType<T>());
+      MLUCnnlTensorDesc d_x_reshaped_desc(
+          transformed_dim_size, d_x_reshaped, ToCnnlDataType<T>());
       const std::vector<int> perm = {0, 3, 1, 2};
-      MLUCnnl::Transpose(ctx, perm, transformed_dim_size,
-                         transformed_desc.get(), GetBasePtr(&transformed_d_x),
-                         d_x_reshaped_desc.get(), GetBasePtr(d_x));
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         transformed_dim_size,
+                         transformed_desc.get(),
+                         GetBasePtr(&transformed_d_x),
+                         d_x_reshaped_desc.get(),
+                         GetBasePtr(d_x));
     }
   }
 };
@@ -274,7 +326,9 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(batch_norm, ops::MLUBatchNormOpKernel<float>,
+REGISTER_OP_MLU_KERNEL(batch_norm,
+                       ops::MLUBatchNormOpKernel<float>,
                        ops::MLUBatchNormOpKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(batch_norm_grad, ops::MLUBatchNormGradOpKernel<float>,
+REGISTER_OP_MLU_KERNEL(batch_norm_grad,
+                       ops::MLUBatchNormGradOpKernel<float>,
                        ops::MLUBatchNormGradOpKernel<plat::float16>);

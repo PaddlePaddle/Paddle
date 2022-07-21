@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 #include <glog/logging.h>
+
 #include <limits>
 #include <memory>
 #include <vector>
@@ -36,6 +37,7 @@ limitations under the License. */
 #include "thrust/pair.h"
 #elif defined(__xpu__)
 #include <xpu/runtime.h>
+
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
@@ -49,11 +51,13 @@ namespace framework {
 #if defined(PADDLE_WITH_CUDA)
 template <typename KeyType, typename ValType>
 class TableContainer
-    : public concurrent_unordered_map<KeyType, ValType,
+    : public concurrent_unordered_map<KeyType,
+                                      ValType,
                                       std::numeric_limits<KeyType>::max()> {
  public:
   TableContainer(size_t capacity)
-      : concurrent_unordered_map<KeyType, ValType,
+      : concurrent_unordered_map<KeyType,
+                                 ValType,
                                  std::numeric_limits<KeyType>::max()>(
             capacity, ValType()) {}
 };
@@ -115,15 +119,23 @@ class HashTable {
   HashTable& operator=(const HashTable&) = delete;
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, const ValType* d_vals, size_t len,
+  void insert(const KeyType* d_keys,
+              const ValType* d_vals,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void insert(const KeyType* d_keys, size_t len, char* pool,
-              size_t feature_value_size, size_t start_index, StreamType stream);
+  void insert(const KeyType* d_keys,
+              size_t len,
+              char* pool,
+              size_t feature_value_size,
+              size_t start_index,
+              StreamType stream);
 
   template <typename StreamType>
-  void get(const KeyType* d_keys, ValType* d_vals, size_t len,
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
            StreamType stream);
 
   template <typename StreamType>
@@ -140,20 +152,23 @@ class HashTable {
 #if defined(PADDLE_WITH_CUDA)
 
   template <typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const float* d_grads, size_t len,
-              Sgd sgd, StreamType stream);
-
-  template <typename Sgd, typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len, Sgd sgd,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
+              Sgd sgd,
               StreamType stream);
 
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
-  void update(const KeyType* d_keys, const GradType* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const GradType* d_grads,
+              size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void update(const KeyType* d_keys, const char* d_grads, size_t len,
+  void update(const KeyType* d_keys,
+              const char* d_grads,
+              size_t len,
               StreamType stream);
 
 #endif
@@ -169,7 +184,7 @@ class HashTable {
   }
 
   void set_accessor(CommonFeatureValueAccessor& accessor) {
-   feature_value_accessor_ = accessor;
+    feature_value_accessor_ = accessor;
   }
 
   void show_collision(int id) { return container_->print_collision(id); }

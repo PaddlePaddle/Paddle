@@ -53,7 +53,7 @@ class GroupShardedStage2(nn.Layer):
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
 
-    # TODO (Baibaifan) 
+    # TODO (Baibaifan)
     # Feature Notes::
     # 1. Unified memory for param and param.grad to InternalStorage.
     # 2. Divide param.grad according to rank to centrally apply for and release GPU memory.
@@ -74,8 +74,9 @@ class GroupShardedStage2(nn.Layer):
 
         # training options
         self._layer = layer
-        self._sharding_optimizers = [sharding_optimizer] if not isinstance(
-            sharding_optimizer, list) else sharding_optimizer
+        self._sharding_optimizers = [
+            sharding_optimizer
+        ] if not isinstance(sharding_optimizer, list) else sharding_optimizer
         assert all(
             list(
                 map(lambda opt: isinstance(opt, GroupShardedOptimizerStage2),
@@ -85,8 +86,8 @@ class GroupShardedStage2(nn.Layer):
         self._auto_refresh_trainable = auto_refresh_trainable
 
         # Communication related attributes
-        self._group = collective.new_group(collective._get_global_group()
-                                           .ranks) if group is None else group
+        self._group = collective.new_group(
+            collective._get_global_group().ranks) if group is None else group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank
@@ -166,8 +167,8 @@ class GroupShardedStage2(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(
-            state_dict, use_structured_name=use_structured_name)
+        self._layer.set_state_dict(state_dict,
+                                   use_structured_name=use_structured_name)
 
     def state_dict(self,
                    destination=None,
@@ -209,9 +210,10 @@ class GroupShardedStage2(nn.Layer):
                     scale=self._world_size_scaling)
 
         # Scale grads of params
-        for param in self._trainable_params:
-            if param.name in self._param_grads and param.grad is not None:
-                param.grad.scale_(scale=self._world_size_scaling)
+        with paddle.no_grad():
+            for param in self._trainable_params:
+                if param.name in self._param_grads and param.grad is not None:
+                    param.grad.scale_(scale=self._world_size_scaling)
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
@@ -228,7 +230,7 @@ class GroupShardedStage2(nn.Layer):
         else:
             self._build_grad_storages()
 
-        # Clear all flags state 
+        # Clear all flags state
         self._clear_counters()
 
     def to(self, device=None, dtype=None, blocking=True):
@@ -282,11 +284,10 @@ class GroupShardedStage2(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            collective.broadcast(
-                buffer,
-                self._global_root_rank,
-                self._group,
-                use_calc_stream=True)
+            collective.broadcast(buffer,
+                                 self._global_root_rank,
+                                 self._group,
+                                 use_calc_stream=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -337,10 +338,9 @@ class GroupShardedStage2(nn.Layer):
                             param.clear_gradient(False)
 
                     # Synchronize the reduce parameter gradient
-                    collective.reduce(
-                        tensor=param.grad,
-                        dst=self._group.ranks[dst_rank],
-                        group=self._group)
+                    collective.reduce(tensor=param.grad,
+                                      dst=self._group.ranks[dst_rank],
+                                      group=self._group)
                     #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
@@ -452,10 +452,10 @@ class GroupShardedStage2(nn.Layer):
             else:
                 self._param_grads.append(param.name)
                 print(
-                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".
-                    format(param.name, param.shape, self._trainable_param2align[
-                        param.name], self._grad_storages[param.dtype][dst_rank]
-                           ._fill))
+                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, "
+                    .format(param.name, param.shape,
+                            self._trainable_param2align[param.name],
+                            self._grad_storages[param.dtype][dst_rank]._fill))
 
         for dtype in self._grad_storages.keys():
             self._grad_storage_list.extend(
@@ -511,15 +511,15 @@ class GroupShardedStage2(nn.Layer):
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
             logger_.info(
-                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
-                format(rank_buffer_size[Type.fp16.value] / 2**19, model_size / 2
-                       **19))
+                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp16.value] / 2**19,
+                        model_size / 2**19))
         if Type.fp32.value in rank_buffer_size.keys():
             # FP32 GradStorage and model size
             logger_.info(
-                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".
-                format(rank_buffer_size[Type.fp32.value] / 2**18, model_size / 2
-                       **18))
+                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
+                .format(rank_buffer_size[Type.fp32.value] / 2**18,
+                        model_size / 2**18))
         return rank_buffer_size
 
     def _redefine_opt_step(self):

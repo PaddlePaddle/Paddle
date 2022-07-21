@@ -72,8 +72,8 @@ def make_scheduler(*,
                    closed: int,
                    ready: int,
                    record: int,
-                   repeat: int=0,
-                   skip_first: int=0) -> Callable:
+                   repeat: int = 0,
+                   skip_first: int = 0) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
@@ -156,7 +156,7 @@ def _default_state_scheduler(step: int):
 
 
 def export_chrome_tracing(dir_name: str,
-                          worker_name: Optional[str]=None) -> Callable:
+                          worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
     The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
@@ -206,7 +206,8 @@ def export_chrome_tracing(dir_name: str,
     return handle_fn
 
 
-def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
+def export_protobuf(dir_name: str,
+                    worker_name: Optional[str] = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
     The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
@@ -391,13 +392,13 @@ class Profiler:
                 # |       ips       |    1086.42904   |    1227.30604   |    959.92796    |
     """
 
-    def __init__(
-            self,
-            *,
-            targets: Optional[Iterable[ProfilerTarget]]=None,
-            scheduler: Union[Callable[[int], ProfilerState], tuple, None]=None,
-            on_trace_ready: Optional[Callable[..., Any]]=None,
-            timer_only: Optional[bool]=False):
+    def __init__(self,
+                 *,
+                 targets: Optional[Iterable[ProfilerTarget]] = None,
+                 scheduler: Union[Callable[[int], ProfilerState], tuple,
+                                  None] = None,
+                 on_trace_ready: Optional[Callable[..., Any]] = None,
+                 timer_only: Optional[bool] = False):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -424,17 +425,17 @@ class Profiler:
             start_batch, end_batch = scheduler
             start_batch = max(start_batch, 0)
             if start_batch >= 1:
-                self.scheduler = make_scheduler(
-                    closed=max(start_batch - 1, 0),
-                    ready=1,
-                    record=(end_batch - start_batch),
-                    repeat=1)
+                self.scheduler = make_scheduler(closed=max(start_batch - 1, 0),
+                                                ready=1,
+                                                record=(end_batch -
+                                                        start_batch),
+                                                repeat=1)
             else:
-                self.scheduler = make_scheduler(
-                    closed=0,
-                    ready=0,
-                    record=(end_batch - start_batch),
-                    repeat=1)
+                self.scheduler = make_scheduler(closed=0,
+                                                ready=0,
+                                                record=(end_batch -
+                                                        start_batch),
+                                                repeat=1)
         else:
             self.scheduler = _default_state_scheduler
 
@@ -492,9 +493,9 @@ class Profiler:
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
             self.profiler.prepare()
             self.profiler.start()
-        self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
-            event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(name="ProfileStep#{}".format(
+            self.step_num),
+                                        event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
     def stop(self):
@@ -538,7 +539,7 @@ class Profiler:
                 self.on_trace_ready(self)
         utils._is_profiler_used = False
 
-    def step(self, num_samples: Optional[int]=None):
+    def step(self, num_samples: Optional[int] = None):
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
@@ -574,9 +575,9 @@ class Profiler:
         self.step_num += 1
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
-        self.record_event = RecordEvent(
-            name="ProfileStep#{}".format(self.step_num),
-            event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(name="ProfileStep#{}".format(
+            self.step_num),
+                                        event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
     def step_info(self, unit=None):
@@ -747,12 +748,11 @@ class Profiler:
                 self.profiler_result.get_data(),
                 self.profiler_result.get_extra_info())
             print(
-                _build_table(
-                    statistic_data,
-                    sorted_by=sorted_by,
-                    op_detail=op_detail,
-                    thread_sep=thread_sep,
-                    time_unit=time_unit))
+                _build_table(statistic_data,
+                             sorted_by=sorted_by,
+                             op_detail=op_detail,
+                             thread_sep=thread_sep,
+                             time_unit=time_unit))
 
 
 def get_profiler(config_path):
@@ -820,6 +820,7 @@ def get_profiler(config_path):
             translated_config_dict['timer_only'] = config_dict['timer_only']
         else:
             print(
-                'Set timer_only parameter error, use default parameter instead.')
+                'Set timer_only parameter error, use default parameter instead.'
+            )
 
     return Profiler(**translated_config_dict)

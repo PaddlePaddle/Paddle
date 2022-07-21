@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
-
 #include <gtest/gtest.h>
+
 #include <vector>
+
+#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -25,17 +26,22 @@ namespace ir {
 void MainTest(const std::string& activation_type) {
   auto prog =
       test::BuildProgramDesc({"softplus_x", "softplus_out", "activation_out"});
-  test::CreateOp(&prog, "softplus", {{"X", "softplus_x"}},
-                 {{"Out", "softplus_out"}});
-  test::CreateOp(&prog, activation_type, {{"X", "softplus_out"}},
-                 {{"Out", "activation_out"}}, false);
+  test::CreateOp(
+      &prog, "softplus", {{"X", "softplus_x"}}, {{"Out", "softplus_out"}});
+  test::CreateOp(&prog,
+                 activation_type,
+                 {{"X", "softplus_out"}},
+                 {{"Out", "activation_out"}},
+                 false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
 
-  EXPECT_TRUE(test::RunPassAndAssert(
-      &graph, "softplus_activation_mkldnn_fuse_pass", "softplus_x",
-      "activation_out", removed_nodes_count));
+  EXPECT_TRUE(test::RunPassAndAssert(&graph,
+                                     "softplus_activation_mkldnn_fuse_pass",
+                                     "softplus_x",
+                                     "activation_out",
+                                     removed_nodes_count));
   EXPECT_TRUE(
       test::AssertOpsCount(graph, {{"softplus", 1}, {activation_type, 0}}));
 
@@ -44,51 +50,35 @@ void MainTest(const std::string& activation_type) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto activation_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation_type"));
+          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(activation_type.compare(activation_type), 0);
     }
   }
 }
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh) {
-  MainTest("tanh")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh){MainTest("tanh")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu) {
-  MainTest("relu")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu){MainTest("relu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithLeakyRelu) {
-  MainTest("leaky_relu")
-}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithLeakyRelu){MainTest("leaky_relu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSwish) {
-  MainTest("swish")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSwish){MainTest("swish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithHardswish) {
-  MainTest("hardswish")
-}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithHardswish){MainTest("hardswish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt) {
-  MainTest("sqrt")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt){MainTest("sqrt")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs) { MainTest("abs") }
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs){MainTest("abs")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip) {
-  MainTest("clip")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip){MainTest("clip")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu) {
-  MainTest("gelu")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu){MainTest("gelu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu6) {
-  MainTest("relu6")
-}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu6){MainTest("relu6")}
 
 TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSigmoid) {
   MainTest("sigmoid")

@@ -39,6 +39,7 @@ def init_process_group(strategy=None):
 
 
 class TestProcessGroupFp32(unittest.TestCase):
+
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -234,6 +235,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
+
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)

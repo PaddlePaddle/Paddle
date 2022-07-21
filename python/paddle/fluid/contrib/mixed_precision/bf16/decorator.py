@@ -104,8 +104,9 @@ class OptimizerWithMixedPrecision(object):
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
 
-            params_grads = self._optimizer.backward(
-                loss, startup_program, parameter_list, no_grad_set, callbacks)
+            params_grads = self._optimizer.backward(loss, startup_program,
+                                                    parameter_list, no_grad_set,
+                                                    callbacks)
         return params_grads
 
     def amp_init(self,
@@ -171,10 +172,9 @@ class OptimizerWithMixedPrecision(object):
                                     self._to_bf16_var_names)
         if test_program is not None:
             if self._use_pure_bf16:
-                cast_model_to_bf16(
-                    test_program,
-                    amp_lists=self._amp_lists,
-                    use_bf16_guard=self._use_bf16_guard)
+                cast_model_to_bf16(test_program,
+                                   amp_lists=self._amp_lists,
+                                   use_bf16_guard=self._use_bf16_guard)
             elif use_bf16_test:
                 rewrite_program_bf16(test_program, amp_lists=self._amp_lists)
 
@@ -223,11 +223,10 @@ class OptimizerWithMixedPrecision(object):
                 "The decorated optimizer has its own `minimize` method, but it will not be executed."
             )
 
-        params_grads = self.backward(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        params_grads = self.backward(loss,
+                                     startup_program=startup_program,
+                                     parameter_list=parameter_list,
+                                     no_grad_set=no_grad_set)
 
         optimize_ops = self.apply_optimize(loss, startup_program, params_grads)
 

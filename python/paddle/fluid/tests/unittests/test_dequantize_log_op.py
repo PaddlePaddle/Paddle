@@ -33,6 +33,7 @@ def dequantize_log(x, dict_data):
 
 
 class TestDequantizeLogOp(OpTest):
+
     def setUp(self):
         self.op_type = "dequantize_log"
         x = np.random.randint(low=-128, high=127, size=(20, 10)).astype('int8')

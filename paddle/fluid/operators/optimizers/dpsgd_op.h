@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <stdlib.h>
+
 #include <iostream>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -27,7 +29,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -35,7 +38,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -50,11 +54,13 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
 
     auto sz = param_out->numel();
-    PADDLE_ENFORCE_EQ(param->numel(), sz,
+    PADDLE_ENFORCE_EQ(param->numel(),
+                      sz,
                       platform::errors::InvalidArgument(
                           "Input parameter's number of elements is error, "
                           "expected %zu, but received %zu."));
-    PADDLE_ENFORCE_EQ(grad->numel(), sz,
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      sz,
                       platform::errors::InvalidArgument(
                           "Input gradient's number of elements is error, "
                           "expected %zu, but received %zu."));
@@ -108,9 +114,8 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
 
     // update parameters
     for (int64_t i = 0; i < grad->numel(); ++i) {
-      out_data[i] =
-          param_data[i] -
-          lr[0] * (grad_data[i] / scale + gaussian_noise / batch_size);
+      out_data[i] = param_data[i] - lr[0] * (grad_data[i] / scale +
+                                             gaussian_noise / batch_size);
     }
     // CCS16 - Deep Learning with Differential Privacy.
     // [https://arxiv.org/abs/1607.00133]

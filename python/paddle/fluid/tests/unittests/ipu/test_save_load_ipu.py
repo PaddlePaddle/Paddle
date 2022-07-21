@@ -23,9 +23,8 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -63,16 +62,14 @@ class TestBase(IPUOpTest):
         with paddle.fluid.unique_name.guard(generator):
             with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
-                    x = paddle.static.data(
-                        name=self.feed_list[0],
-                        shape=self.feed_shape[0],
-                        dtype='float32')
-                    conv1 = paddle.static.nn.conv2d(
-                        x,
-                        num_filters=3,
-                        filter_size=3,
-                        bias_attr=False,
-                        name='conv2d')
+                    x = paddle.static.data(name=self.feed_list[0],
+                                           shape=self.feed_shape[0],
+                                           dtype='float32')
+                    conv1 = paddle.static.nn.conv2d(x,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False,
+                                                    name='conv2d')
                     loss = paddle.mean(conv1)
 
                     # apply optimizer
@@ -121,59 +118,69 @@ class TestBase(IPUOpTest):
         res1 = self._test_base(False)
 
         self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
         self.attrs['model_path'].cleanup()
 
 
 class TestMomentum(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Momentum, learning_rate=1e-1)
 
 
 class TestAdam(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adam, learning_rate=1e-1)
 
 
 class TestLamb(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Lamb, learning_rate=1e-1)
 
 
 class TestAdamW(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.AdamW, learning_rate=1e-1)
 
 
 class TestAdamax(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adamax, learning_rate=1e-1)
 
 
 class TestAdagrad(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
 
 
 class TestAdadelta(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
 
 
 class TestRMSProp(TestBase):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.RMSProp, learning_rate=1e-1)
 
 
 class TestCenteredRMSProp(TestBase):
+
     def set_optimizer(self):
-        self.optimizer = partial(
-            paddle.optimizer.RMSProp, learning_rate=1e-1, centered=True)
+        self.optimizer = partial(paddle.optimizer.RMSProp,
+                                 learning_rate=1e-1,
+                                 centered=True)
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestSGDFP16(TestBase):
+
     def set_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
@@ -186,49 +193,59 @@ class TestSGDFP16(TestBase):
 
 
 class TestMomentumFp16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Momentum, learning_rate=1e-1)
 
 
 class TestAdamFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adam, learning_rate=1e-1)
 
 
 class TestLambFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Lamb, learning_rate=1e-1)
 
 
 class TestAdamWFP16FP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.AdamW, learning_rate=1e-1)
 
 
 class TestAdamaxFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adamax, learning_rate=1e-1)
 
 
 class TestAdagradFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
 
 
 class TestAdadeltaFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.Adagrad, learning_rate=1e-1)
 
 
 class TestRMSPropFP16(TestSGDFP16):
+
     def set_optimizer(self):
         self.optimizer = partial(paddle.optimizer.RMSProp, learning_rate=1e-1)
 
 
 class TestCenteredRMSPropFP16(TestSGDFP16):
+
     def set_optimizer(self):
-        self.optimizer = partial(
-            paddle.optimizer.RMSProp, learning_rate=1e-1, centered=True)
+        self.optimizer = partial(paddle.optimizer.RMSProp,
+                                 learning_rate=1e-1,
+                                 centered=True)
 
 
 if __name__ == "__main__":

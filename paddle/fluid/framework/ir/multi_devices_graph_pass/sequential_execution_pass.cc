@@ -56,7 +56,8 @@ class SequentialExecutionPass : public ir::Pass {
       std::unordered_set<ir::Node *> preceding_ops;
       for (auto *in : node->inputs) {
         PADDLE_ENFORCE_EQ(
-            in->IsVar(), true,
+            in->IsVar(),
+            true,
             platform::errors::InvalidArgument(
                 "Preceding Node(%s) of Op Nodes must be Var Node.",
                 in->Name()));
@@ -79,7 +80,8 @@ class SequentialExecutionPass : public ir::Pass {
       for (auto *node : ready_ops) {
         if (IsSameOpDesc(op_desc, node->Op())) {
           PADDLE_ENFORCE_EQ(
-              found_node, nullptr,
+              found_node,
+              nullptr,
               platform::errors::InvalidArgument(
                   "Found multiple op_desc in graph: %s.", op_desc->Type()));
           found_node = node;
