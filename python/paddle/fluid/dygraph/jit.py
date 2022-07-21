@@ -483,9 +483,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
     elif output_spec is not None and len(output_spec) == len(output_vars_dict):
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
         for var in output_spec:
             if var.name not in output_vars_dict:
                 warnings.warn(name_no_exists_error % var.name)
