@@ -24,7 +24,7 @@ momentum_rate = 0.9
 l2_decay = 1e-4
 
 epoch = 1
-batch_num = 3
+batch_num = 1
 batch_size = 32
 class_dim = 102
 
