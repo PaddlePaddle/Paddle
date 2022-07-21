@@ -1073,7 +1073,8 @@ def sparse_embedding(input,
                      entry=None,
                      table_class="MemorySparseTable",
                      param_attr=None,
-                     dtype='float32'):
+                     dtype='float32',
+                     slot=None):
     r"""
     :api_attr: Static Graph
 
@@ -1220,6 +1221,9 @@ def sparse_embedding(input,
             )
         entry_str = entry._to_attr()
 
+    if slot == None:
+        slot = 0
+
     helper.append_op(type='lookup_table',
                      inputs={
                          'Ids': input,
@@ -1233,9 +1237,9 @@ def sparse_embedding(input,
                          'remote_prefetch': True,
                          'is_test': is_test,
                          'entry': entry_str,
-                         'table_class': table_class
+                         'table_class': table_class,
+                         'slot': slot
                      })
-
     return tmp
 
 
