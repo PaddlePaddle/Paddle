@@ -622,19 +622,19 @@ TEST(OP_INOUT_CHECK_MACRO, FAIL) {
   EXPECT_TRUE(caught_exception);
 }
 
-TEST(BOOST_GET_SAFELY, SUCCESS) {
+TEST(PADDLE_GET_SAFELY, SUCCESS) {
   paddle::framework::Attribute attr;
   attr = true;
-  bool rlt = BOOST_GET(bool, attr);
+  bool rlt = PADDLE_GET(bool, attr);
   EXPECT_EQ(rlt, true);
 }
 
-TEST(BOOST_GET_SAFELY, FAIL) {
+TEST(PADDLE_GET_SAFELY, FAIL) {
   paddle::framework::Attribute attr;
   attr = true;
   bool caught_exception = false;
   try {
-    BOOST_GET(int, attr);
+    PADDLE_GET(int, attr);
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
   }

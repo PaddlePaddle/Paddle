@@ -33,6 +33,7 @@ OP_DECL(popart_dynamicadd_v2, aiGraphcoreOpset.dynamicadd, ARG(INT_VEC,axes) ARG
 OP_DECL(popart_sequenceslice_v2, aiGraphcoreOpset.sequenceslice, ARG(INT,zeroUnused) ) // NOLINT
 OP_DECL(popart_replicatedallreduce_v2, aiGraphcoreOpset.replicatedallreduce, OPT_ARG(INT_VEC,commGroup) ) // NOLINT
 OP_DECL(popart_ctcbeamsearchdecoder_v2, aiGraphcoreOpset.ctcbeamsearchdecoder, ARG(INT,blank) ARG(INT,beamWidth) ARG(INT,topPaths) ) // NOLINT
+OP_DECL(popart_ctcloss, aiGraphcoreOpset.ctcloss, SIG_ARG(INT32,popart::ReductionType,reduction) ARG(INT32,blank) ARG(STRING,outDataType) ) // NOLINT
 OP_DECL(popart_shapeddropout_v2, aiGraphcoreOpset.shapeddropout, ARG(INT_VEC,shape) ARG(FLOAT,ratio) ) // NOLINT
 OP_DECL(popart_atan2_v2, aiGraphcoreOpset.atan2, NONE) // NOLINT
 OP_DECL(popart_expm1_v2, aiGraphcoreOpset.expm1, NONE) // NOLINT

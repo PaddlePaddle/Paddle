@@ -174,16 +174,16 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   HandleException();
 
   FetchList ret;
-  auto &val = BOOST_GET(FetchList, fetch_data);
+  auto &val = PADDLE_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     if (data_is_lod_tensor(val.at(fetch_idx))) {
       std::vector<const LoDTensor *> lodtensor_ptrs;
-      lodtensor_ptrs.push_back(&(BOOST_GET(LoDTensor, val.at(fetch_idx))));
+      lodtensor_ptrs.push_back(&(PADDLE_GET(LoDTensor, val.at(fetch_idx))));
       LoDTensor var;
       MergeLoDTensor(&var, lodtensor_ptrs, platform::CPUPlace());
       ret.emplace_back(var);
     } else {
-      auto array = BOOST_GET(LoDTensorArray, val.at(fetch_idx));
+      auto array = PADDLE_GET(LoDTensorArray, val.at(fetch_idx));
       LoDTensorArray item_array;
       item_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {

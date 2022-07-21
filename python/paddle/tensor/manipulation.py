@@ -2066,7 +2066,18 @@ def unique_consecutive(x,
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        out, inverse, counts = _C_ops.final_state_unique_consecutive(
+            x, return_inverse, return_counts, axis, attr_dtype)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    elif paddle.in_dynamic_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
@@ -2842,8 +2853,7 @@ def tile(x, repeat_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (repeat_times.ndim == 1,
-                    "Only support ndim == 1 while repeat_times is a Tensor.")
+            assert repeat_times.ndim == 1, "Only support ndim == 1 while repeat_times is a Tensor."
             repeat_times = repeat_times.numpy().tolist()
 
         return _C_ops.final_state_tile(x, repeat_times)
@@ -3867,8 +3877,10 @@ def as_complex(x, name=None):
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_complex(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_complex(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -3916,8 +3928,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"

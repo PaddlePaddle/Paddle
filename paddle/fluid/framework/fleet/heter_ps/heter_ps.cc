@@ -22,32 +22,41 @@ namespace paddle {
 namespace framework {
 
 HeterPsBase* HeterPsBase::get_instance(
-    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  return new HeterPs(capacity, resource);
+    size_t capacity,
+    std::shared_ptr<HeterPsResource> resource,
+    std::unordered_map<std::string, float> fleet_config,
+    std::string accessor_type,
+    int optimizer_type) {
+  if (accessor_type == "CtrDymfAccessor" &&
+      (optimizer_type == 1 || optimizer_type == 3 || optimizer_type == 4)) {
+    return new HeterPs<CommonFeatureValueAccessor>(
+        capacity, resource, accessor_type, fleet_config, optimizer_type);
+  } else {
+    VLOG(0) << " HeterPsBase get_instance Warning: now only support "
+               "CtrDymfAccessor, but get "
+            << accessor_type_;
+    return new HeterPs<CommonFeatureValueAccessor>(
+        capacity, resource, accessor_type, fleet_config, optimizer_type);
+  }
 }
 
-HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
-  comm_ =
-      std::make_shared<HeterComm<FeatureKey, FeatureValue, FeaturePushValue>>(
-          capacity, resource);
+HeterPs::HeterPs(size_t capacity,
+                 std::shared_ptr<HeterPsResource> resource,
+                 std::unordered_map<std::string, float> fleet_config,
+                 std::string accessor_type,
+                 int optimizer_type) {
+  comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, FVAccessor>>(
+      capacity, resource);
+  optimizer_type_ = optimizer_type;
 }
 
 HeterPs::~HeterPs() {}
 
 void HeterPs::pull_sparse(int num,
                           FeatureKey* d_keys,
-                          FeatureValue* d_vals,
+                          float* d_vals,
                           size_t len) {
   comm_->pull_sparse(num, d_keys, d_vals, len);
-}
-
-void HeterPs::build_ps(int num,
-                       FeatureKey* h_keys,
-                       FeatureValue* h_vals,
-                       size_t len,
-                       size_t chunk_size,
-                       int stream_num) {
-  comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
 int HeterPs::get_index_by_devid(int devid) {
@@ -68,7 +77,7 @@ void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
 
 void HeterPs::push_sparse(int num,
                           FeatureKey* d_keys,
-                          FeaturePushValue* d_grads,
+                          float* d_grads,
                           size_t len) {
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);

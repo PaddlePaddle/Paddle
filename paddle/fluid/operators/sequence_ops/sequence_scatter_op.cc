@@ -99,9 +99,9 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     // Enforce LoD of ids and updates be the same
     if (ctx->IsRuntime()) {
       framework::Variable* ids_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Ids")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Ids")[0]);
       framework::Variable* updates_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Updates")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Updates")[0]);
 
       auto& ids_lod = ids_var->Get<LoDTensor>().lod();
       auto& updates_lod = updates_var->Get<LoDTensor>().lod();

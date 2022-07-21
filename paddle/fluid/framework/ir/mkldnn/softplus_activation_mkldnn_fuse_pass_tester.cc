@@ -49,40 +49,44 @@ void MainTest(const std::string& activation_type) {
     if (node->IsOp() && node->Op()->Type() == "softplus") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("fuse_activation_type"));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto activation_type =
-          BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(activation_type.compare(activation_type), 0);
     }
   }
 }
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh){MainTest("tanh")}
+// clang-format off
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithTanh) {MainTest("tanh")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu){MainTest("relu")}
-
-TEST(FuseSoftplusActivationOneDNNPass,
-     FuseSoftplusWithLeakyRelu){MainTest("leaky_relu")}
-
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSwish){MainTest("swish")}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu) {MainTest("relu")}
 
 TEST(FuseSoftplusActivationOneDNNPass,
-     FuseSoftplusWithHardswish){MainTest("hardswish")}
+     FuseSoftplusWithLeakyRelu) {MainTest("leaky_relu")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt){MainTest("sqrt")}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithSwish) {MainTest("swish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs){MainTest("abs")}
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithHardswish) {MainTest("hardswish")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip){MainTest("clip")}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSqrt) {MainTest("sqrt")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu){MainTest("gelu")}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithAbs) {MainTest("abs")}
 
-TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithRelu6){MainTest("relu6")}
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithClip) {MainTest("clip")}
+
+TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithGelu) {MainTest("gelu")}
+
+TEST(FuseSoftplusActivationOneDNNPass,
+     FuseSoftplusWithRelu6) {MainTest("relu6")}
 
 TEST(FuseSoftplusActivationOneDNNPass, FuseSoftplusWithSigmoid) {
   MainTest("sigmoid")
 }
+// clang-format on
 
 }  // namespace ir
 }  // namespace framework

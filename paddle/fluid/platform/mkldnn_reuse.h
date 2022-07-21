@@ -1013,32 +1013,93 @@ class ActivationMKLDNNHandler
   }
 };
 
-static const dnnl::algorithm AcquireActivationAlgorithm(
-    std::string activation_name) {
-  std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-      {"abs", dnnl::algorithm::eltwise_abs},
-      {"clip", dnnl::algorithm::eltwise_clip},
-      {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-      {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-      {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-      {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-      {"leaky_relu", dnnl::algorithm::eltwise_relu},
-      {"mish", dnnl::algorithm::eltwise_mish},
-      {"relu", dnnl::algorithm::eltwise_relu},
-      {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-      {"sigmoid", dnnl::algorithm::eltwise_logistic},
-      {"sqrt", dnnl::algorithm::eltwise_sqrt},
-      {"swish", dnnl::algorithm::eltwise_swish},
-      {"tanh", dnnl::algorithm::eltwise_tanh}};
+static void AppendActivation(const framework::ExecutionContext& ctx,
+                             dnnl::post_ops& post_ops,
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation").empty()
+          : true;
+  if (invalid_attribute) return;
 
-  const auto& activation_type = activation_map.find(activation_name);
+  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+  const auto fuse_alpha =
+      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+  const auto fuse_beta =
+      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
 
-  PADDLE_ENFORCE_NE(activation_type,
-                    activation_map.end(),
-                    platform::errors::InvalidArgument(
-                        "Activation '%s' not found in oneDNN algorithms mapper",
-                        activation_name));
-  return activation_type->second;
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        platform::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
+static std::unordered_map<std::string, std::string> GetAttributeMap(
+    std::string act_type) {
+  std::unordered_map<std::string, std::string> attr_map;
+  if (act_type == "swish")
+    attr_map.emplace("beta", "fuse_alpha");
+  else if (act_type == "relu6")
+    attr_map.emplace("threshold", "fuse_alpha");
+  else if (act_type == "hard_sigmoid") {
+    attr_map.emplace("slope", "fuse_alpha");
+    attr_map.emplace("offset", "fuse_beta");
+  } else if (act_type == "clip") {
+    attr_map.emplace("min", "fuse_alpha");
+    attr_map.emplace("max", "fuse_beta");
+  } else {
+    attr_map.emplace("alpha", "fuse_alpha");
+    attr_map.emplace("beta", "fuse_beta");
+  }
+  return attr_map;
+}
+
+static std::vector<std::string> GetSupportedActivations() {
+  return std::vector<std::string>{"abs",
+                                  "clip",
+                                  "gelu",
+                                  "hard_sigmoid",
+                                  "hard_swish",
+                                  "leaky_relu",
+                                  "mish",
+                                  "relu",
+                                  "relu6",
+                                  "sigmoid",
+                                  "sqrt",
+                                  "swish",
+                                  "tanh"};
 }
 
 class ReorderMKLDNNHandler {
