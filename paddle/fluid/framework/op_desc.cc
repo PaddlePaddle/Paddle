@@ -874,13 +874,20 @@ void OpDesc::Flush() {
     }
 
     this->desc_.mutable_attrs()->Clear();
-    for (auto &attr : attrs_) {
+    auto set_attr_desc = [this](const std::string &attr_name,
+                                const Attribute &attr) -> void {
       auto *attr_desc = desc_.add_attrs();
-      attr_desc->set_name(attr.first);
-      attr_desc->set_type(
-          static_cast<proto::AttrType>(attr.second.index() - 1));
+      attr_desc->set_name(attr_name);
+      attr_desc->set_type(static_cast<proto::AttrType>(attr.index() - 1));
       SetAttrDescVisitor visitor(attr_desc);
-      paddle::visit(visitor, attr.second);
+      paddle::visit(visitor, attr);
+    };
+
+    for (auto &attr : attrs_) {
+      set_attr_desc(attr.first, attr.second);
+    }
+    for (auto &attr : runtime_attrs_) {
+      set_attr_desc(attr.first, attr.second);
     }
 
     need_update_ = false;
