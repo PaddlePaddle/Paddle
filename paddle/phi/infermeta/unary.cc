@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/phi/kernels/funcs/svd.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
@@ -2672,6 +2673,33 @@ void SumRawInferMeta(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh) {
+  auto in_dims = x.dims();
+  int x_rank = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      in_dims.size(),
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  int m = in_dims[x_rank - 2];
+  int n = in_dims[x_rank - 1];
+  int k = std::min(m, n);
+  u->set_dims(!full_matrices ? funcs::UDDim(in_dims, k)
+                             : funcs::UDDim(in_dims, m));
+  vh->set_dims(!full_matrices ? funcs::VHDDim(in_dims, k)
+                              : funcs::VHDDim(in_dims, n));
+  s->set_dims(funcs::SDDim(in_dims, k));
+  u->share_lod(x);
+  vh->share_lod(x);
+  s->share_lod(x);
+  u->set_dtype(x.dtype());
+  vh->set_dtype(x.dtype());
+  s->set_dtype(x.dtype());
 }
 
 void TemporalShiftInferMeta(const MetaTensor& x,

@@ -383,6 +383,12 @@ void SumRawInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out);
 
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh);
+
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,
                             float shift_ratio,
