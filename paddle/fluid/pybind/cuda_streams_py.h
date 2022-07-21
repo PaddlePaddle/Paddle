@@ -14,12 +14,17 @@
 
 #pragma once
 
+#include "paddle/phi/core/stream.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
 
 namespace paddle {
+namespace platform {
+CUDAStream* get_current_stream(int device_id = -1);
+CUDAStream* set_current_stream(CUDAStream* stream);
+}  // namespace platform
 namespace pybind {
 
 void BindCudaStream(py::module* m);

@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
 
@@ -534,10 +533,8 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : phi::GPUContext(place) {
-  phi::GPUContext::PartialInitWithoutAllocator();
-  cuda_stream_.reset(new stream::CUDAStream(phi::GPUContext::stream(), place));
-}
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : phi::GPUContext(place) {}
 
 CUDADeviceContext::~CUDADeviceContext() = default;
 

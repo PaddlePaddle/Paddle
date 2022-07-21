@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/stream.h"
 
 namespace phi {
 
@@ -90,6 +91,9 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   /*! \brief  Return gpu stream in the device context. */
   gpuStream_t stream() const;
+
+  /*! \brief  Return CUDAStream in the device context. */
+  CUDAStream* cuda_stream() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
   dnnHandle_t cudnn_handle() const;
@@ -195,6 +199,8 @@ class PADDLE_API GPUContext : public DeviceContext {
   // The Set interface is for inference only, DeviceContext will mark the
   // resource as external, and will not delete any resource when destructing.
   void SetStream(gpuStream_t);
+
+  void SetStream(CUDAStream*);
 
   void SetEigenDevice(Eigen::GpuDevice*);
   void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
