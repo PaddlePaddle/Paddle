@@ -80,7 +80,7 @@ class XPUCacheArray {
     cpu_vals_auto_ptr_ = memory::Alloc(cpu_place, capacity_ * sizeof(ValType));
     cpu_keys_ = reinterpret_cast<KeyType*>(cpu_keys_auto_ptr_->ptr());
     cpu_vals_ = reinterpret_cast<ValType*>(cpu_vals_auto_ptr_->ptr());
-  }
+ }
 
   virtual ~XPUCacheArray() {
   }
