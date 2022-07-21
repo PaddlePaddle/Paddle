@@ -37,6 +37,7 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND tar zxf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
+      phi_api
       elementwise_add_op
       matmul_v2_op
       activation_op
