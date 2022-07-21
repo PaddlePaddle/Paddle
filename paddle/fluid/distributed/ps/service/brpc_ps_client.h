@@ -301,16 +301,16 @@ class BrpcPsClient : public PSClient {
 
   int PushSparseAsyncShardMerge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       ValueAccessor *accessor);
 
   int PushSparseAsyncShardPush(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       DownpourBrpcClosure *closure,
       ValueAccessor *accessor);
 

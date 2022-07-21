@@ -482,7 +482,7 @@ std::future<int32_t> BrpcPsClient::GetCacheThreshold(uint32_t table_id,
       request_call_num,
       [request_call_num, cmd_id, &cache_threshold](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
         std::vector<double> cache_thresholds(request_call_num, 0);
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, cmd_id) != 0) {

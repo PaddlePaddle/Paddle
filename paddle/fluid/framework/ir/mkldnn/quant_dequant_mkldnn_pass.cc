@@ -72,7 +72,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
 
       if (op_desc->HasAttr("max_range")) {
         const float max_range =
-            BOOST_GET_CONST(float, op_desc->GetAttr("max_range"));
+            PADDLE_GET_CONST(float, op_desc->GetAttr("max_range"));
         std::vector<float> thresholds = {127 * 127 / max_range};
         weight_thresholds->insert(std::make_pair(x_var_name, thresholds));
       } else {
@@ -111,7 +111,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromFake(
         fake_quantize_types.count(op_node->Name())) {
       auto* op_desc = op_node->Op();
       const int bit_length =
-          BOOST_GET_CONST(int, op_desc->GetAttr("bit_length"));
+          PADDLE_GET_CONST(int, op_desc->GetAttr("bit_length"));
       PADDLE_ENFORCE_EQ(bit_length,
                         8,
                         platform::errors::InvalidArgument(
@@ -160,7 +160,7 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
     auto* op_desc = op_node->Op();
     if (op_desc->HasAttr("out_threshold")) {
       const float attr_scale =
-          BOOST_GET_CONST(float, op_desc->GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc->GetAttr("out_threshold"));
       if (attr_scale == 0.0) continue;
       float scale = 1.0 / attr_scale;
       std::vector<float> scale_v = {scale};

@@ -65,19 +65,17 @@ class MemorySparseTable : public Table {
   int32_t InitializeShard() override { return 0; }
   int32_t InitializeValue();
 
-  virtual int32_t Load(const std::string& path,
-                       const std::string& param) override;
+  int32_t Load(const std::string& path, const std::string& param) override;
 
-  virtual int32_t Save(const std::string& path,
-                       const std::string& param) override;
+  int32_t Save(const std::string& path, const std::string& param) override;
 
-  virtual int32_t SaveCache(
+  int32_t SaveCache(
       const std::string& path,
       const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
   virtual double GetCacheThreshold() { return _local_show_threshold; }
-  virtual int64_t CacheShuffle(
+  int64_t CacheShuffle(
       const std::string& path,
       const std::string& param,
       double cache_threshold,
@@ -99,7 +97,7 @@ class MemorySparseTable : public Table {
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
   int32_t Flush() override;
-  virtual int32_t Shrink(const std::string& param) override;
+  int32_t Shrink(const std::string& param) override;
   void Clear() override;
 
   void* GetShard(size_t shard_idx) override {

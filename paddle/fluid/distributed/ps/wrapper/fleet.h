@@ -196,7 +196,7 @@ class FleetWrapper {
                                  uint64_t padding_id,
                                  platform::Place place,
                                  std::vector<const LoDTensor*>* inputs,
-                                 std::vector<int>& slots,
+                                 std::vector<int>& slots,  // NOLINT
                                  const LoDTensor* shows,
                                  const LoDTensor* clicks,
                                  std::vector<LoDTensor*>* outputs,
@@ -302,6 +302,8 @@ class FleetWrapper {
                     const int mode,
                     const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  void Revert();
+  void CheckSavePrePatchDone();
 
   void Revert();
   void CheckSavePrePatchDone();

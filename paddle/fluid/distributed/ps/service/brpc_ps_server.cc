@@ -439,7 +439,7 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
                       "least 1 for num of sparse_key");
     return 0;
   }
-  const uint32_t num = 
+  const uint32_t num =
       *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   /*
   Push Content:
@@ -520,7 +520,7 @@ int32_t BrpcPsService::PullSparse(Table *table,
   }
 
   CostTimer timer("pserver_server_pull_sparse");
-  const uint32_t num = 
+  const uint32_t num =
       *(reinterpret_cast<const uint32_t *>(request.params(0).c_str()));
   auto dim = table->ValueAccesor()->GetAccessorInfo().select_dim;
 

@@ -41,13 +41,13 @@ function add_failed(){
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01, lanxianghit or Superjomn) approval for API change.\n"
+    echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
     echo_line="${echo_line} jzhang533/ZhangJun, momozi1996/MoYan, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general APIs.\n"
     echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related APIs.\n"
     echo_line="${echo_line} leiqing1/LeiQing for inference related APIs.\n"
 
-    check_approval 1 46782768 47554610 328693
+    check_approval 1 46782768 8555991 47554610 7845005
     check_approval 1 29231 79295425 23093488 39876205 65896652 54695910
 fi
 

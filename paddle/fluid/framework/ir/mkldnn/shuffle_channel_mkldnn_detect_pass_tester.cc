@@ -69,7 +69,7 @@ void MainTest() {
     if (node->IsOp() && node->Op()->Type() == "shuffle_channel") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
     }
   }
 }

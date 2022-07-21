@@ -197,7 +197,7 @@ class Accessor:
                     sgd_param.naive.initial_range = 0.0001
                 if len(sgd_param.naive.weight_bounds) == 0:
                     sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
-            if sgd_param.name == "SparseAdamSGDRule":
+            if sgd_param.name == "SparseAdamSGDRule" or sgd_param.name == "SparseSharedAdamSGDRule":
                 if not sgd_param.adam.HasField("learning_rate"):
                     sgd_param.adam.learning_rate = 0.001
                 if not sgd_param.adam.HasField("initial_range"):

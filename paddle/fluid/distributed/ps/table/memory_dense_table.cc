@@ -395,7 +395,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     }
 
     ++feasign_size;
-    // VLOG(0) << "save begin close " << channel_config.path;
+    VLOG(3) << "save begin close " << channel_config.path;
     write_channel->close();
     if (err_no == -1) {
       ++retry_num;
