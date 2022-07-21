@@ -18,26 +18,28 @@ package paddle.jit.proto;
 message TensorProto {
   enum DataType {
     UNDEFINED = 0;
-    // Basic types.
-    FLOAT = 1;   // float
+    BOOL = 1;    // bool
+
     UINT8 = 2;   // uint8_t
     INT8 = 3;    // int8_t
     UINT16 = 4;  // uint16_t
     INT16 = 5;   // int16_t
-    INT32 = 6;   // int32_t
-    INT64 = 7;   // int64_t
-    STRING = 8;  // string
-    BOOL = 9;    // bool
+    UINT32 = 6; // uint32_t
+    INT32 = 7;   // int32_t
+    UINT64 = 8; // uint64_t
+    INT64 = 9;   // int64_t
+
+    FLOAT = 10;   // float
+    DOUBLE = 11;
+
+    COMPLEX64 = 12;     // complex with float32 real and imaginary components
+    COMPLEX128 = 13;    // complex with float64 real and imaginary components
+
+    STRING = 14;  // string
 
     // IEEE754 half-precision floating-point format (16 bits wide).
     // This format has 1 sign bit, 5 exponent bits, and 10 mantissa bits.
-    FLOAT16 = 10;
-
-    DOUBLE = 11;
-    UINT32 = 12;
-    UINT64 = 13;
-    COMPLEX64 = 14;     // complex with float32 real and imaginary components
-    COMPLEX128 = 15;    // complex with float64 real and imaginary components
+    FLOAT16 = 15;
 
     // Non-IEEE floating-point format based on IEEE754 single-precision
     // floating-point number truncated to 16 bits.
