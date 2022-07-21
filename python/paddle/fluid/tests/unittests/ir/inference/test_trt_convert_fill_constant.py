@@ -43,7 +43,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     for str_value in ["2", "23", "-1"]:
                         self.num_input = num_input
                         value = float(str_value)
-                        if np.random.choice([True, False]):
+                        if np.random.choice([False, True]):
                             str_value = str_value
                         else:
                             str_value = ""
