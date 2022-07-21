@@ -1749,7 +1749,7 @@
   args : (Tensor[] x, int[] axis)
   output : Tensor[]{x.size()}
   infer_meta :
-    func : ReverseInferMeta
+    func : ReverseArrayInferMeta
   kernel :
     func : reverse_array
   backward : reverse_array_grad

@@ -1662,7 +1662,7 @@
   args : (Tensor[] out_grad, int[] axis)
   output : Tensor[](x_grad){out_grad.size()}
   infer_meta :
-    func : ReverseInferMeta
+    func : ReverseArrayInferMeta
   invoke : reverse_array(out_grad, axis)
 
 - backward_api : reverse_grad
