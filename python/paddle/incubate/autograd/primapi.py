@@ -26,14 +26,14 @@ def forward_grad(outputs, inputs, grad_inputs=None):
         **ONLY available in the static mode and primitive operators.**
 
     Args:
-        outputs: The output tensor or tensors
-        inputs: The input tensor or tensors
-        grad_inputs: The gradient Tensor or Tensors of inputs which has 
-            the same shape with inputs, Defaults to None, in this case is 
-            equivalent to all ones .
+        outputs(Tensor|Sequence[Tensor]): The output tensor or tensors.
+        inputs(Tensor|Sequence[Tensor]): The input tensor or tensors.
+        grad_inputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
+            Tensors of inputs which has the same shape with inputs, Defaults to 
+            None, in this case is equivalent to all ones.
 
     Returns:
-        grad_outputs (Tensor|Sequence[Tensor]): The gradients for outputs.
+        grad_outputs(Tensor|Sequence[Tensor]): The gradients for outputs.
 
     Examples:
 
@@ -99,14 +99,14 @@ def grad(outputs, inputs, grad_outputs=None):
         **ONLY available in the static mode and primitive operators**
 
     Args:
-        outputs (Tensor|Sequence[Tensor]): The output Tensor or Tensors.
-        inputs (Tensor|Sequence[Tensor]): The input Tensor or Tensors.
-        grad_outputs (Tensor|Sequence[Tensor]): The gradient Tensor or 
+        outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
+        inputs(Tensor|Sequence[Tensor]): The input Tensor or Tensors.
+        grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or 
             Tensors of outputs which has the same shape with outputs, Defaults 
-            to None, in this case is equivalent to all ones .
+            to None, in this case is equivalent to all ones.
 
     Returns:
-        grad_inputs (Tensor|Tensors): The gradients for inputs. 
+        grad_inputs(Tensor|Tensors): The gradients for inputs. 
 
     Examples:
 
@@ -114,8 +114,10 @@ def grad(outputs, inputs, grad_outputs=None):
 
             import numpy as np
             import paddle
+
             paddle.enable_static()
             paddle.incubate.autograd.enable_prim()
+
             startup_program = paddle.static.Program()
             main_program = paddle.static.Program()
             with paddle.static.program_guard(main_program, startup_program):
@@ -124,17 +126,26 @@ def grad(outputs, inputs, grad_outputs=None):
                 y = x * x 
                 x_grad = paddle.incubate.autograd.grad(y, x)
                 paddle.incubate.autograd.prim2orig()
+
             exe = paddle.static.Executor()
             exe.run(startup_program)
             x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
             print(x_grad)
             # [array([4.], dtype=float32)]
+            
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
-
     if not utils.prim_enabled():
-        return backward.gradients(outputs, inputs, grad_outputs)
+        grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
+        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # The follow code snippet fixes the problem by return the first element
+        # of grad_inputs when the inputs is a signle Tensor.
+        if isinstance(inputs, framework.Variable) and isinstance(
+                grad_inputs, typing.Sequence) and len(grad_inputs) > 0:
+            return grad_inputs[0]
+        else:
+            return grad_inputs
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(f'Expected outputs is Tensor|Sequence[Tesnor], '

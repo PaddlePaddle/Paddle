@@ -80,6 +80,8 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.config()
             self.op_type = "matmul_v2"
+            if self.dtype == np.float16 or self.dtype == "float16":
+                self.__class__.no_need_check_grad = True
             x = np.random.random(self.x_shape).astype(self.dtype)
             y = np.random.random(self.y_shape).astype(self.dtype)
             # -0.1 ~ 0.1
@@ -99,6 +101,9 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
+            if hasattr(self.__class__, "no_need_check_grad"
+                       ) and self.__class__.no_need_check_grad == True:
+                return
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 

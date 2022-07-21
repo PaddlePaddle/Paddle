@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/common/registerer.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
@@ -54,10 +54,24 @@ class CtrDymfAccessor : public ValueAccessor {
     int ClickIndex() { return ShowIndex() + 1; }
     int EmbedWIndex() { return ClickIndex() + 1; }
     int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
-    int SlotIndex() { return EmbedG2SumIndex() + 1; }
+    int SlotIndex() { return EmbedG2SumIndex() + embed_sgd_dim; }
     int MfDimIndex() { return SlotIndex() + 1; }
     int EmbedxG2SumIndex() { return MfDimIndex() + 1; }
-    int EmbedxWIndex() { return EmbedxG2SumIndex() + 1; }
+    int EmbedxWIndex() { return EmbedxG2SumIndex() + embedx_sgd_dim; }
+
+    // 根据mf_dim计算的总长度
+    int Dim(int& mf_dim) {
+      int tmp_embedx_sgd_dim = 1;
+      if (optimizer_name == "SparseAdamSGDRule") {  // adam
+        tmp_embedx_sgd_dim = mf_dim * 2 + 2;
+      } else if (optimizer_name == "SparseSharedAdamSGDRule") {  // shared_adam
+        tmp_embedx_sgd_dim = 4;
+      }
+      return 7 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
+    }
+
+    // 根据mf_dim计算的总byte数
+    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
     float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
@@ -73,6 +87,7 @@ class CtrDymfAccessor : public ValueAccessor {
     int embed_sgd_dim;
     int embedx_dim;
     int embedx_sgd_dim;
+    std::string optimizer_name;
   };
 
   struct CtrDymfPushValue {

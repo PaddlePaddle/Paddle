@@ -298,6 +298,7 @@ class CuSparseDnVecDescriptor {
   cusparseDnVecDescr_t descriptor_;
 };
 
+/************* SPARSE*DENSE->DENSE MATMUL ************/
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SPMM(bool transa,
@@ -345,6 +346,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   });
 }
 
+/************* SPARSE*DENSE->DENSE MV ************/
 template <>
 template <typename T, typename TensorType>
 void SparseBlas<phi::GPUContext>::SPMV(bool transa,
@@ -389,6 +391,7 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
   });
 }
 
+/************* DENSE*DENSE->SPARSE MATMUL ************/
 #if CUDA_VERSION >= 11030
 template <>
 template <typename T, typename TensorType>
