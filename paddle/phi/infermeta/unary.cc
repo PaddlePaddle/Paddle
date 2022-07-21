@@ -2020,6 +2020,25 @@ void ReverseInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
+void ReverseInferMeta(std::vector<const phi::MetaTensor*> x,
+                      const std::vector<int>& axis,
+                      std::vector<phi::MetaTensor*>) {
+  PADDLE_ENFORCE_EQ(
+      axis.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+          "but received %d.",
+          axis.size()));
+  PADDLE_ENFORCE_EQ(
+      axis[0],
+      0,
+      phi::errors::InvalidArgument("The value of axis should be 1 when "
+                                   "the Input(X) is LoDTensorArray, "
+                                   "but received %d.",
+                                   axis[0]));
+}
+
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
