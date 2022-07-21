@@ -169,12 +169,30 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             gt_matches.astype('int32'))
 
 
+def yolo_loss_wrapper(x, gt_box, gt_label, gt_score, anchors, anchor_mask,
+                      class_num, ignore_thresh, downsample_ratio,
+                      use_label_smooth, scale_x_y):
+    loss, _, _ = paddle.vision.ops.yolo_loss(x,
+                                             gt_box=gt_box,
+                                             gt_label=gt_label,
+                                             anchors=anchors,
+                                             anchor_mask=anchor_mask,
+                                             class_num=class_num,
+                                             ignore_thresh=ignore_thresh,
+                                             downsample_ratio=downsample_ratio,
+                                             gt_score=gt_score,
+                                             use_label_smooth=use_label_smooth,
+                                             scale_x_y=scale_x_y)
+    return loss
+
+
 class TestYolov3LossOp(OpTest):
 
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolov3_loss'
-        self.python_api = paddle.vision.ops.yolo_loss
+        self.python_api = yolo_loss_wrapper
+        self.python_out_sig = ['Loss']
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float64'))
         gtbox = np.random.random(size=self.gtbox_shape).astype('float64')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
@@ -210,7 +228,6 @@ class TestYolov3LossOp(OpTest):
             'ObjectnessMask': objness,
             "GTMatchMask": gt_matches
         }
-        self.python_out_sig = ['Loss', 'ObjectnessMask', 'GTMatchMask']
 
     def test_check_output(self):
         place = core.CPUPlace()
