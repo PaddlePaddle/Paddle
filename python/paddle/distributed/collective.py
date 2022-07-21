@@ -43,63 +43,64 @@ from ..fluid.layers import utils
 from ..fluid.dygraph import layers
 
 __all__ = [
-           "Group",
-           "new_group",
-           "get_group",
-           "is_initialized",
-           "destroy_process_group",
-           "scatter",
-           "barrier",
-           "broadcast",
-           "recv",
-           "irecv",
-           "reduce_scatter",
-           "send",
-           "isend",
-           "all_reduce",
-           "all_gather",
-           "alltoall",
-           "alltoall_single",
-           "batch_isend_irecv",
-           "split",
-           "wait",
-           "P2POp",
-           "reduce",
-           "ReduceOp",
-           "_sync_calc_stream",
-           "_sync_comm_stream",
-           "_mp_allreduce",
-           "_c_lookup_table",
-           "_parallel_embedding",
-           "_c_split",
-           "_c_identity",
-           "_linear",
-           "_parallel_linear",
-           "_check_p2p_op_list",
-           "_get_global_env",
-           "_set_default_backend",
-           "_set_default_store",
-           "_get_group_map",
-           "_get_global_group",
-           "_get_group_map_by_name",
-           "_get_default_group",
-           "_set_group_map",
-           "_set_group_map_by_name",
-           "_set_group_map_backend",
-           "_new_ring_id",
-           "_new_process_group_impl",
-           "_set_custom_gid",
-           "_c_concat",
-           "_Linear",
-           "_c_softmax_with_cross_entropy",
-           "_reduce_scatter_base",
-           "_with_batch_p2p_guard",
-           "_get_reduce_op",
-           "_get_group_rank",
-           "_check_single_tensor",
-           "_check_tensor_list",
-           "_set_var_distributed",
-           ]
+    "Group",
+    "new_group",
+    "get_group",
+    "is_initialized",
+    "destroy_process_group",
+    "scatter",
+    "barrier",
+    "broadcast",
+    "recv",
+    "irecv",
+    "reduce_scatter",
+    "send",
+    "isend",
+    "all_reduce",
+    "all_gather",
+    "alltoall",
+    "alltoall_single",
+    "batch_isend_irecv",
+    "split",
+    "wait",
+    "P2POp",
+    "reduce",
+    "ReduceOp",
+    "_sync_calc_stream",
+    "_sync_comm_stream",
+    "_mp_allreduce",
+    "_c_lookup_table",
+    "_parallel_embedding",
+    "_c_split",
+    "_c_identity",
+    "_linear",
+    "_parallel_linear",
+    "_check_p2p_op_list",
+    "_get_global_env",
+    "_set_default_backend",
+    "_set_default_store",
+    "_get_group_map",
+    "_get_global_group",
+    "_get_group_map_by_name",
+    "_get_default_group",
+    "_set_group_map",
+    "_set_group_map_by_name",
+    "_set_group_map_backend",
+    "_new_ring_id",
+    "_new_process_group_impl",
+    "_set_custom_gid",
+    "_c_concat",
+    "_Linear",
+    "_c_softmax_with_cross_entropy",
+    "_reduce_scatter_base",
+    "_with_batch_p2p_guard",
+    "_get_reduce_op",
+    "_get_group_rank",
+    "_check_single_tensor",
+    "_check_tensor_list",
+    "_set_var_distributed",
+]
+
 
 def _c_concat(tensor, group=None):
     """
@@ -115,6 +116,7 @@ def _c_concat(tensor, group=None):
     """
     if group is not None and not group.is_member():
         return
+
     group = _get_default_group() if group is None else group
     ring_id = group.id
 
@@ -146,6 +148,7 @@ def _c_concat(tensor, group=None):
                          'rank': rank
                      })
     return out
+
 
 class _Linear(layers.Layer):
     """
@@ -236,6 +239,7 @@ def _c_softmax_with_cross_entropy(logits,
         return loss, softmax
 
     return loss
+
 
 def _reduce_scatter_base(output,
                          input,

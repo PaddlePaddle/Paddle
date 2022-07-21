@@ -18,10 +18,11 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from .group import _group_map_backend, _get_default_group
 from .utils import _check_single_tensor
+from .group import _group_map_backend, _get_default_group
 
 __all__ = ["P2POp", "_check_p2p_op_list"]
+
 
 class P2POp(object):
     """
@@ -52,6 +53,7 @@ class P2POp(object):
         self.tensor = tensor
         self.peer = peer
         self.group = _get_default_group() if group is None else group
+
 
 def _check_p2p_op_list(p2p_op_list):
     """

@@ -19,17 +19,19 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from .reduce import ReduceOp
+from .utils import _check_single_tensor
 from .reduce import _get_reduce_op
 from .group import _get_default_group
-from .utils import _check_single_tensor
 
 __all__ = ["reduce_scatter", "_check_tensor_list"]
+
 
 def _check_tensor_list(tensor_list, tensor_name):
     if not isinstance(tensor_list, list) or \
         not all(isinstance(t, (core.eager.Tensor, paddle.Tensor)) for t in tensor_list):
         raise RuntimeError("Invalid function argument. Expected parameter {}"
                            "to be of type paddle.Tensor".format(tensor_name))
+
 
 def reduce_scatter(tensor,
                    tensor_list,

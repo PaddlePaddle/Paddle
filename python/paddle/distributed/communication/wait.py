@@ -17,13 +17,14 @@ from paddle import _C_ops
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
 
-__all__ = ["wait",
-           "_sync_calc_stream",
-           "_sync_comm_stream",
-           ]
+__all__ = [
+    "wait",
+    "_sync_calc_stream",
+    "_sync_comm_stream",
+]
+
 
 def _sync_calc_stream(tensor):
-
     if _non_static_mode():
         return _C_ops.c_sync_calc_stream(tensor, tensor)
 
@@ -35,6 +36,7 @@ def _sync_calc_stream(tensor):
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
     )
+
 
 def _sync_comm_stream(tensor, ring_id=0):
 
@@ -50,6 +52,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         outputs={'Out': [tensor]},
         attrs={'ring_id': ring_id},
     )
+
 
 def wait(tensor, group=None, use_calc_stream=True):
     """

@@ -21,6 +21,7 @@ from .group import _get_default_group, _group_map_backend
 
 __all__ = ["batch_isend_irecv", "_with_batch_p2p_guard"]
 
+
 @contextlib.contextmanager
 def _with_batch_p2p_guard(backend):
     if backend == "nccl":
@@ -30,6 +31,7 @@ def _with_batch_p2p_guard(backend):
     finally:
         if backend == "nccl":
             core.ProcessGroupNCCL.group_end()
+
 
 def batch_isend_irecv(p2p_op_list):
     """
@@ -81,6 +83,7 @@ def batch_isend_irecv(p2p_op_list):
             # paddle.tensor([1, 2])     # Rank-0
             # paddle.tensor([0, 1])     # Rank-1
     """
+
     _check_p2p_op_list(p2p_op_list)
     group = p2p_op_list[0].group
     if group is not None and not group.is_member():

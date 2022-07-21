@@ -22,6 +22,7 @@ from .group import _get_default_group, _get_global_group
 
 __all__ = ["all_gather"]
 
+
 def _dygraph_all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     group = _get_default_group() if group is None else group
     if len(tensor_list) == 0:
@@ -34,6 +35,7 @@ def _dygraph_all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     task.wait()
     tensor_list.clear()
     tensor_list.extend(paddle.split(out, group.nranks, 0))
+
 
 def _static_all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
@@ -57,6 +59,7 @@ def _static_all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         check_variable_and_dtype(
             tensor, 'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
+
         helper.append_op(type=op_type,
                          inputs={'X': [tensor]},
                          outputs={'Out': [out]},
@@ -67,6 +70,7 @@ def _static_all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
                          })
 
     tensor_list.extend(paddle.split(out, nranks, 0))
+
 
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
     """

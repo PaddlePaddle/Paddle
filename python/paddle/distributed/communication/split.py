@@ -14,6 +14,7 @@
 
 import paddle
 from paddle import _C_ops
+import paddle.fluid.core as core
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _varbase_creator
@@ -24,16 +25,18 @@ import paddle.fluid.dygraph_utils as dygraph_utils
 from .reduce import ReduceOp
 from .group import _get_global_env
 
-__all__ = ["split",
-           "_set_var_distributed",
-           "_mp_allreduce",
-           "_c_lookup_table",
-           "_parallel_embedding",
-           "_c_split",
-           "_c_identity",
-           "_linear",
-           "_parallel_linear",
-           ]
+__all__ = [
+    "split",
+    "_set_var_distributed",
+    "_mp_allreduce",
+    "_c_lookup_table",
+    "_parallel_embedding",
+    "_c_split",
+    "_c_identity",
+    "_linear",
+    "_parallel_linear",
+]
+
 
 def _set_var_distributed(var):
     if var is None:
@@ -46,6 +49,7 @@ def _set_var_distributed(var):
     main_block = paddle.static.default_main_program().current_block()
     startup_block._find_var_recursive(var.name).is_distributed = True
     main_block._find_var_recursive(var.name).is_distributed = True
+
 
 def _mp_allreduce(tensor,
                   op=ReduceOp.SUM,
@@ -110,6 +114,7 @@ def _mp_allreduce(tensor,
                      })
     return out
 
+
 def _c_lookup_table(table, index, start_index=0, name=None):
     """
     Lookup table according to index.
@@ -140,6 +145,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
                      outputs={'Out': tmp},
                      attrs={"start_index": start_index})
     return tmp
+
 
 def _parallel_embedding(x,
                         per_part_embeddings,
@@ -182,13 +188,16 @@ def _parallel_embedding(x,
     startup_block.vars[weight.name].is_distributed = True
     main_block.vars[weight.name].is_distributed = True
 
-    output_parallel = _c_lookup_table(
-        weight, x, start_index=vocab_start_index, name=name)
+    output_parallel = _c_lookup_table(weight,
+                                      x,
+                                      start_index=vocab_start_index,
+                                      name=name)
     out = _mp_allreduce(output_parallel,
-                                                      group=group,
-                                                      use_calc_stream=True,
-                                                      use_model_parallel=True)
+                        group=group,
+                        use_calc_stream=True,
+                        use_model_parallel=True)
     return out
+
 
 def _c_split(tensor, group=None):
     """
@@ -235,6 +244,7 @@ def _c_split(tensor, group=None):
                          'use_model_parallel': True,
                      })
     return out
+
 
 def _c_identity(tensor, group=None):
     """
@@ -318,6 +328,7 @@ def _linear(x, weight, bias=None, name=None):
         else:
             res = tmp
         return res
+
 
 def _parallel_linear(x,
                      num_rows,
@@ -408,6 +419,7 @@ def _parallel_linear(x,
                                  'use_model_parallel': True
                              })
     return out
+
 
 def split(x,
           size,
@@ -619,4 +631,3 @@ def split(x,
                                       name=name,
                                       group=None)
         return linear_out
-

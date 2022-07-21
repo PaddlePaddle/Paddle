@@ -14,13 +14,14 @@
 
 import paddle
 from paddle import _C_ops
+from .group import _get_default_group
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from .group import _get_default_group
 
 __all__ = ["reduce", "ReduceOp", "_get_reduce_op"]
+
 
 class ReduceOp:
     """
@@ -60,6 +61,7 @@ class ReduceOp:
     PROD = 3
     AVG = 4
 
+
 def _get_reduce_op(reduce_op, func_name):
     if reduce_op == ReduceOp.SUM:
         return core.ReduceOp.SUM
@@ -72,7 +74,12 @@ def _get_reduce_op(reduce_op, func_name):
     else:
         raise ValueError("Unknown reduce_op type for {}.".format(func_name))
 
-def _dygraph_reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+
+def _dygraph_reduce(tensor,
+                    dst,
+                    op=ReduceOp.SUM,
+                    group=None,
+                    use_calc_stream=True):
     op_type = _get_reduce_op(op, "reduce")
     group = _get_default_group() if group is None else group
     gdst = group.get_group_rank(dst)
@@ -84,7 +91,12 @@ def _dygraph_reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=Tr
     else:
         return task
 
-def _static_reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+
+def _static_reduce(tensor,
+                   dst,
+                   op=ReduceOp.SUM,
+                   group=None,
+                   use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     gdst = dst if group is None else group.get_group_rank(dst)
     assert gdst >= 0, ("dst rank out of group, need global rank")
@@ -132,6 +144,7 @@ def _static_reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=Tru
                          'use_calc_stream': use_calc_stream,
                          'root_id': gdst,
                      })
+
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """

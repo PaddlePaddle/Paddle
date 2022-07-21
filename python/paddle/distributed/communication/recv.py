@@ -18,10 +18,11 @@ from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from .utils import _get_group_rank, _check_single_tensor
 from .group import _get_default_group
+from .utils import _get_group_rank, _check_single_tensor
 
 __all__ = ["recv", "irecv"]
+
 
 def _dygraph_recv(tensor, src=0, group=None, use_calc_stream=True):
     group = _get_default_group() if group is None else group
@@ -31,6 +32,7 @@ def _dygraph_recv(tensor, src=0, group=None, use_calc_stream=True):
         return None
     else:
         return task
+
 
 def _static_recv(tensor, src=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
@@ -53,6 +55,7 @@ def _static_recv(tensor, src=0, group=None, use_calc_stream=True):
                          'dtype': tensor.dtype,
                          'use_calc_stream': use_calc_stream,
                      })
+
 
 def recv(tensor, src=0, group=None, use_calc_stream=True):
     """
@@ -92,6 +95,7 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
         return _dygraph_recv(tensor, src, group, use_calc_stream)
 
     _static_recv(tensor, src, group, use_calc_stream)
+
 
 def irecv(tensor, src=None, group=None):
     """

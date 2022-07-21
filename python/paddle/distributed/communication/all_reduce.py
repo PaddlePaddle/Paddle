@@ -25,7 +25,10 @@ from .group import _get_default_group
 __all__ = ["all_reduce"]
 
 
-def _dygraph_all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+def _dygraph_all_reduce(tensor,
+                        op=ReduceOp.SUM,
+                        group=None,
+                        use_calc_stream=True):
     op_type = _get_reduce_op(op, "all_reduce")
     group = _get_default_group() if group is None else group
     task = group.process_group.allreduce(tensor, op_type)
@@ -35,7 +38,11 @@ def _dygraph_all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=Tru
     else:
         return task
 
-def _static_all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
+
+def _static_all_reduce(tensor,
+                       op=ReduceOp.SUM,
+                       group=None,
+                       use_calc_stream=True):
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
         if op == ReduceOp.SUM:
@@ -74,6 +81,7 @@ def _static_all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True
                          'ring_id': ring_id,
                          'use_calc_stream': use_calc_stream
                      })
+
 
 def all_reduce(tensor, op=ReduceOp.SUM, group=None, use_calc_stream=True):
     """

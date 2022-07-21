@@ -162,7 +162,8 @@ def init_parallel_env():
         )
         return
     # if not compiled with distributed, throw Exception
-    assert core.is_compiled_with_dist(), "PaddlePaddle is not compiled with distribute flag, so distribute functions can not work! if you want to use them, please recompile the PaddlePaddle with distribute flag (WITH_DISTRIBUTE = ON)."
+    assert core.is_compiled_with_dist(
+    ), "PaddlePaddle is not compiled with WITH_DISTRIBUTE ON, so distribute functions can not work! "
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo prarllel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')

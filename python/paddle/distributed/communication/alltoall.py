@@ -22,7 +22,13 @@ from .group import _get_default_group
 
 __all__ = ["alltoall", "alltoall_single"]
 
-def _dygraph_all2all(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
+
+def _dygraph_all2all(in_tensor_list,
+                     out_tensor_list,
+                     group=None,
+                     use_calc_stream=True):
+    temp = paddle.concat(in_tensor_list, axis=0)
+    nranks = len(in_tensor_list)
     group = _get_default_group() if group is None else group
     if len(out_tensor_list) == 0:
         tensor_shape = list(in_tensor_list[0].shape)
@@ -35,7 +41,13 @@ def _dygraph_all2all(in_tensor_list, out_tensor_list, group=None, use_calc_strea
     out_tensor_list.clear()
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
-def _static_all2all(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
+
+def _static_all2all(in_tensor_list,
+                    out_tensor_list,
+                    group=None,
+                    use_calc_stream=True):
+    temp = paddle.concat(in_tensor_list, axis=0)
+    nranks = len(in_tensor_list)
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
@@ -68,7 +80,9 @@ def _static_all2all(in_tensor_list, out_tensor_list, group=None, use_calc_stream
                              'ring_id': ring_id,
                              'use_calc_stream': use_calc_stream,
                          })
+
     out_tensor_list.extend(paddle.split(out, nranks, 0))
+
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     """
@@ -118,13 +132,13 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    temp = paddle.concat(in_tensor_list, axis=0)
-    nranks = len(in_tensor_list)
     if in_dygraph_mode():
-        _dygraph_all2all(in_tensor_list, out_tensor_list, group, use_calc_stream)
+        _dygraph_all2all(in_tensor_list, out_tensor_list, group,
+                         use_calc_stream)
         return
 
     _static_all2all(in_tensor_list, out_tensor_list, group, use_calc_stream)
+
 
 def alltoall_single(in_tensor,
                     out_tensor,

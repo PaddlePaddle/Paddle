@@ -14,13 +14,14 @@
 
 import paddle
 from paddle import _C_ops
+from .group import _get_default_group
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from .group import _get_default_group
 
 __all__ = ["broadcast"]
+
 
 def _dygraph_broadcast(tensor, src, group=None, use_calc_stream=True):
     group = _get_default_group() if group is None else group
@@ -58,6 +59,7 @@ def _static_broadcast(tensor, src, group, use_calc_stream):
                          'use_calc_stream': use_calc_stream,
                          'ring_id': ring_id,
                      })
+
 
 def broadcast(tensor, src, group=None, use_calc_stream=True):
     """

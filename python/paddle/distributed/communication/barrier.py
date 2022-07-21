@@ -17,14 +17,17 @@ from paddle import _C_ops
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers.tensor import fill_constant
 from .group import _get_default_group
 
 __all__ = ["barrier"]
+
 
 def _dygraph_barrier(group=None):
     group = _get_default_group() if group is None else group
     task = group.process_group.barrier()
     task.wait()
+
 
 def _static_barrier(group=None):
     ring_id = 0 if group is None else group.id
@@ -42,6 +45,7 @@ def _static_barrier(group=None):
                      inputs={'X': [temp]},
                      outputs={'Out': [temp]},
                      attrs={'ring_id': ring_id})
+
 
 def barrier(group=None):
     """

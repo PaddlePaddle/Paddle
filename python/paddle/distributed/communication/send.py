@@ -23,6 +23,7 @@ from .utils import _check_single_tensor, _get_group_rank
 
 __all__ = ["send", "isend"]
 
+
 def _dygraph_send(tensor, dst=0, group=None, use_calc_stream=True):
     group = _get_default_group() if group is None else group
     task = group.process_group.send(tensor, dst)
@@ -31,6 +32,7 @@ def _dygraph_send(tensor, dst=0, group=None, use_calc_stream=True):
         return None
     else:
         return task
+
 
 def _static_send(tensor, dst=0, group=None, use_calc_stream=True):
     ring_id = 0 if group is None else group.id
@@ -51,6 +53,7 @@ def _static_send(tensor, dst=0, group=None, use_calc_stream=True):
                          'peer': dst,
                          'use_calc_stream': use_calc_stream,
                      })
+
 
 def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
@@ -87,7 +90,7 @@ def send(tensor, dst=0, group=None, use_calc_stream=True):
     dst = _get_group_rank(dst, group)
     if in_dygraph_mode():
         return _dygraph_send(tensor, dst, group, use_calc_stream)
-    
+
     _static_send(tensor, dst, group, use_calc_stream)
 
 

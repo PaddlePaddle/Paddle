@@ -22,6 +22,7 @@ from .group import _get_default_group, _get_global_group
 
 __all__ = ["scatter"]
 
+
 def _dygraph_scatter(inp, out, group, gsrc, use_calc_stream):
     task = group.process_group.scatter(inp, out, gsrc)
     if use_calc_stream:
@@ -30,14 +31,15 @@ def _dygraph_scatter(inp, out, group, gsrc, use_calc_stream):
     else:
         return task
 
+
 def _static_scatter(inp, out, ring_id, gsrc, nranks, use_calc_stream):
     if _non_static_mode():
-        return _C_ops.c_scatter(inp, out, 'use_calc_stream',
-                                use_calc_stream, 'ring_id', ring_id, 'nranks',
-                                nranks, 'root', gsrc)
+        return _C_ops.c_scatter(inp, out, 'use_calc_stream', use_calc_stream,
+                                'ring_id', ring_id, 'nranks', nranks, 'root',
+                                gsrc)
     op_type = 'c_scatter'
     check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        out, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'scatter')
     helper = LayerHelper(op_type, **locals())
     helper.append_op(type=op_type,
@@ -49,11 +51,10 @@ def _static_scatter(inp, out, ring_id, gsrc, nranks, use_calc_stream):
                          'use_calc_stream': use_calc_stream,
                          'nranks': nranks,
                      })
-    
+
 
 def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
     """
-
     Scatter a tensor to all participators. As shown below, 4 GPUs each start 4 processes and the source of the scatter
     is GPU0. Through scatter operator, the data in GPU0 will be sent to all GPUs averagely.
 
@@ -123,6 +124,6 @@ def scatter(tensor, tensor_list=None, src=0, group=None, use_calc_stream=True):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
     if in_dygraph_mode():
-        return  _dygraph_scatter(temp, tensor, group, gsrc, use_calc_stream)
+        return _dygraph_scatter(temp, tensor, group, gsrc, use_calc_stream)
 
     _static_scatter(temp, tensor, ring_id, gsrc, nranks, use_calc_stream)

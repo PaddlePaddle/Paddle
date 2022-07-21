@@ -15,10 +15,15 @@
 import paddle
 import paddle.fluid.core as core
 
-__all__ = ["_get_group_rank", "_check_single_tensor"]
+__all__ = [
+    "_get_group_rank",
+    "_check_single_tensor",
+]
+
 
 def _get_group_rank(global_rank, group=None):
     return global_rank if group is None else group.get_group_rank(global_rank)
+
 
 def _check_single_tensor(tensor, tensor_name):
     if not isinstance(tensor, (core.eager.Tensor, paddle.Tensor)):
