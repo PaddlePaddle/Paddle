@@ -111,13 +111,19 @@ file(
   "strings/*.cu"
   "strings/gpu/*.cu")
 
-# file(GLOB kernel_cudnn "gpudnn/*.cu")
-# file(GLOB kernel_kps "kps/*.cu")
-file(GLOB kernel_xpu "xpu/*.cc")
-file(GLOB kernel_onednn "onednn/*.cc")
+if(WITH_MKLDNN)
+  file(GLOB kernel_onednn "onednn/*.cc")
+else()
+  set(kernel_onednn)
+endif()
 
-add_library(phi_cpu ${kernel_cc})
+file(GLOB kernel_xpu "xpu/*.cc")
+
+add_library(phi_cpu ${kernel_cc} ${kernel_onednn})
 kernel_declare("${kernel_cc}")
+if(WITH_MKLDNN)
+  kernel_declare(${kernel_onednn})
+endif()
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
 
 set(ADD_PHI_KERNELS phi_cpu)
@@ -152,14 +158,6 @@ if(WITH_XPU)
   kernel_declare("${kernel_xpu_kps}")
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
-endif()
-
-if(WITH_MKLDNN)
-  add_library(phi_onednn ${kernel_onednn})
-  kernel_declare(${kernel_onednn})
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_backends)
-  target_link_libraries(phi_onednn ${COMMON_KERNEL_DEPS})
-  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_onednn)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})

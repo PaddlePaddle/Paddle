@@ -47,10 +47,6 @@ get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 set(phi_modules ${phi_modules} phi_backends)
 set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 
-if(WITH_MKLDNN)
-  add_dependencies(phi_context onednn_context)
-endif()
-
 if(WITH_CUSTOM_DEVICE)
   cc_test(
     custom_device_test
