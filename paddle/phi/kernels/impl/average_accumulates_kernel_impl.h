@@ -1,7 +1,24 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
+#include "paddle/phi/kernels/average_accumulates_kernel.h"
+
+#include <algorithm>
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/average_accumulates_kernel.h"
 
 namespace phi{
 
@@ -66,7 +83,6 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
 
     // Compute
     //auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-
     auto& place = *dev_ctx.eigen_device();
 
     funcs::SetConstant<Context, T> constant_functor;
@@ -79,24 +95,21 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
         // Move the sum to a different buffer to avoid loss of precision due to
         // too many sums.
         out_sum_2_tensor.device(place) = in_sum_2_tensor + in_sum_1_tensor;
-        constant_functor(
-            dev_ctx, out_sum_1, 0.0);
+        constant_functor(dev_ctx, out_sum_1, static_cast<T>(0));
     }
     if (num_accumulates >= min_average_window &&
         num_accumulates >= std::min<int64_t>(max_average_window,
                                                 num_updates * average_window)) {
         //  Now the average window is too long, discard the old sum.
         out_sum_3_tensor.device(place) = in_sum_1_tensor + in_sum_2_tensor;
-        constant_functor(
-            dev_ctx, out_sum_1, 0.0);
-        constant_functor(
-            dev_ctx, out_sum_2, 0.0);
+        constant_functor(dev_ctx, out_sum_1, static_cast<T>(0));
+        constant_functor(dev_ctx, out_sum_2, static_cast<T>(0));
         old_num_accumulates = num_accumulates;
         num_accumulates = 0;
     }
 
     // Set accumulators to output
-    SetAccumulators<Context>(
-        dev_ctx, num_updates, num_accumulates, old_num_accumulates, out_num_accumulates, out_old_num_accumulates, out_num_updates);        
+    SetAccumulators<Context>(dev_ctx, num_updates, num_accumulates, old_num_accumulates, out_num_accumulates, out_old_num_accumulates, out_num_updates);        
 }
+
 }// namespace phi

@@ -434,7 +434,7 @@ void AucInferMeta(const MetaTensor& input,
   }
 }
 
-void AverageAccumulatesMeta(const MetaTensor& param,
+void AverageAccumulatesInferMeta(const MetaTensor& param,
                             const MetaTensor& in_sum_1,
                             const MetaTensor& in_sum_2,
                             const MetaTensor& in_sum_3,

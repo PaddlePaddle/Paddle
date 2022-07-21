@@ -26,7 +26,7 @@ void GetAccumulators(const Context& dev_ctx,
                      int64_t* old_num_accumulates);
 
 template <typename Context>
-void SetAccumulators(const Context& ctx,
+void SetAccumulators(const Context& dev_ctx,
                      int64_t num_updates,
                      int64_t num_accumulates,
                      int64_t old_num_accumulates,                                

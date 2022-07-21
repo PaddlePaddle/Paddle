@@ -21,6 +21,7 @@ import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
 
@@ -231,7 +232,19 @@ class ModelAverage(Optimizer):
         old_num_accumulates = self._get_accumulator('old_num_accumulates',
                                                     param_and_grad[0])
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
-        if framework._non_static_mode():
+        
+        
+        if in_dygraph_mode():
+            _, _, _, _, _, _ =_C_ops.final_state_average_accumulates(
+                param_and_grad[0], sum_1, sum_2, sum_3, 
+                num_accumulates, old_num_accumulates, num_updates,
+                self.average_window,
+                self.max_average_window,
+                self.min_average_window,
+                sum_1, sum_2, sum_3,
+                num_accumulates, old_num_accumulates, num_updates)
+            return None
+        elif framework._non_static_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates(
                 param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
                 old_num_accumulates, num_updates, sum_1, sum_2, sum_3,

@@ -212,7 +212,7 @@ And for a mini-batch in training, accumulators were computed as below steps:
 
 DECLARE_INFER_SHAPE_FUNCTOR(average_accumulates,
                             AverageAccumulatesInferShapeFunctor,
-                            PD_INFER_META(phi::AverageAccumulatesMeta));
+                            PD_INFER_META(phi::AverageAccumulatesInferMeta));
 
 namespace ops = paddle::operators;
 
