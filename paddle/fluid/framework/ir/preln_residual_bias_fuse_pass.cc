@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -118,13 +115,7 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
-  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
-  if (!with_dynamic_shape) {
-    VLOG(3) << "preln_residual_bias_fuse_pass need: with_dynamic_shape. Stop "
-               "this pass, "
-               "please reconfig.";
-    return;
-  }
+
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
