@@ -303,26 +303,32 @@ class PartialProgramLayer:
     def get_backward_program_from(self, forward_program, train_program):
         backward_program = train_program
 
-        # delete forward op：
-        for b_i, block in enumerate(forward_program.blocks):
-            for i in range(len(block.ops)):
-                backward_program.block(b_i)._remove_op(0)
-            if b_i == 0:
-                for i in range(2 * len(self._outputs.var_ids)):
-                    backward_program.block(b_i)._remove_op(0)
+        # 只删除block0中所有的反向op
+        if (len(forward_program.block(0).ops) +
+                2 * len(self._outputs.var_ids)) < len(
+                    train_program.block(0).ops):
+            # delete forward op(only del block0)：
+            for i in range(
+                    len(forward_program.block(0).ops) +
+                    2 * len(self._outputs.var_ids)):
+                backward_program.block(0)._remove_op(0)
+        else:
+            for i in range(len(forward_program.block(0).ops)):
+                backward_program.block(0)._remove_op(0)
 
-        # del unused forward var：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
-        for b_i, block in enumerate(backward_program.blocks):
-            if b_i < len(forward_program.blocks):
-                backward_var_set = set()
-                for op in backward_program.block(b_i).ops:
-                    for name in op.input_arg_names:
-                        backward_var_set.add(name)
-                    for name in op.output_arg_names:
-                        backward_var_set.add(name)
-                for var_key in forward_program.block(b_i).vars.keys():
-                    if var_key not in backward_var_set:
-                        backward_program.block(b_i)._remove_var(var_key)
+        # del unused forward var (only del block0)：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
+        # 因为只删除block0中所有的反向op，子block中不动，子block中op可能用到block0中的var，所以，所有block0中反向op和子block中所有op用的的var，block0均不能删除
+        retain_var_set = set()
+        for block in backward_program.blocks:
+            for op in block.ops:
+                for name in op.input_arg_names:
+                    retain_var_set.add(name)
+                for name in op.output_arg_names:
+                    retain_var_set.add(name)
+
+        for var_key in forward_program.block(0).vars.keys():
+            if var_key not in retain_var_set:
+                backward_program.block(0)._remove_var(var_key)
 
         return backward_program
 
@@ -466,26 +472,27 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        # paddle.enable_static()
+        paddle.enable_static()
 
-        # print(id(self.program))
-        # print(self.program)
+        print(id(self.backward_program))
+        print(self.backward_program)
 
-        # print("=============>train program")
-        # program = paddle.static.CompiledProgram(self.program, build_strategy=self._build_strategy)
-        # print("=============>complie program")
-        # program._compile(core.Scope(), framework._current_expected_place())
-        # print("=============>complie program1")
-        # ir_graph = framework.IrGraph(program._graph)
-        # print("=============>ir graph")
-        # print(ir_graph)
-        # inner_program = ir_graph.to_program()
-        # print(id(inner_program))
-        # print(inner_program)
+        print("=============>train program")
+        program = paddle.static.CompiledProgram(
+            self.backward_program, build_strategy=self._build_strategy)
+        print("=============>complie program")
+        program._compile(core.Scope(), framework._current_expected_place())
+        print("=============>complie program1")
+        ir_graph = framework.IrGraph(program._graph)
+        print("=============>ir graph")
+        print(ir_graph)
+        inner_program = ir_graph.to_program()
+        print(id(inner_program))
+        print(inner_program)
 
-        # paddle.disable_static()
+        paddle.disable_static()
 
-        # # 前向转一个、全模型转一个，然后拆分出反向
+        # 前向转一个、全模型转一个，然后拆分出反向
 
         attrs = [
             'global_block',
@@ -566,6 +573,25 @@ class PartialProgramLayer:
     @property
     def origin_program_id(self):
         return self._origin_program_id
+
+    @LazyInitialized
+    def _backward_pure_fp16_program_id(self):
+        program_id = _hash_with_id(self._backward_pure_fp16_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    def _add_build_strategy_for(input_program):
+        paddle.enable_static()
+        compiled_program = paddle.static.CompiledProgram(
+            input_program, build_strategy=self._build_strategy)
+        compiled_program._compile(core.Scope(),
+                                  framework._current_expected_place())
+        ir_graph = framework.IrGraph(compiled_program._graph)
+        builded_program = ir_graph.to_program()
+        paddle.disable_static()
+        return builded_program
 
     def _prepare(self, inputs):
         """
