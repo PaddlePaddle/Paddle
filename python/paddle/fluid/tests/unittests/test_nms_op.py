@@ -79,10 +79,12 @@ class TestNMSOp(OpTest):
         boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
         boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
 
+        paddle.disable_static()
         self.inputs = {'Boxes': boxes}
         self.attrs = {'iou_threshold': 0.5}
         out_py = nms(boxes, self.attrs['iou_threshold'])
         self.outputs = {'KeepBoxesIdxs': out_py}
+        paddle.enable_static()
 
     def init_dtype_type(self):
         pass
