@@ -209,11 +209,10 @@ void PSGPUWrapper::CopyForPull(const paddle::platform::Place& place,
   //            values.size() * sizeof(float*));
   // float** gpu_values = reinterpret_cast<float**>(&buf_value);
   float* gpu_values = nullptr;
-  xpu_malloc(reinterpret_cast<void**>(&gpu_values),
-             values.size() * sizeof(float*));
+  auto gpu_tmp = memory::Alloc(place, values.size() * sizeof(float*));
+  gpu_values = reinterpret_cast<float*>(gpu_tmp->ptr());
   xpu_memcpy(gpu_values, values.data(), values.size() * sizeof(float*),
              XPU_HOST_TO_DEVICE);
-
   // unsigned long long** c_keys = (unsigned long long**)gpu_keys;
   unsigned long long* c_keys = reinterpret_cast<unsigned long long*>(gpu_keys);
   const long long* c_len = (const long long*)gpu_len;
@@ -255,17 +254,12 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
   for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
     slot_lengths_lod[i] += slot_lengths_lod[i - 1];
   }
-
-  float* gpu_values = nullptr;
-  int64_t* gpu_len = nullptr;
-  int* d_slot_vector = nullptr;
-
-  xpu_malloc(reinterpret_cast<void**>(&gpu_values),
-             grad_values.size() * sizeof(float*));
-  xpu_malloc(reinterpret_cast<void**>(&gpu_len),
-             slot_lengths.size() * sizeof(int64_t));
-  xpu_malloc(reinterpret_cast<void**>(&d_slot_vector),
-             slot_lengths_lod.size() * sizeof(int));
+  auto gpu_values_tmp = memory::Alloc(place, grad_values.size() * sizeof(float*));
+  float* gpu_values = reinterpret_cast<float*>(gpu_values_tmp->ptr());
+  auto gpu_len_tmp = memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
+  int64_t* gpu_len = reinterpret_cast<int64_t*>(gpu_len_tmp->ptr());
+  auto d_slot_vec_tmp = memory::Alloc(place, slot_lengths_lod.size() * sizeof(int));
+  int* d_slot_vector = reinterpret_cast<int*>(d_slot_vec_tmp->ptr());
 
   xpu_memcpy(gpu_values, grad_values.data(),
              grad_values.size() * sizeof(float*), XPU_HOST_TO_DEVICE);

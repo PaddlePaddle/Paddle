@@ -53,10 +53,12 @@ __global__ void search_kernel(Table& table, const KeyType* const keys,
 
 
 template <typename KeyType, typename ValType>
-HashTable<KeyType, ValType>::HashTable(size_t capacity) {
-  container_ = new XPUCacheArray<KeyType, ValType>(capacity);
-  xpu_malloc(reinterpret_cast<void**>(&device_optimizer_config_),
-             sizeof(OptimizerConfig));
+HashTable<KeyType, ValType>::HashTable(size_t capacity, DevPlace& place) {
+  container_ = new XPUCacheArray<KeyType, ValType>(capacity, place);
+  OptimizerConfigAutoPtr_ = memory::Alloc(place, sizeof(OptimizerConfig));
+  device_optimizer_config_ = reinterpret_cast<OptimizerConfig*>(OptimizerConfigAutoPtr_->ptr());
+  // xpu_malloc(reinterpret_cast<void**>(&device_optimizer_config_),
+  //           sizeof(OptimizerConfig));
   xpu_memcpy((void*)device_optimizer_config_, &host_optimizer_config_,
              sizeof(OptimizerConfig), XPU_HOST_TO_DEVICE);
 

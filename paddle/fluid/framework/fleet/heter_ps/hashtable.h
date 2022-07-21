@@ -26,6 +26,8 @@ limitations under the License. */
 #include "common_value.h"  // NOLINT
 #endif
 
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/memory/memory.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
@@ -68,18 +70,19 @@ class TableContainer
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
-    xpu_malloc(reinterpret_cast<void**>(&keys_), capacity_ * sizeof(KeyType));
-    xpu_malloc(reinterpret_cast<void**>(&vals_), capacity_ * sizeof(ValType));
-    cpu_keys_ = (KeyType*)malloc(capacity_ * sizeof(KeyType));
-    cpu_vals_ = (ValType*)malloc(capacity_ * sizeof(ValType));
+  explicit XPUCacheArray(long long capacity, DevPlace& place) : capacity_(capacity), size_(0) {
+    keys_auto_ptr_ = memory::Alloc(place, capacity_ * sizeof(KeyType));
+    vals_auto_ptr_ = memory::Alloc(place, capacity_ * sizeof(ValType));
+    keys_ = reinterpret_cast<KeyType*>(keys_auto_ptr_->ptr());
+    vals_ = reinterpret_cast<ValType*>(vals_auto_ptr_->ptr());
+    CPUPlace cpu_place = CPUPlace();
+    cpu_keys_auto_ptr_ = memory::Alloc(cpu_place, capacity_ * sizeof(KeyType));
+    cpu_vals_auto_ptr_ = memory::Alloc(cpu_place, capacity_ * sizeof(ValType));
+    cpu_keys_ = reinterpret_cast<KeyType*>(cpu_keys_auto_ptr_->ptr());
+    cpu_vals_ = reinterpret_cast<ValType*>(cpu_vals_auto_ptr_->ptr());
   }
 
   virtual ~XPUCacheArray() {
-    xpu_free(keys_);
-    xpu_free(vals_);
-    free(cpu_keys_);
-    free(cpu_vals_);
   }
 
   void print() {
@@ -139,6 +142,8 @@ class XPUCacheArray {
  private:
   long long capacity_;
   long long size_;
+  memory::AllocationPtr keys_auto_ptr_, cpu_keys_auto_ptr_;
+  memory::AllocationPtr vals_auto_ptr_, cpu_vals_auto_ptr_;
   KeyType* keys_;
   ValType* vals_;
   KeyType* cpu_keys_;
@@ -152,7 +157,7 @@ class XPUCacheArray {
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
-  explicit HashTable(size_t capacity);
+  explicit HashTable(size_t capacity, DevPlace& place);
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
@@ -231,6 +236,7 @@ class HashTable {
   TableContainer<KeyType, ValType>* container_;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
+  memory::AllocationPtr OptimizerConfigAutoPtr_;
 #endif
   OptimizerConfig* device_optimizer_config_;
   OptimizerConfig host_optimizer_config_;

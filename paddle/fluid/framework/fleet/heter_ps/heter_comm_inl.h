@@ -41,8 +41,11 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
 #if defined(PADDLE_WITH_XPU_KP)
     int dev_id = resource_->dev_id(i);
     AnyDeviceGuard guard(dev_id);
-#endif
+    DevPlace place = DevPlace(dev_id);
+    auto table = new Table(capacity / load_factor_, place);
+#else
     auto table = new Table(capacity / load_factor_);
+#endif
 #if defined(PADDLE_WITH_XPU_KP)
     int dev_idx = get_index_by_devid(dev_id);
     table->set_xpu_id(dev_id);
