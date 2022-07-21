@@ -1458,11 +1458,9 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
 
     def _save_dense_params(self, *args, **kwargs):
-        #        if self.role_maker._is_first_worker():
-        self._ps_save_dense_params(*args, **kwargs)
-
-
-#        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._ps_save_dense_params(*args, **kwargs)
+        fleet.util.barrier()
 
     def _save_persistables(self, *args, **kwargs):
         if self.role_maker._is_first_worker():
