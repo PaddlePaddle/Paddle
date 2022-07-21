@@ -302,7 +302,6 @@ class FleetWrapper {
                     const int mode,
                     const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
-
   void Revert();
   void CheckSavePrePatchDone();
 
