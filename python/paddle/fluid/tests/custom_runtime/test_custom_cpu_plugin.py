@@ -138,12 +138,16 @@ class TestCustomCPUPlugin(unittest.TestCase):
         import paddle
         x = np.random.random([2, 2]).astype("float32")
         # cpu -> custom
-        cpu_tensor = paddle.to_tensor(x, dtype='float32', place=paddle.CPUPlace())
-        custom_cpu_tensor = cpu_tensor._copy_to(paddle.CustomPlace('custom_cpu', 0), True)
+        cpu_tensor = paddle.to_tensor(x,
+                                      dtype='float32',
+                                      place=paddle.CPUPlace())
+        custom_cpu_tensor = cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
         self.assertTrue(np.array_equal(custom_cpu_tensor, x))
         self.assertTrue(custom_cpu_tensor.place.is_custom_place())
         # custom -> custom
-        another_custom_cpu_tensor = custom_cpu_tensor._copy_to(paddle.CustomPlace('custom_cpu', 0), True)
+        another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
         self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
         # custom -> cpu
@@ -151,7 +155,8 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self.assertTrue(np.array_equal(another_cpu_tensor, x))
         self.assertTrue(another_cpu_tensor.place.is_cpu_place())
         # custom -> custom self
-        another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(paddle.CustomPlace('custom_cpu', 0), True)
+        another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
         self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
 
