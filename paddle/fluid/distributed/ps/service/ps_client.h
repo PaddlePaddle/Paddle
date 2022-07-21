@@ -319,22 +319,6 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> Revert() {
-    VLOG(0) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
-
-  virtual std::future<int32_t> CheckSavePrePatchDone() {
-    VLOG(0) << "Did not implement";
-    std::promise<int32_t> promise;
-    std::future<int> fut = promise.get_future();
-    promise.set_value(-1);
-    return fut;
-  }
-
  protected:
   virtual int32_t Initialize() = 0;
   size_t _client_id;
