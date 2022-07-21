@@ -151,14 +151,6 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
-    pull_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
-      pull_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    hbm_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
   }
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -392,6 +384,21 @@ class PSGPUWrapper {
   void InitializeGPUServer(paddle::distributed::PSParameter ps_param) {
     auto sparse_table =
         ps_param.server_param().downpour_server_param().downpour_table_param(0);
+    // set build thread_num and shard_num
+    thread_keys_thread_num_ = sparse_table.shard_num();
+    thread_keys_shard_num_ = sparse_table.shard_num();
+    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
+            << " shard_num:" << thread_keys_shard_num_;
+
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
         sparse_table_accessor.ctr_accessor_param();
