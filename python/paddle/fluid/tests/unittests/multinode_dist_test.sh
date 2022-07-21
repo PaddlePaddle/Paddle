@@ -48,7 +48,6 @@ fi
 
 unset PYTHONPATH
 timeout -s SIGKILL ${run_time} ${MPIRUN} ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
-
 exit_code=$?
 if [[ $exit_code -eq 0 ]]; then
     exit 0

@@ -95,7 +95,8 @@ def train_mlp(model,
               sync_comm=False,
               test_minimize=False,
               save_model=False):
-    group = paddle.distributed.new_group([0, 1, 2, 3, 4, 5, 6, 7])
+    group = paddle.distributed.new_group(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
     if opt_group:
         optimizer = optimizer_setting(model=model,
                                       use_pure_fp16=use_pure_fp16,

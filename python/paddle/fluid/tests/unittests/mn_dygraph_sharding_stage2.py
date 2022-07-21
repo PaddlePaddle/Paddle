@@ -37,7 +37,7 @@ linear_size = 1000
 
 strategy = fleet.DistributedStrategy()
 strategy.hybrid_configs = {
-    "dp_degree": 8,
+    "dp_degree": 16,
     "mp_degree": 1,
     "pp_degree": 1,
     "sharding_degree": 1
@@ -102,7 +102,8 @@ def train_mlp(model,
         hcg = fleet.get_hybrid_communicate_group()
         group = hcg.get_check_parallel_group()
     else:
-        group = paddle.distributed.new_group([0, 1, 2, 3, 4, 5, 6, 7])
+        group = paddle.distributed.new_group(
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
     if opt_group:
         optimizer = optimizer_setting(model=model,
                                       use_pure_fp16=use_pure_fp16,
@@ -194,7 +195,8 @@ def test_dp_stage2():
     for i in range(len(dp_params)):
         np.testing.assert_allclose(dp_params[i].numpy(),
                                    stage2_params[i].numpy(),
-                                   rtol=1e-6)
+                                   rtol=1e-6,
+                                   atol=5e-4)
 
     # stage2 accumulate grad
     stage2_params = train_mlp(mlp3, sharding_stage=2, accumulate_grad=True)
@@ -216,7 +218,8 @@ def test_dp_stage2():
     for i in range(len(dp_params)):
         np.testing.assert_allclose(dp_params[i].numpy(),
                                    stage2_params[i].numpy(),
-                                   rtol=1e-6)
+                                   rtol=1e-6,
+                                   atol=5e-4)
 
     # save/load model
     output_dir = tempfile.mkdtemp()

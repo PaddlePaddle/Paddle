@@ -163,7 +163,7 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
         from common import init_parallel_env
         import paddle
         from paddle.distributed import fleet
-        hcg = init_parallel_env("DP2-MP2-PP2-SH1-O1", 32)
+        hcg = init_parallel_env("DP4-MP2-PP2-SH1-O1", 64)
         pp_degree = hcg.get_pipe_parallel_world_size()
         import numpy as np
         crit = Criterion()

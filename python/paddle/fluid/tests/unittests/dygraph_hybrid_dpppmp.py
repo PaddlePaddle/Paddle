@@ -163,7 +163,7 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
         from common import init_parallel_env
         import paddle
         from paddle.distributed import fleet
-        hcg = init_parallel_env("DP2-MP2-PP2-SH1-O1", 32)
+        hcg = init_parallel_env("DP4-MP2-PP2-SH1-O1", 64)
         pp_degree = hcg.get_pipe_parallel_world_size()
         import numpy as np
         crit = Criterion()
@@ -205,7 +205,7 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
             optimizer_base.clear_grad()
 
             loss_base_arr.append(loss_base.numpy())
-            loss_hybrid_arr.append(loss)
+            loss_hybrid_arr.append(loss.numpy())
         assert np.allclose(loss_base_arr, loss_hybrid_arr, rtol=1e-5, atol=1e-5)
 
 

@@ -109,7 +109,7 @@ class TestDistBase(unittest.TestCase):
                                     stdout=sys.stderr,
                                     stderr=sys.stdout,
                                     env=filted_envs)
-        launcher.communicate(timeout=120)
+        launcher.communicate(timeout=240)
 
         if launcher.poll() is None:
             self.temp_dir.cleanup()
