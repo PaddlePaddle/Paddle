@@ -183,6 +183,10 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
                                      MetaTensor* dscale,
                                      MetaTensor* ddy);
 
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx);
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
