@@ -18,6 +18,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/operators/controlflow/mkldnn/compare_mkldnn_op.h"
+#endif
 
 namespace paddle {
 namespace operators {
