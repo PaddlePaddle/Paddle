@@ -855,7 +855,7 @@
   output : Tensor(x_grad), Tensor(grid_grad)
   infer_meta : 
     func : GeneralBinaryGradInferMeta
-    param : [grid, out_grad]
+    param : [x, grid]
   kernel : 
     func : grid_sample_grad
     data_type : x
