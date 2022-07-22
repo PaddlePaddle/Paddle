@@ -63,10 +63,15 @@ class SparseAdagradOptimizer : public Optimizer {
   __device__ void update_value_work(const OptimizerConfig& optimizer_config, int n,
                             float* w,
                             float* sgd,  // NOLINT
-                            const float* g, float scale) {
+                            const float* g, float scale, float slot) {
     float& g2sum = sgd[G2SumIndex()];
     double add_g2sum = 0;
-    double ratio = optimizer_config.mf_learning_rate *
+    
+    float learning_rate = optimizer_config.mf_learning_rate;
+    if (slot != optimizer_config.nodeid_slot) {
+        learning_rate = optimizer_config.feature_learning_rate;
+    }
+    double ratio = learning_rate *
                    sqrt(optimizer_config.mf_initial_g2sum /
                         (optimizer_config.mf_initial_g2sum + g2sum));
     for (int i = 0; i < n; ++i) {
@@ -102,12 +107,13 @@ class SparseAdagradOptimizer : public Optimizer {
     ptr[feature_value_accessor_.common_feature_value.DeltaScoreIndex()] +=
         optimizer_config.nonclk_coeff * (g_show - g_click) +
                         optimizer_config.clk_coeff * g_click;
+    float slot = ptr[feature_value_accessor_.common_feature_value.SlotIndex()];
 
     update_value_work(optimizer_config, 1,
               ptr + feature_value_accessor_.common_feature_value.EmbedWIndex(),
               ptr + feature_value_accessor_.common_feature_value.EmbedG2SumIndex(),
               grad + feature_value_accessor_.common_push_value.EmbedGIndex(),
-              g_show);
+              g_show, slot);
 
     int mf_dim = int(ptr[feature_value_accessor_.common_feature_value.MfDimIndex()]);
     if (ptr[feature_value_accessor_.common_feature_value.MfSizeIndex()] == 0) {
@@ -132,7 +138,7 @@ class SparseAdagradOptimizer : public Optimizer {
           ptr + feature_value_accessor_.common_feature_value.EmbedxWIndex(),
           ptr + feature_value_accessor_.common_feature_value.EmbedxG2SumIndex(),
           grad + feature_value_accessor_.common_push_value.EmbedxGIndex(),
-          g_show);
+          g_show, slot);
     }
   }
   

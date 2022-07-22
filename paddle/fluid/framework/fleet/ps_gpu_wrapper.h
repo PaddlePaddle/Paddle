@@ -332,7 +332,7 @@ class PSGPUWrapper {
                     float mf_initial_g2sum, float mf_initial_range,
                     float mf_min_bound, float mf_max_bound,
                     float mf_beta1_decay_rate, float mf_beta2_decay_rate,
-                    float mf_ada_epsilon);
+                    float mf_ada_epsilon, float nodeid_slot, float feature_learning_rate);
 
 #ifdef PADDLE_WITH_PSCORE
   void add_sparse_optimizer(
@@ -409,7 +409,10 @@ class PSGPUWrapper {
     config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
     config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
-
+    
+    config["nodeid_slot"] = sparse_table_accessor.graph_sgd_param().nodeid_slot();
+    config["feature_learning_rate"] = sparse_table_accessor.graph_sgd_param().feature_learning_rate();
+    
     if (accessor_class == "CtrDymfAccessor") {
       // optimizer config for embed_w and embedx
       add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
@@ -482,14 +485,21 @@ class PSGPUWrapper {
     float mf_ada_epsilon = (config.find("mf_ada_epsilon") == config.end())
                                ? 1e-8
                                : config["mf_ada_epsilon"];
-
+    
+    float feature_learning_rate = (config.find("feature_learning_rate") == config.end())
+                                 ? 0.05
+                                 : config["feature_learning_rate"];
+    
+    float nodeid_slot = (config.find("nodeid_slot") == config.end())
+                                 ? 9008
+                                 : config["nodeid_slot"];
     this->SetSparseSGD(nonclk_coeff, clk_coeff, min_bound, max_bound,
                        learning_rate, initial_g2sum, initial_range,
                        beta1_decay_rate, beta2_decay_rate, ada_epsilon);
     this->SetEmbedxSGD(mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
                        mf_initial_range, mf_min_bound, mf_max_bound,
                        mf_beta1_decay_rate, mf_beta2_decay_rate,
-                       mf_ada_epsilon);
+                       mf_ada_epsilon, nodeid_slot, feature_learning_rate);
 
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
@@ -512,7 +522,9 @@ class PSGPUWrapper {
     VLOG(0) << "InitializeGPUServer embed_sgd_dim_:" << embed_sgd_dim_
             << " embedx_sgd_dim_:" << embedx_sgd_dim_
             << "  embedx_dim_:" << embedx_dim_
-            << " optimizer_type_:" << optimizer_type_;
+            << " optimizer_type_:" << optimizer_type_
+            << " nodeid_slot:" << nodeid_slot
+            << " feature_learning_rate:" << feature_learning_rate;
   }
 
   void SetDate(int year, int month, int day) {

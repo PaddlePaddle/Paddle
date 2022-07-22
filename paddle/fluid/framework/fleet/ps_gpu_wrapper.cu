@@ -613,11 +613,11 @@ void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
                                 float mf_initial_range, float mf_min_bound,
                                 float mf_max_bound, float mf_beta1_decay_rate,
                                 float mf_beta2_decay_rate,
-                                float mf_ada_epsilon) {
+                                float mf_ada_epsilon, float nodeid_slot, float feature_learning_rate) {
   optimizer_config_.set_embedx_sgd(
       mf_create_thresholds, mf_learning_rate, mf_initial_g2sum,
       mf_initial_range, mf_min_bound, mf_max_bound, mf_beta1_decay_rate,
-      mf_beta2_decay_rate, mf_ada_epsilon);
+      mf_beta2_decay_rate, mf_ada_epsilon, nodeid_slot, feature_learning_rate);
 }
 
 }  // end namespace framework
