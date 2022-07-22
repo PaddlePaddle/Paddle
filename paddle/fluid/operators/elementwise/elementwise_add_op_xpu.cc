@@ -53,11 +53,8 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 
     if (dx != nullptr) {
       if (dx->dims() == dz_dims) {
-        framework::TensorCopy(
-            *dz,
-            ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(),
-            dx);
+        // TensorCopy will call mutable_data of dx.
+        framework::TensorCopy(*dz, ctx.GetPlace(), dev_ctx, dx);
       } else {
         // For inplace strategy, dx will be stored in addr of dz, which makes
         // the result of dy wrong.
@@ -81,11 +78,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
 
     if (dy != nullptr) {
       if (dy->dims() == dz_dims) {
-        framework::TensorCopy(
-            *dz,
-            ctx.GetPlace(),
-            ctx.template device_context<platform::DeviceContext>(),
-            dy);
+        framework::TensorCopy(*dz, ctx.GetPlace(), dev_ctx, dy);
       } else {
         std::vector<int> reduce_dims = GetReduceDim(dy->dims(), dz_dims, axis);
         std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
