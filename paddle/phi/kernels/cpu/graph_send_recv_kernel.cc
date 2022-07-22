@@ -91,23 +91,28 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
-    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   } else {
+    // set out dim following out_size.
+    std::vector<int64_t> dims_ = phi::vectorize(src_dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->Resize(phi::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   }
+
   ctx.template Alloc<T>(out);
   T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(p_output, 0, memset_bytes);
 
   if (index_size == 0) return;
-
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
@@ -121,10 +126,8 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
   } else if (pool_type == "MEAN") {
-    if (out_size <= 0) {
-      dst_count->Resize({src_dims[0]});
-    }
     int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
+    dst_count->Resize({input_size});
     ctx.template Alloc<int>(dst_count);
     int* p_dst_count = dst_count->data<int>();
     memset(p_dst_count, 0, input_size * sizeof(int));

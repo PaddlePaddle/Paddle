@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.framework import Variable
@@ -112,27 +114,17 @@ def graph_send_recv(x,
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if out_size is None:
-        if _in_legacy_dygraph():
-            out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index,
-                                              'pool_type', pool_type.upper())
-            return out
-        if in_dygraph_mode():
-            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                      pool_type.upper(), [0])
-    else:
-        if _in_legacy_dygraph():
-            out_size = convert_out_size_to_list(out_size)
-            out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                              dst_index, 'pool_type',
-                                              pool_type.upper(), 'out_size',
-                                              out_size)
-            return out
-        if in_dygraph_mode():
-            out_size = convert_out_size_to_list(out_size)
-            return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                      pool_type.upper(),
-                                                      out_size)
+    if _in_legacy_dygraph():
+        out_size = convert_out_size_to_list(out_size)
+        out, tmp = _C_ops.graph_send_recv(x, src_index,
+                                          dst_index, None, 'pool_type',
+                                          pool_type.upper(), 'out_size',
+                                          out_size)
+        return out
+    if in_dygraph_mode():
+        out_size = convert_out_size_to_list(out_size)
+        return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
+                                                  pool_type.upper(), out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
                              "graph_send_recv")
@@ -140,9 +132,10 @@ def graph_send_recv(x,
                              "graph_send_recv")
     check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
                              "graph_send_recv")
-    check_type(out_size, 'out_size',
-               (int, np.int32, np.int64, Variable, list, tuple),
-               'graph_send_recv')
+    if out_size:
+        check_type(out_size, 'out_size',
+                   (int, np.int32, np.int64, Variable, list, tuple),
+                   'graph_send_recv')
     if isinstance(out_size, Variable):
         check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'],
                     'graph_send_recv')
@@ -174,7 +167,9 @@ def convert_out_size_to_list(out_size):
     Convert out_size(int, np.int32, np.int64, Variable) to list
     in imperative mode.
     """
-    if isinstance(out_size, (int, np.int32, np.int64)):
+    if out_size is None:
+        out_size = [0]
+    elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
     else:
         out_size = [out_size.numpy().astype(int)[0]]
@@ -186,9 +181,10 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
     Convert out_size(int, np.int32, np.int64, Variable) to inputs
     and attrs in static mode.
     """
-    if isinstance(out_size, (int, np.int32, np.int64)):
-        out_size = [out_size]
-        attrs['out_size'] = out_size
+    if out_size is None:
+        attrs['out_size'] = [0]
+    elif isinstance(out_size, (int, np.int32, np.int64)):
+        attrs['out_size'] = [out_size]
     elif isinstance(out_size, Variable):
         out_size.stop_gradient = True
         check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'],

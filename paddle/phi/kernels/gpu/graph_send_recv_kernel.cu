@@ -40,11 +40,16 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
-    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   } else {
+    // set out dim following out_size.
+    std::vector<int64_t> dims_ = phi::vectorize(src_dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->Resize(phi::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
@@ -92,7 +97,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  int64_t input_size = src_dims[0];
+  int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
   if (pool_type == "SUM") {
     GraphSendRecvSumCUDAFunctor<T, IndexT> functor;
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
@@ -104,9 +109,6 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         <<<grid, block, 0, ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
-    if (out_size > 0) {
-      input_size = out_size;
-    }
     int64_t grid_max_tmp = (input_size * slice_size + block - 1) / block;
     int64_t grid_max =
         grid_max_tmp < max_grid_dimx ? grid_max_tmp : max_grid_dimx;
@@ -118,9 +120,6 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
         <<<grid, block, 0, ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
-    if (out_size > 0) {
-      input_size = out_size;
-    }
     int64_t grid_min_tmp = (input_size * slice_size + block - 1) / block;
     int64_t grid_min =
         grid_min_tmp < max_grid_dimx ? grid_min_tmp : max_grid_dimx;
@@ -131,12 +130,9 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
     GraphSendRecvCUDAKernel<T, IndexT, GraphSendRecvSumCUDAFunctor<T, IndexT>>
         <<<grid, block, 0, ctx.stream()>>>(
             p_src, s_index, d_index, p_output, index_size, slice_size, functor);
-
+    dst_count->Resize({input_size});
     ctx.template Alloc<int32_t>(dst_count);
-    int32_t* p_dst_count = dst_count->data<int32_t>();
-    if (out_size > 0) {
-      input_size = out_size;
-    }
+    int* p_dst_count = dst_count->data<int>();
 
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
