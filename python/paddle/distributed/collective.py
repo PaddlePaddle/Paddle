@@ -1047,18 +1047,15 @@ def _convert_tensor_to_object(tensor):
     return _unpickler(io.BytesIO(tensor.numpy())).load()
 
 
-def all_gather_object(object_list, obj, group=None, use_calc_stream=True):
+def all_gather_object(object_list, obj, group=None):
     """
 
-    Gather picklable objects from all participators and all get the result. Through the all_gather operator, each GPU will have data
-    from all GPUs.
+    Gather picklable objects from all participators and all get the result. Similiar to all_gather(), but python object can be passed in.
 
     Args:
         object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
         obj (Any): The picklable object to send.
         group (Group): The group instance return by new_group or None for global default group.
-        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
-            Default to True.
 
     Returns:
         None.
@@ -1090,7 +1087,7 @@ def all_gather_object(object_list, obj, group=None, use_calc_stream=True):
     tensor = _convert_object_to_tensor(obj)
 
     tensor_list = []
-    all_gather(tensor_list, tensor, group, use_calc_stream)
+    all_gather(tensor_list, tensor, group)
     for tensor in tensor_list:
         object_list.append(_convert_tensor_to_object(tensor))
 
