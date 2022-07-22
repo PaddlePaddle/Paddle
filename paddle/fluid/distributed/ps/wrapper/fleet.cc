@@ -529,10 +529,12 @@ void FleetWrapper::PushSparseFromTensorAsync(
     uint64_t padding_id,
     platform::Place place,
     std::vector<const LoDTensor*>* inputs,
+    std::vector<int>& slots,
     const LoDTensor* shows,
     const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs,
     bool use_cvm_op) {
+  CHECK(slots.size() == inputs->size());
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
@@ -568,8 +570,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
   // TODO(zhaocaibei123): check type of show/clk is int? float? uint64?
   // const long int* show_tensor = shows->data<int64_t>();
   // const long int* clk_tensor = clks->data<int64_t>();
-  const int64_t* show_tensor = shows->data<int64_t>();
-  const int64_t* clk_tensor = clks->data<int64_t>();
+  const float* show_tensor = shows->data<float>();
+  const float* clk_tensor = clks->data<float>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
     framework::LoDTensor* g_tensor = outputs->at(index);
@@ -603,15 +605,14 @@ void FleetWrapper::PushSparseFromTensorAsync(
           push_keys.emplace_back(real_id);
           if (use_cvm_op) {
             push_values.emplace_back(fea_dim + 1);
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            push_values.back()[0] = static_cast<float>(slots[index]);
             float* data = push_values.back().data() + 1;
             memcpy(data, g + output_len, sizeof(float) * fea_dim);
           } else {
             push_values.emplace_back(fea_dim + 3);
             // slot show clk grad... consistent with CtrCommonPushValue defined
-            // in
-            // ctr_accessor.h
-            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            // in ctr_accessor.h
+            push_values.back()[0] = static_cast<float>(slots[index]);
             push_values.back()[1] =
                 (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
             push_values.back()[2] =
@@ -631,18 +632,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
         push_keys.emplace_back(real_id);
         if (use_cvm_op) {
           push_values.emplace_back(fea_dim + 1);
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[0] = static_cast<float>(slots[index]);
           float* data = push_values.back().data() + 1;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         } else {
           push_values.emplace_back(fea_dim + 3);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] =
-              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] =
-              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          push_values.back()[0] = static_cast<float>(slots[index]);
+          push_values.back()[1] = (i >= show_size ? 1 : show_tensor[i]);
+          push_values.back()[2] = (i >= clk_size ? 0 : clk_tensor[i]);
           float* data = push_values.back().data() + 3;
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
         }
