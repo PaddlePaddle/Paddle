@@ -52,15 +52,12 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
 
     if (dx != nullptr) {
-      T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
       if (dx->dims() == dz_dims) {
-        if (dx_data != dz_data) {
-          framework::TensorCopy(
-              *dz,
-              ctx.GetPlace(),
-              ctx.template device_context<platform::DeviceContext>(),
-              dx);
-        }
+        framework::TensorCopy(
+            *dz,
+            ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(),
+            dx);
       } else {
         // For inplace strategy, dx will be stored in addr of dz, which makes
         // the result of dy wrong.
@@ -71,6 +68,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         std::vector<int> reduce_dims = GetReduceDim(dx->dims(), dz_dims, axis);
         std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
 
+        T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
         int ret =
             xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUType*>(dz_data),
@@ -82,18 +80,16 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     }
 
     if (dy != nullptr) {
-      T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
       if (dy->dims() == dz_dims) {
-        if (dy_data != dz_data) {
-          framework::TensorCopy(
-              *dz,
-              ctx.GetPlace(),
-              ctx.template device_context<platform::DeviceContext>(),
-              dy);
-        }
+        framework::TensorCopy(
+            *dz,
+            ctx.GetPlace(),
+            ctx.template device_context<platform::DeviceContext>(),
+            dy);
       } else {
         std::vector<int> reduce_dims = GetReduceDim(dy->dims(), dz_dims, axis);
         std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
+        T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
         int ret =
             xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUType*>(dz_data),
