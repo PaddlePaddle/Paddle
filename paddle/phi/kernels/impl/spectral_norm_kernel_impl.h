@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/spectral_norm.h"
 
 namespace phi {
 
@@ -27,21 +27,11 @@ void SpectrumNormKernel(const Context& dev_ctx
                         int power_iters,
                         float eps,
                         DenseTensor* out)
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto weight = ctx.Input<Tensor>("Weight");
-    auto u = ctx.Input<Tensor>("U");
-    auto v = ctx.Input<Tensor>("V");
-    auto out = ctx.Output<Tensor>("Out");
+    const int h = u.dims()[0];
+    const int w = v.dims()[0];
 
-    int dim = ctx.Attr<int>("dim");
-    int power_iters = ctx.Attr<int>("power_iters");
-    float eps = ctx.Attr<float>("eps");
-
-    const int h = u->dims()[0];
-    const int w = v->dims()[0];
-
-    Tensor weight_mat;
-    auto dims = weight->dims();
+    DenseTensor weight_mat;
+    auto dims = weight.dims();
     const int rank = dims.size();
     std::vector<int> real_dims;
     if (dim != 0) {
@@ -49,55 +39,57 @@ void SpectrumNormKernel(const Context& dev_ctx
         perm.push_back(dim);
         real_dims.push_back(dims[dim]);
         for (int i = 0; i < rank; i++) {
-        if (i != dim) {
-            perm.push_back(i);
-            real_dims.push_back(dims[i]);
+            if (i != dim) {
+                perm.push_back(i);
+                real_dims.push_back(dims[i]);
+            }
         }
-        }
-        weight_mat.mutable_data<T>(phi::make_ddim(real_dims), ctx.GetPlace());
-        TransCompute<DeviceContext, T>(rank, *weight, &weight_mat, perm, dev_ctx);
+        weight_mat.Resize(phi::make_ddim(real_dims));
+        dev_ctx.template Alloc<T>(&weight_mat);
+        TransCompute2DTo5D<Context, T>(rank, weight, &weight_mat, perm, dev_ctx);
     } else {
         for (int i = 0; i < rank; i++) {
-        real_dims.push_back(i);
+            real_dims.push_back(i);
         }
-        paddle::framework::TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
+        phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), false, &weight_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
 
-    Tensor sigma;
-    sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
-    Tensor uu, vv;
-    paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
-    paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
-    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(&sigma,
-                                                    &(uu.Resize({h, 1})),
-                                                    &(vv.Resize({w, 1})),
-                                                    &weight_mat,
-                                                    power_iters,
-                                                    eps,
-                                                    ctx);
+    DenseTensor sigma;
+    sigma.Resize(weight_mat.dims());
+    dev_ctx.template Alloc<T>(sigma);
+    DenseTensor uu, vv;
+    phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), false, &uu);
+    phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), false, &vv);
+    CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
+                                                &weight_mat,
+                                                &(uu.Resize({h, 1})),
+                                                &(vv.Resize({w, 1})),
+                                                &sigma,
+                                                power_iters,
+                                                eps);
 
     if (dim != 0) {
         std::vector<int> perm;
         for (int i = 0; i < rank; i++) {
-        if (i < dim) {
-            perm.push_back(i + 1);
-        } else if (i == dim) {
-            perm.push_back(0);
-        } else {
-            perm.push_back(i);
+            if (i < dim) {
+                perm.push_back(i + 1);
+            } else if (i == dim) {
+                perm.push_back(0);
+            } else {
+                perm.push_back(i);
+            }
         }
-        }
-        out->mutable_data<T>(dims, ctx.GetPlace());
-        TransCompute<DeviceContext, T>(
+        out->Resize(dims)
+        dev_ctx.template Alloc<T>(out);
+        TransCompute2DTo5D<Context, T>(
             rank,
             weight_mat.Resize(phi::make_ddim(real_dims)),
             out,
             perm,
             dev_ctx);
     } else {
-        paddle::framework::TensorCopySync(
-            weight_mat.Resize(dims), ctx.GetPlace(), out);
+        phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), false, out);
     }
 }
 

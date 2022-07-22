@@ -14,46 +14,41 @@
 
 #pragma once
 
-namespace phi {
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using Tensor = framework::Tensor;
+namespace phi {
 
 using Array1 = Eigen::DSizes<int64_t, 1>;
 using Array2 = Eigen::DSizes<int64_t, 2>;
 using IndexPair = Eigen::IndexPair<int>;
 
-template <typename DeviceContext, typename T>
-static inline void TransCompute(const int rank,
-                                const Tensor& in,
-                                Tensor* out,
+template <typename Context, typename T>
+static inline void TransCompute2DTo5D(const Context& dev_ctx,
+                                const DenseTensor& in,
+                                const int rank,
                                 const std::vector<int>& perm,
-                                const DeviceContext& dev_ctx) {
+                                DenseTensor* out) {
   if (rank <= 1 || rank > 5) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(errors::Fatal(
         "Weight rank of SpectralNorm should be in range [2, 5], but got %d.",
         rank));
   }
 
   switch (rank) {
     case 2:
-      phi::funcs::Transpose<DeviceContext, T, 2> trans2;
+      phi::funcs::Transpose<Context, T, 2> trans2;
       trans2(dev_ctx, in, out, perm);
       break;
     case 3:
-      phi::funcs::Transpose<DeviceContext, T, 3> trans3;
+      phi::funcs::Transpose<Context, T, 3> trans3;
       trans3(dev_ctx, in, out, perm);
       break;
     case 4:
-      phi::funcs::Transpose<DeviceContext, T, 4> trans4;
+      phi::funcs::Transpose<Context, T, 4> trans4;
       trans4(dev_ctx, in, out, perm);
       break;
     case 5:
-      phi::funcs::Transpose<DeviceContext, T, 5> trans5;
+      phi::funcs::Transpose<Context, T, 5> trans5;
       trans5(dev_ctx, in, out, perm);
       break;
     default:
@@ -61,17 +56,17 @@ static inline void TransCompute(const int rank,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 static inline void CalcMatrixSigmaAndNormWeight(
-    Tensor* sigma,
-    Tensor* u,
-    Tensor* v,
-    Tensor* weight,
+    const Context& dev_ctx,
+    DenseTensor* weight,
+    DenseTensor* u,
+    DenseTensor* v,
+    DenseTensor* sigma,
     const int power_iters,
-    const float eps,
-    const framework::ExecutionContext& ctx) {
-  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    const float eps) {
+  auto& place = *dev_ctx.eigen_device();
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto sigma_t = EigenTensor<T, 2>::From(*sigma);
   auto weight_t = EigenTensor<T, 2>::From(*weight);
   auto u_t = EigenTensor<T, 2>::From(*u);
@@ -94,8 +89,9 @@ static inline void CalcMatrixSigmaAndNormWeight(
             Array1(h));
     u_t.device(place) = u_t / (u_t_norm + u_t_norm.constant(eps));
   }
-  Tensor weight_v;
-  weight_v.mutable_data<T>({h, 1}, ctx.GetPlace());
+  DenseTensor weight_v;
+  weight_v.Resize({h, 1});
+  dev_ctx.template Alloc<T>(&weight_v);
   blas.MatMul(*weight, false, *v, false, T(1), &weight_v, T(0));
   auto weight_v_t = EigenTensor<T, 2>::From(weight_v);
   sigma_t.device(place) = (u_t * weight_v_t)

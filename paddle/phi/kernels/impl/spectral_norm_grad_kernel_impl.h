@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/spectral_norm.h"
 
 namespace phi {
 
@@ -28,24 +28,14 @@ void SpectrumNormGradKernel(const Context& dev_ctx
                         int power_iters,
                         float eps,
                         DenseTensor* weight_grad){
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-    auto weight = ctx.Input<Tensor>("Weight");
-    auto u = ctx.Input<Tensor>("U");
-    auto v = ctx.Input<Tensor>("V");
-    auto out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto weight_grad = ctx.Output<Tensor>(framework::GradVarName("Weight"));
+    auto& place = *dev_ctx.eigen_device();
+    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-    int dim = ctx.Attr<int>("dim");
-    int power_iters = ctx.Attr<int>("power_iters");
-    float eps = ctx.Attr<float>("eps");
+    const int h = u.dims()[0];
+    const int w = v.dims()[0];
 
-    const int h = u->dims()[0];
-    const int w = v->dims()[0];
-
-    Tensor weight_mat, out_grad_mat;
-    auto dims = weight->dims();
+    DenseTensor weight_mat, out_grad_mat;
+    auto dims = weight.dims();
     const int rank = dims.size();
     std::vector<int> real_dims;
     if (dim != 0) {
@@ -53,47 +43,50 @@ void SpectrumNormGradKernel(const Context& dev_ctx
         perm.push_back(dim);
         real_dims.push_back(dims[dim]);
         for (int i = 0; i < rank; i++) {
-        if (i != dim) {
-            perm.push_back(i);
-            real_dims.push_back(dims[i]);
+            if (i != dim) {
+                perm.push_back(i);
+                real_dims.push_back(dims[i]);
+            }
         }
-        }
-        weight_mat.mutable_data<T>(phi::make_ddim(real_dims), ctx.GetPlace());
-        out_grad_mat.mutable_data<T>(phi::make_ddim(real_dims), ctx.GetPlace());
-        TransCompute<DeviceContext, T>(rank, *weight, &weight_mat, perm, dev_ctx);
-        TransCompute<DeviceContext, T>(
-            rank, *out_grad, &out_grad_mat, perm, dev_ctx);
+        weight_mat.Resize(phi::make_ddim(real_dims));
+        dev_ctx.template Alloc<T>(&weight_mat);
+        out_grad_mat.Resize(phi::make_ddim(real_dims));
+        dev_ctx.template Alloc<T>(&out_grad_mat);
+        TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
+        TransCompute2DTo5D<Context, T>(dev_ctx, out_grad, rank, perm, &out_grad_mat);
     } else {
         for (int i = 0; i < rank; i++) {
-        real_dims.push_back(i);
+            real_dims.push_back(i);
         }
-        paddle::framework::TensorCopySync(*weight, ctx.GetPlace(), &weight_mat);
-        paddle::framework::TensorCopySync(
-            *out_grad, ctx.GetPlace(), &out_grad_mat);
+        phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), false, &weight_mat);
+        phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &out_grad_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
     out_grad_mat = out_grad_mat.Resize({h, w});
 
-    Tensor sigma;
-    sigma.mutable_data<T>(weight_mat.dims(), ctx.GetPlace());
-    Tensor uu, vv;
-    paddle::framework::TensorCopySync(*u, ctx.GetPlace(), &uu);
-    paddle::framework::TensorCopySync(*v, ctx.GetPlace(), &vv);
-    CalcMatrixSigmaAndNormWeight<DeviceContext, T>(&sigma,
-                                                    &(uu.Resize({h, 1})),
-                                                    &(vv.Resize({w, 1})),
-                                                    &weight_mat,
-                                                    power_iters,
-                                                    eps,
-                                                    ctx);
+    DenseTensor sigma;
+    sigma.Resize(weight_mat.dims());
+    dev_ctx.template Alloc<T>(&sigma);
+    DenseTensor uu, vv;
+    phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), false, &uu);
+    phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), false, &vv);
+    CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
+                                                &weight_mat,
+                                                &(uu.Resize({h, 1})),
+                                                &(vv.Resize({w, 1})),
+                                                &sigma,
+                                                power_iters,
+                                                eps);
 
-    Tensor uv;
-    uv.mutable_data<T>({h, w}, ctx.GetPlace());
+    DenseTensor uv;
+    uv.Resize({h, w});
+    dev_ctx.template Alloc<T>(&uv);
     blas.MatMul(
         uu.Resize({h, 1}), false, vv.Resize({w, 1}), false, T(1), &uv, T(0));
 
-    Tensor weight_grad_mat;
-    weight_grad_mat.mutable_data<T>({h, w}, ctx.GetPlace());
+    DenseTensor weight_grad_mat;
+    weight_grad_mat.Resize({h, w});
+    dev_ctx.template Alloc<T>(&weight_grad_mat);
     auto weight_grad_mat_t = EigenTensor<T, 2>::From(weight_grad_mat);
     auto weight_mat_t = EigenTensor<T, 2>::From(weight_mat);
     auto out_grad_mat_t = EigenTensor<T, 2>::From(out_grad_mat);
@@ -108,24 +101,24 @@ void SpectrumNormGradKernel(const Context& dev_ctx
     if (dim != 0) {
         std::vector<int> perm;
         for (int i = 0; i < rank; i++) {
-        if (i < dim) {
-            perm.push_back(i + 1);
-        } else if (i == dim) {
-            perm.push_back(0);
-        } else {
-            perm.push_back(i);
+            if (i < dim) {
+                perm.push_back(i + 1);
+            } else if (i == dim) {
+                perm.push_back(0);
+            } else {
+                perm.push_back(i);
+            }
         }
-        }
-        weight_grad->mutable_data<T>(dims, ctx.GetPlace());
-        TransCompute<DeviceContext, T>(
-            rank,
+        weight_grad->Resize(dims);
+        dev_ctx.template Alloc<T>(weight_grad);
+        TransCompute2DTo5D<Context, T>(
+            dev_ctx,
             weight_grad_mat.Resize(phi::make_ddim(real_dims)),
-            weight_grad,
+            rank,
             perm,
-            dev_ctx);
+            weight_grad);
     } else {
-        paddle::framework::TensorCopySync(
-            weight_grad_mat.Resize(dims), ctx.GetPlace(), weight_grad);
+        phi::Copy(dev_ctx, weight_grad_mat.Resize(dims), dev_ctx.GetPlace(), false, weight_grad);
     }
 }
 
