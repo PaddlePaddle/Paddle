@@ -848,6 +848,7 @@
     data_type : out_grad
   optional: out, dst_count
 
+# grid sample
 - backward_api : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
