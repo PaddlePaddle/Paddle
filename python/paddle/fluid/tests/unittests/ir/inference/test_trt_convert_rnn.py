@@ -31,8 +31,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         for hidden_size in [32, 64]:
             for input_size in [288]:
                 for batch in [16]:
-                    for seq_len in [30]:
-                        for num_layers in [1]:
+                    for seq_len in [10]:
+                        for num_layers in [4]:
 
                             dics = []
                             dics.append({
@@ -68,7 +68,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 return np.random.random([
                                     4 * hidden_size, K * hidden_size
                                 ]).astype(np.float32) * 2 - 1
-
+                            # 
                             def generate_w2():
                                 return np.random.random([
                                     4 * hidden_size, hidden_size
@@ -99,7 +99,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                             weights = {}
                             for i in range((int)(len(WeightList) / 2)):
                                 # mean this weight : input->hidden
-                                # input may also be hidden form the prev layer.
+                                # input has 2 case: initial input input_size, K * hidden form the prev layer.
                                 if (i % 2 == 0):
                                     if (i <= K):
                                         weights[WeightList[i]] = TensorConfig(
@@ -146,6 +146,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 "op_type": "rnn",
                                 "op_inputs": {
                                     "Input": ["rnn_input_data"],
+                                    # prev_c, prev_h
                                     "PreState": ["prestate1", "prestate2"],
                                     "WeightList": WeightList,
                                 },
@@ -225,7 +226,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-2
+            attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-2
