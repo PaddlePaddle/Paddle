@@ -1481,6 +1481,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         RunImpl(scope, place, runtime_ctx_.get());
         impl_->endCudaGraphCapture();
       } else {
+        if (!all_kernels_must_compute_runtime_shape_)
+          this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
         impl_->runCudaGraph();
       }
     }
