@@ -18,6 +18,7 @@ from .node import Node
 from .status import Status
 from .args_envs import parse_args, fetch_envs, env_args_mapping
 import six
+import os
 
 import logging
 
@@ -72,6 +73,15 @@ class Context(object):
             return False
 
         return False
+
+    def is_mpirun_mode(self):
+        if self.args.hostfile is not None:
+            if os.path.isfile(self.args.hostfile):
+                return True
+            else:
+                raise Exception(f"hostfile {self.args.hostfile} not found")
+        else:
+            return False
 
     def get_envs(self):
         return self.envs.copy()

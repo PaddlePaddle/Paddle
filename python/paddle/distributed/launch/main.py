@@ -12,7 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys, os
 from .context import Context
+
+
+def mpirun(ctx):
+    port = ctx.node.get_free_port()
+    endpoint = "{}:{}".format(ctx.node.ip, port)
+    cmd = [
+        'mpirun', '-n', f'{ctx.args.nnodes}', '-hostfile',
+        f'{ctx.args.hostfile}', '--mca', 'btl', '^openib', '--mca',
+        'btl_tcp_if_include', 'eth0',
+        sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"
+    ]
+    if ctx.args.master is None:
+        cmd.extend(["--master", endpoint])
+
+    if '--hostfile' in sys.argv:
+        # --hostfile hostfile
+        idx = sys.argv.index('--hostfile')
+        cmd.extend(sys.argv[1:idx])
+        cmd.extend(sys.argv[idx + 2:])
+    else:
+        # --hostfile=hostfile
+        cmd.extend([i for i in sys.argv[1:] if not i.startswith('--hostfile')])
+
+    ctx.logger.info(f"Run mpi command {cmd}")
+    os.execve('/bin/sh', cmd, ctx.get_envs())
 
 
 def launch():
@@ -270,6 +296,10 @@ def launch():
         # legacy mode
         from paddle.distributed.fleet import launch
         launch.launch()
+
+    elif ctx.is_mpirun_mode():
+
+        mpirun(ctx)
 
     else:
 
