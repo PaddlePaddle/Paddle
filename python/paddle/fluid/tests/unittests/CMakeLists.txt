@@ -71,11 +71,11 @@ list(APPEND DIST_TEST_OPS test_parallel_margin_cross_entropy)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
-list(APPEND DIST_TEST_OPS test_collective_process_group)
-list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
+# list(APPEND DIST_TEST_OPS test_collective_process_group)
+# list(APPEND DIST_TEST_OPS test_collective_alltoall_single)
 list(APPEND DIST_TEST_OPS test_eager_dist_api)
-list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
-list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
+# list(APPEND DIST_TEST_OPS test_collective_batch_isend_irecv)
+# list(APPEND DIST_TEST_OPS test_collective_reduce_scatter)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
@@ -99,7 +99,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
-list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
@@ -166,28 +166,28 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_allreduce)
   list(REMOVE_ITEM TEST_OPS test_broadcast)
-  list(REMOVE_ITEM TEST_OPS test_collective_reduce)
+  # list(REMOVE_ITEM TEST_OPS test_collective_reduce)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
-  list(REMOVE_ITEM TEST_OPS test_collective_scatter)
-  list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
+  # list(REMOVE_ITEM TEST_OPS test_collective_scatter)
+  # list(REMOVE_ITEM TEST_OPS test_collective_sendrecv)
   list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
-  list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
-  list(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_split_embedding)
+  # list(REMOVE_ITEM TEST_OPS test_collective_split_embedding_none_divisible)
+  # list(REMOVE_ITEM TEST_OPS test_collective_split_row_linear)
+  # list(REMOVE_ITEM TEST_OPS test_collective_split_col_linear)
+  # list(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
-  list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
-  list(REMOVE_ITEM TEST_OPS test_collective_sendrecv_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_wait)
+  # list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_global_gather)
+  # list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
+  # list(REMOVE_ITEM TEST_OPS test_collective_sendrecv_api)
+  # list(REMOVE_ITEM TEST_OPS test_collective_wait)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
@@ -234,7 +234,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_ps)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_fleet_utils)
-  list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
+  # list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
   list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_fake_init_op)
@@ -334,11 +334,11 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
-  list(REMOVE_ITEM TEST_OPS test_collective_process_group)
-  list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
+  # list(REMOVE_ITEM TEST_OPS test_collective_process_group)
+  # list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
-  list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
-  list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
+  # list(REMOVE_ITEM TEST_OPS test_collective_batch_isend_irecv)
+  # list(REMOVE_ITEM TEST_OPS test_collective_reduce_scatter)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -772,6 +772,7 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
+  add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -823,7 +824,7 @@ if(WITH_DISTRIBUTE)
     ${dist_ENVS}
     FLAGS_communicator_send_queue_size=1
     FLAGS_communicator_max_merge_var_num=1)
-  py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
+  # py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
@@ -1314,8 +1315,8 @@ endif()
 
 if(WITH_DISTRIBUTE AND NOT WIN32)
   set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT
-                                                                        40)
+  #  set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT
+  # 40)
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -1573,11 +1574,11 @@ if(WITH_DISTRIBUTE
   set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
   set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT 60)
+  # set_tests_properties(test_collective_process_group PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_alltoall_single PROPERTIES TIMEOUT 60)
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT 100)
-  set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
-  set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
+  # set_tests_properties(test_collective_batch_isend_irecv PROPERTIES TIMEOUT 100)
+  # set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT 100)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     set_tests_properties(test_parallel_dygraph_sparse_embedding
                          PROPERTIES TIMEOUT 200)
@@ -1598,13 +1599,13 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_alltoall_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_global_gather PROPERTIES TIMEOUT 200)
+  # set_tests_properties(test_collective_global_scatter PROPERTIES TIMEOUT 200)
+  # set_tests_properties(test_collective_sendrecv_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
   if(WITH_DISTRIBUTE)
     set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
@@ -1617,39 +1618,39 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(
-      test_collective_split_embedding
-      test_collective_split_embedding_none_divisible
-      test_collective_split_row_linear
-      test_collective_split_col_linear
-      test_collective_scatter_api
-      test_collective_barrier_api
-      test_collective_reduce_api
+      # test_collective_split_embedding
+      # test_collective_split_embedding_none_divisible
+      # test_collective_split_row_linear
+      # test_collective_split_col_linear
+      # test_collective_scatter_api
+      # test_collective_barrier_api
+      # test_collective_reduce_api
       test_pipeline_parallel
-      test_collective_allreduce_api
+      # test_collective_allreduce_api
       test_new_group_api
-      test_collective_broadcast_api
-      test_collective_allgather_api
-      test_collective_alltoall_api
-      test_collective_global_gather
-      test_collective_global_scatter
+      # test_collective_broadcast_api
+      # test_collective_allgather_api
+      # test_collective_alltoall_api
+      # test_collective_global_gather
+      # test_collective_global_scatter
       PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
   set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_reduce_api PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_reduce PROPERTIES TIMEOUT 120)
   set_tests_properties(test_allreduce PROPERTIES TIMEOUT 120)
   set_tests_properties(test_c_concat PROPERTIES TIMEOUT 120)
   set_tests_properties(test_c_split PROPERTIES TIMEOUT 120)
   set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   set_tests_properties(test_c_identity PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_scatter_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_barrier_api PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_scatter PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_imperative_auto_mixed_precision PROPERTIES TIMEOUT
