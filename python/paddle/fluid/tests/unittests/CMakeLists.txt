@@ -180,7 +180,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   # list(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
   # list(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
   # list(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
-  list(REMOVE_ITEM TEST_OPS test_new_group_api)
+  # list(REMOVE_ITEM TEST_OPS test_new_group_api)
   # list(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
   # list(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
   # list(REMOVE_ITEM TEST_OPS test_collective_alltoall_api)
@@ -357,7 +357,7 @@ endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
   list(REMOVE_ITEM TEST_OPS test_imperative_group)
-  list(REMOVE_ITEM TEST_OPS test_new_group_api)
+  # list(REMOVE_ITEM TEST_OPS test_new_group_api)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -1607,7 +1607,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   # set_tests_properties(test_collective_broadcast_api PROPERTIES TIMEOUT 120)
   # set_tests_properties(test_collective_allreduce_api PROPERTIES TIMEOUT 120)
   if(WITH_DISTRIBUTE)
-    set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
+    # set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
     set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
@@ -1627,7 +1627,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
       # test_collective_reduce_api
       test_pipeline_parallel
       # test_collective_allreduce_api
-      test_new_group_api
+      # test_new_group_api
       # test_collective_broadcast_api
       # test_collective_allgather_api
       # test_collective_alltoall_api
