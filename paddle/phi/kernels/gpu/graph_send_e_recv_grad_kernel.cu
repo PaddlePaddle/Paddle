@@ -161,10 +161,17 @@ void CalculateXGrad(const Context& ctx,
             reduce_idx,
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
+#ifdef PADDLE_WITH_HIP
+        hipMemcpy(x_grad,
+                  x_grad_out.data<T>(),
+                  x_grad_out.numel() * sizeof(T),
+                  hipMemcpyDeviceToDevice);
+#else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
                    cudaMemcpyDeviceToDevice);
+#endif
       }
     } else if (compute_type == "MUL") {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
@@ -231,10 +238,17 @@ void CalculateXGrad(const Context& ctx,
             reduce_idx,
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
+#ifdef PADDLE_WITH_HIP
+        hipMemcpy(x_grad,
+                  x_grad_out.data<T>(),
+                  x_grad_out.numel() * sizeof(T),
+                  hipMemcpyDeviceToDevice);
+#else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
                    cudaMemcpyDeviceToDevice);
+#endif
       }
     }
   } else if (pool_type == "MEAN") {
@@ -270,10 +284,17 @@ void CalculateXGrad(const Context& ctx,
             reduce_idx,
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
+#ifdef PADDLE_WITH_HIP
+        hipMemcpy(x_grad,
+                  x_grad_out.data<T>(),
+                  x_grad_out.numel() * sizeof(T),
+                  hipMemcpyDeviceToDevice);
+#else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
                    cudaMemcpyDeviceToDevice);
+#endif
       }
     } else if (compute_type == "MUL") {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
@@ -332,10 +353,17 @@ void CalculateXGrad(const Context& ctx,
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         // TODO(daisiming): Whether use x_grad instead.
+#ifdef PADDLE_WITH_HIP
+        hipMemcpy(x_grad,
+                  x_grad_out.data<T>(),
+                  x_grad_out.numel() * sizeof(T),
+                  hipMemcpyDeviceToDevice);
+#else
         cudaMemcpy(x_grad,
                    x_grad_out.data<T>(),
                    x_grad_out.numel() * sizeof(T),
                    cudaMemcpyDeviceToDevice);
+#endif
       }
     }
   }
