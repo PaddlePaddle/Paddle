@@ -1870,17 +1870,6 @@
   backward : slice_double_grad
   no_need_buffer : input
 
-- backward_api : softplus_grad
-  forward : softplus (Tensor x, float beta,float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float beta, float threshold)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : softplus_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_api : soft_shrink_grad
   forward : soft_shrink (Tensor x, float lambda) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float lambda)
@@ -1902,6 +1891,18 @@
   kernel :
     func : softmax_grad
     use_gpudnn : true
+
+# softplus
+- backward_api : softplus_grad
+  forward : softplus (Tensor x, float beta,float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float beta, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_api : split_grad
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)

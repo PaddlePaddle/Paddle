@@ -1177,6 +1177,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
+
     if in_dygraph_mode():
         return _C_ops.final_state_softplus(x, beta, threshold)
     elif in_dynamic_mode():
