@@ -73,6 +73,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "But received shape's size is %d.",
               ShapeTensor.size()));
       auto infer_shape = ctx->Attrs().Get<std::vector<int>>("shape");
+      VLOG(3) << "0****************" << phi::make_ddim(infer_shape);
       const int64_t copy_dim_val = 0;
       auto in_dims = ctx->GetInputDim("X");
       for (size_t i = 0; i < infer_shape.size(); ++i) {
@@ -90,12 +91,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
           infer_shape[i] = in_dims[i];
         }
       }
+      VLOG(3) << "1****************" << phi::make_ddim(infer_shape);
       auto infer_out_dims = phi::make_ddim(infer_shape);
       ctx->SetOutputDim("Out", infer_out_dims);
       return;
     }
 
     const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    VLOG(3) << "2****************" << phi::make_ddim(shape);
     if (ctx->HasInput("Shape") && shape.empty()) {
       auto shape_dims = ctx->GetInputDim("Shape");
       int num_ele = 1;
@@ -108,20 +111,21 @@ class ReshapeOp : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", /*->*/ "Out");
       return;
     }
-
+    VLOG(3) << "3****************" << phi::make_ddim(shape);
     if (ctx->HasInput("Shape") && !shape.empty() && ctx->IsRuntime()) {
       // If true, set the shape of Output(Out) according to Input(Shape) in
       // ReshapeKernel with ExecutionContext. Also check LoD in ReshapeKernel.
       ctx->ShareLoD("X", /*->*/ "Out");
       return;
     }
-
+    VLOG(3) << "4****************" << phi::make_ddim(shape);
     PADDLE_ENFORCE_EQ(!shape.empty(),
                       true,
                       platform::errors::InvalidArgument(
                           "The parameter 'shape' in ReshapeOp must be set. "
                           "But received 'shape' is empty."));
     auto x_dims = ctx->GetInputDim("X");
+    VLOG(3) << "5****************" << phi::make_ddim(shape);
     auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
@@ -146,8 +150,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape(shape.size(), 0);
     int64_t capacity = 1;
     int unk_dim_idx = -1;
+    VLOG(3) << "6****************" << phi::make_ddim(shape);
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] == unk_dim_val) {
+        VLOG(3) << "7****************" << phi::make_ddim(shape);
         PADDLE_ENFORCE_EQ(
             unk_dim_idx,
             -1,
@@ -158,6 +164,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 i));
         unk_dim_idx = i;
       } else if (shape[i] == copy_dim_val) {
+        VLOG(3) << "8****************" << phi::make_ddim(shape);
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
             in_dims.size(),
@@ -171,6 +178,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 in_dims,
                 in_dims.size()));
       } else {
+        VLOG(3) << "9****************" << phi::make_ddim(shape);
         PADDLE_ENFORCE_GT(
             shape[i],
             0,
@@ -215,6 +223,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
       }
     } else {
       if (all_positive) {
+        VLOG(3) << "11****************" << phi::make_ddim(shape);
         PADDLE_ENFORCE_EQ(
             capacity,
             in_size,

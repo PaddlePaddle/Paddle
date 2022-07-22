@@ -104,6 +104,21 @@ class Parallelizer:
                 "within parallel apply_post_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
         else:
+            for dist_op in self._dist_context._dist_ops_for_program.values():
+                if dist_op.serial_op.type == "assign":
+                    output_tensor = dist_op.serial_op.block._var_recursive(
+                        dist_op.serial_op.output("Out")[0])
+                    tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
+                        output_tensor).dist_attr.dims_mapping
+                    output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
+                        output_tensor.name)
+                    if tensor_dims_mapping != output_dims_mapping:
+                        input_tensor = dist_op.serial_op.block._var_recursive(
+                            dist_op.serial_op.input("X")[0])
+                        dist_op.dist_attr.set_output_dims_mapping(
+                            output_tensor.name, tensor_dims_mapping)
+                        dist_op.dist_attr.set_input_dims_mapping(
+                            input_tensor.name, tensor_dims_mapping)
             # Apply pre optimization passes
             # self._apply_pre_optimization(serial_main_program,
             #                              serial_startup_program, None, None,
@@ -117,6 +132,7 @@ class Parallelizer:
             self._logger.info(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode))
+            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
             time0 = time.time()
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)

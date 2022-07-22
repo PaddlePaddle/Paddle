@@ -286,9 +286,16 @@ class Inserter:
     @staticmethod
     def insert_fill_constant_op(block, idx, op_role):
         """Insert fill constant op into block at the given index."""
-        helper = LayerHelper("fill_constant", **locals())
+        helper = LayerHelper('fill_constant@RESHARD', **locals())
         with paddle.static.program_guard(block.program):
-            out = helper.create_variable_for_type_inference(dtype="int32")
+            out = block.create_var(
+                name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                    ".".join([helper.name, 'tmp'])),
+                dtype=paddle.int64,
+                shape=None,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False)
         inputs = {}
         attrs = {'force_cpu': False}
         attrs['str_value'] = str(int("1"))
@@ -949,6 +956,9 @@ class Resharder:
                         raise ValueError("Bool var is not supported reshard.")
                     is_reshard = True
                 if tensor_dims_mapping != op_output_dims_mapping:
+                    print("*" * 50)
+                    print(dist_tensor)
+                    print(dist_op)
                     raise ValueError(
                         "It is not supported that tensor dims mapping is different from op output dims mapping."
                     )

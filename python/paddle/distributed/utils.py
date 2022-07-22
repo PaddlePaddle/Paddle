@@ -557,7 +557,7 @@ def get_logger(log_level, name="root"):
 
         log_handler = logging.StreamHandler()
         log_format = logging.Formatter(
-            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+            '[%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
         log_handler.setFormatter(log_format)
         logger.addHandler(log_handler)
 

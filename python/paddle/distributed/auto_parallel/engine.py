@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import copy
 import logging
 from collections import defaultdict
-import socket
 
 import paddle
 import paddle.utils as utils
@@ -98,6 +98,8 @@ class Engine:
                 gradient_scale=True,
                 metrics=None,
                 all_ranks=False):
+        self._all_ranks = all_ranks
+
         if optimizer and not isinstance(
                 optimizer,
             (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer)):
@@ -106,7 +108,6 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
-        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -115,30 +116,36 @@ class Engine:
             )
         self._loss = loss
 
+        # TODO: If need to check if loss is not None, but optimizer is None
+
         metrics = metrics or []
         for metric in to_list(metrics):
             assert isinstance(metric, Metric), \
                 "{} is not sub class of Metric".format(
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
+
+        if self._optimizer:
+            self.mode = "train"
+        elif self._metrics:
+            self.mode = "eval"
+        else:
+            self.mode = "predict"
+
         self._gradient_scale = gradient_scale
         self._planned_mode = None
-        self._prepare_single_mode("train")
+        self._prepare_single_mode(self.mode)
 
     def _prepare_single_mode(self, mode):
-        self._modes = [mode]
-        self._build(self._modes[0])
-        # Do auto parallel process
-        for mode in self._modes:
-            # Do the planning process
-            self._plan(mode)
-        for mode in self._modes:
-            # Do the parallel process
-            self._parallel(mode, self._all_ranks)
-
-            # Init comm and startup program
-            self._initialize(mode)
-            self._mode_init_states[mode] = True
+        # build forward program
+        self._build(mode)
+        # Do the planning process
+        self._plan(mode)
+        # Do the parallel process
+        self._parallel(mode, self._all_ranks)
+        # Init comm and startup program
+        self._initialize(mode)
+        self._mode_init_states[mode] = True
 
     def _build(self, mode):
 
@@ -217,7 +224,7 @@ class Engine:
             # update metrics op in program
             with static.program_guard(serial_main_prog, serial_startup_prog), \
                 utils.unique_name.guard():
-                if mode != "predict":
+                if mode == "eval":
                     for metric in self._metrics:
                         metrics.extend(
                             to_list(metric.compute(*(outputs + labels))))
@@ -242,7 +249,7 @@ class Engine:
                 if mode != "predict" and self._loss:
                     losses = to_list(self._loss(*(outputs + labels)))
 
-                if mode != "predict":
+                if mode == "eval":
                     for metric in self._metrics:
                         metrics.extend(
                             to_list(metric.compute(*(outputs + labels))))
@@ -262,6 +269,9 @@ class Engine:
             "metrics": metrics
         }
 
+        if mode != "train":
+            serial_main_prog = serial_main_prog.clone(for_test=True)
+
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog, serial_startup_prog, self._optimizer, losses,
             feed_vars, fetch_vars, self.cluster, self.strategy)
@@ -274,8 +284,11 @@ class Engine:
         else:
             self._init_dist_context(mode)
 
+        s_time = time.time()
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
         self._planners[mode].plan()
+        self._logger.info("within plan dist attr time: {}, mode {}".format(
+            time.time() - s_time, self.mode))
 
     def _parallel(self, mode, all_ranks):
         # Parallelize program based on the planner's results
@@ -385,15 +398,15 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
-
-        if not self._mode_init_states['train']:
-            raise Exception(
-                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
-            )
-
         self.mode = 'train'
+        assert self._optimizer, "model not ready, please call `model.prepare(optimizer)` first"
+
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
+
         train_dataloader = self._create_dataloader(train_data, batch_size,
                                                    epochs, steps_per_epoch)
 
@@ -426,6 +439,8 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        assert self._metrics, "model not ready, please call `model.prepare(metrics)` first"
+
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -471,6 +486,7 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+
         if not self._mode_init_states[self.mode]:
             self._prepare_single_mode(self.mode)
 
@@ -481,6 +497,15 @@ class Engine:
         usr_fetch = self._validate_fetches(fetches)
         fetch_outputs = self._validate_fetches(self.fetch_vars["outputs"])
         fetch_list, fetch_map = self._fetch_map(fetch_outputs, usr_fetch)
+
+        # debug
+        from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+        for block in self.main_program.blocks:
+            for op in block.ops:
+                if op.type == "reshape2":
+                    print(op)
+                    print(op.attr('shape'))
+        print_program_with_dist_attr(self.main_program, self.dist_context)
 
         outputs = []
         for step, _ in enumerate(test_dataloader):
@@ -644,13 +669,9 @@ class Engine:
                                              self._executor,
                                              program=dist_main_prog)
 
-    def load(self, path, strict=True, load_optimizer=True, mode=None):
-        if not mode:
-            mode = self.mode
-        assert mode, "Please set the 'mode' you want to load."
-
-        dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
-        dist_context = self._dist_contexts[mode]
+    def load(self, path, strict=True, load_optimizer=True):
+        dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
+        dist_context = self._dist_contexts[self.mode]
         self._saver.load(path, dist_main_prog, dist_context, strict,
                          load_optimizer)
 
