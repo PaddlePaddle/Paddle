@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T>
 static void NMS(const T* boxes_data,
-                T* output_data,
+                int64_t* output_data,
                 float threshold,
                 int64_t num_boxes) {
   auto num_masks = CeilDivide(num_boxes, 64);
@@ -63,7 +63,7 @@ void NMSKernel(const Context& dev_ctx,
                    const DenseTensor& boxes,
                    float threshold,
                    DenseTensor* output){
-    auto output_data = dev_ctx.template Alloc<T>(output);
+    auto output_data = dev_ctx.template Alloc<int64_t>(output);
     NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
 }
 

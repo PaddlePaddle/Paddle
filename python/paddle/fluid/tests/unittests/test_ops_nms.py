@@ -88,6 +88,7 @@ class TestOpsNMS(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_nms(self):
+        paddle.disable_static()
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
@@ -103,8 +104,10 @@ class TestOpsNMS(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(out.numpy(), out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
+        paddle.enable_static()
 
     def test_multiclass_nms_dynamic(self):
+        paddle.disable_static()
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
@@ -121,8 +124,10 @@ class TestOpsNMS(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(out.numpy(), out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
+        paddle.enable_static()
 
     def test_multiclass_nms_static(self):
+        paddle.disable_static()
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.enable_static()
@@ -160,8 +165,10 @@ class TestOpsNMS(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(out, out_py),
                     "paddle out: {}\n py out: {}\n".format(out, out_py))
+        paddle.enable_static()
 
     def test_multiclass_nms_dynamic_to_static(self):
+        paddle.disable_static()
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.set_device(device)
@@ -196,7 +203,7 @@ class TestOpsNMS(unittest.TestCase):
                     np.array_equal(origin, res),
                     "origin out: {}\n inference model out: {}\n".format(
                         origin, res))
-
+        paddle.enable_static()
 
 if __name__ == '__main__':
     unittest.main()
