@@ -63,17 +63,17 @@ class SwishOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::SwishPluginDynamic* plugin =
-          new plugin::SwishPluginDynamic(beta, with_fp16);
-      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
+      auto* beta_data = Add1DConstantLayer(beta);
+      auto* input_mul_with_beta = Prod(beta_data, input);
+      auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
+                                           Activation,
+                                           *input_mul_with_beta,
+                                           nvinfer1::ActivationType::kSIGMOID);
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *input,
+                                   *(sigmoid->getOutput(0)),
+                                   nvinfer1::ElementWiseOperation::kPROD);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();

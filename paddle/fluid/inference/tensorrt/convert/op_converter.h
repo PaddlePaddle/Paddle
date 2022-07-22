@@ -549,12 +549,13 @@ class OpConverter {
     return Add1DConstantLayer(tmp_data, weight_name, scalar);
   }
 
-  nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
+  template <typename T>
+  nvinfer1::ITensor* Add1DConstantLayer(T data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
-    std::vector<int> tmp_data;
-    tmp_data.push_back(data);
-    return Add1DConstantLayer(tmp_data, weight_name, scalar);
+    std::vector<T> input_data;
+    input_data.push_back(data);
+    return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
   // For cases when input is not middle-tensor , but persistable tensor
