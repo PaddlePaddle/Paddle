@@ -256,9 +256,3 @@ REGISTER_OPERATOR(spectral_norm,
                   ops::SpectralNormGradOpMaker<paddle::framework::OpDesc>,
                   ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(spectral_norm_grad, ops::SpectralNormOpGrad);
-REGISTER_OP_CPU_KERNEL(spectral_norm,
-                       ops::SpectralNormKernel<phi::CPUContext, float>,
-                       ops::SpectralNormKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(spectral_norm_grad,
-                       ops::SpectralNormGradKernel<phi::CPUContext, float>,
-                       ops::SpectralNormGradKernel<phi::CPUContext, double>);
