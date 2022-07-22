@@ -2008,16 +2008,6 @@
     func : slice
   backward : slice_grad
 
-- api : softplus
-  args : (Tensor x, float beta,float threshold)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : x
-  kernel :
-    func : softplus
-  backward : softplus_grad
-
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
@@ -2038,6 +2028,17 @@
     func : softmax
     use_gpudnn : true
   backward : softmax_grad
+
+# softplus
+- api : softplus
+  args : (Tensor x, float beta,float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : x
+  kernel :
+    func : softplus
+  backward : softplus_grad
 
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)
