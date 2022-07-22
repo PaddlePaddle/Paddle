@@ -40,16 +40,16 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     auto input = engine_->GetITensor(input_name);
 
     auto data_layout = framework::StringToDataLayout(
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("align_corners"));
 
     auto input_names = op_desc.Input("X");
-    auto scale = BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
-    auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
-    auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
+    auto scale = PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
+    auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
+    auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     layer->setAlignCorners(align_corners);

@@ -266,6 +266,17 @@
     layout : x
   backward : values_grad
 
+- api: addmm
+  args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
+  output : Tensor(out)
+  kernel :
+    func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
+           addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
+           addmm_coo_dense {dense, sparse_coo, dense -> dense},
+           addmm_coo_coo {sparse_coo, sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: addmm_grad
+
 - api: coalesce
   args : (Tensor x)
   output : Tensor(out)
@@ -297,7 +308,7 @@
   args : (Tensor x, Tensor y, Tensor mask)
   output : Tensor(out)
   kernel :
-    func : csr_masked_matmul{dense, dense, sparse_csr -> sparse_csr}
+    func : masked_matmul_csr{dense, dense, sparse_csr -> sparse_csr}
     layout : x
   backward: masked_matmul_grad
 
@@ -305,10 +316,10 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   kernel :
-    func : csr_dense_matmul{sparse_csr, dense -> dense},
-           csr_csr_matmul{sparse_csr, sparse_csr -> sparse_csr},
-           coo_dense_matmul{sparse_coo, dense -> dense},
-           coo_coo_matmul{sparse_coo, sparse_coo -> sparse_coo}
+    func : matmul_csr_dense {sparse_csr, dense -> dense},
+           matmul_csr_csr {sparse_csr, sparse_csr -> sparse_csr},
+           matmul_coo_dense {sparse_coo, dense -> dense},
+           matmul_coo_coo {sparse_coo, sparse_coo -> sparse_coo}
     layout : x
   backward: matmul_grad
 
@@ -316,10 +327,10 @@
   args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
   output : Tensor(out), Tensor(rulebook)
   kernel :
-    func : sparse_maxpool{sparse_coo -> sparse_coo, dense}
+    func : maxpool_coo{sparse_coo -> sparse_coo, dense}
     layout : x
   intermediate : rulebook
-  backward : sparse_maxpool_grad
+  backward : maxpool_grad
 
 - api: mv
   args : (Tensor x, Tensor vec)
