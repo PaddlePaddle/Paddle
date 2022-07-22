@@ -173,6 +173,7 @@ class OperatorBase {
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
   virtual bool SupportMLU() const { return false; }
+  virtual bool SupportXPU() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -183,7 +184,7 @@ class OperatorBase {
         attrs_.find(name),
         attrs_.end(),
         platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return BOOST_GET_CONST(T, attrs_.at(name));
+    return PADDLE_GET_CONST(T, attrs_.at(name));
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -297,7 +298,7 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
@@ -596,6 +597,9 @@ class OperatorWithKernel : public OperatorBase {
                          return platform::is_mlu_place(kern_pair.first.place_);
                        });
   }
+
+  bool SupportXPU() const override;
+
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type) const;

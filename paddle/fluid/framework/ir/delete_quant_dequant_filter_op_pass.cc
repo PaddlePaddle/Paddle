@@ -96,7 +96,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     std::unordered_set<const Node*> nodes2rm = {};
     int bit_length =
-        BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
+        PADDLE_GET_CONST(int, quant_dequant_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
     std::string quant_dequant_op_out_name = quant_dequant_op_out->Var()->Name();
@@ -133,7 +133,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
     // Get weight scale
     if (dequant_type == "fake_channel_wise_quantize_dequantize_abs_max") {
       int quant_axis =
-          BOOST_GET_CONST(int, quant_dequant_op->Op()->GetAttr("quant_axis"));
+          PADDLE_GET_CONST(int, quant_dequant_op->Op()->GetAttr("quant_axis"));
       PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
                         true,
                         platform::errors::InvalidArgument(

@@ -15,6 +15,8 @@
 
 #include <set>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"

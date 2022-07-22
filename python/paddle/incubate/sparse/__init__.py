@@ -15,32 +15,60 @@
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
 
-from .unary import sqrt
 from .unary import sin
+from .unary import tan
+from .unary import asin
+from .unary import atan
+from .unary import sinh
 from .unary import tanh
+from .unary import asinh
+from .unary import atanh
+from .unary import sqrt
+from .unary import square
+from .unary import log1p
+from .unary import abs
+from .unary import pow
+from .unary import cast
+from .unary import neg
+from .unary import coalesce
 
 from .binary import mv
 from .binary import matmul
 from .binary import masked_matmul
+from .binary import add
+from .binary import divide
+from .binary import multiply
+from .binary import subtract
 
-from .math import add
-from .math import divide
-from .math import multiply
-from .math import subtract
+from .multiary import addmm
 
 from . import nn
 
 __all__ = [
     'sparse_coo_tensor',
     'sparse_csr_tensor',
-    'sqrt',
     'sin',
+    'tan',
+    'asin',
+    'atan',
+    'sinh',
     'tanh',
+    'asinh',
+    'atanh',
+    'sqrt',
+    'square',
+    'log1p',
+    'abs',
+    'pow',
+    'cast',
+    'neg',
     'mv',
     'matmul',
     'masked_matmul',
+    'addmm',
     'add',
     'subtract',
     'multiply',
     'divide',
+    'coalesce',
 ]

@@ -32,12 +32,12 @@ Node *custom_op_handler(Graph *graph, Node *node) {
 
 Node *print_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto print_phase = BOOST_GET_CONST(std::string, op->GetAttr("print_phase"));
+  auto print_phase = PADDLE_GET_CONST(std::string, op->GetAttr("print_phase"));
   int64_t print_gradient = 0;
   if (print_phase != "forward") {
     print_gradient = 1;
   }
-  auto title = BOOST_GET_CONST(std::string, op->GetAttr("message"));
+  auto title = PADDLE_GET_CONST(std::string, op->GetAttr("message"));
   if (title.empty()) {
     title = GetInputVarNode("In", node)->Var()->Name();
   }
@@ -56,10 +56,10 @@ Node *checkpointoutput_handler(Graph *graph, Node *node) {
 
 Node *custom_nll_loss_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
-  auto ignoreIndex = BOOST_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
+  auto reduction = PADDLE_GET_CONST(int, op->GetAttr("reduction"));
+  auto ignoreIndex = PADDLE_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
   auto inputIsLogProbability =
-      BOOST_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
+      PADDLE_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
   if (ignoreIndex == "None") {
     return CreateBaseOp(graph,
                         node,
@@ -85,17 +85,6 @@ Node *identity_handler(Graph *graph, Node *node) {
       graph, node, "popart_identity", node->inputs, node->outputs);
 }
 
-Node *identity_loss_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
-  return CreateBaseOp(graph,
-                      node,
-                      "popart_identity_loss",
-                      node->inputs,
-                      node->outputs,
-                      {{"reduction", reduction}});
-}
-
 Node *detach_handler(Graph *graph, Node *node) {
   return CreateBaseOp(
       graph, node, "popart_detach_v2", node->inputs, node->outputs);
@@ -112,5 +101,4 @@ REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
 REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
 REGISTER_HANDLER(custom_nll_loss, custom_nll_loss_handler);
 REGISTER_HANDLER(identity, identity_handler);
-REGISTER_HANDLER(identity_loss, identity_loss_handler);
 REGISTER_HANDLER(detach, detach_handler);

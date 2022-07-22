@@ -88,7 +88,8 @@ class FleetTranspiler(Fleet):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
         super(FleetTranspiler, self).init(role_maker)
-        self._fleet_ptr = core.Fleet()
+        if self._fleet_ptr is None:
+            self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
         """

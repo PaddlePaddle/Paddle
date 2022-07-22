@@ -46,6 +46,7 @@ enum class CommType : std::uint8_t {
   SEND = 9,
   RECV = 10,
   BARRIER = 11,
+  ALLTOALL_SINGLE = 12,
   UNKNOWN = 100,
 };
 
@@ -143,6 +144,15 @@ class ProcessGroup {
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<int64_t>&,
+      std::vector<int64_t>&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllToAll_Single", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>&,  // NOLINT
       std::vector<phi::DenseTensor>&,  // NOLINT
@@ -157,6 +167,14 @@ class ProcessGroup {
       const ScatterOptions&) {         // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,              // NOLINT
+      phi::DenseTensor&,              // NOLINT
+      const ReduceScatterOptions&) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support ReduceScatter", GetBackendName()));
   }
 
  protected:

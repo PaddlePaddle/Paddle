@@ -21,7 +21,7 @@ if(WITH_ASCEND_CL)
   cc_library(
     npu_stream
     SRCS npu_stream.cc
-    DEPS enforce boost stream_callback_manager)
+    DEPS enforce stream_callback_manager)
   cc_library(
     npu_collective_helper
     SRCS npu_collective_helper.cc
