@@ -63,7 +63,7 @@ class RemovePadding : public OpConverter {
             platform::errors::Fatal("use with_interleaved must be int8."));
       }
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
       auto* transpose =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));

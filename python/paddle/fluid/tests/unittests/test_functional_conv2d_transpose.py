@@ -39,6 +39,7 @@ class TestFunctionalConv2D(TestCase):
         self.groups = 1
         self.no_bias = False
         self.data_format = "NHWC"
+        np.random.seed(2022)
 
     def prepare(self):
         if isinstance(self.filter_shape, int):
@@ -188,6 +189,7 @@ class TestFunctionalConv2DError(TestCase):
         self.groups = 1
         self.no_bias = False
         self.data_format = "NHWC"
+        np.random.seed(2022)
 
     def test_exception(self):
         self.prepare()

@@ -314,4 +314,6 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
 
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 }  // namespace phi

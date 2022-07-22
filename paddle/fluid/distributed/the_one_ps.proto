@@ -114,12 +114,14 @@ message TableParameter {
   optional TensorAccessorParameter tensor = 5;
   optional CommonAccessorParameter common = 6;
   optional TableType type = 7;
-  optional bool compress_in_save = 8 [ default = false ];
+  optional bool compress_in_save = 8 [ default = true ];
   optional GraphParameter graph_parameter = 9;
   // for cache model
   optional bool enable_sparse_table_cache = 10 [ default = true ];
   optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
   optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  optional bool enable_revert = 13 [ default = true ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
 }
 
 message TableAccessorParameter {
