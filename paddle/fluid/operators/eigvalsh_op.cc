@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eigvalsh_op.h"
-
 namespace paddle {
 namespace operators {
 
@@ -150,24 +148,3 @@ REGISTER_OPERATOR(eigvalsh,
                   ops::EigvalshGradOpMaker<paddle::framework::OpDesc>,
                   ops::EigvalshGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
-
-REGISTER_OP_CPU_KERNEL(eigvalsh,
-                       ops::EigvalshKernel<phi::CPUContext, float, float>,
-                       ops::EigvalshKernel<phi::CPUContext, double, double>,
-                       ops::EigvalshKernel<phi::CPUContext,
-                                           float,
-                                           paddle::platform::complex<float>>,
-                       ops::EigvalshKernel<phi::CPUContext,
-                                           double,
-                                           paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    eigvalsh_grad,
-    ops::EigvalshGradKernel<phi::CPUContext, float, float>,
-    ops::EigvalshGradKernel<phi::CPUContext, double, double>,
-    ops::EigvalshGradKernel<phi::CPUContext,
-                            float,
-                            paddle::platform::complex<float>>,
-    ops::EigvalshGradKernel<phi::CPUContext,
-                            double,
-                            paddle::platform::complex<double>>);
