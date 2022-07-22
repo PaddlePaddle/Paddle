@@ -40,6 +40,8 @@ from .binary import divide
 from .binary import multiply
 from .binary import subtract
 
+from .multiary import addmm
+
 from . import nn
 
 __all__ = [
@@ -63,6 +65,7 @@ __all__ = [
     'mv',
     'matmul',
     'masked_matmul',
+    'addmm',
     'add',
     'subtract',
     'multiply',

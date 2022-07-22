@@ -280,6 +280,16 @@
     func : bce_loss
   backward : bce_loss_grad
 
+- api : bilinear_tensor_product
+  args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  output : Tensor
+  infer_meta :
+    func : BilinearTensorProductInferMeta
+  kernel :
+    func : bilinear_tensor_product
+  optional : bias
+  backward : bilinear_tensor_product_grad
+
 # bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
@@ -2163,6 +2173,16 @@
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
+
+# temporal_shift
+- api : temporal_shift
+  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor
+  infer_meta :
+    func : TemporalShiftInferMeta
+  kernel :
+    func : temporal_shift
+  backward : temporal_shift_grad
 
 # thresholded_relu
 - api : thresholded_relu

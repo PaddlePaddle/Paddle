@@ -266,6 +266,17 @@
     layout : x
   backward : values_grad
 
+- api: addmm
+  args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
+  output : Tensor(out)
+  kernel :
+    func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
+           addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
+           addmm_coo_dense {dense, sparse_coo, dense -> dense},
+           addmm_coo_coo {sparse_coo, sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: addmm_grad
+
 - api: coalesce
   args : (Tensor x)
   output : Tensor(out)
