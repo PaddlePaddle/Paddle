@@ -141,10 +141,10 @@ def GridSampler(data,
 class TestGridSamplerOp(OpTest):
 
     def setUp(self):
-        self.python_api = paddle.nn.functional.grid_sample
         self.use_cudnn = False
         self.numeric_grad_delta = 0.0001
         self.op_type = 'grid_sampler'
+        self.python_api = paddle.nn.functional.grid_sample
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"

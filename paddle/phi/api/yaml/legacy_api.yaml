@@ -931,6 +931,7 @@
     param : [x, grid]
   kernel:
     func : grid_sample
+    data_type : x
   backward : grid_sample_grad
 
 - api : group_norm
