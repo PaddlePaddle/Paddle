@@ -28,19 +28,20 @@ void GetAccumulators<paddle::platform::CUDADeviceContext>(
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
   auto stream = ctx.cuda_device_context().stream();
   auto cuda_place = in_old_num_accumulates->place();
-  memory::Copy(platform::CPUPlace(),
+  paddle::memory::Copy(platform::CPUPlace(),
                old_num_accumulates_,
                cuda_place,
                in_old_num_accumulates->data<int64_t>(),
                sizeof(int64_t),
                stream);
-  memory::Copy(platform::CPUPlace(),
+
+  paddle::memory::Copy(platform::CPUPlace(),
                num_accumulates_,
                cuda_place,
                in_num_accumulates->data<int64_t>(),
                sizeof(int64_t),
                stream);
-  memory::Copy(platform::CPUPlace(),
+  paddle::memory::Copy(platform::CPUPlace(),
                num_updates_,
                cuda_place,
                in_num_updates->data<int64_t>(),
@@ -60,19 +61,19 @@ void SetAccumulators<paddle::platform::CUDADeviceContext>(
   auto* out_num_updates = ctx.Output<Tensor>("out_num_updates");
   auto cuda_place = out_old_num_accumulates->place();
 
-  memory::Copy(cuda_place,
+  paddle::memory::Copy(cuda_place,
                out_old_num_accumulates->data<int64_t>(),
                platform::CPUPlace(),
                &old_num_accumulates_,
                sizeof(int64_t),
                stream);
-  memory::Copy(cuda_place,
+  paddle::memory::Copy(cuda_place,
                out_num_accumulates->data<int64_t>(),
                platform::CPUPlace(),
                &num_accumulates_,
                sizeof(int64_t),
                stream);
-  memory::Copy(cuda_place,
+  paddle::memory::Copy(cuda_place,
                out_num_updates->data<int64_t>(),
                platform::CPUPlace(),
                &num_updates_,
@@ -85,6 +86,6 @@ void SetAccumulators<paddle::platform::CUDADeviceContext>(
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    average_accumulates,
+    average_accumulates_,
     ops::AverageAccumulatesKernel<paddle::platform::CUDADeviceContext, float>,
     ops::AverageAccumulatesKernel<paddle::platform::CUDADeviceContext, double>);

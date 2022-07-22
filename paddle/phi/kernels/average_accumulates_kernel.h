@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
 
 template <typename Context>
@@ -52,6 +54,5 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
                               DenseTensor* out_sum_3,
                               DenseTensor* out_num_accumulates,
                               DenseTensor* out_old_num_accumulates,
-                              DenseTensor* out_num_updates
-                              );
-}
+                              DenseTensor* out_num_updates);
+} // namespace phi
