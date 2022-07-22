@@ -21,9 +21,9 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+  # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
+  # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
+  # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -42,10 +42,10 @@ if(WITH_GPU
    OR WITH_XPU
    OR WITH_ASCEND
    OR WITH_ASCEND_CL)
-  list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
-  list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-  list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
-  list(APPEND DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
+  # list(APPEND DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
+  # list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+  # list(APPEND DIST_TEST_OPS test_fleet_pipeline_meta_optimizer_with_recompute)
+  # list(APPEND DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
   list(APPEND DIST_TEST_OPS test_gen_nccl_id_op)
   list(APPEND DIST_TEST_OPS test_rnn_dp)
 endif()
@@ -89,42 +89,42 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
-list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 # list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS
-     test_fleet_pipeline_meta_optimizer_with_recompute)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS
+#      test_fleet_pipeline_meta_optimizer_with_recompute)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_raw_program_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_rnn_dp)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_init)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_sharding_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_hybrid_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_lamb_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_fp16_allreduce_meta_optimizer)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_static_mp_layers)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_amp_init)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_gradient_merge_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_sharding_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_hybrid_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_localsgd_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_lars_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_lamb_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_fp16_allreduce_meta_optimizer)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
+# list(APPEND MIXED_DIST_TEST_OPS test_fleet_static_mp_layers)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
@@ -190,16 +190,16 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   # list(REMOVE_ITEM TEST_OPS test_collective_wait)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
-  list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_executor)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
 endif()
 
 # Temporally disable test_deprecated_decorator
@@ -210,11 +210,11 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd)
-  list(REMOVE_ITEM TEST_OPS test_fleet)
-  list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
-  list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
-  list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
-  list(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
+  # list(REMOVE_ITEM TEST_OPS test_fleet)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
   list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
@@ -230,10 +230,10 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
   # DISTRIBUTE related
   list(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
   list(REMOVE_ITEM TEST_OPS test_distributed_strategy)
-  list(REMOVE_ITEM TEST_OPS test_fleet_metric)
-  list(REMOVE_ITEM TEST_OPS test_fleet_ps)
-  list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
-  list(REMOVE_ITEM TEST_OPS test_fleet_utils)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_ps)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_utils)
   # list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
   list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
@@ -241,7 +241,7 @@ if(NOT WITH_DISTRIBUTE OR WIN32)
 endif()
 
 if(NOT WITH_DISTRIBUTE)
-  list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
   list(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
 endif()
 
@@ -251,7 +251,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
+# list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
 list(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 list(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 list(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
@@ -265,7 +265,7 @@ list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
-  list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -316,7 +316,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
   list(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision_for_eager)
   list(REMOVE_ITEM TEST_OPS test_mixed_precision)
-  list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
+  # list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_dygraph_recompute)
   list(REMOVE_ITEM TEST_OPS test_dygraph_recompute_for_eager)
   list(REMOVE_ITEM TEST_OPS test_hybrid_parallel_inference_helper)
@@ -406,7 +406,7 @@ if(WITH_COVERAGE
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
+# list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 
 if((WITH_ROCM OR WITH_GPU) OR NOT WITH_MKLML)
   # matmul with multiple heads need MKL support
@@ -686,11 +686,11 @@ endforeach()
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
+  # list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
   list(REMOVE_ITEM TEST_OPS "test_gen_nccl_id_op")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+  # list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
+  # list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
+  # list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -773,6 +773,7 @@ if(WITH_DISTRIBUTE)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
   add_subdirectory(collective)
+  add_subdirectory(fleet)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -783,7 +784,7 @@ if(WITH_DISTRIBUTE)
 
   #not need
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
+  # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
@@ -793,12 +794,12 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
+  # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
+    # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
+    # list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
   endif()
 
   py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
@@ -826,41 +827,41 @@ if(WITH_DISTRIBUTE)
     FLAGS_communicator_max_merge_var_num=1)
   # py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
   if(NOT APPLE)
-    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
-                    ${dist_ENVS})
-    py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS
-                    ${dist_ENVS})
-    py_test_modules(test_fleet_amp_init MODULES test_fleet_amp_init ENVS
-                    ${dist_ENVS})
-    py_test_modules(test_fleet_fp16_allreduce_meta_optimizer MODULES
-                    test_fleet_fp16_allreduce_meta_optimizer ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_private_function MODULES
-                    test_fleet_private_function ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_meta_optimizer_base MODULES
-                    test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_distributed_strategy MODULES
-                    test_fleet_distributed_strategy)
-    py_test_modules(test_fleet_static_mp_layers MODULES
-                    test_fleet_static_mp_layers)
+    # py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    # py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
+    #                 ${dist_ENVS})
+    # py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS
+    #                 ${dist_ENVS})
+    # py_test_modules(test_fleet_amp_init MODULES test_fleet_amp_init ENVS
+    #                 ${dist_ENVS})
+    # py_test_modules(test_fleet_fp16_allreduce_meta_optimizer MODULES
+    #                 test_fleet_fp16_allreduce_meta_optimizer ENVS ${dist_ENVS})
+    # py_test_modules(test_fleet_private_function MODULES
+    #                 test_fleet_private_function ENVS ${dist_ENVS})
+    # py_test_modules(test_fleet_meta_optimizer_base MODULES
+    #                 test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
+    # py_test_modules(test_fleet_distributed_strategy MODULES
+    #                 test_fleet_distributed_strategy)
+    # py_test_modules(test_fleet_static_mp_layers MODULES
+    #                 test_fleet_static_mp_layers)
     #py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
     if(WITH_GPU
        OR WITH_XPU
        OR WITH_ASCEND
        OR WITH_ASCEND_CL)
-      py_test_modules(test_fleet_amp_meta_optimizer MODULES
-                      test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
-      py_test_modules(
-        test_fleet_gradient_merge_meta_optimizer MODULES
-        test_fleet_gradient_merge_meta_optimizer ENVS ${dist_ENVS})
-      py_test_modules(test_fleet_graph_executor MODULES
-                      test_fleet_graph_executor ENVS ${dist_ENVS})
-      py_test_modules(test_fleet_hybrid_meta_optimizer MODULES
-                      test_fleet_hybrid_meta_optimizer ENVS ${dist_ENVS})
-      py_test_modules(test_fleet_recompute_meta_optimizer MODULES
-                      test_fleet_recompute_meta_optimizer ENVS ${dist_ENVS})
-      py_test_modules(test_fleet_sharding_meta_optimizer MODULES
-                      test_fleet_sharding_meta_optimizer ENVS ${dist_ENVS})
+      # py_test_modules(test_fleet_amp_meta_optimizer MODULES
+      #                 test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
+      # py_test_modules(
+      #   test_fleet_gradient_merge_meta_optimizer MODULES
+      #   test_fleet_gradient_merge_meta_optimizer ENVS ${dist_ENVS})
+      # py_test_modules(test_fleet_graph_executor MODULES
+      #                 test_fleet_graph_executor ENVS ${dist_ENVS})
+      # py_test_modules(test_fleet_hybrid_meta_optimizer MODULES
+      #                 test_fleet_hybrid_meta_optimizer ENVS ${dist_ENVS})
+      # py_test_modules(test_fleet_recompute_meta_optimizer MODULES
+      #                 test_fleet_recompute_meta_optimizer ENVS ${dist_ENVS})
+      # py_test_modules(test_fleet_sharding_meta_optimizer MODULES
+      #                 test_fleet_sharding_meta_optimizer ENVS ${dist_ENVS})
     endif()
     if(NOT WIN32)
       py_test_modules(test_auto_parallel_partitioner MODULES
@@ -886,12 +887,12 @@ if(WITH_DISTRIBUTE)
          OR WITH_XPU
          OR WITH_ASCEND
          OR WITH_ASCEND_CL)
-        py_test_modules(test_fleet_lamb_meta_optimizer MODULES
-                        test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
-        py_test_modules(test_fleet_lars_meta_optimizer MODULES
-                        test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
-        py_test_modules(test_fleet_localsgd_meta_optimizer MODULES
-                        test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
+        # py_test_modules(test_fleet_lamb_meta_optimizer MODULES
+        #                 test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
+        # py_test_modules(test_fleet_lars_meta_optimizer MODULES
+        #                 test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
+        # py_test_modules(test_fleet_localsgd_meta_optimizer MODULES
+        #                 test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
 
       endif()
     endif()
@@ -902,8 +903,8 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_dgc_op MODULES test_dgc_op)
     py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
     py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
-    py_test_modules(test_fleet_dgc_meta_optimizer MODULES
-                    test_fleet_dgc_meta_optimizer)
+    # py_test_modules(test_fleet_dgc_meta_optimizer MODULES
+    #                 test_fleet_dgc_meta_optimizer)
   else()
     # if not with dgc, must close all dgc tests
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
@@ -931,29 +932,29 @@ if(WITH_DISTRIBUTE)
       py_test_modules(test_launch_coverage MODULES test_launch_coverage)
     endif()
 
-    bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
-                      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    # bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
+    #                   PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
        OR WITH_XPU
        OR WITH_ASCEND
        OR WITH_ASCEND_CL)
-      bash_test_modules(
-        test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_run_random_port START_BASH test_fleet_run_random_port.sh
-        ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      # bash_test_modules(
+      #   test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
+      #   PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      # bash_test_modules(
+      #   test_fleet_run_random_port START_BASH test_fleet_run_random_port.sh
+      #   ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      # bash_test_modules(
+      #   test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS
+      #   PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      # bash_test_modules(
+      #   test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
+      #   PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
     if(WITH_ASCEND OR WITH_ASCEND_CL)
-      bash_test_modules(
-        test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      # bash_test_modules(
+      # test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
+      # PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
       bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
                         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
@@ -975,15 +976,15 @@ if(WITH_DISTRIBUTE)
       endif()
     endforeach()
     # solve it later.
-    bash_test_modules(
-      test_fleet_launch_ps
-      START_BASH
-      test_fleet_launch_ps.sh
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=${dist_ut_port}"
-      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    # bash_test_modules(
+    #   test_fleet_launch_ps
+    #   START_BASH
+    #   test_fleet_launch_ps.sh
+    #   LABELS
+    #   "RUN_TYPE=EXCLUSIVE"
+    #   ENVS
+    #   "PADDLE_DIST_UT_PORT=${dist_ut_port}"
+    #   PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GLOO)
       bash_test_modules(
         test_cpuonly_launch
@@ -1108,10 +1109,10 @@ endif()
 if(WITH_DISTRIBUTE
    AND NOT APPLE
    AND NOT WIN32)
-  py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
-  set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_fleet_checkpoint
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+  # py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
+  # set_tests_properties(test_fleet_checkpoint PROPERTIES TIMEOUT 200)
+  # set_tests_properties(test_fleet_checkpoint
+  #                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
   bash_test_modules(
     test_auto_checkpoint
     START_BASH
@@ -1208,8 +1209,8 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_HETERPS)
-  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  # set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
+  # set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 if(WIN32)
@@ -1314,21 +1315,21 @@ if(NOT WIN32)
 endif()
 
 if(WITH_DISTRIBUTE AND NOT WIN32)
-  set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT 120)
   #  set_tests_properties(test_collective_cpu_barrier_with_gloo PROPERTIES TIMEOUT
   # 40)
 endif()
 
 if(WITH_DISTRIBUTE)
   set_tests_properties(test_communicator_half_async PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
-                                                                       200)
-  set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT
-                                                                        120)
-  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
-                       PROPERTIES TIMEOUT 60)
+  # set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
+  # set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
+  #                                                                      200)
+  # set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
+  # set_tests_properties(test_dist_fleet_raw_program_optimizer PROPERTIES TIMEOUT
+  #                                                                       120)
+  # set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
+  #                      PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
@@ -1377,7 +1378,7 @@ set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
                                                                      120)
 set_tests_properties(test_fuse_relu_depthwise_conv_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
+# set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
