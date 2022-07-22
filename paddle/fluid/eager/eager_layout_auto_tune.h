@@ -27,6 +27,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
   VLOG(3) << " Optimze Layout agnostic op: " << op_name;
   std::shared_ptr<EagerLayoutTransformer> transposer = nullptr;
   transposer = std::make_shared<EagerLayoutTransformer>(op_name);
+  transposer->UpdateFinalLayout(tensors_vector);
   return transposer;
 }
 
@@ -37,7 +38,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     T* attr) {
-  auto transposer = std::make_shared<EagerLayoutTransformer>(op_name);
+  VLOG(3) << " Optimze Layout lightly op: " << op_name;
+  std::shared_ptr<EagerLayoutTransformer> transposer = nullptr;
+  transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 
@@ -49,7 +52,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
                                kSlotSmallVectorSize>& amp_tensors_vector,
     T1* attr1,
     T2* attr2) {
-  auto transposer = std::make_shared<EagerLayoutTransformer>(op_name);
+  VLOG(3) << " Optimze Layout lightly op: " << op_name;
+  std::shared_ptr<EagerLayoutTransformer> transposer = nullptr;
+  transposer = std::make_shared<EagerLayoutTransformer>(op_name);
   return transposer;
 }
 

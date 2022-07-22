@@ -25,13 +25,15 @@ namespace imperative {
 template <typename VarType>
 void SetOutDataLayout(std::shared_ptr<VarType> var,
                       const paddle::experimental::DataLayout layout) {
-  paddle::imperative::SetDataLayout(var, layout);
-  // 1.get out_tensor
-  paddle::framework::Variable* tmp_var = var->MutableVar();
-  auto* out = tmp_var->GetMutable<framework::LoDTensor>();
-  // 2.SetDataLayout
-  out->set_layout(layout);
-  out->set_autotune(true);
+  if (var != nullptr && (var->MutableVar()->IsInitialized())) {
+    paddle::imperative::SetDataLayout(var, layout);
+    // 1.get out_tensor
+    paddle::framework::Variable* tmp_var = var->MutableVar();
+    auto* out = tmp_var->GetMutable<framework::LoDTensor>();
+    // 2.SetDataLayout
+    out->set_layout(layout);
+    out->set_autotune(true);
+  }
 }
 
 template <typename VarType>
