@@ -156,6 +156,9 @@ const std::vector<std::string> kLiteSubgraphPasses({
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
+    // runtime_context_cache_pass should be located in the last, since it will
+    // work on all fused ops.
+    "runtime_context_cache_pass"
 };
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
