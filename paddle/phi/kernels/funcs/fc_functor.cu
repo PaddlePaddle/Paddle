@@ -108,14 +108,6 @@ void AddReluKernel(
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) && __CUDA_ARCH__ >= 530
-#include <cuda_fp16.h>
-
-template <>
-struct FcTypeTraits<float16> {
-  typedef half2 Type;
-};
-
 template <bool DoRelu>
 __global__ void bias_relu_v2(const int num,
                              const half2* bias,
@@ -197,16 +189,6 @@ void AddReluKernel(cudaStream_t stream,
     }
   }
 }
-
-#else
-struct float16_4 {
-  float16 x, y, z, w;
-};
-
-template <>
-struct FcTypeTraits<float16> {
-  typedef float16_4 Type;
-};
 
 template <bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluKernel(const int N,

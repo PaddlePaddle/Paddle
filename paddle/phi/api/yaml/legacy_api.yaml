@@ -1042,6 +1042,15 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
 
+- api : inverse
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : InverseInferMeta
+  kernel :
+    func : inverse
+  backward : inverse_grad
+
 # is_empty
 - api : is_empty
   args : (Tensor x)

@@ -435,6 +435,7 @@ endif()
 if(WITH_ROCM)
   include(hip)
   include(miopen) # set miopen libraries, must before configure
+  include(cupti)
 endif()
 
 if(WITH_XPU_KP)
