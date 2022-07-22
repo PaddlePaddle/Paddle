@@ -436,6 +436,8 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
     Tensor output_grad_tensor(output_grad->type());
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
+    const std::vector<int> perm_to_hwcn = {3, 2, 0, 1};
+
     if (channel_last) {
       input_tensor.ShareDataWith(*input);
       output_grad_tensor.ShareDataWith(*output_grad);
@@ -462,10 +464,10 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
 
       auto filter_grad_dims = filter_grad->dims();
       Tensor temp_filter_grad(filter_grad->type());
-      temp_filter_grad.mutable_data<T>({filter_grad_dims[0],
-                                        filter_grad_dims[2],
+      temp_filter_grad.mutable_data<T>({filter_grad_dims[2],
                                         filter_grad_dims[3],
-                                        filter_grad_dims[1]},
+                                        filter_grad_dims[1],
+                                        filter_grad_dims[0]},
                                        ctx.GetPlace());
 
       cnnlDataType_t tensor_dtype = ToCnnlDataType<T>();
@@ -474,7 +476,7 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
       MLUCnnlTensorDesc out_grad_desc(
           output_grad_tensor, data_layout, tensor_dtype);
       MLUCnnlTensorDesc temp_filter_grad_desc(
-          temp_filter_grad, data_layout, tensor_dtype);
+          temp_filter_grad, CNNL_LAYOUT_HWCN, tensor_dtype);
 
       MLUCnnlConvolutionDesc conv_desc(in_dims_size,
                                        paddings.data(),
@@ -492,9 +494,9 @@ class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
                                   temp_filter_grad_desc.get(),
                                   GetBasePtr(&temp_filter_grad));
 
-      // transpose filter_grad from MHWC to MCHW
+      // transpose filter_grad from HWCN to MCHW
       TransposeFromMLUTensor<T>(ctx,
-                                perm_to_nchw,
+                                perm_to_hwcn,
                                 &temp_filter_grad,
                                 filter_grad,
                                 false /*need_reshape_or_alloc*/);
