@@ -88,11 +88,10 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
                                        DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
 
-  ctx.template Alloc<T>(out);
-  T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
+    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
@@ -102,6 +101,8 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
       memset_size *= src_dims[i];
     }
   }
+  ctx.template Alloc<T>(out);
+  T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(p_output, 0, memset_bytes);
 
@@ -109,6 +110,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
 
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
+
   if (pool_type == "SUM") {
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
@@ -119,10 +121,14 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
   } else if (pool_type == "MEAN") {
+    if (out_size <= 0) {
+      dst_count->Resize({src_dims[0]});
+    }
+    int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
     ctx.template Alloc<int>(dst_count);
     int* p_dst_count = dst_count->data<int>();
-    memset(p_dst_count, 0, src_dims[0] * sizeof(int));
-    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(src_dims[0],
+    memset(p_dst_count, 0, input_size * sizeof(int));
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(input_size,
                                                                 index_size,
                                                                 s_index,
                                                                 d_index,
@@ -139,16 +145,29 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
                          const std::string& pool_type,
-                         int64_t out_size,
+                         const IntArray& out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
+  auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
-    GraphSendRecvOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpKernelLaunchHelper<Context, T, int32_t>(ctx,
+                                                           x,
+                                                           src_index,
+                                                           dst_index,
+                                                           pool_type,
+                                                           out_size_data[0],
+                                                           out,
+                                                           dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(ctx,
+                                                           x,
+                                                           src_index,
+                                                           dst_index,
+                                                           pool_type,
+                                                           out_size_data[0],
+                                                           out,
+                                                           dst_count);
   }
 }
 

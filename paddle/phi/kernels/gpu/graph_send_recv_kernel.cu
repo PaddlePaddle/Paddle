@@ -37,11 +37,10 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                            DenseTensor* out,
                                            DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
-  ctx.template Alloc<T>(out);
-  T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
+    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
@@ -51,6 +50,8 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
       memset_size *= src_dims[i];
     }
   }
+  ctx.template Alloc<T>(out);
+  T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   if (pool_type == "SUM" || pool_type == "MEAN") {
 #ifdef PADDLE_WITH_HIP
@@ -161,16 +162,29 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
                          const std::string& pool_type,
-                         int64_t out_size,
+                         const IntArray& out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
+  auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
-    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(ctx,
+                                                               x,
+                                                               src_index,
+                                                               dst_index,
+                                                               pool_type,
+                                                               out_size_data[0],
+                                                               out,
+                                                               dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(ctx,
+                                                               x,
+                                                               src_index,
+                                                               dst_index,
+                                                               pool_type,
+                                                               out_size_data[0],
+                                                               out,
+                                                               dst_count);
   }
 }
 

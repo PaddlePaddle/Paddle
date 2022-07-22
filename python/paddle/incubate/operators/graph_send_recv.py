@@ -14,8 +14,8 @@
 
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid import core
+from paddle.fluid.framework import Variable
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle import _C_ops
 
 
@@ -63,14 +63,17 @@ def graph_send_recv(x,
                             The available data type is int32, int64. 
         pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int64|None): We can set `out_size` to get necessary output shape. If not set, then this 
-                              attribute will not be used. If set, it should be equal with or larger than
-                              max(dst_index) + 1.
+        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or 
+                                    out_size is smaller or equal to 0, then this input will not be used.
+                                    Otherwise, `out_size` should be equal with or larger than 
+                                    max(dst_index) + 1.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
+        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`. 
+                      If `out_size` is set correctly, then it should have the same shape as `x` except 
+                      the 0th dimension.
 
     Examples:
 
@@ -109,28 +112,24 @@ def graph_send_recv(x,
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if out_size is None or out_size <= 0:
+    if out_size is None:
         if _in_legacy_dygraph():
             out, tmp = _C_ops.graph_send_recv(x, src_index, dst_index,
                                               'pool_type', pool_type.upper())
             return out
         if in_dygraph_mode():
             return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                      pool_type.upper(), 0)
+                                                      pool_type.upper(), [0])
     else:
         if _in_legacy_dygraph():
+            out_size = convert_out_size_to_list(out_size)
             out, tmp = _C_ops.graph_send_recv(x, src_index,
                                               dst_index, 'pool_type',
                                               pool_type.upper(), 'out_size',
                                               out_size)
             return out
         if in_dygraph_mode():
-            if isinstance(out_size, core.eager.Tensor):
-                if (out_size.size < 1):
-                    raise ValueError(
-                        "out_size should be long type, but received Tensor type."
-                    )
-                out_size = out_size.numpy()[0]
+            out_size = convert_out_size_to_list(out_size)
             return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
                                                       pool_type.upper(),
                                                       out_size)
@@ -141,25 +140,62 @@ def graph_send_recv(x,
                              "graph_send_recv")
     check_variable_and_dtype(dst_index, "Dst_index", ("int32", "int64"),
                              "graph_send_recv")
+    check_type(out_size, 'out_size',
+               (int, np.int32, np.int64, Variable, list, tuple),
+               'graph_send_recv')
+    if isinstance(out_size, Variable):
+        check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'],
+                    'graph_send_recv')
 
     helper = LayerHelper("graph_send_recv", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     dst_count = helper.create_variable_for_type_inference(dtype="int32",
                                                           stop_gradient=True)
+
+    inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
+    attrs = {"pool_type": pool_type.upper()}
+    get_out_size_tensor_inputs(inputs=inputs,
+                               attrs=attrs,
+                               out_size=out_size,
+                               op_type='graph_send_recv')
+
     helper.append_op(type="graph_send_recv",
-                     inputs={
-                         "X": x,
-                         "Src_index": src_index,
-                         "Dst_index": dst_index
-                     },
+                     inputs=inputs,
                      outputs={
                          "Out": out,
                          "Dst_count": dst_count
                      },
-                     attrs={
-                         "pool_type":
-                         pool_type.upper(),
-                         "out_size":
-                         0 if out_size is None or out_size <= 0 else out_size
-                     })
+                     attrs=attrs)
     return out
+
+
+def convert_out_size_to_list(out_size):
+    """
+    Convert out_size(int, np.int32, np.int64, Variable) to list
+    in imperative mode.
+    """
+    if isinstance(out_size, (int, np.int32, np.int64)):
+        out_size = [out_size]
+    else:
+        out_size = [out_size.numpy().astype(int)[0]]
+    return out_size
+
+
+def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
+    """
+    Convert out_size(int, np.int32, np.int64, Variable) to inputs
+    and attrs in static mode.
+    """
+    if isinstance(out_size, (int, np.int32, np.int64)):
+        out_size = [out_size]
+        attrs['out_size'] = out_size
+    elif isinstance(out_size, Variable):
+        out_size.stop_gradient = True
+        check_dtype(out_size.dtype, 'out_size', ['int32', 'int64'],
+                    'fill_constant',
+                    '(When type of out_size in' + op_type + ' is Variable.)')
+        if (convert_dtype(out_size.dtype) == 'int64'):
+            out_size = cast(out_size, 'int32')
+        inputs["OutSizeTensor"] = out_size
+    else:
+        raise TypeError("Out_size only supports Variable or int.")

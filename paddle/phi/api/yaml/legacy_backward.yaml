@@ -828,8 +828,8 @@
     func : gelu_grad
 
 - backward_api : graph_send_recv_grad
-  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type = "SUM", int64_t out_size = 0) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type = "SUM")
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type, IntArray out_size) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str pool_type, IntArray out_size)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
