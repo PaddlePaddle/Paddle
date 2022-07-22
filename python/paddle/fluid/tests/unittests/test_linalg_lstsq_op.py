@@ -30,6 +30,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
             self.devices.append("gpu:0")
         self.generate_input()
         self.generate_output()
+        np.random.seed(2022)
 
     def init_config(self):
         self.dtype = 'float64'

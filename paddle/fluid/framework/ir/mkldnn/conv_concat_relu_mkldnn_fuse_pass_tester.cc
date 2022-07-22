@@ -122,7 +122,7 @@ void MainTest(const ProgramDesc& prog, bool fuse_relu) {
       if (op->Type() == "conv2d") {
         ASSERT_TRUE(op->HasAttr("fuse_activation"));
         bool fuse_relu_attr =
-            (BOOST_GET_CONST(std::string, op->GetAttr("fuse_activation")) ==
+            (PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation")) ==
              "relu");
         EXPECT_EQ(fuse_relu, fuse_relu_attr);
       } else if (op->Type() == "relu") {
