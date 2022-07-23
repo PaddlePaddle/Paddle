@@ -591,12 +591,6 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        print(self.whole_program_id)
-        print(self.whole_program)
-
-        builded_program = self._add_build_strategy_for(self.whole_program)
-        print(builded_program)
-
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
