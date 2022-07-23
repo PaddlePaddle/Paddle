@@ -38,23 +38,30 @@ class ExecutorFunction : public BaseFunction {
       : info_(info), place_(place), inner_exe_(place_) {
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+    info_->RemoveDescFeedFetch();
   }
 
   ~ExecutorFunction() noexcept {}
 
-  std::vector<Variable> operator()(const std::vector<Variable> &inputs) {
-    utils::ShareInputsIntoScope(info_->InputArgNames(), inputs, &scope_);
+  std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) {
+    auto dense_tensors = utils::ToDenseTensors(inputs);
+    return utils::ToTensors(this->operator()(dense_tensors));
+  }
+
+  std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
+    utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
     inner_exe_.Run(info_->ProgramDesc(),
                    &scope_,
                    /*blockID=*/0,
                    false,
                    true,
                    info_->OutputArgNames());
-    VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
-    std::vector<Variable> res;
-    utils::FetchVarsByNames(info_->OutputArgNames(), scope_, &res);
+    std::vector<DenseTensor> res;
+    utils::FetchOuts(info_->OutputArgNames(), scope_, &res);
     return res;
   }
+
+  const std::shared_ptr<FunctionInfo> &Info() const { return info_; }
 
  private:
   std::shared_ptr<FunctionInfo> info_;

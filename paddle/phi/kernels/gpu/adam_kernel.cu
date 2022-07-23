@@ -265,6 +265,106 @@ void AdamDenseKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MergedAdamKernel(
+    const Context& dev_ctx,
+    const std::vector<const DenseTensor*>& param,
+    const std::vector<const DenseTensor*>& grad,
+    const std::vector<const DenseTensor*>& learning_rate,
+    const std::vector<const DenseTensor*>& moment1,
+    const std::vector<const DenseTensor*>& moment2,
+    const std::vector<const DenseTensor*>& beta1_pow,
+    const std::vector<const DenseTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<DenseTensor*> param_out,
+    std::vector<DenseTensor*> moment1_out,
+    std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> beta1_pow_out,
+    std::vector<DenseTensor*> beta2_pow_out,
+    std::vector<DenseTensor*> master_param_out) {
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  MPDType beta1_ = beta1.to<MPDType>();
+  MPDType beta2_ = beta2.to<MPDType>();
+  MPDType epsilon_ = epsilon.to<MPDType>();
+
+  size_t param_num = param.size();
+
+  for (size_t idx = 0; idx < param_num; idx++) {
+    const MPDType* master_in_data =
+        multi_precision ? master_param.get()[idx]->data<MPDType>() : nullptr;
+    MPDType* master_out_data =
+        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out[idx])
+                        : nullptr;
+
+    // update param and moment
+    int threads = 512;
+    int blocks = (param[idx]->numel() + threads - 1) / threads;
+
+    if (beta1_pow[idx]->place() == CPUPlace() &&
+        beta2_pow[idx]->place() == CPUPlace()) {
+      // Compute with betapow in REG
+      AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          *beta1_pow[idx]->data<MPDType>(),
+          *beta2_pow[idx]->data<MPDType>(),
+          moment1[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+          moment2[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+          learning_rate[idx]->data<MPDType>(),
+          grad[idx]->data<T>(),
+          param[idx]->data<T>(),
+          dev_ctx.template Alloc<T>(param_out[idx]),
+          master_in_data,
+          master_out_data,
+          param[idx]->numel());
+      if (!use_global_beta_pow) {
+        // Cpu update
+        dev_ctx.template HostAlloc<MPDType>(beta1_pow_out[idx])[0] =
+            beta1_ * beta1_pow[idx]->data<MPDType>()[0];
+        dev_ctx.template HostAlloc<MPDType>(beta2_pow_out[idx])[0] =
+            beta2_ * beta2_pow[idx]->data<MPDType>()[0];
+      }
+    } else {
+      AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          beta1_pow[idx]->data<MPDType>(),
+          beta2_pow[idx]->data<MPDType>(),
+          moment1[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+          moment2[idx]->data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+          learning_rate[idx]->data<MPDType>(),
+          grad[idx]->data<T>(),
+          param[idx]->data<T>(),
+          dev_ctx.template Alloc<T>(param_out[idx]),
+          master_in_data,
+          master_out_data,
+          param[idx]->numel());
+      if (!use_global_beta_pow) {
+        // Update with gpu
+        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            beta1_pow[idx]->data<MPDType>(),
+            beta2_pow[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(beta1_pow_out[idx]),
+            dev_ctx.template Alloc<MPDType>(beta2_pow_out[idx]));
+      }
+    }
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam,
@@ -278,4 +378,16 @@ PD_REGISTER_KERNEL(adam,
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(merged_adam,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MergedAdamKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  // Skip beta1_pow, beta2_pow data transform
+  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
 }

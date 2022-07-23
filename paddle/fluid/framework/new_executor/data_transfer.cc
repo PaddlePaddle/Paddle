@@ -137,6 +137,13 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.output_index["Out"] = {var_scope_->VarId(new_var_name)};
   new_op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
   new_op_func_node.kernel_func_(exec_ctx);
+  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
+  // explicit synchronization.
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (op_type == kMemcpyD2H) {
+    dev_ctx->Wait();
+  }
+#endif
   // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
   // as kQueueSync and execute them in thread pool.
   new_op_func_node.type_ = OpFuncType::kQueueSync;
@@ -308,6 +315,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)   ? 0
                          : platform::is_npu_place(dst_place) ? 1
+                         : platform::is_ipu_place(dst_place) ? 3
                          : platform::is_xpu_place(dst_place) ? 2
                                                              : -1;
     attr_map = {{"dst_place_type", dst_place_type}};

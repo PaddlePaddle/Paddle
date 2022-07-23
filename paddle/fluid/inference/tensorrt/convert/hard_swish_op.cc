@@ -46,14 +46,15 @@ class HardSwishOpConverter : public OpConverter {
 
     const float threshold =
         op_desc.HasAttr("threshold")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
             : 6.0f;
     const float scale = op_desc.HasAttr("scale")
-                            ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                            ? PADDLE_GET_CONST(float, op_desc.GetAttr("scale"))
                             : 6.0f;
-    const float offset = op_desc.HasAttr("offset")
-                             ? BOOST_GET_CONST(float, op_desc.GetAttr("offset"))
-                             : 3.0f;
+    const float offset =
+        op_desc.HasAttr("offset")
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("offset"))
+            : 3.0f;
     nvinfer1::ILayer* layer = nullptr;
     if (threshold == scale) {
       auto* hsig_layer = TRT_ENGINE_ADD_LAYER(

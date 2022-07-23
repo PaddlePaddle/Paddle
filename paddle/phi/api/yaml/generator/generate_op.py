@@ -54,32 +54,21 @@ def restruct_io(api):
     return api
 
 
-def main(api_yaml_path, backward_yaml_path, api_compat_yaml_path,
-         api_version_yaml_path, output_op_path, output_arg_map_path):
-    with open(api_yaml_path, "rt") as f:
-        apis = yaml.safe_load(f)
-        apis = [restruct_io(api) for api in apis]
-    forward_api_dict = to_named_dict(apis)
-
-    with open(backward_yaml_path, "rt") as f:
-        backward_apis = yaml.safe_load(f)
-        backward_apis = [restruct_io(api) for api in backward_apis]
-    backward_api_dict = to_named_dict(backward_apis)
-
-    with open(api_version_yaml_path, "rt") as f:
-        api_versions = yaml.safe_load(f)
-    # add api version info into api
-    for api_version in api_versions:
-        forward_api_dict[api_version['api']]['version'] = api_version['version']
-
-    with open(api_compat_yaml_path, "rt") as f:
-        api_args_map = yaml.safe_load(f)
-    # replace args name for OpMaker
-    for api_args in api_args_map:
+# replace name of op and params for OpMaker
+def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
+    for api_args in api_op_map:
+        if api_args['api'] not in forward_api_dict:
+            continue
         forward_api_item = forward_api_dict[api_args['api']]
         has_backward = True if forward_api_item['backward'] else False
         if has_backward:
             backward_api_item = backward_api_dict[forward_api_item['backward']]
+        if 'op_name' in api_args:
+            forward_api_item['op_name'] = api_args['op_name']
+        if 'grad_op_name' in api_args and has_backward:
+            forward_api_item['backward'] = api_args['grad_op_name']
+            backward_api_item['op_name'] = api_args['grad_op_name']
+
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
         for key in key_set:
@@ -173,14 +162,38 @@ def main(api_yaml_path, backward_yaml_path, api_compat_yaml_path,
                     for param in backward_api_item['no_need_buffer']
                 ]
 
+
+def main(api_yaml_path, backward_yaml_path, api_compat_yaml_path,
+         api_version_yaml_path, output_op_path, output_arg_map_path):
+    with open(api_yaml_path, "rt") as f:
+        apis = yaml.safe_load(f)
+        apis = [restruct_io(api) for api in apis]
+    forward_api_dict = to_named_dict(apis)
+
+    with open(backward_yaml_path, "rt") as f:
+        backward_apis = yaml.safe_load(f)
+        backward_apis = [restruct_io(api) for api in backward_apis]
+    backward_api_dict = to_named_dict(backward_apis)
+
+    with open(api_version_yaml_path, "rt") as f:
+        api_versions = yaml.safe_load(f)
+    # add api version info into api
+    for api_version in api_versions:
+        forward_api_dict[api_version['api']]['version'] = api_version['version']
+
+    with open(api_compat_yaml_path, "rt") as f:
+        api_op_map = yaml.safe_load(f)
+
+    for api in apis:
+        api['op_name'] = api['name']
+    for bw_api in backward_apis:
+        bw_api['op_name'] = bw_api['name']
+
+    replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
+
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
         forward_name = backward_api["forward"]["name"]
-        if forward_name in backward_api_dict:
-            forward_api = backward_api_dict[forward_name]
-            if forward_api["backward"] is None:
-                forward_api["backward"] = name
-
         if forward_name in backward_api_dict:
             forward_api = backward_api_dict[forward_name]
             if forward_api["backward"] is None:

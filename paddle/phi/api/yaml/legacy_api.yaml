@@ -118,6 +118,15 @@
   kernel :
     func : allclose
 
+- api : angle
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : angle
+  backward : angle_grad
+
 - api : any
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
@@ -167,6 +176,23 @@
     func : argsort
   backward : argsort_grad
 
+- api : as_complex
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsComplexInferMeta
+  kernel :
+    func : as_complex
+  backward : as_complex_grad
+
+- api : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+  backward : as_real_grad
 # asin
 - api : asin
   args : (Tensor x)
@@ -253,6 +279,16 @@
   kernel :
     func : bce_loss
   backward : bce_loss_grad
+
+- api : bilinear_tensor_product
+  args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  output : Tensor
+  infer_meta :
+    func : BilinearTensorProductInferMeta
+  kernel :
+    func : bilinear_tensor_product
+  optional : bias
+  backward : bilinear_tensor_product_grad
 
 # bitwise_and
 - api : bitwise_and
@@ -341,6 +377,23 @@
   kernel :
     func : clip
   backward : clip_grad
+
+- api : clip_by_norm
+  args : (Tensor x, float max_norm)
+  output : Tensor(out)
+  infer_meta :
+    func : ClipByNormInferMeta
+  kernel :
+    func : clip_by_norm
+
+- api : complex
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ComplexInferMeta
+  kernel :
+    func : complex
+  backward : complex_grad
 
 - api : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
@@ -489,13 +542,13 @@
     func : determinant
   backward : det_grad
 
-- api : diag
-  args : (Tensor x, int offset, float padding_value)
+- api : diag_embed
+  args : (Tensor x, int offset, int dim1, int dim2)
   output : Tensor
   infer_meta :
-    func : DiagInferMeta
+    func : DiagEmbedInferMeta
   kernel :
-    func : diag
+    func : diag_embed
 
 - api : divide
   args : (Tensor x, Tensor y)
@@ -527,14 +580,22 @@
     func : eigh
   backward : eigh_grad
 
+- api : eigvals
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : EigvalsInferMeta
+  kernel :
+    func : eigvals
+
 - api : einsum
   args : (Tensor[] x, str equation)
   output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
   infer_meta :
-    func : EinsumInferMeta
+    func : EinsumRawInferMeta
     param : [x, equation]
   kernel :
-    func : einsum
+    func : einsum_raw
   backward : einsum_grad
 
 - api : elementwise_pow
@@ -653,6 +714,17 @@
   kernel :
     func : expm1
   backward : expm1_grad
+
+- api : exponential_
+  args : (Tensor x, float lambda)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : exponential
+  inplace : (x -> out)
+  backward : exponential__grad
 
 - api : eye
   args : (int64_t num_rows, int64_t num_columns, DataType dtype=DataType::FLOAT32, Place place={})
@@ -969,6 +1041,15 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
+
+- api : inverse
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : InverseInferMeta
+  kernel :
+    func : inverse
+  backward : inverse_grad
 
 # is_empty
 - api : is_empty
@@ -1985,9 +2066,9 @@
   args : (Tensor x, int[] axes)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : SqueezeInferMeta
+    func : SqueezeWithXShapeInferMeta
   kernel :
-    func : squeeze
+    func : squeeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
@@ -2040,6 +2121,16 @@
     func : swish
   backward : swish_grad
 
+# sync_batch_norm
+- api : sync_batch_norm
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm
+  backward : sync_batch_norm_grad
+
 # take_along_axis
 - api : take_along_axis
   args : (Tensor x, Tensor index, int axis)
@@ -2081,6 +2172,16 @@
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
+
+# temporal_shift
+- api : temporal_shift
+  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor
+  infer_meta :
+    func : TemporalShiftInferMeta
+  kernel :
+    func : temporal_shift
+  backward : temporal_shift_grad
 
 # thresholded_relu
 - api : thresholded_relu
@@ -2205,13 +2306,22 @@
     func : unique
     data_type : x
 
+- api : unique_consecutive
+  args : (Tensor x, bool return_inverse, bool return_counts, int[] axis, int dtype)
+  output : Tensor(out), Tensor(index), Tensor(counts)
+  infer_meta :
+      func : UniqueConsecutiveInferMeta
+  kernel :
+    func : unique_consecutive
+    data_type : x
+
 - api : unsqueeze
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : UnsqueezeInferMeta
+    func : UnsqueezeWithXShapeInferMeta
   kernel :
-    func : unsqueeze
+    func : unsqueeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
@@ -2258,3 +2368,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+# eig
+- api: eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad

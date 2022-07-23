@@ -81,7 +81,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
 
-      auto* temp_data = engine_->GetWeightCPUData(var_name, temp_tensor);
+      auto* temp_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
       return temp_data;
     };
 
@@ -183,9 +184,9 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                               .c_str());
     free(plugin_ptr);
     float out_0_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
     float out_1_scale =
-        BOOST_GET_CONST(float, op_desc.GetAttr("out_1_threshold"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("out_1_threshold"));
     engine_->SetTensorDynamicRange(plugin_layer->getOutput(0), out_0_scale);
     engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_1_scale);
 

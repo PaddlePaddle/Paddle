@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
