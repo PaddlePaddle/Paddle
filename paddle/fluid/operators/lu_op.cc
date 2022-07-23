@@ -100,57 +100,6 @@ class LUOpVarTypeInference : public framework::VarTypeInference {
 };
 
 template <typename T>
-class LUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto pivots = ctx.Attr<bool>("pivots");
-    auto *xin = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    auto *IpivT = ctx.Output<framework::Tensor>("Pivots");
-    auto *InfoT = ctx.Output<framework::Tensor>("Infos");
-    PADDLE_ENFORCE_EQ(pivots,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "lu without pivoting is not implemented on the CPU, "
-                          "but got pivots=False"));
-
-    math::DeviceIndependenceTensorOperations<phi::CPUContext, T> helper(ctx);
-    *out = helper.Transpose(*xin);
-
-    auto outdims = out->dims();
-    auto outrank = outdims.size();
-
-    int m = static_cast<int>(outdims[outrank - 1]);
-    int n = static_cast<int>(outdims[outrank - 2]);
-    int lda = std::max(1, m);
-
-    auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
-    ipiv_dims[outrank - 2] = std::min(m, n);
-    IpivT->Resize(ipiv_dims);
-    auto ipiv_data = IpivT->mutable_data<int>(ctx.GetPlace());
-
-    auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
-    if (info_dims.size() == 0) {
-      info_dims = phi::make_ddim({1});
-    }
-    InfoT->Resize(info_dims);
-    auto info_data = InfoT->mutable_data<int>(ctx.GetPlace());
-
-    auto batchsize = product(info_dims);
-    batchsize = std::max(static_cast<int>(batchsize), 1);
-    auto out_data = out->mutable_data<T>(ctx.GetPlace());
-    for (int b = 0; b < batchsize; b++) {
-      auto out_data_item = &out_data[b * m * n];
-      int *info_data_item = &info_data[b];
-      int *ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-      phi::funcs::lapackLu<T>(
-          m, n, out_data_item, lda, ipiv_data_item, info_data_item);
-    }
-    *out = helper.Transpose(*out);
-  }
-};
-
-template <typename T>
 class LUOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -230,8 +179,3 @@ REGISTER_OPERATOR(lu_grad,
                   ops::LUGradOp,
                   ops::LUGradOpVarTypeInference,
                   ops::LUGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(lu, ops::LUKernel<float>, ops::LUKernel<double>);
-REGISTER_OP_CPU_KERNEL(lu_grad,
-                       ops::LUGradKernel<phi::CPUContext, float>,
-                       ops::LUGradKernel<phi::CPUContext, double>);
