@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/kernels/lu_grad_kernel.h"
-#include "paddle/phi/kernels/impl/lu_grad_kernel_impl.h"
+namespace phi{
 
-PD_REGISTER_KERNEL(lu_grad, 
-                    GPU, 
-                    ALL_LAYOUT, 
-                    phi::LUGradKernel, 
-                    float, 
-                    double) {}
+KernelSignature LUOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("lu", {"X"}, {"pivots"}, {"Out", "Pivots", "Infos"});
+}
+
+KernelSignature LUGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "lu_grad", {"X", "Out", "Pivots", "Out@GRAD"}, {"pivots"}, {"X@GRAD"});
+}
+
+}   // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(lu, phi::LUOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(lu_grad, phi::LUGradOpArgumentMapping);

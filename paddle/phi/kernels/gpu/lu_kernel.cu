@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 #include "paddle/phi/kernels/lu_kernel.h"
 #include "paddle/phi/kernels/funcs/lu.h"
@@ -168,3 +170,10 @@ void LUKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(lu, 
+                    GPU, 
+                    ALL_LAYOUT, 
+                    phi::LUKernel, 
+                    float, 
+                    double) {}
