@@ -415,13 +415,15 @@ void AnalysisPredictor::InitDeviceContexts() {
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
-          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandle());
+          gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
           gpu_context->SetBlasTensorCoreHandle(
-              gpu_resource->GetBlasTensorCoreHandle());
-          gpu_context->SetBlasTF32Handle(gpu_resource->GetBlasTF32Handle());
-          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandle());
-          gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandle());
-          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandle());
+              gpu_resource->GetBlasTensorCoreHandleCreator());
+          gpu_context->SetBlasTF32Handle(
+              gpu_resource->GetBlasTF32TensorCoreHandleCreator());
+          gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
+          gpu_context->SetSolverHandle(
+              gpu_resource->GetSolverDnHandleCreator());
+          gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
           gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
           gpu_context->SetComputeCapability(
               gpu_resource->GetGpuComputeCapability());

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/resource_manager.h"
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -151,11 +152,6 @@ void GPUContextResource::InitGPUResource(void* stream) {
 
   InitGpuProperties();
   InitGpuEigenDevice();
-  InitDnnHanlde();
-  InitBlasHandle();
-  InitBlasLtHandle();
-  InitSolverHandle();
-  InitSparseHandle();
 }
 
 void GPUContextResource::DestroyGPUResource() {
@@ -203,22 +199,6 @@ void GPUContextResource::DestroyDnnHandle() {
   phi::DestroyDnnHandle(dnn_handle_);
 }
 
-void GPUContextResource::InitBlasHandle() {
-  phi::InitBlasHandle(&blas_handle_, stream_);
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
-  phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-      blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
-#endif
-#if CUDA_VERSION >= 11000
-  phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
-  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
-      blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif
-#endif
-}
-
 void GPUContextResource::DestroyBlasHandle() {
   phi::DestroyBlasHandle(blas_handle_);
   phi::DestroyBlasHandle(blas_tensor_core_handle_);
@@ -255,26 +235,92 @@ gpuStream_t GPUContextResource::GetStream() const { return stream_; }
 
 dnnHandle_t GPUContextResource::GetDnnHandle() const { return dnn_handle_; }
 
+std::function<phi::dnnHandle_t()> GPUContextResource::GetDnnHandleCreator() {
+  return [&]() -> phi::dnnHandle_t {
+    InitDnnHanlde();
+    return dnn_handle_;
+  };
+}
+
 blasHandle_t GPUContextResource::GetBlasHandle() const { return blas_handle_; }
+
+std::function<phi::blasHandle_t()> GPUContextResource::GetBlasHandleCreator() {
+  return [&]() -> phi::blasHandle_t {
+    phi::InitBlasHandle(&blas_handle_, stream_);
+    return blas_handle_;
+  };
+}
 
 blasHandle_t GPUContextResource::GetBlasTensorCoreHandle() const {
   return blas_tensor_core_handle_;
+}
+
+std::function<phi::blasHandle_t()>
+GPUContextResource::GetBlasTensorCoreHandleCreator() {
+  return [&]() -> phi::blasHandle_t {
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 9000
+    phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
+#endif
+#endif
+    return blas_tensor_core_handle_;
+  };
 }
 
 blasHandle_t GPUContextResource::GetBlasTF32Handle() const {
   return blas_tf32_tensor_core_handle_;
 }
 
+std::function<phi::blasHandle_t()>
+GPUContextResource::GetBlasTF32TensorCoreHandleCreator() {
+  return [&]() -> phi::blasHandle_t {
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 11000
+    phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+    PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
+        blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
+#endif
+#endif
+    return blas_tf32_tensor_core_handle_;
+  };
+}
+
 blasLtHandle_t GPUContextResource::GetBlasLtHandle() const {
   return blaslt_handle_;
+}
+
+std::function<phi::blasLtHandle_t()>
+GPUContextResource::GetBlasLtHandleCreator() {
+  return [&]() {
+    InitBlasLtHandle();
+    return blaslt_handle_;
+  };
 }
 
 phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
   return solver_handle_;
 }
 
+std::function<phi::solverHandle_t()>
+GPUContextResource::GetSolverDnHandleCreator() {
+  return [&]() {
+    InitSolverHandle();
+    return solver_handle_;
+  };
+}
+
 phi::sparseHandle_t GPUContextResource::GetSparseHandle() const {
   return sparse_handle_;
+}
+
+std::function<phi::sparseHandle_t()>
+GPUContextResource::GetSparseHandleCreator() {
+  return [&]() {
+    InitSparseHandle();
+    return sparse_handle_;
+  };
 }
 
 Eigen::GpuDevice* GPUContextResource::GetGpuEigenDevice() const {
@@ -311,59 +357,72 @@ void GPUContextResource::ReBindStream(gpuStream_t stream) {
 }
 
 void GPUContextResource::ReBindDnnHandle(gpuStream_t stream) const {
+  if (dnn_handle_) {
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenSetStream(dnn_handle_, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::miopenSetStream(dnn_handle_, stream));
 #else
-  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cudnnSetStream(dnn_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cudnnSetStream(dnn_handle_, stream));
 #endif
+  }
 }
 
 void GPUContextResource::ReBindBlasHandle(gpuStream_t stream) const {
+  if (blas_handle_) {
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::rocblas_set_stream(blas_handle_, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_set_stream(blas_handle_, stream));
 #else
-  PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cublasSetStream(blas_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cublasSetStream(blas_handle_, stream));
 #endif
+  }
 }
 
 void GPUContextResource::ReBindBlasTensorCoreHandle(gpuStream_t stream) const {
+  if (blas_tensor_core_handle_) {
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::rocblas_set_stream(blas_tensor_core_handle_, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_set_stream(blas_tensor_core_handle_, stream));
 #else
-  PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cublasSetStream(blas_tensor_core_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cublasSetStream(blas_tensor_core_handle_, stream));
 #endif
+  }
 }
 
 void GPUContextResource::ReBindBlasTF32Handle(gpuStream_t stream) const {
+  if (blas_tf32_tensor_core_handle_) {
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::rocblas_set_stream(blas_tf32_tensor_core_handle_, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_set_stream(
+        blas_tf32_tensor_core_handle_, stream));
 #else
-  PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cublasSetStream(blas_tf32_tensor_core_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cublasSetStream(blas_tf32_tensor_core_handle_, stream));
 #endif
+  }
 }
 
 void GPUContextResource::ReBindSolverDnHandle(gpuStream_t stream) const {
+  if (solver_handle_) {
 #ifndef PADDLE_WITH_HIP
-  PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cusolverDnSetStream(solver_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cusolverDnSetStream(solver_handle_, stream));
 #endif
+  }
 }
 
 void GPUContextResource::ReBindSparseHandle(gpuStream_t stream) const {
+  if (sparse_handle_) {
 #if defined(PADDLE_WITH_CUDA)
 // The generic APIs is supported from CUDA10.1
 #if CUDA_VERSION >= 11000
-  PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cusparseSetStream(sparse_handle_, stream));
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cusparseSetStream(sparse_handle_, stream));
 #endif
 #endif
+  }
 }
 
 void GPUContextResource::ReBindEigenDevice(gpuStream_t stream,
