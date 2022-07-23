@@ -2030,7 +2030,7 @@
   backward : softmax_grad
 
 - api : softplus
-  args : (Tensor x, float beta,float threshold)
+  args : (Tensor x, float beta, float threshold)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta

@@ -1949,7 +1949,7 @@
 
 # softplus
 - backward_api : softplus_grad
-  forward : softplus (Tensor x, float beta,float threshold) -> Tensor(out)
+  forward : softplus (Tensor x, float beta, float threshold) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float beta, float threshold)
   output : Tensor(x_grad)
   infer_meta :

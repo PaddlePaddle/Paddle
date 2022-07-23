@@ -31,7 +31,6 @@ __activations_noattr__ = [
     'silu',
     'logsigmoid',
     'tanh_shrink',
-    'softplus',
     'softsign',
     'tanh',
 ]
@@ -494,8 +493,42 @@ Examples:
 
 """)
 
-add_sample_code(
-    globals()["softplus"], r"""
+__all__ += ['softplus']
+
+_softplus_ = generate_layer_fn('softplus')
+
+
+def softplus(x, beta=None, threshold=None, name=None):
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'softplus')
+
+    locals_val = locals().copy()
+    kwargs = dict()
+    for name, val in locals_val.items():
+        if val is not None:
+            kwargs[name] = val
+    return _softplus_(**kwargs)
+
+
+softplus.__doc__ = r"""
+    :alias_main: paddle.nn.functional.softplus
+    :alias: paddle.nn.functional.softplus, paddle.nn.functional.activation.softplus
+    :old_api: paddle.fluid.layers.softplus
+
+:strong:`Softplus Activation Operator`
+
+.. math::
+    out = \\frac{1}{beta} * log(1 + e^{beta * x})
+    For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
+
+Args:
+    x (Tensor): Input of Softplus operator, an N-D Tensor, with data type float32 and float64
+    beta (float, optional): The value of beta for softplus. Default is 1
+    threshold (float, optional): The value of threshold for softplus. Default is 20
+    name (str, optional): Name for the operation (optional, default is None)
+
+Returns:
+    Output of Softplus operator with the same type of x
+
 Examples:
     .. code-block:: python
 
@@ -507,7 +540,7 @@ Examples:
         print(out)
         # [0.513015, 0.598139, 0.744397, 0.854355]
 
-""")
+"""
 
 add_sample_code(
     globals()["softsign"], r"""

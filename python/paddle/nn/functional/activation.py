@@ -1180,7 +1180,8 @@ def softplus(x, beta=1, threshold=20, name=None):
 
     if in_dygraph_mode():
         return _C_ops.final_state_softplus(x, beta, threshold)
-    elif in_dynamic_mode():
+
+    if _in_legacy_dygraph():
         return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
