@@ -498,9 +498,8 @@ __all__ += ['softplus']
 _softplus_ = generate_layer_fn('softplus')
 
 
-def softplus(x, beta=None, threshold=None, name=None):
+def softplus(x, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'softplus')
-
     locals_val = locals().copy()
     kwargs = dict()
     for name, val in locals_val.items():
