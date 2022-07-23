@@ -23,7 +23,7 @@ KernelSignature SpectralNormOpArgumentMapping(const ArgumentMappingContext& ctx)
 KernelSignature SpectralNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "spectral_norm_grad", {"Out@GRAD", "Weight", "U", "V"}, {"dim", "power_iters", "eps"}, {"Weight@GRAD"});
+      "spectral_norm_grad", {"Weight", "U", "V", "Out@GRAD"}, {"dim", "power_iters", "eps"}, {"Weight@GRAD"});
 }
 
 }   // namespace phi
