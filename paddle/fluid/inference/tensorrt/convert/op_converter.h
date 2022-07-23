@@ -482,8 +482,8 @@ class OpConverter {
   template <typename T>
   // Create and add Multi-D constant float/int32 layer
   nvinfer1::ITensor* AddConstantLayer(const T* data,
-                                      const std::vector<int32_t>& weight_dims,
-                                      const std::string& weight_name) {
+                                      nvinfer1::Dims shape,
+                                      const std::string& weight_name = "") {
     if (!(std::is_same<T, float>::value ||
           std::is_same<T, platform::float16>::value ||
           std::is_same<T, int32_t>::value)) {
@@ -493,7 +493,7 @@ class OpConverter {
     }
 
     int data_size = std::accumulate(
-        weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int>());
+        shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
@@ -510,12 +510,9 @@ class OpConverter {
     TensorRTEngine::Weight weight{trt_dtype,
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
-    nvinfer1::Dims trt_dims;
-    trt_dims.nbDims = weight_dims.size();
-    for (size_t i = 0; i < weight_dims.size(); i++)
-      trt_dims.d[i] = weight_dims[i];
+
     auto const_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, weight.get());
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, shape, weight.get());
     return const_layer->getOutput(0);
   }
 
@@ -524,6 +521,14 @@ class OpConverter {
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<T>& data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
+    if (!(std::is_same<T, float>::value ||
+          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, int32_t>::value)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
+          "supports float, half or int32_t."));
+    }
+
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});

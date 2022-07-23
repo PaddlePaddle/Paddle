@@ -63,7 +63,11 @@ class SwishOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      auto* beta_data = Add1DConstantLayer(beta);
+      int32_t rank = input->getDimensions().nbDims;
+      nvinfer1::Dims constant_shape{rank, {}};
+      std::fill(constant_shape.d, constant_shape.d + rank, 1);
+      std::vector<float> weight_data{beta};
+      auto* beta_data = AddConstantLayer(weight_data.data(), constant_shape);
       auto* input_mul_with_beta = Prod(beta_data, input);
       auto* sigmoid = TRT_ENGINE_ADD_LAYER(engine_,
                                            Activation,
