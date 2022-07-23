@@ -16,6 +16,7 @@ sparse math functions
 """
 from __future__ import print_function
 
+import paddle
 from paddle import _C_ops, in_dynamic_mode, device, int32, int64
 from paddle.tensor import cast
 from paddle.incubate.sparse import sparse_csr_tensor
@@ -258,3 +259,43 @@ def divide(x, y, name=None):
             raise ValueError(
                 "Currently, sparse.divide only support the input of SparseCooTensor or SparseCsrTensor"
             )
+
+
+def sgn(x, name=None):
+    """
+    This API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x (Tensor): The input tensor, which data type should be float32, float64, complex64, complex128.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output Tensor of sgn.
+
+    Examples:
+        .. code-block:: Python
+
+            import paddle
+
+            input = paddle.rand([3, 5], 'float32')
+            print(paddle.sgn(x))
+
+    """
+    if x.dtype not in [paddle.float16, paddle.float32, paddle.float64, paddle.complex64, paddle.complex128]:
+        raise TypeError(
+            "The data type of input must be one of ['float32', 'float64', 'complex64', 'complex128'], but got {}"
+                .format(x.dtype))
+    if paddle.is_complex(x):
+        expand_x = paddle.as_real(x)
+        real, img = paddle.chunk(expand_x, 2, axis=-1)
+        exp_zero = expand_x == 0
+        zero_mask = paddle.all(exp_zero, axis=-1)
+        x_abs = paddle.abs(x)
+        x_abs = paddle.unsqueeze(x_abs, axis=-1)
+        output = expand_x / x_abs
+        zeros = paddle.zeros_like(output)
+        output = paddle.where(paddle.isnan(output), zeros, output)
+
+        return paddle.as_complex(output)
+    else:
+        return paddle.sign(x)
