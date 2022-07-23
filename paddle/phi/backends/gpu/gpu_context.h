@@ -197,6 +197,7 @@ class PADDLE_API GPUContext : public DeviceContext {
   void SetStream(gpuStream_t);
 
   void SetEigenDevice(Eigen::GpuDevice*);
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
 
   void SetBlasHandle(blasHandle_t);
   void SetBlasHandle(std::function<blasHandle_t()>&&);

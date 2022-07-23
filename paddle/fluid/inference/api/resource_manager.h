@@ -62,6 +62,7 @@ class GPUContextResource {
   std::function<phi::blasLtHandle_t()> GetBlasLtHandleCreator();
   std::function<phi::solverHandle_t()> GetSolverDnHandleCreator();
   std::function<phi::sparseHandle_t()> GetSparseHandleCreator();
+  std::function<Eigen::GpuDevice*()> GetGpuEigenDeviceCreator();
 
   gpuStream_t GetStream() const;
   dnnHandle_t GetDnnHandle() const;

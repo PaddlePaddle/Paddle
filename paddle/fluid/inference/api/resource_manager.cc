@@ -151,7 +151,6 @@ void GPUContextResource::InitGPUResource(void* stream) {
   }
 
   InitGpuProperties();
-  InitGpuEigenDevice();
 }
 
 void GPUContextResource::DestroyGPUResource() {
@@ -325,6 +324,14 @@ GPUContextResource::GetSparseHandleCreator() {
 
 Eigen::GpuDevice* GPUContextResource::GetGpuEigenDevice() const {
   return gpu_eigen_device_.get();
+}
+
+std::function<Eigen::GpuDevice*()>
+GPUContextResource::GetGpuEigenDeviceCreator() {
+  return [&]() {
+    InitGpuEigenDevice();
+    return gpu_eigen_device_.get();
+  };
 }
 
 int GPUContextResource::GetGpuComputeCapability() const {
