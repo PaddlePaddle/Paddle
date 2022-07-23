@@ -319,7 +319,7 @@ struct GPUContext::Impl {
     eigen_device_creator_ = std::move(creator);
   }
 
-  Eigen::GpuDevice* eigen_device() const {
+  Eigen::GpuDevice* eigen_device() {
     std::call_once(flag_eigen_device_, [&]() {
       if (!eigen_device_) {
         if (!eigen_device_creator_)
