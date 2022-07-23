@@ -434,10 +434,12 @@ void GPUContextResource::ReBindSparseHandle(gpuStream_t stream) const {
 
 void GPUContextResource::ReBindEigenDevice(gpuStream_t stream,
                                            GPUPlace place) const {
-  auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
-                        .GetAllocator(place_)
-                        .get();
-  eigen_stream_->Reinitialize(stream, allocator, place);
+  if (eigen_stream_) {
+    auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
+                          .GetAllocator(place_)
+                          .get();
+    eigen_stream_->Reinitialize(stream, allocator, place);
+  }
 }
 
 #endif
