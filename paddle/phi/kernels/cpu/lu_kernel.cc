@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/lu_kernel.h"
+#include "paddle/phi/kernels/funcs/lu.h"
 
 namespace phi {
 
@@ -23,19 +24,13 @@ void LUKernel(const Context& dev_ctx,
     DenseTensor* out,
     DenseTensor* pivots,
     DenseTensor* infos){
-  auto pivots = ctx.Attr<bool>("pivots");
-  auto *xin = ctx.Input<framework::Tensor>("X");
-  auto *out = ctx.Output<framework::Tensor>("Out");
-  auto *IpivT = ctx.Output<framework::Tensor>("Pivots");
-  auto *InfoT = ctx.Output<framework::Tensor>("Infos");
-  PADDLE_ENFORCE_EQ(pivots,
+  PADDLE_ENFORCE_EQ(pivot,
                       true,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "lu without pivoting is not implemented on the CPU, "
                           "but got pivots=False"));
-
-  math::DeviceIndependenceTensorOperations<phi::CPUContext, T> helper(ctx);
-  *out = helper.Transpose(*xin);
+  
+  *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
 
   auto outdims = out->dims();
   auto outrank = outdims.size();
@@ -46,19 +41,22 @@ void LUKernel(const Context& dev_ctx,
 
   auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
   ipiv_dims[outrank - 2] = std::min(m, n);
-  IpivT->Resize(ipiv_dims);
-  auto ipiv_data = IpivT->mutable_data<int>(ctx.GetPlace());
+  pivots->Resize(ipiv_dims);
+  dev_ctx.template Alloc<T>(pivots);
+  auto ipiv_data = pivots->data<T>();
 
   auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
   if (info_dims.size() == 0) {
     info_dims = phi::make_ddim({1});
   }
-  InfoT->Resize(info_dims);
-  auto info_data = InfoT->mutable_data<int>(ctx.GetPlace());
+  infos->Resize(info_dims);
+  dev_ctx.template Alloc<T>(infos);
+  auto info_data = infos->data<T>();
 
   auto batchsize = product(info_dims);
   batchsize = std::max(static_cast<int>(batchsize), 1);
-  auto out_data = out->mutable_data<T>(ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
+  auto out_data = out->data<T>();
   for (int b = 0; b < batchsize; b++) {
     auto out_data_item = &out_data[b * m * n];
     int *info_data_item = &info_data[b];
@@ -66,7 +64,7 @@ void LUKernel(const Context& dev_ctx,
     phi::funcs::lapackLu<T>(
         m, n, out_data_item, lda, ipiv_data_item, info_data_item);
   }
-  *out = helper.Transpose(*out);
+  *out = Transpose2DTo6D<Context, T>(dev_ctx, *out);
 }
 
 }  // namespace phi
