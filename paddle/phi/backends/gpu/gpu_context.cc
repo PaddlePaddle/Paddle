@@ -213,7 +213,6 @@ struct GPUContext::Impl {
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
     phi::InitStream(&stream_);
-    InitEigenDevice();
     InitDnnWorkspace();
   }
 
@@ -234,7 +233,6 @@ struct GPUContext::Impl {
   void PartialInitWithAllocator() {
     owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    InitEigenDevice();
     InitDnnWorkspace();
   }
 
@@ -317,13 +315,25 @@ struct GPUContext::Impl {
 
   void SetEigenDevice(Eigen::GpuDevice* device) { eigen_device_ = device; }
 
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&& creator) {
+    eigen_device_creator_ = std::move(creator);
+  }
+
   Eigen::GpuDevice* eigen_device() const {
+    std::call_once(flag_eigen_device_, [&]() {
+      if (!eigen_device_) {
+        if (!eigen_device_creator_)
+          InitEigenDevice();
+        else
+          eigen_device_ = eigen_device_creator_();
+      }
+    });
     PD_CHECK(eigen_device_ != nullptr, "the gpu eigen_device is nullptr.");
     return eigen_device_;
   }
 
   blasHandle_t GetBlasHandle() {
-    std::call_once(flag_blas_, [=]() {
+    std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_)
           phi::InitBlasHandle(&blas_handle_, stream_);
@@ -387,7 +397,7 @@ struct GPUContext::Impl {
   }
 
   blasLtHandle_t GetBlasLtHandle() {
-    std::call_once(flag_blaslt_, [=]() {
+    std::call_once(flag_blaslt_, [&]() {
       if (!blaslt_handle_) {
         if (!blaslt_handle_creator_)
           phi::InitBlasLtHandle(&blaslt_handle_);
@@ -400,7 +410,7 @@ struct GPUContext::Impl {
   }
 
   dnnHandle_t GetDnnHandle() {
-    std::call_once(flag_dnn_, [=]() {
+    std::call_once(flag_dnn_, [&]() {
       if (!dnn_handle_) {
         if (!dnn_handle_creator_)
           phi::InitDnnHandle(&dnn_handle_, stream_, place_);
@@ -433,7 +443,7 @@ struct GPUContext::Impl {
   }
 
   solverHandle_t GetSolverHandle() {
-    std::call_once(flag_slover_, [=]() {
+    std::call_once(flag_slover_, [&]() {
       if (!solver_handle_) {
         if (!solver_handle_creator_)
           phi::InitSolverHandle(&solver_handle_, stream_);
@@ -452,7 +462,7 @@ struct GPUContext::Impl {
   }
 
   sparseHandle_t GetSparseHandle() {
-    std::call_once(flag_sparse_, [=]() {
+    std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
         if (!sparse_handle_creator_)
           phi::InitSparseHandle(&sparse_handle_, stream_);
@@ -519,7 +529,7 @@ struct GPUContext::Impl {
   }
 
   inline void CublasCall(const std::function<void(blasHandle_t)>& callback) {
-    std::call_once(flag_cublas_, [=]() {
+    std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_)
           phi::InitBlasHandle(&blas_handle_, stream_);
@@ -561,7 +571,7 @@ struct GPUContext::Impl {
 
   inline void TensorCoreCublasCallIfAvailable(
       const std::function<void(blasHandle_t)>& callback) {
-    std::call_once(flag_tensorcore_cublas_, [=]() {
+    std::call_once(flag_tensorcore_cublas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_)
           phi::InitBlasHandle(&blas_handle_, stream_);
@@ -603,7 +613,7 @@ struct GPUContext::Impl {
 
   inline void CusparseCall(
       const std::function<void(sparseHandle_t)>& callback) {
-    std::call_once(flag_sparse_, [=]() {
+    std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
         if (!sparse_handle_creator_)
           phi::InitSparseHandle(&sparse_handle_, stream_);
@@ -680,6 +690,7 @@ struct GPUContext::Impl {
 
   gpuStream_t stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
+  std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   blasHandle_t blas_handle_{nullptr};
   std::function<blasHandle_t()> blas_handle_creator_{nullptr};
   blasHandle_t blas_tensor_core_handle_{nullptr};
@@ -703,6 +714,7 @@ struct GPUContext::Impl {
   std::once_flag flag_slover_;
   std::once_flag flag_cublas_;
   std::once_flag flag_tensorcore_cublas_;
+  std::once_flag flag_eigen_device_;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
@@ -840,6 +852,10 @@ void GPUContext::SetStream(gpuStream_t stream) {
 
 void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {
   impl_->SetEigenDevice(device);
+}
+
+void GPUContext::SetEigenDevice(std::function<Eigen::GpuDevice*()>&& creator) {
+  impl_->SetEigenDevice(std::move(creator));
 }
 
 void GPUContext::SetBlasHandle(blasHandle_t blas) {

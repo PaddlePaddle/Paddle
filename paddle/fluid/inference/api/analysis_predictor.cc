@@ -424,7 +424,7 @@ void AnalysisPredictor::InitDeviceContexts() {
           gpu_context->SetSolverHandle(
               gpu_resource->GetSolverDnHandleCreator());
           gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
-          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
+          gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDeviceCreator());
           gpu_context->SetComputeCapability(
               gpu_resource->GetGpuComputeCapability());
           gpu_context->SetMaxThreadsPerBlock(
