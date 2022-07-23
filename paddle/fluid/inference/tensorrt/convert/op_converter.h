@@ -484,6 +484,14 @@ class OpConverter {
   nvinfer1::ITensor* AddConstantLayer(const T* data,
                                       const std::vector<int32_t>& weight_dims,
                                       const std::string& weight_name) {
+    if (!(std::is_same<T, float>::value ||
+          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, int32_t>::value)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
+          "supports float, half or int32_t."));
+    }
+
     int data_size = std::accumulate(
         weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int>());
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
