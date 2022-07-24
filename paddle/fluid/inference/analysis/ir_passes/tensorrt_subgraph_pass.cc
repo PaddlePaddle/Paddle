@@ -1,3 +1,4 @@
+
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -378,8 +379,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetBlockAttr("sub_block", new_block);
   op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
   op_desc->SetAttr("max_batch_size", max_batch_size);
-  op_desc->SetAttr("workspace_size",
-                   static_cast<int64_t>(Get<size_t>("workspace_size")));
+  op_desc->SetAttr("workspace_size", Get<int64_t>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
   op_desc->SetAttr("origin_output_dims", renamed_output_dims);
@@ -500,7 +500,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   max_batch_size,
-                  Get<size_t>("workspace_size"),
+                  Get<int64_t>("workspace_size"),
                   precision_mode,
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
