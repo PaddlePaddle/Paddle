@@ -12979,7 +12979,10 @@ def clip(x, min, max, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        ${out_type}, ${out_comment}        
+        ${out_comment}
+
+    Return Type:
+        ${out_type}  
 
     Examples:
         .. code-block:: python
