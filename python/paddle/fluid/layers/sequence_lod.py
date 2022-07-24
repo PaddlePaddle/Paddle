@@ -414,7 +414,7 @@ def sequence_concat(input, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable, Output the concatenated LoDTensor. The data type is same as input.
+        Variable: Output the concatenated LoDTensor. The data type is same as input.
 
     Examples:
         .. code-block:: python
