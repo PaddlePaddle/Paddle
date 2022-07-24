@@ -73,6 +73,8 @@ class Variable {
     return holder_->Type();
   }
 
+  bool persistable = false;
+
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.

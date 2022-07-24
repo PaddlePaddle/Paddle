@@ -28,10 +28,8 @@
 
 namespace paddle {
 namespace framework {
-void NaiveExecutor::Prepare(Scope *scope,
-                            const ProgramDesc &program_desc,
-                            int block_id,
-                            bool with_feed_fetch_ops) {
+void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
+                            int block_id, bool with_feed_fetch_ops) {
   if (!scope) {
     scope_ = new framework::Scope;
   } else {
@@ -53,6 +51,37 @@ void NaiveExecutor::Run() {
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
+    std::cout << "begin" << std::endl;
+    bool all_input_persistable = true;
+    for (size_t i = 0; i < op->InputVars().size(); i++)
+    {
+      if (op->Type() != "unsqueeze2" || 1) {
+        auto name = op->InputVars()[i];
+        auto *var = scope_->FindVar(name);
+        // auto var_tensor = FindTensor(name);
+        // std::cout << var_tensor->numel() << std::endl;
+        //std::cout << "var_tensor->dtype()" << var_tensor->dtype() << std::endl;
+        //std::cout << " var_tensor->data()" <<  var_tensor->data() << std::endl;
+        //auto var_dims = FindTensor(name)->dims();
+        all_input_persistable = (var->persistable && all_input_persistable);
+        if (var->persistable) {
+          std::cout << name << std::endl;
+          //for (int64_t j = 0; j < var_dims.size(); j++)
+          //{
+           // std::cout << var_dims[j] << " ";
+          //}
+          std::cout << std::endl;
+        }
+      }
+    }
+    for (size_t i = 0; i < op->OutputVars(true).size(); i++)
+    {
+      auto name = op->OutputVars(true)[i];
+      auto *var = scope_->FindVar(name);
+      var->persistable = all_input_persistable;
+    }
+    std::cout << "end" << std::endl;
+
   }
 }
 
@@ -90,6 +119,8 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
                   << ", which pointer is " << ptr;
           InitializeVariable(ptr, var->GetType());
         }
+        auto *variable = scope->FindVar(var->Name());
+        variable->persistable = true;
       } else {
         auto *ptr = const_cast<Scope *>(scope)->Var(var->Name());
         VLOG(3) << scope << " Create variable " << var->Name()
