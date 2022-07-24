@@ -100,6 +100,9 @@ def simple_img_conv_pool(input,
     Return:
         4-D Tensor, the result of input after conv2d and pool2d, with the same data type as :attr:`input`
 
+    Return Type:
+        Variable
+
     Examples:
         .. code-block:: python
 
@@ -291,6 +294,9 @@ def sequence_conv_pool(input,
     Returns:
         The final result after sequence_conv and sequence_pool. 
         It is a 2-D Tensor, with the same data type as :attr:`input`
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
