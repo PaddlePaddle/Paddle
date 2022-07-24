@@ -1550,7 +1550,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
             to set this property.
 
     Returns：
-        Tensor，padded with 0 according to pad and data type is same as input.
+        Tensor, padded with 0 according to pad and data type is same as input.
 
     Examples:
         .. code-block:: python
