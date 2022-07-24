@@ -167,9 +167,26 @@ AMP_DYGRAPH_FUNCTION_TEMPLATE = \
         {}
         {}
         out = {}({});
-    }} else {{
-        out = {}({});
     }}
+"""
+
+INPLACE_AMP_DYGRAPH_FUNCTION_TEMPLATE = \
+"""
+    using result_type = decltype({}({}));
+    std::unique_ptr<result_type> out_ptr;
+    // AMP Logic
+    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+        VLOG(5) << "Check and Prepare For AMP";
+        {}
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+        {}
+        {}
+        {}
+        out_ptr = std::make_unique<result_type>({}({}));
+    }} else {{
+        out_ptr = std::make_unique<result_type>({}({}));
+    }}
+    result_type& out = *out_ptr;
 """
 
 FUNCTION_SET_DEVICE_TEMPLATE = \
@@ -531,7 +548,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 inplaced_fwd_function_name, dygraph_function_call_str)
 
-            inplace_amp_dygraph_function_str = AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+            inplace_amp_dygraph_function_str = INPLACE_AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 kernel_trans2_op_name_str, amp_tensors_vector_list_str,
                 amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
