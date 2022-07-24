@@ -135,7 +135,7 @@ def sequence_conv(input,
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable, LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
+        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
 
     Examples:
 
@@ -231,7 +231,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                               For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable, A LoD-Tensor which has the same shape and data type with input.
+        Variable: A LoD-Tensor which has the same shape and data type with input.
 
     Examples:
 
