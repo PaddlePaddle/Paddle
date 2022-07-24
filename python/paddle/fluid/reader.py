@@ -1556,6 +1556,9 @@ class PyReader(DataLoaderBase):
     Returns:
         the created reader object.
 
+    Return type:
+        reader(Reader)
+
     Examples:
         1. If iterable = False, the created PyReader object is almost the
            same as :code:`fluid.layers.py_reader()`. Operators would be 
