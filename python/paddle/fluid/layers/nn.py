@@ -12982,7 +12982,7 @@ def clip(x, min, max, name=None):
         ${out_comment}
 
     Return Type:
-        ${out_type}  
+        ${out_type}
 
     Examples:
         .. code-block:: python
