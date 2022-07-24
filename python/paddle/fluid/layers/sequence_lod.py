@@ -332,7 +332,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
     Returns:
-        Variable, LoDTensor after pooling with data type float32 or float64.
+        Variable: LoDTensor after pooling with data type float32 or float64.
 
     Examples:
 
