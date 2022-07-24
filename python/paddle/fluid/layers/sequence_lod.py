@@ -981,10 +981,12 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             None by default.
 
     Returns: 
-        A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
+            A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
             sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
+
+    Return Type: tuple
 
     Examples:
         .. code-block:: python
