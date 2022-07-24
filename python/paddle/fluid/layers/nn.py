@@ -14408,6 +14408,9 @@ def psroi_pool(input,
     Returns:
         ${out_comment}.
 
+    Return Type:
+        Variable
+
     Examples:
         .. code-block:: python
 
