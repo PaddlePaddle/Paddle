@@ -727,6 +727,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
 
+    Return Type: Variable
+
     Examples:
         .. code-block:: python
 	
