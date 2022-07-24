@@ -64,7 +64,8 @@ class SwishOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       int32_t rank = input->getDimensions().nbDims;
-      nvinfer1::Dims constant_shape{rank, {}};
+      nvinfer1::Dims constant_shape;
+      constant_shape.nbDims = rank;
       std::fill(constant_shape.d, constant_shape.d + rank, 1);
       std::vector<float> weight_data{beta};
       auto* beta_data = AddConstantLayer(weight_data.data(), constant_shape);
