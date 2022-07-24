@@ -146,7 +146,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
+using CPUCtx = phi::CPUContext;
 
 REGISTER_OPERATOR(center_loss,
                   ops::CenterLossOp,

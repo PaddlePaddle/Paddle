@@ -119,9 +119,12 @@ static PyObject* eager_api_run_backward(PyObject* self,
   EAGER_TRY
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  egr::Backward(tensors,
-                grad_tensors,
-                CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+  {
+    eager_gil_scoped_release guard;
+    egr::Backward(tensors,
+                  grad_tensors,
+                  CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -138,15 +141,18 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
-
-  std::vector<paddle::experimental::Tensor> result = egr::Grad(tensors,
-                                                               inputs,
-                                                               grad_tensors,
-                                                               retain_graph,
-                                                               create_graph,
-                                                               only_inputs,
-                                                               allow_unused,
-                                                               no_grad_vars);
+  std::vector<paddle::experimental::Tensor> result;
+  {
+    eager_gil_scoped_release guard;
+    result = egr::Grad(tensors,
+                       inputs,
+                       grad_tensors,
+                       retain_graph,
+                       create_graph,
+                       only_inputs,
+                       allow_unused,
+                       no_grad_vars);
+  }
   VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -179,18 +185,21 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
   auto tensor_base_list =
       CastPyArg2VectorOfTensorBase(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<paddle::experimental::Tensor> tensor_list;
-  tensor_list.reserve(tensor_base_list.size());
-  auto func = [](framework::Tensor& tensor_base) {
-    paddle::experimental::Tensor tensor(
-        egr::Controller::Instance().GenerateUniqueName());
-    auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
-    autograd_meta->SetPersistable(false);
-    autograd_meta->SetStopGradient(true);
-    tensor.set_impl(std::make_shared<phi::DenseTensor>(tensor_base));
-    return tensor;
-  };
-  for (auto& tensor_base : tensor_base_list) {
-    tensor_list.emplace_back(func(tensor_base));
+  {
+    eager_gil_scoped_release guard;
+    tensor_list.reserve(tensor_base_list.size());
+    auto func = [](framework::Tensor& tensor_base) {
+      paddle::experimental::Tensor tensor(
+          egr::Controller::Instance().GenerateUniqueName());
+      auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+      autograd_meta->SetPersistable(false);
+      autograd_meta->SetStopGradient(true);
+      tensor.set_impl(std::make_shared<phi::DenseTensor>(tensor_base));
+      return tensor;
+    };
+    for (auto& tensor_base : tensor_base_list) {
+      tensor_list.emplace_back(func(tensor_base));
+    }
   }
   return ToPyObject(tensor_list);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -355,6 +364,19 @@ static std::vector<paddle::any> CastAttrsToTragetType(
     }
   }
   return res;
+}
+
+static PyObject* eager_api_jit_function_call(PyObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  std::shared_ptr<jit::BaseFunction> function =
+      CastPyArg2BaseFunction(PyTuple_GET_ITEM(args, 0), 0);
+  std::vector<paddle::experimental::Tensor> ins =
+      CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
+  std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
+  return ToPyObject(outs);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 static PyObject* eager_api_run_costum_op(PyObject* self,
@@ -909,6 +931,10 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"read_next_tensor_list",
      (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"jit_function_call",
+     (PyCFunction)(void (*)(void))eager_api_jit_function_call,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /**sparse functions**/

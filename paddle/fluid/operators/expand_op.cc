@@ -280,19 +280,17 @@ REGISTER_OPERATOR(expand_grad,
                   ops::ExpandDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_grad,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(expand,
+                       ops::ExpandKernel<phi::CPUContext, float>,
+                       ops::ExpandKernel<phi::CPUContext, double>,
+                       ops::ExpandKernel<phi::CPUContext, int>,
+                       ops::ExpandKernel<phi::CPUContext, int64_t>,
+                       ops::ExpandKernel<phi::CPUContext, bool>);
+REGISTER_OP_CPU_KERNEL(expand_grad,
+                       ops::ExpandGradKernel<phi::CPUContext, float>,
+                       ops::ExpandGradKernel<phi::CPUContext, double>,
+                       ops::ExpandGradKernel<phi::CPUContext, int>,
+                       ops::ExpandGradKernel<phi::CPUContext, int64_t>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 REGISTER_OP_CUDA_KERNEL(
     expand,

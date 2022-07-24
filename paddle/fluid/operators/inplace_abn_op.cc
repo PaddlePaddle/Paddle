@@ -204,7 +204,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     // used when setting use_global_stats True during training
-    if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+    if (PADDLE_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
       op->SetInput("Mean", this->Output("MeanOut"));
       op->SetInput("Variance", this->Output("VarianceOut"));
     }
@@ -382,11 +382,9 @@ REGISTER_OPERATOR(inplace_abn,
                   InplaceAbnOpInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    inplace_abn_grad,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::InplaceABNGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn,
+                       ops::InplaceABNKernel<phi::CPUContext, float>,
+                       ops::InplaceABNKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(inplace_abn_grad,
+                       ops::InplaceABNGradKernel<phi::CPUContext, float>,
+                       ops::InplaceABNGradKernel<phi::CPUContext, double>);

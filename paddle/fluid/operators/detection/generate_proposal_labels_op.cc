@@ -168,7 +168,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-void Concat(const platform::CPUDeviceContext& context,
+void Concat(const phi::CPUContext& context,
             const Tensor& in_tensor_a,
             const Tensor& in_tensor_b,
             Tensor* out_tensor) {
@@ -176,24 +176,23 @@ void Concat(const platform::CPUDeviceContext& context,
   std::vector<Tensor> inputs;
   inputs.emplace_back(in_tensor_a);
   inputs.emplace_back(in_tensor_b);
-  math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
+  math::ConcatFunctor<phi::CPUContext, T> concat_functor;
   concat_functor(context, inputs, axis, out_tensor);
 }
 
 template <typename T>
-std::vector<std::vector<int>> SampleFgBgGt(
-    const platform::CPUDeviceContext& context,
-    Tensor* iou,
-    const Tensor& is_crowd,
-    const int batch_size_per_im,
-    const float fg_fraction,
-    const float fg_thresh,
-    const float bg_thresh_hi,
-    const float bg_thresh_lo,
-    std::minstd_rand engine,
-    const bool use_random,
-    const bool is_cascade_rcnn,
-    const Tensor& rpn_rois) {
+std::vector<std::vector<int>> SampleFgBgGt(const phi::CPUContext& context,
+                                           Tensor* iou,
+                                           const Tensor& is_crowd,
+                                           const int batch_size_per_im,
+                                           const float fg_fraction,
+                                           const float fg_thresh,
+                                           const float bg_thresh_hi,
+                                           const float bg_thresh_lo,
+                                           std::minstd_rand engine,
+                                           const bool use_random,
+                                           const bool is_cascade_rcnn,
+                                           const Tensor& rpn_rois) {
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> mapped_gt_inds;
@@ -286,7 +285,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
 }
 
 template <typename T>
-void GatherBoxesLabels(const platform::CPUDeviceContext& context,
+void GatherBoxesLabels(const phi::CPUContext& context,
                        const Tensor& boxes,
                        const Tensor& max_overlap,
                        const Tensor& gt_boxes,
@@ -335,7 +334,7 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 
 template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
-    const platform::CPUDeviceContext& context,
+    const phi::CPUContext& context,
     const Tensor& rpn_rois_in,
     const Tensor& gt_classes,
     const Tensor& is_crowd,
@@ -372,7 +371,7 @@ std::vector<Tensor> SampleRoisForOneImage(
     Tensor roi_filter;
     // Tensor box_filter;
     if (keep.numel() == 0) {
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       set_zero(context, &roi_filter, static_cast<T>(0));
     } else {
@@ -597,7 +596,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_rois = 0;
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();

@@ -132,7 +132,7 @@ Graph Learning Sampling Neighbors operator, for graphsage sampling method.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(graph_khop_sampler,
                   ops::GraphKhopSamplerOP,

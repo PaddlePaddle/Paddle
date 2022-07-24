@@ -28,7 +28,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct Linspace<paddle::platform::CPUDeviceContext, T> {
+struct Linspace<phi::CPUContext, T> {
   void operator()(T start,
                   T end,
                   int count,
@@ -282,14 +282,12 @@ REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    affine_grid,
-    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    affine_grid_grad,
-    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(affine_grid,
+                       ops::AffineGridOpKernel<phi::CPUContext, float>,
+                       ops::AffineGridOpKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(affine_grid_grad,
+                       ops::AffineGridGradOpKernel<phi::CPUContext, float>,
+                       ops::AffineGridGradOpKernel<phi::CPUContext, double>);
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

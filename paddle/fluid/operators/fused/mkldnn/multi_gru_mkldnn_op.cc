@@ -28,10 +28,10 @@ namespace operators {
 
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
-using paddle::platform::CPUDeviceContext;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
+using phi::CPUContext;
 using phi::vectorize;
 using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;

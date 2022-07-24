@@ -16,9 +16,6 @@
 
 namespace paddle {
 namespace jit {
-// TODO(dev): Make vector<string>, num_slot as in argument
-// Layer(const std::shared_ptr<ClassType>& type) : obj_(type, /*num_slot*/ 0U)
-// {}
 Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
              const Name2VariableMap& params_dict,
              const phi::Place& place)
@@ -30,7 +27,13 @@ std::shared_ptr<BaseFunction> Layer::Function(const std::string& name) const {
   return unit_.Function(name);
 }
 
-std::vector<Variable> Layer::forward(const std::vector<Variable>& inputs) {
+std::vector<Tensor> Layer::forward(const std::vector<Tensor>& inputs) {
+  auto func = Function("forward");
+  return (*func)(inputs);
+}
+
+std::vector<DenseTensor> Layer::forward(
+    const std::vector<DenseTensor>& inputs) {
   auto func = Function("forward");
   return (*func)(inputs);
 }
@@ -40,6 +43,14 @@ void Layer::to(const phi::Place& place) {}
 void Layer::SetFunction(const std::string& name,
                         const std::shared_ptr<BaseFunction>& function) {
   unit_.SetFunction(name, function);
+}
+
+std::vector<std::string> Layer::FunctionNames() const {
+  return unit_.FunctionNames();
+}
+
+const Name2FunctionMap& Layer::FunctionMap() const {
+  return unit_.FunctionMap();
 }
 
 }  // namespace jit

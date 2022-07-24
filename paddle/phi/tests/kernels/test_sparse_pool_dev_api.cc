@@ -22,8 +22,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
+#include "paddle/phi/kernels/sparse/coalesce_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/pool_kernel.h"
 
 namespace phi {
 namespace tests {
@@ -60,7 +61,6 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::CPUPlace())
           .get());
-  dev_ctx_cpu.Init();
 
   const int in_channels = x_dims[4];
   const int out_channels = in_channels;
@@ -91,13 +91,13 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
     DenseTensor rulebook;
-    SparseCooTensor out = sparse::MaxPool<T>(dev_ctx_cpu,
-                                             x_tensor,
-                                             kernel_sizes,
-                                             paddings,
-                                             dilations,
-                                             strides,
-                                             &rulebook);
+    SparseCooTensor out = sparse::MaxPoolCoo<T>(dev_ctx_cpu,
+                                                x_tensor,
+                                                kernel_sizes,
+                                                paddings,
+                                                dilations,
+                                                strides,
+                                                &rulebook);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -113,7 +113,7 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
     f_verify(out.non_zero_elements().data<T>(), correct_out_features);
 
     if (backward) {
-      SparseCooTensor x_grad = sparse::MaxPoolGrad<T>(
+      SparseCooTensor x_grad = sparse::MaxPoolCooGrad<T>(
           dev_ctx_cpu, x_tensor, rulebook, out, out, kernel_sizes);
       f_verify(x_grad.non_zero_elements().data<T>(), features_grad);
     }
@@ -151,13 +151,14 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
   SparseCooTensor d_x_tensor(d_indices_tensor, d_features_tensor, x_dims);
 
   DenseTensor d_rulebook;
-  SparseCooTensor d_out = sparse::MaxPool<T>(dev_ctx_gpu,
-                                             d_x_tensor,
-                                             kernel_sizes,
-                                             paddings,
-                                             dilations,
-                                             strides,
-                                             &d_rulebook);
+  SparseCooTensor d_out = sparse::MaxPoolCoo<T>(dev_ctx_gpu,
+                                                d_x_tensor,
+                                                kernel_sizes,
+                                                paddings,
+                                                dilations,
+                                                strides,
+                                                &d_rulebook);
+  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -169,7 +170,7 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       dev_ctx_cpu,
       DenseTensorMeta(indices_dtype, {4, d_out.nnz()}, DataLayout::NCHW));
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_indices(),
+            tmp_d_out.non_zero_indices(),
             phi::CPUPlace(),
             true,
             &h_indices_tensor);
@@ -183,14 +184,14 @@ void TestMaxPoolBase(const std::vector<IntT>& indices,
       phi::EmptyLike<T>(dev_ctx_cpu, d_out.non_zero_elements());
 
   phi::Copy(dev_ctx_gpu,
-            d_out.non_zero_elements(),
+            tmp_d_out.non_zero_elements(),
             phi::CPUPlace(),
             true,
             &h_features_tensor);
   f_verify(h_features_tensor.data<T>(), correct_out_features);
 
   if (backward) {
-    SparseCooTensor x_grad = sparse::MaxPoolGrad<T>(
+    SparseCooTensor x_grad = sparse::MaxPoolCooGrad<T>(
         dev_ctx_gpu, d_x_tensor, d_rulebook, d_out, d_out, kernel_sizes);
     DenseTensor h_features_grad =
         phi::EmptyLike<T>(dev_ctx_cpu, x_grad.non_zero_elements());

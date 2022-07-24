@@ -13045,6 +13045,8 @@ def clip_by_norm(x, max_norm, name=None):
             # [[0.5, 0.5], [0.5, 0.5]]
     """
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_by_norm(x, max_norm)
     if _non_static_mode():
         return _C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
@@ -13091,7 +13093,7 @@ def mean(x, name=None):
 
             input = fluid.layers.data(
                 name='data', shape=[2, 3], dtype='float32')
-            mean = fluid.layers.mean(input)
+            mean = paddle.mean(input)
     """
 
     if _in_legacy_dygraph():

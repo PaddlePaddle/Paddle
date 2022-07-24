@@ -96,7 +96,7 @@ class LinerNetWithLabel(paddle.nn.Layer):
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return out, avg_loss
 
 
@@ -113,7 +113,7 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return out
 
 
@@ -142,7 +142,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
-        loss = fluid.layers.mean(z)
+        loss = paddle.mean(z)
         return z, loss
 
 
@@ -160,7 +160,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
-        loss = fluid.layers.mean(x_out + y_out)
+        loss = paddle.mean(x_out + y_out)
         return x_out, y_out, loss
 
 
@@ -176,7 +176,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
-        loss = fluid.layers.mean(x_out + y_out)
+        loss = paddle.mean(x_out + y_out)
         return x_out, y_out, loss
 
 
@@ -208,7 +208,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
     def forward(self, x):
         y = self._linear_1(x)
         z = self._linear_2(y)
-        loss = fluid.layers.mean(z)
+        loss = paddle.mean(z)
         return y, loss
 
 
@@ -224,7 +224,7 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
         y = self._linear_1(x)
         z = self._linear_2(y)
         out = y + z
-        loss = fluid.layers.mean(out)
+        loss = paddle.mean(out)
         return y, [(z, loss), out]
 
 
@@ -316,7 +316,7 @@ def train(layer, input_size=784, label_size=1):
         cost = layer(img)
 
         loss = fluid.layers.cross_entropy(cost, label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         avg_loss.backward()
         sgd.minimize(avg_loss)
@@ -1209,7 +1209,7 @@ class TestJitSaveCombine(unittest.TestCase):
         with unique_name.guard():
             net = Net()
         #save
-        paddle.jit.save(net, model_path, use_combine=True)
+        paddle.jit.save(net, model_path, combine_params=True)
 
 
 class LayerLoadFinetune(paddle.nn.Layer):

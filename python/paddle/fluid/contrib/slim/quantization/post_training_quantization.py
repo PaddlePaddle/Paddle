@@ -963,10 +963,10 @@ class PostTrainingQuantization(object):
         else:
             scale_dict = self._quantized_threshold
         for key, val in scale_dict.items():
-            utils.set_variable_data(self._scope, self._place, key + ".scale",
+            utils.set_variable_data(self._scope, self._place, key + "@scale",
                                     np.array([val], dtype=np.float32))
             utils.set_variable_data(self._scope, self._place,
-                                    key + ".quant_dequant.scale",
+                                    key + ".quant_dequant@scale",
                                     np.array([val], dtype=np.float32))
 
         if not self._onnx_format:

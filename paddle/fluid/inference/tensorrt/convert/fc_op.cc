@@ -27,6 +27,16 @@ class OpDesc;
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+namespace {
+template <typename T>
+void tranpose_weight(const T* src, T* dst, int m, int n) {
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < n; j++) {
+      dst[j * m + i] = src[i * n + j];
+    }
+  }
+}
+}  // namespace
 
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
@@ -148,32 +158,29 @@ class FcOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
-            ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
+            ? PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
             : (op_desc.HasAttr("in_num_col_dims")
-                   ? BOOST_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
                    : 1);
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
-            ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
+            ? PADDLE_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
             : "";
-    // This may trigger a GPU->CPU copy, because TRT's weight can only be
-    // assigned from CPU memory, which can't be avoided.
-    float* weight_data = nullptr;
+
     bool enable_int8 = op_desc.HasAttr("enable_int8");
     bool support_int8 = false;
     if (op_desc.HasAttr("support_int8")) {
-      support_int8 = BOOST_GET_CONST(bool, op_desc.GetAttr("support_int8"));
+      support_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8"));
     }
     float in_scale = 0;
     if (enable_int8 || support_int8) {
       if (enable_int8) {
-        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+        in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       } else {
-        in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X"));
+        in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X"));
       }
       engine_->SetTensorDynamicRange(X, in_scale);
     }
-    weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t);
 
     PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                       2UL,
@@ -183,13 +190,6 @@ class FcOpConverter : public OpConverter {
                           Y_t->dims().size()));  // a matrix
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
-      for (int i = 0; i < m; i++) {
-        for (int j = 0; j < n; j++) {
-          dst[j * m + i] = src[i * n + j];
-        }
-      }
-    };
 
     auto regist_fc = [&](nvinfer1::ITensor* inputs,
                          int n_output,
@@ -204,9 +204,9 @@ class FcOpConverter : public OpConverter {
               true,
               platform::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
-          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         } else {
-          out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
         }
         nvinfer1::DimsHW nv_ksize(1, 1);
         auto* fc_layer_int8 = TRT_ENGINE_ADD_LAYER(engine_,
@@ -280,14 +280,39 @@ class FcOpConverter : public OpConverter {
 
     bool transpose_y = false;
     if (op_desc.HasAttr("transpose_Y")) {
-      transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+      transpose_y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
     }
     int weight_w, weight_h;
+    auto weight = engine_->GetTrtWeight(op_desc.Input(w_name).front(), *Y_t);
+
     if (!transpose_y) {
-      std::vector<float> weight_data_tmp;
-      weight_data_tmp.reserve(Y_t->numel());
-      memcpy(weight_data_tmp.data(), weight_data, Y_t->numel() * sizeof(float));
-      tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+      if (weight.get().type == nvinfer1::DataType::kFLOAT) {
+        std::vector<float> weight_data_tmp;
+        weight_data_tmp.reserve(Y_t->numel());
+        memcpy(weight_data_tmp.data(),
+               weight.get().values,
+               Y_t->numel() * sizeof(float));
+        tranpose_weight(
+            weight_data_tmp.data(),
+            const_cast<float*>(static_cast<const float*>(weight.get().values)),
+            m,
+            n);
+      } else if (weight.get().type == nvinfer1::DataType::kHALF) {
+        std::vector<float16> weight_data_tmp;
+        weight_data_tmp.reserve(Y_t->numel());
+        memcpy(weight_data_tmp.data(),
+               weight.get().values,
+               Y_t->numel() * sizeof(float16));
+        tranpose_weight(weight_data_tmp.data(),
+                        const_cast<float16*>(
+                            static_cast<const float16*>(weight.get().values)),
+                        m,
+                        n);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "Paddle-TRT fc convert not supporte dtype, now only support fp32 "
+            "and fp16."));
+      }
       weight_w = n;
       weight_h = m;
     } else {
@@ -295,22 +320,14 @@ class FcOpConverter : public OpConverter {
       weight_h = n;
     }
     size_t n_output = weight_w;
-    TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
-                                  static_cast<void*>(weight_data),
-                                  static_cast<size_t>(Y_t->numel())};
     weight.dims.assign({weight_w, weight_h});
 
-    float* bias_data = nullptr;
-    int bias_num = 0;
+    TensorRTEngine::Weight bias{weight.get().type, nullptr, 0};
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
-      bias_data = engine_->GetWeightCPUData(op_desc.Input("Bias").front(), b_t);
-      bias_num = b_t->numel();
+      bias = engine_->GetTrtWeight(op_desc.Input("Bias").front(), *b_t);
     }
-    TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
-                                static_cast<void*>(bias_data),
-                                static_cast<size_t>(bias_num)};
 
     // Running the TRT Static Shape mode: x_num_col_dims-1
     if (!engine_->with_dynamic_shape()) {
@@ -341,9 +358,9 @@ class FcOpConverter : public OpConverter {
           float out_scale = 0;
           if (enable_int8) {
             out_scale =
-                BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+                PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
           } else {
-            out_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Out"));
+            out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
           }
           engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0),
                                          out_scale);

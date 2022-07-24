@@ -79,7 +79,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
     if (op->HasAttr("sub_block")) {
       auto op_type = op->Type();
       BlockDesc *sub_block =
-          BOOST_GET_MUTABLE(BlockDesc *, op->GetAttr("sub_block"));
+          PADDLE_GET_MUTABLE(BlockDesc *, op->GetAttr("sub_block"));
 
       // recursively processing
       AddDepToBlockOp(*sub_block);

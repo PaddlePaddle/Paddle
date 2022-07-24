@@ -168,7 +168,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
       op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
@@ -193,12 +193,10 @@ REGISTER_OPERATOR(sequence_pool,
 REGISTER_OPERATOR(sequence_pool_grad,
                   ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_pool,
+                       ops::SequencePoolKernel<phi::CPUContext, float>,
+                       ops::SequencePoolKernel<phi::CPUContext, double>);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_pool_grad,
+                       ops::SequencePoolGradKernel<phi::CPUContext, float>,
+                       ops::SequencePoolGradKernel<phi::CPUContext, double>);
