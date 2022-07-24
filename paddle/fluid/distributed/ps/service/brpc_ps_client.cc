@@ -482,7 +482,7 @@ std::future<int32_t> BrpcPsClient::GetCacheThreshold(uint32_t table_id,
       request_call_num,
       [request_call_num, cmd_id, &cache_threshold](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
         std::vector<double> cache_thresholds(request_call_num, 0);
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, cmd_id) != 0) {
@@ -528,6 +528,14 @@ std::future<int32_t> BrpcPsClient::Clear() {
 }
 std::future<int32_t> BrpcPsClient::Clear(uint32_t table_id) {
   return SendCmd(table_id, PS_CLEAR_ONE_TABLE, {});
+}
+
+std::future<int32_t> BrpcPsClient::Revert() {
+  return SendCmd(-1, PS_REVERT, {});
+}
+
+std::future<int32_t> BrpcPsClient::CheckSavePrePatchDone() {
+  return SendCmd(-1, PS_CHECK_SAVE_PRE_PATCH_DONE, {});
 }
 
 std::future<int32_t> BrpcPsClient::Flush() {
@@ -1170,6 +1178,7 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
         }
         closure->set_promise_value(ret);
       });
+
   closure->add_timer(timer);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);

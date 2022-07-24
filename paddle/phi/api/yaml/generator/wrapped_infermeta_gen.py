@@ -46,7 +46,8 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
                 'const paddle::optional<Tensor>&': 'const MetaTensor&'
             }
 
-            wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
+            wrapped_infermeta_name = get_wrapped_infermeta_name(
+                api.kernel['func'][0])
             args = []
             for input_name in api.inputs['names']:
                 if input_name in kernel_params:

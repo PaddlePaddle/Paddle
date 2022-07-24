@@ -19,6 +19,12 @@ limitations under the License. */
 
 namespace phi {
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad) {
+  UnchangedInferMeta(x, x_grad);
+}
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
@@ -223,6 +229,18 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
   }
 }
 
+void EigGradInferMeta(const MetaTensor& out_w,
+                      const MetaTensor& out_v,
+                      const MetaTensor& dout_w,
+                      const MetaTensor& dout_v,
+                      MetaTensor* dx) {
+  auto dims = out_v.dims();
+
+  if (dx) {
+    dx->set_dims(dims);
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -382,6 +400,14 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
   }
   if (ddy) {
     ddy->share_dims(x);
+  }
+}
+
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx) {
+  if (dx) {
+    dx->set_dims(dout.dims());
   }
 }
 

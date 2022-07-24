@@ -32,12 +32,12 @@ Node *custom_op_handler(Graph *graph, Node *node) {
 
 Node *print_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto print_phase = BOOST_GET_CONST(std::string, op->GetAttr("print_phase"));
+  auto print_phase = PADDLE_GET_CONST(std::string, op->GetAttr("print_phase"));
   int64_t print_gradient = 0;
   if (print_phase != "forward") {
     print_gradient = 1;
   }
-  auto title = BOOST_GET_CONST(std::string, op->GetAttr("message"));
+  auto title = PADDLE_GET_CONST(std::string, op->GetAttr("message"));
   if (title.empty()) {
     title = GetInputVarNode("In", node)->Var()->Name();
   }
@@ -56,10 +56,10 @@ Node *checkpointoutput_handler(Graph *graph, Node *node) {
 
 Node *custom_nll_loss_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto reduction = BOOST_GET_CONST(int, op->GetAttr("reduction"));
-  auto ignoreIndex = BOOST_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
+  auto reduction = PADDLE_GET_CONST(int, op->GetAttr("reduction"));
+  auto ignoreIndex = PADDLE_GET_CONST(std::string, op->GetAttr("ignoreIndex"));
   auto inputIsLogProbability =
-      BOOST_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
+      PADDLE_GET_CONST(bool, op->GetAttr("inputIsLogProbability"));
   if (ignoreIndex == "None") {
     return CreateBaseOp(graph,
                         node,
