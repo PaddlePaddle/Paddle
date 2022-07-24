@@ -7104,7 +7104,10 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor, The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
+        The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
