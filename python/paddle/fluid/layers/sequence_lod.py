@@ -851,7 +851,7 @@ def sequence_expand_as(x, y, name=None):
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
 
-   Return Type: Variable
+    Return Type: Variable
 
     Examples:
         .. code-block:: python
