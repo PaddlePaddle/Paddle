@@ -5653,6 +5653,12 @@ def ctc_greedy_decoder(input,
         output_length, 2-D Tensor, shape is [batch_size, 1], data type is int64. It is the length of \
                            each sequence of output for padding mode.
 
+    Return type:
+        For lod mode: Variable
+
+        For padding mode: tuple of two Variables (output, output_length).
+
+
     Examples:
         .. code-block:: python
 
