@@ -13282,7 +13282,7 @@ def space_to_depth(x, blocksize, name=None):
             None by default.
 
     Returns: 
-        The output, which should be 4 dims Tensor or LodTensor, with the shape \
+            The output, which should be 4 dims Tensor or LodTensor, with the shape \
             [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]
 
     Return Type: Variable
