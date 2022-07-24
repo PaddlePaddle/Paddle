@@ -99,7 +99,7 @@ def data(name,
 
     Returns:
         The global variable that gives access to the data.
-        
+
     Return Type:
         Variable
 
