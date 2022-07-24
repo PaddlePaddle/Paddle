@@ -601,7 +601,10 @@ def py_reader(capacity,
             from CPU to GPU. Default is True.
 
     Returns:
-        Tensor, A Reader from which we can get feeding data.
+       A Reader from which we can get feeding data.
+
+    Return Type:
+       Variable
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
