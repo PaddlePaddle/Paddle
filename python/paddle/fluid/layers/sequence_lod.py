@@ -723,7 +723,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             None by default. 
 
     Returns: 
-        The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
+            The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
 
@@ -847,7 +847,7 @@ def sequence_expand_as(x, y, name=None):
             None by default.
 
     Returns: 
-        The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
+            The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
 
@@ -1304,9 +1304,11 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             None by default.
 
     Returns: 
-        The enumerate sequence variable which is a LoDTensor with \
+            The enumerate sequence variable which is a LoDTensor with \
             shape ``[d_1, win_size]`` and 1-level lod info. \
             The data type is same as ``input``.
+
+    Return Type: Variable
 
     Examples:
         .. code-block:: python
