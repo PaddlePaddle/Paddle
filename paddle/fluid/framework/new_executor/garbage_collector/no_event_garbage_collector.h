@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,19 +13,27 @@
 // limitations under the License.
 #pragma once
 
+#include <queue>
+
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 
 namespace paddle {
 namespace framework {
 
-class InterpreterCoreFastGarbageCollector
+class InterpreterCoreNoEventGarbageCollector
     : public InterpreterCoreGarbageCollector {
  public:
+  InterpreterCoreNoEventGarbageCollector();
+  ~InterpreterCoreNoEventGarbageCollector();
   void Add(Variable* var, const Instruction& instr) override;
 
  private:
-  void Add(Variable* var);
-  void Add(Garbage garbage);
+  void Add(Variable* var, const platform::DeviceContext* ctx);
+  void Add(Garbage garbage, const platform::DeviceContext* ctx);
+  std::unique_ptr<WorkQueue> queue_;
+  std::unordered_set<const platform::DeviceContext*> ctxs_;
 };
+
 }  // namespace framework
 }  // namespace paddle
