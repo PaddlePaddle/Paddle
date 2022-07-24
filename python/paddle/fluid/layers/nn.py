@@ -7010,7 +7010,10 @@ def pad(x, paddings, pad_value=0., name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor, The padded tensor, with the same data type and rank as :attr:`x`
+        The padded tensor, with the same data type and rank as :attr:`x`
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
