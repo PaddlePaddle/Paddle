@@ -232,21 +232,18 @@ class ModelAverage(Optimizer):
         old_num_accumulates = self._get_accumulator('old_num_accumulates',
                                                     param_and_grad[0])
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
-        
-        
+
         if in_dygraph_mode():
-            _, _, _, _, _, _ = _C_ops.final_state_average_accumulates(
-                param_and_grad[0], sum_1, sum_2, sum_3, 
-                num_accumulates, old_num_accumulates, num_updates,
-                self.average_window,
-                self.max_average_window,
-                self.min_average_window)
+            _, _, _, _, _, _ = _C_ops.final_state_average_accumulates_(
+                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
+                old_num_accumulates, num_updates, self.average_window,
+                self.max_average_window, self.min_average_window)
 
             return None
         elif framework._non_static_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates(
                 param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
-            old_num_accumulates, num_updates, sum_1, sum_2, sum_3,
+                old_num_accumulates, num_updates, sum_1, sum_2, sum_3,
                 num_accumulates, old_num_accumulates, num_updates,
                 'average_window', self.average_window, 'min_average_window',
                 self.min_average_window, 'max_average_window',

@@ -15,12 +15,25 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-    KernelSignature AverageAccumulatesOpArgumentMapping(const ArgumentMappingContext& ctx){
-        return KernelSignature("average_accumulates",
-                               {"param","in_sum_1","in_sum_2","in_sum_3","in_num_accumulates","in_old_num_accumulates","in_num_updates"},
-                               {"average_window","max_average_window","min_average_window"},
-                               {"out_sum_1","out_sum_2","out_sum_3","out_num_accumulates","out_old_num_accumulates","out_num_updates"});
-
-    }
-}// namespace phi 
-PD_REGISTER_ARG_MAPPING_FN(average_accumulates,phi::AverageAccumulatesOpArgumentMapping)
+KernelSignature AverageAccumulatesOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "average_accumulates",
+      {"param",
+       "in_sum_1",
+       "in_sum_2",
+       "in_sum_3",
+       "in_num_accumulates",
+       "in_old_num_accumulates",
+       "in_num_updates"},
+      {"average_window", "max_average_window", "min_average_window"},
+      {"out_sum_1",
+       "out_sum_2",
+       "out_sum_3",
+       "out_num_accumulates",
+       "out_old_num_accumulates",
+       "out_num_updates"});
+}
+}  // namespace phi
+PD_REGISTER_ARG_MAPPING_FN(average_accumulates,
+                           phi::AverageAccumulatesOpArgumentMapping);
