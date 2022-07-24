@@ -1292,6 +1292,9 @@ def save_inference_model(dirname,
     Returns:
         The fetch variables' name list
 
+    Return Type:
+        list
+
     Raises:
         ValueError: If `feed_var_names` is not a list of basestring, an exception is thrown.
         ValueError: If `target_vars` is not a list of Variable, an exception is thrown.
