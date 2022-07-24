@@ -172,7 +172,7 @@ class MetricBase(object):
             None
 
         Return types:
-            None   
+            None
 
         """
         raise NotImplementedError(
