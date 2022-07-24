@@ -16,9 +16,10 @@
 
 #include "paddle/phi/kernels/eigvalsh_grad_kernel.h"
 
-#include "paddle/fluid/operators/math/eigen_values_vectors.h"
-#include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
@@ -29,9 +30,7 @@ void EigvalshGradKernel_(const Context& dev_ctx,
                          const std::string& uplo,
                          bool is_test,
                          DenseTensor* x_grad) {
-  auto dito = paddle::operators::math::
-      DeviceIndependenceTensorOperations<Context, T, ValueType>(dev_ctx);
-  auto tV = dito.Transpose(dito.Conj(out_v));
+  auto tV = phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
 
   x_grad->Resize(out_v.dims());
   dev_ctx.template Alloc<T>(x_grad);
@@ -45,7 +44,7 @@ void EigvalshGradKernel_(const Context& dev_ctx,
   result_vector.device(place) =
       output_v_vector * output_w_grad_vector.broadcast(broadcast_factor);
 
-  *x_grad = dito.Matmul(*x_grad, tV);
+  *x_grad = phi::Matmul<T>(dev_ctx, *x_grad, tV);
 }
 
 template <typename T, typename Context>
