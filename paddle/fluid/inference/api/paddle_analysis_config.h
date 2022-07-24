@@ -523,7 +523,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// quantization).
   ///
   ///
-  void EnableTensorRtEngine(size_t workspace_size = 1 << 30,
+  void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
                             int max_batch_size = 1,
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
@@ -967,7 +967,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  size_t tensorrt_workspace_size_{1 << 30};
+  int64_t tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best

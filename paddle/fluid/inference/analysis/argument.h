@@ -216,7 +216,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_use_dla, TensorRtUseDLA, bool);
   DECL_ARGUMENT_FIELD(tensorrt_dla_core, TensorRtDLACore, int);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, size_t);
+  DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,

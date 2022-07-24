@@ -513,7 +513,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
-    size_t workspace_size,
+    int64_t workspace_size,
     int max_batch_size,
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,

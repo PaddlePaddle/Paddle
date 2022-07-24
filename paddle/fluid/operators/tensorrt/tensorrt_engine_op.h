@@ -177,7 +177,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::vector<std::string> runtime_input_names_;
   mutable TensorRTEngine *trt_engine_{nullptr};
   int max_batch_size_;
-  size_t workspace_size_;
+  int64_t workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
   bool enable_fp16_;
