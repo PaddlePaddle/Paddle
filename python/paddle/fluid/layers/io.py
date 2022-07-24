@@ -98,8 +98,11 @@ def data(name,
             Default: True. 
 
     Returns:
-        Tensor, The global variable that gives access to the data.
+        The global variable that gives access to the data.
         
+    Return Type:
+        Variable
+
     Examples:
         .. code-block:: python
 
