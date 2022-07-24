@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -90,6 +91,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     auto local_scope = &var_scope_.GetMutableScope()->NewScope();
     local_scope_ = local_scope;
   }
+  var_scope_.SetLocalScope(local_scope_);
 
   // prune
 
@@ -115,7 +117,6 @@ InterpreterCore::~InterpreterCore() {
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
     const std::vector<framework::LoDTensor>& feed_tensors) {
-  var_scope_.SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {
@@ -144,7 +145,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   bool is_build = is_build_;
-  var_scope_.SetLocalScope(local_scope_);
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
@@ -153,8 +153,10 @@ paddle::framework::FetchList InterpreterCore::Run(
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif
   }
-
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
@@ -174,7 +176,6 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   if (!is_build_) {
-    var_scope_.SetLocalScope(local_scope_);
     paddle::framework::interpreter::build_variable_scope(block_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
@@ -196,12 +197,14 @@ paddle::framework::FetchList InterpreterCore::Run(
     async_work_queue_ = GetWorkQueue();
 
     ExecuteInstructionList(vec_instruction_);
+#ifdef PADDLE_WITH_ASCEND_CL
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+#endif
   }
 
   if (create_local_scope_) {
     ClearLoDTensorArrayInLocalScope();
   }
-
   // return Fetch Tensors
   auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
@@ -473,8 +476,13 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+#ifdef PADDLE_WITH_IPU
+    gc_event_.emplace_back(phi::CPUPlace(), 0);
+#else
     gc_event_.emplace_back(vec_instruction_[i].DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
+
+#endif
   }
   bool inplaced = false;
   for (auto inst : vec_instruction_) {
@@ -528,6 +536,17 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
   Scope* local_scope = create_local_scope_ ? var_scope_.GetMutableLocalScope()
                                            : var_scope_.GetMutableScope();
+
+#ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+  // values, but only through special `float_status` to checks whether
+  // the operation is overflow. More about `float_status`, see:
+  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+  if (FLAGS_check_nan_inf) {
+    framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+  }
+#endif
+
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
     // If it is OperatorBase, InferShape do nothing.

@@ -45,9 +45,9 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_dim = x_var->Get<LoDTensor>().dims();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
@@ -208,16 +208,14 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_expand_as_grad,
                   ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_as,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_expand_as,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, float>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, double>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int>,
+                       ops::SequenceExpandAsKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>);
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, float>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, double>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int>,
+    ops::SequenceExpandAsGradKernel<phi::CPUContext, int64_t>);

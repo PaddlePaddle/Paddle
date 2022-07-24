@@ -172,16 +172,14 @@ REGISTER_OPERATOR(repeat_interleave,
 REGISTER_OPERATOR(repeat_interleave_grad,
                   ops::RepeatInterleaveGradOp,
                   ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    repeat_interleave,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RepeatInterleaveKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(repeat_interleave,
+                       ops::RepeatInterleaveKernel<phi::CPUContext, float>,
+                       ops::RepeatInterleaveKernel<phi::CPUContext, double>,
+                       ops::RepeatInterleaveKernel<phi::CPUContext, int>,
+                       ops::RepeatInterleaveKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     repeat_interleave_grad,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RepeatInterleaveGradKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>);
+    ops::RepeatInterleaveGradKernel<phi::CPUContext, float>,
+    ops::RepeatInterleaveGradKernel<phi::CPUContext, double>,
+    ops::RepeatInterleaveGradKernel<phi::CPUContext, int>,
+    ops::RepeatInterleaveGradKernel<phi::CPUContext, int64_t>);

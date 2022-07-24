@@ -62,8 +62,6 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
   for (auto& out_name : program_desc_.GetFetchTargetNames()) {
     schema_.AddOutputArg(out_name);
   }
-  // remove feed fetch op
-  utils::RemoveFeedFetch(&program_desc_);
 }
 
 const std::string& FunctionInfo::FunctionName() const { return func_name_; }
@@ -82,6 +80,10 @@ const std::vector<std::string> FunctionInfo::InputArgNames() const {
 
 const std::vector<std::string> FunctionInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
+}
+
+void FunctionInfo::RemoveDescFeedFetch() {
+  utils::RemoveFeedFetch(&program_desc_);
 }
 
 }  // namespace jit

@@ -63,7 +63,7 @@ void call_gemm(const framework::ExecutionContext& ctx,
                T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 

@@ -194,9 +194,9 @@ void RenameAndGetOutputs(
       auto out_var_name = op_desc.Output("Output").front();
       auto filter_shape = in_vars[filter_var_name]->Var()->GetShape();
       const std::vector<int> strides =
-          BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
       const std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
       if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
         (*output_names_with_id)
             .insert(out_var_name + std::to_string(var2id[out_var_name]));

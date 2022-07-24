@@ -270,7 +270,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
@@ -301,7 +301,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   auto iter = attrs.find(
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
   if (iter != attrs.end()) {
-    callstack_ptr = &BOOST_GET_CONST(std::vector<std::string>, iter->second);
+    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
     callstack = *callstack_ptr;
   }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
@@ -310,8 +310,10 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 
 std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
     RecordMemEvent::size_cache;
+
 std::map<const char *, std::map<uint64_t, bool>>
     RecordMemEvent::has_initialized;
+
 RecordMemEvent::RecordMemEvent(const void *ptr,
                                const phi::Place &place,
                                size_t size,

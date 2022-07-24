@@ -18,11 +18,10 @@ namespace paddle {
 namespace operators {
 
 template <>
-void GetAccumulators<paddle::platform::CPUDeviceContext>(
-    const framework::ExecutionContext& ctx,
-    int64_t* num_updates,
-    int64_t* num_accumulates,
-    int64_t* old_num_accumulates) {
+void GetAccumulators<phi::CPUContext>(const framework::ExecutionContext& ctx,
+                                      int64_t* num_updates,
+                                      int64_t* num_accumulates,
+                                      int64_t* old_num_accumulates) {
   auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
   auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
@@ -33,11 +32,10 @@ void GetAccumulators<paddle::platform::CPUDeviceContext>(
 }
 
 template <>
-void SetAccumulators<paddle::platform::CPUDeviceContext>(
-    const framework::ExecutionContext& ctx,
-    int64_t num_updates,
-    int64_t num_accumulates,
-    int64_t old_num_accumulates) {
+void SetAccumulators<phi::CPUContext>(const framework::ExecutionContext& ctx,
+                                      int64_t num_updates,
+                                      int64_t num_accumulates,
+                                      int64_t old_num_accumulates) {
   auto* out_old_num_accumulates = ctx.Output<Tensor>("out_old_num_accumulates");
   auto* out_num_accumulates = ctx.Output<Tensor>("out_num_accumulates");
   auto* out_num_updates = ctx.Output<Tensor>("out_num_updates");
@@ -217,7 +215,6 @@ REGISTER_OPERATOR(
     ops::AverageAccumulatesOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    average_accumulates,
-    ops::AverageAccumulatesKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AverageAccumulatesKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(average_accumulates,
+                       ops::AverageAccumulatesKernel<phi::CPUContext, float>,
+                       ops::AverageAccumulatesKernel<phi::CPUContext, double>);

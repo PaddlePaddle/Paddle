@@ -341,11 +341,9 @@ REGISTER_OPERATOR(fold_grad,
                   ops::FoldGradOp,
                   ops::FoldGradOpNoNeedBufferVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    fold,
-    ops::FoldOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FoldOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    fold_grad,
-    ops::FoldGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FoldGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(fold,
+                       ops::FoldOpKernel<phi::CPUContext, float>,
+                       ops::FoldOpKernel<phi::CPUContext, double>);
+REGISTER_OP_CPU_KERNEL(fold_grad,
+                       ops::FoldGradOpKernel<phi::CPUContext, float>,
+                       ops::FoldGradOpKernel<phi::CPUContext, double>);

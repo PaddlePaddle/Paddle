@@ -43,7 +43,7 @@ class TestPullGpupsSparse(unittest.TestCase):
                                         size=[11],
                                         is_distributed=True,
                                         is_sparse=True)
-            cost = paddle.fluid.layers.mean(output)
+            cost = paddle.mean(output)
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(cost, train_program)
             block = train_program.global_block()

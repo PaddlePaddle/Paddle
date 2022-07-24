@@ -66,7 +66,7 @@ void SetOp(ProgramDesc* prog,
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-  } else if (type == "slice") {
+  } else if (type == "slice" || type == "shape") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "dropout") {
@@ -550,55 +550,33 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-TEST(CpuQuantizePass, reshape2) { TestImmutableOp("reshape2"); }
+const std::vector<std::string> immutables = {"reshape2",
+                                             "transpose2",
+                                             "slice",
+                                             "shape",
+                                             "nearest_interp",
+                                             "nearest_interp_v2"};
 
-TEST(CpuQuantizePass, reshape2BetweenNonQuantizedOp) {
-  TestImmutableOpBetweenNonQuantizedOp("reshape2");
+class TestImmutables : public testing::TestWithParam<std::string> {};
+
+TEST_P(TestImmutables, immutable_basic) { TestImmutableOp(GetParam()); }
+
+TEST_P(TestImmutables, immutable_between_non_quantized) {
+  TestImmutableOpBetweenNonQuantizedOp(GetParam());
 }
 
-TEST(CpuQuantizePass, reshape2WithManyOutputs) {
-  TestImmutableOpWithManyOutputs("reshape2");
+TEST_P(TestImmutables, immutable_many_outputs) {
+  TestImmutableOpWithManyOutputs(GetParam());
 }
 
-TEST(CpuQuantizePass, transpose2) { TestImmutableOp("transpose2"); }
-
-TEST(CpuQuantizePass, transpose2BetweenNonQuantizedOp) {
-  TestImmutableOpBetweenNonQuantizedOp("transpose2");
-}
-
-TEST(CpuQuantizePass, transpose2WithManyOutputs) {
-  TestImmutableOpWithManyOutputs("transpose2");
-}
-
-TEST(CpuQuantizePass, slice) { TestImmutableOp("slice"); }
-
-TEST(CpuQuantizePass, sliceBetweenNonQuantizedOp) {
-  TestImmutableOpBetweenNonQuantizedOp("slice");
-}
-
-TEST(CpuQuantizePass, sliceWithManyOutputs) {
-  TestImmutableOpWithManyOutputs("slice");
-}
-
-TEST(CpuQuantizePass, nearestInterp) { TestImmutableOp("nearest_interp"); }
-
-TEST(CpuQuantizePass, nearestInterpBetweenNonQuantizedOp) {
-  TestImmutableOpBetweenNonQuantizedOp("nearest_interp");
-}
-
-TEST(CpuQuantizePass, nearestInterpWithManyOutputs) {
-  TestImmutableOpWithManyOutputs("nearest_interp");
-}
-
-TEST(CpuQuantizePass, nearestInterpV2) { TestImmutableOp("nearest_interp_v2"); }
-
-TEST(CpuQuantizePass, nearestInterpV2BetweenNonQuantizedOp) {
-  TestImmutableOpBetweenNonQuantizedOp("nearest_interp_v2");
-}
-
-TEST(CpuQuantizePass, nearestInterpV2WithManyOutputs) {
-  TestImmutableOpWithManyOutputs("nearest_interp_v2");
-}
+INSTANTIATE_TEST_CASE_P(
+    CpuQuantizePass,
+    TestImmutables,
+    testing::ValuesIn(immutables),
+    [](const ::testing::TestParamInfo<TestImmutables::ParamType>& info) {
+      std::string name = info.param;
+      return name;
+    });
 
 static const std::initializer_list<std::string> variable_names_matmul = {
     "a", "b", "c", "d", "e", "f"};
@@ -735,7 +713,7 @@ TEST_P(TestElementwises, elementwise_unsigned_and_signed_input) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    Elementwises,
+    CpuQuantizePass,
     TestElementwises,
     testing::ValuesIn(elementwises),
     [](const ::testing::TestParamInfo<TestElementwises::ParamType>& info) {
@@ -820,14 +798,15 @@ void MainTestMultiGru(int layers) {
       if (op->Type() == "multi_gru") {
         multi_gru_nodes_count++;
 
-        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_data")), scale)
+        auto op_name = PADDLE_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Scale_data")), scale)
             << "Scale_data for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Shift_data")), shift)
+        EXPECT_EQ(PADDLE_GET_CONST(float, op->GetAttr("Shift_data")), shift)
             << "Shift_data for node '" + op_name + "'.";
         EXPECT_EQ(op->Input("Scale_weights").size(), 2u * layers)
             << "Scale_weights for node '" + op_name + "'.";
-        EXPECT_EQ(BOOST_GET_CONST(bool, op->GetAttr("force_fp32_output")), true)
+        EXPECT_EQ(PADDLE_GET_CONST(bool, op->GetAttr("force_fp32_output")),
+                  true)
             << "force_fp32_output for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;

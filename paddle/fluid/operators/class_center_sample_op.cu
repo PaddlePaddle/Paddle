@@ -221,6 +221,12 @@ class NotEqualToPreviousAdjacentIterator {
   }
 
   template <typename Distance>
+  __host__ __device__ __forceinline__ self_type operator-(Distance n) const {
+    self_type ret(arr_, offset_ - n);
+    return ret;
+  }
+
+  template <typename Distance>
   __host__ __device__ __forceinline__ reference operator[](Distance n) const {
     return *(*this + n);
   }

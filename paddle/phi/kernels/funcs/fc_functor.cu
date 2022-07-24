@@ -21,6 +21,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+using float16 = phi::dtype::float16;
+
 template <typename T>
 struct FcTypeTraits;
 
@@ -32,6 +34,15 @@ struct FcTypeTraits<float> {
 template <>
 struct FcTypeTraits<double> {
   typedef double4 Type;
+};
+
+struct float16_4 {
+  float16 x, y, z, w;
+};
+
+template <>
+struct FcTypeTraits<float16> {
+  typedef float16_4 Type;
 };
 
 template <typename T, bool DoRelu>
@@ -75,6 +86,89 @@ __global__ void InplaceAddReluKernel(const int N, const T* bias, T* data) {
   }
 }
 
+template <typename T>
+void AddReluKernel(
+    gpuStream_t stream, const int M, const int N, T* Y, const T* B, bool relu) {
+  if (N % 4 == 0) {
+    const int threads = 256;
+    const int num = M * N / 4;
+    const int blocks = (num + threads - 1) / threads;
+    typedef typename FcTypeTraits<T>::Type trans_type;
+    auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);
+    auto* data_ptr_v4 = reinterpret_cast<trans_type*>(Y);
+    if (relu) {
+      bias_relu_v4<trans_type, true><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v4, data_ptr_v4, N / 4);
+    } else {
+      bias_relu_v4<trans_type, false><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v4, data_ptr_v4, N / 4);
+    }
+  } else {
+    const int threads = 256;
+    const int blocks = M;
+
+    if (relu) {
+      InplaceAddReluKernel<T, true, threads>
+          <<<blocks, threads, 0, stream>>>(N, B, Y);
+    } else {
+      InplaceAddReluKernel<T, false, threads>
+          <<<blocks, threads, 0, stream>>>(N, B, Y);
+    }
+  }
+}
+
+template <bool DoRelu, int BlockDim>
+__global__ void InplaceAddReluKernel(const int N,
+                                     const float16* bias,
+                                     float16* data) {
+  int offset = blockIdx.x * N;
+
+  for (int i = threadIdx.x; i < N; i += BlockDim) {
+    float16 temp;
+    temp = data[offset + i] + bias[i];
+    if (DoRelu) {
+      data[offset + i] = fmaxf(0.f, temp);
+    } else {
+      data[offset + i] = temp;
+    }
+  }
+}
+
+template <>
+void AddReluKernel(gpuStream_t stream,
+                   const int M,
+                   const int N,
+                   float16* Y,
+                   const float16* B,
+                   bool relu) {
+  if (N % 4 == 0) {
+    const int threads = 256;
+    const int num = M * N / 4;
+    const int blocks = (num + threads - 1) / threads;
+    typedef typename FcTypeTraits<float16>::Type trans_type;
+    auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);
+    auto* data_ptr_v4 = reinterpret_cast<trans_type*>(Y);
+    if (relu) {
+      bias_relu_v4<trans_type, true><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v4, data_ptr_v4, N / 4);
+    } else {
+      bias_relu_v4<trans_type, false><<<blocks, threads, 0, stream>>>(
+          num, bias_ptr_v4, data_ptr_v4, N / 4);
+    }
+  } else {
+    const int threads = 256;
+    const int blocks = M;
+
+    if (relu) {
+      InplaceAddReluKernel<true, threads>
+          <<<blocks, threads, 0, stream>>>(N, B, Y);
+    } else {
+      InplaceAddReluKernel<false, threads>
+          <<<blocks, threads, 0, stream>>>(N, B, Y);
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                              const int M,
@@ -109,36 +203,14 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   }
 
   // M * N
-  if (N % 4 == 0) {
-    const int threads = 256;
-    const int num = M * N / 4;
-    const int blocks = (num + threads - 1) / threads;
-    typedef typename FcTypeTraits<T>::Type trans_type;
-    auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);
-    auto* data_ptr_v4 = reinterpret_cast<trans_type*>(Y);
-    if (relu) {
-      bias_relu_v4<trans_type, true><<<blocks, threads, 0, context.stream()>>>(
-          num, bias_ptr_v4, data_ptr_v4, N / 4);
-    } else {
-      bias_relu_v4<trans_type, false><<<blocks, threads, 0, context.stream()>>>(
-          num, bias_ptr_v4, data_ptr_v4, N / 4);
-    }
-  } else {
-    const int threads = 256;
-    const int blocks = M;
-    if (relu) {
-      InplaceAddReluKernel<T, true, threads>
-          <<<blocks, threads, 0, context.stream()>>>(N, B, Y);
-    } else {
-      InplaceAddReluKernel<T, false, threads>
-          <<<blocks, threads, 0, context.stream()>>>(N, B, Y);
-    }
-  }
+  AddReluKernel(context.stream(), M, N, Y, B, relu);
 }
 
+template class FCFunctor<paddle::platform::CUDADeviceContext, float16>;
 template class FCFunctor<paddle::platform::CUDADeviceContext, float>;
 template class FCFunctor<paddle::platform::CUDADeviceContext, double>;
 
+template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 

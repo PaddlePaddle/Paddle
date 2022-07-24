@@ -30,30 +30,36 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
     auto* out = context.Output<Tensor>("Out");
     auto dims = condition->dims();
     const int rank = dims.size();
-    std::vector<int> true_num = {0};
-    std::vector<T> vec_condition;
-    paddle::framework::TensorToVector(
-        *condition, context.device_context(), &vec_condition);
-    int vec_con_size = vec_condition.size();
-    for (int i = 0; i < vec_con_size; ++i) {
-      if (vec_condition[i] > 0) true_num[0]++;
+
+    Tensor num_true;
+    num_true.mutable_data<int>({1}, context.GetPlace());
+    MLUCnnlTensorDesc con_desc(*condition);
+    MLUCnnlTensorDesc num_true_desc(num_true);
+    MLUCnnl::NumTrue(context,
+                     con_desc.get(),
+                     GetBasePtr(condition),
+                     num_true_desc.get(),
+                     GetBasePtr(&num_true));
+
+    Tensor local_true_num;
+    paddle::framework::TensorCopySync(
+        num_true, platform::CPUPlace(), &local_true_num);
+    auto true_num = *local_true_num.data<int>();
+
+    out->Resize(phi::make_ddim({true_num, rank}));
+    out->mutable_data<int64_t>(context.GetPlace());
+
+    if (true_num == 0) {
+      return;
     }
 
-    out->Resize(phi::make_ddim({true_num[0], rank}));
-    out->mutable_data<int64_t>(context.GetPlace());
     auto& dev_ctx = context.template device_context<MLUDeviceContext>();
     framework::Tensor out_int32 =
         context.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                              dev_ctx);
-    Tensor num_true;
-    paddle::framework::TensorFromVector(
-        true_num, context.device_context(), &num_true);
-    num_true.mutable_data<int>(context.GetPlace());
-    bool as_tuple = false;
-    MLUCnnlTensorDesc con_desc(*condition);
-    MLUCnnlTensorDesc num_true_desc(num_true);
     MLUCnnlTensorDesc out_int32_desc(out_int32);
     MLUCnnlTensorDesc out_desc(*out);
+    bool as_tuple = false;
     MLUCnnl::Where(context,
                    con_desc.get(),
                    GetBasePtr(condition),

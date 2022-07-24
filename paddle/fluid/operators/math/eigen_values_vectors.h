@@ -66,7 +66,7 @@ struct MatrixEighFunctor {
 // symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
 template <typename T>
-struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
+struct MatrixEighFunctor<phi::CPUContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx,
                   const Tensor &input,
@@ -78,8 +78,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
-            ctx);
+        math::DeviceIndependenceTensorOperations<phi::CPUContext, T>(ctx);
 
     Tensor input_trans;
     // lapack is a column-major storge, transpose make the input to

@@ -113,6 +113,11 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_cvm_op", "(boolean, default false) Use cvm op or not.")
         .SetDefault(false);
 
+    AddAttr<std::vector<int>>("slots",
+                              "[slot_id1, slot_id2] Slots array of Ids.")
+        .SetDefault({})
+        .AsExtra();
+
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
 This operator is used to perform lookup on parameter W,
@@ -135,6 +140,5 @@ REGISTER_OPERATOR(distributed_push_sparse,
 
 REGISTER_OP_CPU_KERNEL(
     distributed_push_sparse,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+    ops::DistributedPushSparseKernel<phi::CPUContext, float>,
+    ops::DistributedPushSparseKernel<phi::CPUContext, double>);

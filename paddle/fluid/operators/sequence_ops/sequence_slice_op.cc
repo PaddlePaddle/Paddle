@@ -159,16 +159,14 @@ REGISTER_OPERATOR(sequence_slice,
 REGISTER_OPERATOR(sequence_slice_grad,
                   ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_slice,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, float>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, double>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, int>,
+                       ops::SequenceSliceOpKernel<phi::CPUContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, float>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, double>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, int>,
+    ops::SequenceSliceGradOpKernel<phi::CPUContext, int64_t>);

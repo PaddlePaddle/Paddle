@@ -356,7 +356,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     auto* outs = ctx.Output<LoDTensor>("Out");
     auto& score_dims = scores_input->dims();
     auto score_size = score_dims.size();
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     LoDTensor scores;
     LoDTensor boxes;
