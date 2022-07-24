@@ -167,6 +167,8 @@ AMP_DYGRAPH_FUNCTION_TEMPLATE = \
         {}
         {}
         out = {}({});
+    }} else {{
+        out = {}({});
     }}
 """
 
