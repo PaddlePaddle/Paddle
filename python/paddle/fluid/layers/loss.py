@@ -325,8 +325,10 @@ def square_error_cost(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Tensor, The tensor storing the element-wise squared error \
+        The tensor storing the element-wise squared error \
                   difference between input and label.
+
+    Return type: Tensor.
 
     Examples:
 
@@ -1664,8 +1666,10 @@ def mse_loss(input, label):
         label (Tensor): Label tensor, the data type should be float32.
 
     Returns:
-        Tensor, The tensor storing the mean square error difference of input and label.
-    
+        Tensor: The tensor storing the mean square error difference of input and label.
+
+    Return type: Tensor.
+
     Examples:
         .. code-block:: python
 
