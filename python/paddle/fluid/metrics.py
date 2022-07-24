@@ -169,7 +169,10 @@ class MetricBase(object):
             labels(numpy.array): the labels of current minibatch.
 
         Returns:
-            None  
+            None
+
+        Return types:
+            None   
 
         """
         raise NotImplementedError(
