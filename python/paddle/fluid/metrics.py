@@ -144,6 +144,8 @@ class MetricBase(object):
         Returns:
             a python dict, which contains the inner states of the metric instance
 
+        Return types:
+            a python dict
         """
         states = {
             attr: value
