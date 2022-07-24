@@ -114,6 +114,9 @@ class MetricBase(object):
         Returns:
             None
 
+        Return types:
+            None
+
         """
         states = {
             attr: value
