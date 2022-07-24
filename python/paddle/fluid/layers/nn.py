@@ -5859,8 +5859,10 @@ def im2sequence(input,
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-            Tensor, The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
+            The output is a 2-D LoDTensor with shape {input.batch\_size * output\_height * output\_width, \
             filter\_size\_height * filter\_size\_width * input.channels}. The data type is float32.
+
+    Return Type: Variable
 
     Examples:
 
