@@ -1669,7 +1669,7 @@ def mse_loss(input, label):
         Tensor: The tensor storing the mean square error difference of input and label.
 
     Return type: Tensor.
-
+    
     Examples:
         .. code-block:: python
 
