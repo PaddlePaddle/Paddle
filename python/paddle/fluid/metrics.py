@@ -187,8 +187,10 @@ class MetricBase(object):
             None
 
         Returns:
-            float|list(float)|numpy.array, the metrics via Python. The overall performance across different mini-batches.
-            
+            The overall performance across different mini-batches.
+
+        Return types:
+            float|list(float)|numpy.array: the metrics via Python.
         """
         raise NotImplementedError(
             "Should not use it directly, please extend it.")
