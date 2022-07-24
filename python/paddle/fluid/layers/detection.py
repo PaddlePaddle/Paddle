@@ -2570,6 +2570,9 @@ def roi_perspective_transform(input,
             transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
             a 2-D tensor with shape (num_rois, 9). The data type is the same as `input`
 
+    Return Type:
+        tuple
+
     Examples:
         .. code-block:: python
 
