@@ -484,7 +484,7 @@ def sequence_first_step(input):
         input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32 or float64.
 
     Returns:
-        Variable, LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
+        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32 or float64.
 
     Examples:
 
@@ -543,7 +543,7 @@ def sequence_last_step(input):
         input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
 
     Returns:
-        Variable, LoDTensor consist of the sequence's last step vector. The data type is float32.
+        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
 
     Examples:
 
@@ -605,7 +605,7 @@ def sequence_slice(input, offset, length, name=None):
                         please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor, The output subsequences.
+        Tensor: The output subsequences.
 
     Examples:
 
