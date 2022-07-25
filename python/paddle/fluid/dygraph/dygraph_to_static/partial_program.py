@@ -175,37 +175,37 @@ class PartialProgramLayer:
     def _double_grads(self):
         return self._get_double_grads(self._origin_main_program)
 
-    # ==================== create program for infer/train =================== #
-    # 有3类program：self.whole_program/self.forward_program/self.backward_program
-    # 每类分为：infer/train模式，每个模式分为：fp32/amp/pure_fp16
-    @switch_to_static_graph
-    def get_backward_program_from(self, forward_program, whole_program):
-        backward_program = whole_program
-        # 只删除block0中所有的反向op
-        if (len(forward_program.block(0).ops) +
-                2 * len(self._outputs.var_ids)) < len(
-                    whole_program.block(0).ops):
-            # delete forward op(only del block0)：
-            for i in range(
-                    len(forward_program.block(0).ops) +
-                    2 * len(self._outputs.var_ids)):
-                backward_program.block(0)._remove_op(0)
-        else:
-            for i in range(len(forward_program.block(0).ops)):
-                backward_program.block(0)._remove_op(0)
-        # del unused forward var (only del block0)：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
-        # 因为只删除block0中所有的反向op，子block中不动，子block中op可能用到block0中的var，所以，所有block0中反向op和子block中所有op用的的var，block0均不能删除
-        retain_var_set = set()
-        for block in backward_program.blocks:
-            for op in block.ops:
-                for name in op.input_arg_names:
-                    retain_var_set.add(name)
-                for name in op.output_arg_names:
-                    retain_var_set.add(name)
-        for var_key in forward_program.block(0).vars.keys():
-            if var_key not in retain_var_set:
-                backward_program.block(0)._remove_var(var_key)
-        return backward_program
+    # # ==================== create program for infer/train =================== #
+    # # 有3类program：self.whole_program/self.forward_program/self.backward_program
+    # # 每类分为：infer/train模式，每个模式分为：fp32/amp/pure_fp16
+    # @switch_to_static_graph
+    # def get_backward_program_from(self, forward_program, whole_program):
+    #     backward_program = whole_program
+    #     # 只删除block0中所有的反向op
+    #     if (len(forward_program.block(0).ops) +
+    #             2 * len(self._outputs.var_ids)) < len(
+    #                 whole_program.block(0).ops):
+    #         # delete forward op(only del block0)：
+    #         for i in range(
+    #                 len(forward_program.block(0).ops) +
+    #                 2 * len(self._outputs.var_ids)):
+    #             backward_program.block(0)._remove_op(0)
+    #     else:
+    #         for i in range(len(forward_program.block(0).ops)):
+    #             backward_program.block(0)._remove_op(0)
+    #     # del unused forward var (only del block0)：遍历所有反向op，得到所有有用的var的set, 遍历所有前向的var，如果不在上面这个set中，则删除
+    #     # 因为只删除block0中所有的反向op，子block中不动，子block中op可能用到block0中的var，所以，所有block0中反向op和子block中所有op用的的var，block0均不能删除
+    #     retain_var_set = set()
+    #     for block in backward_program.blocks:
+    #         for op in block.ops:
+    #             for name in op.input_arg_names:
+    #                 retain_var_set.add(name)
+    #             for name in op.output_arg_names:
+    #                 retain_var_set.add(name)
+    #     for var_key in forward_program.block(0).vars.keys():
+    #         if var_key not in retain_var_set:
+    #             backward_program.block(0)._remove_var(var_key)
+    #     return backward_program
 
     # whole
     @switch_to_static_graph
@@ -247,45 +247,55 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_pure_fp16_program)
             return train_pure_fp16_program
 
-    # forward
+    # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        return self._origin_main_program.clone(for_test=False)
+        whole_program = self._create_program()
+        return self._add_build_strategy_for(
+            whole_program, 0,
+            self._create_program(True).desc.block(0).op_size())
 
     @switch_to_static_graph
     def _create_forward_train_amp_program(self):
-        forward_amp_program = self._origin_main_program.clone(for_test=False)
-        with program_guard(forward_amp_program):
-            rewrite_program(forward_amp_program, self._amp_list)
-        return forward_amp_program
+        whole_program = self._create_amp_program()
+        return self._add_build_strategy_for(
+            whole_program, 0,
+            self._create_amp_program(True).desc.block(0).op_size())
 
     @switch_to_static_graph
     def _create_forward_train_pure_fp16_program(self):
-        forward_pure_fp16_program = self._origin_main_program.clone(
-            for_test=False)
-        with program_guard(forward_pure_fp16_program):
-            cast_model_to_fp16(forward_pure_fp16_program,
-                               self._amp_list,
-                               use_fp16_guard=False)
-        return forward_pure_fp16_program
+        whole_program = self._create_pure_fp16_program()
+        return self._add_build_strategy_for(
+            whole_program, 0,
+            self._create_pure_fp16_program(True).desc.block(0).op_size())
 
     # backward
     @switch_to_static_graph
     def _create_backward_train_program(self):
-        return self.get_backward_program_from(
-            self._create_forward_train_program(), self._create_program())
+        whole_program = self._create_program()
+        start_op_index = self._create_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
+        end_op_index = whole_program.desc.block(0).op_size()
+        return self._add_build_strategy_for(whole_program, start_op_index,
+                                            end_op_index)
 
     @switch_to_static_graph
     def _create_backward_train_amp_program(self):
-        return self.get_backward_program_from(
-            self._create_forward_train_amp_program(),
-            self._create_amp_program())
+        whole_program = self._create_amp_program()
+        start_op_index = self._create_amp_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
+        end_op_index = whole_program.desc.block(0).op_size()
+        return self._add_build_strategy_for(whole_program, start_op_index,
+                                            end_op_index)
 
     @switch_to_static_graph
     def _create_backward_train_pure_fp16_program(self):
-        return self.get_backward_program_from(
-            self._create_forward_train_pure_fp16_program(),
-            self._create_pure_fp16_program())
+        whole_program = self._create_pure_fp16_program()
+        start_op_index = self._create_pure_fp16_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
+        end_op_index = whole_program.desc.block(0).op_size()
+        return self._add_build_strategy_for(whole_program, start_op_index,
+                                            end_op_index)
 
     # whole
     @LazyInitialized
@@ -591,6 +601,10 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
+        # print("self.whole_program: ", self.whole_program)
+        # print("self.forward_program: ", self.forward_program)
+        # print("self.backward_program: ", self.backward_program)
+
         attrs = [
             'global_block',
             self.program.desc.block(0), 'start_op_index', 0, 'end_op_index',
@@ -670,9 +684,13 @@ class PartialProgramLayer:
             return self._infer_program
 
     @switch_to_static_graph
-    def _add_build_strategy_for(self, input_program):
+    def _add_build_strategy_for(self, input_program, start_op_index,
+                                end_op_index):
         compiled_program = paddle.static.CompiledProgram(
-            input_program, build_strategy=self._build_strategy)
+            input_program,
+            build_strategy=self._build_strategy,
+            start_op_index=start_op_index,
+            end_op_index=end_op_index)
         compiled_program._compile(core.Scope(),
                                   framework._current_expected_place())
         ir_graph = framework.IrGraph(compiled_program._graph)

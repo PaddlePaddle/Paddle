@@ -149,14 +149,25 @@ class CompiledProgram(object):
                                 fetch_list=[loss.name])
     """
 
-    def __init__(self, program_or_graph, build_strategy=None):
+    def __init__(self,
+                 program_or_graph,
+                 build_strategy=None,
+                 start_op_index=None,
+                 end_op_index=None):
         if isinstance(program_or_graph, core.Graph):
             self._graph = program_or_graph
             # don't not create a new program here.
             self._program = None
         elif isinstance(program_or_graph, framework.Program):
             _prune_feed_ops(program_or_graph)
-            self._graph = core.Graph(program_or_graph.desc)
+            if (start_op_index is not None) and (end_op_index is not None):
+                if start_op_index > end_op_index:
+                    raise TypeError(
+                        "start_op_index should not greater than end_op_index")
+                self._graph = core.Graph(program_or_graph.desc, start_op_index,
+                                         end_op_index)
+            else:
+                self._graph = core.Graph(program_or_graph.desc)
             self._program = program_or_graph
         else:
             raise TypeError(
