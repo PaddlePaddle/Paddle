@@ -17,6 +17,7 @@
 #include <set>
 #include <string>
 
+#include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/layer.h"
 
 namespace paddle {
@@ -51,10 +52,12 @@ class Deserializer {
                       const phi::Place& place,
                       Name2VariableMap* params_dict) const;
 
+  // property pb
   void ReadAttributeData(const std::string& file_path,
                          Name2VariableMap* attrs_dict) const;
 
   // void ReadExtraInfo(const std::string& file_name) const;
+
   // void ReadByteCode(const std::string& file_name) const;
 
   framework::ProgramDesc LoadProgram(const std::string& file_name);

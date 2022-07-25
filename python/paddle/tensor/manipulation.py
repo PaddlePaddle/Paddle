@@ -2705,8 +2705,7 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(x, index, updates)
+        return _C_ops.final_state_scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -3002,7 +3001,7 @@ def broadcast_to(x, shape, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     if paddle.in_dynamic_mode():
-        return _C_ops.expand_v2(x, 'shape', shape)
+        return _C_ops.final_state_expand(x, shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')

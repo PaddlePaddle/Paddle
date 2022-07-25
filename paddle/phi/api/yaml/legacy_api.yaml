@@ -280,6 +280,16 @@
     func : bce_loss
   backward : bce_loss_grad
 
+- api : bilinear_tensor_product
+  args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
+  output : Tensor
+  infer_meta :
+    func : BilinearTensorProductInferMeta
+  kernel :
+    func : bilinear_tensor_product
+  optional : bias
+  backward : bilinear_tensor_product_grad
+
 # bitwise_and
 - api : bitwise_and
   args : (Tensor x, Tensor y)
@@ -367,6 +377,14 @@
   kernel :
     func : clip
   backward : clip_grad
+
+- api : clip_by_norm
+  args : (Tensor x, float max_norm)
+  output : Tensor(out)
+  infer_meta :
+    func : ClipByNormInferMeta
+  kernel :
+    func : clip_by_norm
 
 - api : complex
   args : (Tensor x, Tensor y)
@@ -574,10 +592,10 @@
   args : (Tensor[] x, str equation)
   output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
   infer_meta :
-    func : EinsumInferMeta
+    func : EinsumRawInferMeta
     param : [x, equation]
   kernel :
-    func : einsum
+    func : einsum_raw
   backward : einsum_grad
 
 - api : elementwise_pow
@@ -904,6 +922,18 @@
   kernel :
     func : greater_than
 
+# grid sample
+- api : grid_sample
+  args : (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners)
+  output : Tensor(out)
+  infer_meta :
+    func : GridSampleBaseInferMeta
+    param : [x, grid]
+  kernel:
+    func : grid_sample
+    data_type : x
+  backward : grid_sample_grad
+
 - api : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
   output : Tensor(y), Tensor(mean), Tensor(variance)
@@ -1023,6 +1053,15 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
+
+- api : inverse
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : InverseInferMeta
+  kernel :
+    func : inverse
+  backward : inverse_grad
 
 # is_empty
 - api : is_empty
@@ -2035,13 +2074,22 @@
     func : square
   backward : square_grad
 
+- api : squared_l2_norm
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : SquaredL2NormInferMeta
+  kernel :
+    func : squared_l2_norm
+  backward : squared_l2_norm_grad
+
 - api : squeeze
   args : (Tensor x, int[] axes)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : SqueezeInferMeta
+    func : SqueezeWithXShapeInferMeta
   kernel :
-    func : squeeze
+    func : squeeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
@@ -2145,6 +2193,16 @@
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
+
+# temporal_shift
+- api : temporal_shift
+  args : (Tensor x, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor
+  infer_meta :
+    func : TemporalShiftInferMeta
+  kernel :
+    func : temporal_shift
+  backward : temporal_shift_grad
 
 # thresholded_relu
 - api : thresholded_relu
@@ -2282,9 +2340,9 @@
   args : (Tensor x, IntArray axis)
   output : Tensor(out), Tensor(xshape)
   infer_meta :
-    func : UnsqueezeInferMeta
+    func : UnsqueezeWithXShapeInferMeta
   kernel :
-    func : unsqueeze
+    func : unsqueeze_with_xshape
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad

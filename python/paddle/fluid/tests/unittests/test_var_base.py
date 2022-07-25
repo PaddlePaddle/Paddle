@@ -1776,7 +1776,7 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             b = a**2
             self.assertEqual(a._grad_value(), None)
             b.backward()
-            self.assertEqual('eager_in_tmp' in a._grad_name(), True)
+            # Note, for new dygraph, there are no generated grad name, so we skip the name check.
             self.assertNotEqual(a._grad_value(), None)
 
 

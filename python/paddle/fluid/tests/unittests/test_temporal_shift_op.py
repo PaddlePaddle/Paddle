@@ -46,6 +46,7 @@ class TestTemporalShift(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'temporal_shift'
+        self.python_api = paddle.nn.functional.temporal_shift
         x = np.random.random(self.x_shape).astype(self.dtype)
 
         self.attrs = {
@@ -61,12 +62,13 @@ class TestTemporalShift(OpTest):
         output = temporal_shift(x, self.seg_num, self.shift_ratio,
                                 self.data_format)
         self.outputs = {"Out": output}
+        self.python_out_sig = ["Out"]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_ignore_uv(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def initTestCase(self):
         self.x_shape = (6, 4, 4, 4)

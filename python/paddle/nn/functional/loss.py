@@ -3200,3 +3200,82 @@ def triplet_margin_loss(input,
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def soft_margin_loss(input, label, reduction='mean', name=None):
+    """
+    The API measures the soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
+
+    .. math::
+        Out = log(1 + exp((-label * input)))
+
+    Parameters:
+
+        input (Tensor): The input predications tensor with shape: [N, *],
+            N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
+             Available dtype is float32, float64.
+
+        label (Tensor): The target labels tensor with the same shape as
+            ``input``. The target labels which values should be numbers -1 or 1.
+            Available dtype is int32, int64, float32, float64.
+
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is [1].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
+            label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
+            output = paddle.nn.functional.soft_margin_loss(input, label)
+
+            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
+            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
+            label_np[label_np==0]=-1
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
+            output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in soft_margin_loss should be 'sum', "
+            "'mean' or 'none', but received %s, which is not allowed." %
+            reduction)
+
+    if not _non_static_mode():
+        fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                                   ['float32', 'float64'],
+                                                   'soft_margin_loss')
+        fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['int32', 'int64', 'float32', 'float64'],
+            'soft_margin_loss')
+
+    if not (input.shape == label.shape):
+        raise ValueError("input's shape must equal to "
+                         "label's shape")
+
+    label = fluid.layers.cast(label, input.dtype)
+    out = paddle.log(1 + paddle.exp(-label * input))
+
+    if reduction == 'sum':
+        return paddle.sum(out, name=name)
+    elif reduction == 'mean':
+        return paddle.mean(out, name=name)
+    else:
+        return out

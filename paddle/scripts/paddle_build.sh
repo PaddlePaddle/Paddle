@@ -200,6 +200,7 @@ function cmake_base() {
     if [ "$CMD" != "assert_file_approvals" ];then
       which python
       python -V
+      python -m pip install distro
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
@@ -2279,7 +2280,14 @@ EOF
 
 set +x
         test_cases=$(ctest -N -V) # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+
+        mlu_card_num=$(cnmon info -t | grep Card | wc -l)
+        if [[ $mlu_card_num == 1 ]]; then
+            get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        else
+            disable_ut_quickly='disable_ut'
+        fi
+        
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
