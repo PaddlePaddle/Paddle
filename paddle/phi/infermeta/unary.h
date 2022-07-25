@@ -508,6 +508,12 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              const std::string& data_format,
                              MetaTensor* out);
 
+void EigvalshInferMeta(const MetaTensor& x,
+                       const std::string& uplo,
+                       bool is_test,
+                       MetaTensor* out_w,
+                       MetaTensor* out_v);
+
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 }  // namespace phi

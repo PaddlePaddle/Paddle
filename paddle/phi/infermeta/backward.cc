@@ -661,6 +661,16 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad) {
+  auto dims = out_v.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_v.dtype());
+}
+
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad) {
