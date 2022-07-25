@@ -16,7 +16,7 @@
 # cuda moduel lazy loading is supported by CUDA 11.7+
 # this experiment option makes Paddle supports lazy loading before CUDA 11.7.
 
-if (LINUX)
+if(LINUX)
   option(EXP_CUDA_MODULE_LOADING_LAZY "enable lazy cuda module loading" ON)
 endif()
 
@@ -45,13 +45,11 @@ if(${EXP_CUDA_MODULE_LOADING_LAZY})
   set(CMAKE_CUDA_FLAGS "--cudart shared")
   enable_language(CUDA)
   execute_process(
-        COMMAND "rm" "-rf" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
-        COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
-        COMMAND "bash" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy" "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc"
-  )
-  execute_process(
-        COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
-  )
+    COMMAND "rm" "-rf" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
+    COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
+    COMMAND "bash" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy.sh"
+    "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy" "${CUDA_TOOLKIT_ROOT_DIR}/bin/nvcc")
+  execute_process(COMMAND "chmod" "755" "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy")
   set(CUDA_NVCC_EXECUTABLE
       "${CMAKE_SOURCE_DIR}/tools/nvcc_lazy"
       CACHE FILEPATH "" FORCE)
