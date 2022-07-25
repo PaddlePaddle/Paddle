@@ -44,6 +44,8 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
   ~ScaleLossGradOpHandle() final;
 
+  proto::VarType::Type DType() const { return out_dtype_; }
+
   std::string Name() const override;
 
   platform::Place GetPlace() const { return place_; }
@@ -51,8 +53,6 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
   void RunOnVar(Variable *var, bool record_event = false);
 
   std::string LossGradName() const;
-
-  proto::VarType::Type DType() const { return out_dtype_; }
 
  protected:
   void RunImpl() override;
