@@ -76,19 +76,18 @@ class TestVarBase(unittest.TestCase):
                 y = x.cpu()
                 self.assertEqual(y.place.__repr__(), "Place(cpu)")
                 if core.is_compiled_with_cuda():
-                    res_place = paddle.framework._current_expected_place()
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "Place(gpu_pinned)")
                     y = x.cuda()
-                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(None)
-                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=False)
-                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(blocking=True)
-                    self.assertEqual(y.place.__repr__(), res_place.__repr__())
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 
@@ -280,6 +279,8 @@ class TestVarBase(unittest.TestCase):
             check_with_place("npu:0")
 
     def test_to_tensor(self):
+        with _test_eager_guard():
+            self.func_test_to_tensor()
         self.func_test_to_tensor()
 
     def func_test_to_tensor_not_change_input_stop_gradient(self):

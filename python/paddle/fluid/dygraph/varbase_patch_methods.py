@@ -866,15 +866,15 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device=None, blocking=True):
-        if device is None:
+    def cuda(self, device_id=None, blocking=True):
+        if device_id is None:
             res_place = framework._current_expected_place()
-        elif isinstance(device, int):
+            if not isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(0)
+        elif isinstance(device_id, int):
             res_place = core.CUDAPlace(device_id)
-        elif isinstance(device, core.CUDAPlace()):
-            res_place = device
         else:
-            raise TypeError("device must be CUDAPlace device id or CUDAPlace")
+            raise ValueError("device_id must be int|None")
 
         if self.place._equals(res_place):
             return self
