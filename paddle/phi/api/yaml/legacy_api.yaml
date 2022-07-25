@@ -906,6 +906,17 @@
   intermediate : dst_count
   backward : graph_send_recv_grad
 
+- api : graph_send_ue_recv
+  args : (Tensor x, Tensor e, Tensor src_index, Tensor dst_index, str compute_type, str pool_type, IntArray out_size)
+  output : Tensor(out), Tensor(dst_count)
+  infer_meta :
+    func : GraphSendUERecvInferMeta
+  kernel :
+    func : graph_send_ue_recv
+    data_type : x
+  intermediate : dst_count
+  backward : graph_send_ue_recv_grad
+
 - api : greater_equal
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor

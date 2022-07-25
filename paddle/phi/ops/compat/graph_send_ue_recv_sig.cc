@@ -18,10 +18,17 @@ namespace phi {
 
 KernelSignature GraphSendUERecvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("graph_send_ue_recv",
-                         {"X", "E", "Src_index", "Dst_index"},
-                         {"compute_type", "pool_type", "out_size"},
-                         {"Out", "Dst_count"});
+  if (ctx.HasInput("OutSizeTensor")) {
+    return KernelSignature("graph_send_ue_recv",
+                           {"X", "E", "Src_index", "Dst_index"},
+                           {"compute_type", "pool_type", "OutSizeTensor"},
+                           {"Out", "Dst_count"});
+  } else {
+    return KernelSignature("graph_send_ue_recv",
+                           {"X", "E", "Src_index", "Dst_index"},
+                           {"compute_type", "pool_type", "out_size"},
+                           {"Out", "Dst_count"});
+  }
 }
 
 KernelSignature GraphSendUERecvGradOpArgumentMapping(

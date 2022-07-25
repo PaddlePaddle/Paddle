@@ -2355,7 +2355,7 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                               const MetaTensor& dst_index,
                               const std::string& compute_type,
                               const std::string& pool_type,
-                              int64_t out_size,
+                              const IntArray& out_size,
                               MetaTensor* out,
                               MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
@@ -2409,11 +2409,7 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
 
   auto x_dims = x.dims();
   if (pool_type == "MEAN") {
-    if (out_size <= 0) {
-      dst_count->set_dims({x_dims[0]});
-    } else {
-      dst_count->set_dims({out_size});
-    }
+    dst_count->set_dims({x_dims[0]});
     dst_count->set_dtype(DataType::INT32);
   }
 
@@ -2437,11 +2433,7 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                                      out_dims_array.data(),
                                      max_dim,
                                      axis);
-  if (out_size <= 0) {
-    out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
-  } else {
-    out_dims_array.insert(out_dims_array.begin(), out_size);
-  }
+  out_dims_array.insert(out_dims_array.begin(), x_dims[0]);
   out->set_dims(phi::make_ddim(out_dims_array));
 }
 

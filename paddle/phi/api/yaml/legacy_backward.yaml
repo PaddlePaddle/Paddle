@@ -848,15 +848,27 @@
     data_type : out_grad
   optional: out, dst_count
 
+- backward_api : graph_send_ue_recv_grad
+  forward : graph_send_ue_recv (Tensor x, Tensor e, Tensor src_index, Tensor dst_index, str compute_type, str pool_type, IntArray out_size) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor e, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str compute_type, str pool_type)
+  output : Tensor(x_grad), Tensor(e_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, e]
+  kernel :
+    func : graph_send_ue_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
 # grid sample
 - backward_api : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
   output : Tensor(x_grad), Tensor(grid_grad)
-  infer_meta : 
+  infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, grid]
-  kernel : 
+  kernel :
     func : grid_sample_grad
     data_type : x
 

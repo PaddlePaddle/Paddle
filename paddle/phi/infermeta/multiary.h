@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
@@ -409,7 +410,7 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
                               const MetaTensor& dst_index,
                               const std::string& compute_type,
                               const std::string& pool_type,
-                              int64_t out_size,
+                              const IntArray& out_size,
                               MetaTensor* out,
                               MetaTensor* dst_count);
 

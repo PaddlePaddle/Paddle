@@ -116,13 +116,27 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                          DenseTensor* out,
                                          DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
-  ctx.template Alloc<T>(out);
-  T* out_data = out->data<T>();
   auto out_dims = out->dims();
   int64_t memset_size = 1;
-  for (int i = 0; i < out_dims.size(); i++) {
-    memset_size *= out_dims[i];
+  if (out_size <= 0) {
+    for (int i = 0; i < out_dims.size(); i++) {
+      memset_size *= out_dims[i];
+    }
+  } else {
+    // set out dim following out_size.
+    std::vector<int64_t> dims_ = phi::vectorize(out_dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->Resize(phi::make_ddim(dims_));
+    memset_size = out_size;
+    for (int i = 1; i < out_dims.size(); ++i) {
+      memset_size *= out_dims[i];
+    }
   }
+
+  ctx.template Alloc<T>(out);
+  T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(out_data, 0, memset_bytes);
 
@@ -155,13 +169,15 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
                                                                  mul_functor);
     }
     if (pool_type == "MEAN") {
+      int64_t input_size = out_size <= 0 ? x.dims()[0] : out_size;
+      dst_count->Resize({input_size});
       int* dst_count_data = ctx.template Alloc<int>(dst_count);
-      memset(dst_count_data, 0, dst_count->dims()[0] * sizeof(int));
+      memset(dst_count_data, 0, input_size * sizeof(int));
       for (int i = 0; i < index_size; i++) {
         IndexT dst_idx = d_index[i];
         dst_count_data[dst_idx] += 1;
       }
-      for (int i = 0; i < out_dims[0]; i++) {
+      for (int i = 0; i < input_size; i++) {
         if (dst_count_data[i] == 0) continue;
         auto out_slice = out->Slice(i, i + 1);
         auto eigen_out = phi::EigenVector<T>::Flatten(out_slice);
@@ -241,10 +257,11 @@ void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& dst_index,
                            const std::string& compute_type,
                            const std::string& pool_type,
-                           int64_t out_size,
+                           const IntArray& out_size,
                            DenseTensor* out,
                            DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
+  auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(ctx,
                                                              x,
@@ -253,7 +270,7 @@ void GraphSendUERecvKernel(const Context& ctx,
                                                              dst_index,
                                                              compute_type,
                                                              pool_type,
-                                                             out_size,
+                                                             out_size_data[0],
                                                              out,
                                                              dst_count);
   } else if (index_type == phi::DataType::INT64) {
@@ -264,7 +281,7 @@ void GraphSendUERecvKernel(const Context& ctx,
                                                              dst_index,
                                                              compute_type,
                                                              pool_type,
-                                                             out_size,
+                                                             out_size_data[0],
                                                              out,
                                                              dst_count);
   }

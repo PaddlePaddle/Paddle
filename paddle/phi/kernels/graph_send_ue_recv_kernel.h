@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -27,7 +28,7 @@ void GraphSendUERecvKernel(const Context& ctx,
                            const DenseTensor& dst_index,
                            const std::string& compute_type,
                            const std::string& pool_type,
-                           int64_t out_size,
+                           const IntArray& out_size,
                            DenseTensor* out,
                            DenseTensor* dst_count);
 
