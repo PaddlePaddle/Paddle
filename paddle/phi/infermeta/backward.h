@@ -277,6 +277,15 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
 
+void SpectralNormGradInferMeta(const MetaTensor& weight,
+                        const MetaTensor& u,
+                        const MetaTensor& v,
+                        const MetaTensor& out_grad,
+                        int dim,
+                        int power_iters,
+                        float eps,
+                        MetaTensor* weight_grad);
+                        
 void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);

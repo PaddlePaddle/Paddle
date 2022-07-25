@@ -160,6 +160,15 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& updates,
                            MetaTensor* out);
 
+void SpectralNormInferMeta(const MetaTensor& weight,
+                        const MetaTensor& u,
+                        const MetaTensor& v,
+                        int dim,
+                        int power_iters,
+                        float eps,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+                        
 void ViterbiDecodeInferMeta(const MetaTensor& input,
                             const MetaTensor& transition,
                             const MetaTensor& length,
