@@ -126,6 +126,8 @@ class FLClientBase(abc.ABC):
     def set_train_dataset_info(self, train_dataset, train_file_list):
         self.train_dataset = train_dataset
         self.train_file_list = train_file_list
+        logger.info("fl-ps > {}, data_feed_desc:\n {}".format(
+            type(self.train_dataset), self.train_dataset._desc()))
 
     def set_test_dataset_info(self, test_dataset, test_file_list):
         self.test_dataset = test_dataset
@@ -151,13 +153,25 @@ class FLClientBase(abc.ABC):
             os.makedirs(self.save_model_path)
 
     def set_dump_fields(self):
+        # DumpField
+        # TrainerDesc -> SetDumpParamVector -> DumpParam -> DumpWork
         if self.config.get("runner.need_dump"):
             self.debug = True
-            dump_fields_path = "{}/{}".format(
+            dump_fields_path = "{}/epoch_{}".format(
                 self.config.get("runner.dump_fields_path"), self.epoch_idx)
             dump_fields = self.config.get("runner.dump_fields", [])
             dump_param = self.config.get("runner.dump_param", [])
+            persist_vars_list = self.main_program.all_parameters()
+            persist_vars_name = [
+                str(param).split(":")[0].strip().split()[-1]
+                for param in persist_vars_list
+            ]
+            logger.info(
+                "fl-ps > persist_vars_list: {}".format(persist_vars_name))
 
+            if dump_fields_path is not None:
+                self.main_program._fleet_opt[
+                    'dump_fields_path'] = dump_fields_path
             if dump_fields is not None:
                 self.main_program._fleet_opt["dump_fields"] = dump_fields
             if dump_param is not None:

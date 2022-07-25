@@ -863,6 +863,8 @@ class TheOnePSRuntime(RuntimeBase):
     def _set_basic_info(self, context):
         self.context = context
         self.role_maker = context["role_maker"]
+        self.role_id = get_role_id(self.role_maker)
+        self.debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         self.origin_main_program = context["origin_main_program"]
         self.origin_main_programs = context.get("origin_main_programs",
@@ -951,8 +953,6 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        #with open("test_fl_ps_worker_desc", "w") as f:
-        #    f.write(worker_desc)
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
             if not main_program._fleet_opt:
@@ -981,10 +981,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
-        proto_txt = worker_desc
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("worker: \n{}".format(proto_txt))
+        if self.debug:
+            print("worker_desc: \n{}".format(worker_desc))
             print("communicator send_ctx:")
             for key in send_ctx:
                 print("{}: {}".format(key, send_ctx[key]))
@@ -1004,14 +1002,13 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("communicator config:", trainer_config.get_communicator_flags())
 
-        role_id = get_role_id(self.role_maker)
-        self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+        self._worker.init_worker(worker_desc, self.string_hosts, self.role_id)
         self.trainer_endpoint = get_trainer_endpoint(self.role_maker)
         print("fl-ps > trainer_endpoint: {}".format(self.trainer_endpoint))
         print("fl-ps > with_coordinator? {}".format(self.with_coordinator))
         print("fl-ps > coordinator addr: {}".format(self.coordinator_hosts))
         if self.with_coordinator:
-            self._worker.init_fl_worker(self.coordinator_hosts, role_id,
+            self._worker.init_fl_worker(self.coordinator_hosts, self.role_id,
                                         self.trainer_endpoint)
 
         if self.context[
@@ -1019,7 +1016,7 @@ class TheOnePSRuntime(RuntimeBase):
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
-            self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+            self._communicator.init_with_ctx(send_ctx, dense_map, worker_desc,
                                              self.string_hosts,
                                              fluid.global_scope())
         fleet.util.barrier()
@@ -1071,7 +1068,7 @@ class TheOnePSRuntime(RuntimeBase):
                 self._communicator.init_params(init_params)
             else:
                 if not self.context['use_ps_gpu']:
-                    if role_id == 0:
+                    if self.role_id == 0:
                         print("entering self._init_all_params()")
                         self._init_all_params(scopes, send_ctx, dense_map)
 
@@ -1123,19 +1120,15 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_server(self, dirname=None, var_names=None, **kwargs):
         server_desc = self.ps_desc_builder.build_server_desc()
-        #with open("test_fl_ps_server_desc", "w") as f:
-        #    f.write(server_desc)
-        role_id = get_role_id(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(server_desc))
+        if self.debug:
+            print("server_desc: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(server_desc, self.string_hosts, role_id,
+        self._server.init_server(server_desc, self.string_hosts, self.role_id,
                                  trainers, self._server_sub_program)
 
         dist_varnames = get_sparse_tablenames(self.origin_main_programs, True)

@@ -248,6 +248,9 @@ void BrpcPsClient::PushFLClientInfoSync(const std::string &fl_client_info) {
                           "coordinator is failed";
             ret = -1;
             return;
+          } else {
+            VLOG(0) << "fl-ps > rpc service call cost time: "
+                    << (closure->cntl(i)->latency_us() / 1000) << " ms";
           }
         }
         closure->set_promise_value(ret);
