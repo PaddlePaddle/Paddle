@@ -2710,11 +2710,9 @@ void SvdInferMeta(const MetaTensor& x,
   int m = in_dims[x_rank - 2];
   int n = in_dims[x_rank - 1];
   int k = std::min(m, n);
-  u->set_dims(!full_matrices ? funcs::UDDim(in_dims, k)
-                             : funcs::UDDim(in_dims, m));
-  vh->set_dims(!full_matrices ? funcs::VHDDim(in_dims, k)
-                              : funcs::VHDDim(in_dims, n));
-  s->set_dims(funcs::SDDim(in_dims, k));
+  u->set_dims(!full_matrices ? UDDim(in_dims, k) : UDDim(in_dims, m));
+  vh->set_dims(!full_matrices ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
+  s->set_dims(SDDim(in_dims, k));
   u->share_lod(x);
   vh->share_lod(x);
   s->share_lod(x);
