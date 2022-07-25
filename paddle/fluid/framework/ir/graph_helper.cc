@@ -536,6 +536,20 @@ static void GraphToBlock(const Graph &graph,
       }
     }
   }
+  if (graph.Has(details::kRemovedVars)) {
+    auto &removed_vars =
+        graph.Get<std::unordered_set<const Node *>>(details::kRemovedVars);
+    for (const Node *n : removed_vars) {
+      if (n->IsVar()) {
+        if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
+            !vars2remove.count(n->Var()->Name()) &&
+            n->GetVarNodeBlockId() == graph.GetBlockId()) {
+          visited_vars.insert(n->Var()->Name());
+          block->add_vars()->MergeFrom(*n->Var()->Proto());
+        }
+      }
+    }
+  }
   block->clear_ops();
 
   std::vector<Node *> nodes;
