@@ -39,6 +39,21 @@ import paddle.fluid.dygraph_utils as dygraph_utils
 
 __all__ = []
 
+import contextlib
+
+
+@contextlib.contextmanager
+def device_guard(dev_id=0, device="cpu"):
+    origin_device = paddle.device.get_device()
+    if device == "cpu":
+        paddle.set_device(device)
+    elif device == "gpu":
+        paddle.set_device("gpu:{}".format(dev_id))
+    try:
+        yield
+    finally:
+        paddle.set_device(origin_device)
+
 
 class ReduceOp:
     """
@@ -468,10 +483,12 @@ def wait(tensor, group=None, use_calc_stream=True):
 
     ring_id = 0 if group is None else group.id
 
-    if use_calc_stream:
-        _sync_calc_stream(tensor)
-    else:
-        _sync_comm_stream(tensor, ring_id)
+    dev_id = paddle.distributed.ParallelEnv().dev_id
+    with device_guard(dev_id=dev_id, device="gpu"):
+        if use_calc_stream:
+            _sync_calc_stream(tensor)
+        else:
+            _sync_comm_stream(tensor, ring_id)
 
 
 def _sync_calc_stream(tensor):
@@ -568,9 +585,11 @@ def broadcast(tensor, src, group=None, use_calc_stream=True):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if _non_static_mode():
-        return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                  'use_calc_stream', use_calc_stream, 'ring_id',
-                                  ring_id)
+        dev_id = paddle.distributed.ParallelEnv().dev_id
+        with device_guard(dev_id=dev_id, device="gpu"):
+            return _C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
+                                      'use_calc_stream', use_calc_stream,
+                                      'ring_id', ring_id)
 
     op_type = 'c_broadcast'
     check_variable_and_dtype(
