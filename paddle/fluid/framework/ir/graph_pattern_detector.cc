@@ -2012,6 +2012,12 @@ PDNode *patterns::ElementwiseOp::operator()(
 
 PDNode *patterns::MatmulElementwiseAdd::operator()(
     const std::string &matmul_type, bool as_x) {
+  auto matmul_x = pattern->NewNode(matmul_x_repr())
+                      ->AsInput()
+                      ->assert_is_op_input(matmul_type, "X");
+  auto matmul_y = pattern->NewNode(matmul_y_repr())
+                      ->AsInput()
+                      ->assert_is_op_input(matmul_type, "Y");
   auto matmul_op =
       pattern->NewNode(matmul_op_repr())->assert_is_op(matmul_type);
   auto matmul_out =
@@ -2030,7 +2036,7 @@ PDNode *patterns::MatmulElementwiseAdd::operator()(
           ->AsOutput()
           ->assert_is_op_output("elementwise_add", "Out");
 
-  matmul_op->LinksTo({matmul_out});
+  matmul_op->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
   elementwise_add_op->LinksFrom({matmul_out, elementwise_addend})
       .LinksTo({elementwise_add_out});
   return elementwise_add_out;

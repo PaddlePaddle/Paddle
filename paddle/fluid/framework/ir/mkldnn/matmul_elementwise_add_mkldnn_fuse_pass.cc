@@ -49,6 +49,8 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_x, matmul_x, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_y, matmul_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul, matmul_op, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -65,6 +67,30 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
+    if (matmul_type == "matmul") {
+      OpDesc desc(matmul->Op()->Block());
+      desc.SetType("matmul_v2");
+      desc.SetInput("X", {matmul_x->Name()});
+      desc.SetInput("Y", {matmul_y->Name()});
+      desc.SetOutput("Out", {matmul_out->Name()});
+      desc.SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
+      desc.SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
+
+      if (matmul->Op()->HasAttr("use_mkldnn")) {
+        desc.SetAttr("use_mkldnn", matmul->Op()->GetAttr("use_mkldnn"));
+      }
+      if (matmul->Op()->HasAttr("enable_int8")) {
+        desc.SetAttr("enable_int8", matmul->Op()->GetAttr("enable_int8"));
+        desc.SetAttr("Input_scale", matmul->Op()->GetAttr("Input_scale"));
+        desc.SetAttr("out_threshold", matmul->Op()->GetAttr("out_threshold"));
+      }
+      auto matmul_node = g->CreateOpNode(&desc);
+      IR_NODE_LINK_TO(matmul_x, matmul_node);
+      IR_NODE_LINK_TO(matmul_y, matmul_node);
+      IR_NODE_LINK_TO(matmul_node, matmul_out);
+      GraphSafeRemoveNodes(graph, {matmul});
+      matmul = matmul_node;
+    }
     matmul->Op()->SetInput("Bias", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 

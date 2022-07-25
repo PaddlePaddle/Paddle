@@ -179,13 +179,9 @@ class MatMulMKLDNNHandler
  public:
   void Execute(const paddle::framework::Tensor* x,
                const paddle::framework::Tensor* y,
-               paddle::framework::Tensor* bias,
                paddle::framework::Tensor* out) {
     const auto src_memory_p = this->AcquireSrcMemory(x);
     const auto weights_memory_p = this->AcquireWeightsMemory(y);
-    if (bias) {
-      out->ShareDataWith(*bias);
-    }
     const auto dst_memory_p = this->AcquireDstMemory(out);
 
     auto matmul_p = this->AcquireForwardPrimitive();
@@ -211,7 +207,6 @@ class MatMulMKLDNNHandler
       y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
       out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
     }
-
     astream.wait();
 
     auto format =
@@ -530,24 +525,20 @@ static void ExecuteMatMul(const ExecutionContext& ctx) {
   constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
-  auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
   auto* out = ctx.Output<Tensor>("Out");
   const auto& dev_ctx =
       ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-    MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx)
-        .Execute(x, y, bias, out);
+    MatMulMKLDNNHandler<XT, YT, float>(onednn_engine, ctx).Execute(x, y, out);
   } else if (is_bfloat16) {
     MatMulMKLDNNHandler<XT, YT, paddle::platform::bfloat16>(onednn_engine, ctx)
-        .Execute(x, y, bias, out);
+        .Execute(x, y, out);
   } else if (fuse_relu) {
-    MatMulMKLDNNHandler<XT, YT, uint8_t>(onednn_engine, ctx)
-        .Execute(x, y, bias, out);
+    MatMulMKLDNNHandler<XT, YT, uint8_t>(onednn_engine, ctx).Execute(x, y, out);
   } else {
-    MatMulMKLDNNHandler<XT, YT, int8_t>(onednn_engine, ctx)
-        .Execute(x, y, bias, out);
+    MatMulMKLDNNHandler<XT, YT, int8_t>(onednn_engine, ctx).Execute(x, y, out);
   }
 }
 

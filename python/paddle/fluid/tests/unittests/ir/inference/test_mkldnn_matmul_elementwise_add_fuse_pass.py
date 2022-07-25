@@ -26,11 +26,12 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
-        matmul_in = draw(st.sampled_from([32, 64, 128]))
-        matmul_wei = draw(st.sampled_from([32, 64]))
+        batch_size = draw(st.integers(min_value=2, max_value=4))
+        channel = draw(st.sampled_from([16, 32, 64]))
+        input_dim = draw(st.sampled_from([16, 32, 64]))
 
         def generate_input():
-            return np.random.random([matmul_in, matmul_wei]).astype(np.float32)
+            return np.random.random([batch_size, channel, input_dim, input_dim]).astype(np.float32)
 
         matmul_op = OpConfig(type='matmul',
                              inputs={
@@ -73,7 +74,7 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
             use_mkldnn=True, passes=['matmul_elementwise_add_mkldnn_fuse_pass'])
-        yield config, ['matmul'], (1e-5, 1e-5)
+        yield config, ['matmul_v2'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(quant=False,
