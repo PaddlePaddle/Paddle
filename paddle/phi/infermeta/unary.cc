@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
-#include "paddle/phi/kernels/funcs/svd.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
@@ -2680,6 +2679,28 @@ void SvdInferMeta(const MetaTensor& x,
                   MetaTensor* u,
                   MetaTensor* s,
                   MetaTensor* vh) {
+  auto UDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 1] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto VHDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto SDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    x_vec.erase(x_vec.end() - 1);  // rank - 1
+    return phi::make_ddim(x_vec);
+  };
+
   auto in_dims = x.dims();
   int x_rank = in_dims.size();
   PADDLE_ENFORCE_GE(
