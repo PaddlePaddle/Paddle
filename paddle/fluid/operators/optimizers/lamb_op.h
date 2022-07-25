@@ -22,11 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/operators/math/squared_l2_norm.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/squared_l2_norm.h"
 
 namespace paddle {
 namespace operators {
@@ -756,13 +756,14 @@ class LambOpKernel : public framework::OpKernel<T> {
     // TODO(zengjinle): remove the following Eigen operations when
     // *skip_update == true.
     memory::Buffer buffer(dev_ctx.GetPlace());
-    math::SquaredL2Norm(dev_ctx,
-                        reinterpret_cast<const MT*>(
-                            IsMultiPrecision ? master_param_ptr : param_ptr),
-                        p_norm_ptr,
-                        numel,
-                        &buffer);
-    math::SquaredL2Norm(
+    phi::funcs::SquaredL2Norm(
+        dev_ctx,
+        reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
+                                                     : param_ptr),
+        p_norm_ptr,
+        numel,
+        &buffer);
+    phi::funcs::SquaredL2Norm(
         dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
 
     if (VLOG_IS_ON(1)) {

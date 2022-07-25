@@ -45,10 +45,6 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     Tensor* loss = context.Output<Tensor>("Loss");
     const int rank = logits->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(
-        axis,
-        rank - 1,
-        platform::errors::InvalidArgument("axis should == rank - 1"));
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
     const int n = phi::funcs::SizeToAxis(axis, logits->dims());
@@ -56,17 +52,20 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     std::vector<int> logits_dims = phi::vectorize<int>(logits->dims());
     const bool soft_label = context.Attr<bool>("soft_label");
 
+    int t = logits_dims[axis];
+
     auto logits_data = reinterpret_cast<const XPUType*>(logits->data<T>());
     auto softmax_data = reinterpret_cast<XPUType*>(softmax->data<T>());
     auto loss_data = reinterpret_cast<XPUType*>(loss->data<T>());
-
     // softmax
     auto& dev_ctx =
         context.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
     if (platform::get_xpu_version(context.GetPlace().GetDeviceId()) ==
             phi::backends::xpu::XPUVersion::XPU2 &&
-        soft_label) {
+        soft_label && axis == rank - 1) {
       auto labels_data = reinterpret_cast<const XPUType*>(labels->data<T>());
       r = xpu::soft_softmax_with_cross_entropy<XPUType>(dev_ctx.x_context(),
                                                         logits_data,
@@ -79,7 +78,6 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int len = logits->numel();
     T* clip_logits = RAII_GUARD.alloc_l3_or_gm<T>(len);
     PADDLE_ENFORCE_XDNN_NOT_NULL(clip_logits);
@@ -105,10 +103,38 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
 
     // cross_entropy
+    if (axis != rank - 1) {
+      XPUType* trans_softmax = RAII_GUARD.alloc_l3_or_gm<XPUType>(n * d);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(trans_softmax);
+
+      r = xpu::transpose(dev_ctx.x_context(),
+                         softmax_data,
+                         trans_softmax,
+                         {n, t, d / t},
+                         {0, 2, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+      softmax_data = trans_softmax;
+    }
+
     if (soft_label) {
       auto labels_data = reinterpret_cast<const XPUType*>(labels->data<T>());
-      r = xpu::soft_cross_entropy<XPUType>(
-          dev_ctx.x_context(), softmax_data, labels_data, loss_data, n, d);
+      if (axis != rank - 1) {
+        XPUType* trans_label = RAII_GUARD.alloc_l3_or_gm<XPUType>(n * d);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(trans_label);
+        r = xpu::transpose(dev_ctx.x_context(),
+                           labels_data,
+                           trans_label,
+                           {n, t, d / t},
+                           {0, 2, 1});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+        labels_data = trans_label;
+      }
+      r = xpu::soft_cross_entropy<XPUType>(dev_ctx.x_context(),
+                                           softmax_data,
+                                           labels_data,
+                                           loss_data,
+                                           axis == rank - 1 ? n : n * d / t,
+                                           axis == rank - 1 ? d : t);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_cross_entropy");
     } else {
       auto ignore_index = context.Attr<int>("ignore_index");
@@ -127,8 +153,8 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
           labels_int32.data<int32_t>(),
           loss_data,
           nullptr,
-          n,
-          d,
+          axis == rank - 1 ? n : n * d / t,
+          axis == rank - 1 ? d : t,
           ignore_index);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
     }
@@ -157,10 +183,6 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
 
     const int rank = logit_grad->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
-    PADDLE_ENFORCE_EQ(
-        axis,
-        rank - 1,
-        platform::errors::InvalidArgument("axis should == rank - 1"));
     const int n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
     const int d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
 
@@ -168,40 +190,107 @@ class SoftmaxWithCrossEntropyGradXPUKernel : public framework::OpKernel<T> {
         context.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
 
-    if (soft_label) {
-      r = xpu::soft_softmax_with_cross_entropy_grad<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(out_grad->data<T>()),
-          reinterpret_cast<const XPUType*>(labels->data<T>()),
-          reinterpret_cast<const XPUType*>(softmax->data<T>()),
-          reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-          use_softmax,
-          n,
-          d);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
+    if (axis == rank - 1) {
+      if (soft_label) {
+        r = xpu::soft_softmax_with_cross_entropy_grad<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+            reinterpret_cast<const XPUType*>(labels->data<T>()),
+            reinterpret_cast<const XPUType*>(softmax->data<T>()),
+            reinterpret_cast<XPUType*>(logit_grad->data<T>()),
+            use_softmax,
+            n,
+            d);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
+      } else {
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+        int* labels_int_ptr_l3 =
+            RAII_GUARD.alloc_l3_or_gm<int32_t>(labels->numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
+
+        r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                           labels->data<int64_t>(),
+                                           labels_int_ptr_l3,
+                                           labels->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+
+        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+            labels_int_ptr_l3,
+            reinterpret_cast<const XPUType*>(softmax->data<T>()),
+            reinterpret_cast<XPUType*>(logit_grad->data<T>()),
+            ignore_index,
+            use_softmax,
+            n,
+            d);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
+      }
     } else {
+      int t = logit_grad->dims()[axis];
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-      int* labels_int_ptr_l3 =
-          RAII_GUARD.alloc_l3_or_gm<int32_t>(labels->numel());
-      PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
+      int len = softmax->numel();
+      XPUType* trans_logit = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(trans_logit);
 
-      r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
-                                         labels->data<int64_t>(),
-                                         labels_int_ptr_l3,
-                                         labels->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+      XPUType* trans_softmax = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(trans_softmax);
+      r = xpu::transpose(dev_ctx.x_context(),
+                         reinterpret_cast<const XPUType*>(softmax->data<T>()),
+                         trans_softmax,
+                         {n, t, d / t},
+                         {0, 2, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
-      r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+      if (soft_label) {
+        XPUType* trans_labels = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(trans_labels);
+        r = xpu::transpose(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(labels->data<T>()),
+                           trans_labels,
+                           {n, t, d / t},
+                           {0, 2, 1});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+        r = xpu::soft_softmax_with_cross_entropy_grad<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+            trans_labels,
+            trans_softmax,
+            trans_logit,
+            use_softmax,
+            n * d / t,
+            t);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "soft_softmax_with_cross_entropy_grad");
+      } else {
+        int* labels_int_ptr_l3 =
+            RAII_GUARD.alloc_l3_or_gm<int32_t>(labels->numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(labels_int_ptr_l3);
+
+        r = xpu::cast_v2<int64_t, int32_t>(dev_ctx.x_context(),
+                                           labels->data<int64_t>(),
+                                           labels_int_ptr_l3,
+                                           labels->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+        r = xpu::hard_softmax_with_cross_entropy_grad<XPUType, int>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out_grad->data<T>()),
+            labels_int_ptr_l3,
+            trans_softmax,
+            trans_logit,
+            ignore_index,
+            use_softmax,
+            n * d / t,
+            t);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
+      }
+
+      r = xpu::transpose<XPUType>(
           dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(out_grad->data<T>()),
-          labels_int_ptr_l3,
-          reinterpret_cast<const XPUType*>(softmax->data<T>()),
+          trans_logit,
           reinterpret_cast<XPUType*>(logit_grad->data<T>()),
-          ignore_index,
-          use_softmax,
-          n,
-          d);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_softmax_with_cross_entropy_grad");
+          {n, d / t, t},
+          {0, 2, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     }
   }
 };
