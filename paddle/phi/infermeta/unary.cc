@@ -2489,6 +2489,10 @@ void SplitInferMeta(const MetaTensor& x,
   }
 }
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({1});
+}
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
                       MetaTensor* out) {
