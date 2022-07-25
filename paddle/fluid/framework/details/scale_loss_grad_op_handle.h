@@ -52,6 +52,8 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
   std::string LossGradName() const;
 
+  proto::VarType::Type DType() const { return out_dtype_; }
+
  protected:
   void RunImpl() override;
 
