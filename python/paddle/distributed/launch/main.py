@@ -13,21 +13,26 @@
 # limitations under the License.
 
 import sys, os
+import shutil
 from .context import Context
 
 
 def mpirun(ctx):
+    if not shutil.which("mpirun"):
+        raise Exception("mpirun command not found, --hostfile cannot be used.")
+
     port = ctx.node.get_free_port()
     endpoint = "{}:{}".format(ctx.node.ip, port)
     cmd = [
-        'mpirun', '-n', f'{ctx.args.nnodes}', '-hostfile',
-        f'{ctx.args.hostfile}', '--mca', 'btl', '^openib', '--mca',
+        'mpirun', '--allow-run-as-root', '-n', f'{ctx.args.nnodes}',
+        '-hostfile', f'{ctx.args.hostfile}', '--mca', 'btl', '^openib', '--mca',
         'btl_tcp_if_include', 'eth0',
         sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"
     ]
     if ctx.args.master is None:
         cmd.extend(["--master", endpoint])
 
+    # remove --hostfile for real command
     if '--hostfile' in sys.argv:
         # --hostfile hostfile
         idx = sys.argv.index('--hostfile')

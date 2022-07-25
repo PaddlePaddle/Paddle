@@ -97,9 +97,11 @@ def parse_args():
 
     base_group.add_argument("--devices",
                             "--gpus",
+                            "--npus",
+                            "--xpus",
                             type=str,
                             default=None,
-                            help="accelerate devices. as --gpus,npus,xps")
+                            help="accelerate devices. as --gpus,npus,xpus")
 
     base_group.add_argument("--hostfile",
                             type=str,

@@ -58,8 +58,6 @@ class Context(object):
             return True
 
         legacy_env_list = [
-            'DISTRIBUTED_TRAINER_ENDPOINTS',
-            'PADDLE_ELASTIC_JOB_ID',
             'FLAGS_START_PORT',
         ]
 
@@ -67,6 +65,7 @@ class Context(object):
             if env in self.envs:
                 self.logger.warning(
                     "ENV {} is deprecated, legacy launch enable".format(env))
+                self.logger.warning("unset them to run in proper mode.")
                 return True
 
         if self.args.master:
