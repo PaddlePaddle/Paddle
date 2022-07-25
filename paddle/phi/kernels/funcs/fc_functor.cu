@@ -133,16 +133,28 @@ __global__ void bias_relu_v2(const int num,
                              half2* data,
                              int K) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (tid < num) {
     int bias_idx = tid % K;
     const half2 bias_ptr = bias[bias_idx];
     const half2 in_ptr = data[tid];
-    half2 packed_val = __hadd2(bias_ptr, in_ptr);
+    half2 packed_val;
+#if __CUDA_ARCH__ >= 530
+    packed_val = __hadd2(bias_ptr, in_ptr);
+#else
+    packed_val.x = __hadd(bias_ptr.x, in_ptr.x);
+    packed_val.y = __hadd(bias_ptr.y, in_ptr.y);
+#endif
     if (DoRelu) {
 #if __CUDA_ARCH__ >= 800
       packed_val = __hmax2(__half2(0, 0), packed_val);
-#else
+#elif __CUDA_ARCH__ >= 530
       packed_val = __hmul2(__hgt2(__half2(0, 0), packed_val), packed_val);
+#else
+      packed_val.x = static_cast<int>(static_cast<float>(packed_val.x) > 0) *
+                     static_cast<float>(packed_val.x);
+      packed_val.y = static_cast<int>(static_cast<float>(packed_val.y) > 0) *
+                     static_cast<float>(packed_val.y);
 #endif
     }
     data[tid] = packed_val;
@@ -157,15 +169,18 @@ __global__ void InplaceAddReluKernel(const int N,
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     half temp;
 #if defined(__HIPCC__) || __CUDA_ARCH__ >= 350
-    temp = __ldg(data + offset + i) + __ldg(bias + i);
+    temp = __hadd(__ldg(data + offset + i), __ldg(bias + i));
 #else
-    temp = data[offset + i] + bias[i];
+    temp = __hadd(data[offset + i], bias[i]);
 #endif
     if (DoRelu) {
 #if __CUDA_ARCH__ >= 800
       data[offset + i] = __hmax(0, temp);
-#else
+#elif __CUDA_ARCH__ >= 530
       data[offset + i] = __hmul(__hgt(temp, 0), temp);
+#else
+      data[offset + i] = static_cast<int>(static_cast<float>(temp) > 0) *
+                         static_cast<float>(temp);
 #endif
     } else {
       data[offset + i] = temp;
@@ -208,7 +223,6 @@ void AddReluKernel(cudaStream_t stream,
     }
   }
 }
-
 #else
 template <bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluKernel(const int N,
