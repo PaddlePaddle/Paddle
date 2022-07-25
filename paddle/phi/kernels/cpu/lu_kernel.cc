@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 #include "paddle/phi/kernels/funcs/lu.h"
 #include "paddle/phi/kernels/lu_kernel.h"
@@ -45,16 +46,16 @@ void LUKernel(const Context& dev_ctx,
   auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
   ipiv_dims[outrank - 2] = std::min(m, n);
   pivots->Resize(ipiv_dims);
-  dev_ctx.template Alloc<T>(pivots);
-  auto ipiv_data = pivots->data<T>();
+  dev_ctx.template Alloc<int>(pivots);
+  auto ipiv_data = pivots->data<int>();
 
   auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
   if (info_dims.size() == 0) {
     info_dims = phi::make_ddim({1});
   }
   infos->Resize(info_dims);
-  dev_ctx.template Alloc<T>(infos);
-  auto info_data = infos->data<T>();
+  dev_ctx.template Alloc<int>(infos);
+  auto info_data = infos->data<int>();
 
   auto batchsize = product(info_dims);
   batchsize = std::max(static_cast<int>(batchsize), 1);

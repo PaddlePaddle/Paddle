@@ -15,37 +15,22 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 
 namespace phi {
 
-inline std::string GetValueName(DataType data_type) {
-  std::string value_name;
-  switch (data_type) {
-    case DataType::INT32:
-      value_name = "int32_values";
-      break;
-    case DataType::INT64:
-      value_name = "int64_values";
-      break;
-    case DataType::FLOAT32:
-      value_name = "fp32_values";
-      break;
-    case DataType::FLOAT64:
-      value_name = "fp64_values";
-      break;
-    case DataType::BOOL:
-      value_name = "bool_values";
-      break;
-
-    default:
-      PADDLE_THROW(errors::Unimplemented(
-          "Unsupported data type(code %d) for SetValue operator, only "
-          "supports bool, int32, float32 and int64.",
-          data_type));
-  }
-  return value_name;
-}
+template <typename T>
+using SubFunctor = phi::funcs::SubtractFunctor<T>;
 
 template <typename Context, typename T, size_t D>
 void SetValueCompute(const Context& dev_ctx,
@@ -96,7 +81,7 @@ void SetValueCompute(const Context& dev_ctx,
     slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
   }
 
-  auto place = dev_ctx.GetPlace()
+  auto place = dev_ctx.GetPlace();
   auto& eigen_place = *dev_ctx.eigen_device();
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -112,9 +97,11 @@ void SetValueCompute(const Context& dev_ctx,
   // set_value is what we want.
   phi::Copy(dev_ctx, *in, place, false, out);
 
-  Tensor slice_tensor(dtype), pad_tensor(dtype);
-  dev_ctx.template Alloc<T>(slice_tensor);
-  dev_ctx.template Alloc<T>(in_dims);
+  DenseTensor slice_tensor(dtype), pad_tensor(dtype);
+  slice_tensor.Resize(slice_dims);
+  dev_ctx.template Alloc<T>(&slice_tensor);
+  pad_tensor.Resize(in_dims);
+  dev_ctx.template Alloc<T>(&pad_tensor);
 
   auto pad_e = EigenTensor<T, D>::From(pad_tensor, in_dims);
   auto out_e = EigenTensor<T, D>::From(*out);
@@ -166,21 +153,21 @@ void SetValueCompute(const Context& dev_ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
     CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    dev_ctx.template Alloc<T>(&slice_tensor);
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
-        dev_ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(dev_ctx,
+                                                        slice_tensor,
+                                                        *value_tensor,
+                                                        -1,
+                                                        SubFunctor<T>(),
+                                                        &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = phi::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
-    dev_ctx.template Alloc<T>(&value_t);
-    auto value_name = GetValueName(dtype);
-    CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
     value_t.Resize(value_dims);
-    dev_ctx.template Alloc<T>(&slice_tensor);
+    dev_ctx.template Alloc<T>(&value_t);
     phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
-        dev_ctx, &slice_tensor, &value_t, -1, SubFunctor<T>(), &slice_tensor);
+        dev_ctx, slice_tensor, value_t, -1, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
 
@@ -229,7 +216,7 @@ void SetValueCompute_dispatch(const Context& dev_ctx,
           dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     default:
-      PADDLE_THROW(errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
@@ -242,9 +229,7 @@ void Tensor_Conj(const Context& dev_ctx,
   phi::funcs::ForRange<Context> out_for_range(dev_ctx, tensor.numel());
   dev_ctx.template Alloc<T>(out);
   phi::funcs::ConjFunctor<T> out_functor(
-      tensor.data<T>(),
-      tensor.numel(),
-      out->data<T>());
+      tensor.data<T>(), tensor.numel(), out->data<T>());
   out_for_range(out_functor);
 }
 
@@ -256,14 +241,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddRawKernel<
-      T,
-      Context>(
-      dev_ctx,
-      src1,
-      src2,
-      -1,
-      out);
+  phi::AddRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
 }
 
 template <typename Context, typename T>
@@ -274,14 +252,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractRawKernel<
-      T,
-      Context>(
-      dev_ctx,
-      src1,
-      src2,
-      -1,
-      out);
+  phi::SubtractRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -301,11 +272,11 @@ void SliceCompute(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       starts.size(),
       axes.size(),
-      errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of starts must be equal to the size of axes."));
   PADDLE_ENFORCE_EQ(ends.size(),
                     axes.size(),
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of ends must be equal to the size of axes."));
 
   // Step 2: Compute output
@@ -357,14 +328,14 @@ void SliceCompute(const Context& dev_ctx,
       offsets_32bit[i] = offsets[i];
       extents_32bit[i] = extents[i];
     }
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
         To32BitIndex(out_t),
         To32BitIndex(in_t),
         offsets_32bit,
         extents_32bit);
   } else {
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place, out_t, in_t, offsets, extents);
   }
 
@@ -410,7 +381,7 @@ void Tensor_narrow(const Context& dev_ctx,
           dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     default:
-      PADDLE_THROW(errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
@@ -476,7 +447,7 @@ void LU_Unpack(const Context& dev_ctx,
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
   if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
-    phi::Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev)
+    phi::Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
 
@@ -486,11 +457,8 @@ void LU_Unpack(const Context& dev_ctx,
 }
 
 template <typename Context, typename T>
-void scatterpivot(const Context& dev_ctx,
-                  T* out_data,
-                  DenseTensor* idlst,
-                  int w,
-                  int dim) {
+void scatterpivot(
+    const Context& dev_ctx, T* out_data, DenseTensor* idlst, int w, int dim) {
   DenseTensor idlst_tmp;
   idlst_tmp.Resize(idlst->dims());
   dev_ctx.template Alloc<int32_t>(&idlst_tmp);
@@ -584,7 +552,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
       break;
     }
     default: {
-      PADDLE_THROW(errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Invalid Rank number, "
           "currently only support rank between 2~6"));
     }
