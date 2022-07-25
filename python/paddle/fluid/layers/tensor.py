@@ -692,7 +692,12 @@ def assign(input, output=None):
                              "saving it to file and 'load_op' to load it")
         if output is None:
             output = helper.create_variable_for_type_inference(dtype=dtype)
-        if _non_static_mode():
+        print("here 0 ", flush=True)
+        if in_dygraph_mode():
+            print("here 1 ", flush=True)
+            output = _C_ops.final_state_assign_value(list(input.shape), dtype,
+                                                     values)
+        elif _in_legacy_dygraph():
             _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
                                 dtype, value_name, values)
         else:

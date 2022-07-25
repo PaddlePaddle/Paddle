@@ -1572,7 +1572,10 @@ def assign(x, output=None):
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
-        if _non_static_mode():
+        if in_dygraph_mode():
+            output = _C_ops.final_state_assign_value(list(input.shape), dtype,
+                                                     values)
+        elif _in_legacy_dygraph():
             _C_ops.assign_value(output, 'shape', list(input.shape), 'dtype',
                                 dtype, value_name, values)
         else:

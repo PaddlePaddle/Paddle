@@ -125,6 +125,7 @@ class BaseAPI(object):
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
             'Scalar(dobule)': 'const Scalar&',
+            'Scalar[]': 'const std::vector<phi::Scalar>&',
             'int': 'int',
             'int32_t': 'int32_t',
             'int64_t': 'int64_t',
@@ -642,6 +643,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 if 'IntArray' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::IntArray&')
                     param = 'phi::IntArray(' + param + ')'
+                elif 'vector<phi::Scalar>' in self.attrs['attr_info'][param][0]:
+                    kernel_args_type_list.append(
+                        'const std::vector<phi::Scalar>&')
+                    param = param
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
                     kernel_args_type_list.append('const phi::Scalar&')
                     param = 'phi::Scalar(' + param + ')'
