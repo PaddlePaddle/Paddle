@@ -1,11 +1,8 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,9 +49,15 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         ctx.template device_context<paddle::platform::XPUDeviceContext>();
 
     if (dx != nullptr) {
+      T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
       if (dx->dims() == dz_dims) {
-        // TensorCopy will call mutable_data of dx.
-        framework::TensorCopy(*dz, ctx.GetPlace(), dev_ctx, dx);
+        if (dx_data != dz_data) {
+          framework::TensorCopy(
+              *dz,
+              ctx.GetPlace(),
+              ctx.template device_context<platform::DeviceContext>(),
+              dx);
+        }
       } else {
         // For inplace strategy, dx will be stored in addr of dz, which makes
         // the result of dy wrong.
@@ -65,11 +68,10 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
         std::vector<int> reduce_dims = GetReduceDim(dx->dims(), dz_dims, axis);
         std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
 
-        T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
         int ret =
             xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUType*>(dz_data),
-                                     reinterpret_cast<XPUType*>(dx_data),
+                                     reinterpret_cast<XPUType*>(dx->data<T>()),
                                      dz_vector,
                                      reduce_dims);
         PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
@@ -77,12 +79,18 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
     }
 
     if (dy != nullptr) {
+      T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
       if (dy->dims() == dz_dims) {
-        framework::TensorCopy(*dz, ctx.GetPlace(), dev_ctx, dy);
+        if (dy_data != dz_data) {
+          framework::TensorCopy(
+              *dz,
+              ctx.GetPlace(),
+              ctx.template device_context<platform::DeviceContext>(),
+              dy);
+        }
       } else {
         std::vector<int> reduce_dims = GetReduceDim(dy->dims(), dz_dims, axis);
         std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
-        T* dy_data = dy->mutable_data<T>(ctx.GetPlace());
         int ret =
             xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUType*>(dz_data),
