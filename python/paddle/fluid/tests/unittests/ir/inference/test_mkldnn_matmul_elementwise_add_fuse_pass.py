@@ -31,7 +31,8 @@ class TestMatmulElementwiseAddMkldnnFusePass(PassAutoScanTest):
         input_dim = draw(st.sampled_from([16, 32, 64]))
 
         def generate_input():
-            return np.random.random([batch_size, channel, input_dim, input_dim]).astype(np.float32)
+            return np.random.random([batch_size, channel, input_dim,
+                                     input_dim]).astype(np.float32)
 
         matmul_op = OpConfig(type='matmul',
                              inputs={

@@ -66,6 +66,10 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
+    if (matmul->Op()->HasAttr("Bias")) {
+      LOG(WARNING) << "matmul_elementwise_add can be fused once";
+      return;
+    }
 
     if (matmul_type == "matmul") {
       OpDesc desc(matmul->Op()->Block());
@@ -139,6 +143,10 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .End()
       .AddInput("Y")
       .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()

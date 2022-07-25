@@ -17,7 +17,6 @@ from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 from functools import partial
 import unittest
-
 import hypothesis.strategies as st
 
 
