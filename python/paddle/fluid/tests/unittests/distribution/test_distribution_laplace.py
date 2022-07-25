@@ -77,7 +77,7 @@ class TestLaplace(unittest.TestCase):
         np.testing.assert_allclose(sample_mean,
                                    self._dist.mean,
                                    atol=0,
-                                   rtol=0.30)
+                                   rtol=0.5)
 
     def _np_mean(self):
         return self.loc
