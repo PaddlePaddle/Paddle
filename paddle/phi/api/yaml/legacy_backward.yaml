@@ -2101,6 +2101,7 @@
     param : [x]
   kernel :
     func : svd_grad
+  optional: u_grad, vh_grad, s_grad
 
 - backward_api : swish_grad
   forward : swish (Tensor x, float beta=1.0) -> Tensor(out)
