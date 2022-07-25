@@ -94,6 +94,7 @@ cc_library(
 cc_library(
   downpour_client
   SRCS graph_brpc_client.cc brpc_ps_client.cc ps_local_client.cc
+       coordinator_client.cc
   DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
 
 cc_library(

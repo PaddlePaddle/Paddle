@@ -24,11 +24,12 @@
 
 static const int MIN_PORT = 8500;
 static const int MAX_PORT = 65535;
-DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
-DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
 
 namespace paddle {
 namespace distributed {
+
+DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
+DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
 
 void CoordinatorService::FLService(
     ::google::protobuf::RpcController* controller,
@@ -61,9 +62,10 @@ int32_t CoordinatorClient::Initialize(
     const std::vector<std::string>& trainer_endpoints) {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.timeout_ms = FLAGS_pserver_timeout_ms;
+  options.timeout_ms = paddle::distributed::FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
-  options.connect_timeout_ms = FLAGS_pserver_connect_timeout_ms;
+  options.connect_timeout_ms =
+      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
 
   std::string server_ip_port;

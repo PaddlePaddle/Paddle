@@ -24,6 +24,16 @@
 
 static const int max_port = 65535;
 
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace distributed {
+
 DEFINE_int32(pserver_push_dense_merge_limit,
              12,
              "limit max push_dense local merge requests");
@@ -67,16 +77,6 @@ DEFINE_int32(pserver_sparse_merge_thread, 1, "pserver sparse merge thread num");
 DEFINE_int32(pserver_sparse_table_shard_num,
              1000,
              "sparse table shard for save & load");
-
-namespace paddle {
-namespace framework {
-class Scope;
-class Variable;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace distributed {
 
 inline size_t get_sparse_shard(uint32_t shard_num,
                                uint32_t server_num,
@@ -202,7 +202,8 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
   options.protocol = "baidu_std";
   options.timeout_ms = FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
-  options.connect_timeout_ms = FLAGS_pserver_connect_timeout_ms;
+  options.connect_timeout_ms =
+      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
   // 获取 coordinator 列表，并连接
   std::string coordinator_ip_port;

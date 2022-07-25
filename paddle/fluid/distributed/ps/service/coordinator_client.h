@@ -31,13 +31,13 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 
+namespace paddle {
+namespace distributed {
+
 DECLARE_int32(pserver_timeout_ms);
 DECLARE_int32(pserver_connect_timeout_ms);
 DECLARE_uint64(total_fl_client_size);
 DECLARE_uint32(coordinator_wait_all_clients_max_time);
-
-namespace paddle {
-namespace distributed {
 
 using CoordinatorServiceFunc =
     std::function<int32_t(const CoordinatorReqMessage& request,
@@ -90,10 +90,11 @@ class CoordinatorServiceHandle {
     double query_wait_time = 0.0;
     timeline.Start();
     auto f = [&]() -> bool {
-      while (
-          query_wait_time <
-          FLAGS_coordinator_wait_all_clients_max_time) {  // in case that some
-                                                          // clients down
+      while (query_wait_time <
+             paddle::distributed::
+                 FLAGS_coordinator_wait_all_clients_max_time) {  // in case that
+                                                                 // some
+                                                                 // clients down
         if (_is_all_clients_info_collected == true) {
           // LOG(INFO) << "fl-ps > _is_all_clients_info_collected";
           return true;
