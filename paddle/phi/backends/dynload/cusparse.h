@@ -45,12 +45,7 @@ extern void *cusparse_dso_handle;
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
   __macro(cusparseSetStream);          \
-  __macro(cusparseCreateMatDescr);     \
-  __macro(cusparseDestroy);            \
-  __macro(cusparseSnnz);               \
-  __macro(cusparseDnnz);               \
-  __macro(cusparseSetMatType);         \
-  __macro(cusparseSetMatIndexBase);
+  __macro(cusparseDestroy);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
 
@@ -63,14 +58,7 @@ CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
   __macro(cusparseSpMM_bufferSize);          \
   __macro(cusparseSpMM);                     \
   __macro(cusparseDestroySpMat);             \
-  __macro(cusparseDestroyDnMat);             \
-  __macro(cusparseCooSetPointers);           \
-  __macro(cusparseCsrSetPointers);           \
-  __macro(cusparseDenseToSparse_bufferSize); \
-  __macro(cusparseDenseToSparse_analysis);   \
-  __macro(cusparseDenseToSparse_convert);    \
-  __macro(cusparseSparseToDense_bufferSize); \
-  __macro(cusparseSparseToDense);
+  __macro(cusparseDestroyDnMat);
 
 CUSPARSE_ROUTINE_EACH_11020(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 
