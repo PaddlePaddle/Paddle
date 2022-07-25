@@ -271,10 +271,10 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_backward_train_program(self):
         whole_program = self._create_program()
+        start_op_index = self._create_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        if (self._create_program(True).desc.block(0).op_size() < end_op_index):
-            start_op_index = self._create_program(True).desc.block(
-                0).op_size() + 2 * len(self._outputs.var_ids)
+        if (start_op_index < end_op_index):
             return self._add_build_strategy_for(whole_program, start_op_index,
                                                 end_op_index)
         else:
@@ -283,11 +283,10 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_backward_train_amp_program(self):
         whole_program = self._create_amp_program()
+        start_op_index = self._create_amp_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        if (self._create_amp_program(True).desc.block(0).op_size() <
-                end_op_index):
-            start_op_index = self._create_amp_program(True).desc.block(
-                0).op_size() + 2 * len(self._outputs.var_ids)
+        if (start_op_index < end_op_index):
             return self._add_build_strategy_for(whole_program, start_op_index,
                                                 end_op_index)
         else:
@@ -296,11 +295,10 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_backward_train_pure_fp16_program(self):
         whole_program = self._create_pure_fp16_program()
+        start_op_index = self._create_pure_fp16_program(True).desc.block(
+            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        if (self._create_pure_fp16_program(True).desc.block(0).op_size() <
-                end_op_index):
-            start_op_index = self._create_pure_fp16_program(True).desc.block(
-                0).op_size() + 2 * len(self._outputs.var_ids)
+        if (start_op_index < end_op_index):
             return self._add_build_strategy_for(whole_program, start_op_index,
                                                 end_op_index)
         else:
