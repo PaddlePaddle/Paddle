@@ -139,6 +139,14 @@ class Laplace(distribution.Distribution):
 
         Returns:
             Tensor: cumulative probability of value.
+        
+        Examples:
+
+        >>> m = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+        >>> value = paddle.to_tensor([0.1])
+        >>> m.cdf(value)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+       [0.54758132])
         """
         if value.dtype != self.scale.dtype:
             value = paddle.cast(value, self.scale.dtype)
