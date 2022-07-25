@@ -103,4 +103,15 @@ void PowKernel(const Context& dev_ctx,
                const Scalar& factor,
                DenseTensor* out);
 
+template <typename T, typename Context>
+DenseTensor Pow(const Context& dev_ctx,
+                const DenseTensor& x,
+                const Scalar& factor) {
+  DenseTensor out;
+  MetaTensor meta_out(out);
+  UnchangedInferMeta(x, &meta_out);
+  PowKernel<T, Context>(dev_ctx, x, factor, &out);
+  return out;
+}
+
 }  // namespace phi
