@@ -492,7 +492,7 @@ def create_quant_model(model,
                                       feed_target_names,
                                       fetch_targets,
                                       exe,
-                                      main_program=main_program)
+                                      main_program=main_program, clip_extra=True)
 
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names

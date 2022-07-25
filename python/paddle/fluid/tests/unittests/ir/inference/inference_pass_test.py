@@ -62,7 +62,7 @@ class InferencePassTest(unittest.TestCase):
             # there won't be too many useless files
             # after finishing a couple of tests.
             fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, program)
+                                          target_vars, executor, program, clip_extra=True)
 
     def _get_paddle_outs(self, executor, program, scope):
         '''

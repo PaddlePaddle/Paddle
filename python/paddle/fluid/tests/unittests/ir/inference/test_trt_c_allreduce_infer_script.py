@@ -73,7 +73,7 @@ def run(op_type, precision):
         paddle.static.save_inference_model(os.path.join(tmpdir, "model"),
                                            [data], [mean],
                                            exe,
-                                           program=main_program)
+                                           program=main_program, clip_extra=True)
         config = Config(os.path.join(tmpdir, "model.pdmodel"),
                         os.path.join(tmpdir, "model.pdiparams"))
         config.enable_memory_optim()
