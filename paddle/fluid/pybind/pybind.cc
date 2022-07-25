@@ -1703,6 +1703,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindProcessMeshDesc(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindJitProperty(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

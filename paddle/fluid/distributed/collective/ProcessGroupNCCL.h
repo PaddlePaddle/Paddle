@@ -125,6 +125,12 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in,
       std::vector<phi::DenseTensor>& out) override;
@@ -206,7 +212,7 @@ class ProcessGroupNCCL : public ProcessGroup {
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
 
-  void CheckSplitSizes(std::vector<int64_t>& split_sizes,
+  void CheckSplitSizes(std::vector<int64_t>* split_sizes,
                        std::vector<int64_t> tensor_shape);
 };
 

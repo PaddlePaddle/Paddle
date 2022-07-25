@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -44,5 +45,17 @@ void DiagKernel(const Context& dev_ctx,
                 int offset,
                 float padding_value,
                 DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Diag(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 int offset,
+                 float padding_value) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  DiagInferMeta(x, offset, padding_value, &meta_out);
+  DiagKernel<T, Context>(dev_ctx, x, offset, padding_value, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

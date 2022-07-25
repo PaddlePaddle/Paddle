@@ -403,6 +403,14 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx) {
+  if (dx) {
+    dx->set_dims(dout.dims());
+  }
+}
+
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
