@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include "paddle/fluid/framework/variable.h"
 namespace paddle {
 namespace jit {
 Layer::Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,

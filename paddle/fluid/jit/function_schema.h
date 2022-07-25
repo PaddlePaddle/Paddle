@@ -14,15 +14,17 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/variable.h"
-
 namespace paddle {
+
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+
 namespace jit {
-using Variable = paddle::framework::Variable;
 
 class Argument {
  public:
@@ -73,7 +75,8 @@ class FunctionInfo {
  private:
   std::string func_name_;
   std::vector<std::string> param_names_;
-  framework::ProgramDesc program_desc_;
+  std::shared_ptr<framework::ProgramDesc> program_desc_;
+  // jit::ProgramDesc program_desc_;
   FunctionSchema schema_;
 };
 

@@ -14,15 +14,19 @@
 
 #pragma once
 
+#include <set>
 #include <string>
-
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/framework/variable.h"
 
 #include "paddle/fluid/jit/layer.h"
 
 namespace paddle {
+
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+
 namespace jit {
+
 // Export Layer into local disk
 class Serializer {
  public:

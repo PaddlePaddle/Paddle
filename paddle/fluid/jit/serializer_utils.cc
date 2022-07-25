@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <fstream>
 
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
@@ -98,6 +99,10 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   }
   closedir(dir);
   return pdmodel_paths;
+}
+
+const void InitKernelSignatureMap() {
+  paddle::framework::InitDefaultKernelSignatureMap();
 }
 
 }  // namespace utils

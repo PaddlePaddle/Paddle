@@ -16,6 +16,8 @@
 
 #include <set>
 
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/jit/executor_function.h"
@@ -77,7 +79,7 @@ void Deserializer::ReadTensorData(const std::string& file_name,
     // TODO(dev): Support framework::Vocab
     DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
     framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
-    (*params_dict)[*it] = v;
+    (*params_dict)[*it] = std::make_shared<Variable>(v);
   }
 }
 
