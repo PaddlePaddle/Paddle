@@ -659,9 +659,6 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-: set CI_SKIP_CPP_TEST if only *.py changed
-git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
-
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
