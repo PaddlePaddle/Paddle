@@ -169,9 +169,20 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             gt_matches.astype('int32'))
 
 
-def yolo_loss_wrapper(x, gt_box, gt_label, gt_score, anchors, anchor_mask,
-                      class_num, ignore_thresh, downsample_ratio,
-                      use_label_smooth, scale_x_y):
+def yolo_loss_wrapper(x,
+                      gt_box,
+                      gt_label,
+                      gt_score=None,
+                      anchors=[
+                          10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116,
+                          90, 156, 198, 373, 326
+                      ],
+                      anchor_mask=[0, 1, 2],
+                      class_num=5,
+                      ignore_thresh=0.7,
+                      downsample_ratio=32,
+                      use_label_smooth=True,
+                      scale_x_y=1.):
     loss, _, _ = paddle.vision.ops.yolo_loss(x,
                                              gt_box=gt_box,
                                              gt_label=gt_label,

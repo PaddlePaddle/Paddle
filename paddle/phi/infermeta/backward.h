@@ -267,4 +267,23 @@ void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
 
+void Yolov3LossGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& gt_box,
+                             const MetaTensor& gt_label,
+                             const MetaTensor& gt_score,
+                             const MetaTensor& objectness_mask,
+                             const MetaTensor& gt_match_mask,
+                             const MetaTensor& loss_grad,
+                             const std::vector<int>& anchors,
+                             const std::vector<int>& anchor_mask,
+                             int class_num,
+                             float ignore_thresh,
+                             int downsample_ratio,
+                             bool use_label_smooth,
+                             float scale_x_y,
+                             MetaTensor* x_grad,
+                             MetaTensor* gt_box_grad,
+                             MetaTensor* gt_label_grad,
+                             MetaTensor* gt_score_grad);
+
 }  // namespace phi
