@@ -774,7 +774,7 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
 void GraphSafeRemoveNodes(Graph *graph,
                           const std::unordered_set<const Node *> &nodes) {
   std::unordered_set<std::shared_ptr<Node>> empty_nodes;
-  GraphSafeRemoveNodes(graph, nodes, empty_nodes, false);
+  GraphSafeRemoveNodes(graph, nodes, &empty_nodes, false);
 }
 
 void GraphSafeRemoveNodes(Graph *graph,
