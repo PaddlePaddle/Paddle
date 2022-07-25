@@ -17,8 +17,8 @@
 #include <set>
 #include <string>
 
-#include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/layer.h"
+#include "paddle/fluid/jit/property.h"
 
 namespace paddle {
 
