@@ -23,6 +23,7 @@ class RnnNativeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fluid rnn op to tensorrt rnn native layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -32,19 +33,39 @@ class RnnNativeOpConverter : public OpConverter {
     auto* prev_c = engine_->GetITensor(op_desc.Input("PreState")[0]);
     auto* prev_h = engine_->GetITensor(op_desc.Input("PreState")[1]);
 
-    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims, 3);
-    PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims, 3);
-    PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims, 3);
+    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s input must be 3 dimensions, i.e. "
+                          "[seq_len, batch, input_size],"
+                          "but now is %d  dimensions.",
+                          input->getDimensions().nbDims));
+
+    PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s PreState(Hidden) must be 3 dimensions, "
+                          "i.e. [num_layers, batch, hidden_size],"
+                          "but now is %d  dimensions.",
+                          prev_h->getDimensions().nbDims));
+
+    PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s PreState(Cell) must be 3 dimensions, "
+                          "i.e. [num_layers, batch, hidden_size],"
+                          "but now is %d  dimensions.",
+                          prev_c->getDimensions().nbDims));
 
     int num_layers = PADDLE_GET_CONST(int, op_desc.GetAttr("num_layers"));
     int hidden_size = PADDLE_GET_CONST(int, op_desc.GetAttr("hidden_size"));
-    int input_size = input->getDimensions().d[2];
+    int input_size = PADDLE_GET_CONST(int, op_desc.GetAttr("input_size"));
     bool is_bidirec = PADDLE_GET_CONST(bool, op_desc.GetAttr("is_bidirec"));
     int K = is_bidirec ? 2 : 1;
 
     // extract weights
     // if is_bidirec, make forward and backward weight/bias concated
-    std::vector<float*> weight_bias_vec;
+    std::vector<const float*> weight_bias_vec;
     for (int layer_id = 0; layer_id < num_layers; layer_id++) {
       if (is_bidirec) {
         auto extract_and_combine_weight = [&](int start) {
@@ -57,9 +78,9 @@ class RnnNativeOpConverter : public OpConverter {
             auto* var1_v = scope.FindVar(var1_name);
             auto* var0_t = var0_v->GetMutable<framework::LoDTensor>();
             auto* var1_t = var1_v->GetMutable<framework::LoDTensor>();
-            float* data0_ptr = reinterpret_cast<float*>(
+            const float* data0_ptr = reinterpret_cast<const float*>(
                 engine_->GetTrtWeight(var0_name, *var0_t).get().values);
-            float* data1_ptr = reinterpret_cast<float*>(
+            const float* data1_ptr = reinterpret_cast<const float*>(
                 engine_->GetTrtWeight(var1_name, *var1_t).get().values);
             float* data_ptr = new float[K * var0_t->numel()];
             // remember free
@@ -78,7 +99,7 @@ class RnnNativeOpConverter : public OpConverter {
             std::string var_name = op_desc.Input("WeightList")[k + start];
             auto* var_v = scope.FindVar(var_name);
             auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-            float* data_ptr = reinterpret_cast<float*>(
+            const float* data_ptr = reinterpret_cast<const float*>(
                 engine_->GetTrtWeight(var_name, *var_t).get().values);
             weight_bias_vec.push_back(data_ptr);
           }
@@ -111,28 +132,25 @@ class RnnNativeOpConverter : public OpConverter {
       auto* iter_input_forward_tensor =
           loop->addIterator(*this_input)->getOutput(0);  // [batch, input_size]
 
-      auto* tmp_layer0 =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_forward_tensor);
-      std::vector<nvinfer1::ITensor*> concat_inputs0{
-          Add1DConstantLayer(1),
-          Add1DConstantLayer(1),
-          Shape(iter_input_forward_tensor)};
-      tmp_layer0->setInput(1, *Concat(concat_inputs0));
-      iter_input_forward_tensor = tmp_layer0->getOutput(0);
+      // this function shuffle tensor -> 4 dims
+      auto reshape2four = [&](nvinfer1::ITensor** tensor) {
+#if TRT_VERSION == 7234
+        auto* tmp_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, **tensor);
+        std::vector<nvinfer1::ITensor*> concat_inputs{
+            Add1DConstantLayer(1), Add1DConstantLayer(1), Shape(*tensor)};
+        tmp_layer->setInput(1, *Concat(concat_inputs));
+        *tensor = tmp_layer->getOutput(0);
+#endif
+      };
+
+      reshape2four(&iter_input_forward_tensor);
 
       if (is_bidirec) {
         auto* iter_input_reverse_tensor =
             loop->addIterator(*this_input, 0, true)
                 ->getOutput(0);  // [batch, input_size]
 
-        auto* tmp_layer =
-            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_reverse_tensor);
-        std::vector<nvinfer1::ITensor*> concat_inputs0{
-            Add1DConstantLayer(1),
-            Add1DConstantLayer(1),
-            Shape(iter_input_reverse_tensor)};
-        tmp_layer->setInput(1, *Concat(concat_inputs0));
-        iter_input_reverse_tensor = tmp_layer->getOutput(0);
+        reshape2four(&iter_input_reverse_tensor);
 
         std::vector<nvinfer1::ITensor*> concat_inputs{
             iter_input_forward_tensor, iter_input_reverse_tensor};
@@ -165,10 +183,10 @@ class RnnNativeOpConverter : public OpConverter {
         int w = is_input ? input_size : hidden_size;
         if (is_input && k > 0) w = K * hidden_size;
 
-        std::vector<int32_t> weight_shape{K, h, w};
+        auto weight_shape = nvinfer1::Dims3{K, h, w};
         auto* weight_tensor =
             AddConstantLayer(weight_bias_vec[k], weight_shape, " ");
-        std::vector<int32_t> bias_shape{K, 1, h};
+        auto bias_shape = nvinfer1::Dims3{K, 1, h};
         auto* bias_tensor =
             AddConstantLayer(weight_bias_vec[k + 2], bias_shape, " ");
 
@@ -289,6 +307,7 @@ class RnnNativeOpConverter : public OpConverter {
       for (size_t i = 0; i < weight_bias_vec.size(); i++)
         delete[] weight_bias_vec[i];
     }
+#endif
   }
 };
 

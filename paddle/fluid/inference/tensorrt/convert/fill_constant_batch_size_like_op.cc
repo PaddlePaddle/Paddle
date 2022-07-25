@@ -31,7 +31,12 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     // be float
-    PADDLE_ENFORCE_EQ(dtype, 5);
+    PADDLE_ENFORCE_EQ(dtype,
+                      5,
+                      platform::errors::InvalidArgument(
+                          "fill_constant_batch_size_like's input data type "
+                          "must be float in Paddle-TRT."));
+
     int input_dim_idx = PADDLE_GET_CONST(int, op_desc.GetAttr("input_dim_idx"));
     size_t output_dim_idx =
         PADDLE_GET_CONST(int, op_desc.GetAttr("output_dim_idx"));
@@ -42,9 +47,8 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);
-    std::vector<int32_t> gather_batch_indices{input_dim_idx};
+    auto* batch_tensor = GetEleTensorOfShape(input_shape_tensor, input_dim_idx);
     std::string name = "_add_fill_constant_batch_size_like_op_";
-    auto* batch_tensor = Gather(input_shape_tensor, gather_batch_indices);
     auto shape_attr_tensor = Add1DConstantLayer(shape, name + "shape_attr");
     std::vector<int32_t> gather_out_shape_indices;
     for (size_t i = 0; i < shape.size(); i++) {
