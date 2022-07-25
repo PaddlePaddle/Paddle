@@ -26,15 +26,25 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const VariableNameMap& outputs,
     const AttributeMap& attrs,
     bool attr_check) {
+  AttributeMap standard_attrs;
+  AttributeMap runtime_attrs =
+      paddle::operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(type);
+  for (auto& attr : attrs) {
+    auto it = runtime_attrs.find(attr.first);
+    if (it != runtime_attrs.end()) {
+      it->second = attr.second;
+    } else {
+      standard_attrs[attr.first] = attr.second;
+    }
+  }
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
-    auto tmp_attrs = attrs;
-    info.Checker()->Check(&tmp_attrs);
-    return std::unique_ptr<OperatorBase>(
-        info.Creator()(type, inputs, outputs, tmp_attrs));
+    info.Checker()->Check(&standard_attrs);
   }
-  return std::unique_ptr<OperatorBase>(
-      info.Creator()(type, inputs, outputs, attrs));
+  auto op_base = std::unique_ptr<OperatorBase>(
+      info.Creator()(type, inputs, outputs, standard_attrs));
+  op_base->SetRuntimeAttributeMap(runtime_attrs);
+  return op_base;
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
@@ -44,7 +54,17 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const AttributeMap& attrs,
     const AttributeMap& runtime_attrs,
     bool attr_check) {
-  auto op_base = CreateOp(type, inputs, outputs, attrs, attr_check);
+  std::unique_ptr<OperatorBase> op_base;
+  auto& info = OpInfoMap::Instance().Get(type);
+  if (attr_check && info.Checker() != nullptr) {
+    auto tmp_attrs = attrs;
+    info.Checker()->Check(&tmp_attrs);
+    op_base = std::unique_ptr<OperatorBase>(
+        info.Creator()(type, inputs, outputs, tmp_attrs));
+  } else {
+    op_base = std::unique_ptr<OperatorBase>(
+        info.Creator()(type, inputs, outputs, attrs));
+  }
   op_base->SetRuntimeAttributeMap(runtime_attrs);
   return op_base;
 }
@@ -78,7 +98,12 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
   for (auto& attr : op_desc.attrs()) {
     auto it = extra_attrs.find(attr.name());
     if (it != extra_attrs.end()) {
+      VLOG(1) << "#@@@@@## " << op_desc.type() << " : " << attr.name();
       it->second = GetAttrValue(attr);
+      if (attr.name() == "fuse_relu_before_depthwise_conv") {
+        VLOG(1) << "@@@@@@ fuse_relu_before_depthwise_conv : "
+                << PADDLE_GET_CONST(bool, GetAttrValue(attr));
+      }
     } else {
       attrs[attr.name()] = GetAttrValue(attr);
     }

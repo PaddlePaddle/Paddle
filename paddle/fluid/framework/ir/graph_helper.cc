@@ -553,16 +553,7 @@ static void GraphToBlock(const Graph &graph,
   std::vector<OpDesc> ops;
   GetGraphOpDesc(nodes, &ops);
   for (auto &op : ops) {
-    auto *new_op = block->add_ops();
-    new_op->MergeFrom(*op.Proto());
-    for (const auto &attr : op.GetRuntimeAttrMap()) {
-      auto *attr_desc = new_op->add_attrs();
-      attr_desc->set_name(attr.first);
-      attr_desc->set_type(
-          static_cast<proto::AttrType>(attr.second.index() - 1));
-      SetAttrDescVisitor visitor(attr_desc);
-      paddle::visit(visitor, attr.second);
-    }
+    block->add_ops()->MergeFrom(*op.Proto());
   }
 }
 
