@@ -152,11 +152,11 @@ def auc(input,
                          A LoDTensor or Tensor with type int32,int64.
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing
-                             the roc curve. Default 200.
+                             the roc curve. Default 4095.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
         ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
-                         data. 1 means real data, 0 means fake data. 
+                         data. 1 means real data, 0 means fake data. Default None, means real data. 
                          A LoDTensor or Tensor with type float32,float64.
 
     Returns:
@@ -192,7 +192,6 @@ def auc(input,
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
             paddle.enable_static()
 
@@ -200,11 +199,8 @@ def auc(input,
             label = paddle.static.data(name="label", shape=[-1], dtype="int")
             fc_out = paddle.static.nn.fc(input=data, size=2)
             predict = paddle.nn.functional.softmax(input=fc_out)
-            filter_tag = paddle.static..data(name='Filter_tag', shape=[-1,16], dtype='int64')
-            ins_tag = paddle.static.data(name='Ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
-            label_after_filter, _ = fluid.layers.filter_by_instag(label, ins_tag, filter_tag, False)
-            predict_after_filter, ins_tag_weight = fluid.layers.filter_by_instag(predict, ins_tag, filter_tag, False)
-            result=paddle.static.auc(input=predict_after_filter, label=label_after_filter, ins_tag_weight=ins_tag_weight)
+            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -259,14 +255,14 @@ def auc(input,
         helper.set_variable_initializer(var, Constant(value=0.0,
                                                       force_cpu=False))
 
+    #"InsTagWeight": [ins_tag_weight]
     # Batch AUC
     helper.append_op(type="auc",
                      inputs={
                          "Predict": [input],
                          "Label": [label],
                          "StatPos": [batch_stat_pos],
-                         "StatNeg": [batch_stat_neg],
-                         "InsTagWeight": [ins_tag_weight]
+                         "StatNeg": [batch_stat_neg]
                      },
                      attrs={
                          "curve": curve,
@@ -284,8 +280,7 @@ def auc(input,
                          "Predict": [input],
                          "Label": [label],
                          "StatPos": [stat_pos],
-                         "StatNeg": [stat_neg],
-                         "InsTagWeight": [ins_tag_weight]
+                         "StatNeg": [stat_neg]
                      },
                      attrs={
                          "curve": curve,
