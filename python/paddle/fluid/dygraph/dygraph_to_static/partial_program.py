@@ -601,9 +601,9 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        # print("self.whole_program: ", self.whole_program)
-        # print("self.forward_program: ", self.forward_program)
-        # print("self.backward_program: ", self.backward_program)
+        print("self.whole_program: ", self.whole_program)
+        print("self.forward_program: ", self.forward_program)
+        print("self.backward_program: ", self.backward_program)
 
         attrs = [
             'global_block',
