@@ -49,7 +49,10 @@ class TestPropertySave(unittest.TestCase):
         """
         a = paddle.framework.core.Property()
         a.set_float(10.0)
-        self.assertEqual(a.get_float(0), 10.0)
+        self.assertAlmostEqual(a.get_float(0), 10.0)
+
+        a.set_float("ftest", 1.4)
+        self.assertAlmostEqual(a.get_float('ftest'), 1.4)
 
     def test_set(self):
         """test propety set.
