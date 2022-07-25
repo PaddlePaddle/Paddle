@@ -63,7 +63,7 @@ std::vector<int64_t> GetCompilationKeys(const Graph& graph) {
   std::vector<int64_t> compilation_keys;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      compilation_keys.emplace_back(BOOST_GET_CONST(
+      compilation_keys.emplace_back(PADDLE_GET_CONST(
           int64_t, node->Op()->GetAttr(operators::kCompilationKey)));
     }
   }
@@ -87,8 +87,9 @@ std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
   std::unordered_set<std::string> inputs;
   for (auto& node : graph.Nodes()) {
     if (node->IsOp() && node->Name() == kCinnLaunchOp) {
-      if (BOOST_GET_CONST(int64_t, node->Op()->GetAttr(
-                                       operators::kCompilationKey)) != key) {
+      if (PADDLE_GET_CONST(int64_t,
+                           node->Op()->GetAttr(operators::kCompilationKey)) !=
+          key) {
         continue;
       }
       for (auto in_var_name : node->Op()->InputArgumentNames()) {
@@ -260,7 +261,8 @@ TEST(CinnCompilerTest, Compile) {
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const LoDTensor*> input_tensors;
-  std::for_each(create_inputs.begin(), create_inputs.end(),
+  std::for_each(create_inputs.begin(),
+                create_inputs.end(),
                 [&input_tensors](const auto& val) {
                   input_tensors.emplace(val.first, &val.second);
                 });

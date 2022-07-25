@@ -69,7 +69,8 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   if (enable_pipelining) {
     auto batches_per_step = graph->Get<int>("batches_per_step");
     PADDLE_ENFORCE_GE(
-        batches_per_step, num_ipus,
+        batches_per_step,
+        num_ipus,
         platform::errors::InvalidArgument("Batched per step should be equal or "
                                           "greater than the number of IPUs"));
     ipu_strategy_instance_->batches_per_step = batches_per_step;
@@ -88,6 +89,9 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   // Set available memory proportion for matmul/conv
   ipu_strategy_instance_->available_memory_proportion =
       graph->Get<float>("available_memory_proportion");
+
+  // Set tiles_per_ipu for IPUMODEL
+  ipu_strategy_instance_->tiles_per_ipu = 128;
 
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 
@@ -108,12 +112,12 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   for (auto node : graph->Nodes()) {
     if (node->Name() == "feed") {
       if (node->IsOp()) {
-        feed_list[BOOST_GET_CONST(int, node->Op()->GetAttr("col"))] =
+        feed_list[PADDLE_GET_CONST(int, node->Op()->GetAttr("col"))] =
             node->outputs[0]->Name();
       }
     } else if (node->Name() == "fetch") {
       if (node->IsOp()) {
-        fetch_list[BOOST_GET_CONST(int, node->Op()->GetAttr("col"))] =
+        fetch_list[PADDLE_GET_CONST(int, node->Op()->GetAttr("col"))] =
             node->inputs[0]->Name();
       }
     }
@@ -121,16 +125,20 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
 
   // Run passes
   std::vector<std::string> graph_pass = {"forward_graph_extract_pass",
-                                         "infer_shape_pass", "avg_shard_pass",
-                                         "popart_canonicalization_pass"};
-  std::vector<std::string> compile_pass = {
-      "ipu_inplace_pass", "ipu_graph_builder_pass", "ipu_runtime_replacer_pass",
-      "inference_postprocess_pass"};
+                                         "infer_shape_pass",
+                                         "avg_shard_pass",
+                                         "popart_canonicalization_pass",
+                                         "inference_dtype_transfer_pass"};
+  std::vector<std::string> compile_pass = {"ipu_inplace_pass",
+                                           "ipu_graph_builder_pass",
+                                           "ipu_runtime_replacer_pass",
+                                           "inference_postprocess_pass"};
   for (auto pass_name : graph_pass) {
     auto pass = PassRegistry::Instance().Get(pass_name);
     if (pass_name == "infer_shape_pass") {
-      pass->Set("feed_list", new std::vector<std::string>(feed_list.begin(),
-                                                          feed_list.end()));
+      pass->Set(
+          "feed_list",
+          new std::vector<std::string>(feed_list.begin(), feed_list.end()));
     }
     pass->Apply(graph);
   }
@@ -139,8 +147,9 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
     auto pass = PassRegistry::Instance().Get(pass_name);
     pass->Set("feed_list",
               new std::vector<std::string>(feed_list.begin(), feed_list.end()));
-    pass->Set("fetch_list", new std::vector<std::string>(fetch_list.begin(),
-                                                         fetch_list.end()));
+    pass->Set(
+        "fetch_list",
+        new std::vector<std::string>(fetch_list.begin(), fetch_list.end()));
     pass->Apply(graph);
   }
 

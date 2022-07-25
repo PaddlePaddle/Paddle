@@ -25,7 +25,8 @@ namespace operators {
 void FusionSeqPoolCVMConcatOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_GE(
-      ctx->Inputs("X").size(), 1UL,
+      ctx->Inputs("X").size(),
+      1UL,
       paddle::platform::errors::InvalidArgument(
           "Inputs(X) of FusionSeqPoolCVMConcatOp should not be empty."));
   PADDLE_ENFORCE(
@@ -33,13 +34,15 @@ void FusionSeqPoolCVMConcatOp::InferShape(
       paddle::platform::errors::InvalidArgument(
           "Output(Out) of FusionSeqPoolCVMConcatOp should not be null."));
   int axis = ctx->Attrs().Get<int>("axis");
-  PADDLE_ENFORCE_EQ(axis, 1,
+  PADDLE_ENFORCE_EQ(axis,
+                    1,
                     paddle::platform::errors::InvalidArgument(
                         "FusionSeqPoolCVMConcatOp only supports "
                         "concat axis=1 yet, but received %d.",
                         axis));
   bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-  PADDLE_ENFORCE_EQ(use_cvm, true,
+  PADDLE_ENFORCE_EQ(use_cvm,
+                    true,
                     paddle::platform::errors::InvalidArgument(
                         "FusionSeqPoolCVMConcatOp only supports "
                         "use_cvm is true yet, but received %d.",
@@ -47,7 +50,8 @@ void FusionSeqPoolCVMConcatOp::InferShape(
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
-  PADDLE_ENFORCE_GT(n, 0UL,
+  PADDLE_ENFORCE_GT(n,
+                    0UL,
                     paddle::platform::errors::InvalidArgument(
                         "Input tensors count should > 0."));
   if (n == 1) {
@@ -56,7 +60,8 @@ void FusionSeqPoolCVMConcatOp::InferShape(
 
   // The output height should be confirmed in Compute,
   // since input lod is not accessible here.
-  PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
+  PADDLE_ENFORCE_EQ(ins_dims[0].size(),
+                    2,
                     paddle::platform::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
@@ -111,7 +116,8 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     T* y_data = out->mutable_data<T>(place);
 
     int w = ins[0]->numel() / x0_dims[0];
-    PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
+    PADDLE_ENFORCE_EQ(y_dims[1] % w,
+                      0,
                       paddle::platform::errors::InvalidArgument(
                           "The output of dims[1] should be dividable of w"));
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
@@ -130,10 +136,12 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
       auto x_lod = ins[i]->lod()[0];
       const T* src = ins[i]->data<T>();
       T* dst = y_data + i * w;
-      PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]), w,
+      PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]),
+                        w,
                         paddle::platform::errors::InvalidArgument(
                             "Width of all inputs should be equal."));
-      PADDLE_ENFORCE_EQ(x_lod.size(), bs + 1,
+      PADDLE_ENFORCE_EQ(x_lod.size(),
+                        bs + 1,
                         paddle::platform::errors::InvalidArgument(
                             "Batchsize of all inputs should be equal."));
       for (size_t j = 0; j < bs; ++j) {
@@ -156,7 +164,8 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fusion_seqpool_cvm_concat, ops::FusionSeqPoolCVMConcatOp,
+    fusion_seqpool_cvm_concat,
+    ops::FusionSeqPoolCVMConcatOp,
     ops::FusionSeqPoolCVMConcatOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -926,7 +926,8 @@ class TestFunctional(unittest.TestCase):
         fake_img = Image.fromarray((np.random.random(
             (32, 32, 3)) * 255).astype('uint8'))
 
-        path = 'temp.jpg'
+        temp_dir = tempfile.TemporaryDirectory()
+        path = os.path.join(temp_dir.name, 'temp.jpg')
         fake_img.save(path)
 
         set_image_backend('pil')
@@ -939,7 +940,7 @@ class TestFunctional(unittest.TestCase):
 
         np_img = image_load(path)
 
-        os.remove(path)
+        temp_dir.cleanup()
 
     def test_affine(self):
         np_img = (np.random.rand(32, 26, 3) * 255).astype('uint8')

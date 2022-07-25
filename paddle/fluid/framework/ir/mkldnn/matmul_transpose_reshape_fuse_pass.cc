@@ -113,9 +113,9 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, mtrp);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out_xshape, reshape_out_xshape, mtrp);
     auto reshape_shape =
-        BOOST_GET_CONST(std::vector<int>, reshape_op->Op()->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, reshape_op->Op()->GetAttr("shape"));
     auto transpose_axis =
-        BOOST_GET_CONST(std::vector<int>, transpose_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(std::vector<int>, transpose_op->Op()->GetAttr("axis"));
 
     auto reshape_out_size = reshape_shape.size();
     auto transpose_out_size = transpose_axis.size();
@@ -144,8 +144,12 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
 
     GraphSafeRemoveNodes(graph,
-                         {matmul_out, transpose_op, transpose_out, reshape_op,
-                          transpose_out_xshape, reshape_out_xshape});
+                         {matmul_out,
+                          transpose_op,
+                          transpose_out,
+                          reshape_op,
+                          transpose_out_xshape,
+                          reshape_out_xshape});
 
     IR_OP_VAR_LINK(matmul_op, reshape_out);
 

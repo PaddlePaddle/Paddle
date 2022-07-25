@@ -85,6 +85,10 @@ class SparseCsrTensor : public TensorBase,
   /// \return The non zero elemetns in original dense tensor.
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
+  /// \brief Returns the total number of non zero elements in original dense
+  /// tensor.
+  int64_t nnz() const { return non_zero_elements_.numel(); }
+
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
   int64_t numel() const override { return product(dims_); }

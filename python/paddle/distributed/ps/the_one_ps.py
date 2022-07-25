@@ -195,7 +195,7 @@ class Accessor:
                     sgd_param.naive.initial_range = 0.0001
                 if len(sgd_param.naive.weight_bounds) == 0:
                     sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
-            if sgd_param.name == "SparseAdamSGDRule":
+            if sgd_param.name == "SparseAdamSGDRule" or sgd_param.name == "SparseSharedAdamSGDRule":
                 if not sgd_param.adam.HasField("learning_rate"):
                     sgd_param.adam.learning_rate = 0.001
                 if not sgd_param.adam.HasField("initial_range"):
@@ -596,8 +596,11 @@ class SparseTable(Table):
             if proto.table_name == self.common.table_name:
                 usr_table_proto = proto
                 break
-        table_proto.table_class = 'MemorySparseTable'
-        warnings.warn("The PS mode must use MemorySparseTable.")
+        if usr_table_proto.HasField("table_class"):
+            table_proto.table_class = usr_table_proto.table_class
+        else:
+            table_proto.table_class = 'MemorySparseTable'
+            warnings.warn("The PS mode must use MemorySparseTable.")
         if usr_table_proto.HasField("shard_num"):
             table_proto.shard_num = usr_table_proto.shard_num
         else:
@@ -821,6 +824,7 @@ class PsDescBuilder(object):
                 self.barrier_table_id = table.idx
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param)
+        self.fs_client._set(self.ps_desc.fs_client_param)
         return text_format.MessageToString(self.ps_desc)
 
     def build_server_desc(self):
@@ -937,9 +941,10 @@ class TheOnePSRuntime(RuntimeBase):
                 main_program._fleet_opt = {}
             main_program._fleet_opt["use_ps_gpu"] = True
             gpus_env = os.getenv("FLAGS_selected_gpus")
-            main_program._fleet_opt["worker_places"] = [
-                int(s) for s in gpus_env.split(",")
-            ]
+            gpus_env = [int(s) for s in gpus_env.split(",")]
+            main_program._fleet_opt["worker_places"] = gpus_env
+            PSGPU = fluid.core.PSGPU()
+            PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
             kwargs = {}
@@ -1015,14 +1020,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        # for GEO
-        if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
-            # for ps-heter mode load all parameters on first_worker
-            init_params = get_the_one_recv_context(self.context,
-                                                   split_dense_table=True,
-                                                   use_origin_program=True)
-        else:
-            init_params = dense_map
+        # for GEO & heter_ps
+        init_params = dense_map
 
         # if not is_test:
         #     self._communicator.init_params(init_params)
@@ -1053,11 +1052,7 @@ class TheOnePSRuntime(RuntimeBase):
             fleet.util.barrier()  # 保证 0 号 worker 参数 push_dense_param over
 
         if not self.context['use_ps_gpu']:
-            if self.is_heter_ps_mode == True and not self.role_maker._is_first_worker(
-            ):
-                self._communicator.pull_dense(init_params)
-            else:
-                self._pull_all_dense(scopes, send_ctx, dense_map)
+            self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         if self.context[
@@ -1094,9 +1089,9 @@ class TheOnePSRuntime(RuntimeBase):
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
 
-        # debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        # if debug:
-        #     print("server: \n{}".format(server_desc))
+        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
+        if debug:
+            print("server: \n{}".format(server_desc))
 
         self._server = fluid.core.DistFleetWrapper()
         self._server.init_server(server_desc, self.string_hosts, role_id,

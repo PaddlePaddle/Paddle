@@ -1,0 +1,108 @@
+- api : atan2
+  inputs :
+    {x : X1, y : X2}
+  outputs :
+    out : Out
+
+- api : bernoulli
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : cholesky
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : cholesky_solve
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- api : conv2d
+  extra :
+    attrs : [bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", bool fuse_alpha = false, bool fuse_beta = false, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
+             int workspace_size_MB = 512, bool exhaustive_search = false]
+
+- api : cross
+  inputs :
+    {x : X, y : Y}
+  attrs :
+    axis : dim
+  outputs :
+    out : Out
+
+- api : diag
+  op_name : diag_v2
+  grad_op_name : diag_v2_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : diagonal
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
+- api : digamma
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : dist
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- api : dot
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- api : erf
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : mv
+  inputs :
+    {x : X, vec : Vec}
+  outputs :
+    out : Out
+
+- api : poisson
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- api : solve
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- api : trace
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
+- api : trunc
+  inputs :
+    x : X
+  outputs :
+    out : Out

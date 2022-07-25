@@ -1932,7 +1932,9 @@ def inverse(x, name=None):
             print(inv) # [[0.5, 0], [0, 0.5]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_inverse(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.inverse(x)
 
     def _check_input(x):
@@ -3263,9 +3265,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
-    input = x
     dim = axis
-    keep_dim = keepdim
     if dim is not None and not isinstance(dim, list):
         if isinstance(dim, tuple):
             dim = list(dim)
@@ -3275,24 +3275,29 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             raise TypeError(
                 "The type of axis must be int, list or tuple, but received {}".
                 format(type(dim)))
+
+    reduce_all = True if dim is None or len(dim) == 0 or len(dim) == len(x.shape) else False
+    if dim is None or len(dim) == 0:
+        dim = [0]
+
     if in_dygraph_mode():
-        return _C_ops.final_state_reduce_prod(
-            input, dim if dim != None and dim != [] else [0], keep_dim, True if
-            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+        return _C_ops.final_state_reduce_prod(x, dim, keepdim, reduce_all)
+    if _in_legacy_dygraph():
+        return _C_ops.reduce_prod(
+            x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all)
 
     helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+        x, 'x/input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_prod',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] or
-            len(dim) == len(input.shape) else False
+            'dim': dim,
+            'keep_dim': keepdim,
+            'reduce_all': reduce_all
         })
     return out
 
@@ -4431,7 +4436,9 @@ def angle(x, name=None):
             #  [-1.1071488 -0.7853982  0.         0.7853982]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_angle(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.angle(x)
 
     check_variable_and_dtype(x, 'x',

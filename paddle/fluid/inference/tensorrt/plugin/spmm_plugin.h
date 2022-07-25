@@ -36,24 +36,36 @@ namespace plugin {
 class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
  public:
   enum class Activation { kNone, kRelu, kGelu };
-  SpmmPluginDynamic(const std::string& name, const nvinfer1::DataType precision,
-                    const int out_dim, const nvinfer1::Weights& weight,
-                    const nvinfer1::Weights& bias, Activation activation);
+  SpmmPluginDynamic(const std::string& name,
+                    const nvinfer1::DataType precision,
+                    const int out_dim,
+                    const nvinfer1::Weights& weight,
+                    const nvinfer1::Weights& bias,
+                    Activation activation);
   // The second constructor is for clone member function
-  SpmmPluginDynamic(const std::string& name, const nvinfer1::DataType precision,
-                    const int out_dim, const int k, const void* weight,
-                    size_t compressed_size, const void* bias,
-                    bool is_configured, const int m_max, const int optim_alg,
+  SpmmPluginDynamic(const std::string& name,
+                    const nvinfer1::DataType precision,
+                    const int out_dim,
+                    const int k,
+                    const void* weight,
+                    size_t compressed_size,
+                    const void* bias,
+                    bool is_configured,
+                    const int m_max,
+                    const int optim_alg,
                     Activation activation);
   SpmmPluginDynamic(const std::string name, const void* data, size_t length);
   SpmmPluginDynamic() = delete;
   nvinfer1::IPluginV2DynamicExt* clone() const noexcept override;
   nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
       nvinfer1::IExprBuilder& exprBuilder) noexcept override;
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
-                                 int nbInputs, int nbOutputs) noexcept override;
+                                 int nbInputs,
+                                 int nbOutputs) noexcept override;
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
@@ -64,7 +76,9 @@ class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
                           int nbOutputs) const noexcept override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) noexcept override;
 
   nvinfer1::DataType getOutputDataType(int index,
@@ -97,11 +111,19 @@ class SpmmPluginDynamic : public nvinfer1::IPluginV2DynamicExt {
     int activation{0};
     float relu_upper_bound{0};
     float relu_threshold{0};
-    void init(int m, int n, int k, cudaDataType_t type, void* bias_ptr,
+    void init(int m,
+              int n,
+              int k,
+              cudaDataType_t type,
+              void* bias_ptr,
               SpmmPluginDynamic::Activation activation);
     void setAlgo(int id);
     void destroy();
-    void compressMatB(int n, int k, cudaDataType_t type, void* src, void** dest,
+    void compressMatB(int n,
+                      int k,
+                      cudaDataType_t type,
+                      void* src,
+                      void** dest,
                       size_t* compressed_size);
   };  // struct SpmmPluginDynamic::cusparseLtContext
   const std::string layer_name_;

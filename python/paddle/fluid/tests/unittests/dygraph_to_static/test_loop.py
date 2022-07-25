@@ -270,7 +270,7 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
-            set(["i", "j"])
+            set(["i"])
         ]
         self.create_var_names = [set(), set(["b"]), set()]
 
@@ -441,13 +441,6 @@ class TestErrorInForLoop(TestTransformForLoop):
 
     def _init_dyfunc(self):
         self.dyfunc = for_loop_dyfunc_not_support
-
-    def test_ast_to_func(self):
-        with self.assertRaisesRegexp(
-                NotImplementedError,
-                "Dynamic-to-Static only supports the step value is a constant or negative constant "
-        ):
-            self._run_static()
 
 
 if __name__ == '__main__':

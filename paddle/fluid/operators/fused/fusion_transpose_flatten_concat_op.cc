@@ -30,17 +30,20 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("X").size(), 1UL,
+        ctx->Inputs("X").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Inputs(X) of TransposeFlattenConcat op should not be empty."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Inputs(X) of TransposeFlattenConcat op should not be empty."));
 
     auto ins = ctx->GetInputsDim("X");
     const size_t n = ins.size();
-    PADDLE_ENFORCE_GT(n, 0,
+    PADDLE_ENFORCE_GT(n,
+                      0,
                       platform::errors::InvalidArgument(
                           "The size of Inputs(X)'s dimension should be greater "
                           " than 0, but received %d.",
@@ -53,11 +56,13 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
 
     size_t x_rank = ins[0].size();
     size_t trans_axis_size = trans_axis.size();
-    PADDLE_ENFORCE_EQ(x_rank, trans_axis_size,
+    PADDLE_ENFORCE_EQ(x_rank,
+                      trans_axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's rank(%d) "
                           "should be equal to the permutation axis's size(%d)",
-                          x_rank, trans_axis_size));
+                          x_rank,
+                          trans_axis_size));
 
     auto dims0 =
         GetFlattenShape(flatten_axis, GetPermuteShape(trans_axis, ins[0]));
@@ -69,7 +74,8 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
         if (j == concat_axis) {
           out_dims[concat_axis] += dimsi[j];
         } else {
-          PADDLE_ENFORCE_EQ(out_dims[j], dimsi[j],
+          PADDLE_ENFORCE_EQ(out_dims[j],
+                            dimsi[j],
                             platform::errors::InvalidArgument(
                                 "After flatting, the %d-th dim should be save "
                                 "except the specify axis.",
@@ -121,7 +127,8 @@ class TransposeFlattenConcatFusionOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fusion_transpose_flatten_concat, ops::TransposeFlattenConcatFusionOp,
+    fusion_transpose_flatten_concat,
+    ops::TransposeFlattenConcatFusionOp,
     ops::TransposeFlattenConcatFusionOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

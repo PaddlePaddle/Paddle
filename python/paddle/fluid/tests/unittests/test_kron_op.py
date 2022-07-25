@@ -151,7 +151,7 @@ class TestComplexKronOp(OpTest):
         self.grad_y = self.get_grad_y_by_numpy()
 
     def get_grad_x_by_numpy(self):
-        grad_x = np.zeros(self.x_shape, np.complex)
+        grad_x = np.zeros(self.x_shape, np.complex128)
         for x_i in range(self.x_shape[0]):
             for x_j in range(self.x_shape[1]):
                 for i in range(self.y_shape[0]):
@@ -163,7 +163,7 @@ class TestComplexKronOp(OpTest):
         return grad_x
 
     def get_grad_y_by_numpy(self):
-        grad_y = np.zeros(self.y_shape, np.complex)
+        grad_y = np.zeros(self.y_shape, np.complex128)
         for y_i in range(self.y_shape[0]):
             for y_j in range(self.y_shape[1]):
                 for x_i in range(self.x_shape[0]):

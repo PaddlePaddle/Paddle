@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/utils/blank.h"
 
 namespace paddle {
 namespace framework {
@@ -20,31 +21,31 @@ namespace framework {
 paddle::any GetAttrValue(const Attribute& attr) {
   switch (AttrTypeID(attr)) {
     case proto::AttrType::INT:
-      return BOOST_GET_CONST(int, attr);
+      return PADDLE_GET_CONST(int, attr);
     case proto::AttrType::FLOAT:
-      return BOOST_GET_CONST(float, attr);
+      return PADDLE_GET_CONST(float, attr);
     case proto::AttrType::STRING:
-      return BOOST_GET_CONST(std::string, attr);
+      return PADDLE_GET_CONST(std::string, attr);
     case proto::AttrType::INTS:
-      return BOOST_GET_CONST(std::vector<int>, attr);
+      return PADDLE_GET_CONST(std::vector<int>, attr);
     case proto::AttrType::FLOATS:
-      return BOOST_GET_CONST(std::vector<float>, attr);
+      return PADDLE_GET_CONST(std::vector<float>, attr);
     case proto::AttrType::STRINGS:
-      return BOOST_GET_CONST(std::vector<std::string>, attr);
+      return PADDLE_GET_CONST(std::vector<std::string>, attr);
     case proto::AttrType::BOOLEAN:
-      return BOOST_GET_CONST(bool, attr);
+      return PADDLE_GET_CONST(bool, attr);
     case proto::AttrType::BOOLEANS:
-      return BOOST_GET_CONST(std::vector<bool>, attr);
+      return PADDLE_GET_CONST(std::vector<bool>, attr);
     case proto::AttrType::LONG:
-      return BOOST_GET_CONST(int64_t, attr);
+      return PADDLE_GET_CONST(int64_t, attr);
     case proto::AttrType::LONGS:
-      return BOOST_GET_CONST(std::vector<int64_t>, attr);
+      return PADDLE_GET_CONST(std::vector<int64_t>, attr);
     case proto::AttrType::FLOAT64S:
-      return BOOST_GET_CONST(std::vector<double>, attr);
+      return PADDLE_GET_CONST(std::vector<double>, attr);
     case proto::AttrType::BLOCK:
-      return BOOST_GET_CONST(BlockDesc*, attr);
+      return PADDLE_GET_CONST(BlockDesc*, attr);
     case proto::AttrType::BLOCKS:
-      return BOOST_GET_CONST(std::vector<BlockDesc*>, attr);
+      return PADDLE_GET_CONST(std::vector<BlockDesc*>, attr);
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported Attribute value type `%s` for phi.",
@@ -117,7 +118,7 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
                                                  attr_desc.type()));
   }
-  return boost::blank();
+  return paddle::blank();
 }
 
 }  // namespace framework

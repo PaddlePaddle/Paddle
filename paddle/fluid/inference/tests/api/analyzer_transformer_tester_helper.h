@@ -112,7 +112,8 @@ struct DataRecord {
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+void PrepareInputs(std::vector<PaddleTensor> *input_slots,
+                   DataRecord *data,
                    int batch_size) {
   auto one_batch = data->NextBatch();
   batch_size = one_batch.batch_data_shape[0][0];
@@ -162,8 +163,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   trg_src_attn_bias.dtype = PaddleDType::FLOAT32;
   TensorAssignData<float>(&trg_src_attn_bias, one_batch.trg_src_attn_bias);
 
-  input_slots->assign({src_word, src_pos, src_slf_attn_bias, trg_word,
-                       init_score, init_idx, trg_src_attn_bias});
+  input_slots->assign({src_word,
+                       src_pos,
+                       src_slf_attn_bias,
+                       trg_word,
+                       init_score,
+                       init_idx,
+                       trg_src_attn_bias});
 }
 
 void SetConfig(AnalysisConfig *cfg) {

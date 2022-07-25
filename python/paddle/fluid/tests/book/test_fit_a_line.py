@@ -25,6 +25,7 @@ import math
 import sys
 import os
 import struct
+import tempfile
 
 paddle.enable_static()
 
@@ -55,16 +56,16 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             with amp.bf16.bf16_guard():
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
         else:
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             with amp.bf16.bf16_guard():
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
     else:
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr)
@@ -192,11 +193,13 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
         return
 
+    temp_dir = tempfile.TemporaryDirectory()
     # Directory for saving the trained model
-    save_dirname = "fit_a_line.inference.model"
+    save_dirname = os.path.join(temp_dir.name, "fit_a_line.inference.model")
 
     train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16)
     infer(use_cuda, save_dirname, use_bf16)
+    temp_dir.cleanup()
 
 
 class TestFitALineBase(unittest.TestCase):

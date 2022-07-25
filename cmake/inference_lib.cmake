@@ -59,14 +59,14 @@ function(copy TARGET)
         POST_BUILD
         COMMAND ${PYTHON_EXECUTABLE} ${COPY_SCRIPT_DIR}/copyfile.py
                 ${native_src} ${native_dst})
-    else(WIN32) #not windows
+    else() #not windows
       add_custom_command(
         TARGET ${TARGET}
         POST_BUILD
         COMMAND mkdir -p "${dst}"
         COMMAND cp -r "${src}" "${dst}"
         COMMENT "copying ${src} -> ${dst}")
-    endif(WIN32) # not windows
+    endif() # not windows
   endforeach()
 endfunction()
 
@@ -265,7 +265,7 @@ if(WIN32)
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-else(WIN32)
+else()
   set(paddle_inference_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_inference.*)
   copy(
@@ -273,7 +273,7 @@ else(WIN32)
     SRCS ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-endif(WIN32)
+endif()
 
 copy(
   inference_lib_dist
@@ -350,11 +350,11 @@ set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
   set(paddle_inference_c_lib
       $<TARGET_FILE_DIR:paddle_inference_c>/paddle_inference_c.*)
-else(WIN32)
+else()
   set(paddle_inference_c_lib
       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp/libpaddle_inference_c.*
   )
-endif(WIN32)
+endif()
 
 copy(
   inference_lib_dist
@@ -427,16 +427,14 @@ copy(
 set(module "memory")
 copy(
   fluid_lib_dist
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/detail/*.h
-       ${src_dir}/${module}/allocation/*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
-       ${dst_dir}/${module}/allocation)
+  SRCS ${src_dir}/${module}/allocation/*.h
+  DSTS ${dst_dir}/${module}/allocation)
 
 set(module "platform")
 set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
-endif(WITH_GPU)
+endif()
 
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(
@@ -472,12 +470,6 @@ copy(
   SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src
        ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
   DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
-
-set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/boost")
-copy(
-  inference_lib_dist
-  SRCS ${BOOST_INCLUDE_DIR}/boost
-  DSTS ${dst_dir})
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/dlpack")
 copy(

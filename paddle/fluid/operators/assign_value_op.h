@@ -28,7 +28,8 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
-    const char* value_name, framework::Tensor* out,
+    const char* value_name,
+    framework::Tensor* out,
     const framework::ExecutionContext& ctx) {
   // If attribute value dtype is vector<bool>, it will be converted to
   // vector<int>.
@@ -42,14 +43,15 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (unsigned int i = 0; i < values.size(); i++) {
     array_ptr[i] = static_cast<T>(values[i]);
   }
-  framework::TensorFromArray(array_ptr, values.size(), ctx.device_context(),
-                             out);
+  framework::TensorFromArray(
+      array_ptr, values.size(), ctx.device_context(), out);
   delete[] array_ptr;
 }
 
 template <typename T>
 typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
-    const char* value_name, framework::Tensor* out,
+    const char* value_name,
+    framework::Tensor* out,
     const framework::ExecutionContext& ctx) {
   auto values = ctx.Attr<std::vector<T>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);

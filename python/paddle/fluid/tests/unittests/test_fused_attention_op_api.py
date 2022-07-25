@@ -83,7 +83,7 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     if ln_bias is None:
         has_bias = False
 
-    if (pre_layer_norm):
+    if pre_layer_norm:
         ln_out = layer_norm(query, True, has_bias, ln_scale, ln_bias)
 
     num_head = qkv_weight.shape[1]
@@ -97,7 +97,7 @@ def compute_reference(pre_layer_norm, query, attn_mask, ln_scale, ln_bias,
     if qkv_bias is not None:
         qkv_bias = qkv_bias.reshape(qkv_bias.shape[0] * qkv_bias.shape[1] *
                                     qkv_bias.shape[2])
-    if (pre_layer_norm):
+    if pre_layer_norm:
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
         qkv = fc(ln_out, qkv_weight)
         if qkv_bias is not None:
@@ -239,12 +239,12 @@ class TestFusedAttentionAPI(unittest.TestCase):
             attn_mask_tensor = paddle.to_tensor(self.attn_mask)
         else:
             attn_mask_tensor = None
-        fused_attn = FusedMultiHeadAttention(self.embed_dim, self.num_heads,
-                                             self.dropout_prob,
-                                             self.attn_dropout_prob, self.kdim,
-                                             self.vdim, self.pre_layer_norm,
-                                             self.need_weight, self.weight_attr,
-                                             self.bias_attr)
+        fused_attn = FusedMultiHeadAttention(
+            self.embed_dim, self.num_heads, self.dropout_prob,
+            self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
+            self.need_weight, self.weight_attr, self.bias_attr,
+            self.weight_attr, self.bias_attr, self.weight_attr, self.bias_attr,
+            self.weight_attr, self.bias_attr)
         if self.bias_attr is not False:
             qkv_bias = np.random.random(
                 fused_attn.qkv_bias.shape).astype('float32')
@@ -260,13 +260,19 @@ class TestFusedAttentionAPI(unittest.TestCase):
         if self.bias_attr is not False:
             fused_attn_qkv_bias = fused_attn.qkv_bias.numpy()
             fused_attn_linear_bias = fused_attn.linear_bias.numpy()
-            fused_attn_pre_ln_bias = fused_attn.pre_ln_bias.numpy()
-            fused_attn_ln_bias = fused_attn.ln_bias.numpy()
+            if self.pre_layer_norm:
+                fused_attn_pre_ln_bias = fused_attn.pre_ln_bias.numpy()
+                fused_attn_ln_bias = None
+            else:
+                fused_attn_pre_ln_bias = None
+                fused_attn_ln_bias = fused_attn.ln_bias.numpy()
 
         ref_out = compute_reference(
             self.pre_layer_norm, self.query, self.attn_mask,
-            fused_attn.pre_ln_scale.numpy(), fused_attn_pre_ln_bias,
-            fused_attn.ln_scale.numpy(), fused_attn_ln_bias,
+            fused_attn.pre_ln_scale.numpy() if self.pre_layer_norm else None,
+            fused_attn_pre_ln_bias,
+            fused_attn.ln_scale.numpy() if not self.pre_layer_norm else None,
+            fused_attn_ln_bias,
             fused_attn.qkv_weight.numpy(), fused_attn_qkv_bias,
             fused_attn.linear_weight.numpy(), fused_attn_linear_bias)
         np.testing.assert_allclose(ref_out,
@@ -275,12 +281,12 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                    atol=self.atol)
 
     def run_static(self):
-        fused_attn = FusedMultiHeadAttention(self.embed_dim, self.num_heads,
-                                             self.dropout_prob,
-                                             self.attn_dropout_prob, self.kdim,
-                                             self.vdim, self.pre_layer_norm,
-                                             self.need_weight, self.weight_attr,
-                                             self.bias_attr)
+        fused_attn = FusedMultiHeadAttention(
+            self.embed_dim, self.num_heads, self.dropout_prob,
+            self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
+            self.need_weight, self.weight_attr, self.bias_attr,
+            self.weight_attr, self.bias_attr, self.weight_attr, self.bias_attr,
+            self.weight_attr, self.bias_attr)
 
         x = paddle.static.data(
             name='X',
@@ -304,58 +310,118 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
         qkv_bias = None
         linear_bias = None
+        ln_scale = None
+        ln_2_scale = None
         ln_bias = None
         ln_2_bias = None
         if self.has_attn_mask:
             if self.bias_attr is False:
-                out, qkv_weight, out_linear_weight, ln_scale, ln_2_scale = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "X": self.query,
-                        "SrcMask": self.attn_mask
-                    },
-                    fetch_list=[
-                        final_out, fused_attn.qkv_weight,
-                        fused_attn.linear_weight, fused_attn.pre_ln_scale,
-                        fused_attn.ln_scale
-                    ])
+                if self.pre_layer_norm:
+                    out, qkv_weight, out_linear_weight, ln_scale = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                            "SrcMask": self.attn_mask
+                        },
+                        fetch_list=[
+                            final_out,
+                            fused_attn.qkv_weight,
+                            fused_attn.linear_weight,
+                            fused_attn.pre_ln_scale,
+                        ])
+                else:
+                    out, qkv_weight, out_linear_weight, ln_2_scale = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                            "SrcMask": self.attn_mask
+                        },
+                        fetch_list=[
+                            final_out, fused_attn.qkv_weight,
+                            fused_attn.linear_weight, fused_attn.ln_scale
+                        ])
             else:
-                out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "X": self.query,
-                        "SrcMask": self.attn_mask
-                    },
-                    fetch_list=[
-                        final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
-                        fused_attn.linear_weight, fused_attn.linear_bias,
-                        fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
-                        fused_attn.ln_scale, fused_attn.ln_bias
-                    ])
+                if self.pre_layer_norm:
+                    out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                            "SrcMask": self.attn_mask
+                        },
+                        fetch_list=[
+                            final_out,
+                            fused_attn.qkv_weight,
+                            fused_attn.qkv_bias,
+                            fused_attn.linear_weight,
+                            fused_attn.linear_bias,
+                            fused_attn.pre_ln_scale,
+                            fused_attn.pre_ln_bias,
+                        ])
+                else:
+                    out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_2_scale, ln_2_bias = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                            "SrcMask": self.attn_mask
+                        },
+                        fetch_list=[
+                            final_out, fused_attn.qkv_weight,
+                            fused_attn.qkv_bias, fused_attn.linear_weight,
+                            fused_attn.linear_bias, fused_attn.ln_scale,
+                            fused_attn.ln_bias
+                        ])
         else:
             if self.bias_attr is False:
-                out, qkv_weight, out_linear_weight, ln_scale, ln_2_scale = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "X": self.query,
-                    },
-                    fetch_list=[
-                        final_out, fused_attn.qkv_weight,
-                        fused_attn.linear_weight, fused_attn.pre_ln_scale,
-                        fused_attn.ln_scale
-                    ])
+                if self.pre_layer_norm:
+                    out, qkv_weight, out_linear_weight, ln_scale = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                        },
+                        fetch_list=[
+                            final_out,
+                            fused_attn.qkv_weight,
+                            fused_attn.linear_weight,
+                            fused_attn.pre_ln_scale,
+                        ])
+                else:
+                    out, qkv_weight, out_linear_weight, ln_2_scale = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                        },
+                        fetch_list=[
+                            final_out, fused_attn.qkv_weight,
+                            fused_attn.linear_weight, fused_attn.ln_scale
+                        ])
             else:
-                out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "X": self.query,
-                    },
-                    fetch_list=[
-                        final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
-                        fused_attn.linear_weight, fused_attn.linear_bias,
-                        fused_attn.pre_ln_scale, fused_attn.pre_ln_bias,
-                        fused_attn.ln_scale, fused_attn.ln_bias
-                    ])
+                if self.pre_layer_norm:
+                    out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                        },
+                        fetch_list=[
+                            final_out,
+                            fused_attn.qkv_weight,
+                            fused_attn.qkv_bias,
+                            fused_attn.linear_weight,
+                            fused_attn.linear_bias,
+                            fused_attn.pre_ln_scale,
+                            fused_attn.pre_ln_bias,
+                        ])
+                else:
+                    out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_2_scale, ln_2_bias = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "X": self.query,
+                        },
+                        fetch_list=[
+                            final_out, fused_attn.qkv_weight,
+                            fused_attn.qkv_bias, fused_attn.linear_weight,
+                            fused_attn.linear_bias, fused_attn.ln_scale,
+                            fused_attn.ln_bias
+                        ])
         return out, qkv_weight, qkv_bias, out_linear_weight, linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
 
     def test_static_api(self):

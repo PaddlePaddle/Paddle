@@ -9,12 +9,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/spectral_op.cu.h"
 #include "paddle/fluid/operators/spectral_op.h"
+#include "paddle/fluid/operators/spectral_op.cu.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    fft_c2c, ops::FFTC2CKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_c2c,
+    ops::FFTC2CKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTC2CKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
@@ -23,7 +24,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fft_c2r, ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_c2r,
+    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
@@ -32,7 +34,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fft_r2c, ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_r2c,
+    ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(

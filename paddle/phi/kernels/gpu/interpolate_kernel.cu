@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/interpolate_kernel.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/fast_divmod.h"
@@ -20,7 +22,6 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
-#include "paddle/phi/kernels/interpolate_kernel.h"
 
 namespace phi {
 using paddle::platform::FastDivMod;
@@ -1445,7 +1446,10 @@ PD_REGISTER_KERNEL(bilinear_interp_v2,
                    phi::BilinearInterpKernel,
                    float,
                    double,
-                   int) {}
+                   int) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(nearest_interp_v2,
                    GPU,
                    ALL_LAYOUT,
@@ -1453,25 +1457,37 @@ PD_REGISTER_KERNEL(nearest_interp_v2,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(trilinear_interp_v2,
                    GPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpKernel,
                    float,
                    double,
-                   int) {}
+                   int) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(linear_interp_v2,
                    GPU,
                    ALL_LAYOUT,
                    phi::LinearInterpKernel,
                    float,
                    double,
-                   int) {}
+                   int) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
 PD_REGISTER_KERNEL(bicubic_interp_v2,
                    GPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpKernel,
                    float,
                    double,
-                   int) {}
+                   int) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}

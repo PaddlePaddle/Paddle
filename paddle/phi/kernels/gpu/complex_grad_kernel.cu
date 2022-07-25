@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/complex_grad_kernel.h"
+
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/complex_grad_kernel.h"
 #include "paddle/phi/kernels/impl/complex_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(imag_grad,
@@ -30,3 +31,8 @@ PD_REGISTER_KERNEL(real_grad,
                    phi::RealGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(
+    complex_grad, GPU, ALL_LAYOUT, phi::ComplexGradKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+}

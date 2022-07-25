@@ -266,7 +266,7 @@ function check_CHANGE_OP_MAP {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (ZzSean(Recommend), JamesLim-sy, Xreki, luotao1) approval to pass this PR."
     exit ${exit_code}
   fi
 }
@@ -305,11 +305,11 @@ function gpu_op_benchmark {
 
 
 # The PR will pass quickly when get approval from specific person.
-# Xreki 12538138, luotao1 6836917, ZzSean 32410583
+# Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
 set +x
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
+  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
   LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
   if [ "${APPROVALS}" == "TRUE" ]; then
     LOG "[INFO] ==================================="

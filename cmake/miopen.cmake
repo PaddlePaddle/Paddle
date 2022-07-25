@@ -65,10 +65,9 @@ macro(find_miopen_version miopen_header_file)
     math(EXPR MIOPEN_VERSION "${MIOPEN_MAJOR_VERSION} * 1000 +
              ${MIOPEN_MINOR_VERSION} * 10 + ${MIOPEN_PATCH_VERSION}")
     message(
-      STATUS
-        "Current MIOpen header is ${MIOPEN_INCLUDE_DIR}/miopen/miopen.h "
-        "Current MIOpen version is v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}.${MIOPEN_PATCH_VERSION}. "
-    )
+      STATUS "Current MIOpen header is ${MIOPEN_INCLUDE_DIR}/miopen/miopen.h "
+             "Current MIOpen version is v${MIOPEN_MAJOR_VERSION}.\
+        ${MIOPEN_MINOR_VERSION}.${MIOPEN_PATCH_VERSION}. ")
   endif()
 endmacro()
 

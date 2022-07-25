@@ -61,8 +61,8 @@ class HBMMemoryPool : public managed {
     VLOG(3) << "hbm memory pool with capacity" << capacity_
             << " bs: " << block_size_;
     cudaMalloc(&mem_, block_size_ * capacity_);
-    cudaMemcpy(mem_, mem_pool->mem(), mem_pool->byte_size(),
-               cudaMemcpyHostToDevice);
+    cudaMemcpy(
+        mem_, mem_pool->mem(), mem_pool->byte_size(), cudaMemcpyHostToDevice);
   }
 
   ~HBMMemoryPool() {
@@ -80,20 +80,6 @@ class HBMMemoryPool : public managed {
     capacity_ = capacity;
     cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8);
     cudaMemset(mem_, 0, block_size_ * capacity);
-  }
-
-  friend std::ostream& operator<<(std::ostream& out, HBMMemoryPool& p) {
-    for (size_t k = 0; k < 5; k++) {
-      auto x = (FeatureValue*)(p.mem() + k * p.capacity());
-      out << "show: " << x->show << " clk: " << x->clk << " slot: " << x->slot
-          << " lr: " << x->lr << " mf_dim: " << x->mf_size
-          << " mf_size: " << x->mf_size << " mf:";
-      for (int i = 0; i < x->mf_size + 1; ++i) {
-        out << " " << x->mf[i];
-      }
-      out << "\n";
-    }
-    return out;
   }
 
   char* mem() { return mem_; }

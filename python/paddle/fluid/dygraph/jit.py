@@ -103,7 +103,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
           @dygraph_to_static_func
           def func(x):
-              if fluid.layers.mean(x) < 0:
+              if paddle.mean(x) < 0:
                   x_v = x - 1
               else:
                   x_v = x + 1
@@ -160,7 +160,10 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def declarative(function=None, input_spec=None, build_strategy=None):
+def declarative(function=None,
+                input_spec=None,
+                build_strategy=None,
+                property=False):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
@@ -178,6 +181,7 @@ def declarative(function=None, input_spec=None, build_strategy=None):
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
+        property(bool, Optional): whether the fucntion is python property. The default is False.
 
 
     Returns:
@@ -215,7 +219,8 @@ def declarative(function=None, input_spec=None, build_strategy=None):
                                             decorated_obj=StaticFunction(
                                                 function=python_func,
                                                 input_spec=input_spec,
-                                                build_strategy=build_strategy))
+                                                build_strategy=build_strategy,
+                                                property=property))
 
         return static_layer
 
@@ -304,6 +309,9 @@ class _SaveLoadConfig(object):
         self._program_only = False
         self.with_hook = False
 
+        # if True, multi `StaticFunction` will share params in one file.
+        self.combine_params = False
+
     @property
     def output_spec(self):
         return self._output_spec
@@ -371,7 +379,9 @@ class _SaveLoadConfig(object):
 
 
 def _parse_save_configs(configs):
-    supported_configs = ['output_spec', "with_hook"]
+    supported_configs = [
+        'output_spec', "with_hook", "combine_params", "clip_extra"
+    ]
 
     # input check
     for key in configs:
@@ -384,6 +394,8 @@ def _parse_save_configs(configs):
     inner_config = _SaveLoadConfig()
     inner_config.output_spec = configs.get('output_spec', None)
     inner_config.with_hook = configs.get('with_hook', False)
+    inner_config.combine_params = configs.get("combine_params", False)
+    inner_config.clip_extra = configs.get("clip_extra", False)
 
     return inner_config
 
@@ -471,9 +483,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
     elif output_spec is not None and len(output_spec) == len(output_vars_dict):
-        result_list = output_vars_dict.values()
+        result_list = list(output_vars_dict.values())
         for var in output_spec:
             if var.name not in output_vars_dict:
                 warnings.warn(name_no_exists_error % var.name)
@@ -840,6 +852,9 @@ def save(layer, path, input_spec=None, **configs):
     # whether outermost layer has pre/post hook, if does, we need also save
     # these operators in program.
     with_hook = configs.with_hook
+    combine_params = configs.combine_params
+    if combine_params:
+        configs._program_only = True
 
     scope = core.Scope()
     extra_var_info = dict()
@@ -852,10 +867,21 @@ def save(layer, path, input_spec=None, **configs):
         functions = [
             layer,
         ]
+
+    combine_vars = {}
+    property_vals = []  # (value, key)
     for attr_func in functions:
         if isinstance(layer, Layer):
             static_func = getattr(inner_layer, attr_func, None)
             if isinstance(static_func, StaticFunction):
+                if static_func.is_property:
+                    # property method to be exported
+                    immediate_val = static_func()
+                    property_vals.append(
+                        (immediate_val,
+                         layer.__class__.__name__ + '.' + attr_func))
+                    continue
+
                 concrete_program = static_func.concrete_program_specify_input_spec(
                     inner_input_spec, with_hook=with_hook)
             elif 'forward' == attr_func:
@@ -875,10 +901,15 @@ def save(layer, path, input_spec=None, **configs):
                 inner_input_spec = None
             else:
                 continue
-
         else:
             # When layer is a function
             if isinstance(attr_func, StaticFunction):
+                if attr_func.is_property:
+                    # property method to be exported
+                    immediate_val = attr_func()
+                    property_vals.append((immediate_val, attr_func))
+                    continue
+
                 concrete_program = attr_func.concrete_program_specify_input_spec(
                     inner_input_spec)
             else:
@@ -894,6 +925,7 @@ def save(layer, path, input_spec=None, **configs):
                         '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                         .format(layer))
 
+        # when save multi `StaticFunction`, all `StaticFunction` share params.
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
@@ -913,35 +945,32 @@ def save(layer, path, input_spec=None, **configs):
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
 
-            # 3. share parameters from Layer to scope & record var info
-            with dygraph.guard():
-                for param_or_buffer in concrete_program.parameters:
-                    # share to scope
-                    if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
-                        scr_tensor = param_or_buffer.value().get_map_tensor()
-                        tgt_var = scope.var(param_or_buffer.name)
-                        tgt_var.set_vocab(scr_tensor)
-                    else:
-                        param_or_buffer_tensor = scope.var(
-                            param_or_buffer.name).get_tensor()
-                        #src_tensor = param_or_buffer.value().get_tensor()
-                        src_tensor = state_var_dict[
-                            param_or_buffer.name].value().get_tensor()
-                        param_or_buffer_tensor._share_data_with(src_tensor)
-                    # record var info
-                    if param_or_buffer.name not in extra_var_info:
-                        extra_info_dict = dict()
-                        if param_or_buffer.name in state_names_dict:
-                            extra_info_dict[
-                                'structured_name'] = state_names_dict[
-                                    param_or_buffer.name]
-                        extra_info_dict[
-                            'stop_gradient'] = param_or_buffer.stop_gradient
-                        if isinstance(param_or_buffer,
-                                      (ParamBase, EagerParamBase)):
-                            extra_info_dict[
-                                'trainable'] = param_or_buffer.trainable
-                        extra_var_info[param_or_buffer.name] = extra_info_dict
+        # 3. share parameters from Layer to scope & record var info
+        with dygraph.guard():
+            for param_or_buffer in concrete_program.parameters:
+                # share to scope
+                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
+                    scr_tensor = param_or_buffer.value().get_map_tensor()
+                    tgt_var = scope.var(param_or_buffer.name)
+                    tgt_var.set_vocab(scr_tensor)
+                else:
+                    param_or_buffer_tensor = scope.var(
+                        param_or_buffer.name).get_tensor()
+                    #src_tensor = param_or_buffer.value().get_tensor()
+                    src_tensor = state_var_dict[
+                        param_or_buffer.name].value().get_tensor()
+                    param_or_buffer_tensor._share_data_with(src_tensor)
+                # record var info
+                if param_or_buffer.name not in extra_var_info:
+                    extra_info_dict = dict()
+                    if param_or_buffer.name in state_names_dict:
+                        extra_info_dict['structured_name'] = state_names_dict[
+                            param_or_buffer.name]
+                    extra_info_dict[
+                        'stop_gradient'] = param_or_buffer.stop_gradient
+                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                        extra_info_dict['trainable'] = param_or_buffer.trainable
+                    extra_var_info[param_or_buffer.name] = extra_info_dict
 
         # 4. build input & output of save_infernece_model
         # NOTE(chenweihang): [ Get input variables name ]
@@ -989,7 +1018,32 @@ def save(layer, path, input_spec=None, **configs):
                 params_filename=params_filename,
                 export_for_deployment=configs._export_for_deployment,
                 program_only=configs._program_only,
-                clip_extra=False)
+                clip_extra=configs.clip_extra)
+
+        if combine_params:
+            clone_main_program = concrete_program.main_program.clone()
+            clone_main_program = clone_main_program._prune_with_input(
+                input_var_names, output_vars)
+            for block in clone_main_program.blocks:
+                combine_vars.update(block.vars)
+
+    # save shared params
+    if combine_params:
+        # sort vars by name
+        combine_vars = sorted(combine_vars.items(), key=lambda item: item[0])
+        ordered_vars = []
+        for name, var in combine_vars:
+            ordered_vars.append(var)
+
+        params_filename = file_prefix + INFER_PARAMS_SUFFIX
+        with scope_guard(scope):
+            paddle.static.save_vars(Executor(_current_expected_place()),
+                                    dirname=model_path,
+                                    vars=list(
+                                        filter(paddle.fluid.io.is_persistable,
+                                               ordered_vars)),
+                                    filename=params_filename)
+        # TODO: save property
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:

@@ -24,7 +24,8 @@ class InterpreterCoreFastGarbageCollector
     : public InterpreterCoreGarbageCollector {
  public:
   void Add(Variable* var) override;
-  void Add(Variable* var, platform::DeviceEvent* event,
+  void Add(Variable* var,
+           platform::DeviceEvent* event,
            const platform::DeviceContext* ctx) override;
 
  private:

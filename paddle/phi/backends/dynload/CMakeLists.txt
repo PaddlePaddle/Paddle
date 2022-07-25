@@ -1,6 +1,6 @@
 cc_library(
   phi_dynamic_loader
-  SRCS dynamic_loader.cc
+  SRCS dynamic_loader.cc port.cc
   DEPS enforce glog gflags)
 
 list(
@@ -34,6 +34,9 @@ if(NOT APPLE)
     list(APPEND HIP_SRCS hiprtc.cc rocm_driver.cc)
     if(WITH_RCCL)
       list(APPEND HIP_SRCS rccl.cc)
+    endif()
+    if(CUPTI_FOUND)
+      list(APPEND HIP_SRCS cupti.cc)
     endif()
   endif()
 endif()

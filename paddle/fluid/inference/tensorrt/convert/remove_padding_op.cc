@@ -35,8 +35,8 @@ namespace tensorrt {
 class RemovePadding : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "Remove padding of transformer'input: Padding -> VarSeqlen";
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
           "remove_padding_op: If you want to use transformer, must "
@@ -45,20 +45,39 @@ class RemovePadding : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     auto input_name = op_desc.Input("Input").front();
-
+    auto output_name = op_desc.Output("Out").front();
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.push_back(engine_->GetITensor(input_name));
     plugin_inputs.push_back(engine_->GetITensor("pos_id"));
     plugin_inputs.push_back(engine_->GetITensor("word_id"));
     size_t input_num = plugin_inputs.size();
-    auto output_name = op_desc.Output("Out").front();
-
     plugin::RemovePaddingPlugin* plugin = new plugin::RemovePaddingPlugin();
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(plugin_inputs.data(), input_num, plugin);
-
-    RreplenishLayerAndOutput(layer, "remove_padding_op", {output_name},
-                             test_mode);
+    layer->setName(("remove_padding: (Output: " + output_name + ")").c_str());
+    if (engine_->with_interleaved()) {
+      VLOG(3) << "with_interleaved data format: Remove padding of "
+                 "transformer'input: Padding -> VarSeqlen.";
+      if (!op_desc.HasAttr("out_threshold")) {
+        PADDLE_THROW(
+            platform::errors::Fatal("use with_interleaved must be int8."));
+      }
+      float out_scale =
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+      auto* transpose =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(layer->getOutput(0)));
+      transpose->setSecondTranspose({2, 1, 0, 3});
+      transpose->setName(
+          ("remove_padding (with_interleaved): transpose(Output: " +
+           output_name + ")")
+              .c_str());
+      engine_->SetITensor(output_name, transpose->getOutput(0));
+    } else {
+      VLOG(3) << "normal data format: Remove padding of transformer'input: "
+                 "Padding -> VarSeqlen.";
+      engine_->SetITensor(output_name, layer->getOutput(0));
+    }
   }
 };
 

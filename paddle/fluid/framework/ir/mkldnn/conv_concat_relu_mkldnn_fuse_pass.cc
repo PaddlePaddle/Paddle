@@ -104,9 +104,11 @@ void ConvConcatReLUFusePass::FindConcatWithConvs(
 
     for (auto node : concat_inputs) {
       auto prev_op_node = node->inputs;
-      PADDLE_ENFORCE_EQ(prev_op_node.size(), 1,
+      PADDLE_ENFORCE_EQ(prev_op_node.size(),
+                        1,
                         platform::errors::InvalidArgument(
-                            "Node(%s) input size(%d) must be 1.", node->Name(),
+                            "Node(%s) input size(%d) must be 1.",
+                            node->Name(),
                             prev_op_node.size()));
       auto* conv_op = prev_op_node[0];
       if (conv_op->Op()->Type() != "conv2d") return;

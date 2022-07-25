@@ -21,12 +21,16 @@ add_subdirectory(ops)
 add_subdirectory(tools)
 # phi tests
 add_subdirectory(tests)
+# phi capi
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(capi)
+endif()
 
 # make an unity target for compile deps
 set(PHI_DEPS
     convert_utils
     dense_tensor
-    phi_context
+    phi_backends
     kernel_factory
     kernel_context
     arg_map_context

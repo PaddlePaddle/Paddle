@@ -54,7 +54,9 @@ class ProcessGroupNCCL : public ProcessGroup {
   class NCCLTask : public ProcessGroup::Task,
                    public std::enable_shared_from_this<NCCLTask> {
    public:
-    NCCLTask(const std::vector<Place>& places, int rank, CommType CommType,
+    NCCLTask(const std::vector<Place>& places,
+             int rank,
+             CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
@@ -80,8 +82,11 @@ class ProcessGroupNCCL : public ProcessGroup {
    private:
   };
 
-  ProcessGroupNCCL(const std::shared_ptr<Store>& store, int rank, int size,
-                   const platform::Place& place, int gid);
+  ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+                   int rank,
+                   int size,
+                   const platform::Place& place,
+                   int gid);
 
   const std::string GetBackendName() const override {
     return std::string(NCCL_BACKEND_NAME);
@@ -107,20 +112,34 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
 
   std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
-                                                   int dst_rank, int offset,
+                                                   int dst_rank,
+                                                   int offset,
                                                    int length) override;
 
   std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
-                                                   int src_rank, int offset,
+                                                   int src_rank,
+                                                   int offset,
                                                    int length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length) override;
+
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in,
       std::vector<phi::DenseTensor>& out) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
+      std::vector<phi::DenseTensor>& in,
+      std::vector<phi::DenseTensor>& out,
+      std::vector<int64_t>& in_sizes,
+      std::vector<int64_t>& out_sizes) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& tensors,
@@ -132,9 +151,20 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
 
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) override;
+
+  static void GroupStart();
+
+  static void GroupEnd();
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
-      std::vector<Place> places, int rank, CommType opType,
+      std::vector<Place> places,
+      int rank,
+      CommType opType,
       const std::vector<phi::DenseTensor>& inputs);
 
  protected:
@@ -153,7 +183,8 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void BroadcastUniqueNCCLID(std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
@@ -162,19 +193,27 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
-      Fn fn, CommType op_type);
+      Fn fn,
+      CommType op_type);
 
   template <typename Fn>
-  void Collective(const phi::DenseTensor*, phi::DenseTensor*, Fn fn,
+  void Collective(const phi::DenseTensor*,
+                  phi::DenseTensor*,
+                  Fn fn,
                   CommType op_type);
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> PointToPoint(
       std::vector<phi::DenseTensor>& tensors,  // NOLINT
-      Fn fn, int dst_rank, CommType op_type);
+      Fn fn,
+      int dst_rank,
+      CommType op_type);
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
+
+  void CheckSplitSizes(std::vector<int64_t>* split_sizes,
+                       std::vector<int64_t> tensor_shape);
 };
 
 }  //  namespace distributed

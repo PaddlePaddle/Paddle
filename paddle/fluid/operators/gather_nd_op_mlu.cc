@@ -43,7 +43,8 @@ class GatherNdMLUKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -56,8 +57,13 @@ class GatherNdMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc index_desc(*index);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::GatherNd(ctx, x_desc.get(), GetBasePtr(x), index_desc.get(),
-                      GetBasePtr(index), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::GatherNd(ctx,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      index_desc.get(),
+                      GetBasePtr(index),
+                      out_desc.get(),
+                      GetBasePtr(out));
   }
 };
 
@@ -98,16 +104,23 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(ctx.GetPlace());
     MLUCnnlTensorDesc dx_desc(*dx);
     auto value = static_cast<T>(0);
-    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(),
-                  GetBasePtr(dx));
+    MLUCnnl::Fill(
+        ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(), GetBasePtr(dx));
 
     MLUCnnlTensorDesc index_desc(*index);
     MLUCnnlTensorDesc dout_desc(*dout);
 
     const cnnlScatterNdMode_t mode = CNNL_SCATTERND_ADD;
-    MLUCnnl::ScatterNd(ctx, mode, index_desc.get(), GetBasePtr(index),
-                       dout_desc.get(), GetBasePtr(dout), dx_desc.get(),
-                       GetBasePtr(dx), dx_desc.get(), GetBasePtr(dx));
+    MLUCnnl::ScatterNd(ctx,
+                       mode,
+                       index_desc.get(),
+                       GetBasePtr(index),
+                       dout_desc.get(),
+                       GetBasePtr(dout),
+                       dx_desc.get(),
+                       GetBasePtr(dx),
+                       dx_desc.get(),
+                       GetBasePtr(dx));
   }
 };
 
@@ -115,7 +128,8 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(gather_nd, ops::GatherNdMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather_nd,
+                       ops::GatherNdMLUKernel<float>,
                        ops::GatherNdMLUKernel<paddle::platform::float16>);
 
 REGISTER_OP_MLU_KERNEL(gather_nd_grad,

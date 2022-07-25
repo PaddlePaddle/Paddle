@@ -16,10 +16,10 @@ if(APPLE AND WITH_ARM)
   # cmake 3.19.2 version starts to support M1
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
-else(APPLE AND WITH_ARM)
+else()
   cmake_minimum_required(VERSION 3.15)
   cmake_policy(VERSION 3.10)
-endif(APPLE AND WITH_ARM)
+endif()
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
@@ -152,7 +152,7 @@ if(WIN32)
       if(${flag_var} MATCHES "/MD")
         string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
       endif()
-    endforeach(flag_var)
+    endforeach()
   endif()
 
   # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
@@ -179,10 +179,10 @@ if(WIN32)
       math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
       set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
     endif()
-  endforeach(flag_var)
+  endforeach()
   foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
     set(${flag_var} "${${flag_var}} /w")
-  endforeach(flag_var)
+  endforeach()
 
   # Windows Remove /Zi, /ZI for Release, MinSizeRel builds
   foreach(flag_var
@@ -191,7 +191,7 @@ if(WIN32)
     if(${flag_var} MATCHES "/Z[iI]")
       string(REGEX REPLACE "/Z[iI]" "" ${flag_var} "${${flag_var}}")
     endif()
-  endforeach(flag_var)
+  endforeach()
 
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} /wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838"
@@ -207,7 +207,7 @@ if(WIN32)
     if(MSVC_STATIC_CRT)
       set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
     endif()
-  endforeach(flag_var)
+  endforeach()
 
   if(WITH_WIN_DUMP_DBG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Zi")
@@ -216,16 +216,16 @@ if(WIN32)
     foreach(flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS
                      CMAKE_EXE_LINKER_FLAGS CMAKE_LINKER_FLAGS)
       set(${flag_var} "${${flag_var}} /DEBUG /OPT:REF /OPT:ICF")
-    endforeach(flag_var)
+    endforeach()
 
     add_definitions("-DWITH_WIN_DUMP_DBG")
   endif()
 
-else(WIN32)
+else()
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations"
   )
-endif(WIN32)
+endif()
 
 find_package(Git REQUIRED)
 
@@ -336,7 +336,12 @@ endif()
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
    AND NOT ON_INFER)
-  set(WITH_CUSTOM_DEVICE ON)
+  set(WITH_CUSTOM_DEVICE
+      ON
+      CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)
+  message(
+    "Enable Custom Device when compiling for Linux. Force WITH_CUSTOM_DEVICE=ON."
+  )
 endif()
 
 if(WIN32)
@@ -430,7 +435,8 @@ endif()
 if(WITH_ROCM)
   include(hip)
   include(miopen) # set miopen libraries, must before configure
-endif(WITH_ROCM)
+  include(cupti)
+endif()
 
 if(WITH_XPU_KP)
   include(xpu_kp)

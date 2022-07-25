@@ -30,18 +30,34 @@ namespace tensorrt {
 class ReshapeOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+
     std::vector<int> shape =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
     int nbDims_num = shape.size();
     nvinfer1::Dims reshape_dim;
-    if (engine_->with_dynamic_shape()) {  // running the TRT Dynamic Shape mode
-      reshape_dim.nbDims = nbDims_num;
-      for (int i = 0; i < nbDims_num; ++i) {
-        reshape_dim.d[i] = shape[i];
+    nvinfer1::ITensor* real_shape_tensor = nullptr;
+    std::vector<nvinfer1::ITensor*> concat_inputs;
+    bool one_input = false;
+    if (engine_->with_dynamic_shape()) {
+      if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
+          op_desc.Input("ShapeTensor").size() > 0) {
+        for (auto name : op_desc.Input("ShapeTensor"))
+          concat_inputs.push_back(engine_->GetITensor(name));
+        real_shape_tensor = Concat(concat_inputs);
+      } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
+                 op_desc.Input("Shape").size() > 0) {
+        real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
+      } else {
+        reshape_dim.nbDims = nbDims_num;
+        for (int i = 0; i < nbDims_num; ++i) {
+          reshape_dim.d[i] = shape[i];
+        }
+        one_input = true;
       }
     } else {  // running the TRT Static Shape mode
       reshape_dim.nbDims = nbDims_num - 1;
@@ -50,7 +66,10 @@ class ReshapeOpConverter : public OpConverter {
       }
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    layer->setReshapeDimensions(reshape_dim);
+    if (!engine_->with_dynamic_shape() || one_input)
+      layer->setReshapeDimensions(reshape_dim);
+    else
+      layer->setInput(1, *real_shape_tensor);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
   }
@@ -61,3 +80,4 @@ class ReshapeOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(reshape, ReshapeOpConverter);
+REGISTER_TRT_OP_CONVERTER(reshape2, ReshapeOpConverter);

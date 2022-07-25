@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace phi {
 class DenseTensor;
@@ -45,7 +44,8 @@ static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 static constexpr char kSuffix[] = "@TMP_COPY";
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops);
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(

@@ -12860,8 +12860,8 @@ def logical_or(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool).reshape(2, 2)
+            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
+            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_or(x, y)
@@ -12905,8 +12905,8 @@ def logical_xor(x, y, out=None, name=None):
             import paddle
             import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool).reshape([2, 1])
-            y_data = np.array([True, False, True, False], dtype=np.bool).reshape([2, 2])
+            x_data = np.array([True, False], dtype=np.bool_).reshape([2, 1])
+            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape([2, 2])
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_xor(x, y)
@@ -13043,6 +13043,8 @@ def clip_by_norm(x, max_norm, name=None):
             # [[0.5, 0.5], [0.5, 0.5]]
     """
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_clip_by_norm(x, max_norm)
     if _non_static_mode():
         return _C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
@@ -13089,7 +13091,7 @@ def mean(x, name=None):
 
             input = fluid.layers.data(
                 name='data', shape=[2, 3], dtype='float32')
-            mean = fluid.layers.mean(input)
+            mean = paddle.mean(input)
     """
 
     if _in_legacy_dygraph():

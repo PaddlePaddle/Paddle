@@ -79,7 +79,8 @@ class CastOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
     auto *tensor = ctx.Input<framework::LoDTensor>("X");
-    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "The tensor of Input(X) is not initialized."));
     auto &tensor_place = tensor->place();
@@ -109,8 +110,10 @@ class CastOp : public framework::OperatorWithKernel {
             ctx, framework::TransToProtoVarType(tensor->dtype())) &&
         MKLDNNSupportsCast()) {
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()), ctx.GetPlace(),
-          framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
+          framework::TransToProtoVarType(tensor->dtype()),
+          ctx.GetPlace(),
+          framework::DataLayout::kMKLDNN,
+          framework::LibraryType::kMKLDNN);
     }
 #endif
 #ifdef PADDLE_WITH_MLU
@@ -138,10 +141,11 @@ class CastOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
 // cast use phi kernel, so no need to REGISTER_OP_CPU_KERNEL here.
-REGISTER_OPERATOR(cast, ops::CastOp,
+REGISTER_OPERATOR(cast,
+                  ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker);
@@ -149,16 +153,22 @@ REGISTER_OPERATOR(cast, ops::CastOp,
 // [ why register transfer_dtype_op alias with cast_op? ]
 // In case of InterpreterCore, if we reuse cast_op, we cannot distinguish
 // which cast_op is inserted by new executor when we do profiling.
-REGISTER_OPERATOR(transfer_dtype, ops::CastOp,
+REGISTER_OPERATOR(transfer_dtype,
+                  ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(
-    transfer_dtype, ops::CastOpKernel<CPU, float>,
-    ops::CastOpKernel<CPU, double>, ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int64_t>, ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int16_t>, ops::CastOpKernel<CPU, bool>,
-    ops::CastOpKernel<CPU, uint8_t>, ops::CastOpKernel<CPU, int8_t>,
+    transfer_dtype,
+    ops::CastOpKernel<CPU, float>,
+    ops::CastOpKernel<CPU, double>,
+    ops::CastOpKernel<CPU, int>,
+    ops::CastOpKernel<CPU, int64_t>,
+    ops::CastOpKernel<CPU, int>,
+    ops::CastOpKernel<CPU, int16_t>,
+    ops::CastOpKernel<CPU, bool>,
+    ops::CastOpKernel<CPU, uint8_t>,
+    ops::CastOpKernel<CPU, int8_t>,
     ops::CastOpKernel<CPU, paddle::platform::float16>,
     ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
     ops::CastOpKernel<CPU, paddle::platform::complex<float>>,

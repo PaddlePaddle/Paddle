@@ -76,10 +76,13 @@ from .loss import NLLLoss  # noqa: F401
 from .loss import BCELoss  # noqa: F401
 from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
+from .loss import MultiLabelSoftMarginLoss
 from .loss import CTCLoss  # noqa: F401
 from .loss import SmoothL1Loss  # noqa: F401
 from .loss import HingeEmbeddingLoss  # noqa: F401
 from .loss import TripletMarginWithDistanceLoss
+from .loss import TripletMarginLoss
+from .loss import SoftMarginLoss
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401
