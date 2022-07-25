@@ -451,11 +451,15 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   desc->SetType("fill_constant");
   desc->SetAttr("shape", std::vector<int64_t>({1}));
   desc->SetAttr("value", 1.0f);
-  details::OpHandleBase &op_hander =
-      const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
-  desc->SetAttr(
-      "dtype",
-      dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+
+  if (node.IsWrappedBy<details::OpHandleBase>()) {
+    details::OpHandleBase &op_hander =
+        const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+    desc->SetAttr(
+        "dtype",
+        dynamic_cast<details::ScaleLossGradOpHandle *>(&op_hander)->DType());
+  }
+
   desc->SetAttr("force_cpu", false);
   desc->SetAttr(
       OpProtoAndCheckerMaker::OpRoleAttrName(),
