@@ -149,7 +149,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'mpi']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -458,7 +458,9 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend == 'heter' or (size > 1 and global_rank in ranks):
+        if backend == 'mpi':
+            pg = core.ProcessGroupNCCL.create(ranks, gid)
+        elif backend == 'heter' or (size > 1 and global_rank in ranks):
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
