@@ -248,10 +248,25 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     return results, gradients
 
 
+def graph_send_ue_recv_wrapper(x,
+                               y,
+                               src_index,
+                               dst_index,
+                               compute_type="add",
+                               pool_type="sum",
+                               out_size=None,
+                               name=None):
+    return paddle.geometric.send_ue_recv(x, y, src_index, dst_index,
+                                         compute_type.lower(),
+                                         pool_type.lower(), out_size, name)
+
+
 class TestGraphSendUERecvSumOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_ue_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
@@ -275,10 +290,10 @@ class TestGraphSendUERecvSumOp(OpTest):
         self.compute_type = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'E'], 'Out')
+        self.check_grad(['X', 'E'], 'Out', check_eager=True)
 
 
 class TestSumCase1(TestGraphSendUERecvSumOp):
@@ -362,6 +377,8 @@ class TestGraphSendUERecvMeanOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_ue_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
@@ -386,10 +403,10 @@ class TestGraphSendUERecvMeanOp(OpTest):
         self.compute_type = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'E'], 'Out')
+        self.check_grad(['X', 'E'], 'Out', check_eager=True)
 
 
 class TestMeanCase1(TestGraphSendUERecvMeanOp):
@@ -473,6 +490,8 @@ class TestGraphSendUERecvMaxOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_ue_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
@@ -497,10 +516,13 @@ class TestGraphSendUERecvMaxOp(OpTest):
         self.compute_type = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
+        self.check_grad(['X', 'E'],
+                        'Out',
+                        user_defined_grads=self.gradients,
+                        check_eager=True)
 
 
 class TestMaxCase1(TestGraphSendUERecvMaxOp):
@@ -584,6 +606,8 @@ class TestGraphSendUERecvMinOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = graph_send_ue_recv_wrapper
+        self.python_out_sig = ["Out"]
         self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
@@ -608,10 +632,13 @@ class TestGraphSendUERecvMinOp(OpTest):
         self.compute_type = 'ADD'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
+        self.check_grad(['X', 'E'],
+                        'Out',
+                        user_defined_grads=self.gradients,
+                        check_eager=True)
 
 
 class TestMinCase1(TestGraphSendUERecvMinOp):
