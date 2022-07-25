@@ -1273,9 +1273,9 @@ def reverse(x, axis):
         axis = [axis]
     if in_dygraph_mode():
         if x.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            return _C_ops.final_state_reverse(x, axis)
-        elif isinstance(x, (list, tuple)):
             return _C_ops.final_state_reverse_array(x, axis)
+        else:
+            return _C_ops.final_state_reverse(x, axis)
     helper = LayerHelper("reverse", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='reverse',
