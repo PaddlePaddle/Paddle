@@ -36,14 +36,6 @@ struct FcTypeTraits<double> {
   typedef double4 Type;
 };
 
-#if defined(PADDLE_WITH_CUDA)
-#include <cuda_fp16.h>
-
-template <>
-struct FcTypeTraits<float16> {
-  typedef half2 Type;
-};
-#else
 struct float16_4 {
   float16 x, y, z, w;
 };
@@ -52,7 +44,6 @@ template <>
 struct FcTypeTraits<float16> {
   typedef float16_4 Type;
 };
-#endif
 
 template <typename T, bool DoRelu>
 __global__ void bias_relu_v4(const int num, const T* bias, T* data, int K) {
@@ -230,6 +221,7 @@ __global__ void InplaceAddReluKernel(const int N,
                                      const float16* bias,
                                      float16* data) {
   int offset = blockIdx.x * N;
+
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     float16 temp;
     temp = data[offset + i] + bias[i];
@@ -275,7 +267,6 @@ void AddReluKernel(gpuStream_t stream,
     }
   }
 }
-#endif
 
 template <typename DeviceContext, typename T>
 void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
