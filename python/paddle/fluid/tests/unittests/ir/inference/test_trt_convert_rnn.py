@@ -28,36 +28,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
-        for hidden_size in [32, 64]:
+        for hidden_size in [30]:
             for input_size in [288]:
-                for batch in [16]:
-                    for seq_len in [30]:
-                        for num_layers in [2]:
-
-                            def generate_input1():
-                                return np.random.random([
-                                    batch, seq_len, input_size
-                                ]).astype(np.float32) * 2 - 1
-
-                            def generate_w0():
-                                return np.random.random([
-                                    4 * hidden_size, input_size
-                                ]).astype(np.float32) * 2 - 1
-
-                            def generate_w1():
-                                return np.random.random([
-                                    4 * hidden_size, 2 * hidden_size
-                                ]).astype(np.float32) * 2 - 1
-
-                            def generate_w2():
-                                return np.random.random([
-                                    4 * hidden_size, hidden_size
-                                ]).astype(np.float32) * 2 - 1
-
-                            def generate_b():
-                                return np.random.random([
-                                    4 * hidden_size
-                                ]).astype(np.float32) * 2 - 1
+                for batch in [12]:
+                    for seq_len in [10]:
+                        for num_layers in [1]:
 
                             dics = []
                             dics.append({
@@ -76,6 +51,34 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                             K = 1
                             if (dics[0]["is_bidirec"]):
                                 K = 2
+
+                            def generate_input1():
+                                return np.random.random([
+                                    batch, seq_len, input_size
+                                ]).astype(np.float32) * 2 - 1
+
+                            # initial input -> hidden
+                            def generate_w0():
+                                return np.random.random([
+                                    4 * hidden_size, input_size
+                                ]).astype(np.float32) * 2 - 1
+
+                            # prev layer's output -> hidden
+                            def generate_w1():
+                                return np.random.random([
+                                    4 * hidden_size, K * hidden_size
+                                ]).astype(np.float32) * 2 - 1
+                            # 
+                            def generate_w2():
+                                return np.random.random([
+                                    4 * hidden_size, hidden_size
+                                ]).astype(np.float32) * 2 - 1
+
+                            def generate_b():
+                                return np.random.random([
+                                    4 * hidden_size
+                                ]).astype(np.float32) * 2 - 1
+
                             dics.append({
                                 "dtype":
                                 5,
@@ -95,6 +98,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                             ]
                             weights = {}
                             for i in range((int)(len(WeightList) / 2)):
+                                # mean this weight : input->hidden
+                                # input has 2 case: initial input input_size, K * hidden form the prev layer.
                                 if (i % 2 == 0):
                                     if (i <= K):
                                         weights[WeightList[i]] = TensorConfig(
@@ -102,6 +107,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                     else:
                                         weights[WeightList[i]] = TensorConfig(
                                             data_gen=partial(generate_w1))
+                                # mean this weight : hidden->hidden
                                 if (i % 2 == 1):
                                     weights[WeightList[i]] = TensorConfig(
                                         data_gen=partial(generate_w2))
@@ -140,6 +146,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 "op_type": "rnn",
                                 "op_inputs": {
                                     "Input": ["rnn_input_data"],
+                                    # prev_c, prev_h
                                     "PreState": ["prestate1", "prestate2"],
                                     "WeightList": WeightList,
                                 },
@@ -168,7 +175,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
                             yield program_config
 
-    def sample_predictor_configs(self, program_config) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
