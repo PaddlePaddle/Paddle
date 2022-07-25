@@ -31,11 +31,10 @@ template <typename Context>
 void SetAccumulators(const Context& dev_ctx,
                      int64_t num_updates,
                      int64_t num_accumulates,
-                     int64_t old_num_accumulates,                                
+                     int64_t old_num_accumulates,
                      DenseTensor* out_num_accumulates,
                      DenseTensor* out_old_num_accumulates,
                      DenseTensor* out_num_updates);
-
 
 template <typename T, typename Context>
 void AverageAccumulatesKernel(const Context& dev_ctx,
@@ -55,4 +54,4 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
                               DenseTensor* out_num_accumulates,
                               DenseTensor* out_old_num_accumulates,
                               DenseTensor* out_num_updates);
-} // namespace phi
+}  // namespace phi

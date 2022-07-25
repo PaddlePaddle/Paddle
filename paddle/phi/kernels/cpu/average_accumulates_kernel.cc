@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi{
+namespace phi {
 
 template <>
 void GetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx,
@@ -46,12 +46,11 @@ void SetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx,
   out_num_updates->data<int64_t>()[0] = num_updates;
 }
 
-} // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(
-    average_accumulates,
-    CPU,
-    ALL_LAYOUT,
-    phi::AverageAccumulatesKernel,
-    float,
-    double){}
+PD_REGISTER_KERNEL(average_accumulates,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::AverageAccumulatesKernel,
+                   float,
+                   double) {}
