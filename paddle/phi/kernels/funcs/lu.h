@@ -393,8 +393,8 @@ void arange(const Context& dev_ctx,
             int batchsize = 1,
             int h = 1) {
   tmp->Resize(phi::make_ddim({batchsize * w}));
-  phi::CPUPlace cpu;
-  auto tmpdata = tmp->mutable_data<int32_t>(cpu);
+  dev_ctx.template HostAlloc<int32_t>(tmp);
+  auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
     for (int i = 0; i < w; i++) {
       tmpdata[b * w + i] = static_cast<int32_t>(b * h + i);
