@@ -18,12 +18,12 @@ namespace phi {
 
 KernelSignature EigvalshOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "eigbalsh", {"X"}, {"UPLO", "is_test"}, {"Eigenvalues", "Eigenvectors"});
+      "eigvalsh", {"X"}, {"UPLO", "is_test"}, {"Eigenvalues", "Eigenvectors"});
 }
 
 KernelSignature EigvalshGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("eigbalsh_grad",
+  return KernelSignature("eigvalsh_grad",
                          {"Eigenvectors", "Eigenvalues@GRAD"},
                          {"UPLO", "is_test"},
                          {"X@GRAD"});
