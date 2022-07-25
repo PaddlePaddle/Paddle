@@ -303,7 +303,7 @@ void HashTable<KeyType, ValType>::dump_to_cpu(int devid, StreamType stream) {
 template <typename KeyType, typename ValType>
 template <typename Sgd, typename StreamType>
 void HashTable<KeyType, ValType>::update(const KeyType* d_keys,
-                                         const GradType* d_grads,
+                                         const float* d_grads,
                                          size_t len,
                                          Sgd sgd,
                                          StreamType stream) {
@@ -468,16 +468,6 @@ template void HashTable<unsigned long, float*>::update<
                   size_t len,
                   SparseAdamSharedOptimizer sgd,
                   cudaStream_t stream);
-
-template void HashTable<unsigned long, paddle::framework::FeatureValue*>::
-    update<Optimizer<paddle::framework::FeatureValue,
-                     paddle::framework::FeaturePushValue>,
-           cudaStream_t>(const unsigned long* d_keys,
-                         const char* d_grads,
-                         size_t len,
-                         Optimizer<paddle::framework::FeatureValue,
-                                   paddle::framework::FeaturePushValue> sgd,
-                         cudaStream_t stream);
 
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<

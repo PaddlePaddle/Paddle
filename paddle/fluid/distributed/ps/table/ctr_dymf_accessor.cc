@@ -299,8 +299,6 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
        i++) {
     os << " " << v[i];
   }
-  // os << " " << common_feature_value.Slot(const_cast<float*>(v)) << " "
-  //    << common_feature_value.MfDim(const_cast<float*>(v));
   auto show = common_feature_value.Show(const_cast<float*>(v));
   auto click = common_feature_value.Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);

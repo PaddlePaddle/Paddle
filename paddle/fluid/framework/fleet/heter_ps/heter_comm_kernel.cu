@@ -780,20 +780,23 @@ template void HeterCommKernel::reduce_by_key<
                   cudaStream_t stream,
                   bool debug_synchronous);
 
-template void HeterCommKernel::dy_mf_fill_shard_grads<
-    unsigned long,
-    paddle::framework::FeaturePushValue,
-    int,
-    cudaStream_t>(unsigned long* d_shard_keys,
-                  unsigned long* d_keys,
-                  paddle::framework::FeaturePushValue* d_shard_grads,
-                  paddle::framework::FeaturePushValue* d_grads,
-                  int* idx,
-                  long long len,
-                  size_t grad_value_size,
-                  const cudaStream_t& stream);
+template void
+HeterCommKernel::dy_mf_fill_shard_grads<unsigned long,
+                                        int,
+                                        cudaStream_t,
+                                        CommonFeatureValueAccessor>(
+    unsigned long* d_shard_keys,
+    unsigned long* d_keys,
+    float* d_shard_grads,
+    float* d_grads,
+    int* idx,
+    long long len,
+    size_t grad_value_size,
+    const cudaStream_t& stream,
+    CommonFeatureValueAccessor& feature_value_accessor);
 
-template void HeterCommKernel::merge_gradient<cudaStream_t>(
+template void
+HeterCommKernel::merge_gradient<cudaStream_t, CommonFeatureValueAccessor>(
     const uint32_t* offset,
     const uint32_t* fea_num,
     const uint32_t* index,
@@ -802,7 +805,8 @@ template void HeterCommKernel::merge_gradient<cudaStream_t>(
     int n,
     size_t grad_value_size,
     DynamicGradMerger& merger_,
-    const cudaStream_t& stream);
+    const cudaStream_t& stream,
+    CommonFeatureValueAccessor& feature_value_accessor);
 
 template void
 HeterCommKernel::dy_mf_fill_shard_grads<unsigned long,

@@ -173,19 +173,20 @@ class HeterCommKernel {
                      bool debug_synchronous = false);
 
   template <typename KeyType,
-            typename GradType,
             typename T,
-            typename StreamType>
+            typename StreamType,
+            typename FVAccessor>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                               KeyType* d_keys,
-                              GradType* d_shard_grads,
-                              GradType* d_grads,
+                              float* d_shard_grads,
+                              float* d_grads,
                               T* idx,
                               long long len,
                               size_t grad_value_size,
-                              const StreamType& stream);
+                              const StreamType& stream,
+                              FVAccessor& feature_value_accessor);
 
-  template <typename StreamType>
+  template <typename StreamType, typename FVAccessor>
   void merge_gradient(const uint32_t* offset,
                       const uint32_t* fea_num,
                       const uint32_t* index,
@@ -194,15 +195,17 @@ class HeterCommKernel {
                       int n,
                       size_t grad_value_size,
                       DynamicGradMerger& merger_,
-                      const StreamType& stream);
+                      const StreamType& stream,
+                      FVAccessor& feature_value_accessor);
 
-  template <typename ValType, typename T, typename StreamType>
-  void dy_mf_fill_dvals(ValType* d_shard_vals,
-                        ValType* d_vals,
+  template <typename T, typename StreamType, typename FVAccessor>
+  void dy_mf_fill_dvals(float* d_shard_vals,
+                        float* d_vals,
                         T* idx,
                         long long len,
                         size_t val_size,
-                        const StreamType& stream);
+                        const StreamType& stream,
+                        FVAccessor& feature_value_accessor);
 
   template <typename KeyType,
             typename T,

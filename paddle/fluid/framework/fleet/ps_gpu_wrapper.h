@@ -19,6 +19,7 @@ limitations under the License. */
 #include <ctime>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <unordered_map>
@@ -50,10 +51,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"
@@ -527,8 +528,11 @@ class PSGPUWrapper {
 
   // PSGPUWrapper singleton
   static std::shared_ptr<PSGPUWrapper> GetInstance() {
-    if (NULL == s_instance_) {
-      s_instance_.reset(new paddle::framework::PSGPUWrapper());
+    {
+      std::lock_guard<std::mutex> lk(ins_mutex);
+      if (NULL == s_instance_) {
+        s_instance_.reset(new paddle::framework::PSGPUWrapper());
+      }
     }
     return s_instance_;
   }
@@ -559,7 +563,7 @@ class PSGPUWrapper {
     if (slot_info_initialized_) {
       return;
     }
-    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
     auto slots_vec = dataset->GetSlots();
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
@@ -637,6 +641,7 @@ class PSGPUWrapper {
 
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
+  static std::mutex ins_mutex;
   Dataset* dataset_;
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;

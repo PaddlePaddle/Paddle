@@ -1388,8 +1388,8 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu() or core.is_compiled_with_ipu(
-            ) or isinstance(place, core.CustomPlace):
+            if core.is_compiled_with_mlu() or isinstance(
+                    place, core.CustomPlace):
                 return False
 
             compiled = isinstance(program, compiler.CompiledProgram)
@@ -1404,8 +1404,12 @@ class Executor(object):
                     return False
 
                 # Unsupported case 3: data parallel
-                if program._is_data_parallel == True and len(
+                if program._is_data_parallel and len(
                         program._get_places(place, program._places)) != 1:
+                    return False
+
+                # Unsupported case 4: inference
+                if program._is_inference:
                     return False
 
                 return True

@@ -97,6 +97,7 @@ int AfsWrapper::mv(const std::string& old_path, const std::string& dest_path) {
 
 std::shared_ptr<PSGPUWrapper> PSGPUWrapper::s_instance_ = NULL;
 bool PSGPUWrapper::is_initialized_ = false;
+std::mutex PSGPUWrapper::ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
 void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
                               const std::string& fs_user,
@@ -609,17 +610,17 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
                                  &device_vals,
                                  &device_task_keys,
                                  &device_task_ptrs](int dev, int shard_id) {
-    auto& task_keys = device_task_keys[shard_id];
+  // auto& task_keys = device_task_keys[shard_id];
 #ifdef PADDLE_WITH_PSLIB
     auto& task_ptrs = device_task_ptrs[shard_id];
 #endif
 
-#ifdef PADDLE_WITH_PSCORE
-    auto& task_ptrs = device_task_ptrs[shard_id];
-#endif
+    // #ifdef PADDLE_WITH_PSCORE
+    //     auto& task_ptrs = device_task_ptrs[shard_id];
+    // #endif
 
-    int len = prefix_sum[dev][shard_id + 1] - prefix_sum[dev][shard_id];
-    int cur = prefix_sum[dev][shard_id];
+    // int len = prefix_sum[dev][shard_id + 1] - prefix_sum[dev][shard_id];
+    // int cur = prefix_sum[dev][shard_id];
 #ifdef PADDLE_WITH_PSLIB
     for (int j = 0; j < len; ++j) {
       device_keys[dev][cur + j] = task_keys[dev][j];
@@ -633,33 +634,6 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
       val.slot = ptr_val[6];
       val.lr = ptr_val[4];
       val.lr_g2sum = ptr_val[5];
-      val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
-
-      if (dim > 7) {
-        val.mf_size = MF_DIM + 1;
-        for (int x = 0; x < val.mf_size; x++) {
-          val.mf[x] = ptr_val[x + 7];
-        }
-      } else {
-        val.mf_size = 0;
-        for (int x = 0; x < MF_DIM + 1; x++) {
-          val.mf[x] = 0;
-        }
-      }
-    }
-#endif
-#ifdef PADDLE_WITH_PSCORE
-    for (int j = 0; j < len; ++j) {
-      device_keys[dev][cur + j] = task_keys[dev][j];
-      float* ptr_val = task_ptrs[dev][j]->data();
-      FeatureValue& val = device_vals[dev][cur + j];
-      size_t dim = task_ptrs[dev][j]->size();
-      val.delta_score = ptr_val[2];
-      val.show = ptr_val[3];
-      val.clk = ptr_val[4];
-      val.slot = ptr_val[0];
-      val.lr = ptr_val[5];
-      val.lr_g2sum = ptr_val[6];
       val.cpu_ptr = (uint64_t)(task_ptrs[dev][j]);
 
       if (dim > 7) {
@@ -784,6 +758,12 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           val->mf[x] = 0;
         }
       }
+#endif
+#ifdef PADDLE_WITH_PSCORE
+      void* val = mem_pool->mem_address(k);
+      accessor_wrapper_ptr->BuildFill(
+          val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
+#endif
     }
 #endif
 #ifdef PADDLE_WITH_PSCORE
@@ -955,10 +935,11 @@ void PSGPUWrapper::EndPass() {
           std::max(keysize_max, current_task_->device_dim_keys_[i][j].size());
     }
   }
-
+  int thread_num = 8;
   auto accessor_wrapper_ptr =
       GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
-  auto dump_pool_to_cpu_func = [this, &accessor_wrapper_ptr](int i, int j) {
+  auto dump_pool_to_cpu_func = [this, thread_num, &accessor_wrapper_ptr](
+                                   int i, int j, int z) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
     auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
     auto& device_keys = this->current_task_->device_dim_keys_[i][j];
@@ -969,8 +950,8 @@ void PSGPUWrapper::EndPass() {
     VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
             << " key_len :" << len
             << " feature_value_size:" << feature_value_size;
-
-    char* test_build_values = (char*)malloc(feature_value_size * len);
+    char* test_build_values = (char*)malloc(feature_value_size * real_len);
+    uint64_t offset = left * feature_value_size;
     cudaMemcpy(test_build_values,
                hbm_pool->mem(),
                feature_value_size * len,
@@ -982,23 +963,14 @@ void PSGPUWrapper::EndPass() {
       if (device_keys[index] == unuse_key) {
         continue;
       }
-      size_t offset = index * feature_value_size;
-      float* gpu_val = (float*)(test_build_values + offset);
+      size_t local_offset = (i - left) * feature_value_size;
+      float* gpu_val = (float*)(test_build_values + local_offset);
 #ifdef PADDLE_WITH_PSLIB
       // TODO: pslib DumpFill
 #endif
 #ifdef PADDLE_WITH_PSCORE
       accessor_wrapper_ptr->DumpFill(gpu_val, cpu_table_accessor_, mf_dim);
-      // auto* downpour_value = (paddle::distributed::FixedFeatureValue*)(*(
-      //     reinterpret_cast<uint64_t*>(gpu_val)));
-      // float* cpu_val = downpour_value->data();
-      // VLOG(5) << "dump to cpu " << index << "  gpu_value: "
-      //         << accessor_wrapper_ptr->ParseToString(gpu_val,
-      //              int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) /
-      //              sizeof(float)))
-      //         << " \t cpu_value:"
-      //         << cpu_table_accessor_->ParseToString(cpu_val,
-      //                                               downpour_value->size());
+#endif
     }
 #endif
     free(test_build_values);
@@ -1251,7 +1223,6 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     }
     pull_gpups_timer.Pause();
 
-#endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
     VLOG(3) << "Begine Xpu Ps PullSparse";

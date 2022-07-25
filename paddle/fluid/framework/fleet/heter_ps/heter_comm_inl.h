@@ -1557,10 +1557,11 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_normal_sparse(
       sync_stream(node.out_stream);
     }
   }
-
   heter_comm_kernel_->dy_mf_fill_dvals(
       d_shard_vals_ptr, d_vals, d_idx_ptr, len, val_type_size, stream);
+
   sync_stream(stream);
+
   if (!FLAGS_gpugraph_enable_gpu_direct_access) {
     for (int i = 0; i < total_device; ++i) {
       if (h_left[i] == -1 || h_right[i] == -1) {

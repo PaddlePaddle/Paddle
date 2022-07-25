@@ -96,12 +96,9 @@ class HeterComm {
                   GradType* d_grads,
                   size_t len,
                   int& uniq_len);  // NOLINT
-  void dynamic_merge_grad(int gpu_num,
-                          KeyType* d_keys,
-                          GradType* d_grads,
-                          size_t len,
-                          int& uniq_len);
-  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
+  void dynamic_merge_grad(
+      int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
+  void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void build_ps(int num,
                 KeyType* h_keys,
                 char* pool,
@@ -118,7 +115,7 @@ class HeterComm {
   template <typename Sgd>
   void push_sparse(int num,
                    KeyType* d_keys,
-                   GradType* d_grads,
+                   float* d_grads,
                    size_t len,
                    Sgd& sgd);  // NOLINT
 #elif defined(PADDLE_WITH_XPU_KP)
@@ -328,12 +325,14 @@ class HeterComm {
                    char* src_val,
                    size_t val_size);
 
+  FVAccessor feature_value_accessor_;
+
  protected:
   void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
 
   using Table = HashTable<KeyType, ValType>;
-  using PtrTable = HashTable<KeyType, ValType*>;
+  using PtrTable = HashTable<KeyType, float*>;
   std::vector<Table*> tables_;
   std::vector<PtrTable*> ptr_tables_;
   std::shared_ptr<HeterPsResource> resource_;

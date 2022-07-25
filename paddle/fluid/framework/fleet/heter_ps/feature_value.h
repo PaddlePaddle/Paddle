@@ -281,8 +281,10 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
 
   // // build阶段从cpu_val赋值给gpu_val
   __host__ void BuildFill(
-      float* gpu_val, void* cpu,
-      paddle::distributed::ValueAccessor* cpu_table_accessor, int mf_dim) {
+      float* gpu_val,
+      void* cpu,
+      paddle::distributed::ValueAccessor* cpu_table_accessor,
+      int mf_dim) {
 #ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
@@ -315,14 +317,16 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
           common_feature_value.MFSize(mf_dim) / sizeof(float);
 
       for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float)); x++) {
+           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+           x++) {
         gpu_val[common_feature_value.EmbedxG2SumIndex() + x] =
             cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x];
       }
     } else {
       gpu_val[common_feature_value.MfSizeIndex()] = 0;
       for (int x = common_feature_value.EmbedxG2SumIndex();
-           x < int(common_feature_value.Size(mf_dim) / sizeof(float)); x++) {
+           x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+           x++) {
         gpu_val[x] = 0;
       }
     }
@@ -366,7 +370,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
 
     if (gpu_val[common_feature_value.MfSizeIndex()] > 0) {
       for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float)); x++) {
+           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+           x++) {
         cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x] =
             gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
       }
@@ -376,7 +381,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
 
   // dy_mf_fill_dvals_kernel 阶段 gpukernel
   // 中从src_val赋值给dest_val
-  __host__ __device__ void FeatureValueFill(float* dest_val, float* src_val,
+  __host__ __device__ void FeatureValueFill(float* dest_val,
+                                            float* src_val,
                                             int mf_dim) {
     *(reinterpret_cast<uint64_t*>(dest_val +
                                   common_feature_value.CpuPtrIndex())) =
@@ -401,7 +407,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
         src_val[common_feature_value.MfSizeIndex()];
 
     for (int x = common_feature_value.EmbedxG2SumIndex();
-         x < int(common_feature_value.Size(mf_dim) / sizeof(float)); x++) {
+         x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+         x++) {
       dest_val[x] = src_val[x];
     }
   }
@@ -495,22 +502,24 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
   }
 
   // PullCopy 阶段 gpukernel 中  FeatureValue回填到PullValue
-  __host__ __device__ void Select(float* dest_val, float* src_val,
-                                  uint64_t* key, int mf_dim) {
+  __host__ __device__ void Select(float* dest_val,
+                                  float* src_val,
+                                  uint64_t* key,
+                                  int mf_dim) {
     if (*key == 0) {
       *(dest_val + common_pull_value.ShowIndex()) = 0;
       *(dest_val + common_pull_value.ClickIndex()) = 0;
       *(dest_val + common_pull_value.EmbedWIndex()) = 0;
     } else {
       *(dest_val + common_pull_value.ShowIndex()) =
-          src_val[common_pull_value.ShowIndex()];
+          src_val[common_feature_value.ShowIndex()];
       *(dest_val + common_pull_value.ClickIndex()) =
-          src_val[common_pull_value.ClickIndex()];
+          src_val[common_feature_value.ClickIndex()];
       *(dest_val + common_pull_value.EmbedWIndex()) =
-          src_val[common_pull_value.EmbedWIndex()];
+          src_val[common_feature_value.EmbedWIndex()];
     }
 
-    if (src_val[common_pull_value.MfSizeIndex()] == 0 || *key == 0) {
+    if (src_val[common_feature_value.MfSizeIndex()] == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest_val + common_pull_value.EmbedxWIndex() + j) = 0;
       }
@@ -543,7 +552,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
        << " delta_score: " << v[2] << " show: " << v[3] << " click: " << v[4]
        << " embed_w:" << v[5] << " embed_g2sum:";
     for (int i = common_feature_value.EmbedG2SumIndex();
-         i < common_feature_value.SlotIndex(); i++) {
+         i < common_feature_value.SlotIndex();
+         i++) {
       os << " " << v[i];
     }
     int mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
@@ -553,7 +563,8 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
        << " mf: ";
     if (param_size > common_feature_value.EmbedxG2SumIndex()) {
       for (auto i = common_feature_value.EmbedxG2SumIndex();
-           i < common_feature_value.Dim(mf_dim); ++i) {
+           i < common_feature_value.Dim(mf_dim);
+           ++i) {
         os << " " << v[i];
       }
     }
@@ -647,7 +658,8 @@ class VirtualAccessor {
 
   virtual size_t GetPullValueSize(int& mf_dim) = 0;
 
-  virtual void BuildFill(void* gpu_val, void* cpu_val,
+  virtual void BuildFill(void* gpu_val,
+                         void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) = 0;
 
@@ -659,15 +671,21 @@ class VirtualAccessor {
                            uint64_t** gpu_keys,
                            const std::vector<float*>& values,
                            const float* total_values_gpu,
-                           const int64_t* gpu_len, const int slot_num,
-                           const int hidden_size, const int64_t total_length,
-                           int* gpu_dim, int feature_value_size) = 0;
+                           const int64_t* gpu_len,
+                           const int slot_num,
+                           const int hidden_size,
+                           const int64_t total_length,
+                           int* gpu_dim,
+                           int feature_value_size) = 0;
   // dedup
   virtual void CopyForPull(const paddle::platform::Place& place,
-                           const uint64_t* total_keys, float** gpu_values,
+                           const uint64_t* total_keys,
+                           float** gpu_values,
                            const float* total_values_gpu,
-                           const int64_t* slot_lens, const int* key2slot,
-                           const int hidden_size, const int64_t total_length,
+                           const int64_t* slot_lens,
+                           const int* key2slot,
+                           const int hidden_size,
+                           const int64_t total_length,
                            const int* slot_dims,
                            const uint32_t* gpu_restore_idx,
                            int pull_value_size) = 0;
@@ -676,30 +694,44 @@ class VirtualAccessor {
                            const std::vector<const float*>& grad_values,
                            float* total_grad_values_gpu,
                            const std::vector<int64_t>& slot_lengths,
-                           const uint64_t total_length, const int batch_size,
+                           const uint64_t total_length,
+                           const int batch_size,
                            size_t grad_value_size,
                            std::vector<int>& slot_vector,
                            std::vector<int>& slot_mf_dim_vector) = 0;
 
   // dedup
   virtual void CopyForPush(const paddle::platform::Place& place,
-                           const uint64_t* total_keys, float** grad_values,
-                           float* total_grad_values_gpu, const int* slots,
-                           const int64_t* slot_lens, const int hidden_size,
+                           const uint64_t* total_keys,
+                           float** grad_values,
+                           float* total_grad_values_gpu,
+                           const int* slots,
+                           const int64_t* slot_lens,
+                           const int hidden_size,
                            const int64_t total_length,
-                           const int64_t dedup_length, const int batch_size,
-                           const int* slot_dims, const int* key2slot,
+                           const int64_t dedup_length,
+                           const int batch_size,
+                           const int* slot_dims,
+                           const int* key2slot,
                            const uint32_t* d_restore_idx,
                            const size_t grad_value_size) = 0;
 
-  virtual void CopyForPush(
-      const paddle::platform::Place& place, const uint64_t* total_keys,
-      float** grad_values, float* total_grad_values_gpu, const int* slots,
-      const int64_t* slot_lens, const int hidden_size,
-      const int64_t total_length, const int64_t dedup_length,
-      const int batch_size, const int* slot_dims, const int* key2slot,
-      const uint32_t* gpu_sort_idx, const uint32_t* gpu_sort_offset,
-      const uint32_t* gpu_sort_lens, const size_t grad_value_size) = 0;
+  virtual void CopyForPush(const paddle::platform::Place& place,
+                           const uint64_t* total_keys,
+                           float** grad_values,
+                           float* total_grad_values_gpu,
+                           const int* slots,
+                           const int64_t* slot_lens,
+                           const int hidden_size,
+                           const int64_t total_length,
+                           const int64_t dedup_length,
+                           const int batch_size,
+                           const int* slot_dims,
+                           const int* key2slot,
+                           const uint32_t* gpu_sort_idx,
+                           const uint32_t* gpu_sort_offset,
+                           const uint32_t* gpu_sort_lens,
+                           const size_t grad_value_size) = 0;
 
   virtual std::string ParseToString(const float* v, int param_size) = 0;
 };
@@ -728,11 +760,12 @@ class AccessorWrapper : public VirtualAccessor {
     return gpu_accessor_.common_pull_value.Size(mf_dim);
   }
 
-  virtual void BuildFill(void* gpu_val, void* cpu_val,
+  virtual void BuildFill(void* gpu_val,
+                         void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) {
-    gpu_accessor_.BuildFill((float*)(gpu_val), cpu_val, cpu_table_accessor,
-                            mf_dim);
+    gpu_accessor_.BuildFill(
+        (float*)(gpu_val), cpu_val, cpu_table_accessor, mf_dim);
   }
 
   virtual void DumpFill(float* gpu_val,
@@ -745,113 +778,196 @@ class AccessorWrapper : public VirtualAccessor {
                            uint64_t** gpu_keys,
                            const std::vector<float*>& values,
                            const float* total_values_gpu,
-                           const int64_t* gpu_len, const int slot_num,
-                           const int hidden_size, const int64_t total_length,
-                           int* gpu_dim, int feature_value_size) {
-    CopyForPullImpl(place, gpu_keys, values, total_values_gpu, gpu_len,
-                    slot_num, hidden_size, total_length, gpu_dim,
+                           const int64_t* gpu_len,
+                           const int slot_num,
+                           const int hidden_size,
+                           const int64_t total_length,
+                           int* gpu_dim,
+                           int feature_value_size) {
+    CopyForPullImpl(place,
+                    gpu_keys,
+                    values,
+                    total_values_gpu,
+                    gpu_len,
+                    slot_num,
+                    hidden_size,
+                    total_length,
+                    gpu_dim,
                     feature_value_size);
   }
 
   virtual void CopyForPull(const paddle::platform::Place& place,
-                           const uint64_t* total_keys, float** gpu_values,
+                           const uint64_t* total_keys,
+                           float** gpu_values,
                            const float* total_values_gpu,
-                           const int64_t* slot_lens, const int* key2slot,
-                           const int hidden_size, const int64_t total_length,
+                           const int64_t* slot_lens,
+                           const int* key2slot,
+                           const int hidden_size,
+                           const int64_t total_length,
                            const int* slot_dims,
                            const uint32_t* gpu_restore_idx,
                            int pull_value_size) {
-    CopyForPullDedupImpl(place, total_keys, gpu_values, total_values_gpu,
-                         slot_lens, key2slot, hidden_size, total_length,
-                         slot_dims, gpu_restore_idx, pull_value_size);
+    CopyForPullDedupImpl(place,
+                         total_keys,
+                         gpu_values,
+                         total_values_gpu,
+                         slot_lens,
+                         key2slot,
+                         hidden_size,
+                         total_length,
+                         slot_dims,
+                         gpu_restore_idx,
+                         pull_value_size);
   }
 
   virtual void CopyForPush(const paddle::platform::Place& place,
                            const std::vector<const float*>& grad_values,
                            float* total_grad_values_gpu,
                            const std::vector<int64_t>& slot_lengths,
-                           const uint64_t total_length, const int batch_size,
+                           const uint64_t total_length,
+                           const int batch_size,
                            size_t grad_value_size,
                            std::vector<int>& slot_vector,
                            std::vector<int>& slot_mf_dim_vector) {
-    CopyForPushImpl(place, grad_values, total_grad_values_gpu, slot_lengths,
-                    total_length, batch_size, grad_value_size, slot_vector,
+    CopyForPushImpl(place,
+                    grad_values,
+                    total_grad_values_gpu,
+                    slot_lengths,
+                    total_length,
+                    batch_size,
+                    grad_value_size,
+                    slot_vector,
                     slot_mf_dim_vector);
   }
 
   virtual void CopyForPush(const paddle::platform::Place& place,
-                           const uint64_t* total_keys, float** grad_values,
-                           float* total_grad_values_gpu, const int* slots,
-                           const int64_t* slot_lens, const int hidden_size,
+                           const uint64_t* total_keys,
+                           float** grad_values,
+                           float* total_grad_values_gpu,
+                           const int* slots,
+                           const int64_t* slot_lens,
+                           const int hidden_size,
                            const int64_t total_length,
-                           const int64_t dedup_length, const int batch_size,
-                           const int* slot_dims, const int* key2slot,
+                           const int64_t dedup_length,
+                           const int batch_size,
+                           const int* slot_dims,
+                           const int* key2slot,
                            const uint32_t* d_restore_idx,
                            const size_t grad_value_size) {
-    CopyForPushDedupImpl(place, total_keys, grad_values, total_grad_values_gpu,
-                         slots, slot_lens, hidden_size, total_length,
-                         dedup_length, batch_size, slot_dims, key2slot,
-                         d_restore_idx, grad_value_size);
+    CopyForPushDedupImpl(place,
+                         total_keys,
+                         grad_values,
+                         total_grad_values_gpu,
+                         slots,
+                         slot_lens,
+                         hidden_size,
+                         total_length,
+                         dedup_length,
+                         batch_size,
+                         slot_dims,
+                         key2slot,
+                         d_restore_idx,
+                         grad_value_size);
   }
 
-  virtual void CopyForPush(
-      const paddle::platform::Place& place, const uint64_t* total_keys,
-      float** grad_values, float* total_grad_values_gpu, const int* slots,
-      const int64_t* slot_lens, const int hidden_size,
-      const int64_t total_length, const int64_t dedup_length,
-      const int batch_size, const int* slot_dims, const int* key2slot,
-      const uint32_t* gpu_sort_idx, const uint32_t* gpu_sort_offset,
-      const uint32_t* gpu_sort_lens, const size_t grad_value_size) {
-    CopyForPushDedupImpl(place, total_keys, grad_values, total_grad_values_gpu,
-                         slots, slot_lens, hidden_size, total_length,
-                         dedup_length, batch_size, slot_dims, key2slot,
-                         gpu_sort_idx, gpu_sort_offset, gpu_sort_lens,
+  virtual void CopyForPush(const paddle::platform::Place& place,
+                           const uint64_t* total_keys,
+                           float** grad_values,
+                           float* total_grad_values_gpu,
+                           const int* slots,
+                           const int64_t* slot_lens,
+                           const int hidden_size,
+                           const int64_t total_length,
+                           const int64_t dedup_length,
+                           const int batch_size,
+                           const int* slot_dims,
+                           const int* key2slot,
+                           const uint32_t* gpu_sort_idx,
+                           const uint32_t* gpu_sort_offset,
+                           const uint32_t* gpu_sort_lens,
+                           const size_t grad_value_size) {
+    CopyForPushDedupImpl(place,
+                         total_keys,
+                         grad_values,
+                         total_grad_values_gpu,
+                         slots,
+                         slot_lens,
+                         hidden_size,
+                         total_length,
+                         dedup_length,
+                         batch_size,
+                         slot_dims,
+                         key2slot,
+                         gpu_sort_idx,
+                         gpu_sort_offset,
+                         gpu_sort_lens,
                          grad_value_size);
   }
 
   void CopyForPullImpl(const paddle::platform::Place& place,
-                       uint64_t** gpu_keys, const std::vector<float*>& values,
-                       const float* total_values_gpu, const int64_t* gpu_len,
-                       const int slot_num, const int hidden_size,
-                       const int64_t total_length, int* gpu_dim,
+                       uint64_t** gpu_keys,
+                       const std::vector<float*>& values,
+                       const float* total_values_gpu,
+                       const int64_t* gpu_len,
+                       const int slot_num,
+                       const int hidden_size,
+                       const int64_t total_length,
+                       int* gpu_dim,
                        int feature_value_size);
 
   void CopyForPushImpl(const paddle::platform::Place& place,
                        const std::vector<const float*>& grad_values,
                        float* total_grad_values_gpu,
                        const std::vector<int64_t>& slot_lengths,
-                       const uint64_t total_length, const int batch_size,
-                       size_t grad_value_size, std::vector<int>& slot_vector,
+                       const uint64_t total_length,
+                       const int batch_size,
+                       size_t grad_value_size,
+                       std::vector<int>& slot_vector,
                        std::vector<int>& slot_mf_dim_vector);
 
   void CopyForPullDedupImpl(const paddle::platform::Place& place,
-                            const uint64_t* total_keys, float** gpu_values,
+                            const uint64_t* total_keys,
+                            float** gpu_values,
                             const float* total_values_gpu,
-                            const int64_t* slot_lens, const int* key2slot,
-                            const int hidden_size, const int64_t total_length,
+                            const int64_t* slot_lens,
+                            const int* key2slot,
+                            const int hidden_size,
+                            const int64_t total_length,
                             const int* slot_dims,
                             const uint32_t* gpu_restore_idx,
                             int pull_value_size);
 
   void CopyForPushDedupImpl(const paddle::platform::Place& place,
-                            const uint64_t* total_keys, float** grad_values,
-                            float* total_grad_values_gpu, const int* slots,
-                            const int64_t* slot_lens, const int hidden_size,
+                            const uint64_t* total_keys,
+                            float** grad_values,
+                            float* total_grad_values_gpu,
+                            const int* slots,
+                            const int64_t* slot_lens,
+                            const int hidden_size,
                             const int64_t total_length,
-                            const int64_t dedup_length, const int batch_size,
-                            const int* slot_dims, const int* key2slot,
+                            const int64_t dedup_length,
+                            const int batch_size,
+                            const int* slot_dims,
+                            const int* key2slot,
                             const uint32_t* d_restore_idx,
                             const size_t grad_value_size);
 
-  void CopyForPushDedupImpl(
-      const paddle::platform::Place& place, const uint64_t* total_keys,
-      float** grad_values, float* total_grad_values_gpu, const int* slots,
-      const int64_t* slot_lens, const int hidden_size,
-      const int64_t total_length, const int64_t dedup_length,
-      const int batch_size, const int* slot_dims, const int* key2slot,
-      const uint32_t* gpu_sort_idx, const uint32_t* gpu_sort_offset,
-      const uint32_t* gpu_sort_lens, const size_t grad_value_size);
-
+  void CopyForPushDedupImpl(const paddle::platform::Place& place,
+                            const uint64_t* total_keys,
+                            float** grad_values,
+                            float* total_grad_values_gpu,
+                            const int* slots,
+                            const int64_t* slot_lens,
+                            const int hidden_size,
+                            const int64_t total_length,
+                            const int64_t dedup_length,
+                            const int batch_size,
+                            const int* slot_dims,
+                            const int* key2slot,
+                            const uint32_t* gpu_sort_idx,
+                            const uint32_t* gpu_sort_offset,
+                            const uint32_t* gpu_sort_lens,
+                            const size_t grad_value_size);
   virtual std::string ParseToString(const float* v, int param_size) {
     return gpu_accessor_.ParseToString(v, param_size);
   }

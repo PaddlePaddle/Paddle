@@ -74,7 +74,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
           framework::BlockDesc *block_desc =
-              BOOST_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
+              PADDLE_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
           if (std::find(old_block_desc.begin(),
                         old_block_desc.end(),
                         block_desc) != old_block_desc.end()) {
@@ -152,7 +152,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= feed_target_names.size()) {
         feed_target_names.resize(col + 1);
       }
@@ -169,7 +169,7 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= fetch_target_names.size()) {
         fetch_target_names.resize(col + 1);
       }
