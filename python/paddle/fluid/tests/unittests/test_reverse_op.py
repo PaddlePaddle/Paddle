@@ -31,6 +31,7 @@ class TestReverseOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "reverse"
+        self.python_api = fluid.layers.reverse
         self.inputs = {"X": self.x}
         self.attrs = {'axis': self.axis}
         out = self.x
