@@ -116,6 +116,18 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_api : as_complex_grad
+  forward : as_complex (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : as_real(out_grad)
+
+- backward_api : as_real_grad
+  forward : as_real (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : as_complex(out_grad)
+
 - backward_api : asin_grad
   forward : asin (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -238,6 +250,15 @@
   kernel :
     func : bce_loss_grad
   inplace : (out_grad -> input_grad)
+
+- backward_api : bilinear_tensor_product_grad
+  forward : bilinear_tensor_product (Tensor x, Tensor y, Tensor weight, Tensor bias) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor weight, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta :
+    func : BilinearTensorProductGradInferMeta
+  kernel :
+    func : bilinear_tensor_product_grad
 
 - backward_api : brelu_grad
   forward : brelu (Tensor x, float t_min, float t_max) -> Tensor(out)
@@ -708,6 +729,15 @@
     func : expm1_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : exponential__grad
+  forward : exponential_ (Tensor x, float lambda) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+  invoke : zeros_like(out_grad, DataType::UNDEFINED, {})
+  inplace : (out_grad -> x_grad)
+
 - backward_api : flatten_grad
   forward : flatten(Tensor x, int start_axis, int stop_axis) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
@@ -817,6 +847,18 @@
     func : graph_send_recv_grad
     data_type : out_grad
   optional: out, dst_count
+
+# grid sample
+- backward_api : grid_sample_grad
+  forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
+  args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
+  output : Tensor(x_grad), Tensor(grid_grad)
+  infer_meta : 
+    func : GeneralBinaryGradInferMeta
+    param : [x, grid]
+  kernel : 
+    func : grid_sample_grad
+    data_type : x
 
 - backward_api : group_norm_grad
   forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout) -> Tensor(y), Tensor(mean), Tensor(variance)
@@ -936,6 +978,15 @@
     data_type : x
   optional : scale
   backward : instance_norm_double_grad
+
+- backward_api : inverse_grad
+  forward : inverse(Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta:
+    func : InverseGradInferMeta
+  kernel :
+    func : inverse_grad
 
 - backward_api : kldiv_loss_grad
   forward : kldiv_loss(Tensor x, Tensor label, str reduction) -> Tensor(out)
@@ -1970,6 +2021,16 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : squared_l2_norm_grad
+  forward : squared_l2_norm(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : squared_l2_norm_grad
+
 - backward_api : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int[] axes)
@@ -2073,6 +2134,18 @@
     func : swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : sync_batch_norm_grad
+  forward : sync_batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, scale, bias]
+  kernel :
+    func : sync_batch_norm_grad
+    data_type : out_grad
+  optional : mean_out, variance_out, reserve_space
+
 - backward_api : take_along_axis_grad
   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, int axis)
@@ -2139,6 +2212,16 @@
   kernel :
     func : tanh_triple_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
+
+- backward_api : temporal_shift_grad
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
+  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : temporal_shift_grad
 
 - backward_api : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
