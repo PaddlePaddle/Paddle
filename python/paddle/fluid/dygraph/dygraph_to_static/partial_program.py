@@ -249,23 +249,30 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_train_program(self):
         whole_program = self._create_program()
-        return self._add_build_strategy_for(
-            whole_program, 0,
-            self._create_program(True).desc.block(0).op_size())
+        end_op_index = self._create_program(True).desc.block(0).op_size()
+        if end_op_index > 0:
+            return self._add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return paddle.static.Program()
 
     @switch_to_static_graph
     def _create_forward_train_amp_program(self):
         whole_program = self._create_amp_program()
-        return self._add_build_strategy_for(
-            whole_program, 0,
-            self._create_amp_program(True).desc.block(0).op_size())
+        end_op_index = self._create_amp_program(True).desc.block(0).op_size()
+        if end_op_index > 0:
+            return self._add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return paddle.static.Program()
 
     @switch_to_static_graph
     def _create_forward_train_pure_fp16_program(self):
         whole_program = self._create_pure_fp16_program()
-        return self._add_build_strategy_for(
-            whole_program, 0,
-            self._create_pure_fp16_program(True).desc.block(0).op_size())
+        end_op_index = self._create_pure_fp16_program(True).desc.block(
+            0).op_size()
+        if end_op_index > 0:
+            return self._add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return paddle.static.Program()
 
     # backward
     @switch_to_static_graph
