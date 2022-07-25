@@ -297,6 +297,10 @@ class SubmConv3D(_Conv3D):
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
+        key(str, optional): the key is used to save or use the same rulebook, 
+            the definition and role of rulebook refers to
+            https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
+            default value is None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter

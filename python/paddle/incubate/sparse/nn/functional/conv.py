@@ -277,6 +277,10 @@ def subm_conv3d(x,
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
             `[batch_size, input_depth, input_height, input_width, input_channels]`.
+        key(str, optional): the key is used to save or use the same rulebook, 
+            the definition and role of rulebook refers to
+            https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The 
+            default value is None.
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
