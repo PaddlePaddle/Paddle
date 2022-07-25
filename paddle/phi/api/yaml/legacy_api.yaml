@@ -2378,3 +2378,12 @@
   kernel:
     func: eig
   backward: eig_grad
+
+- api: eigvalsh
+  args: (Tensor x, str uplo, bool is_test)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta: 
+    func: EigvalshInferMeta
+  kernel: 
+    func: eigvalsh
+  backward: eigvalsh_grad

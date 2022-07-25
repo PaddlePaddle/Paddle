@@ -2326,3 +2326,13 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+
+- backward_api: eigvalsh_grad
+  forward: eigvalsh (Tensor x, str uplo, bool is_test) -> Tensor(out_w), Tensor(out_v)
+  args: (Tensor out_v, Tensor out_w_grad, str uplo, bool is_test)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: EigvalshGradInferMeta
+  kernel:
+    func: eigvalsh_grad_kernel
+    data_type: out_v
