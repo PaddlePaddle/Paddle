@@ -451,6 +451,37 @@ void AverageAccumulatesInferMeta(const MetaTensor& param,
                                  MetaTensor* out_old_num_accumulates,
                                  MetaTensor* out_num_updates) {
   // auto in_dim = param.dims;
+  PADDLE_ENFORCE_NE(
+      out_sum_1,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_1) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_2,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_2) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_3,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_3) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(out_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(out_old_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_old_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(
+      out_num_updates,
+      nullptr,
+      errors::NotFound(
+          "Output(out_num_updates) of AverageAccumulates should not be null."));
+
   out_sum_1->set_dims(in_sum_1.dims());
   out_sum_1->set_dtype(in_sum_1.dtype());
   out_sum_2->set_dims(in_sum_2.dims());
