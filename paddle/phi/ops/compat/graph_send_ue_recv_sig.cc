@@ -16,18 +16,18 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature GraphSendERecvOpArgumentMapping(
+KernelSignature GraphSendUERecvOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("graph_send_e_recv",
+  return KernelSignature("graph_send_ue_recv",
                          {"X", "E", "Src_index", "Dst_index"},
                          {"compute_type", "pool_type", "out_size"},
                          {"Out", "Dst_count"});
 }
 
-KernelSignature GraphSendERecvGradOpArgumentMapping(
+KernelSignature GraphSendUERecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "graph_send_e_recv_grad",
+      "graph_send_ue_recv_grad",
       {"X", "E", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},
       {"compute_type", "pool_type"},
       {"X@GRAD", "E@GRAD"});
@@ -35,8 +35,8 @@ KernelSignature GraphSendERecvGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(graph_send_e_recv,
-                           phi::GraphSendERecvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(graph_send_ue_recv,
+                           phi::GraphSendUERecvOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(graph_send_e_recv_grad,
-                           phi::GraphSendERecvGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(graph_send_ue_recv_grad,
+                           phi::GraphSendUERecvGradOpArgumentMapping);

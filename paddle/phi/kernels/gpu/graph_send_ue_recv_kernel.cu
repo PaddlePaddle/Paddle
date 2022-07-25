@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_e_recv_kernel.h"
-#include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
+#include "paddle/phi/kernels/graph_send_ue_recv_kernel.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
+#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -30,16 +30,16 @@
 namespace phi {
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& e,
-                                            const DenseTensor& src_index,
-                                            const DenseTensor& dst_index,
-                                            const std::string& compute_type,
-                                            const std::string& pool_type,
-                                            int64_t out_size,
-                                            DenseTensor* out,
-                                            DenseTensor* dst_count = nullptr) {
+void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
+                                             const DenseTensor& x,
+                                             const DenseTensor& e,
+                                             const DenseTensor& src_index,
+                                             const DenseTensor& dst_index,
+                                             const std::string& compute_type,
+                                             const std::string& pool_type,
+                                             int64_t out_size,
+                                             DenseTensor* out,
+                                             DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
   ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
@@ -96,13 +96,13 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   int block_ = 1024;
 #endif
   if (pool_type == "SUM" || pool_type == "MEAN") {
-    GraphSendERecvSumCUDAFunctor<T> sum_functor;
+    GraphSendUERecvSumCUDAFunctor<T> sum_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvSumCUDAFunctor<T>,
-                               funcs::AddFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvSumCUDAFunctor<T>,
+                                funcs::AddFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -120,10 +120,10 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               sum_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvSumCUDAFunctor<T>,
-                               funcs::MultiplyFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvSumCUDAFunctor<T>,
+                                funcs::MultiplyFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -164,13 +164,13 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
           out_data, dst_count_data, input_size, out_len);
     }
   } else if (pool_type == "MAX") {
-    GraphSendERecvMaxCUDAFunctor<T> max_functor;
+    GraphSendUERecvMaxCUDAFunctor<T> max_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvMaxCUDAFunctor<T>,
-                               funcs::AddFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvMaxCUDAFunctor<T>,
+                                funcs::AddFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -188,10 +188,10 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               max_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvMaxCUDAFunctor<T>,
-                               funcs::MultiplyFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvMaxCUDAFunctor<T>,
+                                funcs::MultiplyFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -217,13 +217,13 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     InputResetMaxCUDAKernel<T>
         <<<grid_max_, block_, 0, ctx.stream()>>>(out_data, input_size, out_len);
   } else if (pool_type == "MIN") {
-    GraphSendERecvMinCUDAFunctor<T> min_functor;
+    GraphSendUERecvMinCUDAFunctor<T> min_functor;
     if (compute_type == "ADD") {
       funcs::AddFunctor<T> add_funtor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvMinCUDAFunctor<T>,
-                               funcs::AddFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvMinCUDAFunctor<T>,
+                                funcs::AddFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -241,10 +241,10 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
               min_functor);
     } else if (compute_type == "MUL") {
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvCUDAKernel<T,
-                               IndexT,
-                               GraphSendERecvMinCUDAFunctor<T>,
-                               funcs::MultiplyFunctor<T>>
+      GraphSendUERecvCUDAKernel<T,
+                                IndexT,
+                                GraphSendUERecvMinCUDAFunctor<T>,
+                                funcs::MultiplyFunctor<T>>
           <<<grid, block, 0, ctx.stream()>>>(
               x_data,
               e_data,
@@ -273,48 +273,48 @@ void GraphSendERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendERecvKernel(const Context& ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& e,
-                          const DenseTensor& src_index,
-                          const DenseTensor& dst_index,
-                          const std::string& compute_type,
-                          const std::string& pool_type,
-                          int64_t out_size,
-                          DenseTensor* out,
-                          DenseTensor* dst_count) {
+void GraphSendUERecvKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& e,
+                           const DenseTensor& src_index,
+                           const DenseTensor& dst_index,
+                           const std::string& compute_type,
+                           const std::string& pool_type,
+                           int64_t out_size,
+                           DenseTensor* out,
+                           DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
-    GraphSendERecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(ctx,
-                                                                x,
-                                                                e,
-                                                                src_index,
-                                                                dst_index,
-                                                                compute_type,
-                                                                pool_type,
-                                                                out_size,
-                                                                out,
-                                                                dst_count);
+    GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(ctx,
+                                                                 x,
+                                                                 e,
+                                                                 src_index,
+                                                                 dst_index,
+                                                                 compute_type,
+                                                                 pool_type,
+                                                                 out_size,
+                                                                 out,
+                                                                 dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendERecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(ctx,
-                                                                x,
-                                                                e,
-                                                                src_index,
-                                                                dst_index,
-                                                                compute_type,
-                                                                pool_type,
-                                                                out_size,
-                                                                out,
-                                                                dst_count);
+    GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(ctx,
+                                                                 x,
+                                                                 e,
+                                                                 src_index,
+                                                                 dst_index,
+                                                                 compute_type,
+                                                                 pool_type,
+                                                                 out_size,
+                                                                 out,
+                                                                 dst_count);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_e_recv,
+PD_REGISTER_KERNEL(graph_send_ue_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendERecvKernel,
+                   phi::GraphSendUERecvKernel,
                    float,
                    double,
                    int,

@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
+#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
 
 namespace phi {
 
@@ -68,21 +68,21 @@ inline int FindNumThreads(int dim, int max_num_threads = CUDA_MAX_NUM_THREADS) {
 }
 
 template <typename T>
-struct GraphSendERecvSumCUDAFunctor {
+struct GraphSendUERecvSumCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
     paddle::platform::CudaAtomicAdd(output, val);
   }
 };
 
 template <typename T>
-struct GraphSendERecvMaxCUDAFunctor {
+struct GraphSendUERecvMaxCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
     paddle::platform::CudaAtomicMax(output, val);
   }
 };
 
 template <typename T>
-struct GraphSendERecvMinCUDAFunctor {
+struct GraphSendUERecvMinCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
     paddle::platform::CudaAtomicMin(output, val);
   }
@@ -92,20 +92,20 @@ template <typename T,
           typename IndexT,
           typename ReduceFunctor,
           typename ComputeFunctor>
-__global__ void GraphSendERecvCUDAKernel(const T* x_data,
-                                         const T* e_data,
-                                         const IndexT* src_indices,
-                                         const IndexT* dst_indices,
-                                         const int64_t* xbcast_off,
-                                         const int64_t* ebcast_off,
-                                         T* output,
-                                         int64_t index_size,
-                                         int64_t x_len,
-                                         int64_t e_len,
-                                         int64_t out_len,
-                                         bool use_bcast,
-                                         ComputeFunctor cfunctor,
-                                         ReduceFunctor rfunctor) {
+__global__ void GraphSendUERecvCUDAKernel(const T* x_data,
+                                          const T* e_data,
+                                          const IndexT* src_indices,
+                                          const IndexT* dst_indices,
+                                          const int64_t* xbcast_off,
+                                          const int64_t* ebcast_off,
+                                          T* output,
+                                          int64_t index_size,
+                                          int64_t x_len,
+                                          int64_t e_len,
+                                          int64_t out_len,
+                                          bool use_bcast,
+                                          ComputeFunctor cfunctor,
+                                          ReduceFunctor rfunctor) {
   IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
   const IndexT stride_y = blockDim.y * gridDim.y;
 

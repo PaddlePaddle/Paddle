@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-class GraphSendERecvOP : public framework::OperatorWithKernel {
+class GraphSendUERecvOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -33,7 +33,7 @@ class GraphSendERecvOP : public framework::OperatorWithKernel {
   }
 };
 
-class GraphSendERecvGradOp : public framework::OperatorWithKernel {
+class GraphSendUERecvGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -53,7 +53,7 @@ class GraphSendERecvGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class GraphSendERecvOpMaker : public framework::OpProtoAndCheckerMaker {
+class GraphSendUERecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
@@ -62,7 +62,7 @@ class GraphSendERecvOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input edge weight tensor, data type should be same with X");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
-    AddOutput("Out", "Output tensor of graph_send_e_recv op.");
+    AddOutput("Out", "Output tensor of graph_send_ue_recv op.");
     AddOutput("Dst_count",
               "Count tensor of Dst_index, mainly for MEAN pool_type.")
         .AsIntermediate();
@@ -101,13 +101,13 @@ tensor in different pooling types, like sum, mean, max, or min.
 };
 
 template <typename T>
-class GraphSendERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
+class GraphSendUERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("graph_send_e_recv_grad");
+    op->SetType("graph_send_ue_recv_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("E", this->Input("E"));
     op->SetInput("Src_index", this->Input("Src_index"));
@@ -134,13 +134,13 @@ class GraphSendERecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(graph_send_e_recv,
-                            GraphSendERecvInferShapeFunctor,
-                            PD_INFER_META(phi::GraphSendERecvInferMeta));
-REGISTER_OPERATOR(graph_send_e_recv,
-                  ops::GraphSendERecvOP,
-                  ops::GraphSendERecvOpMaker,
-                  ops::GraphSendERecvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GraphSendERecvGradOpMaker<paddle::imperative::OpBase>,
-                  GraphSendERecvInferShapeFunctor);
-REGISTER_OPERATOR(graph_send_e_recv_grad, ops::GraphSendERecvGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(graph_send_ue_recv,
+                            GraphSendUERecvInferShapeFunctor,
+                            PD_INFER_META(phi::GraphSendUERecvInferMeta));
+REGISTER_OPERATOR(graph_send_ue_recv,
+                  ops::GraphSendUERecvOP,
+                  ops::GraphSendUERecvOpMaker,
+                  ops::GraphSendUERecvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GraphSendUERecvGradOpMaker<paddle::imperative::OpBase>,
+                  GraphSendUERecvInferShapeFunctor);
+REGISTER_OPERATOR(graph_send_ue_recv_grad, ops::GraphSendUERecvGradOp);

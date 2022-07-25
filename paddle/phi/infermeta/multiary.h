@@ -403,14 +403,14 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
 
-void GraphSendERecvInferMeta(const MetaTensor& x,
-                             const MetaTensor& e,
-                             const MetaTensor& src_index,
-                             const MetaTensor& dst_index,
-                             const std::string& compute_type,
-                             const std::string& pool_type,
-                             int64_t out_size,
-                             MetaTensor* out,
-                             MetaTensor* dst_count);
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& e,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& compute_type,
+                              const std::string& pool_type,
+                              int64_t out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count);
 
 }  // namespace phi

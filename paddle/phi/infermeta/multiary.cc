@@ -2349,15 +2349,15 @@ void Yolov3LossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
-void GraphSendERecvInferMeta(const MetaTensor& x,
-                             const MetaTensor& e,
-                             const MetaTensor& src_index,
-                             const MetaTensor& dst_index,
-                             const std::string& compute_type,
-                             const std::string& pool_type,
-                             int64_t out_size,
-                             MetaTensor* out,
-                             MetaTensor* dst_count) {
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& e,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& compute_type,
+                              const std::string& pool_type,
+                              int64_t out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
   if (src_index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(src_index_dims[1],

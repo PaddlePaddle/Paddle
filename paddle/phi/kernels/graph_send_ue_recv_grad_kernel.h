@@ -21,16 +21,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendERecvGradKernel(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& e,
-                              const DenseTensor& src_index,
-                              const DenseTensor& dst_index,
-                              const paddle::optional<DenseTensor>& out,
-                              const paddle::optional<DenseTensor>& dst_count,
-                              const DenseTensor& out_grad,
-                              const std::string& compute_type,
-                              const std::string& pool_type,
-                              DenseTensor* x_grad,
-                              DenseTensor* e_grad);
+void GraphSendUERecvGradKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& e,
+                               const DenseTensor& src_index,
+                               const DenseTensor& dst_index,
+                               const paddle::optional<DenseTensor>& out,
+                               const paddle::optional<DenseTensor>& dst_count,
+                               const DenseTensor& out_grad,
+                               const std::string& compute_type,
+                               const std::string& pool_type,
+                               DenseTensor* x_grad,
+                               DenseTensor* e_grad);
 }  // namespace phi

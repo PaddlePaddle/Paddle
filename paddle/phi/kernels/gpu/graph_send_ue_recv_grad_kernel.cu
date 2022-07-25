@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_e_recv_grad_kernel.h"
+#include "paddle/phi/kernels/graph_send_ue_recv_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/graph_send_e_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_send_e_recv_kernel_impl.h"
+#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/impl/graph_send_ue_recv_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
@@ -187,12 +187,12 @@ void CalculateXGrad(const Context& ctx,
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       funcs::MultiplyFunctor<T> mul_functor;
-      GraphSendERecvSumCUDAFunctor<T> sum_functor;
+      GraphSendUERecvSumCUDAFunctor<T> sum_functor;
       if (!reduce) {
-        GraphSendERecvCUDAKernel<T,
-                                 IndexT,
-                                 GraphSendERecvSumCUDAFunctor<T>,
-                                 funcs::MultiplyFunctor<T>>
+        GraphSendUERecvCUDAKernel<T,
+                                  IndexT,
+                                  GraphSendUERecvSumCUDAFunctor<T>,
+                                  funcs::MultiplyFunctor<T>>
             <<<grid_, block_, 0, ctx.stream()>>>(
                 out_grad,
                 e_data,
@@ -213,10 +213,10 @@ void CalculateXGrad(const Context& ctx,
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
         phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
-        GraphSendERecvCUDAKernel<T,
-                                 IndexT,
-                                 GraphSendERecvSumCUDAFunctor<T>,
-                                 funcs::MultiplyFunctor<T>>
+        GraphSendUERecvCUDAKernel<T,
+                                  IndexT,
+                                  GraphSendUERecvSumCUDAFunctor<T>,
+                                  funcs::MultiplyFunctor<T>>
             <<<grid_, block_, 0, ctx.stream()>>>(
                 out_grad,
                 e_data,
@@ -458,7 +458,7 @@ void CalculateEGrad(const Context& ctx,
 }
 
 template <typename Context, typename T, typename IndexT>
-void GraphSendERecvGradOpCUDAKernelLaunchHelper(
+void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
     const Context& ctx,
     const DenseTensor& out_grad,
     const DenseTensor& x,
@@ -556,21 +556,21 @@ void GraphSendERecvGradOpCUDAKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void GraphSendERecvGradKernel(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& e,
-                              const DenseTensor& src_index,
-                              const DenseTensor& dst_index,
-                              const paddle::optional<DenseTensor>& out,
-                              const paddle::optional<DenseTensor>& dst_count,
-                              const DenseTensor& out_grad,
-                              const std::string& compute_type,
-                              const std::string& pool_type,
-                              DenseTensor* x_grad,
-                              DenseTensor* e_grad) {
+void GraphSendUERecvGradKernel(const Context& ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& e,
+                               const DenseTensor& src_index,
+                               const DenseTensor& dst_index,
+                               const paddle::optional<DenseTensor>& out,
+                               const paddle::optional<DenseTensor>& dst_count,
+                               const DenseTensor& out_grad,
+                               const std::string& compute_type,
+                               const std::string& pool_type,
+                               DenseTensor* x_grad,
+                               DenseTensor* e_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
-    GraphSendERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
+    GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         ctx,
         out_grad,
         x,
@@ -584,7 +584,7 @@ void GraphSendERecvGradKernel(const Context& ctx,
         dst_count.get_ptr(),
         out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
+    GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         ctx,
         out_grad,
         x,
@@ -602,10 +602,10 @@ void GraphSendERecvGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_e_recv_grad,
+PD_REGISTER_KERNEL(graph_send_ue_recv_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendERecvGradKernel,
+                   phi::GraphSendUERecvGradKernel,
                    float,
                    double,
                    int,

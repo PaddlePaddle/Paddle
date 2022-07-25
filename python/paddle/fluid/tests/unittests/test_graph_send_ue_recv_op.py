@@ -96,7 +96,7 @@ class BroadCastInfo(object):
             self.rhs_offset = rhs_offset
 
 
-def compute_graph_send_e_recv_for_sum(inputs, attributes):
+def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     x = inputs['X']
     e = inputs['E']
     src_index = inputs['Src_index']
@@ -119,7 +119,7 @@ def compute_graph_send_e_recv_for_sum(inputs, attributes):
     return results
 
 
-def compute_graph_send_e_recv_for_mean(inputs, attributes):
+def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     x = inputs['X']
     e = inputs['E']
     src_index = inputs['Src_index']
@@ -148,7 +148,7 @@ def compute_graph_send_e_recv_for_mean(inputs, attributes):
     return results, count
 
 
-def compute_graph_send_e_recv_for_max_min(inputs, attributes):
+def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     x = inputs['X']
     e = inputs['E']
     src_index = inputs['Src_index']
@@ -248,11 +248,11 @@ def compute_graph_send_e_recv_for_max_min(inputs, attributes):
     return results, gradients
 
 
-class TestGraphSendERecvSumOp(OpTest):
+class TestGraphSendUERecvSumOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "graph_send_e_recv"
+        self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
             'X': self.x,
@@ -262,7 +262,7 @@ class TestGraphSendERecvSumOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'SUM'}
 
-        out = compute_graph_send_e_recv_for_sum(self.inputs, self.attrs)
+        out = compute_graph_send_ue_recv_for_sum(self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
 
@@ -281,7 +281,7 @@ class TestGraphSendERecvSumOp(OpTest):
         self.check_grad(['X', 'E'], 'Out')
 
 
-class TestSumCase1(TestGraphSendERecvSumOp):
+class TestSumCase1(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -292,7 +292,7 @@ class TestSumCase1(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestSumCase2(TestGraphSendERecvSumOp):
+class TestSumCase2(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -303,7 +303,7 @@ class TestSumCase2(TestGraphSendERecvSumOp):
         self.compute_type = 'ADD'
 
 
-class TestSumCase3(TestGraphSendERecvSumOp):
+class TestSumCase3(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -314,7 +314,7 @@ class TestSumCase3(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestSumCase4(TestGraphSendERecvSumOp):
+class TestSumCase4(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -325,7 +325,7 @@ class TestSumCase4(TestGraphSendERecvSumOp):
         self.compute_type = 'ADD'
 
 
-class TestSumCase5(TestGraphSendERecvSumOp):
+class TestSumCase5(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -336,7 +336,7 @@ class TestSumCase5(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestSumCase6(TestGraphSendERecvSumOp):
+class TestSumCase6(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -347,7 +347,7 @@ class TestSumCase6(TestGraphSendERecvSumOp):
         self.compute_type = 'ADD'
 
 
-class TestSumCase7(TestGraphSendERecvSumOp):
+class TestSumCase7(TestGraphSendUERecvSumOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -358,11 +358,11 @@ class TestSumCase7(TestGraphSendERecvSumOp):
         self.compute_type = 'MUL'
 
 
-class TestGraphSendERecvMeanOp(OpTest):
+class TestGraphSendUERecvMeanOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "graph_send_e_recv"
+        self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
             'X': self.x,
@@ -372,7 +372,7 @@ class TestGraphSendERecvMeanOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MEAN'}
 
-        out, dst_count = compute_graph_send_e_recv_for_mean(
+        out, dst_count = compute_graph_send_ue_recv_for_mean(
             self.inputs, self.attrs)
 
         self.outputs = {'Out': out, 'Dst_count': dst_count}
@@ -392,7 +392,7 @@ class TestGraphSendERecvMeanOp(OpTest):
         self.check_grad(['X', 'E'], 'Out')
 
 
-class TestMeanCase1(TestGraphSendERecvMeanOp):
+class TestMeanCase1(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -403,7 +403,7 @@ class TestMeanCase1(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-class TestMeanCase2(TestGraphSendERecvMeanOp):
+class TestMeanCase2(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -414,7 +414,7 @@ class TestMeanCase2(TestGraphSendERecvMeanOp):
         self.compute_type = 'ADD'
 
 
-class TestMeanCase3(TestGraphSendERecvMeanOp):
+class TestMeanCase3(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -425,7 +425,7 @@ class TestMeanCase3(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-class TestMeanCase4(TestGraphSendERecvMeanOp):
+class TestMeanCase4(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -436,7 +436,7 @@ class TestMeanCase4(TestGraphSendERecvMeanOp):
         self.compute_type = 'ADD'
 
 
-class TestMeanCase5(TestGraphSendERecvMeanOp):
+class TestMeanCase5(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -447,7 +447,7 @@ class TestMeanCase5(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-class TestMeanCase6(TestGraphSendERecvMeanOp):
+class TestMeanCase6(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -458,7 +458,7 @@ class TestMeanCase6(TestGraphSendERecvMeanOp):
         self.compute_type = 'ADD'
 
 
-class TestMeanCase7(TestGraphSendERecvMeanOp):
+class TestMeanCase7(TestGraphSendUERecvMeanOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -469,11 +469,11 @@ class TestMeanCase7(TestGraphSendERecvMeanOp):
         self.compute_type = 'MUL'
 
 
-class TestGraphSendERecvMaxOp(OpTest):
+class TestGraphSendUERecvMaxOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "graph_send_e_recv"
+        self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
             'X': self.x,
@@ -483,7 +483,7 @@ class TestGraphSendERecvMaxOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MAX'}
 
-        out, self.gradients = compute_graph_send_e_recv_for_max_min(
+        out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
@@ -503,7 +503,7 @@ class TestGraphSendERecvMaxOp(OpTest):
         self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
 
 
-class TestMaxCase1(TestGraphSendERecvMaxOp):
+class TestMaxCase1(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -514,7 +514,7 @@ class TestMaxCase1(TestGraphSendERecvMaxOp):
         self.compute_type = 'MUL'
 
 
-class TestMaxCase2(TestGraphSendERecvMaxOp):
+class TestMaxCase2(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -525,7 +525,7 @@ class TestMaxCase2(TestGraphSendERecvMaxOp):
         self.compute_type = 'ADD'
 
 
-class TestMaxCase3(TestGraphSendERecvMaxOp):
+class TestMaxCase3(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -536,7 +536,7 @@ class TestMaxCase3(TestGraphSendERecvMaxOp):
         self.compute_type = 'MUL'
 
 
-class TestMaxCase4(TestGraphSendERecvMaxOp):
+class TestMaxCase4(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -547,7 +547,7 @@ class TestMaxCase4(TestGraphSendERecvMaxOp):
         self.compute_type = 'ADD'
 
 
-class TestMaxCase5(TestGraphSendERecvMaxOp):
+class TestMaxCase5(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -558,7 +558,7 @@ class TestMaxCase5(TestGraphSendERecvMaxOp):
         self.compute_type = 'MUL'
 
 
-class TestMaxCase6(TestGraphSendERecvMaxOp):
+class TestMaxCase6(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -569,7 +569,7 @@ class TestMaxCase6(TestGraphSendERecvMaxOp):
         self.compute_type = 'ADD'
 
 
-class TestMaxCase7(TestGraphSendERecvMaxOp):
+class TestMaxCase7(TestGraphSendUERecvMaxOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -580,11 +580,11 @@ class TestMaxCase7(TestGraphSendERecvMaxOp):
         self.compute_type = 'MUL'
 
 
-class TestGraphSendERecvMinOp(OpTest):
+class TestGraphSendUERecvMinOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
-        self.op_type = "graph_send_e_recv"
+        self.op_type = "graph_send_ue_recv"
         self.set_config()
         self.inputs = {
             'X': self.x,
@@ -594,7 +594,7 @@ class TestGraphSendERecvMinOp(OpTest):
         }
         self.attrs = {'compute_type': self.compute_type, 'pool_type': 'MIN'}
 
-        out, self.gradients = compute_graph_send_e_recv_for_max_min(
+        out, self.gradients = compute_graph_send_ue_recv_for_max_min(
             self.inputs, self.attrs)
 
         self.outputs = {'Out': out}
@@ -614,7 +614,7 @@ class TestGraphSendERecvMinOp(OpTest):
         self.check_grad(['X', 'E'], 'Out', user_defined_grads=self.gradients)
 
 
-class TestMinCase1(TestGraphSendERecvMinOp):
+class TestMinCase1(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -625,7 +625,7 @@ class TestMinCase1(TestGraphSendERecvMinOp):
         self.compute_type = 'MUL'
 
 
-class TestMinCase2(TestGraphSendERecvMinOp):
+class TestMinCase2(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -636,7 +636,7 @@ class TestMinCase2(TestGraphSendERecvMinOp):
         self.compute_type = 'ADD'
 
 
-class TestMinCase3(TestGraphSendERecvMinOp):
+class TestMinCase3(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((10, 20)).astype("float64")
@@ -647,7 +647,7 @@ class TestMinCase3(TestGraphSendERecvMinOp):
         self.compute_type = 'MUL'
 
 
-class TestMinCase4(TestGraphSendERecvMinOp):
+class TestMinCase4(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -658,7 +658,7 @@ class TestMinCase4(TestGraphSendERecvMinOp):
         self.compute_type = 'ADD'
 
 
-class TestMinCase5(TestGraphSendERecvMinOp):
+class TestMinCase5(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((10, 8, 5)).astype("float64")
@@ -669,7 +669,7 @@ class TestMinCase5(TestGraphSendERecvMinOp):
         self.compute_type = 'MUL'
 
 
-class TestMinCase6(TestGraphSendERecvMinOp):
+class TestMinCase6(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
@@ -680,7 +680,7 @@ class TestMinCase6(TestGraphSendERecvMinOp):
         self.compute_type = 'ADD'
 
 
-class TestMinCase7(TestGraphSendERecvMinOp):
+class TestMinCase7(TestGraphSendUERecvMinOp):
 
     def set_config(self):
         self.x = np.random.random((100, 1)).astype("float64")
