@@ -2046,7 +2046,7 @@
   kernel :
     func : spectralnorm
     data_type : weight
-  backward : spectral_norm_grad
+  backward : spectral_norm_grad 
 
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)

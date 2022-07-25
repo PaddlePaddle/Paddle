@@ -17,13 +17,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void SpectrumNormGradKernel(const Context& dev_ctx,
-                        const DenseTensor& weight,
-                        const DenseTensor& u,
-                        const DenseTensor& v,
-                        const DenseTensor& out_grad,
-                        int dim,
-                        int power_iters,
-                        float eps,
-                        DenseTensor* weight_grad);
+                            const DenseTensor& weight,
+                            const DenseTensor& u,
+                            const DenseTensor& v,
+                            const DenseTensor& out_grad,
+                            int dim,
+                            int power_iters,
+                            float eps,
+                            DenseTensor* weight_grad);
 
 }  // namespace phi

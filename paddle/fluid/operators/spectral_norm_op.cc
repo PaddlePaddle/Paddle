@@ -157,9 +157,11 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm, SpectralNormInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm,
+                            SpectralNormInferMetaFunctor,
                             PD_INFER_META(phi::SpectralNormInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm_grad, SpectralNormGradInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(spectral_norm_grad,
+                            SpectralNormGradInferMetaFunctor,
                             PD_INFER_META(phi::SpectralNormGradInferMeta));
 
 REGISTER_OPERATOR(spectral_norm,
@@ -168,6 +170,6 @@ REGISTER_OPERATOR(spectral_norm,
                   ops::SpectralNormGradOpMaker<paddle::framework::OpDesc>,
                   ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>,
                   SpectralNormInferMetaFunctor);
-REGISTER_OPERATOR(spectral_norm_grad, 
-                  ops::SpectralNormOpGrad, 
+REGISTER_OPERATOR(spectral_norm_grad,
+                  ops::SpectralNormOpGrad,
                   SpectralNormGradInferMetaFunctor);

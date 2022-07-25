@@ -1956,13 +1956,6 @@
     func : softmax_grad
     use_gpudnn : true
 
-- backward_api : split_grad
-  forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, Scalar axis = -1)
-  output : Tensor(x_grad)
-  invoke : concat( out_grad, axis)
-# TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
-
 - backward_api : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
   args : (Tensor weight, Tensor u, Tensor v, Tensor out_grad, int dim, int power_iters, float eps)
@@ -1972,6 +1965,13 @@
   kernel :
     func : spectral_norm_grad
     data_type : out_grad
+
+- backward_api : split_grad
+  forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, Scalar axis = -1)
+  output : Tensor(x_grad)
+  invoke : concat( out_grad, axis)
+# TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
 - backward_api : sqrt_double_grad
   forward : sqrt_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
