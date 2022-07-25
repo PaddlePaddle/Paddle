@@ -69,14 +69,42 @@ class ProcessGroupMPI : public ProcessGroup {
         : ProcessGroup::Task(-1, inputTensors, CommType::UNKNOWN),
           outputTensors_(std::move(outputTensors)) {}
 
+    void synchronize() {}
+
+    bool wait(std::chrono::milliseconds timeout = kWaitTimeout) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (timeout == kWaitTimeout) {
+        // This waits without a timeout.
+        cv_.wait(lock, [&] { return is_completed_; });
+      } else {
+        // Waits for the user-provided timeout.
+        cv_.wait_for(lock, timeout, [&] { return is_completed_; });
+        PADDLE_ENFORCE_EQ(
+            is_completed_, true,
+            platform::errors::InvalidArgument("MPI operation timeout! "));
+      }
+      if (exception_) {
+        std::rethrow_exception(exception_);
+      }
+      return true;
+    }
+
    protected:
     friend class ProcessGroupMPI;
 
    private:
+    // about mpi
+    void finish(std::exception_ptr exception) {
+      is_completed_ = true;
+      exception_ = exception;
+      cv_.notify_all();
+    }
     void finishMPITask();
     void finishMPITaskError(std::exception_ptr eptr);
 
     std::vector<phi::DenseTensor> outputTensors_;
+    std::condition_variable cv_;
+    std::exception_ptr exception_;
   };
 
  public:
@@ -86,6 +114,8 @@ class ProcessGroupMPI : public ProcessGroup {
                  const std::vector<phi::DenseTensor>& inputs);
 
     bool IsCompleted();
+
+    void Synchronize() {}
 
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
 
@@ -102,62 +132,54 @@ class ProcessGroupMPI : public ProcessGroup {
     MPI_Status status_;
   };
 
-  explicit ProcessGroupMPI(int rank, int size, MPI_Comm pgComm, int gid);
-  explicit ~ProcessGroupMPI();
+  ProcessGroupMPI(int rank, int size, MPI_Comm pgComm, int gid);
+  ~ProcessGroupMPI();
 
   const std::string GetBackendName() const override {
     return std::string(MPI_BACKEND_NAME);
   }
 
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const AllreduceOptions& = AllreduceOptions()) override;
+  // std::shared_ptr<ProcessGroup::Task> AllReduce(
+  //    std::vector<phi::DenseTensor>& in_tensors,
+  //    std::vector<phi::DenseTensor>& out_tensors,
+  //    const AllreduceOptions& = AllreduceOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) override;
+  // std::shared_ptr<ProcessGroup::Task> Barrier(
+  //    const BarrierOptions& = BarrierOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
+  // std::shared_ptr<ProcessGroup::Task> Send(
+  //    std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+  // std::shared_ptr<ProcessGroup::Task> Recv(
+  //    std::vector<phi::DenseTensor>& tensors, int src_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors) override;
+  // std::shared_ptr<ProcessGroup::Task> AllGather(
+  //    std::vector<phi::DenseTensor>& in_tensors,
+  //    std::vector<phi::DenseTensor>& out_tensors) override;
 
-  std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>& in,
-      std::vector<phi::DenseTensor>& out) override;
+  // std::shared_ptr<ProcessGroup::Task> AllToAll(
+  //    std::vector<phi::DenseTensor>& in,
+  //    std::vector<phi::DenseTensor>& out) override;
 
-  std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ReduceOptions& opts) override;
+  // std::shared_ptr<ProcessGroup::Task> Reduce(
+  //    std::vector<phi::DenseTensor>& tensors,
+  //    std::vector<phi::DenseTensor>& out_tensors,
+  //    const ReduceOptions& opts) override;
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ScatterOptions&) override;
+  // std::shared_ptr<ProcessGroup::Task> Scatter(
+  //    std::vector<phi::DenseTensor>& in_tensors,
+  //    std::vector<phi::DenseTensor>& out_tensors,
+  //    const ScatterOptions&) override;
 
- protected:
-  virtual std::shared_ptr<ProcessGroupNCCL::MPITask> CreateTask(
-      std::vector<Place> places, int rank, CommType opType,
-      const std::vector<phi::DenseTensor>& inputs);
-
-  virtual std::shared_ptr<ProcessGroupMPI> createProcessGroupMPI(
-      std::vector<int> ranks = {});
+  static std::shared_ptr<ProcessGroupMPI> createProcessGroupMPI(
+      std::vector<int> ranks, int gid);
 
  protected:
-  using TaskType =
-      std::tuple<std::unique_ptr<TaskEntry>, std::shared_ptr<TaskMPI>>;
-
   // Worker thread loop
   void workLoop();
 
@@ -172,7 +194,8 @@ class ProcessGroupMPI : public ProcessGroup {
   // main dispatch thread
   std::thread worker_thread;
 
-  std::deque<WorkType> queue_;
+  std::deque<std::tuple<std::unique_ptr<TaskEntry>, std::shared_ptr<MPITask>>>
+      queue_;
   std::condition_variable queue_produce;
   std::condition_variable queue_consume;
 
@@ -182,7 +205,7 @@ class ProcessGroupMPI : public ProcessGroup {
   static std::once_flag onceFlag;
 
   static std::mutex pg_global_mutex;
-  static int mpi_thread_support;
+  // static int mpi_thread_support;
 
   MPI_Comm pg_comm;
 };

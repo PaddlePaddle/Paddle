@@ -118,8 +118,8 @@ void ProcessGroupMPI::initOneTimeMPI() {
   });
 }
 
-std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
-    std::vector<int> ranks = {}, int gid) {
+static std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
+    std::vector<int> ranks, int gid) {
   // init once mpi
   initOneTimeMPI();
 
@@ -235,10 +235,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts = BroadcastOptions()) {
   CheckValidInputs(in_tensors);
+  const auto places = GetPlaceList(in_tensors);
+
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
       [opts, this](std::unique_ptr<TaskEntry>& entry) {
         auto data = (entry->src)[0];
-        c10::DeviceGuard guard(data.device());
+        DeviceGuard guard(data.place());
         std::unique_lock<std::mutex> globalLock(pg_global_mutex);
         MPI_CHECK(MPI_Bcast(data.data_ptr(), data.numel(),
                             mpiDatatype.at(data.scalar_type()), opts.rootRank,
@@ -246,8 +248,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
       };
   auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
                                            std::move(runFunc));
-  return enqueue(std::move(entry), "mpi:broadcast",
-                 c10::optional<std::vector<at::Tensor>>(tensors));
+  return enqueue(std::move(entry), in_tensors);
 }
 
 }  //  namespace distributed
