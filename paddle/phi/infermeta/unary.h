@@ -146,6 +146,8 @@ void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);
 
+void InverseInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
@@ -342,6 +344,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     const Scalar& axis,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
+
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
