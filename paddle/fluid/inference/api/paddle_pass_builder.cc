@@ -89,6 +89,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "shuffle_channel_detect_pass",           //
       "quant_conv2d_dequant_fuse_pass",        //
       "delete_fill_constant_op_pass",          //
+      "delete_unsqueeze_pass",
       "delete_quant_dequant_op_pass",          //
       "delete_quant_dequant_filter_op_pass",   //
       "delete_weight_dequant_linear_op_pass",  //
@@ -187,6 +188,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "gpu_cpu_flatten2_matmul_fuse_pass",      //
         "gpu_cpu_map_matmul_v2_to_mul_pass",      //
         "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
+        "delete_unsqueeze_pass",
         "matmul_scale_fuse_pass",                 //
         "multihead_matmul_fuse_pass_v3",          //
         "gpu_cpu_map_matmul_to_mul_pass",         //
