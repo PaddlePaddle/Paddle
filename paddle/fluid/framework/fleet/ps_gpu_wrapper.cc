@@ -28,12 +28,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HETERPS
 
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
-#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 
 #include <algorithm>
 #include <deque>
 
 #include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/timer.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
@@ -723,91 +723,38 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     return;
   }
   std::vector<std::thread> threads(device_num);
+  auto accessor_wrapper_ptr =
+      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
   HeterPs_ = HeterPsBase::get_instance(
-      size_max, resource_, feature_value_accessor_, optimizer_type_);
+      size_max, resource_, fleet_config_, accessor_class_, optimizer_type_);
 #ifdef PADDLE_WITH_CUDA
   HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
   HeterPs_->set_sparse_sgd(optimizer_config_);
   HeterPs_->set_embedx_sgd(optimizer_config_);
 #endif
-
-  auto build_dymf_mem_pool = [this, &gpu_task](int i, int j) {
+  auto build_dynamic_mf_func = [this, &gpu_task, &accessor_wrapper_ptr](int i,
+                                                                        int j) {
     this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
+    // this->HeterPs_->set_accessor(feature_value_accessor_);
     int mf_dim = this->index_dim_vec_[j];
+    VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim
+            << " feature_value_size:"
+            << accessor_wrapper_ptr->GetFeatureValueSize(mf_dim);
     size_t feature_value_size =
-        TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(mf_dim));
+        accessor_wrapper_ptr->GetFeatureValueSize(mf_dim);
     auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
     auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
     size_t len = device_dim_keys.size();
     CHECK(len == device_dim_ptrs.size());
     this->mem_pools_[i * this->multi_mf_dim_ + j] =
         new MemoryPool(len, feature_value_size);
-  };
-  auto build_dymf_hbm_pool = [this, &gpu_task](int i, int j) {
-    auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
-    size_t len = device_dim_keys.size();
-    int mf_dim = this->index_dim_vec_[j];
-    size_t feature_value_size =
-        TYPEALIGN(8, feature_value_accessor_.common_feature_value.Size(mf_dim));
-
-    auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
-    platform::CUDADeviceGuard guard(resource_->dev_id(i));
-    this->hbm_pools_[i * this->multi_mf_dim_ + j] = new HBMMemoryPool(mem_pool);
-    auto& cur_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
-
-    this->HeterPs_->build_ps(i,
-                             device_dim_keys.data(),
-                             cur_pool->mem(),
-                             len,
-                             feature_value_size,
-                             500000,
-                             2);
-    if (device_dim_keys.size() > 0) {
-      VLOG(3) << "show table: " << i
-              << " table kv size: " << device_dim_keys.size()
-              << "dim: " << mf_dim << " len: " << len;
-      HeterPs_->show_one_table(i);
-    }
-    delete mem_pool;
-  };
-  int thread_num = 16;
-  auto build_dynamic_mf_func = [this, &gpu_task, thread_num](
-                                   int i, int j, int z) {
-    // this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
-    int mf_dim = this->index_dim_vec_[j];
-    VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim;
-    // size_t feature_value_size =
-    //     TYPEALIGN(8, sizeof(FeatureValue) + ((mf_dim + 1) * sizeof(float)));
-    auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
-    auto& device_dim_ptrs = gpu_task->device_dim_ptr_[i][j];
-    size_t len = device_dim_keys.size();
-    CHECK(len == device_dim_ptrs.size());
-    // this->mem_pools_[i * this->multi_mf_dim_ + j] =
-    //    new MemoryPool(len, feature_value_size);
     auto& mem_pool = this->mem_pools_[i * this->multi_mf_dim_ + j];
 
-    // ============ add for multi-thread ================
-    size_t len_per_thread = len / thread_num;
-    size_t remain = len % thread_num;
-    size_t left = 0, right = 0;
-
-    size_t real_len = len_per_thread;
-    if ((size_t)z < remain) real_len++;
-
-    if ((size_t)z < remain) {
-      left = z * (len_per_thread + 1);
-      right = left + real_len;
-    } else {
-      left = remain * (len_per_thread + 1) + (z - remain) * len_per_thread;
-      right = left + real_len;
-    }
-    // ============ add for multi-thread ================
-
-    for (size_t k = left; k < right; k++) {
-      FeatureValue* val = (FeatureValue*)(mem_pool->mem_address(k));
+#ifdef PADDLE_WITH_PSLIB
+    for (size_t k = 0; k < len; k++) {
+      float* val = (float*)(mem_pool->mem_address(k));
       float* ptr_val = device_dim_ptrs[k]->data();
       size_t dim = device_dim_ptrs[k]->size();
-#ifdef PADDLE_WITH_PSLIB
       val->delta_score =
           ptr_val[paddle::ps::DownpourCtrDymfAccessor::
                       DownpourCtrDymfFeatureValue::delta_score_index()];
@@ -826,23 +773,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
       ptr_val[paddle::ps::DownpourCtrDymfAccessor::DownpourCtrDymfFeatureValue::
                   mf_dim_index()] = float(mf_dim);
       val->mf_dim = mf_dim;
-#endif
-#ifdef PADDLE_WITH_PSCORE
-      paddle::distributed::CtrDymfAccessor accessor;
-      val->delta_score =
-          ptr_val[accessor.common_feature_value.DeltaScoreIndex()];
-      val->show = ptr_val[accessor.common_feature_value.ShowIndex()];
-      val->clk = ptr_val[accessor.common_feature_value.ClickIndex()];
-      val->slot = int(ptr_val[accessor.common_feature_value.SlotIndex()]);
-      val->lr = ptr_val[accessor.common_feature_value.EmbedWIndex()];
-      val->lr_g2sum = ptr_val[accessor.common_feature_value.EmbedG2SumIndex()];
-
-      val->cpu_ptr = (uint64_t)(device_dim_ptrs[k]);
-
-      // TODO(xuefeng) set mf_dim while using DownpourCtrDymfAccessor
-      ptr_val[accessor.common_feature_value.MfDimIndex()] = float(mf_dim);
-      val->mf_dim = mf_dim;
-#endif
       if (dim > 8) {  // CpuPS alreay expand as mf_dim
         val->mf_size = mf_dim + 1;
         for (int x = 0; x < val->mf_dim + 1; x++) {
@@ -855,45 +785,58 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
         }
       }
     }
+#endif
+#ifdef PADDLE_WITH_PSCORE
+    for (size_t k = 0; k < len; k++) {
+      void* val = mem_pool->mem_address(k);
+      // float* ptr_val = device_dim_ptrs[k]->data();
+      // size_t dim = device_dim_ptrs[k]->size();
+      // VLOG(5) << "cpu build " << k
+      //         << " cpuptr: " << (uint64_t)(device_dim_ptrs[k])
+      //         << " |: " << cpu_table_accessor_->ParseToString(ptr_val,
+      //         dim);
+      accessor_wrapper_ptr->BuildFill(
+          val, device_dim_ptrs[k], cpu_table_accessor_, mf_dim);
+      VLOG(5) << "build " << k << " : "
+              << accessor_wrapper_ptr->ParseToString(
+                     (float*)(val),
+                     int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) /
+                         sizeof(float)));
+    }
+#endif
+
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+
+    this->hbm_pools_[i * this->multi_mf_dim_ + j] = new HBMMemoryPool(mem_pool);
+    auto& cur_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
+
+    this->HeterPs_->build_ps(i,
+                             device_dim_keys.data(),
+                             cur_pool->mem(),
+                             len,
+                             feature_value_size,
+                             500000,
+                             2);
+
+    if (device_dim_keys.size() > 0) {
+      VLOG(0) << "show ptr table: " << i
+              << " table kv size: " << device_dim_keys.size()
+              << "dim: " << mf_dim << " len: " << len;
+      this->HeterPs_->show_one_table(i);
+    }
+    delete mem_pool;
   };
 
   threads.resize(device_num * multi_mf_dim_);
   for (int i = 0; i < device_num; i++) {
     for (int j = 0; j < multi_mf_dim_; j++) {
-      threads[i + j * device_num] = std::thread(build_dymf_mem_pool, i, j);
+      threads[i + j * device_num] = std::thread(build_dynamic_mf_func, i, j);
     }
   }
 
   for (std::thread& t : threads) {
     t.join();
   }
-  threads.clear();
-
-  // multi-thread process
-  threads.resize(device_num * multi_mf_dim_ * thread_num);
-  for (int i = 0; i < device_num; i++) {
-    for (int j = 0; j < multi_mf_dim_; j++) {
-      for (int k = 0; k < thread_num; k++) {
-        threads[(i + j * device_num) * thread_num + k] =
-            std::thread(build_dynamic_mf_func, i, j, k);
-      }
-    }
-  }
-  for (std::thread& t : threads) {
-    t.join();
-  }
-  threads.clear();
-  threads.resize(device_num * multi_mf_dim_);
-  for (int i = 0; i < device_num; i++) {
-    for (int j = 0; j < multi_mf_dim_; j++) {
-      threads[i + j * device_num] = std::thread(build_dymf_hbm_pool, i, j);
-    }
-  }
-  for (std::thread& t : threads) {
-    t.join();
-  }
-  threads.clear();
-
   timeline.Pause();
   VLOG(0) << "GpuPs build table total costs: " << timeline.ElapsedSec()
           << " s.";
@@ -1013,180 +956,79 @@ void PSGPUWrapper::EndPass() {
     }
   }
 
-  int thread_num = 8;
-  auto dump_pool_to_cpu_func =
-      [this](int i, int j, int z) {
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
-        auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
-        auto& device_keys = this->current_task_->device_dim_keys_[i][j];
-        size_t len = device_keys.size();
-        // ====== multi-thread process feasign================
-        int len_per_thread = len / thread_num;
-        int remain = len % thread_num;
-        int left = -1, right = -1;
-        int real_len = len_per_thread;
-        if (z < remain) real_len++;
-        if (z < remain) {
-          left = z * (len_per_thread + 1);
-          right = left + real_len;
-        } else {
-          left = remain * (len_per_thread + 1) + (z - remain) * len_per_thread;
-          right = left + real_len;
-        }
-        // ============ multi-thread process feasign============
-        int mf_dim = this->index_dim_vec_[j];
-        size_t feature_value_size = TYPEALIGN(
-            8, feature_value_accessor_.common_feature_value.Size(mf_dim));
-        VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
-                << " key_len :" << len
-                << " feature_value_size:" << feature_value_size;
+  auto accessor_wrapper_ptr =
+      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+  auto dump_pool_to_cpu_func = [this, &accessor_wrapper_ptr](int i, int j) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
+    auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
+    auto& device_keys = this->current_task_->device_dim_keys_[i][j];
+    size_t len = device_keys.size();
+    int mf_dim = this->index_dim_vec_[j];
+    size_t feature_value_size =
+        accessor_wrapper_ptr->GetFeatureValueSize(mf_dim);
+    VLOG(0) << "dump pool to cpu table: " << i << "with mf dim: " << mf_dim
+            << " key_len :" << len
+            << " feature_value_size:" << feature_value_size;
 
-        char* test_build_values = (char*)malloc(feature_value_size * real_len);
-        uint64_t offset = left * feature_value_size;
-        cudaMemcpy(test_build_values,
-                   hbm_pool->mem() + offset,
-                   feature_value_size * real_len,
-                   cudaMemcpyDeviceToHost);
+    char* test_build_values = (char*)malloc(feature_value_size * len);
+    cudaMemcpy(test_build_values,
+               hbm_pool->mem(),
+               feature_value_size * len,
+               cudaMemcpyDeviceToHost);
 
-        CHECK(len == hbm_pool->capacity());
-        uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
-        // for (size_t index = 0; index < len; ++index) {
-        //   if (device_keys[index] == unuse_key) {
-        //     continue;
-        //   }
-        //   size_t offset = index * feature_value_size;
-        //   float* gpu_val = (float*)(test_build_values + offset);
-        for (int i = left; i < right; ++i) {
-          if (device_keys[i] == unuse_key) {
-            continue;
-          }
-          size_t local_offset = (i - left) * feature_value_size;
-          float* gpu_val = (float*)(test_build_values + local_offset);
+    CHECK(len == hbm_pool->capacity());
+    uint64_t unuse_key = std::numeric_limits<uint64_t>::max();
+    for (size_t index = 0; index < len; ++index) {
+      if (device_keys[index] == unuse_key) {
+        continue;
+      }
+      size_t offset = index * feature_value_size;
+      float* gpu_val = (float*)(test_build_values + offset);
 #ifdef PADDLE_WITH_PSLIB
-          auto* downpour_value =
-              (paddle::ps::DownpourFixedFeatureValue*)(gpu_val->cpu_ptr);
-          int downpour_value_size = downpour_value->size();
-          if (gpu_val->mf_size > 0 && downpour_value_size == 8) {
-            downpour_value->resize(gpu_val->mf_dim + 1 + downpour_value_size);
-          }
-          float* cpu_val = downpour_value->data();
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::delta_score_index()] =
-              gpu_val->delta_score;
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::show_index()] =
-              gpu_val->show;
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::click_index()] =
-              gpu_val->clk;
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::embed_w_index()] =
-              gpu_val->lr;
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::embed_g2sum_index()] =
-              gpu_val->lr_g2sum;
-          cpu_val[paddle::ps::DownpourCtrDymfAccessor::
-                      DownpourCtrDymfFeatureValue::slot_index()] =
-              gpu_val->slot;
-
-          if (gpu_val->mf_size > 0) {
-            for (int x = 0; x < gpu_val->mf_dim + 1; x++) {
-              cpu_val[x + 8] = gpu_val->mf[x];
-            }
-          }
-        }
+      // TODO: pslib DumpFill
 #endif
 #ifdef PADDLE_WITH_PSCORE
-        auto* downpour_value = (paddle::distributed::FixedFeatureValue*)(*(
-            reinterpret_cast<uint64_t*>(
-                gpu_val +
-                feature_value_accessor_.common_feature_value.CpuPtrIndex())));
-        size_t downpour_value_size = downpour_value->size();
-        if (gpu_val[feature_value_accessor_.common_feature_value
-                        .MfSizeIndex()] > 0 &&
-            downpour_value_size ==
-                (cpu_table_accessor_->GetAccessorInfo().dim -
-                 int(cpu_table_accessor_->GetAccessorInfo().mf_size /
-                     sizeof(float)))) {  // cpu_accessor
-          downpour_value->resize(
-              cpu_table_accessor_->common_feature_value.Dim(mf_dim));
-        }
-        float* cpu_val = downpour_value->data();
-
-        cpu_val[cpu_table_accessor_->common_feature_value.DeltaScoreIndex()] =
-            gpu_val[feature_value_accessor_.common_feature_value
-                        .DeltaScoreIndex()];
-        cpu_val[cpu_table_accessor_->common_feature_value.ShowIndex()] =
-            gpu_val[feature_value_accessor_.common_feature_value.ShowIndex()];
-        cpu_val[cpu_table_accessor_->common_feature_value.ClickIndex()] =
-            gpu_val[feature_value_accessor_.common_feature_value.ClickIndex()];
-        cpu_val[cpu_table_accessor_->common_feature_value.EmbedWIndex()] =
-            gpu_val[feature_value_accessor_.common_feature_value.EmbedWIndex()];
-        cpu_val[cpu_table_accessor_->common_feature_value.SlotIndex()] =
-            gpu_val[feature_value_accessor_.common_feature_value.SlotIndex()];
-
-        for (int i = 0;
-             i < feature_value_accessor_.common_feature_value.EmbedDim();
-             i++) {
-          cpu_val[cpu_table_accessor_->common_feature_value.EmbedG2SumIndex() +
-                  i] = gpu_val[feature_value_accessor_.common_feature_value
-                                   .EmbedG2SumIndex() +
-                               i];
-        }
-
-        if (gpu_val[feature_value_accessor_.common_feature_value
-                        .MfSizeIndex()] > 0) {
-          for (int x = 0;
-               x <
-               int(feature_value_accessor_.common_feature_value.MFSize(mf_dim) /
-                   sizeof(float));
-               x++) {
-            cpu_val[cpu_table_accessor_->common_feature_value
-                        .EmbedxG2SumIndex() +
-                    x] = gpu_val[feature_value_accessor_.common_feature_value
-                                     .EmbedxG2SumIndex() +
-                                 x];
-          }
-        }
-        VLOG(5) << "dump to cpu " << index << " : "
-                << feature_value_accessor_.ParseToString(
-                       gpu_val,
-                       feature_value_accessor_.common_feature_value.Dim(mf_dim))
-                << " ===== CPU:"
-                << cpu_table_accessor_->ParseToString(cpu_val,
-                                                      downpour_value->size());
-      }
+      accessor_wrapper_ptr->DumpFill(gpu_val, cpu_table_accessor_, mf_dim);
+      // auto* downpour_value = (paddle::distributed::FixedFeatureValue*)(*(
+      //     reinterpret_cast<uint64_t*>(gpu_val)));
+      // float* cpu_val = downpour_value->data();
+      // VLOG(5) << "dump to cpu " << index << "  gpu_value: "
+      //         << accessor_wrapper_ptr->ParseToString(gpu_val,
+      //              int(accessor_wrapper_ptr->GetFeatureValueSize(mf_dim) /
+      //              sizeof(float)))
+      //         << " \t cpu_value:"
+      //         << cpu_table_accessor_->ParseToString(cpu_val,
+      //                                               downpour_value->size());
+    }
 #endif
-  free(test_build_values);
-};
-if (multi_mf_dim_) {
-  VLOG(0) << "psgpu wrapper dump pool: multi_mf_dim_: " << multi_mf_dim_;
-  size_t device_num = heter_devices_.size();
-  std::vector<std::thread> threads(device_num * multi_mf_dim_ * thread_num);
-  for (size_t i = 0; i < device_num; i++) {
-    for (int j = 0; j < multi_mf_dim_; j++) {
-      for (int k = 0; k < thread_num; k++) {
-        threads[(i + j * device_num) * thread_num + k] =
-            std::thread(dump_pool_to_cpu_func, i, j, k);
+    free(test_build_values);
+  };
+
+  if (multi_mf_dim_) {
+    VLOG(0) << "psgpu wrapper dump pool: multi_mf_dim_: " << multi_mf_dim_;
+    size_t device_num = heter_devices_.size();
+    std::vector<std::thread> threads(device_num * multi_mf_dim_);
+    for (size_t i = 0; i < device_num; i++) {
+      for (int j = 0; j < multi_mf_dim_; j++) {
+        threads[i + j * device_num] = std::thread(dump_pool_to_cpu_func, i, j);
       }
     }
+    for (std::thread& t : threads) {
+      t.join();
+    }
   }
-  for (std::thread& t : threads) {
-    t.join();
+  if (keysize_max != 0) {
+    HeterPs_->end_pass();
   }
-}
-if (keysize_max != 0) {
-  HeterPs_->end_pass();
-}
-VLOG(0) << "HeterPs_->end_pass end";
-for (size_t i = 0; i < hbm_pools_.size(); i++) {
-  delete hbm_pools_[i];
-}
-gpu_task_pool_.Push(current_task_);
-current_task_ = nullptr;
-gpu_free_channel_->Put(current_task_);
-timer.Pause();
-VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+  VLOG(0) << "HeterPs_->end_pass end";
+  for (size_t i = 0; i < hbm_pools_.size(); i++) {
+    delete hbm_pools_[i];
+  }
+  gpu_task_pool_.Push(current_task_);
+  current_task_ = nullptr;
+  gpu_free_channel_->Put(current_task_);
+  timer.Pause();
+  VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
 }
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
@@ -1211,8 +1053,10 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   platform::Timer pull_gpups_timer;
   all_timer.Start();
 
+  auto accessor_wrapper_ptr =
+      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
   size_t feature_value_size =
-      feature_value_accessor_.common_pull_value.Size(max_mf_dim_);
+      accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
   VLOG(3) << "PullSparse max_dim:" << max_mf_dim_
           << " pull_feature_value_size:" << pull_type_size_;
 
@@ -1331,16 +1175,17 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
           devid_2_index, d_merged_keys, total_values_gpu, dedup_size);
 
       // values.size() not sure equal slot_num
-      this->CopyForPull(place,
-                        total_keys,
-                        gpu_values,
-                        total_values_gpu,
-                        slot_lens,
-                        key2slot,
-                        max_mf_dim_ + 3,
-                        total_length,
-                        gpu_slot_dims,
-                        d_restore_idx);
+      accessor_wrapper_ptr->CopyForPull(place,
+                                        total_keys,
+                                        gpu_values,
+                                        total_values_gpu,
+                                        slot_lens,
+                                        key2slot,
+                                        max_mf_dim_ + 3,
+                                        total_length,
+                                        gpu_slot_dims,
+                                        d_restore_idx,
+                                        feature_value_size);
     } else {
       size_t total_length =
           std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
@@ -1393,15 +1238,16 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
               << "]";
 
-      this->CopyForPull(place,
-                        gpu_keys,
-                        values,
-                        total_values_gpu,
-                        gpu_len,
-                        static_cast<int>(slot_lengths.size()),
-                        hidden_size,
-                        total_length,
-                        gpu_dim);
+      accessor_wrapper_ptr->CopyForPull(place,
+                                        gpu_keys,
+                                        values,
+                                        total_values_gpu,
+                                        gpu_len,
+                                        static_cast<int>(slot_lengths.size()),
+                                        hidden_size,
+                                        total_length,
+                                        gpu_dim,
+                                        feature_value_size);
     }
     pull_gpups_timer.Pause();
 
@@ -1459,14 +1305,15 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
             << "]";
-    this->CopyForPull(place,
-                      xpu_keys,
-                      values,
-                      total_values_gpu,
-                      xpu_len,
-                      static_cast<int>(slot_lengths.size()),
-                      hidden_size,
-                      total_length);
+    accessor_wrapper_ptr->CopyForPull(place,
+                                      xpu_keys,
+                                      values,
+                                      total_values_gpu,
+                                      xpu_len,
+                                      static_cast<int>(slot_lengths.size()),
+                                      hidden_size,
+                                      total_length,
+                                      feature_value_size);
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -1489,8 +1336,9 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
-  size_t grad_value_size =
-      TYPEALIGN(8, feature_value_accessor_.common_push_value.Size(max_mf_dim_));
+  auto accessor_wrapper_ptr =
+      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+  size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   if (platform::is_cpu_place(place)) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -1541,20 +1389,20 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
       if (total_length > dedup_size * 3) {
         const uint32_t* d_restore_idx =
             reinterpret_cast<const uint32_t*>(&key2slot[total_length]);
-        this->CopyForPush(place,
-                          total_keys,
-                          gpu_values,
-                          total_grad_values_gpu,
-                          d_slot_vector,
-                          slot_lens,
-                          max_mf_dim_ + 3,
-                          total_length,
-                          dedup_size,
-                          batch_size,
-                          slot_dims,
-                          key2slot,
-                          d_restore_idx,
-                          grad_value_size);
+        accessor_wrapper_ptr->CopyForPush(place,
+                                          total_keys,
+                                          gpu_values,
+                                          total_grad_values_gpu,
+                                          d_slot_vector,
+                                          slot_lens,
+                                          max_mf_dim_ + 3,
+                                          total_length,
+                                          dedup_size,
+                                          batch_size,
+                                          slot_dims,
+                                          key2slot,
+                                          d_restore_idx,
+                                          grad_value_size);
       } else {
         const uint32_t* d_sorted_idx =
             reinterpret_cast<const uint32_t*>(&key2slot[total_length * 2]);
@@ -1562,22 +1410,22 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
             reinterpret_cast<const uint32_t*>(&d_sorted_idx[total_length]);
         const uint32_t* d_merged_cnts =
             reinterpret_cast<const uint32_t*>(&d_offset[total_length]);
-        this->CopyForPush(place,
-                          d_merged_keys,
-                          gpu_values,
-                          total_grad_values_gpu,
-                          d_slot_vector,
-                          slot_lens,
-                          max_mf_dim_ + 3,
-                          total_length,
-                          dedup_size,
-                          batch_size,
-                          slot_dims,
-                          key2slot,
-                          d_sorted_idx,
-                          d_offset,
-                          d_merged_cnts,
-                          grad_value_size);
+        accessor_wrapper_ptr->CopyForPush(place,
+                                          d_merged_keys,
+                                          gpu_values,
+                                          total_grad_values_gpu,
+                                          d_slot_vector,
+                                          slot_lens,
+                                          max_mf_dim_ + 3,
+                                          total_length,
+                                          dedup_size,
+                                          batch_size,
+                                          slot_dims,
+                                          key2slot,
+                                          d_sorted_idx,
+                                          d_offset,
+                                          d_merged_cnts,
+                                          grad_value_size);
       }
 
       push_gpups_timer.Start();
@@ -1600,13 +1448,15 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
           reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
       VLOG(3) << "Begin copy grad tensor to gpups struct";
 
-      this->CopyForPush(place,
-                        grad_values,
-                        total_grad_values_gpu,
-                        slot_lengths,
-                        total_length,
-                        batch_size,
-                        grad_value_size);
+      accessor_wrapper_ptr->CopyForPush(place,
+                                        grad_values,
+                                        total_grad_values_gpu,
+                                        slot_lengths,
+                                        total_length,
+                                        batch_size,
+                                        grad_value_size,
+                                        slot_vector_,
+                                        slot_mf_dim_vector_);
 
       VLOG(3) << "Begin call PushSparseGPU in GPUPS, dev: " << devid_2_index
               << " len: " << total_length;
@@ -1634,13 +1484,14 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
     VLOG(3) << "Begin copy grad tensor to xpups struct";
-    this->CopyForPush(place,
-                      grad_values,
-                      total_grad_values_gpu,
-                      slot_lengths,
-                      hidden_size,
-                      total_length,
-                      batch_size);
+    accessor_wrapper_ptr->CopyForPush(place,
+                                      grad_values,
+                                      total_grad_values_gpu,
+                                      slot_lengths,
+                                      hidden_size,
+                                      total_length,
+                                      batch_size,
+                                      slot_vector_);
 
     VLOG(3) << "Begin call PushSparseXPU in XPUPS, dev: " << devid_2_index
             << " len: " << total_length;
@@ -1664,6 +1515,6 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   VLOG(3) << "End PushSparseGrad";
 }
 
-}  // end namespace framework
+}  // namespace framework
 }  // end namespace paddle
 #endif

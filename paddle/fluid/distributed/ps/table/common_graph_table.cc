@@ -1127,16 +1127,15 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
             if (ntypes.size() == 0) {
               VLOG(0) << "node_type not specified, nothing will be loaded ";
               return 0;
+            }
+
+            if (FLAGS_graph_load_in_parallel) {
+              this->load_nodes(npath_str, "");
             } else {
-              for (size_t i = 0; i < ntypes.size(); i++) {
-                if (feature_to_id.find(ntypes[i]) == feature_to_id.end()) {
-                  VLOG(0) << "node_type " << ntypes[i]
-                          << "is not defined, will not load";
-                  return 0;
-                }
+              for (size_t j = 0; j < ntypes.size(); j++) {
+                this->load_nodes(npath_str, ntypes[j]);
               }
             }
-            this->load_nodes(npath_str, "");
           }
           return 0;
         }));

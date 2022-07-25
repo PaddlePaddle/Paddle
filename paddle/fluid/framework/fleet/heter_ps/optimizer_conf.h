@@ -41,6 +41,9 @@ class OptimizerConfig {
   float mf_max_bound = 10;
   float mf_ada_epsilon = 1e-8;
 
+  float nodeid_slot = 9008;
+  float feature_learning_rate = 0.05;
+
   void set_sparse_sgd(float nonclk_coeff,
                       float clk_coeff,
                       float min_bound,
@@ -84,7 +87,9 @@ class OptimizerConfig {
                       float mf_max_bound,
                       float mf_beta1_decay_rate,
                       float mf_beta2_decay_rate,
-                      float mf_ada_epsilon) {
+                      float mf_ada_epsilon,
+                      float nodeid_slot,
+                      float feature_learning_rate) {
     this->mf_create_thresholds = mf_create_thresholds;
     this->mf_learning_rate = mf_learning_rate;
     this->mf_initial_g2sum = mf_initial_g2sum;
@@ -94,6 +99,9 @@ class OptimizerConfig {
     this->mf_beta1_decay_rate = mf_beta1_decay_rate;
     this->mf_beta2_decay_rate = mf_beta2_decay_rate;
     this->mf_ada_epsilon = mf_ada_epsilon;
+
+    this->nodeid_slot = nodeid_slot;
+    this->feature_learning_rate = feature_learning_rate;
   }
 
   void set_embedx_sgd(const OptimizerConfig& optimizer_config) {
@@ -106,6 +114,9 @@ class OptimizerConfig {
     this->mf_beta1_decay_rate = optimizer_config.mf_beta1_decay_rate;
     this->mf_beta2_decay_rate = optimizer_config.mf_beta2_decay_rate;
     this->mf_ada_epsilon = optimizer_config.mf_ada_epsilon;
+
+    this->nodeid_slot = nodeid_slot;
+    this->feature_learning_rate = feature_learning_rate;
   }
 };
 

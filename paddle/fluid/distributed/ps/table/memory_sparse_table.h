@@ -97,7 +97,7 @@ class MemorySparseTable : public Table {
   }
 
  protected:
-  const int _task_pool_size = 24;
+  int _task_pool_size = 24;
   int _avg_local_shard_num;
   int _real_local_shard_num;
   int _sparse_table_shard_num;

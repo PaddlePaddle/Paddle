@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
-
 #include <vector>
 
 #ifdef PADDLE_WITH_HETERPS
@@ -24,19 +23,29 @@ namespace framework {
 HeterPsBase* HeterPsBase::get_instance(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
-    CommonFeatureValueAccessor feature_value_accessor,
+    std::unordered_map<std::string, float> fleet_config,
+    std::string accessor_type,
     int optimizer_type) {
-  return new HeterPs(
-      capacity, resource, feature_value_accessor, optimizer_type);
+  if (accessor_type == "CtrDymfAccessor" &&
+      (optimizer_type == 1 || optimizer_type == 3 || optimizer_type == 4)) {
+    return new HeterPs<CommonFeatureValueAccessor>(
+        capacity, resource, accessor_type, fleet_config, optimizer_type);
+  } else {
+    VLOG(0) << " HeterPsBase get_instance Warning: now only support "
+               "CtrDymfAccessor, but get "
+            << accessor_type_;
+    return new HeterPs<CommonFeatureValueAccessor>(
+        capacity, resource, accessor_type, fleet_config, optimizer_type);
+  }
 }
 
 HeterPs::HeterPs(size_t capacity,
                  std::shared_ptr<HeterPsResource> resource,
-                 CommonFeatureValueAccessor feature_value_accessor,
+                 std::unordered_map<std::string, float> fleet_config,
+                 std::string accessor_type,
                  int optimizer_type) {
-  comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*>>(capacity,
-                                                                  resource);
-  feature_value_accessor_ = feature_value_accessor;
+  comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, FVAccessor>>(
+      capacity, resource);
   optimizer_type_ = optimizer_type;
 }
 

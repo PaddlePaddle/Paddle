@@ -41,90 +41,48 @@ struct DynamicGradMerger {
     return out;
   }
 
+  template <typename FVAccessor>
   __device__ __forceinline__ void update_one(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.SlotIndex()] =
-        input[feature_value_accessor.common_push_value.SlotIndex()];
-    output[feature_value_accessor.common_push_value.ShowIndex()] =
-        input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] =
-        input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.MfDimIndex()] =
-        input[feature_value_accessor.common_push_value.MfDimIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] =
-        input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0;
-         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
-         j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] =
-          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
-    }
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
+    feature_value_accessor.PushValueFill(output, input);
   }
 
+  template <typename FVAccessor>
   __device__ __forceinline__ void merge_one(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& feature_value_accessor) {
-    output[feature_value_accessor.common_push_value.ShowIndex()] +=
-        input[feature_value_accessor.common_push_value.ShowIndex()];
-    output[feature_value_accessor.common_push_value.ClickIndex()] +=
-        input[feature_value_accessor.common_push_value.ClickIndex()];
-    output[feature_value_accessor.common_push_value.EmbedGIndex()] +=
-        input[feature_value_accessor.common_push_value.EmbedGIndex()];
-    for (int j = 0;
-         j < int(output[feature_value_accessor.common_push_value.MfDimIndex()]);
-         j++) {
-      output[feature_value_accessor.common_push_value.EmbedxGIndex() + j] +=
-          input[feature_value_accessor.common_push_value.EmbedxGIndex() + j];
-    }
+      float* output, const float* input, FVAccessor& feature_value_accessor) {
+    feature_value_accessor.MergePushValue(output, input);
   }
 
-  __device__ __forceinline__ void update_basic(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& fv_accessor) {
-    output[fv_accessor.common_push_value.SlotIndex()] =
-        input[fv_accessor.common_push_value.SlotIndex()];
-    output[fv_accessor.common_push_value.ShowIndex()] =
-        input[fv_accessor.common_push_value.ShowIndex()];
-    output[fv_accessor.common_push_value.ClickIndex()] =
-        input[fv_accessor.common_push_value.ClickIndex()];
-    output[fv_accessor.common_push_value.MfDimIndex()] =
-        input[fv_accessor.common_push_value.MfDimIndex()];
-    output[fv_accessor.common_push_value.EmbedGIndex()] =
-        input[fv_accessor.common_push_value.EmbedGIndex()];
+  template <typename FVAccessor>
+  __device__ __forceinline__ void update_basic(float* output,
+                                               const float* input,
+                                               FVAccessor& fv_accessor) {
+    fv_accessor.PushValueFillBasic(output, input);
   }
 
-  __device__ __forceinline__ void merge_basic(
-      float* output,
-      const float* input,
-      CommonFeatureValueAccessor& fv_accessor) {
-    output[fv_accessor.common_push_value.ShowIndex()] +=
-        input[fv_accessor.common_push_value.ShowIndex()];
-    output[fv_accessor.common_push_value.ClickIndex()] +=
-        input[fv_accessor.common_push_value.ClickIndex()];
-    output[fv_accessor.common_push_value.EmbedGIndex()] +=
-        input[fv_accessor.common_push_value.EmbedGIndex()];
+  template <typename FVAccessor>
+  __device__ __forceinline__ void merge_basic(float* output,
+                                              const float* input,
+                                              FVAccessor& fv_accessor) {
+    fv_accessor.MergePushValueBasic(output, input);
   }
 
-  __device__ __forceinline__ void update_embedx(
-      float* output,
-      const float* input,
-      size_t embedx_idx,
-      CommonFeatureValueAccessor& fv_accessor) {
+  template <typename FVAccessor>
+  __device__ __forceinline__ void update_embedx(float* output,
+                                                const float* input,
+                                                size_t embedx_idx,
+                                                FVAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
   }
 
-  __device__ __forceinline__ void merge_embedx(
-      float* output,
-      const float* input,
-      size_t embedx_idx,
-      CommonFeatureValueAccessor& fv_accessor) {
+  template <typename FVAccessor>
+  __device__ __forceinline__ void merge_embedx(float* output,
+                                               const float* input,
+                                               size_t embedx_idx,
+                                               FVAccessor& fv_accessor) {
     if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
@@ -136,11 +94,6 @@ class HeterCommKernel {
  public:
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
-
-  explicit HeterCommKernel(const int block_size,
-                           CommonFeatureValueAccessor& feature_value_accessor)
-      : block_size_(block_size),
-        feature_value_accessor_(feature_value_accessor) {}
 
   template <typename T, typename StreamType>
   void fill_idx(T* idx, long long len, const StreamType& stream);
@@ -251,7 +204,10 @@ class HeterCommKernel {
                         size_t val_size,
                         const StreamType& stream);
 
-  template <typename KeyType, typename T, typename StreamType>
+  template <typename KeyType,
+            typename T,
+            typename StreamType,
+            typename FVAccessor>
   void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
                               KeyType* d_keys,
                               float* d_shard_grads,
@@ -259,9 +215,10 @@ class HeterCommKernel {
                               T* idx,
                               long long len,
                               size_t grad_value_size,
-                              const StreamType& stream);
+                              const StreamType& stream,
+                              FVAccessor& feature_value_accessor);
 
-  template <typename KeyType, typename StreamType>
+  template <typename KeyType, typename StreamType, typename FVAccessor>
   void merge_gradient(const KeyType* d_shard_keys,
                       const uint32_t* offset,
                       const uint32_t* fea_num,
@@ -272,7 +229,8 @@ class HeterCommKernel {
                       size_t grad_dim,
                       size_t grad_value_size,
                       DynamicGradMerger& merger,
-                      const StreamType& stream);
+                      const StreamType& stream,
+                      FVAccessor& feature_value_accessor);
 
   template <typename T, typename StreamType>
   void dy_mf_fill_dvals(float* d_shard_vals,

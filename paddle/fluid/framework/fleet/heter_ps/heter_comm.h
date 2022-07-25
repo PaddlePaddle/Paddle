@@ -45,13 +45,13 @@ namespace framework {
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
-template <typename KeyType, typename ValType, typename GradType>
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename FVAccessor>
 class HeterComm {
  public:
   HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
-  HeterComm(size_t capacity,
-            std::shared_ptr<HeterPsResource> resource,
-            CommonFeatureValueAccessor& accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -176,7 +176,7 @@ class HeterComm {
     max_mf_dim_ = max_mf_dim;
   }
 
-  void set_accessor(CommonFeatureValueAccessor& accessor) {
+  void set_accessor(FVAccessor& accessor) {
     feature_value_accessor_ = accessor;
   }
 #endif
@@ -329,6 +329,9 @@ class HeterComm {
                    size_t val_size);
 
  protected:
+  void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+  void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+
   using Table = HashTable<KeyType, ValType>;
   using PtrTable = HashTable<KeyType, ValType*>;
   std::vector<Table*> tables_;
@@ -339,7 +342,7 @@ class HeterComm {
   int block_size_{256};
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
-  CommonFeatureValueAccessor feature_value_accessor_;
+  FVAccessor feature_value_accessor_;
 
  private:
   int topo_aware_{0};
