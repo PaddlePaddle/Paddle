@@ -14,19 +14,18 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace phi{
+namespace phi {
 
 KernelSignature LUOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("lu", {"X"}, {"pivots"}, {"Out", "Pivots", "Infos"});
 }
 
-KernelSignature LUGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+KernelSignature LUGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "lu_grad", {"X", "Out", "Pivots", "Out@GRAD"}, {"pivots"}, {"X@GRAD"});
 }
 
-}   // namespace phi
+}  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(lu, phi::LUOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(lu_grad, phi::LUGradOpArgumentMapping);

@@ -20,10 +20,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void LUKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                bool pivot,
-                DenseTensor* out,
-                DenseTensor* pivots,
-                DenseTensor* infos);
+              const DenseTensor& x,
+              bool pivot,
+              DenseTensor* out,
+              DenseTensor* pivots,
+              DenseTensor* infos);
 
 }  // namespace phi

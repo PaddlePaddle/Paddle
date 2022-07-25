@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/kernels/lu_kernel.h"
 #include "paddle/phi/kernels/funcs/lu.h"
+#include "paddle/phi/kernels/lu_kernel.h"
 
 namespace phi {
 
@@ -45,8 +45,8 @@ void cusolver_bufferSize<float>(const cusolverDnHandle_t& cusolverH,
                                 float* d_A,
                                 int lda,
                                 int* lwork) {
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSgetrf_bufferSize(
-      cusolverH, m, n, d_A, lda, lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnSgetrf_bufferSize(cusolverH, m, n, d_A, lda, lwork));
 }
 
 template <>
@@ -56,8 +56,8 @@ void cusolver_bufferSize<double>(const cusolverDnHandle_t& cusolverH,
                                  double* d_A,
                                  int lda,
                                  int* lwork) {
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgetrf_bufferSize(
-      cusolverH, m, n, d_A, lda, lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnDgetrf_bufferSize(cusolverH, m, n, d_A, lda, lwork));
 }
 
 template <>
@@ -119,11 +119,11 @@ void LUKernel(const Context& dev_ctx,
     bool pivot,
     DenseTensor* out,
     DenseTensor* pivots,
-    DenseTensor* infos){
+    DenseTensor* infos) {
 #ifdef __HIPCC__
-    const int64_t kMaxBlockDim = 256;
+  const int64_t kMaxBlockDim = 256;
 #else
-    const int64_t kMaxBlockDim = 512;
+  const int64_t kMaxBlockDim = 512;
 #endif
 
     *out = Transpose2DTo6D<Context, T>((dev_ctx, x);
@@ -135,16 +135,16 @@ void LUKernel(const Context& dev_ctx,
     int n = static_cast<int>(outdims[outrank - 2]);
     int lda = std::max(1, m);
     if (pivot) {
-        auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
-        ipiv_dims[outrank - 2] = std::min(m, n);
-        IpivT->Resize(ipiv_dims);
+    auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
+    ipiv_dims[outrank - 2] = std::min(m, n);
+    IpivT->Resize(ipiv_dims);
     }
     dev_ctx.template Alloc<T>(pivots);
     auto ipiv_data = pivots->data<T>();
 
     auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
     if (info_dims.size() == 0) {
-        info_dims = phi::make_ddim({1});
+    info_dims = phi::make_ddim({1});
     }
     infos->Resize(info_dims);
     dev_ctx.template Alloc<T>(infos);
@@ -155,25 +155,19 @@ void LUKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     auto out_data = out->data<T>();
     for (int b = 0; b < batchsize; b++) {
-        auto out_data_item = &out_data[b * m * n];
-        int* info_data_item = &info_data[b];
-        if (pivot) {
-        auto ipiv_data_item = &ipiv_data[b * std::min(m, n)];
-        lu_decomposed_kernel(
-            m, n, out_data_item, lda, ipiv_data_item, info_data_item, ctx);
-        } else {
-        lu_decomposed_kernel(
-            m, n, out_data_item, lda, NULL, info_data_item, ctx);
-        }
+    auto out_data_item = &out_data[b * m * n];
+    int* info_data_item = &info_data[b];
+    if (pivot) {
+      auto ipiv_data_item = &ipiv_data[b * std::min(m, n)];
+      lu_decomposed_kernel(
+          m, n, out_data_item, lda, ipiv_data_item, info_data_item, ctx);
+    } else {
+      lu_decomposed_kernel(m, n, out_data_item, lda, NULL, info_data_item, ctx);
+    }
     }
     *out = Transpose2DTo6D<Context, T>(dev_ctx, *out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lu, 
-                    GPU, 
-                    ALL_LAYOUT, 
-                    phi::LUKernel, 
-                    float, 
-                    double) {}
+PD_REGISTER_KERNEL(lu, GPU, ALL_LAYOUT, phi::LUKernel, float, double) {}

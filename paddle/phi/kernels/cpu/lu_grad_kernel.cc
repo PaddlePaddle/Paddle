@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/kernels/lu_grad_kernel.h"
 #include "paddle/phi/kernels/impl/lu_grad_kernel_impl.h"
+#include "paddle/phi/kernels/lu_grad_kernel.h"
 
-PD_REGISTER_KERNEL(lu_grad, 
-                    CPU, 
-                    ALL_LAYOUT, 
-                    phi::LUGradKernel, 
-                    float, 
-                    double) {}
+PD_REGISTER_KERNEL(lu_grad, CPU, ALL_LAYOUT, phi::LUGradKernel, float, double) {
+}

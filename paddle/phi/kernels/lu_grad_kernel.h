@@ -20,11 +20,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void LUGradKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& out,
-                const DenseTensor& pivots,
-                const DenseTensor& out_grad,
-                bool pivot,
-                DenseTensor* x_grad);
+                  const DenseTensor& x,
+                  const DenseTensor& out,
+                  const DenseTensor& pivots,
+                  const DenseTensor& out_grad,
+                  bool pivot,
+                  DenseTensor* x_grad);
 
 }  // namespace phi
