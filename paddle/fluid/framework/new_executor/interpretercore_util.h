@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*************************************************************************
-  > File Name: interpretercore_util.h
-  > Author: guanshanshan@baidu.com
-  > Created Time: Fri 23 Jul 2021 06:19:19 AM UTC
- ************************************************************************/
-
 #pragma once
 
 #include <chrono>
@@ -48,7 +42,6 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
 namespace paddle {
 namespace framework {
-
 namespace interpreter {
 
 class AsyncWorkQueue {
