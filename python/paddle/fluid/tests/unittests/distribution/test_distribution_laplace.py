@@ -71,14 +71,6 @@ class TestLaplace(unittest.TestCase):
         self.assertEqual(tuple(samples.shape),
                          tuple(self._dist._extend_shape(sample_shape)))
 
-        sample_shape = (100000, )
-        samples = self._dist.sample(sample_shape)
-        sample_mean = samples.mean(axis=0)
-        np.testing.assert_allclose(sample_mean,
-                                   self._dist.mean,
-                                   atol=0,
-                                   rtol=1.)
-
     def _np_mean(self):
         return self.loc
 
