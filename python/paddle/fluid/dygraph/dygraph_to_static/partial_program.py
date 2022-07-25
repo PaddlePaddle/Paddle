@@ -182,9 +182,7 @@ class PartialProgramLayer:
     # def get_backward_program_from(self, forward_program, whole_program):
     #     backward_program = whole_program
     #     # 只删除block0中所有的反向op
-    #     if (len(forward_program.block(0).ops) +
-    #             2 * len(self._outputs.var_ids)) < len(
-    #                 whole_program.block(0).ops):
+    #     if (len(forward_program.block(0).ops) + 2 * len(self._outputs.var_ids)) < len(whole_program.block(0).ops):
     #         # delete forward op(only del block0)：
     #         for i in range(
     #                 len(forward_program.block(0).ops) +
@@ -273,29 +271,40 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_backward_train_program(self):
         whole_program = self._create_program()
-        start_op_index = self._create_program(True).desc.block(
-            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        return self._add_build_strategy_for(whole_program, start_op_index,
-                                            end_op_index)
+        if (self._create_program(True).desc.block(0).op_size() < end_op_index):
+            start_op_index = self._create_program(True).desc.block(
+                0).op_size() + 2 * len(self._outputs.var_ids)
+            return self._add_build_strategy_for(whole_program, start_op_index,
+                                                end_op_index)
+        else:
+            return paddle.static.Program()
 
     @switch_to_static_graph
     def _create_backward_train_amp_program(self):
         whole_program = self._create_amp_program()
-        start_op_index = self._create_amp_program(True).desc.block(
-            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        return self._add_build_strategy_for(whole_program, start_op_index,
-                                            end_op_index)
+        if (self._create_amp_program(True).desc.block(0).op_size() <
+                end_op_index):
+            start_op_index = self._create_amp_program(True).desc.block(
+                0).op_size() + 2 * len(self._outputs.var_ids)
+            return self._add_build_strategy_for(whole_program, start_op_index,
+                                                end_op_index)
+        else:
+            return paddle.static.Program()
 
     @switch_to_static_graph
     def _create_backward_train_pure_fp16_program(self):
         whole_program = self._create_pure_fp16_program()
-        start_op_index = self._create_pure_fp16_program(True).desc.block(
-            0).op_size() + 2 * len(self._outputs.var_ids)
         end_op_index = whole_program.desc.block(0).op_size()
-        return self._add_build_strategy_for(whole_program, start_op_index,
-                                            end_op_index)
+        if (self._create_pure_fp16_program(True).desc.block(0).op_size() <
+                end_op_index):
+            start_op_index = self._create_pure_fp16_program(True).desc.block(
+                0).op_size() + 2 * len(self._outputs.var_ids)
+            return self._add_build_strategy_for(whole_program, start_op_index,
+                                                end_op_index)
+        else:
+            return paddle.static.Program()
 
     # whole
     @LazyInitialized
@@ -601,6 +610,7 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
+        print("len(self._outputs.var_ids: ", len(self._outputs.var_ids))
         print("self.whole_program: ", self.whole_program)
         print("self.forward_program: ", self.forward_program)
         print("self.backward_program: ", self.backward_program)

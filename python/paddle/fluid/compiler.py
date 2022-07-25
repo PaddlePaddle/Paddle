@@ -163,7 +163,8 @@ class CompiledProgram(object):
             if (start_op_index is not None) and (end_op_index is not None):
                 if start_op_index > end_op_index:
                     raise TypeError(
-                        "start_op_index should not greater than end_op_index")
+                        "start_op_index should not greater than end_op_index, but start_op_index is %s, end_op_index is %s"
+                        % (start_op_index, end_op_index))
                 self._graph = core.Graph(program_or_graph.desc, start_op_index,
                                          end_op_index)
             else:
