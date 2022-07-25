@@ -17,35 +17,12 @@
 #include "paddle/phi/kernels/eigvalsh_grad_kernel.h"
 
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
-
-template <typename T, typename ValueType, typename Context>
-void EigvalshGradKernel_(const Context& dev_ctx,
-                         const DenseTensor& out_v,
-                         const DenseTensor& out_w_grad,
-                         const std::string& uplo,
-                         bool is_test,
-                         DenseTensor* x_grad) {
-  auto tV = phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
-
-  x_grad->Resize(out_v.dims());
-  dev_ctx.template Alloc<T>(x_grad);
-
-  auto output_v_vector = EigenVector<T>::Flatten(out_v);
-  auto output_w_grad_vector = EigenVector<ValueType>::Flatten(out_w_grad);
-  auto result_vector = EigenVector<T>::Flatten(*x_grad);
-  auto& place = *dev_ctx.eigen_device();
-  std::vector<int> broadcast_factor;
-  broadcast_factor.push_back(out_v.dims().at(out_v.dims().size() - 1));
-  result_vector.device(place) =
-      output_v_vector * output_w_grad_vector.broadcast(broadcast_factor);
-
-  *x_grad = phi::Matmul<T>(dev_ctx, *x_grad, tV);
-}
 
 template <typename T, typename Context>
 void EigvalshGradKernel(const Context& dev_ctx,
@@ -54,16 +31,22 @@ void EigvalshGradKernel(const Context& dev_ctx,
                         const std::string& uplo,
                         bool is_test,
                         DenseTensor* x_grad) {
-  if (std::is_same<T, float>::value ||
-      std::is_same<T, phi::dtype::complex<float>>::value) {
-    EigvalshGradKernel_<T, float, Context>(
-        dev_ctx, out_v, out_w_grad, uplo, is_test, x_grad);
-  }
-  if (std::is_same<T, double>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
-    EigvalshGradKernel_<T, double, Context>(
-        dev_ctx, out_v, out_w_grad, uplo, is_test, x_grad);
-  }
+  auto tV = phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
+
+  x_grad->Resize(out_v.dims());
+  dev_ctx.template Alloc<T>(x_grad);
+
+  auto output_v_vector = EigenVector<T>::Flatten(out_v);
+  auto output_w_grad_vector =
+      EigenVector<phi::dtype::Real<T>>::Flatten(out_w_grad);
+  auto result_vector = EigenVector<T>::Flatten(*x_grad);
+  auto& place = *dev_ctx.eigen_device();
+  std::vector<int> broadcast_factor;
+  broadcast_factor.push_back(out_v.dims().at(out_v.dims().size() - 1));
+  result_vector.device(place) =
+      output_v_vector * output_w_grad_vector.broadcast(broadcast_factor);
+
+  *x_grad = phi::Matmul<T>(dev_ctx, *x_grad, tV);
 }
 
 }  // namespace phi
