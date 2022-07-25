@@ -18,10 +18,10 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"

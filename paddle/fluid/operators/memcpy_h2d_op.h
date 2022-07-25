@@ -50,7 +50,7 @@ class MemcpyH2DFunctor {
         lod_tensor.dtype(),
         phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-    if (dst_place_type_ == 0 || dst_place_type_ == 1 || dst_place_type_ == 2) {
+    if (dst_place_type_ >= 0 && dst_place_type_ <= 3) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else {

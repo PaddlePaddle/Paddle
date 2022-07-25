@@ -413,7 +413,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       check_flag = false;
     }
 
-    if (BOOST_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
+    if (PADDLE_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
       check_flag = false;
     }
     if (!check_flag) {

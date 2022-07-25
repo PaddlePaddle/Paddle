@@ -172,6 +172,25 @@ AMP_DYGRAPH_FUNCTION_TEMPLATE = \
     }}
 """
 
+INPLACE_AMP_DYGRAPH_FUNCTION_TEMPLATE = \
+"""
+    using result_type = decltype({}({}));
+    std::unique_ptr<result_type> out_ptr;
+    // AMP Logic
+    if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
+        VLOG(5) << "Check and Prepare For AMP";
+        {}
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
+        {}
+        {}
+        {}
+        out_ptr = std::make_unique<result_type>({}({}));
+    }} else {{
+        out_ptr = std::make_unique<result_type>({}({}));
+    }}
+    result_type& out = *out_ptr;
+"""
+
 FUNCTION_SET_DEVICE_TEMPLATE = \
 """{}    if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -180,6 +199,15 @@ FUNCTION_SET_DEVICE_TEMPLATE = \
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
+#endif
+    }}
+    if (paddle::platform::is_custom_place(place)) {{
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      phi::DeviceManager::SetDevice(place);
+      VLOG(1) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
     }}
 """
@@ -200,6 +228,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include <Python.h>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/strings_api.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -521,7 +550,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 inplaced_fwd_function_name, dygraph_function_call_str)
 
-            inplace_amp_dygraph_function_str = AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+            inplace_amp_dygraph_function_str = INPLACE_AMP_DYGRAPH_FUNCTION_TEMPLATE.format(
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 kernel_trans2_op_name_str, amp_tensors_vector_list_str,
                 amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,

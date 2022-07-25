@@ -350,7 +350,7 @@ void QuantDequantFusePass::DeleteQuant(ir::Graph* graph,
     Node* quant = subgraph.at(pattern.GetPDNode("quant_node"));
     Node* output_scale = subgraph.at(pattern.GetPDNode("output_scale_node"));
     Node* output_act = subgraph.at(pattern.GetPDNode("output_act_node"));
-    int bit_length = BOOST_GET_CONST(int, quant->Op()->GetAttr("bit_length"));
+    int bit_length = PADDLE_GET_CONST(int, quant->Op()->GetAttr("bit_length"));
 
     // Get input scale from tensor
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
@@ -464,13 +464,13 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
 
     std::unordered_set<const Node*> nodes2rm = {};
     int bit_length =
-        BOOST_GET_CONST(int, quantized_op_node->Op()->GetAttr("bit_length"));
+        PADDLE_GET_CONST(int, quantized_op_node->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
     int quant_axis = 0;
     if (dequant_op_node->Op()->HasAttr("quant_axis")) {
       quant_axis =
-          BOOST_GET_CONST(int, dequant_op_node->Op()->GetAttr("quant_axis"));
+          PADDLE_GET_CONST(int, dequant_op_node->Op()->GetAttr("quant_axis"));
     }
     // Get weight scale
     if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
@@ -497,7 +497,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
       nodes2rm.insert(dequant_channel_scale_node);
     } else {
       float max_range =
-          BOOST_GET_CONST(float, dequant_op_node->Op()->GetAttr("max_range"));
+          PADDLE_GET_CONST(float, dequant_op_node->Op()->GetAttr("max_range"));
       weight_scale.push_back((range * range) / max_range / range);
     }
 

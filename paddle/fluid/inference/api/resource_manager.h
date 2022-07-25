@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
+#include "paddle/phi/common/place.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
@@ -52,6 +53,7 @@ class GPUContextResource {
  public:
   explicit GPUContextResource(const phi::Place& place, void* stream);
   ~GPUContextResource();
+  phi::Place Place() const;
 
   gpuStream_t GetStream() const;
   dnnHandle_t GetDnnHandle() const;
@@ -69,6 +71,16 @@ class GPUContextResource {
   int GetGpuMaxThreadsPerMp() const;
   int GetGpuMaxThreadsPerBlock() const;
   std::array<int, 3> GetGpuMaxGridDimSize() const;
+
+  // If stream changes, we need to rebind all handle to new stream.
+  void ReBindStream(gpuStream_t stream);
+  void ReBindDnnHandle(gpuStream_t stream) const;
+  void ReBindBlasHandle(gpuStream_t stream) const;
+  void ReBindBlasTensorCoreHandle(gpuStream_t stream) const;
+  void ReBindBlasTF32Handle(gpuStream_t stream) const;
+  void ReBindSolverDnHandle(gpuStream_t stream) const;
+  void ReBindSparseHandle(gpuStream_t stream) const;
+  void ReBindEigenDevice(gpuStream_t stream, GPUPlace place) const;
 
  private:
   void InitGPUResource(void* stream);
@@ -138,6 +150,7 @@ class ResourceManager {
   void DestroyGPUResource(void* stream);
   GPUContextResource* GetGPUResource(void* stream) const;
   int RefCount(void* stream) const;
+  void GpuResourceReBindStream(void* old_stream, void* new_stream);
 
  private:
   void Decrease(void* stream);

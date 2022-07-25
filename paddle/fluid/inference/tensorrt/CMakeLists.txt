@@ -4,18 +4,18 @@ if(WIN32)
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost
+    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context
          paddle_inference_api)
 else()
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context boost)
+    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
 endif()
 nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
-  DEPS framework_proto device_context boost)
+  DEPS framework_proto device_context)
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
