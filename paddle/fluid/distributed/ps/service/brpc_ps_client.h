@@ -234,6 +234,9 @@ class BrpcPsClient : public PSClient {
 
   std::future<int32_t> Clear(uint32_t table_id) override;
 
+  std::future<int32_t> Revert() override;
+  std::future<int32_t> CheckSavePrePatchDone() override;
+
   std::future<int32_t> StopServer() override;
 
   std::future<int32_t> StartProfiler() override;
@@ -362,16 +365,16 @@ class BrpcPsClient : public PSClient {
 
   int PushSparseAsyncShardMerge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       ValueAccessor *accessor);
 
   int PushSparseAsyncShardPush(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,  // NOLINT
-      std::vector<int> &request_kv_num,
+      std::vector<int> &request_kv_num,                          // NOLINT
       int table_id,
-      int shard_idx,  // NOLINT
+      int shard_idx,
       DownpourBrpcClosure *closure,
       ValueAccessor *accessor);
 

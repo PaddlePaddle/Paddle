@@ -79,6 +79,8 @@ void BindDistFleetWrapper(py::module* m) {
       .def("init_fl_worker", &FleetWrapper::InitFlWorker)
       .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
       .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy);
+  .def("revert", &FleetWrapper::Revert)
+      .def("check_save_pre_patch_done", &FleetWrapper::CheckSavePrePatchDone);
 }
 
 void BindPSHost(py::module* m) {

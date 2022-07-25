@@ -90,36 +90,29 @@ cc_library(
 cc_library(
   downpour_server
   SRCS graph_brpc_server.cc brpc_ps_server.cc
-  DEPS boost eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
+  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
 cc_library(
   downpour_client
   SRCS graph_brpc_client.cc brpc_ps_client.cc ps_local_client.cc
-       coordinator_client.cc
-  DEPS boost eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
+  DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
 
 cc_library(
   client
   SRCS ps_client.cc
-  DEPS downpour_client boost ${RPC_DEPS})
+  DEPS downpour_client ${RPC_DEPS})
 cc_library(
   server
   SRCS server.cc
-  DEPS downpour_server boost ${RPC_DEPS})
+  DEPS downpour_server ${RPC_DEPS})
 
 cc_library(
   communicator
   SRCS communicator/communicator.cc
-  DEPS scope
-       client
-       boost
-       table
-       math_function
-       selected_rows_functor
-       ${RPC_DEPS})
+  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})
 cc_library(
   ps_service
   SRCS ps_service/service.cc
-  DEPS communicator client server boost ${RPC_DEPS})
+  DEPS communicator client server ${RPC_DEPS})
 
 cc_library(
   heter_client

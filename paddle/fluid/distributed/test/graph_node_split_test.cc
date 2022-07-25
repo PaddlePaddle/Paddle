@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/ps_service/service.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"

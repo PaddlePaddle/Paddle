@@ -7,10 +7,4 @@ set_source_files_properties(
 cc_library(
   communicator
   SRCS communicator.cc
-  DEPS scope
-       client
-       boost
-       table
-       math_function
-       selected_rows_functor
-       ${RPC_DEPS})
+  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})

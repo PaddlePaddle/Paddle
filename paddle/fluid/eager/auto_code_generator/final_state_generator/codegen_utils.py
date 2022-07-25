@@ -45,6 +45,7 @@ yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
+    'str[]' : 'std::vector<std::string>', 'float[]' : 'std::vector<float>', \
     'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',

@@ -1368,6 +1368,10 @@ class OpTest(unittest.TestCase):
                                 inplace_atol=None,
                                 check_eager=False):
 
+        # disable legacy dygraph check when check_eager is True
+        if check_eager == True:
+            check_dygraph = False
+
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
                 if name == target_name:
@@ -1692,7 +1696,8 @@ class OpTest(unittest.TestCase):
                                                  inplace_atol=inplace_atol)
 
         if check_eager:
-            return outs, dygraph_outs, eager_dygraph_outs, fetch_list
+            assert check_dygraph == False
+            return outs, eager_dygraph_outs, fetch_list
         elif check_dygraph:
             return outs, dygraph_outs, fetch_list
         else:
@@ -1767,6 +1772,11 @@ class OpTest(unittest.TestCase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_eager=False):
+
+        # disable legacy dygraph check when check_eager is True
+        if check_eager == True:
+            check_dygraph = False
+
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1784,8 +1794,8 @@ class OpTest(unittest.TestCase):
                                                inplace_atol,
                                                check_eager=check_eager)
             if check_eager:
-                assert check_dygraph == True
-                outs, dygraph_outs, eager_dygraph_outs, fetch_list = res
+                assert check_dygraph == False
+                outs, eager_dygraph_outs, fetch_list = res
             elif check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
@@ -1859,6 +1869,11 @@ class OpTest(unittest.TestCase):
                    user_defined_grad_outputs=None,
                    check_dygraph=True,
                    check_eager=False):
+
+        # disable legacy dygraph check when check_eager is True
+        if check_eager == True:
+            check_dygraph = False
+
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1887,6 +1902,11 @@ class OpTest(unittest.TestCase):
                               check_dygraph=True,
                               numeric_place=None,
                               check_eager=False):
+
+        # disable legacy dygraph check when check_eager is True
+        if check_eager == True:
+            check_dygraph = False
+
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

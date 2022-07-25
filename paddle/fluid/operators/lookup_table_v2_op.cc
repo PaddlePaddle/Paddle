@@ -105,6 +105,7 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
         .SetDefault(0)
         .AsExtra();
+    AddAttr<int>("slot", "slot of id").SetDefault(0).AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
         .SetDefault(std::vector<int64_t>({}))
@@ -181,7 +182,7 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = BOOST_GET(bool, attr);
+    bool is_sparse = PADDLE_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";

@@ -16,7 +16,6 @@
 
 #include <llvm/ADT/SmallVector.h>
 
-#include <boost/optional.hpp>
 #include <memory>         // NOLINT
 #include <string>         //NOLINT
 #include <unordered_map>  // NOLINT

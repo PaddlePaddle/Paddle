@@ -1,4 +1,4 @@
-if(NOT WITH_GPU)
+if(NOT WITH_GPU AND NOT WITH_ROCM)
   return()
 endif()
 

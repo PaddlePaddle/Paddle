@@ -44,14 +44,14 @@ class MultiClassNMSOpConverter : public OpConverter {
     auto* scores_tensor = engine_->GetITensor(scores);
 
     int background_label =
-        BOOST_GET_CONST(int, op_desc.GetAttr("background_label"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("background_label"));
     float score_threshold =
-        BOOST_GET_CONST(float, op_desc.GetAttr("score_threshold"));
-    int nms_top_k = BOOST_GET_CONST(int, op_desc.GetAttr("nms_top_k"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("score_threshold"));
+    int nms_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("nms_top_k"));
     float nms_threshold =
-        BOOST_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
-    int keep_top_k = BOOST_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
-    bool normalized = BOOST_GET_CONST(bool, op_desc.GetAttr("normalized"));
+        PADDLE_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
+    int keep_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
+    bool normalized = PADDLE_GET_CONST(bool, op_desc.GetAttr("normalized"));
     int num_classes = scores_tensor->getDimensions().d[0];
 
     auto bboxes_dims = bboxes_tensor->getDimensions();
