@@ -21,10 +21,12 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/impl/qr_kernel_impl.h"
 #include "paddle/phi/kernels/impl/tril_triu_kernel_impl.h"
 #include "paddle/phi/kernels/lstsq_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace phi {

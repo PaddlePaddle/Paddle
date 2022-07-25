@@ -21,7 +21,9 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/lstsq_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 

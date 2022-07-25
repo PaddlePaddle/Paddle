@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
@@ -83,3 +84,12 @@ REGISTER_OPERATOR(lstsq,
                   ops::LstsqOp,
                   ops::LstsqOpMaker,
                   LstsqInferShapeFunctor);
+
+REGISTER_OP_VERSION(lstsq).AddCheckpoint(
+    R"ROC(
+        Upgrade lstsq, add 1 outputs [Residuals].
+      )ROC",
+    paddle::framework::compatible::OpVersionDesc().NewOutput(
+        "Residuals",
+        "Output tensor of lstsq operator, "
+        "meaning the squared residuals of the calculated solutions."));

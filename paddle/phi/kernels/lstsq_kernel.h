@@ -16,11 +16,6 @@
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-#include "paddle/phi/kernels/impl/activation_impl.h"
-#include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
-#include "paddle/phi/kernels/matmul_kernel.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
