@@ -43,7 +43,6 @@ class HeterPsBase {
       const std::vector<ncclComm_t>& inner_comms,
       const std::vector<ncclComm_t>& inter_comms, int comm_size) = 0;
   virtual void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) = 0;
-  virtual void set_accessor(CommonFeatureValueAccessor& accessor) = 0;
 
 #endif
   virtual void end_pass() = 0;
@@ -57,7 +56,9 @@ class HeterPsBase {
 
   static HeterPsBase* get_instance(
       size_t capacity, std::shared_ptr<HeterPsResource> resource,
-      CommonFeatureValueAccessor feature_value_accessor, int optimizer_type);
+      //  CommonFeatureValueAccessor feature_value_accessor,
+      std::unordered_map<std::string, float> fleet_config,
+      std::string accessor_type, int optimizer_type);
 #if defined(PADDLE_WITH_CUDA)
   // dedup
   virtual int dedup_keys_and_fillidx(const int gpu_id,

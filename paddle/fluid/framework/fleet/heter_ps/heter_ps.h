@@ -26,12 +26,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+template <typename FVAccessor>
 class HeterPs : public HeterPsBase {
  public:
   HeterPs() {}
   HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource,
-          CommonFeatureValueAccessor feature_value_accessor,
-          int optimizer_type);
+          std::unordered_map<std::string, float> fleet_config,
+          std::string accessor_type, int optimizer_type);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
@@ -48,7 +49,8 @@ class HeterPs : public HeterPsBase {
                               const std::vector<ncclComm_t>& inter_comms,
                               int comm_size) override;
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
-  void set_accessor(CommonFeatureValueAccessor& accessor) override;
+
+  void set_accessor(FVAccessor& accessor);
 #endif
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
@@ -73,9 +75,10 @@ class HeterPs : public HeterPsBase {
                              bool filter_zero);
 #endif
  private:
-  std::shared_ptr<HeterComm<FeatureKey, float*, float*>> comm_;
+  std::shared_ptr<HeterComm<FeatureKey, float*, float*, FVAccessor>> comm_;
 #if defined(PADDLE_WITH_CUDA)
-  CommonFeatureValueAccessor feature_value_accessor_;
+  FVAccessor feature_value_accessor_;
+  std::string accessor_type_;
   int optimizer_type_;
 #endif
 };
