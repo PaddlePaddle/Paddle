@@ -16,7 +16,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SpectrumNormKernel(const Context& dev_ctx
+void SpectrumNormKernel(const Context& dev_ctx,
                         const DenseTensor& weight,
                         const DenseTensor& u,
                         const DenseTensor& v,

@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SpectrumNormKernel(const Context& dev_ctx
+void SpectralNormKernel(const Context& dev_ctx,
                         const DenseTensor& weight,
                         const DenseTensor& u,
                         const DenseTensor& v,
                         int dim,
                         int power_iters,
                         float eps,
-                        DenseTensor* out)
+                        DenseTensor* out){
     const int h = u.dims()[0];
     const int w = v.dims()[0];
 
@@ -46,21 +46,21 @@ void SpectrumNormKernel(const Context& dev_ctx
         }
         weight_mat.Resize(phi::make_ddim(real_dims));
         dev_ctx.template Alloc<T>(&weight_mat);
-        TransCompute2DTo5D<Context, T>(rank, weight, &weight_mat, perm, dev_ctx);
+        TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
     } else {
         for (int i = 0; i < rank; i++) {
             real_dims.push_back(i);
         }
-        phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), false, &weight_mat);
+        phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
     }
     weight_mat = weight_mat.Resize({h, w});
 
     DenseTensor sigma;
     sigma.Resize(weight_mat.dims());
-    dev_ctx.template Alloc<T>(sigma);
+    dev_ctx.template Alloc<T>(&sigma);
     DenseTensor uu, vv;
-    phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), false, &uu);
-    phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), false, &vv);
+    phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
+    phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
     CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
                                                 &weight_mat,
                                                 &(uu.Resize({h, 1})),
@@ -80,16 +80,16 @@ void SpectrumNormKernel(const Context& dev_ctx
                 perm.push_back(i);
             }
         }
-        out->Resize(dims)
+        out->Resize(dims);
         dev_ctx.template Alloc<T>(out);
         TransCompute2DTo5D<Context, T>(
-            rank,
+            dev_ctx,
             weight_mat.Resize(phi::make_ddim(real_dims)),
-            out,
+            rank,
             perm,
-            dev_ctx);
+            out);
     } else {
-        phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), false, out);
+        phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
     }
 }
 
