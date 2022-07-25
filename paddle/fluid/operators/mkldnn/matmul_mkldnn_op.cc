@@ -167,13 +167,7 @@ class MatMulMKLDNNHandler
     auto out_md = memory::desc(matmul_dims_.out_dims,
                                MKLDNNGetDataType<OT>(),
                                matmul_dims_.out_strides);
-    auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
-    if (bias) {
-      this->AcquireForwardPrimitiveDescriptor(
-          matmul_attrs, x_md, y_md, out_md, out_md);
-    } else {
-      this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
-    }
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
@@ -185,10 +179,13 @@ class MatMulMKLDNNHandler
  public:
   void Execute(const paddle::framework::Tensor* x,
                const paddle::framework::Tensor* y,
-               const paddle::framework::Tensor* bias,
+               paddle::framework::Tensor* bias,
                paddle::framework::Tensor* out) {
     const auto src_memory_p = this->AcquireSrcMemory(x);
     const auto weights_memory_p = this->AcquireWeightsMemory(y);
+    if (bias) {
+      out->ShareDataWith(*bias);
+    }
     const auto dst_memory_p = this->AcquireDstMemory(out);
 
     auto matmul_p = this->AcquireForwardPrimitive();
@@ -200,37 +197,21 @@ class MatMulMKLDNNHandler
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
 
+    // Simulate batch matmul by processing in loop
     void* x_ptr = src_memory_p->get_data_handle();
     void* y_ptr = weights_memory_p->get_data_handle();
     void* out_ptr = dst_memory_p->get_data_handle();
     auto offsets = this->GetOffsets();
-
-    if (bias) {
-      auto bias_memory_p = this->AcquireSrcMemory(bias);
-      matmul_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-      void* bias_ptr = bias_memory_p->get_data_handle();
-      for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
-        src_memory_p->set_data_handle(x_ptr);
-        weights_memory_p->set_data_handle(y_ptr);
-        bias_memory_p->set_data_handle(bias_ptr);
-        dst_memory_p->set_data_handle(out_ptr);
-        matmul_p->execute(astream, matmul_args);
-        x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
-        y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
-        bias_ptr = static_cast<char*>(bias_ptr) + std::get<2>(offsets);
-        out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
-      }
-    } else {
-      for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
-        src_memory_p->set_data_handle(x_ptr);
-        weights_memory_p->set_data_handle(y_ptr);
-        dst_memory_p->set_data_handle(out_ptr);
-        matmul_p->execute(astream, matmul_args);
-        x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
-        y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
-        out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
-      }
+    for (uint16_t i = 0; i < this->GetBatchSize(); ++i) {
+      src_memory_p->set_data_handle(x_ptr);
+      weights_memory_p->set_data_handle(y_ptr);
+      dst_memory_p->set_data_handle(out_ptr);
+      matmul_p->execute(astream, matmul_args);
+      x_ptr = static_cast<char*>(x_ptr) + std::get<0>(offsets);
+      y_ptr = static_cast<char*>(y_ptr) + std::get<1>(offsets);
+      out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
     }
+
     astream.wait();
 
     auto format =

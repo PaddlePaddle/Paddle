@@ -333,10 +333,6 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_bfloat16_) {
-    auto it = find(passes_.begin(),
-                   passes_.end(),
-                   "matmul_elementwise_add_mkldnn_fuse_pass");
-    if (it != passes_.end()) passes_.erase(it);
     passes_.push_back("fc_mkldnn_pass");
     passes_.push_back("fc_act_mkldnn_fuse_pass");
     passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
