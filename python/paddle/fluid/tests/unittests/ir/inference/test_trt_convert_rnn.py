@@ -28,11 +28,11 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
-        for hidden_size in [32, 64]:
+        for hidden_size in [30]:
             for input_size in [288]:
-                for batch in [16]:
+                for batch in [12]:
                     for seq_len in [10]:
-                        for num_layers in [4]:
+                        for num_layers in [2]:
 
                             dics = []
                             dics.append({
@@ -40,7 +40,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 "input_size": input_size,
                                 "num_layers": num_layers,
                                 "mode": "LSTM",
-                                "is_bidirec": False,
+                                "is_bidirec": True,
                                 "is_test": True,
                                 "dropout_prob": 0.0,
                                 # for my convience
@@ -68,7 +68,8 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                 return np.random.random([
                                     4 * hidden_size, K * hidden_size
                                 ]).astype(np.float32) * 2 - 1
-                            # 
+
+                            #
                             def generate_w2():
                                 return np.random.random([
                                     4 * hidden_size, hidden_size
@@ -115,52 +116,57 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
                                            len(WeightList)):
                                 weights[WeightList[i]] = TensorConfig(
                                     data_gen=partial(generate_b))
-                            ops_config = [{
-                                "op_type": "fill_constant_batch_size_like",
-                                "op_inputs": {
-                                    "Input": ["input_data"]
+                            ops_config = [
+                                {
+                                    "op_type": "fill_constant_batch_size_like",
+                                    "op_inputs": {
+                                        "Input": ["input_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["prestate1"]
+                                    },
+                                    "op_attrs": dics[1]
                                 },
-                                "op_outputs": {
-                                    "Out": ["prestate1"]
+                                {
+                                    "op_type": "fill_constant_batch_size_like",
+                                    "op_inputs": {
+                                        "Input": ["input_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["prestate2"]
+                                    },
+                                    "op_attrs": dics[1]
                                 },
-                                "op_attrs": dics[1]
-                            }, {
-                                "op_type": "fill_constant_batch_size_like",
-                                "op_inputs": {
-                                    "Input": ["input_data"]
+                                {
+                                    "op_type": "transpose2",
+                                    "op_inputs": {
+                                        "X": ["input_data"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["rnn_input_data"]
+                                    },
+                                    "op_attrs": dics[2]
                                 },
-                                "op_outputs": {
-                                    "Out": ["prestate2"]
-                                },
-                                "op_attrs": dics[1]
-                            }, {
-                                "op_type": "transpose2",
-                                "op_inputs": {
-                                    "X": ["input_data"]
-                                },
-                                "op_outputs": {
-                                    "Out": ["rnn_input_data"]
-                                },
-                                "op_attrs": dics[2]
-                            }, {
-                                "op_type": "rnn",
-                                "op_inputs": {
-                                    "Input": ["rnn_input_data"],
-                                    # prev_c, prev_h
-                                    "PreState": ["prestate1", "prestate2"],
-                                    "WeightList": WeightList,
-                                },
-                                "op_outputs": {
-                                    "Out": ["rnn_output_data"],
-                                    "State": [
-                                        "state_output_data0",
-                                        "state_output_data1"
-                                    ],
-                                    "Reserve": ["reserve_data"],
-                                    "DropoutState": ["DropoutState_data"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
+                                {
+                                    "op_type": "rnn",
+                                    "op_inputs": {
+                                        "Input": ["rnn_input_data"],
+                                        # prev_c, prev_h
+                                        "PreState": ["prestate1", "prestate2"],
+                                        "WeightList": WeightList,
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["rnn_output_data"],
+                                        "State": [
+                                            "state_output_data0",
+                                            "state_output_data1"
+                                        ],
+                                        "Reserve": ["reserve_data"],
+                                        "DropoutState": ["DropoutState_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }
+                            ]
                             ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(

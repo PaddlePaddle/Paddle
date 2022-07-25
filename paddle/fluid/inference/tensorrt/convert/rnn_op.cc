@@ -57,14 +57,10 @@ class RnnNativeOpConverter : public OpConverter {
             auto* var1_v = scope.FindVar(var1_name);
             auto* var0_t = var0_v->GetMutable<framework::LoDTensor>();
             auto* var1_t = var1_v->GetMutable<framework::LoDTensor>();
-            float* data0_ptr =
-                (float*)(engine_->GetTrtWeight(var0_name, *var0_t)
-                             .get()
-                             .values);
-            float* data1_ptr =
-                (float*)(engine_->GetTrtWeight(var1_name, *var1_t)
-                             .get()
-                             .values);
+            float* data0_ptr = reinterpret_cast<float*>(
+                engine_->GetTrtWeight(var0_name, *var0_t).get().values);
+            float* data1_ptr = reinterpret_cast<float*>(
+                engine_->GetTrtWeight(var1_name, *var1_t).get().values);
             float* data_ptr = new float[K * var0_t->numel()];
             // remember free
             memcpy(data_ptr, data0_ptr, sizeof(float) * var0_t->numel());
@@ -82,8 +78,8 @@ class RnnNativeOpConverter : public OpConverter {
             std::string var_name = op_desc.Input("WeightList")[k + start];
             auto* var_v = scope.FindVar(var_name);
             auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-            float* data_ptr =
-                (float*)(engine_->GetTrtWeight(var_name, *var_t).get().values);
+            float* data_ptr = reinterpret_cast<float*>(
+                engine_->GetTrtWeight(var_name, *var_t).get().values);
             weight_bias_vec.push_back(data_ptr);
           }
         };
@@ -93,7 +89,8 @@ class RnnNativeOpConverter : public OpConverter {
     }
     // [seq_len, batch ,in_size]
 
-    nvinfer1::ITensor* this_input = input;
+    nvinfer1::ITensor* this_input =
+        TRT_ENGINE_ADD_LAYER(engine_, Identity, *input)->getOutput(0);
 
     nvinfer1::ILayer* finally_layer = nullptr;
     for (int layer_id = 0; layer_id < num_layers; layer_id++) {
@@ -113,10 +110,30 @@ class RnnNativeOpConverter : public OpConverter {
       nvinfer1::ITensor* iter_input_tensor;
       auto* iter_input_forward_tensor =
           loop->addIterator(*this_input)->getOutput(0);  // [batch, input_size]
+
+      auto* tmp_layer0 =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_forward_tensor);
+      std::vector<nvinfer1::ITensor*> concat_inputs0{
+          Add1DConstantLayer(1),
+          Add1DConstantLayer(1),
+          Shape(iter_input_forward_tensor)};
+      tmp_layer0->setInput(1, *Concat(concat_inputs0));
+      iter_input_forward_tensor = tmp_layer0->getOutput(0);
+
       if (is_bidirec) {
         auto* iter_input_reverse_tensor =
             loop->addIterator(*this_input, 0, true)
                 ->getOutput(0);  // [batch, input_size]
+
+        auto* tmp_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_reverse_tensor);
+        std::vector<nvinfer1::ITensor*> concat_inputs0{
+            Add1DConstantLayer(1),
+            Add1DConstantLayer(1),
+            Shape(iter_input_reverse_tensor)};
+        tmp_layer->setInput(1, *Concat(concat_inputs0));
+        iter_input_reverse_tensor = tmp_layer->getOutput(0);
+
         std::vector<nvinfer1::ITensor*> concat_inputs{
             iter_input_forward_tensor, iter_input_reverse_tensor};
         iter_input_tensor = Concat(concat_inputs);
@@ -126,6 +143,7 @@ class RnnNativeOpConverter : public OpConverter {
 
       auto* tmp_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_tensor);
+
       tmp_layer->setInput(1,
                           *Concat(std::vector<nvinfer1::ITensor*>{
                               K_tensor, batch_tensor, input_size_tensor}));
