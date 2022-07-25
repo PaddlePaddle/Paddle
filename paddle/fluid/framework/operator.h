@@ -714,9 +714,6 @@ class OperatorWithKernel : public OperatorBase {
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
   void InitOpCache(const Scope& scope, const platform::Place& place) const;
-  bool cacheEnabled() const;
-  bool cudaGraphEnabled() const;
-  void checkRuntimeContext(const Scope& scope) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -739,7 +736,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
   struct CacheImpl;
-  std::vector<std::string> graphed_ops{"conv2d_fusion", "depthwise_conv2d"};
   mutable CacheImpl* impl_{nullptr};
 };
 
