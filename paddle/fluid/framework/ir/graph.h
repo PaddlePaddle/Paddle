@@ -458,7 +458,6 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
-  std::unorderd_set<ir::Node *> removed_node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
   // NOTE(Aurelius84): Whether is constructed with partial ProgramDesc.
   // In case of @to_static, whole trainning program is splited into two

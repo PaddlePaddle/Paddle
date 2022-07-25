@@ -302,10 +302,6 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
     if (!graph->Has(details::kRemovedVars)) {
       graph->Set(details::kRemovedVars,
                  new std::unordered_set<const Node *>(need_removed_nodes));
-    } else {
-      auto &removed_vars =
-          graph->Get<std::unordered_set<const Node *>>(details::kRemovedVars);
-      removed_vars.insert(need_removed_nodes.begin(), need_removed_nodes.end());
     }
   }
 }
