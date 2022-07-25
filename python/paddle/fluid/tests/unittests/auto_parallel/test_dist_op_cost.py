@@ -18,7 +18,7 @@ import copy
 import paddle
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
+from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container, is_elementwise_op
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
@@ -81,8 +81,9 @@ class TestDistOpCost(unittest.TestCase):
                 weight_attr = paddle.ParamAttr()
                 linear = paddle.nn.Linear(8, 8, weight_attr=weight_attr)
                 linear_out = linear(x)
+                gelu_out = paddle.nn.functional.gelu(linear_out)
                 # default op with dp
-                tmp = paddle.static.nn.layer_norm(linear_out)
+                tmp = paddle.static.nn.layer_norm(gelu_out)
                 error_cost = paddle.nn.functional.square_error_cost(tmp, label)
                 loss = paddle.mean(error_cost)
             return main_program, start_program, loss
@@ -96,8 +97,13 @@ class TestDistOpCost(unittest.TestCase):
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
-                container = get_distributed_operator_impl_container(
-                    op_dist_attr.impl_type)
+                if is_elementwise_op(op.type):
+                    container = get_distributed_operator_impl_container(
+                        "elementwise")
+                else:
+                    container = get_distributed_operator_impl_container(
+                        op_dist_attr.impl_type)
+
                 dist_impl = container.impls[op_dist_attr.impl_idx]
                 dist_op_cost = dist_impl.calc_cost(op.attr('op_role'), dist_op,
                                                    dist_context, cluster)

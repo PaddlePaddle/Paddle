@@ -15,7 +15,7 @@
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
+from .common import register_distributed_operator_impl, is_parameter_related
 from .common import is_elementwise_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
