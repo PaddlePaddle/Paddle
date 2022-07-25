@@ -2020,7 +2020,7 @@ void ReverseInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
-void ReverseArrayInferMeta(std::vector<const phi::MetaTensor*> x,
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
                            const std::vector<int>& axis,
                            std::vector<phi::MetaTensor*> out) {
   PADDLE_ENFORCE_EQ(

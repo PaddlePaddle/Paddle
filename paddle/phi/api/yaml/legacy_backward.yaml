@@ -1663,7 +1663,8 @@
   output : Tensor[](x_grad){out_grad.size()}
   infer_meta :
     func : ReverseArrayInferMeta
-  invoke : reverse_array(out_grad, axis)
+  kernel :
+    func : reverse
 
 - backward_api : reverse_grad
   forward : reverse (Tensor x, int[] axis) -> Tensor(out)
