@@ -2029,6 +2029,15 @@
     func : slice
   backward : slice_grad
 
+- api : slogdet
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : slogdeterminant
+  backward : slogdet_grad
+
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
