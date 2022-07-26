@@ -212,6 +212,8 @@ class Engine:
                         in_var = forward_block._clone_variable(
                             loss_block.vars[in_name], force_persistable=False)
                         if loss_block.vars[in_name].is_data:
+                            in_var.stop_gradient = loss_block.vars[
+                                in_name].stop_gradient
                             labels.append(in_var)
                     for out_name in op.output_arg_names:
                         out_var = forward_block._clone_variable(
