@@ -50,10 +50,7 @@ using pybind11::return_value_policy;
 namespace paddle {
 namespace pybind {
 void BindGraph(py::module *m) {
-  m->def("graph_safe_remove_nodes",
-         [](Graph *graph, const std::unordered_set<const Node *> &nodes) {
-           return GraphSafeRemoveNodes(graph, nodes);
-         });
+  m->def("graph_safe_remove_nodes", GraphSafeRemoveNodes);
   m->def("has_circle", HasCircle);
   m->def("graph_num", GraphNum);
   m->def(

@@ -568,6 +568,15 @@ static void GraphToBlock(const Graph &graph,
       vars_in_graph.emplace_back(*node->Var()->Proto());
     }
   }
+  if (graph.Has(details::kRemovedVars)) {
+    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
+    for (auto &node : removed_vars) {
+      if (node->IsVar() && node->Var() &&
+          node->GetVarNodeBlockId() == graph.GetBlockId()) {
+        vars_in_graph.emplace_back(*node->Var()->Proto());
+      }
+    }
+  }
 
   // add vars_in_graph to blcok
   block->clear_vars();
@@ -578,20 +587,6 @@ static void GraphToBlock(const Graph &graph,
         vars2remove.find(var_name) == vars2remove.end()) {
       block->add_vars()->MergeFrom(var);
       visited_vars.insert(var_name);
-    }
-  }
-
-  if (graph.Has(details::kRemovedVars)) {
-    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
-    for (auto &n : removed_vars) {
-      if (n->IsVar()) {
-        if (n->Var() && visited_vars.count(n->Var()->Name()) == 0 &&
-            !vars2remove.count(n->Var()->Name()) &&
-            n->GetVarNodeBlockId() == graph.GetBlockId()) {
-          visited_vars.insert(n->Var()->Name());
-          block->add_vars()->MergeFrom(*n->Var()->Proto());
-        }
-      }
     }
   }
 

@@ -771,20 +771,14 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   return var->Name() == op->Op()->Output(argument)[nth];
 }
 
-void GraphSafeRemoveNodes(Graph *graph,
-                          const std::unordered_set<const Node *> &nodes) {
-  std::unordered_set<std::shared_ptr<Node>> empty_nodes;
-  GraphSafeRemoveNodes(graph, nodes, &empty_nodes, false);
-}
-
-void GraphSafeRemoveNodes(Graph *graph,
-                          const std::unordered_set<const Node *> &nodes,
-                          std::unordered_set<std::shared_ptr<Node>> *save_nodes,
-                          bool flag_save_nodes) {
+void GraphSafeRemoveNodes(
+    Graph *graph,
+    const std::unordered_set<const Node *> &nodes,
+    std::unordered_set<std::shared_ptr<Node>> *saved_nodes) {
   for (auto *node : nodes) {
-    if (flag_save_nodes) {
+    if (saved_nodes != nullptr) {
       // prevent unique_ptr node from being released
-      save_nodes->insert(
+      saved_nodes->insert(
           std::move(graph->RemoveNode(const_cast<Node *>(node))));
     } else {
       graph->RemoveNode(const_cast<Node *>(node));

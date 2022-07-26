@@ -392,12 +392,10 @@ bool HasOutput(Node* op, const std::string& argument);
 bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
 // Graph safely remove some nodes, will automatically clean up the edges.
-void GraphSafeRemoveNodes(Graph* graph,
-                          const std::unordered_set<const Node*>& nodes);
-void GraphSafeRemoveNodes(Graph* graph,
-                          const std::unordered_set<const Node*>& nodes,
-                          std::unordered_set<std::shared_ptr<Node>>* save_nodes,
-                          bool flag_save_nodes);
+void GraphSafeRemoveNodes(
+    Graph* graph,
+    const std::unordered_set<const Node*>& nodes,
+    std::unordered_set<std::shared_ptr<Node>>* saved_nodes = nullptr);
 
 // Some pre-defined patterns those can be reused in multiple passes.
 // The related Fluid Layer or Op should be one pattern here for better re-usage
