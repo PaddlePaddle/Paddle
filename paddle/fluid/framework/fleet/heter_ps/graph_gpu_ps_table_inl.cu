@@ -73,9 +73,9 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph, GpuPsFeaInfo* fea_i
                                 int* actual_size, uint64_t* feature, int slot_num, int n) {
   int idx = blockIdx.x * blockDim.y + threadIdx.y;
   if (idx < n) {
-    int node_offset = fea_info_array[idx].feature_offset;
+    int feature_size = fea_info_array[idx].feature_size;
     int offset = idx * slot_num;
-    if (node_offset == 0) {
+    if (feature_size == 0) {
       for (int k = 0; k < slot_num; ++ k) {
         feature[offset + k] = 0;
       }
