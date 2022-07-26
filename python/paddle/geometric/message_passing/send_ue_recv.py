@@ -36,9 +36,9 @@ def send_ue_recv(x,
 
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding data, after computing with `y`, then use `dst_index` to update the corresponding position 
-    of output tensor in different pooling types, like sum, mean, max, or min. Besides, we can use `out_size` to set 
-    necessary output shape.
+    to gather the corresponding data, after computing with `y` in different compute types, then use `dst_index` to 
+    update the corresponding position of output tensor in different pooling types, like sum, mean, max, or min. 
+    Besides, we can use `out_size` to set necessary output shape.
 
     .. code-block:: text
 
@@ -51,15 +51,20 @@ def send_ue_recv(x,
            E = [1, 1, 1]
 
            src_index = [0, 1, 2, 0]
+
            dst_index = [1, 2, 1, 0]
+
+           compute_type = "add"
+
            pool_type = "sum"
+
            out_size = None
 
            Then:
 
-           Out = [[0, 2, 3],
-                  [2, 8, 10],
-                  [1, 4, 5]]
+           Out = [[1, 3, 4],
+                  [4, 10, 12],
+                  [2, 5, 6]]
     Args:
         x (Tensor): The input node feature tensor, and the available data type is float32, float64, int32, int64.
         e (Tensor): The input edge feature tensor, and the available data type is float32, float64, int32, int64.
@@ -89,27 +94,29 @@ def send_ue_recv(x,
             import paddle
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            e = paddle.to_tensor([1, 1, 1], type="float32")
+            e = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum")
-            # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
+            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum")
+            # Outputs: [[1., 3., 4.], [4., 10., 12.], [2., 5., 6.]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            e = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
             out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum", out_size=out_size)
-            # Outputs: [[0., 2., 3.], [[2., 8., 10.]]]
+            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum", out_size=out_size)
+            # Outputs: [[1., 3., 4.], [[4., 10., 12.]]]
 
             x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            e = paddle.to_tensor([1, 1, 1], dtype="float32")
             indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
             src_index = indexes[:, 0]
             dst_index = indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, pool_type="sum")
-            # Outputs: [[0., 2., 3.], [2., 8., 10.], [0., 0., 0.]]
+            out = paddle.geometric.send_ue_recv(x, e, src_index, dst_index, compute_type="add", pool_type="sum")
+            # Outputs: [[1., 3., 4.], [4., 10., 12.], [0., 0., 0.]]
 
     """
 
