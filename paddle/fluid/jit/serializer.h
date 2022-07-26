@@ -14,19 +14,25 @@
 
 #pragma once
 
+#include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 
-#include "paddle/fluid/jit/layer.h"
-#include "paddle/fluid/jit/property.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 
 namespace framework {
+class Variable;
 class ProgramDesc;
 }  // namespace framework
 
 namespace jit {
+class Layer;
+using Variable = paddle::framework::Variable;
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
 
 // Export Layer into local disk
 class Serializer {

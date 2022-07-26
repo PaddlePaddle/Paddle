@@ -622,8 +622,12 @@ headers = (
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
     # utila api headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)) + # paddle utils headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True)))
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True))) # paddle utils headers
+
+jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'base_function.h']
+for f in jit_layer_headers:
+    headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=False))
+
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
@@ -667,6 +671,10 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+            print('install_dir: ', install_dir)
+            if 'fluid/jit' in install_dir:
+                install_dir = re.sub('fluid/jit', 'jit', install_dir)
+                print('fluid/jit install_dir: ', install_dir)
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

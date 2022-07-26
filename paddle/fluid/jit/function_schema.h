@@ -78,7 +78,6 @@ class FunctionInfo {
   std::string func_name_;
   std::vector<std::string> param_names_;
   std::shared_ptr<framework::ProgramDesc> program_desc_;
-  // jit::ProgramDesc program_desc_;
   FunctionSchema schema_;
 };
 

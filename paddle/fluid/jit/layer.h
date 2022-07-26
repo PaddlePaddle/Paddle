@@ -18,11 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
-#include "paddle/fluid/jit/base_function.h"
-#include "paddle/fluid/jit/compilation_unit.h"
-#include "paddle/fluid/jit/function_schema.h"
+#include "base_function.h"
 
 namespace paddle {
 
@@ -31,15 +30,19 @@ class Variable;
 }  // namespace framework
 
 namespace jit {
+class CompilationUnit;
+
+using DenseTensor = phi::DenseTensor;
+using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
 using Name2VariableMap =
     std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using Name2FunctionMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
 
 class Layer {
  public:
-  Layer(const std::vector<std::shared_ptr<FunctionInfo>>& infos,
-        const Name2VariableMap& params_dict,
-        const phi::Place& place);
+  Layer(const Name2VariableMap& params_dict, const phi::Place& place);
 
   std::shared_ptr<BaseFunction> Function(const std::string& name) const;
 
@@ -61,7 +64,7 @@ class Layer {
  private:
   Name2VariableMap params_dict_;
   Name2VariableMap attrs_dict_;
-  CompilationUnit unit_;
+  std::shared_ptr<CompilationUnit> unit_;
 };
 
 }  // namespace jit

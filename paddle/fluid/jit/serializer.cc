@@ -21,7 +21,9 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/pe_function.h"
+#include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
 
 DECLARE_string(jit_engine_type);
@@ -57,7 +59,7 @@ Layer Deserializer::operator()(const std::string& path,
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
   // ReadAttributeData();
 
-  Layer layer = Layer(infos, params_dict, place);
+  Layer layer = Layer(params_dict, place);
 
   for (auto& info : infos) {
     if (FLAGS_jit_engine_type == "Executor") {
