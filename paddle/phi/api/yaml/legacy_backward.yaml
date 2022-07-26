@@ -280,6 +280,7 @@
     param : [x]
   kernel :
     func : broadcast_tensors_grad
+    param : [out_grad]
   no_need_buffer : x
 
 - backward_api : cast_grad
