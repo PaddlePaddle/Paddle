@@ -18,7 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ProgramDesc;
+void MergePrograms(ProgramDesc *dst,
+                   const std::vector<ProgramDesc> &srcs,
+                   bool append);
 
 class ProgramProcessor {
  public:
@@ -30,5 +32,6 @@ class ProgramProcessor {
 
   void AddDepToBlockOp(const BlockDesc &block);
 };
+
 }  // namespace framework
 }  // namespace paddle

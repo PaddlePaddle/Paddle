@@ -1445,9 +1445,11 @@ class Executor(object):
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
                     if isinstance(program, compiler.CompiledProgram):
+                        # print(f"Program before convert:\n {inner_program}", flush=True)
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                        # print(f"Program after convert:\n {inner_program}", flush=True)
                     else:
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
