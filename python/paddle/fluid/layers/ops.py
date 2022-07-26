@@ -694,7 +694,7 @@ def thresholded_relu(x, threshold=None):
 thresholded_relu.__doc__ = r"""
 	:alias_main: paddle.nn.functional.thresholded_relu
 	:alias: paddle.nn.functional.thresholded_relu,paddle.nn.functional.activation.thresholded_relu
-	:old_api: paddle.fluidx .layers.thresholded_relu
+	:old_api: paddle.fluid.layers.thresholded_relu
 
 :strong:`Thresholded ReLU Activation Operator`
 
