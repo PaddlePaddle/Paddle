@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/stream.h"
+#include "paddle/phi/core/cuda_stream.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
