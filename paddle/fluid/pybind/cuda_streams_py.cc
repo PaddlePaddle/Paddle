@@ -24,6 +24,7 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace platform {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 phi::CUDAStream *get_current_stream(int device_id) {
   if (device_id == -1) {
     device_id = phi::backends::gpu::GetCurrentDeviceId();
@@ -40,7 +41,7 @@ phi::CUDAStream *set_current_stream(phi::CUDAStream *stream) {
   gpu_context->SetCUDAStream(stream);
   return original_stream;
 }
-
+#endif
 }  // namespace platform
 namespace pybind {
 void BindCudaStream(py::module *m_ptr) {
@@ -49,13 +50,27 @@ void BindCudaStream(py::module *m_ptr) {
   // Bind Methods
   m.def(
       "_get_current_stream",
-      [](int deviceId) { platform::get_current_stream(deviceId); },
+      [](int deviceId) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        platform::get_current_stream(deviceId);
+#else
+        PADDLE_THROW(
+            platform::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                          "Cannot visit device synchronize."));
+#endif
+      },
       py::return_value_policy::reference);
 
   m.def(
       "_set_current_stream",
       [](phi::CUDAStream *stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         return platform::set_current_stream(stream);
+#else
+        PADDLE_THROW(
+            platform::errors::Unavailable("Paddle is not compiled with CUDA. "
+                                          "Cannot visit device synchronize."));
+#endif
       },
       py::return_value_policy::reference);
 

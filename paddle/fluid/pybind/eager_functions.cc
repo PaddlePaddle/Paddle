@@ -35,7 +35,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -50,6 +49,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/pybind/cuda_streams_py.h"
+#endif
 
 namespace paddle {
 namespace pybind {
