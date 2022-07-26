@@ -845,3 +845,31 @@ Examples:
         print(out)
         # [-0.42839236 -0.22270259  0.11246292  0.32862676]
 """
+
+
+def lgamma(x, name=None):
+    r"""
+    Calculates the lgamma of the given input tensor, element-wise.
+
+    This operator performs elementwise lgamma for input $X$.
+    :math:`out = log\Gamma(x)`
+
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.lgamma(x)
+            print(out)
+            # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
+    """
+    return paddle.Tensor.lgamma(x)
