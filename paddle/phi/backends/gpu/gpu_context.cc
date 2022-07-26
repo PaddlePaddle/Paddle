@@ -777,14 +777,18 @@ struct GPUContext::Impl {
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
-GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
+GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
+  impl_->PartialInitWithoutAllocator();
+}
 
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
 GPUContext::GPUContext(const GPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->PartialInitWithoutAllocator();
+}
 
 GPUContext::~GPUContext() = default;
 
