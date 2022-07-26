@@ -22,6 +22,7 @@ import functools
 from collections import OrderedDict
 import inspect
 import threading
+from typing import Text, Tuple, Any, List
 
 import six
 import paddle
