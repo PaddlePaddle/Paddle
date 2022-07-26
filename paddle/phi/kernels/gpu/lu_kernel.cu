@@ -175,6 +175,11 @@ void LUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lu, GPU, ALL_LAYOUT, phi::LUKernel, float, double) {}
+PD_REGISTER_KERNEL(lu,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LUKernel,
+                   float,
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP

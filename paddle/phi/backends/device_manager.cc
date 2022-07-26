@@ -14,6 +14,7 @@
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/complex.h"
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -134,6 +135,80 @@ void Device::MemoryDeallocateUnified(void* ptr, size_t size) {
 void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
   impl_->MemorySet(dev_id_, ptr, value, size);
 }
+
+template <typename T>
+void Device::BlasAXPBY(const stream::Stream& stream,
+                       size_t numel,
+                       float alpha,
+                       const T* x,
+                       float beta,
+                       T* y) {
+  impl_->BlasAXPBY(dev_id_,
+                   stream,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   numel,
+                   alpha,
+                   reinterpret_cast<void*>(const_cast<T*>(x)),
+                   beta,
+                   reinterpret_cast<void*>(y));
+}
+
+template void Device::BlasAXPBY<paddle::float16>(const stream::Stream& stream,
+                                                 size_t numel,
+                                                 float alpha,
+                                                 const paddle::float16* x,
+                                                 float beta,
+                                                 paddle::float16* y);
+template void Device::BlasAXPBY<float>(const stream::Stream& stream,
+                                       size_t numel,
+                                       float alpha,
+                                       const float* x,
+                                       float beta,
+                                       float* y);
+template void Device::BlasAXPBY<double>(const stream::Stream& stream,
+                                        size_t numel,
+                                        float alpha,
+                                        const double* x,
+                                        float beta,
+                                        double* y);
+template void Device::BlasAXPBY<int8_t>(const stream::Stream& stream,
+                                        size_t numel,
+                                        float alpha,
+                                        const int8_t* x,
+                                        float beta,
+                                        int8_t* y);
+template void Device::BlasAXPBY<int16_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int16_t* x,
+                                         float beta,
+                                         int16_t* y);
+template void Device::BlasAXPBY<int32_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int32_t* x,
+                                         float beta,
+                                         int32_t* y);
+template void Device::BlasAXPBY<int64_t>(const stream::Stream& stream,
+                                         size_t numel,
+                                         float alpha,
+                                         const int64_t* x,
+                                         float beta,
+                                         int64_t* y);
+template void Device::BlasAXPBY<phi::dtype::complex<float>>(
+    const stream::Stream& stream,
+    size_t numel,
+    float alpha,
+    const phi::dtype::complex<float>* x,
+    float beta,
+    phi::dtype::complex<float>* y);
+template void Device::BlasAXPBY<phi::dtype::complex<double>>(
+    const stream::Stream& stream,
+    size_t numel,
+    float alpha,
+    const phi::dtype::complex<double>* x,
+    float beta,
+    phi::dtype::complex<double>* y);
 
 std::string Device::Type() { return impl_->Type(); }
 

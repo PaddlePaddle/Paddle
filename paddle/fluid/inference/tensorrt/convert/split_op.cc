@@ -91,7 +91,7 @@ class SplitOpConverter : public OpConverter {
           start_point += output_lengths[i];
         } else {
           this_len_tensor = avg_len_tensor;
-          auto* i_tensor = Add1DConstantLayer(i);
+          auto* i_tensor = Add1DConstantLayer(static_cast<int>(i));
           start_point_tensor = Prod(i_tensor, avg_len_tensor);
         }
 

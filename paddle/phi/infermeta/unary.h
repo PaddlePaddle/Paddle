@@ -304,6 +304,10 @@ void ReverseInferMeta(const MetaTensor& x,
                       const std::vector<int>& axis,
                       MetaTensor* out);
 
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+                           const std::vector<int>& axis,
+                           std::vector<phi::MetaTensor*> out);
+
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
@@ -351,6 +355,8 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
                       MetaTensor* out);
@@ -390,6 +396,12 @@ void SumRawInferMeta(const MetaTensor& x,
                      bool reduce_all,
                      DataType dtype,
                      MetaTensor* out);
+
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh);
 
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,

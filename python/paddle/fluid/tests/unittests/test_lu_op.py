@@ -104,8 +104,6 @@ class TestLUOp(OpTest):
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
-        self.python_api = paddle.tensor.linalg.lu
-        self.python_out_sig = ["Out", "Pivots", "Infos"]
 
     def set_output(self):
         X = self.inputs['X']
@@ -130,6 +128,8 @@ class TestLUOp(OpTest):
 
     def setUp(self):
         self.op_type = "lu"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots"]
         self.config()
 
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
