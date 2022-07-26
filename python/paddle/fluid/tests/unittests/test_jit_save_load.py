@@ -1,4 +1,5 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1206,6 +1207,27 @@ class Net(paddle.nn.Layer):
         return ["hello", "world"]
 
 
+class NetTensor(paddle.nn.Layer):
+
+    def __init__(self):
+        super().__init__()
+        self.fc1 = paddle.nn.Linear(4, 4)
+        self.fc2 = paddle.nn.Linear(4, 4)
+        self.bias = 0.4
+        self.flag = paddle.ones([2], dtype="int32")
+
+    @paddle.jit.to_static(input_spec=[InputSpec([None, 4], dtype='float32')])
+    def forward(self, x):
+        out = self.fc1(x)
+        out = paddle.nn.functional.relu(out)
+        out = paddle.mean(out)
+        return out
+
+    @paddle.jit.to_static(property=True)
+    def fflag(self):
+        return True
+
+
 class TestJitSaveCombineProperty(unittest.TestCase):
 
     def setUp(self):
@@ -1219,12 +1241,19 @@ class TestJitSaveCombineProperty(unittest.TestCase):
     def test_jit_save_combine_property(self):
         model_path = os.path.join(self.temp_dir.name,
                                   "test_jit_save_combine/model")
-
         # Use new namespace
         with unique_name.guard():
             net = Net()
-
         #save
+        paddle.jit.save(net, model_path, combine_params=True)
+
+    def test_jit_save_tensor_property(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+        # Use new namespace
+        with unique_name.guard():
+            net = NetTensor()
+
         paddle.jit.save(net, model_path, combine_params=True)
 
 

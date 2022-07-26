@@ -660,8 +660,6 @@ def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
             meta.set_int(key, val)
         elif isinstance(val, str):
             meta.set_string(key, val)
-        elif isinstance(val, paddle.Tensor):
-            meta.set_tensor(key, val)
         elif isinstance(val, (tuple, list)):
             if isinstance(val[0], float):
                 meta.set_floats(key, val)
@@ -669,8 +667,6 @@ def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
                 meta.set_ints(key, val)
             elif isinstance(val[0], str):
                 meta.set_strings(key, val)
-            elif isinstance(val[0], paddle.Tensor):
-                meta.set_tensors(key, val)
         else:
             raise ValueError(f"Note support val type: {type(val)}")
         return
