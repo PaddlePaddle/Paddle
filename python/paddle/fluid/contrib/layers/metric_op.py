@@ -42,21 +42,21 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
     number first
 
     Args:
-        input(Variable): A floating-point 2D Variable, values are in the range
+        input(Tensor): A floating-point 2D Tensor, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
                          input should be the output of topk. Typically, this
-                         Variable indicates the probability of each label.
-        label(Variable): A 2D int Variable indicating the label of the training
+                         Tensor indicates the probability of each label.
+        label(Tensor): A 2D int Tensor indicating the label of the training
                          data. The height is batch size and width is always 1.
-        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
+        ins_tag_weight(Tensor): A 2D int Tensor indicating the ins_tag_weight of the training
                          data. 1 means real data, 0 means fake data. 
                          A LoDTensor or Tensor with type float32,float64.
 
     Returns:
-        local_sqrerr(Variable): Local sum of squared error
-        local_abserr(Variable): Local sum of abs error
-        local_prob(Variable): Local sum of predicted ctr
-        local_q(Variable): Local sum of q value
+        local_sqrerr(Tensor): Local sum of squared error
+        local_abserr(Tensor): Local sum of abs error
+        local_prob(Tensor): Local sum of predicted ctr
+        local_q(Tensor): Local sum of q value
 
     Examples 1:
         .. code-block:: python

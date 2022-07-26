@@ -39,14 +39,14 @@ def accuracy(input, label, k=1, correct=None, total=None):
     If the correct label occurs in top k predictions, then correct will increment by one.
     Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
     Args:
-        input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
+        input(Tensor): The input of accuracy layer, which is the predictions of network. A Tensor with type float32,float64.
             The shape is ``[sample_number, class_dim]`` .
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
+        label(Tensor): The label of dataset.  Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
-        correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
-        total(Variable): The total entries count. A tensor with type int64 or int32.
+        correct(Tensor): The correct predictions count. A Tensor with type int64 or int32.
+        total(Tensor): The total entries count. A tensor with type int64 or int32.
     Returns:
-        Variable: The correct rate. A Tensor with type float32.
+        Tensor: The correct rate. A Tensor with type float32.
     Examples:
         .. code-block:: python
             import numpy as np
@@ -142,25 +142,24 @@ def auc(input,
         2. PR: Precision Recall
 
     Args:
-        input(Variable): A floating-point 2D Variable, values are in the range
+        input(Tensor): A floating-point 2D Tensor, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
                          input should be the output of topk. Typically, this
-                         Variable indicates the probability of each label.
-                         A LoDTensor or Tensor with type float32,float64.
-        label(Variable): A 2D int Variable indicating the label of the training
+                         Tensor indicates the probability of each label.
+                         A Tensor with type float32,float64.
+        label(Tensor): A 2D int Tensor indicating the label of the training
                          data. The height is batch size and width is always 1.
-                         A LoDTensor or Tensor with type int32,int64.
+                         A Tensor with type int32,int64.
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 4095.
         topk(int): only topk number of prediction output will be used for auc.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
-        ins_tag_weight(Variable): A 2D int Variable indicating the ins_tag_weight of the training
-                         data. 1 means real data, 0 means fake data. Default None, means real data. 
-                         A LoDTensor or Tensor with type float32,float64.
+        ins_tag_weight(Tensor): A 2D int Tensor indicating the data's tag weight, 1 means real data, 0 means fake data. Default None, and it will be assigned to a tensor of value 1. 
+                         A Tensor with type float32,float64.
 
     Returns:
-        Variable: A tuple representing the current AUC.
+        Tensor: A tuple representing the current AUC.
         The return tuple is auc_out, batch_auc_out, [
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
         Data type is Tensor, supporting float32, float64.
