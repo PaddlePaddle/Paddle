@@ -84,6 +84,7 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Softsign, "softsign", );       // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Exp, "exp", );                 // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
@@ -294,6 +295,7 @@ PD_REGISTER_ARG_MAPPING_FN(elu, phi::EluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad, phi::EluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elu_grad_grad, phi::EluDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(silu_grad, phi::SiluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(softsign_grad, phi::SoftsignGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad, phi::SigmoidGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(sigmoid_grad_grad,
                            phi::SigmoidDoubleGradOpArgumentMapping);
