@@ -130,6 +130,10 @@ def _conv_nd(x,
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
+            if isinstance(x, tuple):
+                x = x[0]
+            if isinstance(bias, tuple):
+                bias = bias[0]
             if len(bias.shape) < len(x.shape):
                 tmp_bias = _C_ops.final_state_reshape(
                     bias, bias.shape +

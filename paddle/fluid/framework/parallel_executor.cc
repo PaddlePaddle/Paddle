@@ -549,6 +549,15 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (platform::is_ipu_place(place)) {
+#if defined(PADDLE_WITH_IPU)
+      gc.reset(new IPUGarbageCollector(place, max_memory_size));
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use IPU device since it's not compiled with IPU,"
+          "Please recompile or reinstall Paddle with IPU support."));
+#endif
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -986,7 +995,7 @@ FetchUnmergedList ParallelExecutor::Run(
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data =
       member_->executor_->Run(fetch_tensors, /*return_merged=*/false);
-  return BOOST_GET(FetchUnmergedList, fetch_data);
+  return PADDLE_GET(FetchUnmergedList, fetch_data);
 }
 
 FetchList ParallelExecutor::RunAndMerge(
@@ -1003,7 +1012,7 @@ FetchList ParallelExecutor::RunAndMerge(
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->RunAndMerge";
   auto fetch_data =
       member_->executor_->Run(fetch_tensors, /*return_merged=*/true);
-  return BOOST_GET(FetchList, fetch_data);
+  return PADDLE_GET(FetchList, fetch_data);
 }
 
 void ParallelExecutor::RunWithoutFetch(

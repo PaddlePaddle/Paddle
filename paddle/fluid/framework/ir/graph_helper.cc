@@ -446,12 +446,34 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   return ret;
 }
 
+void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
+  auto remove_control_dep_var = [](VariableNameMap *var_name_map) {
+    for (auto &pair : *var_name_map) {
+      std::vector<std::string> &var_names = pair.second;
+      auto it = var_names.begin();
+      while (it != var_names.end()) {
+        if (it->find(ir::Node::kControlDepVarName) != std::string::npos) {
+          it = var_names.erase(it);
+          VLOG(6) << "Remove var " << *it;
+        } else {
+          ++it;
+        }
+      }
+    }
+  };
+
+  remove_control_dep_var(op_desc->MutableInputs());
+  remove_control_dep_var(op_desc->MutableOutputs());
+  op_desc->Flush();
+}
+
 static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   desc->SetType("fill_constant");
   desc->SetAttr(
       OpProtoAndCheckerMaker::OpRoleAttrName(),
       (static_cast<int>(OpRole::kBackward) | static_cast<int>(OpRole::kLoss)));
   desc->SetAttr("value", 1.0f);
+  desc->SetAttr("shape", std::vector<int64_t>({1}));
   std::vector<std::string> output_names;
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
@@ -551,7 +573,9 @@ static void GraphToBlock(const Graph &graph,
 
   std::vector<OpDesc> ops;
   GetGraphOpDesc(nodes, &ops);
+
   for (auto &op : ops) {
+    RemoveControlDepInputAndOuput(&op);
     block->add_ops()->MergeFrom(*op.Proto());
   }
 }

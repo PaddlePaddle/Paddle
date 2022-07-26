@@ -22,7 +22,7 @@ import contextlib
 import collections
 import numpy as np
 import paddle
-from paddle.autograd.utils import as_tensors
+from paddle.incubate.autograd.utils import as_tensors
 
 
 ##########################################################

@@ -134,3 +134,15 @@ endif()
 add_library(onnxruntime STATIC IMPORTED GLOBAL)
 set_property(TARGET onnxruntime PROPERTY IMPORTED_LOCATION ${ONNXRUNTIME_LIB})
 add_dependencies(onnxruntime ${ONNXRUNTIME_PROJECT})
+
+function(copy_onnx TARGET_NAME)
+  # If error of Exitcode0xc000007b happened when a .exe running, copy onnxruntime.dll
+  # to the .exe folder.
+  if(TARGET ${TARGET_NAME})
+    add_custom_command(
+      TARGET ${TARGET_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB}
+              ${CMAKE_CURRENT_BINARY_DIR} DEPENDS onnxruntime)
+  endif()
+endfunction()

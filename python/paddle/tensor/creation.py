@@ -663,8 +663,12 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         num_columns = num_rows
 
     if _non_static_mode():
-        out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows, 'num_columns',
-                         num_columns)
+        if in_dygraph_mode():
+            out = _C_ops.final_state_eye(num_rows, num_columns, dtype,
+                                         _current_expected_place())
+        elif _in_legacy_dygraph():
+            out = _C_ops.eye('dtype', dtype, 'num_rows', num_rows,
+                             'num_columns', num_columns)
 
     else:
         helper = LayerHelper("eye", **locals())
@@ -1701,6 +1705,9 @@ def complex(real, imag, name=None):
             # [[0.+0.j 0.+1.j 0.+2.j]
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_complex(real, imag)
+
     if paddle.in_dynamic_mode():
         return paddle._C_ops.complex(real, imag)
 

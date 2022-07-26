@@ -15,8 +15,10 @@
 
 #include <algorithm>
 
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_utils.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -43,6 +45,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Enable serial execution for standalone executor, used for debug.");
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace framework {
@@ -327,19 +330,47 @@ void apply_device_guard(const OperatorBase* op_base,
       VLOG(3) << "Switch into CPUPlace by device_guard.";
       expected_kernel_key->place_ = platform::CPUPlace();
     } else if (op_device.find("gpu") != std::string::npos &&
-               (platform::is_gpu_place(place) ||
-                platform::is_npu_place(place))) {
-      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
-      // will be executed and a warning will be given at the same time.
+               platform::is_gpu_place(place)) {
+      // when the Op that does not have GPUKernel is assigned to GPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
       if (op_base->SupportGPU()) {
-        expected_kernel_key->place_ = place;
-      } else if (op_base->SupportNPU()) {
         expected_kernel_key->place_ = place;
       } else {
         expected_kernel_key->place_ = platform::CPUPlace();
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("npu") != std::string::npos &&
+               platform::is_npu_place(place)) {
+      // when the Op that does not have NPUKernel is assigned to NPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportNPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (op_device.find("xpu") != std::string::npos &&
+               platform::is_xpu_place(place)) {
+      // when the Op that does not have XPUKernel is assigned to XPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      if (op_base->SupportXPU()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
@@ -446,11 +477,19 @@ void build_op_func_list(const platform::Place& place,
     op_func_node.output_index = outs_name2id;
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
+#ifdef PADDLE_WITH_ASCEND_CL
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+    // values, but only through special `float_status` to checks whether
+    // the operation is overflow. More about `float_status`, see:
+    // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+    if (FLAGS_check_nan_inf) {
+      framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
+    }
+#endif
+
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
-      VLOG(4) << "End run " << place << " "
-              << op_func_node.operator_base_->DebugStringEx(local_scope);
     } else {
       auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
           static_cast<const framework::OperatorWithKernel*>(op));
@@ -593,6 +632,12 @@ void build_op_func_list(const platform::Place& place,
                   << var_scope->GetNameById(p.second);
         }
       }
+
+      // for debug nan/inf
+      if (FLAGS_check_nan_inf) {
+        VLOG(4) << "Check nan/inf";
+        framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
+      }
     }
 
     VLOG(4) << "End run " << place << " "
@@ -688,33 +733,6 @@ void update_var_min_rw_op(const std::map<int, std::set<int>>& op2dependences,
   var2min_rw_op->at(rw_var).push_back(cur_op);
 }
 
-void AddDownstreamOp(int prior_op_idx,
-                     int posterior_op_idx,
-                     std::map<int, std::list<int>>* op_downstream_map) {
-  if (op_downstream_map->find(prior_op_idx) == op_downstream_map->end()) {
-    op_downstream_map->emplace(std::make_pair(prior_op_idx, std::list<int>()));
-  }
-  op_downstream_map->at(prior_op_idx).push_back(posterior_op_idx);
-}
-
-void AddDownstreamOp(int prior_op_idx,
-                     int posterior_op_idx,
-                     std::map<int, std::list<int>>* op_downstream_map,
-                     const std::vector<std::vector<bool>>& op_happens_before) {
-  if (op_downstream_map->find(prior_op_idx) != op_downstream_map->end()) {
-    for (int op_idx : op_downstream_map->at(prior_op_idx)) {
-      if (op_happens_before[op_idx][posterior_op_idx]) {
-        VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx
-                << "->" << posterior_op_idx << ", skip adding " << prior_op_idx
-                << "->" << posterior_op_idx;
-        return;
-      }
-    }
-  }
-
-  AddDownstreamOp(prior_op_idx, posterior_op_idx, op_downstream_map);
-}
-
 size_t CountDownstreamMap(const std::map<int, std::list<int>>& downstream_map) {
   size_t count = 0;
   for (auto pair : downstream_map) {
@@ -768,12 +786,7 @@ void ShrinkDownstreamMap(std::map<int, std::list<int>>* downstream_map,
   // b: c
 
   // happens_before[i][j] means i should be executed before j
-  op_happens_before->resize(op_num);
-  for (size_t i = 0; i < op_num; ++i) {
-    (*op_happens_before)[i].resize(op_num);
-    std::fill(
-        (*op_happens_before)[i].begin(), (*op_happens_before)[i].end(), false);
-  }
+  op_happens_before->assign(op_num, std::vector<bool>(op_num, false));
 
   // bfs to get all next ops
   auto bfs = [&](size_t op_idx) {
@@ -883,6 +896,18 @@ std::map<int, std::list<int>> build_op_downstream_map(
         }
       }
     }
+    // the original output of inplace op is also change.
+    if (!vec_instruction[op_idx].InplaceBackMap().empty()) {
+      auto& m = vec_instruction[op_idx].InplaceBackMap();
+      for (auto& p : m) {
+        auto& var = p.second;
+        if (var2min_rw_op.count(var)) {
+          for (auto dep_op : var2min_rw_op[var]) {
+            op2dependences[op_idx].insert(dep_op);
+          }
+        }
+      }
+    }
 
     // step2: update 2 var2xxxx data structure
     for (auto& item :
@@ -891,16 +916,6 @@ std::map<int, std::list<int>> build_op_downstream_map(
         var2recent_write_op[var] = op_idx;
         var2min_rw_op[var] = {static_cast<int>(op_idx)};
         remove_duplicate.insert(var);
-      }
-    }
-
-    for (auto& item :
-         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
-      for (auto var : item.second) {
-        if (remove_duplicate.count(var) ==
-            0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
-        }
       }
     }
 
@@ -914,8 +929,16 @@ std::map<int, std::list<int>> build_op_downstream_map(
       for (auto& p : m) {
         auto var = p.second;
         var2recent_write_op[var] = op_idx;
-        // var in input list and in output list, so remove it.
-        if (remove_duplicate.count(var) == 0) {
+        var2min_rw_op[var] = {static_cast<int>(op_idx)};
+        remove_duplicate.insert(var);
+      }
+    }
+
+    for (auto& item :
+         vec_instruction[op_idx].Inputs()) {  // for all inputs(read only)
+      for (auto var : item.second) {
+        if (remove_duplicate.count(var) ==
+            0) {  // var in input list and in output list, so remove it.
           update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }
@@ -951,7 +974,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     if (random_op_set.count(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
       }
       dependence_op_idx = op_idx;
     }
@@ -978,7 +1001,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
     if (is_comm_op(vec_instruction[op_idx].OpBase()->Type())) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
         VLOG(4) << "Add depend from "
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
@@ -1007,7 +1030,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
                 << vec_instruction[dependence_op_idx].OpBase()->Type() << " to "
                 << vec_instruction[op_idx].OpBase()->Type();
         AddDownstreamOp(
-            dependence_op_idx, op_idx, &op_downstream_map, *op_happens_before);
+            dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
       }
     }
   }
@@ -1067,7 +1090,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
             AddDownstreamOp(j,
                             first_read_fused_out_op,
                             &op_downstream_map,
-                            *op_happens_before);
+                            op_happens_before);
             VLOG(4) << j << " -> " << first_read_fused_out_op;
             VLOG(4)
                 << "Add depend from " << vec_instruction[j].OpBase()->Type()
@@ -1100,7 +1123,7 @@ std::map<int, std::list<int>> build_op_downstream_map(
 
         for (auto var_id : outputs) {
           if (is_read(vec_instruction[j], var_id)) {
-            AddDownstreamOp(target, j, &op_downstream_map, *op_happens_before);
+            AddDownstreamOp(target, j, &op_downstream_map, op_happens_before);
             VLOG(4) << target << " -> " << j;
             VLOG(4) << "Add depend from "
                     << vec_instruction[target].OpBase()->Type() << " to "
@@ -1116,10 +1139,8 @@ std::map<int, std::list<int>> build_op_downstream_map(
     for (size_t op_idx = 0; op_idx < op_num; ++op_idx) {
       if (!IsCpuOp(vec_instruction[op_idx])) {
         if (dependence_op_idx != -1) {
-          AddDownstreamOp(dependence_op_idx,
-                          op_idx,
-                          &op_downstream_map,
-                          *op_happens_before);
+          AddDownstreamOp(
+              dependence_op_idx, op_idx, &op_downstream_map, op_happens_before);
           VLOG(4) << "Add depend from "
                   << vec_instruction[dependence_op_idx].OpBase()->Type() << "("
                   << dependence_op_idx << ") to "
@@ -1131,6 +1152,10 @@ std::map<int, std::list<int>> build_op_downstream_map(
     }
   }
 
+  AddDependencyForReadOp(
+      vec_instruction, &op_downstream_map, op_happens_before);
+
+  VLOG(8) << "build_op_downstream_map finished";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map);
