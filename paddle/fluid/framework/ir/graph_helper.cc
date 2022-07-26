@@ -556,7 +556,7 @@ static void GetGraphVarDesc(const Graph &graph,
   for (T node : nodes) {
     if (node->IsVar() && node->Var() &&
         node->GetVarNodeBlockId() == graph.GetBlockId()) {
-      vars.emplace_back(*node->Var()->Proto());
+      vars->emplace_back(*node->Var()->Proto());
     }
   }
 }
