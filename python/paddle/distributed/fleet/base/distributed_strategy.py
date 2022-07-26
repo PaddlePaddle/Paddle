@@ -1354,6 +1354,18 @@ class DistributedStrategy(object):
         else:
             print("WARNING: is_fl_ps_mode should have value of bool type")
 
+    @property
+    def is_with_coordinator(self):
+        return self.strategy.with_coordinator
+
+    @is_with_coordinator.setter
+    @is_strict_auto
+    def is_with_coordinator(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.with_coordinator = flag
+        else:
+            print("WARNING: with_coordinator should have value of bool type")
+
     @pipeline.setter
     @is_strict_auto
     def pipeline(self, flag):

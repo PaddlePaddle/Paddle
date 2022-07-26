@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/determinant_op.h"
-
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -170,19 +171,19 @@ REGISTER_OPERATOR(determinant_grad,
                   ops::DeterminantGradOp,
                   DeterminantGradInferShapeFunctor);
 
+DECLARE_INFER_SHAPE_FUNCTOR(slogdeterminant,
+                            SlogDeterminantInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(slogdeterminant,
                   ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,
                   ops::SlogDeterminantGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>,
+                  SlogDeterminantInferShapeFunctor);
 
+DECLARE_INFER_SHAPE_FUNCTOR(slogdeterminant_grad,
+                            SlogDeterminantGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 REGISTER_OPERATOR(slogdeterminant_grad,
-                  ops::SlogDeterminantGradOp)  // reuse det grad op
-
-REGISTER_OP_CPU_KERNEL(slogdeterminant,
-                       ops::SlogDeterminantKernel<phi::CPUContext, float>,
-                       ops::SlogDeterminantKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(slogdeterminant_grad,
-                       ops::SlogDeterminantGradKernel<phi::CPUContext, float>,
-                       ops::SlogDeterminantGradKernel<phi::CPUContext, double>);
+                  ops::SlogDeterminantGradOp,
+                  SlogDeterminantGradInferShapeFunctor)  // reuse det grad op

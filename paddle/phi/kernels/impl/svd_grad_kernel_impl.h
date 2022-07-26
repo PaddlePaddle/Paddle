@@ -71,9 +71,9 @@ void SvdGradKernel(const Context& dev_ctx,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
-                   const DenseTensor& u_grad,
-                   const DenseTensor& vh_grad,
-                   const DenseTensor& s_grad,
+                   const paddle::optional<DenseTensor>& u_grad,
+                   const paddle::optional<DenseTensor>& vh_grad,
+                   const paddle::optional<DenseTensor>& s_grad,
                    bool full_matrices,
                    DenseTensor* x_grad) {
   const auto& dX = *x_grad;
@@ -87,15 +87,33 @@ void SvdGradKernel(const Context& dev_ctx,
         dev_ctx, u, {u.dims().size() - 1}, {0}, {k}, {1}, {});
     VH = SliceKernel<T, Context>(
         dev_ctx, vh, {vh.dims().size() - 2}, {0}, {k}, {1}, {});
-    dU = SliceKernel<T, Context>(
-        dev_ctx, u_grad, {u_grad.dims().size() - 1}, {0}, {k}, {1}, {});
-    dVH = SliceKernel<T, Context>(
-        dev_ctx, vh_grad, {vh.dims().size() - 2}, {0}, {k}, {1}, {});
+    if (u_grad.get_ptr() != nullptr) {
+      dU = SliceKernel<T, Context>(dev_ctx,
+                                   *(u_grad.get_ptr()),
+                                   {u.dims().size() - 1},
+                                   {0},
+                                   {k},
+                                   {1},
+                                   {});
+    }
+    if (vh_grad.get_ptr() != nullptr) {
+      dVH = SliceKernel<T, Context>(dev_ctx,
+                                    *(vh_grad.get_ptr()),
+                                    {vh.dims().size() - 2},
+                                    {0},
+                                    {k},
+                                    {1},
+                                    {});
+    }
   } else {
     U = u;
     VH = vh;
-    dU = u_grad;
-    dVH = vh_grad;
+    if (u_grad.get_ptr() != nullptr) {
+      dU = *(u_grad.get_ptr());
+    }
+    if (vh_grad.get_ptr() != nullptr) {
+      dVH = *(vh_grad.get_ptr());
+    }
   }
   auto s_inverse = Pow<T, Context>(dev_ctx, s, -1);
   auto s_square = Pow<T, Context>(dev_ctx, s, 2);
@@ -106,19 +124,17 @@ void SvdGradKernel(const Context& dev_ctx,
       F,
       Diag<T, Context>(dev_ctx, Infinits<T, Context>(dev_ctx, {k}), 0, 0));
   F = Pow<T, Context>(dev_ctx, F, -1);
-  DenseTensor sigma_term;
-  DenseTensor u_term;
-  DenseTensor v_term;
+  DenseTensor sigma_term = Fill<T, Context>(dev_ctx, {1}, 0.0);
+  DenseTensor u_term = Fill<T, Context>(dev_ctx, {1}, 0.0);
+  DenseTensor v_term = Fill<T, Context>(dev_ctx, {1}, 0.0);
 
-  // if (ctx.HasInput(framework::GradVarName("S")))
-  {
-    const DenseTensor& gS = s_grad;
+  if (s_grad.get_ptr() != nullptr) {
+    const DenseTensor& gS = *(s_grad.get_ptr());
     sigma_term = Multiply<T, Context>(dev_ctx, Unsqueeze(gS, -2), U);
     sigma_term = Matmul<T, Context>(dev_ctx, sigma_term, VH);
   }
 
-  // if (ctx.HasInput(framework::GradVarName("U")))  {
-  {
+  if (u_grad.get_ptr() != nullptr) {
     auto UTG = Matmul<T, Context>(dev_ctx, U, dU, true, false);
     auto GTU = Matmul<T, Context>(dev_ctx, dU, U, true, false);
     u_term = Multiply<T, Context>(
@@ -141,10 +157,7 @@ void SvdGradKernel(const Context& dev_ctx,
     }
     u_term = Matmul<T, Context>(dev_ctx, u_term, VH);
   }
-  // }
-
-  // if (ctx.HasInput(framework::GradVarName("VH"))) {
-  {
+  if (vh_grad.get_ptr() != nullptr) {
     auto UTG = Matmul<T, Context>(dev_ctx, VH, dVH, false, true);
     auto GTU = Matmul<T, Context>(dev_ctx, dVH, VH, false, true);
     v_term = Multiply<T, Context>(

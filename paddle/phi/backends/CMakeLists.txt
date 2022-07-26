@@ -51,7 +51,7 @@ if(WITH_CUSTOM_DEVICE)
   cc_test(
     custom_device_test
     SRCS custom/custom_device_test.cc
-    DEPS phi_backends phi_device_context)
+    DEPS phi_backends phi_device_context gradient_accumulator)
   cc_test(
     capi_test
     SRCS custom/capi_test.cc

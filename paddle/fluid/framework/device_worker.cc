@@ -407,8 +407,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       continue;
     }
     hit[i] = true;
-  }
-
+  }  // dump_mode = 0
   for (size_t i = 0; i < ins_id_vec.size(); i++) {
     if (!hit[i]) {
       continue;
