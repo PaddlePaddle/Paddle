@@ -15,21 +15,9 @@ import typing
 
 import paddle
 from paddle.fluid import framework as framework
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-
-class PrimOption(object):
-
-    def __init__(self):
-        self.enable_prim = False
-
-    def get_status(self):
-        return self.enable_prim
-
-    def set_status(self, flag):
-        self.enable_prim = flag
-
-
-prim_option = PrimOption()
+_prim_enabled = False
 
 
 @framework.static_only
@@ -60,10 +48,11 @@ def prim_enabled():
 
             print(prim_enabled()) # False
     """
-    return prim_option.get_status()
+    return _prim_enabled
 
 
 @framework.static_only
+@signature_safe_contextmanager
 def enable_prim():
     """
     .. note::
@@ -84,10 +73,13 @@ def enable_prim():
 
             print(prim_enabled()) # True
     """
-    prim_option.set_status(True)
+    global _prim_enabled
+    _prim_enabled = True
+    yield
 
 
 @framework.static_only
+@signature_safe_contextmanager
 def disable_prim():
     """
     .. note::
@@ -112,7 +104,9 @@ def disable_prim():
 
             print(prim_enabled()) # False
     """
-    prim_option.set_status(False)
+    global _prim_enabled
+    _prim_enabled = False
+    yield
 
 
 INT_DTYPE_2_STRING = {
