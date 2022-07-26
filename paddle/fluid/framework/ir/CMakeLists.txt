@@ -67,7 +67,7 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph)
+  DEPS graph scale_loss_grad_op_handle)
 cc_library(
   pass
   SRCS pass.cc

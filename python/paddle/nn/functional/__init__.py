@@ -94,6 +94,7 @@ from .loss import cosine_embedding_loss  # noqa: F401
 from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
+from .loss import soft_margin_loss
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -238,4 +239,5 @@ __all__ = [  # noqa
     'rrelu',
     'triplet_margin_with_distance_loss',
     'triplet_margin_loss',
+    'soft_margin_loss',
 ]

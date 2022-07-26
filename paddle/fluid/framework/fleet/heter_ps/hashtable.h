@@ -137,8 +137,12 @@ class HashTable {
            size_t len,
            StreamType stream);
 
-  template <typename StreamType>
-  void get(const KeyType* d_keys, char* d_vals, size_t len, StreamType stream);
+  template <typename StreamType, typename FVAccessor>
+  void get(const KeyType* d_keys,
+           char* d_vals,
+           size_t len,
+           StreamType stream,
+           FVAccessor& fv_accessor);
 
   void show();
 
@@ -150,9 +154,9 @@ class HashTable {
 
 #if defined(PADDLE_WITH_CUDA)
 
-  template <typename GradType, typename Sgd, typename StreamType>
+  template <typename Sgd, typename StreamType>
   void update(const KeyType* d_keys,
-              const GradType* d_grads,
+              const float* d_grads,
               size_t len,
               Sgd sgd,
               StreamType stream);
