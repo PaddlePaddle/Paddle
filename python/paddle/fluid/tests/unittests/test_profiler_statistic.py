@@ -19,6 +19,7 @@ import paddle.profiler as profiler
 
 
 class HostPythonNode:
+
     def __init__(self, name, type, start_ns, end_ns, process_id, thread_id):
         self.name = name
         self.type = type
@@ -32,6 +33,7 @@ class HostPythonNode:
 
 
 class DevicePythonNode:
+
     def __init__(self, name, type, start_ns, end_ns, device_id, context_id,
                  stream_id):
         self.name = name
@@ -44,6 +46,7 @@ class DevicePythonNode:
 
 
 class TestProfilerStatistic(unittest.TestCase):
+
     def test_statistic_case1(self):
         root_node = HostPythonNode('Root Node',
                                    profiler.TracerEventType.UserDefined, 0,
@@ -54,14 +57,16 @@ class TestProfilerStatistic(unittest.TestCase):
         dataloader_node = HostPythonNode('Dataloader',
                                          profiler.TracerEventType.Dataloader, 5,
                                          15, 1000, 1001)
-        mobilenet_node = HostPythonNode(
-            'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
-        yolonet_node = HostPythonNode(
-            'Yolov3Net', profiler.TracerEventType.Forward, 50, 110, 1000, 1001)
+        mobilenet_node = HostPythonNode('MobileNet',
+                                        profiler.TracerEventType.Forward, 20,
+                                        50, 1000, 1001)
+        yolonet_node = HostPythonNode('Yolov3Net',
+                                      profiler.TracerEventType.Forward, 50, 110,
+                                      1000, 1001)
 
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          100, 110, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            100, 110, 1000, 1001)
 
         communication_node = HostPythonNode(
             'Communication', profiler.TracerEventType.Communication, 105, 110,
@@ -72,8 +77,9 @@ class TestProfilerStatistic(unittest.TestCase):
         optimization_node = HostPythonNode(
             'Optimization', profiler.TracerEventType.Optimization, 220, 300,
             1000, 1001)
-        conv2d_node = HostPythonNode(
-            'conv2d', profiler.TracerEventType.Operator, 25, 40, 1000, 1001)
+        conv2d_node = HostPythonNode('conv2d',
+                                     profiler.TracerEventType.Operator, 25, 40,
+                                     1000, 1001)
         sync_batch_norm_node = HostPythonNode('sync_batch_norm',
                                               profiler.TracerEventType.Operator,
                                               60, 100, 1000, 1001)
@@ -92,10 +98,12 @@ class TestProfilerStatistic(unittest.TestCase):
         conv2d_cudaMemCpy = HostPythonNode('cudaMemcpy',
                                            profiler.TracerEventType.CudaRuntime,
                                            35, 40, 1000, 1001)
-        conv2d_kernel = DevicePythonNode(
-            'conv2d_kernel', profiler.TracerEventType.Kernel, 35, 50, 0, 0, 0)
-        conv2d_memcpy = DevicePythonNode(
-            'conv2d_memcpy', profiler.TracerEventType.Memcpy, 50, 60, 0, 0, 0)
+        conv2d_kernel = DevicePythonNode('conv2d_kernel',
+                                         profiler.TracerEventType.Kernel, 35,
+                                         50, 0, 0, 0)
+        conv2d_memcpy = DevicePythonNode('conv2d_memcpy',
+                                         profiler.TracerEventType.Memcpy, 50,
+                                         60, 0, 0, 0)
         sync_batch_norm_infer_shape = HostPythonNode(
             'sync_batch_norm::infer_shape',
             profiler.TracerEventType.OperatorInner, 60, 70, 1000, 1001)
@@ -146,8 +154,8 @@ class TestProfilerStatistic(unittest.TestCase):
             'Process Cpu Utilization': '1.02',
             'System Cpu Utilization': '0.68'
         }
-        statistic_data = profiler.profiler_statistic.StatisticData(thread_tree,
-                                                                   extra_info)
+        statistic_data = profiler.profiler_statistic.StatisticData(
+            thread_tree, extra_info)
         time_range_summary = statistic_data.time_range_summary
         event_summary = statistic_data.event_summary
 
@@ -180,7 +188,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 0, profiler.TracerEventType.Memcpy), 60)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.UserDefined), 25)
+                profiler.TracerEventType.UserDefined), 15)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Communication), 5)
@@ -200,8 +208,9 @@ class TestProfilerStatistic(unittest.TestCase):
             0)
         self.assertEqual(
             event_summary.memory_manipulation_items['AsyncMemcpy'].cpu_time, 15)
-        self.assertEqual(event_summary.memory_manipulation_items['AsyncMemcpy']
-                         .general_gpu_time, 60)
+        self.assertEqual(
+            event_summary.memory_manipulation_items['AsyncMemcpy'].
+            general_gpu_time, 60)
         print(
             profiler.profiler_statistic._build_table(
                 statistic_data,
@@ -222,14 +231,16 @@ class TestProfilerStatistic(unittest.TestCase):
                                          profiler.TracerEventType.Dataloader, 5,
                                          15, 1000, 1001)
 
-        mobilenet_node = HostPythonNode(
-            'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
-        yolonet_node = HostPythonNode(
-            'Yolov3Net', profiler.TracerEventType.Forward, 50, 110, 1000, 1001)
+        mobilenet_node = HostPythonNode('MobileNet',
+                                        profiler.TracerEventType.Forward, 20,
+                                        50, 1000, 1001)
+        yolonet_node = HostPythonNode('Yolov3Net',
+                                      profiler.TracerEventType.Forward, 50, 110,
+                                      1000, 1001)
 
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          100, 110, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            100, 110, 1000, 1001)
         allreduce_launchkernel0 = HostPythonNode(
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 102, 104,
             1000, 1001)
@@ -263,8 +274,9 @@ class TestProfilerStatistic(unittest.TestCase):
         optimization_node = HostPythonNode(
             'Optimization', profiler.TracerEventType.Optimization, 220, 300,
             1000, 1001)
-        conv2d_node = HostPythonNode(
-            'conv2d', profiler.TracerEventType.Operator, 25, 40, 1000, 1001)
+        conv2d_node = HostPythonNode('conv2d',
+                                     profiler.TracerEventType.Operator, 25, 40,
+                                     1000, 1001)
         sync_batch_norm_node = HostPythonNode('sync_batch_norm',
                                               profiler.TracerEventType.Operator,
                                               60, 100, 1000, 1001)
@@ -283,10 +295,12 @@ class TestProfilerStatistic(unittest.TestCase):
         conv2d_cudaMemCpy = HostPythonNode('cudaMemcpy',
                                            profiler.TracerEventType.CudaRuntime,
                                            35, 40, 1000, 1001)
-        conv2d_kernel = DevicePythonNode(
-            'conv2d_kernel', profiler.TracerEventType.Kernel, 35, 50, 0, 0, 0)
-        conv2d_memcpy = DevicePythonNode(
-            'conv2d_memcpy', profiler.TracerEventType.Memcpy, 50, 60, 0, 0, 0)
+        conv2d_kernel = DevicePythonNode('conv2d_kernel',
+                                         profiler.TracerEventType.Kernel, 35,
+                                         50, 0, 0, 0)
+        conv2d_memcpy = DevicePythonNode('conv2d_memcpy',
+                                         profiler.TracerEventType.Memcpy, 50,
+                                         60, 0, 0, 0)
         sync_batch_norm_infer_shape = HostPythonNode(
             'sync_batch_norm::infer_shape',
             profiler.TracerEventType.OperatorInner, 60, 70, 1000, 1001)
@@ -363,8 +377,8 @@ class TestProfilerStatistic(unittest.TestCase):
             'Process Cpu Utilization': '1.02',
             'System Cpu Utilization': '0.68'
         }
-        statistic_data = profiler.profiler_statistic.StatisticData(thread_tree,
-                                                                   extra_info)
+        statistic_data = profiler.profiler_statistic.StatisticData(
+            thread_tree, extra_info)
         time_range_summary = statistic_data.time_range_summary
         event_summary = statistic_data.event_summary
         distributed_summary = statistic_data.distributed_summary
@@ -398,7 +412,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 0, profiler.TracerEventType.Memcpy), 60)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.UserDefined), 25)
+                profiler.TracerEventType.UserDefined), 15)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Communication), 5)
@@ -433,8 +447,9 @@ class TestProfilerStatistic(unittest.TestCase):
             0)
         self.assertEqual(
             event_summary.memory_manipulation_items['AsyncMemcpy'].cpu_time, 15)
-        self.assertEqual(event_summary.memory_manipulation_items['AsyncMemcpy']
-                         .general_gpu_time, 60)
+        self.assertEqual(
+            event_summary.memory_manipulation_items['AsyncMemcpy'].
+            general_gpu_time, 60)
         print(
             profiler.profiler_statistic._build_table(
                 statistic_data,
@@ -454,8 +469,9 @@ class TestProfilerStatistic(unittest.TestCase):
         dataloader_node = HostPythonNode('Dataloader',
                                          profiler.TracerEventType.Dataloader, 5,
                                          15, 1000, 1001)
-        mobilenet_node = HostPythonNode(
-            'MobileNet', profiler.TracerEventType.Forward, 20, 50, 1000, 1001)
+        mobilenet_node = HostPythonNode('MobileNet',
+                                        profiler.TracerEventType.Forward, 20,
+                                        50, 1000, 1001)
 
         backward_node = HostPythonNode('Gradient Backward',
                                        profiler.TracerEventType.Backward, 120,
@@ -463,12 +479,13 @@ class TestProfilerStatistic(unittest.TestCase):
         optimization_node = HostPythonNode(
             'Optimization', profiler.TracerEventType.Optimization, 220, 300,
             1000, 1001)
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          60, 70, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            60, 70, 1000, 1001)
 
-        conv2d_node = HostPythonNode(
-            'conv2d', profiler.TracerEventType.Operator, 25, 25, 1000, 1001)
+        conv2d_node = HostPythonNode('conv2d',
+                                     profiler.TracerEventType.Operator, 25, 25,
+                                     1000, 1001)
 
         conv2d_infer_shape = HostPythonNode(
             'conv2d::infer_shape', profiler.TracerEventType.OperatorInner, 25,
@@ -480,8 +497,9 @@ class TestProfilerStatistic(unittest.TestCase):
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 25, 25,
             1000, 1001)
 
-        conv2d_kernel = DevicePythonNode(
-            'conv2d_kernel', profiler.TracerEventType.Kernel, 35, 35, 0, 0, 0)
+        conv2d_kernel = DevicePythonNode('conv2d_kernel',
+                                         profiler.TracerEventType.Kernel, 35,
+                                         35, 0, 0, 0)
         another_kernel = DevicePythonNode(
             'void phi::funcs::VectorizedBroadcastKernel<float, float, phi::funcs::AddFunctor<float>, phi::funcs::AddFunctor<float>>()',
             profiler.TracerEventType.Kernel, 35, 35, 0, 0, 0)
@@ -500,15 +518,16 @@ class TestProfilerStatistic(unittest.TestCase):
             'Process Cpu Utilization': '1.02',
             'System Cpu Utilization': '0.68'
         }
-        statistic_data = profiler.profiler_statistic.StatisticData(thread_tree,
-                                                                   extra_info)
+        statistic_data = profiler.profiler_statistic.StatisticData(
+            thread_tree, extra_info)
         time_range_summary = statistic_data.time_range_summary
         event_summary = statistic_data.event_summary
 
         self.assertEqual(event_summary.items['conv2d'].cpu_time, 0)
         self.assertEqual(event_summary.items['conv2d'].general_gpu_time, 0)
-        self.assertEqual(event_summary.userdefined_items['Communication Time']
-                         .general_gpu_time, 0)
+        self.assertEqual(
+            event_summary.userdefined_items['Communication Time'].
+            general_gpu_time, 0)
         for sort_key in [
                 profiler.SortedKeys.CPUTotal, profiler.SortedKeys.CPUMax,
                 profiler.SortedKeys.CPUMin, profiler.SortedKeys.CPUAvg,
@@ -516,12 +535,11 @@ class TestProfilerStatistic(unittest.TestCase):
                 profiler.SortedKeys.GPUMin, profiler.SortedKeys.GPUAvg
         ]:
             print(
-                profiler.profiler_statistic._build_table(
-                    statistic_data,
-                    sorted_by=sort_key,
-                    op_detail=True,
-                    thread_sep=False,
-                    time_unit='ms'))
+                profiler.profiler_statistic._build_table(statistic_data,
+                                                         sorted_by=sort_key,
+                                                         op_detail=True,
+                                                         thread_sep=False,
+                                                         time_unit='ms'))
 
 
 if __name__ == '__main__':
