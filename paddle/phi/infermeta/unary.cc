@@ -2715,6 +2715,53 @@ void SumRawInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh) {
+  auto UDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 1] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto VHDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto SDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    x_vec.erase(x_vec.end() - 1);  // rank - 1
+    return phi::make_ddim(x_vec);
+  };
+
+  auto in_dims = x.dims();
+  int x_rank = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      in_dims.size(),
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  int m = in_dims[x_rank - 2];
+  int n = in_dims[x_rank - 1];
+  int k = std::min(m, n);
+  u->set_dims(!full_matrices ? UDDim(in_dims, k) : UDDim(in_dims, m));
+  vh->set_dims(!full_matrices ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
+  s->set_dims(SDDim(in_dims, k));
+  u->share_lod(x);
+  vh->share_lod(x);
+  s->share_lod(x);
+  u->set_dtype(x.dtype());
+  vh->set_dtype(x.dtype());
+  s->set_dtype(x.dtype());
+}
+
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,
                             float shift_ratio,
