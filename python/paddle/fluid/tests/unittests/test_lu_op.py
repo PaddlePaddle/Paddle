@@ -104,6 +104,8 @@ class TestLUOp(OpTest):
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots", "Infos"]
 
     def set_output(self):
         X = self.inputs['X']
@@ -140,10 +142,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_eager=True)
 
 
 # m = n 2D
