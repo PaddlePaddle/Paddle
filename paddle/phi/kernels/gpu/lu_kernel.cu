@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cusolver
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -173,3 +176,5 @@ void LUKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(lu, GPU, ALL_LAYOUT, phi::LUKernel, float, double) {}
+
+#endif  // not PADDLE_WITH_HIP
