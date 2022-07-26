@@ -2334,5 +2334,5 @@
   infer_meta:
     func: EigvalshGradInferMeta
   kernel:
-    func: eigvalsh_grad_kernel
+    func: eigvalsh_grad
     data_type: out_v

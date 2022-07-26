@@ -3035,7 +3035,11 @@ def eigvalsh(x, UPLO='L', name=None):
             print(out_value)
             #[0.17157288, 5.82842712]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        values, _ = _C_ops.final_state_eigvalsh(x, UPLO, x.stop_gradient)
+        return values
+
+    elif paddle.in_dynamic_mode():
         is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
