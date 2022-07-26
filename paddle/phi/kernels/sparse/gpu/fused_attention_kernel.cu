@@ -263,7 +263,7 @@ void FusedAttentionCsrKernel(
 
   /* Step3: DSD Matmul, reuse */
   softmax->set_dims(phi::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
-  CsrDenseMatmulKernel<T, Context>(dev_ctx, *softmax, value, out);
+  MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 #else
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "

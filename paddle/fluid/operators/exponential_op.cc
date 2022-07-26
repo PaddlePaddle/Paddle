@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/exponential_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,13 +22,6 @@ namespace operators {
 class ExponentialOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExponentialOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExponentialOp");
-    auto dim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", dim);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -51,52 +46,6 @@ exponential distribution.
   }
 };
 
-class ExponentialOpInferVarType
-    : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> &GetInputOutputWithSameType()
-      const override {
-    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
-    return m;
-  }
-};
-
-template <typename T>
-class ExponentialKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    T lambda = static_cast<T>(ctx.Attr<float>("lambda"));
-    int64_t size = out->numel();
-
-    auto gen = framework::DefaultCPUGenerator();
-    auto engine = gen->GetCPUEngine();
-
-    std::uniform_real_distribution<T> uniform(0.0, 1.0);
-    phi::funcs::exponential_transform<T> trans(lambda);
-    for (int64_t i = 0; i < size; ++i) {
-      out_data[i] = trans(uniform(*engine));
-    }
-  }
-};
-
-class ExponentialGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out_Grad",
-                   "ExponentialGradOp");
-
-    auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
-    ctx->SetOutputDim(framework::GradVarName("X"), dout_dim);
-  }
-};
-
 template <typename T>
 class ExponentialGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -104,10 +53,10 @@ class ExponentialGradOpMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("exponential_grad");
-    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
+    retv->SetType("fill_any_like");
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetAttr("value", 0.0f);
+    retv->SetOutput("Out", this->InputGrad("X"));
   }
 };
 
@@ -118,24 +67,15 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 DECLARE_INPLACE_OP_INFERER(ExponentialInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ExponentialGradInferer,
-                           {paddle::framework::GradVarName("Out"),
-                            paddle::framework::GradVarName("X")});
+
+DECLARE_INFER_SHAPE_FUNCTOR(exponential,
+                            ExponentialInfershapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(exponential,
                   ops::ExponentialOp,
                   ops::ExponentialOpMaker,
-                  ops::ExponentialOpInferVarType,
                   ops::ExponentialGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExponentialGradOpMaker<paddle::imperative::OpBase>,
-                  ExponentialInferer);
-REGISTER_OPERATOR(exponential_grad,
-                  ops::ExponentialGradOp,
-                  ExponentialGradInferer);
-
-REGISTER_OP_CPU_KERNEL(exponential,
-                       ops::ExponentialKernel<phi::CPUContext, float>,
-                       ops::ExponentialKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(exponential_grad,
-                       ops::ExponentialGradKernel<phi::CPUContext, float>,
-                       ops::ExponentialGradKernel<phi::CPUContext, double>);
+                  ExponentialInferer,
+                  ExponentialInfershapeFunctor);

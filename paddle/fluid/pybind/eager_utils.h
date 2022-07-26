@@ -19,7 +19,7 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/jit/executor_function.h"
+#include "paddle/fluid/jit/base_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -252,6 +252,18 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     PyObject* args,
     ssize_t arg_idx,
     bool dispensable);
+
+class eager_gil_scoped_release {
+ public:
+  eager_gil_scoped_release() { tstate = PyEval_SaveThread(); }
+  ~eager_gil_scoped_release() {
+    if (!tstate) return;
+    PyEval_RestoreThread(tstate);
+  }
+
+ private:
+  PyThreadState* tstate{nullptr};
+};
 
 }  // namespace pybind
 }  // namespace paddle

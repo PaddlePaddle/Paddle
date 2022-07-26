@@ -260,6 +260,53 @@ void BincountInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  std::vector<int64_t> x_dims = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims = phi::vectorize(y.dims());
+  std::size_t x_ndims = x_dims.size();
+  std::size_t y_ndims = y_dims.size();
+
+  PADDLE_ENFORCE_EQ(x_ndims,
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+                        "but received X's shape: [%s].",
+                        x_ndims));
+  PADDLE_ENFORCE_EQ(y_ndims,
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+                        "but received Y's shape: [%s].",
+                        y_ndims));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      y_dims[0],
+      phi::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+          "but received X's batch size: [%s],"
+          "Y's batch size [%s]",
+          x_dims[0],
+          y_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[2],
+      y_dims[1],
+      phi::errors::InvalidArgument(
+          "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+          "but receive X's width: [%s],"
+          "Y's height: [%s].",
+          x_dims[2],
+          y_dims[1]));
+
+  std::vector<int64_t> dim_out;
+  dim_out.push_back(x_dims[0]);
+  dim_out.push_back(x_dims[1]);
+  dim_out.push_back(y_dims[2]);
+  out->set_dims(phi::make_ddim(dim_out));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -2080,6 +2127,93 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
+}
+
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
+
+  auto x_dims_n = x_dims_vec.size();
+  auto y_dims_n = y_dims_vec.size();
+
+  PADDLE_ENFORCE_GT(
+      x_dims_n,
+      1,
+      phi::errors::InvalidArgument("The input tensor X's dimensions of SolveOp "
+                                   "should be larger than 1. But received X's "
+                                   "dimensions = %d, X's shape = [%s]",
+                                   x_dims_n,
+                                   x_dims));
+
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The input tensor Y's dimensions of SolveOp "
+                        "should be larger than or equal 1. But received Y's "
+                        "dimensions = %d, Y's shape = [%s]",
+                        y_dims_n,
+                        y_dims));
+
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2],
+                    x_dims[x_dims_n - 1],
+                    phi::errors::InvalidArgument(
+                        "The inner-most 2 dimensions of Input(X) all should "
+                        "be square matrices "
+                        "But received X's shape[-2] = %d and shape[-1] = %d.",
+                        x_dims[x_dims_n - 2],
+                        x_dims[x_dims_n - 1]));
+
+  bool x_broadcasted = false, y_broadcasted = false;
+  bool trans_x = false, trans_y = false;
+  if (x_dims_n == 1) {
+    x_dims_vec.insert(x_dims_vec.begin(), 1);
+    x_dims_n = 2;
+    x_broadcasted = true;
+  }
+
+  if (y_dims_n == 1) {
+    y_dims_vec.push_back(1);
+    y_dims_n = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (trans_x) {
+    M = x_dims_vec[x_dims_n - 1];
+  } else {
+    M = x_dims_vec[x_dims_n - 2];
+  }
+  if (trans_y) {
+    N = y_dims_vec[y_dims_n - 2];
+  } else {
+    N = y_dims_vec[y_dims_n - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (x_dims_n >= y_dims_n) {
+    new_dims.assign(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  } else {
+    new_dims.assign(y_dims_vec.begin(), y_dims_vec.end() - 2);
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  auto out_dims = phi::make_ddim(new_dims);
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace phi

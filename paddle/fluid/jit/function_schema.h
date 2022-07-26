@@ -70,6 +70,8 @@ class FunctionInfo {
 
   const std::vector<std::string> OutputArgNames() const;
 
+  void RemoveDescFeedFetch();
+
  private:
   std::string func_name_;
   std::vector<std::string> param_names_;

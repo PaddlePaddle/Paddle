@@ -86,7 +86,10 @@ DEFINE_SPARSE_UNARY_KERNEL(Square)
 DEFINE_SPARSE_UNARY_KERNEL(Log1p)
 DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
+DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -134,7 +137,7 @@ void CastCooKernel(const Context& dev_ctx,
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {
-    phi::Copy(dev_ctx, x_indices, dev_ctx.GetPlace(), false, out_indices);
+    *out_indices = x_indices;
   } else {
     phi::MetaTensor meta(out_indices);
     meta.set_dims(x_indices.dims());
@@ -172,8 +175,8 @@ void CastCsrKernel(const Context& dev_ctx,
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {
-    phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, out_crows);
-    phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, out_cols);
+    *out_crows = x_crows;
+    *out_cols = x_cols;
   } else {
     phi::MetaTensor crows_meta(out_crows);
     crows_meta.set_dims(x_crows.dims());
