@@ -1017,8 +1017,7 @@ if(WITH_PSCORE)
   cc_test(
     dist_multi_trainer_test
     SRCS dist_multi_trainer_test.cc
-    DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
-         graph_gpu_wrapper)
+    DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
   cc_test(
     heter_pipeline_trainer_test
     SRCS heter_pipeline_trainer_test.cc
@@ -1029,8 +1028,7 @@ if(WITH_PSCORE)
          heter_server
          gloo_wrapper
          eigen_function
-         ${RPC_DEPS}
-         graph_gpu_wrapper)
+         ${RPC_DEPS})
 else()
   cc_test(
     dist_multi_trainer_test
