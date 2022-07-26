@@ -65,10 +65,10 @@ def reshape_lhs_rhs(x, y):
 
     x_shape = paddle.shape(x)
     y_shape = paddle.shape(y)
-    if len(x_shape) != len(y_shape):
-        max_ndims = max(len(x_shape), len(y_shape))
-        x_pad_ndims = max_ndims - len(x_shape)
-        y_pad_ndims = max_ndims - len(y_shape)
+    if len(x.shape) != len(y.shape):
+        max_ndims = max(len(x.shape), len(y.shape))
+        x_pad_ndims = max_ndims - len(x.shape)
+        y_pad_ndims = max_ndims - len(y.shape)
         new_x_shape = [
             x_shape[0],
         ] + [

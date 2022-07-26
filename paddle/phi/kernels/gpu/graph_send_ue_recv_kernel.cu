@@ -72,7 +72,8 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
     thrust::fill(thrust::device,
                  out_data_ptr,
                  out_data_ptr + memset_size,
-                 std::numeric_limits<T>::min());
+                 std::numeric_limits<T>::lowest());
+
   } else if (pool_type == "MIN") {
     thrust::device_ptr<T> out_data_ptr(out_data);
     thrust::fill(thrust::device,

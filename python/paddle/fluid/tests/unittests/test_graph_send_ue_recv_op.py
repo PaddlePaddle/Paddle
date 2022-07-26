@@ -716,3 +716,166 @@ class TestMinCase7(TestGraphSendUERecvMinOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.compute_type = 'MUL'
+
+
+class API_GeometricSendUERecvTest(unittest.TestCase):
+
+    def test_compute_all_with_sum(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        e = paddle.ones(shape=[4, 1], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "sum")
+        res_sub = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "sub", "sum")
+        res_mul = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "mul", "sum")
+        res_div = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "div", "sum")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[1, 3, 4], [4, 10, 12], [2, 5, 6]], dtype="float32")
+        np_sub = np.array([[-1, 1, 2], [0, 6, 8], [0, 3, 4]], dtype="float32")
+        np_mul = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32")
+        np_div = np.array([[0, 2, 3], [2, 8, 10], [1, 4, 5]], dtype="float32")
+
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_with_mean(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        e = paddle.ones(shape=[4, 1], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "mean")
+        res_sub = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "sub", "mean")
+        res_mul = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "mul", "mean")
+        res_div = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "div", "mean")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[1, 3, 4], [2, 5, 6], [2, 5, 6]], dtype="float32")
+        np_sub = np.array([[-1, 1, 2], [0, 3, 4], [0, 3, 4]], dtype="float32")
+        np_mul = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]], dtype="float32")
+        np_div = np.array([[0, 2, 3], [1, 4, 5], [1, 4, 5]], dtype="float32")
+
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_with_max(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        e = paddle.ones(shape=[4, 1], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "max")
+        res_sub = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "sub", "max")
+        res_mul = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "mul", "max")
+        res_div = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "div", "max")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[1, 3, 4], [3, 7, 8], [2, 5, 6]], dtype="float32")
+        np_sub = np.array([[-1, 1, 2], [1, 5, 6], [0, 3, 4]], dtype="float32")
+        np_mul = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float32")
+        np_div = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float32")
+
+        self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_with_min(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        e = paddle.ones(shape=[4, 1], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "min")
+        res_sub = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "sub", "min")
+        res_mul = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "mul", "min")
+        res_div = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "div", "min")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[1, 3, 4], [1, 3, 4], [2, 5, 6]], dtype="float32")
+        np_sub = np.array([[-1, 1, 2], [-1, 1, 2], [0, 3, 4]], dtype="float32")
+        np_mul = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="float32")
+        np_div = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="float32")
+
+        self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_out_size_tensor_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
+            e = paddle.static.data(name="e", shape=[3], dtype="float32")
+            src_index = paddle.static.data(name="src", shape=[3], dtype="int32")
+            dst_index = paddle.static.data(name="dst", shape=[3], dtype="int32")
+            out_size = paddle.static.data(name="out_size",
+                                          shape=[1],
+                                          dtype="int32")
+
+            res_sum = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                    "mul", "sum", out_size)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            data1 = np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]], dtype="float32")
+            data2 = np.array([1, 2, 3], dtype="float32")
+            data3 = np.array([0, 0, 1], dtype="int32")
+            data4 = np.array([0, 1, 1], dtype="int32")
+            data5 = np.array([2], dtype="int32")
+
+            np_sum = np.array([[0, 2, 3], [3, 16, 21]], dtype="float32")
+
+            ret = exe.run(feed={
+                'x': data1,
+                'e': data2,
+                'src': data3,
+                'dst': data4,
+                'out_size': data5,
+            },
+                          fetch_list=[res_sum])
+        self.assertTrue(
+            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
+                        {}\n{}, check diff!".format(np_sum, ret[0]))
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_compute_all_with_sum()
+            self.test_compute_all_with_mean()
+            self.test_compute_all_with_max()
+            self.test_compute_all_with_min()
+
+
+if __name__ == "__main__":
+    unittest.main()
