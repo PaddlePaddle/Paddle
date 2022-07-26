@@ -641,9 +641,6 @@ def crop(x, shape=None, offsets=None, name=None):
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.final_state_crop_tensor(x, shape, offsets)
-
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -653,6 +650,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
