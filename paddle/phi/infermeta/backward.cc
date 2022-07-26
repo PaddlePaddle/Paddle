@@ -241,6 +241,18 @@ void EigGradInferMeta(const MetaTensor& out_w,
   }
 }
 
+void FrameGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& dout,
+                        int frame_length,
+                        int hop_length,
+                        int axis,
+                        MetaTensor* dx) {
+  const auto x_dims = x.dims();
+  if (dx) {
+    dx->set_dims(phi::make_ddim(vectorize(x_dims)));
+    dx->set_dtype(x.dtype());
+  }
+}
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

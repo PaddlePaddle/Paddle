@@ -119,6 +119,8 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_frame(x, frame_length, hop_length, axis)
     if _non_static_mode():
         if frame_length > x.shape[axis]:
             raise ValueError(

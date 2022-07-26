@@ -763,6 +763,15 @@
   kernel :
     func : fmin_grad
 
+- backward_api : frame_grad
+  forward : frame(Tensor x, int frame_length, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FrameGradInferMeta
+  kernel :
+    func : frame_grad
+
 - backward_api : frobenius_norm_grad
   forward : frobenius_norm(Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keep_dim,  bool reduce_all)

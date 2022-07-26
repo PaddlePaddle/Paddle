@@ -113,6 +113,13 @@ void FlipInferMeta(const MetaTensor& x,
                    const std::vector<int>& axis,
                    MetaTensor* out);
 
+void FrameInferMeta(const MetaTensor& x,
+                    int frame_length,
+                    int hop_length,
+                    int axis,
+                    MetaTensor* out,
+                    MetaConfig = MetaConfig());
+
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
                                 const Scalar& val,

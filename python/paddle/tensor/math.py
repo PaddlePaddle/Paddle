@@ -3682,7 +3682,7 @@ def digamma(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional) : Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
 
