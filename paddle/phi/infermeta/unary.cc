@@ -1240,6 +1240,41 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void LUInferMeta(const MetaTensor& x,
+                 bool pivot,
+                 MetaTensor* out,
+                 MetaTensor* pivots,
+                 MetaTensor* infos) {
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  int m = x_dims[x_rank - 1];
+  int n = x_dims[x_rank - 2];
+  int min_mn = std::min(m, n);
+  auto dims_vec = phi::vectorize(x_dims);
+  if (x_rank == 2) {
+    auto Infos_dim = std::vector<int>(1);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  } else {
+    auto Infos_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
+    infos->set_dims(phi::make_ddim(Infos_dim));
+  }
+  infos->set_dtype(DataType::INT32);
+  if (pivot) {
+    auto Pivots_dim =
+        std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
+    Pivots_dim[x_rank - 2] = min_mn;
+    pivots->set_dims(phi::make_ddim(Pivots_dim));
+    pivots->set_dtype(DataType::INT32);
+  }
+}
+
 void MatrixRankInferMeta(const MetaTensor& x,
                          bool use_default_tol,
                          bool hermitian,

@@ -13,6 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lu_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -38,39 +43,6 @@ class LUOpMaker : public framework::OpProtoAndCheckerMaker {
 class LUOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LU");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "LU");
-    bool pivots = context->Attrs().Get<bool>("pivots");
-    auto x_dims = context->GetInputDim("X");
-    int x_rank = x_dims.size();
-    PADDLE_ENFORCE_GE(x_rank,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "the rank of input must greater than 2"));
-    context->SetOutputDim("Out", x_dims);
-    int m = x_dims[x_rank - 1];
-    int n = x_dims[x_rank - 2];
-    int min_mn = std::min(m, n);
-    auto dims_vec = phi::vectorize(x_dims);
-    OP_INOUT_CHECK(context->HasOutput("Infos"), "Output", "Infos", "LU");
-    if (x_rank == 2) {
-      auto Infos_dim = std::vector<int>(1);
-      context->SetOutputDim("Infos", phi::make_ddim(Infos_dim));
-    } else {
-      auto Infos_dim =
-          std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
-      context->SetOutputDim("Infos", phi::make_ddim(Infos_dim));
-    }
-    if (pivots) {
-      OP_INOUT_CHECK(context->HasOutput("Pivots"), "Output", "Pivots", "LU");
-      auto Pivots_dim =
-          std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
-      Pivots_dim[x_rank - 2] = min_mn;
-      context->SetOutputDim("Pivots", phi::make_ddim(Pivots_dim));
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -133,23 +105,6 @@ class LUGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lu");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "lu");
-    OP_INOUT_CHECK(ctx->HasInput("Pivots"), "Input", "Pivots", "lu");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "lu");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto x_grad_name = framework::GradVarName("X");
-
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -168,14 +123,21 @@ DECLARE_INPLACE_OP_INFERER(LUGradOpInplaceInferer,
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(lu,
+                            LUInferMetaFunctor,
+                            PD_INFER_META(phi::LUInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(lu_grad,
+                            LUGradInferMetaFunctor,
+                            PD_INFER_META(phi::LUGradInferMeta));
+
 REGISTER_OPERATOR(lu,
                   ops::LUOp,
                   ops::LUOpMaker,
                   ops::LUOpVarTypeInference,
                   ops::LUOpGradMaker<paddle::framework::OpDesc>,
                   ops::LUOpGradMaker<paddle::imperative::OpBase>,
-                  ops::LUOpInplaceInferer);
+                  LUInferMetaFunctor);
 REGISTER_OPERATOR(lu_grad,
                   ops::LUGradOp,
                   ops::LUGradOpVarTypeInference,
-                  ops::LUGradOpInplaceInferer);
+                  LUGradInferMetaFunctor);
