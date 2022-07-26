@@ -947,8 +947,9 @@ class MatMulV2MKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  //TODO(jczaja) : Adapt to int8
-  dnnl::primitive_attr CreateMatmulAttrs(const framework::ExecutionContext& ctx) {
+  // TODO(jczaja) : Adapt to int8
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const framework::ExecutionContext& ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
@@ -962,7 +963,6 @@ class MatMulV2MKLDNNHandler
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
   }
-
 
   std::vector<int64_t> FakeTransposeStrides(
       const std::vector<int64_t>& matmul_out_dims) const {
@@ -1085,7 +1085,6 @@ class ActivationMKLDNNHandler
                                             to_void_cast<T>(input_data));
   }
 };
-
 
 static std::unordered_map<std::string, std::string> GetAttributeMap(
     std::string act_type) {
