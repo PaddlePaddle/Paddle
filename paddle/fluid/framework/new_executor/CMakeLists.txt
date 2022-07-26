@@ -61,15 +61,12 @@ cc_library(
 # skip win32 since wget is not installed by default on windows machine.
 if(WITH_GPU
    AND WITH_TESTING
-   AND NOT WIN32
-   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+   AND NOT WIN32)
   add_custom_target(
     download_program
     COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
-            --no-check-certificate
-    COMMAND
-      wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
-      --no-check-certificate)
+    COMMAND wget -nc
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program)
 
   # all operators used in the program
   set(OPS
@@ -94,7 +91,8 @@ if(WITH_GPU
       sgd_op
       squared_l2_norm_op
       memcpy_h2d_op
-      memcpy_d2h_op)
+      memcpy_d2h_op
+      fetch_v2_op)
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
   set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper

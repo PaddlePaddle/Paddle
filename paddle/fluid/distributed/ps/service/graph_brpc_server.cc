@@ -493,8 +493,8 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
   }
 
   int idx_ = *(int *)(request.params(0).c_str());
-  size_t node_num = request.params(1).size() / sizeof(uint64_t),
-         uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
+  size_t node_num = request.params(1).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(1).c_str());
   int sample_size = *(int *)(request.params(2).c_str());
   bool need_weight = *(bool *)(request.params(3).c_str());
 

@@ -22,7 +22,7 @@ if(WITH_GPU)
     DEPS ${HETERPS_DEPS} heter_comm_kernel hashtable_kernel)
   nv_test(
     test_heter_comm
-    SRCS feature_value.h feature_value.cu
+    SRCS feature_value.h
     DEPS heter_comm)
   nv_library(
     heter_ps

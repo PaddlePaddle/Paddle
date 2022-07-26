@@ -166,13 +166,6 @@ class PSGPUWrapper {
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const std::vector<int>& slot_dim,
-                  const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place,
-                  const int table_id,
-                  const std::vector<const uint64_t*>& keys,
-                  const std::vector<float*>& values,
-                  const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
   void PushSparseGrad(const paddle::platform::Place& place,
                       const int table_id,

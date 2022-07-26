@@ -325,8 +325,6 @@ class HeterComm {
                    char* src_val,
                    size_t val_size);
 
-  FVAccessor feature_value_accessor_;
-
  protected:
   void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
   void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);

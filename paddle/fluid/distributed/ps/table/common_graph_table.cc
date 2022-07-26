@@ -17,7 +17,6 @@
 #include <time.h>
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <set>
 #include <sstream>
@@ -1104,9 +1103,10 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
               std::vector<std::string> sub_etype_path_list(
                   etype_path_list.begin(), etype_path_list.begin() + part_num);
               etype_path_str =
-                  boost::algorithm::join(sub_etype_path_list, delim);
+                  paddle::string::join_strings(sub_etype_path_list, delim);
             } else {
-              etype_path_str = boost::algorithm::join(etype_path_list, delim);
+              etype_path_str =
+                  paddle::string::join_strings(etype_path_list, delim);
             }
             this->load_edges(etype_path_str, false, etypes[i]);
             if (reverse) {
@@ -1119,9 +1119,9 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
             if (part_num > 0 && part_num < (int)npath_list.size()) {
               std::vector<std::string> sub_npath_list(
                   npath_list.begin(), npath_list.begin() + part_num);
-              npath_str = boost::algorithm::join(sub_npath_list, delim);
+              npath_str = paddle::string::join_strings(sub_npath_list, delim);
             } else {
-              npath_str = boost::algorithm::join(npath_list, delim);
+              npath_str = paddle::string::join_strings(npath_list, delim);
             }
 
             if (ntypes.size() == 0) {
@@ -1149,6 +1149,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
     int idx,
     std::vector<std::pair<int, int>> ranges,
     std::vector<uint64_t> &res) {
+  std::mutex mutex;
   int start = 0, end, index = 0, total_size = 0;
   res.clear();
   auto &shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];

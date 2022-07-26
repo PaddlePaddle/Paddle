@@ -167,8 +167,6 @@ class Dataset {
 
   virtual std::vector<std::string> GetSlots() = 0;
 
-  virtual std::vector<std::string> GetSlots() = 0;
-
  protected:
   virtual int ReceiveFromClient(int msg_type,
                                 int client_id,

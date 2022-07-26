@@ -186,18 +186,6 @@ class HeterCommKernel {
                               const StreamType& stream,
                               FVAccessor& feature_value_accessor);
 
-  template <typename StreamType, typename FVAccessor>
-  void merge_gradient(const uint32_t* offset,
-                      const uint32_t* fea_num,
-                      const uint32_t* index,
-                      const char* input,
-                      char* output,
-                      int n,
-                      size_t grad_value_size,
-                      DynamicGradMerger& merger_,
-                      const StreamType& stream,
-                      FVAccessor& feature_value_accessor);
-
   template <typename T, typename StreamType, typename FVAccessor>
   void dy_mf_fill_dvals(float* d_shard_vals,
                         float* d_vals,
@@ -206,20 +194,6 @@ class HeterCommKernel {
                         size_t val_size,
                         const StreamType& stream,
                         FVAccessor& feature_value_accessor);
-
-  template <typename KeyType,
-            typename T,
-            typename StreamType,
-            typename FVAccessor>
-  void dy_mf_fill_shard_grads(KeyType* d_shard_keys,
-                              KeyType* d_keys,
-                              float* d_shard_grads,
-                              float* d_grads,
-                              T* idx,
-                              long long len,
-                              size_t grad_value_size,
-                              const StreamType& stream,
-                              FVAccessor& feature_value_accessor);
 
   template <typename KeyType, typename StreamType, typename FVAccessor>
   void merge_gradient(const KeyType* d_shard_keys,

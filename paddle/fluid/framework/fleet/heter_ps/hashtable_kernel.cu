@@ -384,8 +384,6 @@ template void HashTable<long, long>::get<cudaStream_t>(const long* d_keys,
                                                        cudaStream_t stream);
 template void HashTable<long, unsigned int>::get<cudaStream_t>(
     const long* d_keys, unsigned int* d_vals, size_t len, cudaStream_t stream);
-template void HashTable<unsigned long, long>::get<cudaStream_t>(
-    const unsigned long* d_keys, long* d_vals, size_t len, cudaStream_t stream);
 // template void
 // HashTable<unsigned long, paddle::framework::FeatureValue>::get<cudaStream_t>(
 //    const unsigned long* d_keys, char* d_vals, size_t len, cudaStream_t
