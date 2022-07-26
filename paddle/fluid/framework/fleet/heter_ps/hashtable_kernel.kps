@@ -109,6 +109,9 @@ void HashTable<KeyType, ValType>::get(const paddle::platform::Place& place,
       platform::errors::External("XPU get kernel len size %d is greate than xpu_size %d", len, xpu_size));
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+
+  ctx_xpu->xpu_stream = stream;
+
   int r = xpu::get_pairs<KeyType, ValType>(
       ctx_xpu, d_keys, d_vals_in, len,  d_vals,
       xpu_idx, xpu_num
@@ -138,6 +141,9 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
   uint32_t xpu_size = container_->size();
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+
+  ctx_xpu->xpu_stream = stream;
+
   int r = xpu::get_pairs<uint32_t, xpu::FeatureValue>(
       ctx_xpu,
       d_keys,
@@ -160,19 +166,22 @@ void HashTable<uint32_t, FeatureValue>::get(const paddle::platform::Place& place
         ));
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
-   int r = xpu::get_pairs<uint32_t, xpu::FeatureValue>(
-        ctx_xpu, k_vals_in,
-        reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
-        xpu_size,
-        const_cast<uint32_t *>(d_keys),
-        reinterpret_cast<xpu::FeatureValue*>(d_vals),
-        len
-       );
-   PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
-        platform::errors::External("XPU get kernel return wrong value[%d %s]",
-                                    r, XPUAPIErrorMsg[r]));
-        return;
+
+    ctx_xpu->xpu_stream = stream;
+
+    int r = xpu::get_pairs<uint32_t, xpu::FeatureValue>(
+          ctx_xpu, k_vals_in,
+          reinterpret_cast<xpu::FeatureValue*>(d_vals_in),
+          xpu_size,
+          const_cast<uint32_t *>(d_keys),
+          reinterpret_cast<xpu::FeatureValue*>(d_vals),
+          len
+        );
+    PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External("XPU get kernel return wrong value[%d %s]",
+                                      r, XPUAPIErrorMsg[r]));
+          return;
 #endif
 }
 
@@ -200,6 +209,8 @@ void HashTable<KeyType, ValType>::insert(const paddle::platform::Place& place,
   auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   KeyType* d_keys_out = container_->get_keys();
   ValType* d_vals_out = container_->get_vals();
+
+  ctx_xpu->xpu_stream = stream;
 
   uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
@@ -238,16 +249,8 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
   FeatureValue* d_vals_out = container_->get_vals();
   uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
-  // TODO: remove cast.
-  //xpu::ctx_guard RAII_GUARD(ctx_xpu);
-  //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
-  //PADDLE_ENFORCE_NOT_NULL(
-  //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-  //uint32_t* d_keys_out_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
-  //PADDLE_ENFORCE_NOT_NULL(
-  //    d_keys_out_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-  //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys),
-  //    reinterpret_cast<int32_t*>(d_keys_in_cast), len);
+
+  ctx_xpu->xpu_stream = stream;
 
   int r = xpu::insert<uint32_t, xpu::FeatureValue>(
       ctx_xpu,
@@ -262,8 +265,6 @@ void HashTable<uint32_t, FeatureValue>::insert(const paddle::platform::Place& pl
       r, XPU_SUCCESS,
       platform::errors::External("XPU insert kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
-  //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_in_cast),
-  //  reinterpret_cast<int64_t*>(d_keys_out), len);
 
   container_->set_size(len);
 }
@@ -337,6 +338,9 @@ void HashTable<KeyType, ValType>::update(const paddle::platform::Place& place,
   uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   size_t len2 = container_->size();
+
+  ctx_xpu->xpu_stream = stream;
+
   int r = xpu::update<KeyType, GradType, ValType>(
       ctx_xpu,
       reinterpret_cast<const xpu::OptimizerConfig*>(device_optimizer_config_),
@@ -371,18 +375,8 @@ void HashTable<uint32_t, FeatureValue>::update(const paddle::platform::Place& pl
   uint32_t xpu_idx = container_->get_xpu_idx();
   uint32_t xpu_num = container_->get_xpu_num();
   size_t len2 = container_->size();
-  // TODO: remove cast.
-  //xpu::ctx_guard RAII_GUARD(ctx_xpu);
-  //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len);
-  //PADDLE_ENFORCE_NOT_NULL(
-  //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-  //uint32_t* d_keys_out_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(len2);
-  //PADDLE_ENFORCE_NOT_NULL(
-  //    d_keys_out_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-  //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys),
-  //    reinterpret_cast<int32_t*>(d_keys_in_cast), len);
-  //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_out),
-  //    reinterpret_cast<int32_t*>(d_keys_out_in_cast), len2);
+
+  ctx_xpu->xpu_stream = stream;
 
   int r = xpu::update<uint32_t, xpu::FeaturePushValue, xpu::FeatureValue>(
       ctx_xpu,
@@ -399,8 +393,6 @@ void HashTable<uint32_t, FeatureValue>::update(const paddle::platform::Place& pl
       r, XPU_SUCCESS,
       platform::errors::External("XPU update kernel return wrong value[%d %s]",
                                   r, XPUAPIErrorMsg[r]));
-  //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_in_cast),
-  //reinterpret_cast<int64_t*>(d_keys_out), len2);
 }
 
 template <typename KeyType, typename ValType>

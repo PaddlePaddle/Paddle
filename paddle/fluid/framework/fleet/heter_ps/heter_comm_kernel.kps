@@ -588,20 +588,22 @@ __global__ void merge_grad_kernel(
     }
 }
 
-template <typename KeyT, typename ValueT>
+template <typename KeyT, typename ValueT, typename StreamType>
 void HeterCommKernel::merge_grad(
     KeyT* d_keys,
     ValueT* d_vals_in,
     int len,
-    ValueT* d_vals_out) {
-    merge_grad_kernel<<<8, 64>>>(d_keys, d_vals_in, len, d_vals_out);
+    ValueT* d_vals_out,
+    const StreamType& stream) {
+    merge_grad_kernel<<<8, 64, stream>>>(d_keys, d_vals_in, len, d_vals_out);
 }
 
-template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue>(
+template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue, XPUStream>(
     int* d_keys,
     paddle::framework::FeaturePushValue* d_vals_in,
     int len,
-    paddle::framework::FeaturePushValue* d_vals_out);
+    paddle::framework::FeaturePushValue* d_vals_out,
+    const XPUStream& stream);
 
 __global__ void convert_feature_value_kernel(
     paddle::framework::FeatureValue * in_vals, int len, bool to_float = true) {
@@ -652,20 +654,22 @@ __global__ void convert_feature_value_kernel(
     }
 }
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void HeterCommKernel::convert_feature_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float) {
+    bool to_float,
+    const StreamType& stream) {
     //xpu_kernel_debug_reset();
-    convert_feature_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
+    convert_feature_value_kernel<<<8, 64, stream>>>(d_vals_in, len, to_float);
     //xpu_kernel_debug();
 }
 
-template void HeterCommKernel::convert_feature_value_as_float<paddle::framework::FeatureValue>(
+template void HeterCommKernel::convert_feature_value_as_float<paddle::framework::FeatureValue, XPUStream>(
     paddle::framework::FeatureValue* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const XPUStream& stream);
 
 __global__ void convert_feature_push_value_kernel(
     paddle::framework::FeaturePushValue * in_vals, int len, bool to_float = true) {
@@ -712,20 +716,22 @@ __global__ void convert_feature_push_value_kernel(
     }
 }
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void HeterCommKernel::convert_feature_push_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float) {
+    bool to_float,
+    const StreamType& stream) {
     //xpu_kernel_debug_reset();
-    convert_feature_push_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
+    convert_feature_push_value_kernel<<<8, 64, stream>>>(d_vals_in, len, to_float);
     //xpu_kernel_debug();
 }
 
-template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue>(
+template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue, XPUStream>(
     paddle::framework::FeaturePushValue* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const XPUStream& stream);
 
 #endif
 
