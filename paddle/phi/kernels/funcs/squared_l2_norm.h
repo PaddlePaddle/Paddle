@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/buffer.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #else
@@ -29,20 +28,19 @@ namespace cub = hipcub;
 #endif
 #endif
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T1, typename T2 = T1>
 void SquaredL2Norm(const phi::CPUContext& ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
-                   memory::Buffer* buffer = nullptr) {
+                   paddle::memory::Buffer* buffer = nullptr) {
   if (std::is_same<T1, T2>::value) {
-    using EigenT = typename framework::EigenTensor<T1, 1>::Type;
-    using ConstEigenT = typename framework::EigenTensor<T1, 1>::ConstType;
-    using EigenDim = typename framework::EigenDim<1>::Type;
+    using EigenT = typename phi::EigenTensor<T1, 1>::Type;
+    using ConstEigenT = typename phi::EigenTensor<T1, 1>::ConstType;
+    using EigenDim = typename phi::EigenDim<1>::Type;
     ConstEigenT input(x, EigenDim(numel));
     EigenT output(reinterpret_cast<T1*>(y), EigenDim(1));
     output.device(*ctx.eigen_device()) = input.square().sum();
@@ -58,17 +56,17 @@ void SquaredL2Norm(const phi::CPUContext& ctx,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const platform::CUDADeviceContext& ctx,
+void SquaredL2Norm(const phi::GPUContext& ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
-                   memory::Buffer* buffer = nullptr) {
+                   paddle::memory::Buffer* buffer = nullptr) {
   if (UNLIKELY(buffer == nullptr)) {
-    memory::Buffer tmp_buffer(ctx.GetPlace());
+    paddle::memory::Buffer tmp_buffer(ctx.GetPlace());
     return SquaredL2Norm(ctx, x, y, numel, &tmp_buffer);
   }
 
-  using FunctorT = kernel_primitives::SquareFunctor<T1, T2>;
+  using FunctorT = phi::kps::SquareFunctor<T1, T2>;
   cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;
@@ -89,6 +87,5 @@ void SquaredL2Norm(const platform::CUDADeviceContext& ctx,
 }
 #endif
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

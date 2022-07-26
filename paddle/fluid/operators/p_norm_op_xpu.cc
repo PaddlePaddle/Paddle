@@ -102,6 +102,7 @@ class P_NormXPUKernel : public framework::OpKernel<T> {
       XPUType* zeros = RAII_GUARD.alloc_l3_or_gm<XPUType>(1);
       PADDLE_ENFORCE_XDNN_NOT_NULL(zeros);
       r = xpu::constant(dev_ctx.x_context(), zeros, 1, 0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       std::vector<int> zeros_dim(1, 1);
 
       bool* tmp2_x = RAII_GUARD.alloc_l3_or_gm<bool>(m * t * n);

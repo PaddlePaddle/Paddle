@@ -52,6 +52,38 @@ class BaseTestCase(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TestArgMaxSameValue1(BaseTestCase):
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dtype = 'float32'
+        self.axis = 0
+
+    def setUp(self):
+        self.set_mlu()
+        self.initTestCase()
+        self.x = np.array([1, 2, 3, 5, 4, 5]).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
+
+
+class TestArgMaxSameValue2(BaseTestCase):
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dtype = 'float16'
+        self.axis = 0
+
+    def setUp(self):
+        self.set_mlu()
+        self.initTestCase()
+        self.x = np.array([[2, 3, 5, 5], [3, 2, 5, 5]]).astype(self.dtype)
+        self.inputs = {'X': self.x}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
+
+
 # test argmax, dtype: float16
 class TestArgMaxFloat16Case1(BaseTestCase):
 
