@@ -102,6 +102,13 @@ PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 }  // namespace patterns
 
 void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  if (!with_dynamic_shape) {
+    VLOG(3) << "trt_skip_layernorm_fuse_pass need: with_dynamic_shape. Stop "
+               "this pass, "
+               "please reconfig.";
+    return;
+  }
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);

@@ -119,6 +119,13 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
 
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  if (!with_dynamic_shape) {
+    VLOG(3) << "preln_residual_bias_fuse_pass need: with_dynamic_shape. Stop "
+               "this pass, "
+               "please reconfig.";
+    return;
+  }
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
