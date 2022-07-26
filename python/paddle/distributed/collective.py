@@ -1067,7 +1067,6 @@ def all_gather_object(object_list, obj, group=None):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             import paddle.distributed as dist
 
