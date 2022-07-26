@@ -1191,6 +1191,15 @@
   kernel :
     func : logsumexp_grad
 
+- backward_api : lu_grad
+  forward : lu (Tensor x, bool pivot) -> Tensor(out), Tensor(pivots), Tensor(infos)
+  args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUGradInferMeta
+  kernel :
+    func : lu_grad
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
