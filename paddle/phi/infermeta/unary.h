@@ -298,6 +298,10 @@ void ReverseInferMeta(const MetaTensor& x,
                       const std::vector<int>& axis,
                       MetaTensor* out);
 
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+                           const std::vector<int>& axis,
+                           std::vector<phi::MetaTensor*> out);
+
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
