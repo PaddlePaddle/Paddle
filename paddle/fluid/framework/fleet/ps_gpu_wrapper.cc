@@ -839,7 +839,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_XPU_KP
     this->HeterPs_->build_ps(i, gpu_task->device_fid_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
-                             feature_keys_count[i], 500000, 2);
+                             feature_keys_count[i], feature_keys_count[i], 1);
 #else
     this->HeterPs_->build_ps(i, gpu_task->device_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
