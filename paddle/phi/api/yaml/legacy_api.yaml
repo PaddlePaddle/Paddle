@@ -1951,15 +1951,16 @@
   kernel :
     func : shard_index
 
-# # softsign
-# - api : softsign
-#   args : (Tensor x)
-#   output : Tensor
-#   infer_meta :
-#     func : UnchangedInferMeta
-#   kernel :
-#     func : softsign
-#   backward : softsign_grad
+# softsign
+- api : softsign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softsign
+  backward : softsign_grad
 
 # sigmoid
 - api : sigmoid
