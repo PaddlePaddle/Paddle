@@ -396,6 +396,7 @@ register_unity_group(
   conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
+  average_accumulates_op.cu
   conj_op.cu
   correlation_op.cu)
 register_unity_group(
