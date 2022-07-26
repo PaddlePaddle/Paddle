@@ -259,3 +259,28 @@ class Laplace(distribution.Distribution):
         return list(sample_shape) +\
              list(self._batch_shape) +\
             list(self._event_shape)
+
+    def kl_divergence(self, other):
+        """The KL-divergence between two laplace distributions.
+
+        Args:
+            other (Laplace): instance of Laplace.
+
+        Returns:
+            Tensor: kl-divergence between two laplace distributions.
+
+        Examples:
+
+        >>> m1 = Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+        >>> m2 = Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
+        >>> m1.kl_divergence(m2)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+       [1.04261160])
+        """
+
+        var_ratio = other.scale / self.scale
+        t = paddle.abs(self.loc - other.loc)
+        term1 = (self.scale * paddle.exp(-t\
+                 / self.scale) + t) / other.scale
+        term2 = paddle.log(var_ratio)
+        return term1 + term2 - 1

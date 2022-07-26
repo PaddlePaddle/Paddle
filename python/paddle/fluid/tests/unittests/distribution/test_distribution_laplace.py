@@ -132,5 +132,36 @@ class TestMultinomialPdf(unittest.TestCase):
             atol=config.ATOL.get(str(self.loc.dtype)))
 
 
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'loc1', 'scale1',\
+         'loc2', 'scale2'), [
+    ('kl', np.array([0.0]), np.array([1.0]), \
+        np.array([1.0]), np.array([0.5]))
+    ])
+class TestMultinomialKl(unittest.TestCase):
+
+    def setUp(self):
+        self._dist_1 = paddle.distribution.Laplace(loc=paddle.to_tensor(self.loc1),
+                                                 scale=paddle.to_tensor(\
+                                                     self.scale1))
+        self._dist_2 = paddle.distribution.Laplace(loc=paddle.to_tensor(self.loc2),
+                                                 scale=paddle.to_tensor(\
+                                                     self.scale2))
+
+    def test_kl_divergence(self):
+        np.testing.assert_allclose(self._dist_1.kl_divergence(self._dist_2),
+                                   self._np_kl(),
+                                   atol=0,
+                                   rtol=0.50)
+
+    def _np_kl(self):
+        x = np.linspace(scipy.stats.laplace.ppf(0.01),\
+                scipy.stats.laplace.ppf(0.99), 1000)
+        d1 = scipy.stats.laplace.pdf(x, loc=0., scale=1.)
+        d2 = scipy.stats.laplace.pdf(x, loc=1., scale=0.5)
+        return scipy.stats.entropy(d1, d2)
+
+
 if __name__ == '__main__':
     unittest.main()
