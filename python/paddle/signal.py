@@ -21,7 +21,8 @@ from .fft import fft_r2c, fft_c2r, fft_c2c
 from .fluid.data_feeder import check_variable_and_dtype
 from .fluid.framework import _non_static_mode
 from .fluid.layer_helper import LayerHelper
-from . import _C_ops
+from paddle import _C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = [
     'stft',
