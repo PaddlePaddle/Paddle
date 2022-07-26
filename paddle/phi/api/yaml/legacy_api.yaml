@@ -1802,6 +1802,24 @@
   intermediate : xshape
   backward: reshape_grad
 
+- api : reverse
+  args : (Tensor x, int[] axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  backward : reverse_grad
+
+- api : reverse_array
+  args : (Tensor[] x, int[] axis)
+  output : Tensor[]{x.size()}
+  infer_meta :
+    func : ReverseArrayInferMeta
+  kernel :
+    func : reverse_array
+  backward : reverse_array_grad
+
 - api : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
   output : Tensor
