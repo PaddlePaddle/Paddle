@@ -39,6 +39,9 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
   const std::string fusion_mode = matmul_as_x ? "x" : "y";
   const auto name_scope = matmul_type + "_elementwise_add_as_" + fusion_mode;
   FusePassBase::Init(name_scope, graph);
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::MatmulElementwiseAdd matmul_pattern(
@@ -71,6 +74,12 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
+    if (elementwise_addend->Var()->GetShape() !=
+        matmul_out->Var()->GetShape()) {
+      LOG(WARNING) << "Fuses with elementwise_add require same addends shape";
+      return;
+    }
+
     if (matmul_type == "matmul") {
       OpDesc desc(matmul->Op()->Block());
       desc.SetType("matmul_v2");
@@ -88,12 +97,11 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
         desc.SetAttr("Input_scale", matmul->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold", matmul->Op()->GetAttr("out_threshold"));
       }
-      auto matmul_node = g->CreateOpNode(&desc);
-      IR_NODE_LINK_TO(matmul_x, matmul_node);
-      IR_NODE_LINK_TO(matmul_y, matmul_node);
-      IR_NODE_LINK_TO(matmul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {matmul});
-      matmul = matmul_node;
+      matmul = g->CreateOpNode(&desc);
+      IR_NODE_LINK_TO(matmul_x, matmul);
+      IR_NODE_LINK_TO(matmul_y, matmul);
+      IR_NODE_LINK_TO(matmul, matmul_out);
     }
     matmul->Op()->SetInput("Bias", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
