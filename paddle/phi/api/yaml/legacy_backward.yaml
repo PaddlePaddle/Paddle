@@ -80,6 +80,7 @@
     param : [grad_grad_x, grad_grad_y]
   kernel :
     func : add_triple_grad
+  optional : grad_grad_x, grad_grad_y, grad_grad_out_grad
   inplace : (grad_grad_out_grad -> grad_grad_x_grad)
 
 - backward_api : addmm_grad

@@ -420,17 +420,19 @@ class GeneralGrad {
             continue;
           }
 
-          if (meta.size() != 1 && IsNeededNodes(node) &&
-              !IsNeededNodes(next_node.get()) && !IsEnddingNodes(node)) {
-            VLOG(3) << "Get stop edge from grad_node: " << node->name() << " : "
-                    << node << " to:" << next_node->name() << ", "
-                    << next_node.get() << " with output rank info: " << i
-                    << ", " << j;
-            // No need to compute grad from needed Nodes to no need Nodes
-            meta[i][j].SetStopGradient(true);
-            edge.Clear();
-            continue;
-          }
+          // TODO(weilong): enable this prune logic
+          // if (meta.size() != 1 && IsNeededNodes(node) &&
+          //     !IsNeededNodes(next_node.get()) && !IsEnddingNodes(node)) {
+          //   VLOG(3) << "Get stop edge from grad_node: " << node->name() << "
+          //   : "
+          //           << node << " to:" << next_node->name() << ", "
+          //           << next_node.get() << " with output rank info: " << i
+          //           << ", " << j;
+          //   // No need to compute grad from needed Nodes to no need Nodes
+          //   meta[i][j].SetStopGradient(true);
+          //   edge.Clear();
+          //   continue;
+          // }
 
           // Update BFS queue
           queue_.push_back(next_node.get());

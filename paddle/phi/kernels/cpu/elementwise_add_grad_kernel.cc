@@ -72,14 +72,13 @@ void AddDoubleGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void AddTripleGradKernel(const Context& dev_ctx,
-                         const DenseTensor& ddx,
-                         const DenseTensor& ddy,
-                         const DenseTensor& d_ddout,
+                         const paddle::optional<DenseTensor>& ddx,
+                         const paddle::optional<DenseTensor>& ddy,
+                         const paddle::optional<DenseTensor>& d_ddout,
                          int axis,
                          DenseTensor* d_ddx,
                          DenseTensor* d_ddy) {
-  phi::AddGradImpl<T>(
-      dev_ctx, ddx, ddy, d_ddout, axis, d_ddx, d_ddy, AddGradFunc<T>);
+  phi::AddTripleGradImpl<T>(dev_ctx, ddx, ddy, d_ddout, axis, d_ddx, d_ddy);
 }
 
 }  // namespace phi

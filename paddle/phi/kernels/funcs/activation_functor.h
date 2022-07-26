@@ -951,7 +951,7 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
         auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
             d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
 
-        d_OutNew.device(*d) = -(static_cast<T>(2) * dout * ddx * d_dOutNew);
+        d_OutNew.device(*d) = (static_cast<T>(-2) * dout * ddx * d_dOutNew);
       }
     }
     if (d_d_Out) {
@@ -983,7 +983,7 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
       } else if (!d_DDOut && d_dOut_New) {
         auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
             d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
-        d_ddx.device(*d) = -static_cast<T>(2) * out * dout * d_dOutNew;
+        d_ddx.device(*d) = static_cast<T>(-2) * out * dout * d_dOutNew;
       }
     }
   }

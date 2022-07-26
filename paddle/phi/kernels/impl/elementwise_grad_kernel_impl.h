@@ -85,6 +85,37 @@ void AddDoubleGradImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void AddTripleGradImpl(const Context& dev_ctx,
+                       const paddle::optional<DenseTensor>& ddx,
+                       const paddle::optional<DenseTensor>& ddy,
+                       const paddle::optional<DenseTensor>& d_ddout,
+                       int axis,
+                       DenseTensor* d_ddx,
+                       DenseTensor* d_ddy) {
+  if (d_ddout) {
+    phi::funcs::ElementwiseGradPreProcess(d_ddout.get(), d_ddx);
+    phi::funcs::ElementwiseGradPreProcess(d_ddout.get(), d_ddy);
+
+    auto d_ddout_ = d_ddout.get();
+    // Special case when d_ddy is not needed and d_ddx doesn't reduce
+    if (d_ddx != nullptr && d_ddy == nullptr &&
+        d_ddx->dims() == d_ddout_.dims()) {
+      VLOG(4) << "Special case when d_ddy is not needed and d_ddx doesn't "
+                 "reduce";
+      phi::Copy(dev_ctx, d_ddout_, dev_ctx.GetPlace(), false, d_ddx);
+    } else if (d_ddx == nullptr && d_ddy != nullptr &&
+               d_ddy->dims() == d_ddout_.dims()) {
+      VLOG(4) << "Special case when x_grad is not needed and y_grad doesn't "
+                 "reduce";
+      phi::Copy(dev_ctx, d_ddout_, dev_ctx.GetPlace(), false, d_ddy);
+    } else if (d_ddx != nullptr && d_ddy != nullptr) {
+      phi::Copy(dev_ctx, d_ddout_, dev_ctx.GetPlace(), false, d_ddx);
+      phi::Copy(dev_ctx, d_ddout_, dev_ctx.GetPlace(), false, d_ddy);
+    }
+  }
+}
+
+template <typename T, typename Context>
 void SubtractDoubleGradImpl(const Context& dev_ctx,
                             const DenseTensor& y,
                             const paddle::optional<DenseTensor>& ddx,
