@@ -2022,8 +2022,9 @@ PDNode *patterns::MatmulElementwiseAdd::operator()(
       pattern->NewNode(matmul_op_repr())->assert_is_op(matmul_type);
   auto matmul_out =
       pattern->NewNode(matmul_out_repr())
-          ->AsOutput()
+          ->AsIntermediate()
           ->assert_is_op_output(matmul_type, "Out")
+          ->assert_is_only_output_of_op(matmul_type)
           ->assert_is_op_input("elementwise_add", as_x ? "X" : "Y");
   auto elementwise_addend =
       pattern->NewNode(elementwise_addend_repr())
