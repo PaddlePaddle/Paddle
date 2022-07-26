@@ -43,7 +43,7 @@ bool FileExists(const std::string& file_path);
 const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
     const std::string& path);
 
-const void InitKernelSignatureMap();
+void InitKernelSignatureMap();
 
 }  // namespace utils
 }  // namespace jit

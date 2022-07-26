@@ -101,7 +101,7 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   return pdmodel_paths;
 }
 
-const void InitKernelSignatureMap() {
+void InitKernelSignatureMap() {
   paddle::framework::InitDefaultKernelSignatureMap();
 }
 
