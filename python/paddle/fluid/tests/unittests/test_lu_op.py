@@ -159,6 +159,8 @@ class TestLUOp2(TestLUOp):
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots", "Infos"]
 
 
 # m > n
@@ -172,6 +174,8 @@ class TestLUOp3(TestLUOp):
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots", "Infos"]
 
 
 class TestLUAPI(unittest.TestCase):
