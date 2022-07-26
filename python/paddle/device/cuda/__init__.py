@@ -72,7 +72,7 @@ def current_stream(device=None):
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
-    return core._get_current_stream(device_id), device
+    return core._get_current_stream(device_id)
 
 
 def synchronize(device=None):

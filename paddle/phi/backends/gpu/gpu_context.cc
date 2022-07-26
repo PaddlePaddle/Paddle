@@ -220,6 +220,7 @@ struct GPUContext::Impl {
 
   void PartialInitWithoutAllocator() {
     owned_ = true;
+    stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
     phi::InitGpuProperties(place_,
                            &compute_capability_,
@@ -234,6 +235,7 @@ struct GPUContext::Impl {
 
   void PartialInitWithAllocator() {
     owned_ = true;
+    stream_owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
     InitDnnWorkspace();
   }
@@ -259,7 +261,9 @@ struct GPUContext::Impl {
       phi::DestroyBlasHandle(blas_tensor_core_handle_);
       phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
       phi::DestroyBlasLtHandle(blaslt_handle_);
-      phi::DestoryStream(stream());
+    }
+    if (stream_owned_ && stream_) {
+      delete stream_;
     }
   }
 
@@ -295,7 +299,14 @@ struct GPUContext::Impl {
 
   void SetStream(gpuStream_t stream) { stream_->set_raw_stream(stream); }
 
-  void SetCUDAStream(CUDAStream* stream) { stream_ = stream; }
+  void SetCUDAStream(CUDAStream* stream) {
+    if (stream_owned_ && stream_) {
+      delete stream_;
+    }
+    stream_owned_ = false;
+    stream_ = stream;
+    // TODO(phi): reset related handles?
+  }
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
@@ -701,7 +712,10 @@ struct GPUContext::Impl {
     }
   }
 
+  // use one flag for all handles?
+  // they should be accessed consistently
   bool owned_{false};
+  bool stream_owned_{false};
   Place place_;
   int compute_capability_;
   int runtime_version_;
