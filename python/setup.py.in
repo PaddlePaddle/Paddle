@@ -621,7 +621,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
-    # utila api headers
+    # utils api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True))) # paddle utils headers
 
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'base_function.h']
