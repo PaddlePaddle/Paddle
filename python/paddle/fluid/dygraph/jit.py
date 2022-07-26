@@ -645,7 +645,7 @@ def _run_save_pre_hooks(func):
     return wrapper
 
 
-def _save_property(filename: Text, property_vals: List[Tuple(Any, Text)]):
+def _save_property(filename: Text, property_vals: List[Tuple[Any, Text]]):
     """class property serialization.
 
     Args:
