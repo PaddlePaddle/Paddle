@@ -238,7 +238,6 @@ class ModelAverage(Optimizer):
                 param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
                 old_num_accumulates, num_updates, self.average_window,
                 self.max_average_window, self.min_average_window)
-
             return None
         elif framework._non_static_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates(
