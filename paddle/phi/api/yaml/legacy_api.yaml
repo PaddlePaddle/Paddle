@@ -1355,7 +1355,6 @@
     dtype : x
   kernel :
     func : lstsq
-  optional : residuals
 
 # masked_select
 - api : masked_select
