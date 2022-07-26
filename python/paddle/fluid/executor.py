@@ -1484,10 +1484,7 @@ class Executor(object):
                     # NOTE(dev): `set` always call TensorCopySync that is a
                     # blocking behavior. So we use `_copy_from` to replace it.
                     cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    if tensor._is_initialized():
-                        tensor._copy_from(cpu_tensor, tensor._place())
-                    else:
-                        tensor._copy_from(cpu_tensor, self.place)
+                    tensor._copy_from(cpu_tensor, tensor._place())
 
                 return new_exe.run(scope, list(feed.keys()), fetch_list,
                                    return_numpy)
