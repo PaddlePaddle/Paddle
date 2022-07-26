@@ -30,4 +30,7 @@ if(WITH_ASCEND_CL)
     npu_op_runner
     SRCS npu_op_runner.cc
     DEPS operator npu_info)
+  find_package(PythonInterp ${PY_VERSION} REQUIRED)
+  find_package(PythonLibs ${PY_VERSION} REQUIRED)
+  target_link_libraries(npu_op_runner ${PYTHON_LIBRARIES})
 endif()

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "acl/acl.h"
 #include "acl/acl_op_compiler.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "pybind11/pybind11.h"
 
 DECLARE_string(npu_precision_mode);
 
@@ -429,11 +430,21 @@ void NpuOpRunner::Run(aclrtStream stream) const {
     VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
   }
 
-  aclError ret = aclopCompileAndExecute(
-      op_type_.c_str(), input_descs_.size(), input_descs_.data(),
-      input_buffers_.data(), output_descs_.size(), output_descs_.data(),
-      output_buffers_.data(), attr_, ACL_ENGINE_SYS, ACL_COMPILE_SYS, NULL,
-      stream);
+  aclError ret;
+  if (PyGILState_Check()) {
+    pybind11::gil_scoped_release release;
+    ret = aclopCompileAndExecute(op_type_.c_str(), input_descs_.size(),
+                                 input_descs_.data(), input_buffers_.data(),
+                                 output_descs_.size(), output_descs_.data(),
+                                 output_buffers_.data(), attr_, ACL_ENGINE_SYS,
+                                 ACL_COMPILE_SYS, NULL, stream);
+  } else {
+    ret = aclopCompileAndExecute(op_type_.c_str(), input_descs_.size(),
+                                 input_descs_.data(), input_buffers_.data(),
+                                 output_descs_.size(), output_descs_.data(),
+                                 output_buffers_.data(), attr_, ACL_ENGINE_SYS,
+                                 ACL_COMPILE_SYS, NULL, stream);
+  }
   VLOG(4) << "after aclopCompileAndExecute: " << ret;
   PADDLE_ENFORCE_NPU_SUCCESS(ret);
 }

@@ -89,7 +89,8 @@ class CastNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
+    cast, ops::CastNPUKernel<paddle::platform::NPUDeviceContext, uint8_t>,
+    ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int16_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int32_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, int>,
