@@ -463,6 +463,16 @@
     func : cosh_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : crop_tensor_grad
+  forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray offsets)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : CropTensorGradInferMeta
+  kernel :
+    func : crop_tensor_grad
+    data_type : x
+
 - backward_api : cross_entropy_with_softmax_grad
   forward : cross_entropy_with_softmax (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis) -> Tensor(softmax), Tensor(loss)
   args : (Tensor label, Tensor softmax, Tensor loss_grad, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)

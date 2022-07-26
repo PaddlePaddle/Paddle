@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/crop_tensor_op.h"
-
-#include <memory>
-#include <string>
-#include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+// #include "paddle/phi/infermeta/backward.h"
+// #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -297,8 +297,8 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("crop_tensor_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     if (this->HasInput("OffsetsTensor")) {
       op->SetInput("OffsetsTensor", this->Input("OffsetsTensor"));
     }
@@ -314,32 +314,10 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(crop_tensor,
                   ops::CropTensorOp,
                   ops::CropTensorOpMaker,
                   ops::CropTensorGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(crop_tensor_grad, ops::CropTensorOpGrad);
-REGISTER_OP_CPU_KERNEL(crop_tensor,
-                       ops::CropTensorKernel<phi::CPUContext, float>,
-                       ops::CropTensorKernel<phi::CPUContext, double>,
-                       ops::CropTensorKernel<phi::CPUContext, int>,
-                       ops::CropTensorKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(crop_tensor_grad,
-                       ops::CropTensorGradKernel<phi::CPUContext, float>,
-                       ops::CropTensorGradKernel<phi::CPUContext, double>,
-                       ops::CropTensorGradKernel<phi::CPUContext, int>,
-                       ops::CropTensorGradKernel<phi::CPUContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    crop_tensor,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    crop_tensor_grad,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int64_t>);

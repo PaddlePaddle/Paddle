@@ -453,6 +453,16 @@
     func : cosh
   backward : cosh_grad
 
+- api : crop_tensor
+  args : (Tensor x, IntArray shape, IntArray offsets)
+  output : Tensor(out)
+  infer_meta :
+    func : CropTensorInferMeta
+  kernel :
+    func : crop_tensor
+    data_type : x
+  backward : crop_tensor_grad
+
 # Part of python API paddle.nn.functional.cross_entropy
 - api : cross_entropy_with_softmax
   args : (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)

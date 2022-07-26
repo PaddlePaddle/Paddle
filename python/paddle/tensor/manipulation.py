@@ -640,6 +640,10 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')

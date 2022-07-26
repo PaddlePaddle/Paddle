@@ -64,6 +64,12 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CropTensorInferMeta(const MetaTensor& x,
+                         const IntArray& shape,
+                         const IntArray& offsets,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,
