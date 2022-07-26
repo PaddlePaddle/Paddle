@@ -14,19 +14,26 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace phi{
+namespace phi {
 
-KernelSignature SpectralNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("spectral_norm", {"Weight", "U", "V"}, {"dim", "power_iters", "eps"}, {"Out"});
+KernelSignature SpectralNormOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("spectral_norm",
+                         {"Weight", "U", "V"},
+                         {"dim", "power_iters", "eps"},
+                         {"Out"});
 }
 
 KernelSignature SpectralNormGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "spectral_norm_grad", {"Weight", "U", "V", "Out@GRAD"}, {"dim", "power_iters", "eps"}, {"Weight@GRAD"});
+  return KernelSignature("spectral_norm_grad",
+                         {"Weight", "U", "V", "Out@GRAD"},
+                         {"dim", "power_iters", "eps"},
+                         {"Weight@GRAD"});
 }
 
-}   // namespace phi
+}  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(spectral_norm, phi::SpectralNormOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(spectral_norm_grad, phi::SpectralNormGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(spectral_norm_grad,
+                           phi::SpectralNormGradOpArgumentMapping);

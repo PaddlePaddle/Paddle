@@ -979,13 +979,13 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 }
 
 void SpectralNormInferMeta(const MetaTensor& weight,
-                        const MetaTensor& u,
-                        const MetaTensor& v,
-                        int dim,
-                        int power_iters,
-                        float eps,
-                        MetaTensor* out,
-                        MetaConfig config){
+                           const MetaTensor& u,
+                           const MetaTensor& v,
+                           int dim,
+                           int power_iters,
+                           float eps,
+                           MetaTensor* out,
+                           MetaConfig config) {
   auto dim_weight = weight.dims();
   auto rank_weight = dim_weight.size();
   PADDLE_ENFORCE_GE(rank_weight,
@@ -994,19 +994,18 @@ void SpectralNormInferMeta(const MetaTensor& weight,
                         "The rank of Input(Weights) should be greater equal "
                         "than 2, but received Weight rank(%d)",
                         rank_weight));
-  PADDLE_ENFORCE_LE(rank_weight,
-                    5,
-                    errors::InvalidArgument(
-                        "The rank of Input(Weights) should be less equal "
-                        "than 5, but received Weight rank(%d)",
-                        rank_weight));
+  PADDLE_ENFORCE_LE(
+      rank_weight,
+      5,
+      errors::InvalidArgument("The rank of Input(Weights) should be less equal "
+                              "than 5, but received Weight rank(%d)",
+                              rank_weight));
 
   auto dim_valid = dim == 0 || dim == 1;
-  PADDLE_ENFORCE_EQ(
-      dim_valid,
-      true,
-      errors::InvalidArgument(
-          "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_EQ(dim_valid,
+                    true,
+                    errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
   PADDLE_ENFORCE_GE(
       power_iters,
       0,

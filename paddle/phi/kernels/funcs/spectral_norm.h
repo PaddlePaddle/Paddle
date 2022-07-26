@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -26,12 +26,12 @@ using IndexPair = Eigen::IndexPair<int>;
 
 template <typename Context, typename T>
 static inline void TransCompute2DTo5D(const Context& dev_ctx,
-                                const DenseTensor& in,
-                                const int rank,
-                                const std::vector<int>& perm,
-                                DenseTensor* out) {
+                                      const DenseTensor& in,
+                                      const int rank,
+                                      const std::vector<int>& perm,
+                                      DenseTensor* out) {
   if (rank <= 1 || rank > 5) {
-    PADDLE_THROW(errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "Weight rank of SpectralNorm should be in range [2, 5], but got %d.",
         rank));
   }
@@ -59,14 +59,13 @@ static inline void TransCompute2DTo5D(const Context& dev_ctx,
 }
 
 template <typename Context, typename T>
-static inline void CalcMatrixSigmaAndNormWeight(
-    const Context& dev_ctx,
-    DenseTensor* weight,
-    DenseTensor* u,
-    DenseTensor* v,
-    DenseTensor* sigma,
-    const int power_iters,
-    const float eps) {
+static inline void CalcMatrixSigmaAndNormWeight(const Context& dev_ctx,
+                                                DenseTensor* weight,
+                                                DenseTensor* u,
+                                                DenseTensor* v,
+                                                DenseTensor* sigma,
+                                                const int power_iters,
+                                                const float eps) {
   auto& place = *dev_ctx.eigen_device();
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto sigma_t = EigenTensor<T, 2>::From(*sigma);

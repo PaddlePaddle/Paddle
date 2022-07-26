@@ -662,13 +662,13 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
 }
 
 void SpectralNormGradInferMeta(const MetaTensor& weight,
-                        const MetaTensor& u,
-                        const MetaTensor& v,
-                        const MetaTensor& out_grad,
-                        int dim,
-                        int power_iters,
-                        float eps,
-                        MetaTensor* weight_grad){
+                               const MetaTensor& u,
+                               const MetaTensor& v,
+                               const MetaTensor& out_grad,
+                               int dim,
+                               int power_iters,
+                               float eps,
+                               MetaTensor* weight_grad) {
   auto dim_x = weight.dims();
   if (weight_grad) {
     weight_grad->set_dims(dim_x);

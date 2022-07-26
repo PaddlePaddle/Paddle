@@ -26,71 +26,67 @@ void SpectralNormKernel(const Context& dev_ctx,
                         int dim,
                         int power_iters,
                         float eps,
-                        DenseTensor* out){
-    const int h = u.dims()[0];
-    const int w = v.dims()[0];
+                        DenseTensor* out) {
+  const int h = u.dims()[0];
+  const int w = v.dims()[0];
 
-    DenseTensor weight_mat;
-    auto dims = weight.dims();
-    const int rank = dims.size();
-    std::vector<int> real_dims;
-    if (dim != 0) {
-        std::vector<int> perm;
-        perm.push_back(dim);
-        real_dims.push_back(dims[dim]);
-        for (int i = 0; i < rank; i++) {
-            if (i != dim) {
-                perm.push_back(i);
-                real_dims.push_back(dims[i]);
-            }
-        }
-        weight_mat.Resize(phi::make_ddim(real_dims));
-        dev_ctx.template Alloc<T>(&weight_mat);
-        TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
-    } else {
-        for (int i = 0; i < rank; i++) {
-            real_dims.push_back(i);
-        }
-        phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
+  DenseTensor weight_mat;
+  auto dims = weight.dims();
+  const int rank = dims.size();
+  std::vector<int> real_dims;
+  if (dim != 0) {
+    std::vector<int> perm;
+    perm.push_back(dim);
+    real_dims.push_back(dims[dim]);
+    for (int i = 0; i < rank; i++) {
+      if (i != dim) {
+        perm.push_back(i);
+        real_dims.push_back(dims[i]);
+      }
     }
-    weight_mat = weight_mat.Resize({h, w});
-
-    DenseTensor sigma;
-    sigma.Resize(weight_mat.dims());
-    dev_ctx.template Alloc<T>(&sigma);
-    DenseTensor uu, vv;
-    phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
-    phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
-    CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
-                                                &weight_mat,
-                                                &(uu.Resize({h, 1})),
-                                                &(vv.Resize({w, 1})),
-                                                &sigma,
-                                                power_iters,
-                                                eps);
-
-    if (dim != 0) {
-        std::vector<int> perm;
-        for (int i = 0; i < rank; i++) {
-            if (i < dim) {
-                perm.push_back(i + 1);
-            } else if (i == dim) {
-                perm.push_back(0);
-            } else {
-                perm.push_back(i);
-            }
-        }
-        out->Resize(dims);
-        dev_ctx.template Alloc<T>(out);
-        TransCompute2DTo5D<Context, T>(
-            dev_ctx,
-            weight_mat.Resize(phi::make_ddim(real_dims)),
-            rank,
-            perm,
-            out);
-    } else {
-        phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
+    weight_mat.Resize(phi::make_ddim(real_dims));
+    dev_ctx.template Alloc<T>(&weight_mat);
+    TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
+  } else {
+    for (int i = 0; i < rank; i++) {
+      real_dims.push_back(i);
     }
+    phi::Copy(dev_ctx, weight, dev_ctx.GetPlace(), true, &weight_mat);
+  }
+  weight_mat = weight_mat.Resize({h, w});
+
+  DenseTensor sigma;
+  sigma.Resize(weight_mat.dims());
+  dev_ctx.template Alloc<T>(&sigma);
+  DenseTensor uu, vv;
+  phi::Copy(dev_ctx, u, dev_ctx.GetPlace(), true, &uu);
+  phi::Copy(dev_ctx, v, dev_ctx.GetPlace(), true, &vv);
+  CalcMatrixSigmaAndNormWeight<Context, T>(dev_ctx,
+                                           &weight_mat,
+                                           &(uu.Resize({h, 1})),
+                                           &(vv.Resize({w, 1})),
+                                           &sigma,
+                                           power_iters,
+                                           eps);
+
+  if (dim != 0) {
+    std::vector<int> perm;
+    for (int i = 0; i < rank; i++) {
+      if (i < dim) {
+        perm.push_back(i + 1);
+      } else if (i == dim) {
+        perm.push_back(0);
+      } else {
+        perm.push_back(i);
+      }
+    }
+    out->Resize(dims);
+    dev_ctx.template Alloc<T>(out);
+    TransCompute2DTo5D<Context, T>(
+        dev_ctx, weight_mat.Resize(phi::make_ddim(real_dims)), rank, perm, out);
+  } else {
+    phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
+  }
 }
 
 }  // namespace phi
