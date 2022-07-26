@@ -326,6 +326,16 @@
   kernel :
     func : bitwise_xor
 
+# box_coder
+- api : box_coder
+  args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type, bool box_normalized, int axis, float[] variance)
+  output : Tensor(output_box)
+  infer_meta :
+    func : BoxCoderInferMeta
+  kernel :
+    func : box_coder
+  optional : prior_box_var
+
 # brelu
 - api : brelu
   args : (Tensor x, float t_min, float t_max)
@@ -1802,6 +1812,24 @@
   intermediate : xshape
   backward: reshape_grad
 
+- api : reverse
+  args : (Tensor x, int[] axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  backward : reverse_grad
+
+- api : reverse_array
+  args : (Tensor[] x, int[] axis)
+  output : Tensor[]{x.size()}
+  infer_meta :
+    func : ReverseArrayInferMeta
+  kernel :
+    func : reverse_array
+  backward : reverse_array_grad
+
 - api : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
   output : Tensor
@@ -2029,6 +2057,15 @@
     func : slice
   backward : slice_grad
 
+- api : slogdet
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : slogdeterminant
+  backward : slogdet_grad
+
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
@@ -2130,6 +2167,15 @@
     func : sum
     data_type : x
   backward : sum_grad
+
+- api : svd
+  args : (Tensor x, bool full_metrices)
+  output : Tensor(u), Tensor(s), Tensor(vh)
+  infer_meta :
+    func : SvdInferMeta
+  kernel :
+    func : svd
+  backward : svd_grad
 
 # The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
 - api : swish

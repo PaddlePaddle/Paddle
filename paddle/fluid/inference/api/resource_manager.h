@@ -55,6 +55,15 @@ class GPUContextResource {
   ~GPUContextResource();
   phi::Place Place() const;
 
+  std::function<phi::dnnHandle_t()> GetDnnHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasTensorCoreHandleCreator();
+  std::function<phi::blasHandle_t()> GetBlasTF32TensorCoreHandleCreator();
+  std::function<phi::blasLtHandle_t()> GetBlasLtHandleCreator();
+  std::function<phi::solverHandle_t()> GetSolverDnHandleCreator();
+  std::function<phi::sparseHandle_t()> GetSparseHandleCreator();
+  std::function<Eigen::GpuDevice*()> GetGpuEigenDeviceCreator();
+
   gpuStream_t GetStream() const;
   dnnHandle_t GetDnnHandle() const;
   blasHandle_t GetBlasHandle() const;
@@ -89,7 +98,6 @@ class GPUContextResource {
   void InitGpuEigenDevice();
   void InitDnnHanlde();
   void DestroyDnnHandle();
-  void InitBlasHandle();
   void DestroyBlasHandle();
   void InitBlasLtHandle();
   void DestroyBlasLtHandle();
