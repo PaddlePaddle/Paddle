@@ -848,6 +848,18 @@
     data_type : out_grad
   optional: out, dst_count
 
+# grid sample
+- backward_api : grid_sample_grad
+  forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
+  args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
+  output : Tensor(x_grad), Tensor(grid_grad)
+  infer_meta : 
+    func : GeneralBinaryGradInferMeta
+    param : [x, grid]
+  kernel : 
+    func : grid_sample_grad
+    data_type : x
+
 - backward_api : group_norm_grad
   forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout) -> Tensor(y), Tensor(mean), Tensor(variance)
   args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_layout)
@@ -2008,6 +2020,16 @@
     func : square_grad
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_api : squared_l2_norm_grad
+  forward : squared_l2_norm(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : squared_l2_norm_grad
 
 - backward_api : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, int[] axes) -> Tensor(grad_x)

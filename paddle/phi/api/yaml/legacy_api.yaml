@@ -922,6 +922,18 @@
   kernel :
     func : greater_than
 
+# grid sample
+- api : grid_sample
+  args : (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners)
+  output : Tensor(out)
+  infer_meta :
+    func : GridSampleBaseInferMeta
+    param : [x, grid]
+  kernel:
+    func : grid_sample
+    data_type : x
+  backward : grid_sample_grad
+
 - api : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
   output : Tensor(y), Tensor(mean), Tensor(variance)
@@ -2071,6 +2083,15 @@
   kernel :
     func : square
   backward : square_grad
+
+- api : squared_l2_norm
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : SquaredL2NormInferMeta
+  kernel :
+    func : squared_l2_norm
+  backward : squared_l2_norm_grad
 
 - api : squeeze
   args : (Tensor x, int[] axes)
