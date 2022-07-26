@@ -21,7 +21,6 @@ import unittest
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
-
     distance = np.linalg.norm(x - y + epsilon, ord=p, axis=-1, keepdims=keepdim)
     # Paddle currently has not supported for 0-d Tensors, so even if keep_dim is False,
     # and neither x nor y is batched, a Tensor of shape (1, ) is returned
