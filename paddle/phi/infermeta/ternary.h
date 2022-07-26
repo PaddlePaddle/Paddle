@@ -52,6 +52,16 @@ void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& step,
                      MetaTensor* out);
 
+void BoxCoderInferMeta(const MetaTensor& prior_box,
+                       const MetaTensor& prior_box_var,
+                       const MetaTensor& target_box,
+                       const std::string& code_type,
+                       bool box_normalized,
+                       int axis,
+                       const std::vector<float>& variance,
+                       MetaTensor* output_box,
+                       MetaConfig config = MetaConfig());
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
