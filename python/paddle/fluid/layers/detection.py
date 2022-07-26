@@ -37,6 +37,7 @@ from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
+from ..framework import in_dygraph_mode
 
 __all__ = [
     'prior_box',
@@ -948,6 +949,22 @@ def box_coder(prior_box,
                              'box_coder')
     check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
                              'box_coder')
+    if in_dygraph_mode():
+        if isinstance(prior_box_var, Variable):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box,
+                                                        prior_box_var,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        [])
+        elif isinstance(prior_box_var, list):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        prior_box_var)
+        else:
+            raise TypeError(
+                "Input variance of box_coder must be Variable or lisz")
+        return box_coder_op
     helper = LayerHelper("box_coder", **locals())
 
     output_box = helper.create_variable_for_type_inference(

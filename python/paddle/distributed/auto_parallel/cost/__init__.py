@@ -16,10 +16,15 @@ from .base_cost import _g_op_cost_factory
 from .base_cost import Cost
 from .base_cost import CommContext
 from .base_cost import build_comm_desc
+from .base_cost import build_comp_desc_from_op
+from .base_cost import build_comp_desc_from_dist_op
+from .base_cost import build_dp_costs
+from .base_cost import build_comp_costs_from_descs
 from .tensor_cost import TensorCost
 from .estimate_cost import CostEstimator
 
 from .comp_op_cost import MatmulV2OpCost
+from .comp_op_cost import FillConstantBatchSizeLikeOpCost
 
 from .comm_op_cost import SendOpCost
 from .comm_op_cost import RecvOpCost
