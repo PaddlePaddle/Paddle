@@ -1214,7 +1214,7 @@ struct OperatorWithKernel::CacheImpl {
         flag = true;
       }
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
     if (flag) discardCudaGraphCache();
 #endif
     return flag;
@@ -1223,7 +1223,7 @@ struct OperatorWithKernel::CacheImpl {
   bool cudaGraphEnabled(bool need_prepare_data,
                         bool need_prepare_phi_data,
                         const std::string& op_type) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
     return std::count(cached_gpu_ops.begin(), cached_gpu_ops.end(), op_type) &&
            !need_prepare_data && !need_prepare_phi_data;
 #else
@@ -1235,14 +1235,14 @@ struct OperatorWithKernel::CacheImpl {
                     bool need_prepare_data,
                     bool need_prepare_phi_data,
                     const std::string& op_type) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
     if (cudaGraphEnabled(need_prepare_data, need_prepare_phi_data, op_type))
       return true;
 #endif
     return (run_phi_kernel && !need_prepare_data && !need_prepare_phi_data);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   void startCudaGraphCapture() {
     platform::CUDADeviceContext* ctx =
         static_cast<platform::CUDADeviceContext*>(
@@ -1522,7 +1522,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // function name: runOpCache()
   //    effect:  reuse cacheImpl to accelerate inference period
   auto runOpCache = [&]() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
     if (impl_->cudaGraphEnabled(
             need_prepare_data_, need_prepare_phi_data_, Type())) {
       // cudaGraph cache
@@ -1587,7 +1587,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       RunImpl(scope, place, runtime_ctx_.get());
     }
   }
-}  // namespace framework
+}
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
