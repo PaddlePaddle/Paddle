@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/svd_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -27,55 +28,9 @@
 namespace paddle {
 namespace operators {
 
-using DDim = framework::DDim;
-static DDim UDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 1] = k;
-  return phi::make_ddim(x_vec);
-}
-static DDim VHDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 2] = k;
-  return phi::make_ddim(x_vec);
-}
-static DDim SDDim(const DDim& x_dim, int k) {
-  // get x_dim and return the ddim of U
-  auto x_vec = vectorize(x_dim);
-  x_vec[x_vec.size() - 2] = k;
-  x_vec.erase(x_vec.end() - 1);  // rank - 1
-  return phi::make_ddim(x_vec);
-}
-
 class SvdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "svd");
-    OP_INOUT_CHECK(ctx->HasOutput("U"), "Output", "U", "svd");
-    OP_INOUT_CHECK(ctx->HasOutput("VH"), "Output", "VH", "svd");
-    OP_INOUT_CHECK(ctx->HasOutput("S"), "Output", "S", "svd");
-
-    auto in_dims = ctx->GetInputDim("X");
-    int x_rank = in_dims.size();
-    PADDLE_ENFORCE_GE(in_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "the rank of input must greater than 2"));
-    int m = in_dims[x_rank - 2];
-    int n = in_dims[x_rank - 1];
-    int k = std::min(m, n);
-    const bool full_uv = ctx->Attrs().Get<bool>("full_matrices");
-    ctx->SetOutputDim("U", !full_uv ? UDDim(in_dims, k) : UDDim(in_dims, m));
-    ctx->SetOutputDim("VH", !full_uv ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
-    ctx->SetOutputDim("S", SDDim(in_dims, k));
-
-    ctx->ShareLoD("X", /*->*/ "U");
-    ctx->ShareLoD("X", /*->*/ "VH");
-    ctx->ShareLoD("X", /*->*/ "S");
-  }
 };
 
 class SvdOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -160,18 +115,15 @@ class SvdGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(svd,
+                            SvdInferShapeFunctor,
+                            PD_INFER_META(phi::SvdInferMeta));
+
 REGISTER_OPERATOR(svd,
                   ops::SvdOp,
                   ops::SvdOpMaker,
                   ops::SvdGradMaker<paddle::framework::OpDesc>,
-                  ops::SvdGradMaker<paddle::imperative::OpBase>);
+                  ops::SvdGradMaker<paddle::imperative::OpBase>,
+                  SvdInferShapeFunctor);
 
 REGISTER_OPERATOR(svd_grad, ops::SvdGradOp);
-
-REGISTER_OP_CPU_KERNEL(svd,
-                       ops::SvdCPUKernel<float>,
-                       ops::SvdCPUKernel<double>);
-
-REGISTER_OP_CPU_KERNEL(svd_grad,
-                       ops::SvdGradKernel<phi::CPUContext, float>,
-                       ops::SvdGradKernel<phi::CPUContext, double>);

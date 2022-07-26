@@ -37,6 +37,7 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND tar zxf multi_program_load.tar.gz)
   set(JIT_DEPS
       phi
+      phi_api
       elementwise_add_op
       matmul_v2_op
       activation_op
@@ -51,3 +52,10 @@ if(WITH_TESTING AND NOT WIN32)
     DEPS ${JIT_DEPS})
   add_dependencies(layer_test jit_download_program)
 endif()
+
+proto_library(paddle_jit_property_proto SRCS property.proto)
+
+cc_library(
+  jit_property
+  SRCS property.cc
+  DEPS paddle_jit_property_proto)
