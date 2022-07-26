@@ -467,6 +467,10 @@ void AnalysisConfig::EnableTensorRtEngine(
 #endif
 }
 
+void AnalysisConfig::SetTuneInput(tune_input_data input){
+  tune_input_ = input;
+}
+
 void AnalysisConfig::EnableDlnne(int min_subgraph_size) {
   use_dlnne_ = true;
   dlnne_min_subgraph_size_ = min_subgraph_size;

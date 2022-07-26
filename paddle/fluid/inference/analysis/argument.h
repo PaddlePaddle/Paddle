@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -42,6 +43,7 @@ namespace inference {
 namespace analysis {
 
 using framework::ir::Graph;
+typedef std::vector<std::map<std::string,std::tuple<std::vector<int32_t>,void*,int>>>  tune_input_data;
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
@@ -260,6 +262,10 @@ struct Argument {
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_buffer, NNAdapterModelCacheBuffer,
                       std::vector<std::vector<char>>);
+  
+  // TensorRT tune shape related
+  DECL_ARGUMENT_FIELD(tensorrt_tune_input, TensorrtTuneInput,
+                      tune_input_data);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

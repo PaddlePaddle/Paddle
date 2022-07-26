@@ -863,6 +863,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
   }
 
+  argument_.SetTensorrtTuneInput(config_.tune_input_);
+
   if (config_.dlnne_enabled()) {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);

@@ -31,6 +31,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 #include "paddle_infer_declare.h"  // NOLINT
 
@@ -47,6 +48,7 @@ namespace paddle {
 
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
+typedef std::vector<std::map<std::string,std::tuple<std::vector<int32_t>,void*,int>>>  tune_input_data;
 
 struct LiteNNAdapterConfig {
   bool use_nnadapter{false};
@@ -505,6 +507,7 @@ struct PD_INFER_DECL AnalysisConfig {
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
                             bool use_calib_mode = true);
+  void SetTuneInput(tune_input_data input);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -920,6 +923,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  tune_input_data tune_input_;
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

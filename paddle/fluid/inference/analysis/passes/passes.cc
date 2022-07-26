@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/analysis/passes/tensorrt_tune_shape_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -33,6 +34,8 @@ PassRegistry::PassRegistry() {
                   std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
   passes_.emplace("ir_graph_build_pass",
                   std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
+  passes_.emplace("tensorrt_tune_shape_pass",
+                  std::unique_ptr<AnalysisPass>(new TensorrtTuneShapePass));
   passes_.emplace("ir_graph_clean_pass",
                   std::unique_ptr<AnalysisPass>(new IrInferCleanGraphPass));
   passes_.emplace("memory_optimize_pass",

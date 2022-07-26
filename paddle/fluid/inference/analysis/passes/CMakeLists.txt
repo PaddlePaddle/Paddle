@@ -1,6 +1,7 @@
 cc_library(ir_graph_build_pass SRCS ir_graph_build_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(ir_analysis_pass SRCS ir_analysis_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(memory_optim_pass SRCS memory_optimize_pass.cc DEPS analysis_pass zero_copy_tensor)
+cc_library(tensorrt_tune_shape_pass SRCS tensorrt_tune_shape_pass.cc DEPS analysis_pass zero_copy_tensor)
 cc_library(ir_params_sync_among_devices_pass SRCS ir_params_sync_among_devices_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(ir_graph_to_program_pass SRCS ir_graph_to_program_pass.cc DEPS analysis_pass graph_to_program_pass)
 cc_library(adjust_cudnn_workspace_size_pass SRCS adjust_cudnn_workspace_size_pass.cc DEPS analysis_pass graph_to_program_pass)
@@ -17,6 +18,7 @@ cc_library(analysis_passes SRCS passes.cc DEPS
   ir_params_sync_among_devices_pass
   adjust_cudnn_workspace_size_pass
   memory_optim_pass
+  tensorrt_tune_shape_pass
   inference_op_replace_pass
   ir_graph_to_program_pass
   ir_graph_clean_pass

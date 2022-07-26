@@ -105,7 +105,7 @@ class PD_INFER_DECL PaddlePassBuilder {
  protected:
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass", "ir_graph_clean_pass", "ir_analysis_pass",
+      {"ir_graph_build_pass", "tensorrt_tune_shape_pass", "ir_graph_clean_pass", "ir_analysis_pass",
        "ir_params_sync_among_devices_pass", "adjust_cudnn_workspace_size_pass",
        "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
