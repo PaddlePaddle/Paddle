@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/einsum_kernel.h"
-#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-PD_REGISTER_KERNEL(einsum_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::EinsumGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+namespace phi {
+
+KernelSignature BoxCoderOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("box_coder",
+                         {"PriorBox", "PriorBoxVar", "TargetBox"},
+                         {"code_type", "box_normalized", "axis", "variance"},
+                         {"OutputBox"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(box_coder, phi::BoxCoderOpArgumentMapping);

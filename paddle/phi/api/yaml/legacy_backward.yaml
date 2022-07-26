@@ -1717,6 +1717,23 @@
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : reverse_array_grad
+  forward : reverse_array (Tensor[] x, int[] axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, int[] axis)
+  output : Tensor[](x_grad){out_grad.size()}
+  infer_meta :
+    func : ReverseArrayInferMeta
+  kernel :
+    func : reverse
+
+- backward_api : reverse_grad
+  forward : reverse (Tensor x, int[] axis) -> Tensor(out)
+  args : (Tensor out_grad, int[] axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : ReverseInferMeta
+  invoke : reverse(out_grad, axis)
+
 - backward_api : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
@@ -2141,6 +2158,17 @@
   args : (Tensor grad_grad_x, Tensor grad_grad_out_grad, int64_t[] dims={}, bool keep_dim=false, bool reduce_all=false)
   output : Tensor(grad_grad_x_grad)
   invoke : sum_grad(grad_grad_x, grad_grad_out_grad, dims, keep_dim, reduce_all, grad_grad_x_grad)
+
+- backward_api : svd_grad
+  forward : svd (Tensor x, bool full) -> Tensor(u), Tensor(s), Tensor(vh)
+  args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : svd_grad
+  optional: u_grad, vh_grad, s_grad
 
 - backward_api : swish_grad
   forward : swish (Tensor x, float beta=1.0) -> Tensor(out)

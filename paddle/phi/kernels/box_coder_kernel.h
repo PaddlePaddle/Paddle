@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/einsum_kernel.h"
-#include "paddle/phi/kernels/impl/einsum_grad_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(einsum_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::EinsumGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+#include <string>
+#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void BoxCoderKernel(const Context& dev_ctx,
+                    const DenseTensor& prior_box,
+                    const paddle::optional<DenseTensor>& prior_box_var,
+                    const DenseTensor& target_box,
+                    const std::string& code_type,
+                    bool box_normalized,
+                    int axis,
+                    const std::vector<float>& variance,
+                    DenseTensor* output_box);
+}  // namespace phi
