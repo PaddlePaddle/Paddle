@@ -291,7 +291,9 @@ int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
                                           uint32_t size,
                                           int slot_num) {
   platform::CUDADeviceGuard guard(gpu_id);
-  PADDLE_ENFORCE_NOT_NULL(graph_table);
+  PADDLE_ENFORCE_NOT_NULL(graph_table,
+                          paddle::platform::errors::InvalidArgument(
+                              "graph_table should not be null"));
   return ((GpuPsGraphTable *)graph_table)
       ->get_feature_of_nodes(gpu_id, d_walk, d_offset, size, slot_num);
 }

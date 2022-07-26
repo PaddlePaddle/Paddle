@@ -350,7 +350,13 @@ struct GpuPsCommGraphFea {
   void init_on_cpu(uint64_t feature_size,
                    uint64_t node_size,
                    uint32_t slot_num) {
-    PADDLE_ENFORCE_LE(slot_num, 255);
+    PADDLE_ENFORCE_LE(
+        slot_num,
+        255,
+        platform::errors::InvalidArgument(
+            "The number of slot_num should not be greater than 255 "
+            ", but the slot_num is %d ",
+            slot_num));
     this->feature_size = feature_size;
     this->node_size = node_size;
     this->node_list = new uint64_t[node_size];
