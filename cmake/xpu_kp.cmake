@@ -170,7 +170,7 @@ macro(compile_kernel COMPILE_ARGS)
   endif()
   add_custom_command(
     OUTPUT COPY_KP
-    COMMAND ${CMAKE_COMMAND} -E copy ${kernel_path}/$P{kernel_name}.kps
+    COMMAND ${CMAKE_COMMAND} -E copy ${kernel_path}/${kernel_name}.kps
             kernel_build/${kernel_name}.xpu)
   add_custom_command(
     OUTPUT kernel_build/${kernel_name}.bin.o
