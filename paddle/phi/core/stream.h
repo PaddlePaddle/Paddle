@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -106,6 +107,8 @@ class CUDAStream {
   }
 
   StreamId id() const { return stream_.id(); }
+
+  Place place() const { return place_; }
 
   bool Query() const {
 #ifdef PADDLE_WITH_HIP

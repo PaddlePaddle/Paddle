@@ -25,9 +25,10 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/stream.h"
 
 namespace phi {
+
+class CUDAStream;
 
 class DnnWorkspaceHandle {
  public:
@@ -194,13 +195,15 @@ class PADDLE_API GPUContext : public DeviceContext {
   // called.
   void PartialInitWithAllocator();
 
+  // Note that this function is a trick implementation since all 'set' methods
+  // are protected by default.
+  void SetCUDAStream(CUDAStream*);
+
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
   // The Set interface is for inference only, DeviceContext will mark the
   // resource as external, and will not delete any resource when destructing.
   void SetStream(gpuStream_t);
-
-  void SetStream(CUDAStream*);
 
   void SetEigenDevice(Eigen::GpuDevice*);
   void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);

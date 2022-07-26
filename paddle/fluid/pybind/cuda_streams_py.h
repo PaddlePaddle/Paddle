@@ -22,8 +22,8 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace platform {
-CUDAStream* get_current_stream(int device_id = -1);
-CUDAStream* set_current_stream(CUDAStream* stream);
+phi::CUDAStream* get_current_stream(int device_id = -1);
+phi::CUDAStream* set_current_stream(phi::CUDAStream* stream);
 }  // namespace platform
 namespace pybind {
 

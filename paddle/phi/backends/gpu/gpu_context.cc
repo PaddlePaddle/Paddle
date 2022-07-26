@@ -804,7 +804,7 @@ const Place& GPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 gpuStream_t GPUContext::stream() const { return impl_->stream(); }
 
-CUDAStream* GPUContext : cuda_stream() const { return impl_->cuda_stream(); }
+CUDAStream* GPUContext::cuda_stream() const { return impl_->cuda_stream(); }
 
 dnnHandle_t GPUContext::cudnn_handle() const { return impl_->GetDnnHandle(); }
 
@@ -899,6 +899,11 @@ void GPUContext::Init() {
 void GPUContext::SetStream(gpuStream_t stream) {
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
   impl_->SetStream(stream);
+}
+
+void GPUContext::SetCUDAStream(CUDAStream* stream) {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->SetCUDAStream(stream);
 }
 
 void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {
