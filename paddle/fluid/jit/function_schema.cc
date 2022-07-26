@@ -83,7 +83,7 @@ const std::vector<std::string> FunctionInfo::OutputArgNames() const {
 }
 
 void FunctionInfo::RemoveDescFeedFetch() {
-  utils::RemoveFeedFetch(&program_desc_);
+  utils::RemoveFeedFetch(program_desc_.get());
 }
 
 }  // namespace jit
