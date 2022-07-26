@@ -192,10 +192,19 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                     layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
-            layer_output = SyncBatchNorm(layer._num_features, layer._momentum,
-                                         layer._epsilon, layer._weight_attr,
-                                         layer._bias_attr, layer._data_format,
-                                         layer._name)
+            #sparse
+            if isinstance(layer, BatchNorm):
+                layer_output = SyncBatchNorm(layer._num_features,
+                                             layer._momentum, layer._epsilon,
+                                             layer._weight_attr,
+                                             layer._bias_attr,
+                                             layer._data_format, layer._name)
+            #dense
+            else:
+                layer_output = paddle.nn.SyncBatchNorm(
+                    layer._num_features, layer._momentum, layer._epsilon,
+                    layer._weight_attr, layer._bias_attr, layer._data_format,
+                    layer._name)
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():
