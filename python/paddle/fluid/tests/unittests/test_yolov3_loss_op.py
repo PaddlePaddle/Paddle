@@ -183,17 +183,17 @@ def yolo_loss_wrapper(x,
                       downsample_ratio=32,
                       use_label_smooth=True,
                       scale_x_y=1.):
-    loss, _, _ = paddle.vision.ops.yolo_loss(x,
-                                             gt_box=gt_box,
-                                             gt_label=gt_label,
-                                             anchors=anchors,
-                                             anchor_mask=anchor_mask,
-                                             class_num=class_num,
-                                             ignore_thresh=ignore_thresh,
-                                             downsample_ratio=downsample_ratio,
-                                             gt_score=gt_score,
-                                             use_label_smooth=use_label_smooth,
-                                             scale_x_y=scale_x_y)
+    loss = paddle.vision.ops.yolo_loss(x,
+                                       gt_box=gt_box,
+                                       gt_label=gt_label,
+                                       anchors=anchors,
+                                       anchor_mask=anchor_mask,
+                                       class_num=class_num,
+                                       ignore_thresh=ignore_thresh,
+                                       downsample_ratio=downsample_ratio,
+                                       gt_score=gt_score,
+                                       use_label_smooth=use_label_smooth,
+                                       scale_x_y=scale_x_y)
     return loss
 
 
