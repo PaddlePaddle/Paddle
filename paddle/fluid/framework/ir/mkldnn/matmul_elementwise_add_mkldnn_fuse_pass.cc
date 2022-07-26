@@ -39,9 +39,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
   const std::string fusion_mode = matmul_as_x ? "x" : "y";
   const auto name_scope = matmul_type + "_elementwise_add_as_" + fusion_mode;
   FusePassBase::Init(name_scope, graph);
-  auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::MatmulElementwiseAdd matmul_pattern(
