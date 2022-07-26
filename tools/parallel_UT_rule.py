@@ -671,8 +671,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_trt_convert_reduce_sum',
     'save_quant2_model_lstm',
     'test_trt_convert_slice',
-    'test_quant2_int8_lstm_mkldnn',
-    'test_dist_fleet_ps13'
+    'test_quant2_int8_lstm_mkldnn'
 ]
 
 # mem=0 but always timeout or failed : It run 15 job each time in Single cases;
