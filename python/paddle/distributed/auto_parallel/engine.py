@@ -37,6 +37,7 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
+from .hepler import ProgramHelper
 from ..collective import _get_global_env
 from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
@@ -148,89 +149,28 @@ class Engine:
         self._mode_init_states[mode] = True
 
     def _build(self, mode):
-
         if _non_static_mode() or self._dygraph_mode:
+            paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
+            program_helper = ProgramHelper(self.model, self._loss,
+                                           self._metrics, self.inputs_spec,
+                                           self.labels_spec)
             # build forward main program
-            self.static_model = to_static(self.model,
-                                          input_spec=self.inputs_spec)
-            inputs = self.static_model.forward.inputs
-            outputs = self.static_model.forward.outputs
-            forward_main_prog = self.static_model.forward.main_program
-            forward_startup_prog = self.static_model.forward.concrete_program.startup_program
-            self.concrete_program = self.static_model.forward.concrete_program
+            program_helper.build_program(mode)
 
-            # build loss main program
-            outputs_spec = []
-            outputs_name = []
-            for out in outputs:
-                outputs_spec.append(InputSpec(out.shape, out.dtype, out.name))
-                outputs_name.append(out.name)
-            if isinstance(self._loss, paddle.nn.Layer):
-                self.static_loss = to_static(self._loss.forward,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
-            elif callable(self._loss):
-                self.static_loss = to_static(self._loss,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
+            self.concrete_program = program_helper.concrete_program
+            serial_main_prog = program_helper.main_program
+            serial_startup_prog = program_helper.startup_program
 
-            # build startup program
-            for param in self.concrete_program.parameters:
-                Parameter(name=param.name,
-                          desc=param,
-                          type=param.type,
-                          shape=param.shape,
-                          dtype=param.dtype,
-                          stop_gradient=param.stop_gradient,
-                          block=forward_startup_prog.global_block())
+            inputs = program_helper.input_vars
+            outputs = program_helper.output_vars
+            labels = program_helper.label_vars
+            losses = program_helper.loss_vars
+            metrics = program_helper.metric_vars
 
             paddle.enable_static()
-
-            # NOTE: pure program will loss dist_attr
-            # feeded_var_names = [var.name for var in inputs]
-            # main_prog_0 = main_prog_0._prune_with_input(
-            #     feeded_var_names=feeded_var_names, targets=outputs)
-
-            labels = []
-            losses = []
-            metrics = []
-            # concat forward and loss prog
-            if mode != 'predict' and self._loss:
-                forward_block = forward_main_prog.global_block()
-                loss_block = loss_main_prog.global_block()
-                for idx, op in enumerate(loss_block.ops):
-                    op_desc = forward_block.desc.append_op()
-                    op_desc.copy_from(op.desc)
-                    for in_name in op.input_arg_names:
-                        if in_name in outputs_name:
-                            continue
-                        in_var = forward_block._clone_variable(
-                            loss_block.vars[in_name], force_persistable=False)
-                        if loss_block.vars[in_name].is_data:
-                            in_var.stop_gradient = loss_block.vars[
-                                in_name].stop_gradient
-                            labels.append(in_var)
-                    for out_name in op.output_arg_names:
-                        out_var = forward_block._clone_variable(
-                            loss_block.vars[out_name], force_persistable=False)
-                        if idx == len(loss_block.ops) - 1:
-                            losses.append(out_var)
-                forward_block._sync_with_cpp()
-            serial_main_prog = forward_main_prog
-            serial_startup_prog = forward_startup_prog
-            # update metrics op in program
-            with static.program_guard(serial_main_prog, serial_startup_prog), \
-                utils.unique_name.guard():
-                if mode == "eval":
-                    for metric in self._metrics:
-                        metrics.extend(
-                            to_list(metric.compute(*(outputs + labels))))
-
         else:
             # build program in static mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
