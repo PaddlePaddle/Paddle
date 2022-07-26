@@ -2140,6 +2140,15 @@
     data_type : x
   backward : sum_grad
 
+- api : svd
+  args : (Tensor x, bool full_metrices)
+  output : Tensor(u), Tensor(s), Tensor(vh)
+  infer_meta :
+    func : SvdInferMeta
+  kernel :
+    func : svd
+  backward : svd_grad
+
 # The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
 - api : swish
   args : (Tensor x, float beta=1.0)
