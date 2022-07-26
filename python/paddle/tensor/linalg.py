@@ -1781,7 +1781,10 @@ def slogdet(x, name=None):
         # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_slogdet(x)
+
+    elif paddle.in_dynamic_mode():
         return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -1854,8 +1857,9 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
-
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_svd(x, full_matrices)
+    if _in_legacy_dygraph():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
     check_type(full_matrices, 'full_matrices', bool, 'svd')

@@ -146,6 +146,34 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
   }
 }
 
+void FleetWrapper::InitFlWorker(const std::vector<std::string>& host_list,
+                                int index,
+                                const std::string& self_endpoint) {
+  assert(worker_ptr_.get() != nullptr);
+  uint32_t coordinator_num = host_list.size();
+  ps_env_.SetCoordinators(&host_list, coordinator_num);
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  ptr->InitializeFlWorker(self_endpoint);
+  return;
+}
+
+void FleetWrapper::PushFLClientInfoSync(const std::string& fl_client_info) {
+  // FLClientInfo fci;
+  // google::protobuf::TextFormat::ParseFromString(fl_client_info, &fci);
+  // InitGFlag(fci.init_gflags());
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  VLOG(0) << "fl-ps > PushFLClientInfoSync: " << typeid(worker_ptr_).name()
+          << ", " << typeid(ptr).name() << ", " << typeid(BrpcPsClient).name();
+  ptr->PushFLClientInfoSync(fl_client_info);
+  return;
+}
+
+std::string FleetWrapper::PullFlStrategy() {
+  auto ptr = dynamic_cast<BrpcPsClient*>(worker_ptr_.get());
+  std::string str = ptr->PullFlStrategy();
+  return str;
+}
+
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
   auto status = worker_ptr_->StopServer();
