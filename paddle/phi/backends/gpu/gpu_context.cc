@@ -346,18 +346,17 @@ struct GPUContext::Impl {
     std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
         if (!blas_handle_creator_) {
-          phi::InitBlasHandle(&blas_handle_,  stream());
+          phi::InitBlasHandle(&blas_handle_, stream());
         } else {
           blas_handle_ = blas_handle_creator_();
-        }   
+        }
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
-        }
-        else {
+        } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
@@ -368,8 +367,7 @@ struct GPUContext::Impl {
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
-        }
-        else {
+        } else {
           blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
@@ -429,8 +427,7 @@ struct GPUContext::Impl {
       if (!dnn_handle_) {
         if (!dnn_handle_creator_) {
           phi::InitDnnHandle(&dnn_handle_, stream(), place_);
-        }
-        else {
+        } else {
           dnn_handle_ = dnn_handle_creator_();
         }
       }
@@ -464,8 +461,7 @@ struct GPUContext::Impl {
       if (!solver_handle_) {
         if (!solver_handle_creator_) {
           phi::InitSolverHandle(&solver_handle_, stream());
-        }
-        else {
+        } else {
           solver_handle_ = solver_handle_creator_();
         }
       }
@@ -483,13 +479,11 @@ struct GPUContext::Impl {
   sparseHandle_t GetSparseHandle() {
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
-        if (!sparse_handle_creator_){
+        if (!sparse_handle_creator_) {
           phi::InitSparseHandle(&sparse_handle_, stream());
-        }
-        else {
+        } else {
           sparse_handle_ = sparse_handle_creator_();
         }
-          
       }
     });
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
@@ -553,23 +547,19 @@ struct GPUContext::Impl {
   inline void CublasCall(const std::function<void(blasHandle_t)>& callback) {
     std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
-        if (!blas_handle_creator_){
+        if (!blas_handle_creator_) {
           phi::InitBlasHandle(&blas_handle_, stream());
-        }
-          
-        else {
+        } else {
           blas_handle_ = blas_handle_creator_();
         }
-          
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
-        }
-        else {
-        phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        } else {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
@@ -579,13 +569,10 @@ struct GPUContext::Impl {
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
-        }
-          
-        else {
-blas_tf32_tensor_core_handle_ =
+        } else {
+          blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-          
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -603,29 +590,22 @@ blas_tf32_tensor_core_handle_ =
 
   inline void TensorCoreCublasCallIfAvailable(
       const std::function<void(blasHandle_t)>& callback) {
-<<<<<<< HEAD
     std::call_once(flag_tensorcore_cublas_, [&]() {
       if (!blas_handle_) {
-        if (!blas_handle_creator_)
-          phi::InitBlasHandle(&blas_handle_, stream_);
-        else
+        if (!blas_handle_creator_) {
+          phi::InitBlasHandle(&blas_handle_, stream());
+        } else {
           blas_handle_ = blas_handle_creator_();
+        }
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        if (!blas_tensor_core_handle_creator_)
-          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
-        else
+        if (!blas_tensor_core_handle_creator_) {
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+        } else {
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
-=======
-    std::call_once(flag_tensorcore_cublas_, [=]() {
-      if (!blas_handle_) phi::InitBlasHandle(&blas_handle_, stream());
-#ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 9000
-      if (!blas_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
->>>>>>> move CUDAStream to phi
+        }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
@@ -634,13 +614,10 @@ blas_tf32_tensor_core_handle_ =
       if (!blas_tf32_tensor_core_handle_) {
         if (!blas_tf32_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream());
-        }
-          
-        else {
-blas_tf32_tensor_core_handle_ =
+        } else {
+          blas_tf32_tensor_core_handle_ =
               blas_tf32_tensor_core_handle_creator_();
         }
-          
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -661,13 +638,10 @@ blas_tf32_tensor_core_handle_ =
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
         if (!sparse_handle_creator_) {
-          phi::InitSparseHandle(&sparse_handle_, stream_);
-        }
-          
-        else {
+          phi::InitSparseHandle(&sparse_handle_, stream());
+        } else {
           sparse_handle_ = sparse_handle_creator_();
         }
-          
       }
     });
     std::lock_guard<std::mutex> guard(sparse_mtx_);
