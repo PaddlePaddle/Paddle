@@ -30,35 +30,32 @@ void LUUnpackGradKernel(const Context& dev_ctx,
                         bool unpack_ludata,
                         bool unpack_pivots,
                         DenseTensor* x_grad) {
-  auto dl = ctx.Input<framework::Tensor>(framework::GradVarName("L"));
-  auto du = ctx.Input<framework::Tensor>(framework::GradVarName("U"));
-  auto dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-  dx->mutable_data<T>(ctx.GetPlace());
+  dev_ctx.template Alloc<T>(x_grad);
 
-  const auto& dev_ctx = ctx.template device_context<DeviceContext>();
-
-  framework::Tensor dl_tril, du_triu;
-  const auto ldims = dl->dims();
+  DenseTensor dl_tril, du_triu;
+  const auto ldims = l_grad.dims();
   dl_tril.Resize(ldims);
   auto H = ldims[ldims.size() - 2];
   auto W = ldims[ldims.size() - 1];
-  auto L_dataptr = dl_tril.mutable_data<T>(dev_ctx.GetPlace());
-  platform::ForRange<DeviceContext> l_for_range(dev_ctx, dl->numel());
+  dev_ctx.template Alloc<T>(&dl_tril);
+  auto L_dataptr = dl_tril.data<T>();
+  phi::funcs::ForRange<Context> l_for_range(dev_ctx, l_grad.numel());
   phi::funcs::TrilTriuCompute<T> tril_computer(
-      dl->data<T>(), -1, true, H, W, L_dataptr);
+      l_grad.data<T>(), -1, true, H, W, L_dataptr);
   l_for_range(tril_computer);
 
-  const auto udims = du->dims();
+  const auto udims = u_grad.dims();
   du_triu.Resize(udims);
   H = udims[udims.size() - 2];
   W = udims[udims.size() - 1];
-  auto U_dataptr = du_triu.mutable_data<T>(dev_ctx.GetPlace());
-  platform::ForRange<DeviceContext> u_for_range(dev_ctx, du->numel());
+  dev_ctx.template Alloc<T>(&du_triu);
+  auto U_dataptr = du_triu.data<T>();
+  phi::funcs::ForRange<Context> u_for_range(dev_ctx, u_grad.numel());
   phi::funcs::TrilTriuCompute<T> triu_computer(
-      du->data<T>(), 0, false, H, W, U_dataptr);
+      u_grad.data<T>(), 0, false, H, W, U_dataptr);
   u_for_range(triu_computer);
 
-  auto xdims = dx->dims();
+  auto xdims = x_grad->dims();
   int xrank = xdims.size();
   int64_t m = xdims[xrank - 2];
   int64_t n = xdims[xrank - 1];
@@ -69,8 +66,8 @@ void LUUnpackGradKernel(const Context& dev_ctx,
   std::vector<int64_t> slice_ends(2, 0);
   auto valuedims = vectorize(xdims);
 
-  phi::funcs::SetConstant<DeviceContext, T> setter;
-  setter(dev_ctx, dx, static_cast<T>(0));
+  phi::funcs::SetConstant<Context, T> setter;
+  setter(dev_ctx, x_grad, static_cast<T>(0));
   if (m <= n) {
     slice_starts[0] = 0;
     slice_starts[1] = 0;
@@ -78,17 +75,17 @@ void LUUnpackGradKernel(const Context& dev_ctx,
     slice_ends[1] = k;
     valuedims[xrank - 2] = k;
     valuedims[xrank - 1] = k;
-    SetValueCompute_dispatch<DeviceContext, T>(ctx,
-                                               dx,
-                                               &dl_tril,
-                                               dx,
-                                               axes,
-                                               &slice_starts,
-                                               &slice_ends,
-                                               valuedims,
-                                               xrank);
+    SetValueCompute_dispatch<Context, T>(dev_ctx,
+                                         x_grad,
+                                         &dl_tril,
+                                         x_grad,
+                                         axes,
+                                         &slice_starts,
+                                         &slice_ends,
+                                         valuedims,
+                                         xrank);
 
-    Tensor_Add<DeviceContext, T>(dev_ctx, *dx, du_triu, dx);
+    Tensor_Add<Context, T>(dev_ctx, *x_grad, du_triu, x_grad);
   } else {
     slice_starts[0] = 0;
     slice_starts[1] = 0;
@@ -96,17 +93,17 @@ void LUUnpackGradKernel(const Context& dev_ctx,
     slice_ends[1] = k;
     valuedims[xrank - 2] = k;
     valuedims[xrank - 1] = k;
-    SetValueCompute_dispatch<DeviceContext, T>(ctx,
-                                               dx,
-                                               &du_triu,
-                                               dx,
-                                               axes,
-                                               &slice_starts,
-                                               &slice_ends,
-                                               valuedims,
-                                               xrank);
+    SetValueCompute_dispatch<Context, T>(dev_ctx,
+                                         x_grad,
+                                         &du_triu,
+                                         x_grad,
+                                         axes,
+                                         &slice_starts,
+                                         &slice_ends,
+                                         valuedims,
+                                         xrank);
 
-    Tensor_Add<DeviceContext, T>(dev_ctx, *dx, dl_tril, dx);
+    Tensor_Add<Context, T>(dev_ctx, *x_grad, dl_tril, x_grad);
   }
 }
 

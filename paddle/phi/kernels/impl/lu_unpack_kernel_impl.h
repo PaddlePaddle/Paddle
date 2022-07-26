@@ -27,43 +27,31 @@ void LUUnpackKernel(const Context& dev_ctx,
                     DenseTensor* pmat,
                     DenseTensor* l,
                     DenseTensor* u) {
-  auto xin = ctx.Input<framework::Tensor>("X");
-  auto P = ctx.Input<framework::Tensor>("Pivots");
-
-  auto ltensor = ctx.Output<framework::Tensor>("L");
-  auto utensor = ctx.Output<framework::Tensor>("U");
-  auto ptensor = ctx.Output<framework::Tensor>("Pmat");
-
-  auto unpack_ludata = ctx.Attr<bool>("unpack_ludata");
-  auto unpack_pivots = ctx.Attr<bool>("unpack_pivots");
-
-  const auto& dev_ctx = ctx.template device_context<DeviceContext>();
-
-  auto xdims = xin->dims();
+  auto xdims = x.dims();
   int xrank = xdims.size();
   int64_t m = xdims[xrank - 2];
   int64_t n = xdims[xrank - 1];
   int64_t k = std::min(m, n);
 
   if (unpack_ludata) {
-    ltensor->mutable_data<T>(ctx.GetPlace());
-    utensor->mutable_data<T>(ctx.GetPlace());
+    dev_ctx.template Alloc<T>(l);
+    dev_ctx.template Alloc<T>(u);
 
-    framework::Tensor L, U;
-    LU_Unpack<DeviceContext, T>(dev_ctx, xin, &L, &U);
+    DenseTensor L, U;
+    LU_Unpack<Context, T>(dev_ctx, &x, &L, &U);
 
     if (m >= n) {
-      framework::TensorCopy(L, ctx.GetPlace(), ltensor);
-      Tensor_narrow<DeviceContext, T>(ctx, &U, utensor, 0, k, 0, k);
+      phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
+      Tensor_narrow<Context, T>(ctx, &U, utensor, 0, k, 0, k);
     } else {
-      framework::TensorCopy(U, ctx.GetPlace(), utensor);
-      Tensor_narrow<DeviceContext, T>(ctx, &L, ltensor, 0, k, 0, k);
+      phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
+      Tensor_narrow<Context, T>(ctx, &L, ltensor, 0, k, 0, k);
     }
   }
 
   if (unpack_pivots) {
-    ptensor->mutable_data<T>(ctx.GetPlace());
-    Unpack_Pivot<DeviceContext, T>(dev_ctx, *P, ptensor, m, k);
+    dev_ctx.template Alloc<T>(pmat);
+    Unpack_Pivot<Context, T>(dev_ctx, pivots, pmat, m, k);
   }
 }
 
