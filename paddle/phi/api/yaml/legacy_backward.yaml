@@ -935,6 +935,17 @@
     func : hard_swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : hierarchical_sigmoid_grad
+  forward : hierarchical_sigmoid (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, Tensor pre_out, Tensor out_grad, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
+  output : Tensor(x_grad), Tensor(w_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x ,w, bias]
+  optional: path, code, bias
+  kernel :
+    func : hierarchical_sigmoid_grad
+
 - backward_api : huber_loss_grad
   forward : huber_loss (Tensor input, Tensor label, float delta) -> Tensor(out), Tensor(residual)
   args : (Tensor residual, Tensor out_grad, float delta)
@@ -2396,7 +2407,7 @@
   backward : unsqueeze_double_grad
 
 - backward_api : warpctc_grad
-  forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad) 
+  forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad)
   args : (Tensor logits, Tensor logits_length, Tensor warpctcgrad, Tensor loss_grad, int blank, bool norm_by_times)
   output : Tensor(logits_grad)
   infer_meta :

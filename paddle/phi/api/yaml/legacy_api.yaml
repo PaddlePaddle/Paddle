@@ -1038,6 +1038,18 @@
     func : hard_swish
   backward : hard_swish_grad
 
+# hierarchical_sigmoid
+- api : hierarchical_sigmoid
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
+  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
+  infer_meta :
+    func : HierarchicalSigmoidInferMeta
+  optional: path, code, bias
+  kernel :
+    func : hierarchical_sigmoid
+    data_type : x
+  backward : hierarchical_sigmoid_grad
+
 # histogram
 - api : histogram
   args : (Tensor x, int64_t bins, int min, int max)
