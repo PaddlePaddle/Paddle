@@ -59,9 +59,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     // allocate temp memory for int32 index
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* indices_int_data = RAII_GUARD.alloc_l3_or_gm<int>(indices->numel());
-    PADDLE_ENFORCE_NOT_NULL(
-        indices_int_data,
-        platform::errors::External("XPU alloc_l3_or_gm returns nullptr"));
+    PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
 
     // reshape input to a flattern matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
