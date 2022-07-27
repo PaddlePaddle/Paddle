@@ -90,25 +90,6 @@ class UniformRandomInplaceOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-class CPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto out_var = ctx.OutputVar("Out");
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-    T *data = tensor->mutable_data<T>(ctx.GetPlace());
-    int64_t size = tensor->numel();
-    std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
-    auto engine = paddle::framework::GetCPURandomEngine(
-        static_cast<unsigned int>(ctx.Attr<int>("seed")));
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-  }
-};
-
 class UniformRandomInplaceOpVarTypeInference
     : public framework::VarTypeInference {
  public:
@@ -146,18 +127,6 @@ class UniformRandomInplaceGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
-class CPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (dx) {
-      auto *data = dx->mutable_data<T>(ctx.GetPlace());
-      std::fill(data, data + dx->numel(), T(0));
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 DECLARE_INPLACE_OP_INFERER(UniformRandomInplaceInferer, {"X", "Out"});
@@ -177,11 +146,3 @@ REGISTER_OPERATOR(uniform_random_inplace,
 REGISTER_OPERATOR(uniform_random_inplace_grad,
                   paddle::operators::UniformRandomInplaceGradOp,
                   UniformRandomInplaceGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    uniform_random_inplace,
-    paddle::operators::CPUUniformRandomInplaceKernel<float>,
-    paddle::operators::CPUUniformRandomInplaceKernel<double>);
-REGISTER_OP_CPU_KERNEL(
-    uniform_random_inplace_grad,
-    paddle::operators::CPUUniformRandomInplaceGradKernel<float>,
-    paddle::operators::CPUUniformRandomInplaceGradKernel<double>);
