@@ -24,16 +24,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class CPUDecodeJpegKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    // TODO(LieLinJiang): add cpu implement.
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "DecodeJpeg op only supports GPU now."));
-  }
-};
-
 class DecodeJpegOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -114,5 +104,3 @@ REGISTER_OPERATOR(
     ops::DecodeJpegOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
-
-REGISTER_OP_CPU_KERNEL(decode_jpeg, ops::CPUDecodeJpegKernel<uint8_t>)
