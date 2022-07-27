@@ -63,7 +63,7 @@ void eltwise_forward(const OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
   if (is_inplaced) {
     dst_memory_p = src_memory_p;
-    out->mutable_data<T>(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(out);
   } else {
     dst_memory_p = handler.AcquireDstMemory(out);
   }
