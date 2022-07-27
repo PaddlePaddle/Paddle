@@ -943,7 +943,6 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
         .. code-block:: python
 
             # required: distributed
-            import numpy as np
             import paddle
             from paddle.distributed import init_parallel_env
 
@@ -951,16 +950,10 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             init_parallel_env()
             tensor_list = []
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
-                np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
-                data1 = paddle.to_tensor(np_data1)
-                data2 = paddle.to_tensor(np_data2)
+                data1 = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
                 paddle.distributed.all_gather(tensor_list, data1)
             else:
-                np_data1 = np.array([[1, 2, 3], [1, 2, 3]])
-                np_data2 = np.array([[1, 2, 3], [1, 2, 3]])
-                data1 = paddle.to_tensor(np_data1)
-                data2 = paddle.to_tensor(np_data2)
+                data2 = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
                 paddle.distributed.all_gather(tensor_list, data2)
     """
     if group is not None and not group.is_member():
