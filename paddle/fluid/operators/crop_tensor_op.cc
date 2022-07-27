@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/infermeta_utils.h"
-// #include "paddle/phi/infermeta/backward.h"
-// #include "paddle/phi/infermeta/unary.h"
+
+// TODO(freeliuzc): Delete old infershape
+// New infershape has already in unary.h and backward.h
 
 namespace paddle {
 namespace operators {

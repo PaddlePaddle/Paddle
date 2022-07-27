@@ -293,6 +293,11 @@ void CropTensorInferMeta(const MetaTensor& x,
                          const IntArray& offsets,
                          MetaTensor* out,
                          MetaConfig config) {
+  PADDLE_ENFORCE_NE(
+      out,
+      nullptr,
+      errors::InvalidArgument("CropTensor should have output tensor out."));
+
   auto x_dim = x.dims();
   auto shape_dims = shape.GetData();
   auto offsets_vec = offsets.GetData();
