@@ -43,6 +43,15 @@ TEST(Variable, GetMutable) {
   const auto& cv_t = v_ints->Get<std::vector<int>>();
   EXPECT_EQ(cv_t[0], 1);
   EXPECT_EQ(cv_t[1], 2);
+
+  std::unique_ptr<Variable> v_float(new Variable());
+  auto* v_t2 = v_float->GetMutable<std::vector<int>>();
+  v_t2.push_back(1);
+  v_t2.push_back(2);
+
+  const auto& cv_t = v_float->Get<std::vector<int>>();
+  EXPECT_EQ(cv_t[0], 1);
+  EXPECT_EQ(cv_t[1], 2);
 }
 
 }  // namespace framework
