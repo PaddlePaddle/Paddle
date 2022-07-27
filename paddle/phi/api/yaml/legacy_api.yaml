@@ -326,6 +326,16 @@
   kernel :
     func : bitwise_xor
 
+# bmm
+- api : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
+
 # box_coder
 - api : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type, bool box_normalized, int axis, float[] variance)
