@@ -435,10 +435,12 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g, int i,
   size_t capacity = std::max((uint64_t)1, (uint64_t)g.node_size) / load_factor_;
   tables_[table_offset] = new Table(capacity);
   if (g.node_size > 0) {
-    CUDA_CHECK(cudaMalloc((void**)&gpu_graph_list_[offset].node_list,
+    if (FLAGS_gpugraph_load_node_list_into_hbm) {
+        CUDA_CHECK(cudaMalloc((void**)&gpu_graph_list_[offset].node_list,
                g.node_size * sizeof(uint64_t)));
-    CUDA_CHECK(cudaMemcpy(gpu_graph_list_[offset].node_list, g.node_list,
+        CUDA_CHECK(cudaMemcpy(gpu_graph_list_[offset].node_list, g.node_list,
                g.node_size * sizeof(uint64_t), cudaMemcpyHostToDevice));
+    }
 
     build_ps(i, g.node_list, (uint64_t*)(g.node_info_list),
             g.node_size, 1024, 8, table_offset);

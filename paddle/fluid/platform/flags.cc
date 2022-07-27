@@ -869,6 +869,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
 PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode, 0,
     "enable dedup keys while pull push sparse, default 0");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_load_node_list_into_hbm, true,
+    "enable load_node_list_into_hbm, default true");
 
 /**
  * ProcessGroupNCCL related FLAG
