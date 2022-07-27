@@ -399,6 +399,25 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class FloorMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    MLUCnnlTensorDesc input_desc(*input);
+    MLUCnnlTensorDesc output_desc(*output);
+
+    MLUCnnl::Floor(ctx,
+                   input_desc.get(),
+                   GetBasePtr(input),
+                   output_desc.get(),
+                   GetBasePtr(output));
+  }
+};
+
 template <typename DeviceContext, typename T>
 class ReciprocalMLUKernel : public framework::OpKernel<T> {
  public:
@@ -589,3 +608,7 @@ REGISTER_OP_MLU_KERNEL(
     hard_sigmoid_grad,
     ops::HardSigmoidGradMLUKernel<float>,
     ops::HardSigmoidGradMLUKernel<paddle::platform::float16>);
+
+REGISTER_OP_MLU_KERNEL(floor,
+                       ops::FloorMLUKernel<float>,
+                       ops::FloorMLUKernel<paddle::platform::float16>);
