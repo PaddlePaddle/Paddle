@@ -89,6 +89,11 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dfilter,
                                         MetaTensor* ddout);
 
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad);
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,

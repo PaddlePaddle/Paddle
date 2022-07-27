@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.nn.functional as F
 
 
 class TestBase(IPUOpTest):
@@ -29,44 +30,38 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-2
-
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 255, 13, 13])
-        self.feed_fp32 = {"in_0": data.astype(np.float32)}
-        self.feed_fp16 = {"in_0": data.astype(np.float16)}
+        x = np.random.uniform(size=[10])
+        label = np.arange(10).reshape([10])
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "label": label.astype(np.float32)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.float16)
+        }
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {
-            "class_num": 80,
-            "anchors": [10, 13, 16, 30, 33, 23],
-            "conf_thresh": 0.01,
-            "downsample_ratio": 32
+            'ignore_index': -100,
         }
 
     @IPUOpTest.static_graph
-    def build_model(self):
+    def build_model(self, on_ipu):
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
-                               dtype='float32')
-        attrs = {
-            'name': 'img_size',
-            'shape': [1, 2],
-            'dtype': 'int32',
-            'value': 6,
-        }
-        img_size = paddle.fluid.layers.fill_constant(**attrs)
-        out = paddle.fluid.layers.yolo_box(x=x, img_size=img_size, **self.attrs)
-        self.fetch_list = [x.name for x in out]
+                               dtype="float32")
+        label = paddle.static.data(name=self.feed_list[1],
+                                   shape=self.feed_shape[1],
+                                   dtype='float32')
+        out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
+            x, label, **self.attrs)
+        self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
         self.run_op_test(exec_mode)
@@ -74,9 +69,33 @@ class TestBase(IPUOpTest):
     def test(self):
         for m in IPUOpTest.ExecutionMode:
             if not self.skip_mode(m):
-                self.build_model()
+                self.build_model(self.is_ipu_mode(m))
                 self.run_model(m)
         self.check()
+
+
+class TestCase1(TestBase):
+
+    def set_op_attrs(self):
+        self.attrs = {
+            'ignore_index': 1,
+        }
+
+
+class TestCase2(TestBase):
+
+    def set_atol(self):
+        # epsilon is added when normalize is True, use larger atol.
+        self.atol = 1e-6
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
+    def set_op_attrs(self):
+        self.attrs = {
+            'ignore_index': 1,
+            'normalize': True,
+        }
 
 
 if __name__ == "__main__":
