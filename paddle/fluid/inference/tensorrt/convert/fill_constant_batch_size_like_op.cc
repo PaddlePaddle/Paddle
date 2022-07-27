@@ -67,7 +67,7 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
     std::vector<float> value_vec(1, value);
     std::vector<float> beta_vec(3, 0.);
     layer->setAlpha(value);
-    layer->setBeta(0.);
+    layer->setBeta(0.f);
     layer->setInput(0, *out_shape_tensor);
     layer->setInput(1, *Add1DConstantLayer(value_vec, name + "alpha", true));
     layer->setInput(2, *Add1DConstantLayer(beta_vec, name + "beta", false));
