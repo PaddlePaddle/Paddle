@@ -26,10 +26,14 @@
 #include <exception>
 #include <mutex>
 
-#include "paddle/fluid/distributed/collective/MPITools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/platform/device_context.h"
+
+#if defined(PADDLE_WITH_MPI)
+#include "paddle/fluid/distributed/collective/MPITools.h"
+#include "paddle/fluid/platform/dynload/mpi_comm.h"
+#endif
 
 constexpr const char* MPI_BACKEND_NAME = "MPI";
 
