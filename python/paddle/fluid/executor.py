@@ -1414,6 +1414,7 @@ class Executor(object):
                     return False
 
                 # Unsupported case 5 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
+                # only for test
                 # if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
                 #                   None) not in [1, '1', True, 'True', 'true']:
                 #     return False
