@@ -816,8 +816,9 @@ class QuantizationTransformPass(object):
                     in_node.stop_gradient = False
                     optimizer = self._optimizer()
                     optimizer.minimize(loss)
-        with scope_guard(self._scope):
-            self._exe.run(startup_program)
+        if self._exe is not None:
+            with scope_guard(self._scope):
+                self._exe.run(startup_program)
 
         tmp_graph = IrGraph(
             core.Graph(tmp_program.desc), for_test=graph._for_test)
