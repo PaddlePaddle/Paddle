@@ -25,6 +25,9 @@ class TestProcessGroup(TestMultipleGpus):
     def test_process_group_gloo(self):
         self.run_mnist_2gpu('process_group_gloo.py')
 
+    def test_process_group_mpi(self):
+        self.run_mnist_2gpu('process_group_mpi.py')
+
     def test_init_process_group(self):
         self.run_mnist_2gpu('init_process_group.py')
 
