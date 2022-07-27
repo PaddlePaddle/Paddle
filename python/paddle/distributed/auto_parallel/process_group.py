@@ -16,10 +16,12 @@ from collections import OrderedDict
 
 import paddle
 import paddle.fluid.core as core
+
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
+from paddle.fluid.framework import _enable_legacy_dygraph
 
 
 def get_all_process_groups():
@@ -142,7 +144,8 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            paddle.framework._in_legacy_dygraph()
+            paddle.disable_static()
+            _enable_legacy_dygraph()
             paddle.set_device('gpu:%d' %
                               paddle.distributed.ParallelEnv().dev_id)
             tmp = paddle.to_tensor(

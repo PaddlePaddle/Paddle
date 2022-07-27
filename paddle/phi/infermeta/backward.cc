@@ -19,6 +19,12 @@ limitations under the License. */
 
 namespace phi {
 
+void AngleGradInferMeta(const MetaTensor& x,
+                        const MetaTensor& out_grad,
+                        MetaTensor* x_grad) {
+  UnchangedInferMeta(x, x_grad);
+}
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
@@ -65,6 +71,17 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
     dbias->set_dims({1, out_dims[1]});
     dbias->set_dtype(dout.dtype());
   }
+}
+
+void BmmGradInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      const MetaTensor& out_grad,
+                      MetaTensor* x_grad,
+                      MetaTensor* y_grad) {
+  x_grad->set_dims(x.dims());
+  y_grad->set_dims(y.dims());
+  x_grad->set_dtype(x.dtype());
+  y_grad->set_dtype(y.dtype());
 }
 
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
@@ -136,6 +153,18 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
 
   if (ddout) {
     ddout->share_meta(dout);
+  }
+}
+
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
   }
 }
 
@@ -220,6 +249,18 @@ void DeformableConvGradInferMeta(const MetaTensor& x,
   GeneralTernaryGradInferMeta(x, offset, filter, dx, offset_grad, filter_grad);
   if (mask) {
     UnchangedInferMeta(mask, mask_grad);
+  }
+}
+
+void EigGradInferMeta(const MetaTensor& out_w,
+                      const MetaTensor& out_v,
+                      const MetaTensor& dout_w,
+                      const MetaTensor& dout_v,
+                      MetaTensor* dx) {
+  auto dims = out_v.dims();
+
+  if (dx) {
+    dx->set_dims(dims);
   }
 }
 
@@ -382,6 +423,15 @@ void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
   }
   if (ddy) {
     ddy->share_dims(x);
+  }
+}
+
+void InverseGradInferMeta(const MetaTensor& out,
+                          const MetaTensor& dout,
+                          MetaTensor* dx) {
+  if (dx) {
+    dx->set_dims(dout.dims());
+    dx->set_dtype(out.dtype());
   }
 }
 
