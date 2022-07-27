@@ -1247,16 +1247,22 @@ void LUInferMeta(const MetaTensor& x,
                  MetaTensor* infos) {
   auto x_dims = x.dims();
   int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_NOT_NULL(
+      out, phi::errors::InvalidArgument("Output(Out) should not be nullptr."));
   PADDLE_ENFORCE_GE(
       x_rank,
       2,
-      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+      phi::errors::InvalidArgument("The rank of input must greater than 2."));
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   int m = x_dims[x_rank - 1];
   int n = x_dims[x_rank - 2];
   int min_mn = std::min(m, n);
   auto dims_vec = phi::vectorize(x_dims);
+  PADDLE_ENFORCE_NOT_NULL(
+      infos,
+      phi::errors::InvalidArgument("Output(Infos) should not be nullptr."));
   if (x_rank == 2) {
     auto Infos_dim = std::vector<int>(1);
     infos->set_dims(phi::make_ddim(Infos_dim));
@@ -1267,6 +1273,9 @@ void LUInferMeta(const MetaTensor& x,
   }
   infos->set_dtype(DataType::INT32);
   if (pivot) {
+    PADDLE_ENFORCE_NOT_NULL(
+        pivots,
+        phi::errors::InvalidArgument("Output(Pivots) should not be nullptr."));
     auto Pivots_dim =
         std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 1);
     Pivots_dim[x_rank - 2] = min_mn;
@@ -1280,10 +1289,10 @@ void MatrixRankInferMeta(const MetaTensor& x,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
-  PADDLE_ENFORCE_GE(
-      dim_x.size(),
-      2,
-      phi::errors::InvalidArgument("The dims of input must be greater than 2"));
+  PADDLE_ENFORCE_GE(dim_x.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dims of input must be greater than 2."));
 
   if (hermitian) {
     int rows = dim_x[dim_x.size() - 2];
@@ -1314,11 +1323,11 @@ void MaxOutInferMeta(const MetaTensor& x,
       axis == 1 || axis == -1 || axis == 3,
       true,
       phi::errors::InvalidArgument(
-          "axis only supported 1, -1 or 3, but recevied axis is: %d", axis));
+          "axis only supported 1, -1 or 3, but recevied axis is: %d.", axis));
   PADDLE_ENFORCE_EQ(in_x_dims.size(),
                     4,
                     phi::errors::InvalidArgument(
-                        "x's dims should be 4, but received x's dims is: %d",
+                        "x's dims should be 4, but received x's dims is: %d.",
                         in_x_dims.size()));
 
   if (axis < 0) {
