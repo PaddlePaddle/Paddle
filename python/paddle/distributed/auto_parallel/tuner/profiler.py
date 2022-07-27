@@ -11,16 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-parse cmd args & setting
 
-load ctx restore env 
-
-
-run 
-
-write result
-"""
 import os
 import sys
 import argparse
@@ -29,10 +20,13 @@ import pickle
 import json
 import time
 import numpy as np
+from functools import partial
 
 import paddle
 from paddle.fluid.framework import Program, _current_expected_place
+from paddle.fluid.framework import Operator, Parameter
 from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups, new_process_group
+from paddle.distributed.auto_parallel.dist_loader import NonIterableGeneratorLoader
 from paddle.distributed.collective import _get_global_env
 
 paddle.enable_static()
@@ -93,23 +87,6 @@ def init_process_groups(group_map, rank):
         process_group.instantiate()
 
 
-def gen_data(batch_size):
-    sequence_len = 512
-    tokens = []
-    position_ids = []
-    attention_mask = []
-    labels = []
-    loss_mask = []
-    for _ in range(batch_size):
-        tokens.append(np.random.randint(50304, size=sequence_len))
-        position_ids.append(np.arange(sequence_len))
-        attention_mask.append([np.tril(np.ones(sequence_len))])
-        labels.append(np.random.randint(50304, size=sequence_len))
-        loss_mask.append(np.ones(sequence_len))
-
-    return tokens, position_ids, attention_mask, labels, loss_mask
-
-
 def get_cpp_error_type(error):
 
     msg = str(error).splitlines()
@@ -135,94 +112,124 @@ def get_cpp_error_type(error):
     return error_type
 
 
-def profiler():
-    """
-    main function to profile experiment for each pass hyper-parameter.
-    """
+def create_dataloader(main_program,
+                      startup_program,
+                      profile_ctx,
+                      epochs=1,
+                      steps_per_epoch=None):
 
-    args = parse_args()
+    dataset = profile_ctx["dataset"]
+    main_block = main_program.global_block()
+    feed_list = []
+    for name in dataset.input_names:
+        if name in main_block.vars:
+            feed_list.append(main_block.vars[name])
 
-    # load ctx
-    if not os.path.isfile(args.ctx_filename):
-        raise ValueError("There is no profile context named {}.".format(
-            args.ctx_filename))
-    # if not os.path.isfile(args.main_program_filename):
-    #     raise ValueError("There is no main program named {}.".format(args.ctx_filename))
-    # if not os.path.isfile(args.startup_program_filename):
-    #     raise ValueError("There is no startup program named {}.".format(args.ctx_filename))
+    # remove the first three ops if multi run fit/evaluate/predict
+    op_size = len(main_block.ops)
+    if main_block.ops[0].type == 'create_py_reader':
+        op_size -= 3
+        for _ in range(3):
+            main_block._remove_op(0, sync=False)
 
-    with open(args.ctx_filename, 'rb') as f:
-        profile_ctx = pickle.load(f, encoding='latin1')
+    # insert read op at the end of program
+    places = paddle.static.cuda_places()
+    with paddle.static.program_guard(main_program, startup_program):
+        dataloader = NonIterableGeneratorLoader(
+            dataset,
+            feed_list,
+            places,
+            dataset.batch_size,
+            epochs,
+            steps_per_epoch,
+            data_parallel_world_size=dataset.dp_world_size,
+            data_parallel_rank=dataset.dp_rank)
 
-    # TODO check type and exist
+    # move read op from the end of program to the start of program
+    new_op_size = len(main_block.ops)
+    for _ in range(new_op_size - 1, op_size - 1, -1):
+        op = main_block.ops[new_op_size - 1]
+        new_op_desc = main_block.desc._prepend_op()
+        new_op_desc.copy_from(op.desc)
+        new_op = Operator(main_block, new_op_desc, type=new_op_desc.type())
+        main_block.ops.insert(0, new_op)
+    for _ in range(new_op_size - op_size):
+        main_block._remove_op(new_op_size, sync=False)
+    main_block._sync_with_cpp()
+    return dataloader
+
+
+def init_comm(profile_ctx):
+    # override the env for current process
     dist_env = profile_ctx['distributed_env']
-    print("sent env: ", dist_env.rank, dist_env.device_id,
-          dist_env.trainer_endpoints)
-    batch_size = profile_ctx["batch_size"]
     genv = _get_global_env()
     genv = dist_env
-    env = _get_global_env()
-    print("cur proc env: ", env.device_id, env.rank, env.current_endpoint)
+    print("current process rank: {}, device_id: {}, ip: {}.", genv.rank,
+          genv.device_id, genv.current_endpoint)
+
+    # init nccl comm
     group_map = profile_ctx['group_map']
     init_process_groups(group_map, args.rank)
 
+
+def load_programs(profile_ctx):
     main_program_desc_str = profile_ctx['main_program_decs']
     main_program = Program.parse_from_string(main_program_desc_str)
-    # print("=========main_program" * 8)
-    # print(main_program)
-    # print("=========main_program" * 8)
-    # with open(args.main_program_filename, "rb") as f:
-    #     main_program_desc_str = f.read()
-    #     main_program = Program.parse_from_string(main_program_desc_str)
+
+    startup_program_decs_str = profile_ctx['startup_program_decs']
+    startup_program = Program.parse_from_string(startup_program_decs_str)
 
     loss_var_name = profile_ctx["loss_var_name"]
     assert main_program.global_block().has_var(loss_var_name)
     loss_var = main_program.global_block().var(loss_var_name)
 
-    startup_program_decs_str = profile_ctx['startup_program_decs']
-    startup_program = Program.parse_from_string(startup_program_decs_str)
+    return main_program, startup_program, loss_var
 
-    result_path = profile_ctx["result_filename"]
-    # print("=========startup_program" * 8)
-    # print(startup_program)
-    # print("=========startup_program" * 8)
-    # with open(args.startup_program_filename, "rb") as f:
-    #     startup_program_desc_str = f.read()
-    #     startup_program = Program.parse_from_string(startup_program_desc_str)
 
-    # reconstruct communicator
-
-    # TODO build fake dataloader
-
+def get_executor():
     place_type = _current_expected_place()
     if not isinstance(place_type, paddle.CUDAPlace):
-        raise NotImplementedError
+        raise RuntimeError("OptimizationTuner only support CUDA GPU right now.")
 
-    place = paddle.CUDAPlace(dist_env.device_id)
+    genv = _get_global_env()
+    place = paddle.CUDAPlace(genv.device_id)
     exe = paddle.static.Executor(place)
+    return exe
+
+
+def profiler(args):
+    """
+    main function to profile experiment for each pass hyper-parameter.
+    """
+    # load ctx
+    if not os.path.isfile(args.ctx_filename):
+        raise ValueError("There is no profile context named {}.".format(
+            args.ctx_filename))
+    with open(args.ctx_filename, 'rb') as f:
+        profile_ctx = pickle.load(f, encoding='latin1')
+
+    init_comm(profile_ctx)
+
+    main_program, startup_program, loss_var = load_programs(profile_ctx)
+
+    data_loader = create_dataloader(main_program, startup_program, profile_ctx)
+
+    result_path = profile_ctx["result_filename"]
+
+    exe = get_executor()
 
     exe.run(startup_program)
 
     # profile main
     duration = 0
     eval_step = 0
-    print("batch size: ", batch_size)
-    tokens, position_ids, attention_mask, labels, loss_mask = gen_data(
-        batch_size)
-
+    data_loader._inner_dataloader.start()
     try:
         while eval_step < args.profile_end_step:
             start_time = time.time()
 
             loss = exe.run(
                 main_program,
-                feed={
-                    "tokens": tokens,
-                    "position_ids": position_ids,
-                    "attention_mask": attention_mask,
-                    "labels": labels,
-                    "loss_mask": loss_mask
-                },
                 fetch_list=[loss_var],
                 use_program_cache=True,
             )
@@ -232,7 +239,6 @@ def profiler():
             if eval_step >= args.profile_start_step:
                 duration += end_time - start_time
 
-            print(loss[0])
             print("step: %d, loss_print: %f" % (eval_step, loss[0]))
             eval_step += 1
 
@@ -249,7 +255,12 @@ def profiler():
                 json.dump(result_dict, fp)
 
         print("profile done! avg speed : {} step / s.".format((avg_tput)))
+
+    except paddle.framework.core.EOFException:
+        data_loader._inner_dataloader.reset()
+
     except Exception as e:
+
         error_type = get_cpp_error_type(e)
         result_dict = {
             "Throughtput": -1,
@@ -259,9 +270,18 @@ def profiler():
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile failed with error: [{}]".format(error_type), )
+        print("profile failed with error: [{}]".format(error_type))
+        print(e)
+        print(traceback.format_exc())
+
+        data_loader._inner_dataloader.reset()
+        del data_loader._inner_dataloader
         exit(1)
+
+    data_loader._inner_dataloader.reset()
+    del data_loader._inner_dataloader
 
 
 if __name__ == "__main__":
-    profiler()
+    args = parse_args()
+    profiler(args)

@@ -18,6 +18,7 @@ import copy
 import shlex
 import pathlib
 import time
+import shutil
 import pickle
 import json
 import logging
@@ -77,12 +78,6 @@ def parse_process_groups():
     for process_group in all_process_groups:
         group_map[process_group.id] = process_group.ranks
     return group_map
-
-
-def infer_batch_size(main_program, inputs_spec):
-    input_varname = inputs_spec[0].name
-    input_var = main_program.global_block().var(input_varname)
-    return input_var.shape[0]
 
 
 def get_metric(results):
@@ -174,6 +169,7 @@ class OptimizationTuner:
         self,
         user_configs,
         dist_context,
+        dataset,
         inputs_spec,
         labels_spec,
         batch_size,
@@ -185,17 +181,16 @@ class OptimizationTuner:
         self._baseline_dist_context = _copy_context(dist_context)
         self._baseline_completer = Completer(self._baseline_dist_context)
 
-        self._rank_id = rank
+        self._rank = rank
         self._inputs_spec = inputs_spec
         self._labels_spec = labels_spec
+        self._dataset = dataset
+        self._batch_size = batch_size
 
         self._finished_trials = []
         self._best_metric = None
         self._best_iter = float("-inf")
 
-        dist_env = paddle.distributed.ParallelEnv()
-        self.rank = dist_env.rank
-        self.device_id = dist_env.device_id
         self._logger = get_logger(logging.INFO)
 
         self._build_programs_without_optimization()
@@ -205,10 +200,17 @@ class OptimizationTuner:
     def project_dir(self):
         dirname = self._config.project_dir
         if not os.path.exists(dirname):
-            if paddle.distributed.get_rank() == 0:
+            if self.rank == 0:
                 pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
-
         return dirname
+
+    @property
+    def rank(self):
+        return self._rank
+
+    @property
+    def device_id(self):
+        return paddle.distributed.ParallelEnv().device_id
 
     # TODO Generate compelet program with all parts like forward, backward, update
     # as well as parallelism transformation.
@@ -284,7 +286,7 @@ class OptimizationTuner:
                                                [startup_program], pass_context)
 
         # Do logical partition
-        partitioner = Partitioner(dist_context, self._rank_id)
+        partitioner = Partitioner(dist_context, self.rank)
         dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
             main_program, startup_program, dist_context._params_grads)
 
@@ -297,7 +299,7 @@ class OptimizationTuner:
 
         # Do reshard process
         set_grad_var_shape(dist_main_prog, dist_context)
-        resharder = Resharder(dist_main_prog, dist_startup_prog, self._rank_id,
+        resharder = Resharder(dist_main_prog, dist_startup_prog, self.rank,
                               dist_context, dist_params_grads)
         resharder.reshard()
 
@@ -305,7 +307,7 @@ class OptimizationTuner:
             config = copy.deepcopy(new_strategy.sharding_configs)
             config["dist_context"] = dist_context
             config["params_grads"] = dist_params_grads
-            config["global_rank"] = self._rank_id
+            config["global_rank"] = self.rank
             auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
                                                    config)
             auto_parallel_sharding_pass.apply([dist_main_prog],
@@ -332,18 +334,25 @@ class OptimizationTuner:
         profile_ctx['group_map'] = parse_process_groups()
         profile_ctx[
             "loss_var_name"] = self._baseline_dist_context.serial_loss.name
-
-        profile_ctx["batch_size"] = infer_batch_size(trial.main_program,
-                                                     self._inputs_spec)
         profile_ctx[
             "main_program_decs"] = trial.main_program.desc.serialize_to_string(
             )
         profile_ctx[
             "startup_program_decs"] = trial.startup_program.desc.serialize_to_string(
             )
+        self._dataset.batch_size = self._batch_size
+        self._dataset.input_names = self._get_input_names()
+
+        profile_ctx["dataset"] = self._dataset
         profile_ctx["result_filename"] = result_path
 
         return profile_ctx
+
+    def _get_input_names(self):
+        input_names = []
+        for input_spec in self._inputs_spec[:] + self._labels_spec[:]:
+            input_names.append(input_spec.name)
+        return input_names
 
     def _launch_profile(self, ctx_path, trial_dir):
 
@@ -385,11 +394,10 @@ class OptimizationTuner:
             os.fsync(err)
 
     def _profile_trial(self, trial):
-
         # Making working directory
         trial_dir = self._get_trial_dir(trial)
         if not os.path.exists(trial_dir):
-            if paddle.distributed.get_rank() == 0:
+            if self.rank == 0:
                 pathlib.Path(trial_dir).mkdir(parents=True, exist_ok=True)
             else:
                 while not os.path.exists(trial_dir):
@@ -406,15 +414,18 @@ class OptimizationTuner:
         if self._config.verbose:
             debug_program(trial.main_program, trial_dir, "main_program")
             debug_program(trial.startup_program, trial_dir, "startup_program")
-            #TODO dump cur pass config to file
 
         # Run
         self._launch_profile(ctx_path, trial_dir)
 
-        # load results
-        with open(result_path, 'r') as fp:
-            results = json.load(fp)
-        return results
+        # Load results
+        try:
+            with open(result_path, 'r') as fp:
+                results = json.load(fp)
+            return results
+        except FileNotFoundError:
+            Error_results = {"Throughtput": -1, "ErrorType": 'FatalError'}
+            return Error_results
 
     def _evaluate_trial(self, trial):
 
@@ -439,7 +450,7 @@ class OptimizationTuner:
         self._finished_trials.append(trial)
 
         cur_mertic = get_metric(results)
-        if self._best_metric == None or cur_mertic < self._best_metric:
+        if self._best_metric == None or cur_mertic > self._best_metric:
             self._best_metric = cur_mertic
             self._best_iter = i
 
