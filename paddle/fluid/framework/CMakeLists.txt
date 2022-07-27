@@ -1019,19 +1019,19 @@ if(WITH_PSCORE)
       dist_multi_trainer_test
       SRCS dist_multi_trainer_test.cc
       DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
-          graph_gpu_wrapper)
+           graph_gpu_wrapper)
     cc_test(
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-          scale_op
-          heter_listen_and_serv_op
-          executor
-          heter_server
-          gloo_wrapper
-          eigen_function
-          ${RPC_DEPS}
-          graph_gpu_wrapper)
+           scale_op
+           heter_listen_and_serv_op
+           executor
+           heter_server
+           gloo_wrapper
+           eigen_function
+           ${RPC_DEPS}
+           graph_gpu_wrapper)
   else()
     cc_test(
       dist_multi_trainer_test
@@ -1041,13 +1041,14 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-          scale_op
-          heter_listen_and_serv_op
-          executor
-          heter_server
-          gloo_wrapper
-          eigen_function
-          ${RPC_DEPS})
+           scale_op
+           heter_listen_and_serv_op
+           executor
+           heter_server
+           gloo_wrapper
+           eigen_function
+           ${RPC_DEPS})
+  endif()
 else()
   cc_test(
     dist_multi_trainer_test
