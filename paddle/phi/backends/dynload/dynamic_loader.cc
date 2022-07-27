@@ -49,7 +49,7 @@ DEFINE_string(nccl_dir,
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(mpi_dir,
-              MPI_CXX_LIBRARIES_ROOT,
+              "",
               "Specify path for loading nccl library, such as libnccl.so. "
               "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
