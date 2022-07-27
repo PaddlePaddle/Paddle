@@ -84,7 +84,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
-const Kernel& KernelFactory::SelectKernelOrThrowError(
+KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name,
     const KernelKey& kernel_key,
     bool use_gpudnn) const {
@@ -104,7 +104,7 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
           {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     }
     if (kernel_iter != iter->second.end()) {
-      return kernel_iter->second;
+      return {kernel_iter->second, false};
     }
     LOG(WARNING) << "The cudnn kernel for [" << kernel_name
                  << "] is not registered.";
@@ -120,7 +120,8 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  bool has_fallback_cpu = false;
+
   if (kernel_iter == iter->second.end()) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
@@ -132,8 +133,8 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
           phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
       kernel_iter = iter->second.find(any_layout_kernel_key);
     }
+    has_fallback_cpu = true;
   }
-#endif
 
   PADDLE_ENFORCE_NE(
       kernel_iter,
@@ -143,17 +144,17 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  return kernel_iter->second;
+  return {kernel_iter->second, has_fallback_cpu};
 }
 
-const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name,
-    Backend backend,
-    DataLayout layout,
-    DataType dtype) const {
-  return SelectKernelOrThrowError(kernel_name,
-                                  KernelKey(backend, layout, dtype));
-}
+// const Kernel& KernelFactory::SelectKernelOrThrowError(
+//     const std::string& kernel_name,
+//     Backend backend,
+//     DataLayout layout,
+//     DataType dtype) const {
+//   return SelectKernelOrThrowError(kernel_name,
+//                                   KernelKey(backend, layout, dtype));
+// }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
     const std::string& kernel_name) const {
