@@ -299,8 +299,8 @@ struct GPUContext::Impl {
 
   void SetStream(gpuStream_t stream) { stream_->set_raw_stream(stream); }
 
-  void SetCUDAStream(CUDAStream* stream) {
-    if (stream_owned_ && stream_) {
+  void SetCUDAStream(CUDAStream* stream, bool clear = true) {
+    if (clear && stream_owned_ && stream_) {
       delete stream_;
     }
     stream_owned_ = false;
@@ -777,17 +777,22 @@ struct GPUContext::Impl {
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
-GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
-  impl_->PartialInitWithoutAllocator();
+GPUContext::GPUContext(bool init)
+    : DeviceContext(), impl_(std::make_unique<Impl>()) {
+  if (init) {
+    impl_->PartialInitWithoutAllocator();
+  }
 }
 
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
 
-GPUContext::GPUContext(const GPUPlace& place)
+GPUContext::GPUContext(const GPUPlace& place, bool init)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
-  impl_->PartialInitWithoutAllocator();
+  if (init) {
+    impl_->PartialInitWithoutAllocator();
+  }
 }
 
 GPUContext::~GPUContext() = default;
@@ -893,9 +898,9 @@ void GPUContext::SetStream(gpuStream_t stream) {
   impl_->SetStream(stream);
 }
 
-void GPUContext::SetCUDAStream(CUDAStream* stream) {
+void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
-  impl_->SetCUDAStream(stream);
+  impl_->SetCUDAStream(stream, clear);
 }
 
 void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {

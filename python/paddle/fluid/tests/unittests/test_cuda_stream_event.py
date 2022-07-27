@@ -99,6 +99,7 @@ class TestCUDAEvent(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
             s = paddle.device.cuda.current_stream()
+            print(s)
             event_query_1 = e.query()
             tensor1 = paddle.to_tensor(paddle.rand([1000, 1000]))
             tensor2 = paddle.matmul(tensor1, tensor1)

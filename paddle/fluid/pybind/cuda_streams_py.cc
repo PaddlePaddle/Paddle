@@ -38,7 +38,7 @@ phi::CUDAStream *set_current_stream(phi::CUDAStream *stream) {
   auto *original_stream = get_current_stream(stream->place().GetDeviceId());
   auto *gpu_context = static_cast<phi::GPUContext *>(
       DeviceContextPool::Instance().Get(stream->place()));
-  gpu_context->SetCUDAStream(stream);
+  gpu_context->SetCUDAStream(stream, /*clear=*/false);
   return original_stream;
 }
 #endif
@@ -52,7 +52,7 @@ void BindCudaStream(py::module *m_ptr) {
       "_get_current_stream",
       [](int deviceId) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        platform::get_current_stream(deviceId);
+        return platform::get_current_stream(deviceId);
 #else
         PADDLE_THROW(
             platform::errors::Unavailable("Paddle is not compiled with CUDA. "
@@ -248,6 +248,7 @@ void BindCudaStream(py::module *m_ptr) {
           "__init__",
           [](phi::CUDAStream &self, platform::CUDAPlace *place, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+            std::cout << 1 << std::endl;
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
@@ -273,6 +274,7 @@ void BindCudaStream(py::module *m_ptr) {
           "__init__",
           [](phi::CUDAStream &self, int device, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+            std::cout << 2 << std::endl;
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
@@ -302,6 +304,7 @@ void BindCudaStream(py::module *m_ptr) {
           py::arg("priority") = 2)
       .def("__init__", [](phi::CUDAStream &self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        std::cout << 3 << std::endl;
         auto prio = phi::CUDAStream::Priority::kNormal;
         auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
 

@@ -79,11 +79,11 @@ class DnnWorkspaceHandle {
 
 class PADDLE_API GPUContext : public DeviceContext {
  public:
-  GPUContext();
+  explicit GPUContext(bool init = true);
+  explicit GPUContext(const GPUPlace& place, bool init = true);
+
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
-
-  explicit GPUContext(const GPUPlace& place);
 
   virtual ~GPUContext();
 
@@ -197,7 +197,8 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   // Note that this function is a trick implementation since all 'set' methods
   // are protected by default.
-  void SetCUDAStream(CUDAStream*);
+  // clear: whether clear the original CUDAStream or not
+  void SetCUDAStream(CUDAStream*, bool clear = true);
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
