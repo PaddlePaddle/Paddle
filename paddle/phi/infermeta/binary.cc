@@ -80,6 +80,64 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 
 }  // namespace detail
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const paddle::optional<MetaTensor>& outputShape,
+                         bool align_corners,
+                         std::vector<int> output_shape,
+                         MetaTensor* output) {
+    auto theta_dims = input.dims();
+    PADDLE_ENFORCE_EQ(
+        theta_dims.size(),
+        3,
+        phi::errors::InvalidArgument(
+            "The input Theta's dimensions size should be 3. But received "
+            "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+            theta_dims.size(),
+            theta_dims));
+
+    if (output_shape.size() == 0) {
+      auto output_shape_dims = outputShape.dims();
+      PADDLE_ENFORCE_EQ(
+          output_shape_dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The dimesions size of input OutputShape in AffineGridOp should "
+              "be 1. But received OutputShape's  dimesions size=[%d], "
+              "OutputShape's  dimesions=[%s]",
+              output_shape_dims.size(),
+              output_shape_dims));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          output_shape.size(),
+          4,
+          phi::errors::InvalidArgument(
+              "The size of attribute 'output_shape' in AffineGridOp should be "
+              "4. But received output_shape's size=[%d].",
+              output_shape.size()));
+    }
+
+    PADDLE_ENFORCE_EQ(
+        theta_dims[1],
+        2,
+        phi::errors::InvalidArgument(
+            "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+            "But received second dimesion=[%d], dimesions=[%s]",
+            theta_dims[1],
+            theta_dims));
+    PADDLE_ENFORCE_EQ(
+        theta_dims[2],
+        3,
+        phi::errors::InvalidArgument(
+            "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+            "But received third dimesion=[%d], dimesions=[%s]",
+            theta_dims[2],
+            theta_dims));
+
+    // N * H * W * 2
+    output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+    output->set_lod(input.lod());
+}
+
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
