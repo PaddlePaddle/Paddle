@@ -1486,6 +1486,52 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void LUUnpackInferMeta(const MetaTensor& x,
+                       const MetaTensor& pivots,
+                       bool unpack_ludata,
+                       bool unpack_pivots,
+                       MetaTensor* pmat,
+                       MetaTensor* l,
+                       MetaTensor* u) {
+  PADDLE_ENFORCE_NOT_NULL(
+      pmat,
+      phi::errors::InvalidArgument("Output(Pmat) should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      l, phi::errors::InvalidArgument("Output(L) should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      u, phi::errors::InvalidArgument("Output(U) should not be nullptr."));
+
+  auto x_dims = x.dims();
+  int x_rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument("The rank of input must greater than 2."));
+
+  int m = x_dims[x_rank - 1];
+  int n = x_dims[x_rank - 2];
+  int min_mn = std::min(m, n);
+  if (unpack_ludata) {
+    auto ldims = x_dims;
+    auto udims = x_dims;
+    if (m >= n) {
+      udims[x_rank - 2] = min_mn;
+    } else {
+      ldims[x_rank - 1] = min_mn;
+    }
+    u->set_dims(udims);
+    u->set_dtype(x.dtype());
+    l->set_dims(ldims);
+    l->set_dtype(x.dtype());
+  }
+  if (unpack_pivots) {
+    auto pdims = x_dims;
+    pdims[x_rank - 1] = m;
+    pmat->set_dims(pdims);
+    pmat->set_dtype(x.dtype());
+  }
+}
+
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out) {

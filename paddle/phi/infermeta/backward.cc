@@ -443,6 +443,24 @@ void LUGradInferMeta(const MetaTensor& x,
   }
 }
 
+void LUUnpackGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& pivots,
+                           const MetaTensor& l,
+                           const MetaTensor& u,
+                           const MetaTensor& pmat,
+                           const MetaTensor& l_grad,
+                           const MetaTensor& u_grad,
+                           bool unpack_ludata,
+                           bool unpack_pivots,
+                           MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

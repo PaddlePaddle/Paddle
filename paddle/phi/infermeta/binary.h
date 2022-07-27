@@ -225,6 +225,14 @@ void LogLossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void LUUnpackInferMeta(const MetaTensor& x,
+                       const MetaTensor& pivots,
+                       bool unpack_ludata,
+                       bool unpack_pivots,
+                       MetaTensor* pmat,
+                       MetaTensor* l,
+                       MetaTensor* u);
+
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
                            MetaTensor* out);
