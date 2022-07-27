@@ -162,6 +162,91 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
+    r"""
+    This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
+    It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
+    be used as a normalizer function for other operations, such as conv2d and fully connected 
+    operations.
+    The data is normalized by the mean and variance of the channel based on whole mini-batch
+    , which including data in all gpus.
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    When model in training mode, the :math:`\\mu_{\\beta}` 
+    and :math:`\\sigma_{\\beta}^{2}` are the statistics of whole mini-batch data in all gpus.
+    Calculated as follows:
+
+    ..  math::
+
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//\
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
+
+    - :math:`x` : whole mini-batch data in all gpus
+    - :math:`m` : the size of the whole mini-batch data
+
+    When model in evaluation mode, the :math:`\\mu_{\\beta}`
+    and :math:`\sigma_{\beta}^{2}` are global statistics (moving_mean and moving_variance, 
+    which usually got from the pre-trained model). Global statistics calculated as follows:
+
+    .. math::
+        moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global \ mean \\
+        moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global \ variance \\
+
+    The formula of normalization is as follows:
+ 
+    ..  math::
+
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
+
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable scale parameter vector
+    - :math:`\beta` : trainable shift parameter vector 
+
+    Note:
+        If you want to use container to pack your model and has ``SyncBatchNorm`` in the 
+        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of 
+        ``list`` to pack the model. 
+
+    Parameters:
+        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             will create ParamAttr as param_attr. If the Initializer of the param_attr
+             is not set, the parameter is initialized with Xavier. If it is set to False, 
+             this layer will not have trainable scale parameter. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of this layer.
+             If it is set to None or one attribute of ParamAttr, this layer
+             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
+             is not set, the bias is initialized zero. If it is set to False, this layer will not 
+             have trainable bias parameter. Default: None.
+
+    Shapes:
+        input: Tensor that the dimension from 2 to 5.
+        output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.incubate.sparse.nn as nn
+          import numpy as np
+
+          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+          x = paddle.to_tensor(x)
+
+          if paddle.is_compiled_with_cuda():
+              sync_batch_norm = nn.SyncBatchNorm(2)
+              hidden1 = sync_batch_norm(x)
+              print(hidden1)
+              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+    """
 
     def __init__(self,
                  num_features,
@@ -176,12 +261,33 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                              bias_attr, data_format, name)
 
     def forward(self, x):
+        assert x.is_sparse_coo(
+        ), "SyncBatchNorm only support SparseTensor in COO format."
         out = super(SyncBatchNorm, self).forward(x.values())
         return paddle.incubate.sparse.sparse_coo_tensor(
             x.indices(), out, shape=x.shape, stop_gradient=x.stop_gradient)
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
+        """
+        Helper function to convert :class: `paddle.incubate.sparse.nn.BatchNorm` layers in the model to :class: `paddle.incubate.sparse.nn.SyncBatchNorm` layers.
+
+        Parameters:
+            layer(paddle.nn.Layer): model containing one or more `BatchNorm` layers.
+
+        Returns:
+            The original model with converted SyncBatchNorm layers. If BatchNorm layer in the model, use SyncBatchNorm layer instead.
+
+        Examples:
+
+            .. code-block:: python
+                import paddle
+                import paddle.incubate.sparse.nn as nn
+
+                model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
+                sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if layer._weight_attr != None and not isinstance(
@@ -192,14 +298,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                     layer._bias_attr, bool) and layer._bias_attr.name != None:
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
-            #sparse
+            #convert sparse BatchNorm
             if isinstance(layer, BatchNorm):
                 layer_output = SyncBatchNorm(layer._num_features,
                                              layer._momentum, layer._epsilon,
                                              layer._weight_attr,
                                              layer._bias_attr,
                                              layer._data_format, layer._name)
-            #dense
+            #convert dense BatchNorm
             else:
                 layer_output = paddle.nn.SyncBatchNorm(
                     layer._num_features, layer._momentum, layer._epsilon,
