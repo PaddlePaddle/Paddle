@@ -265,7 +265,8 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0,
                             src_rank=None,
-                            dst_rank=None):
+                            dst_rank=None,
+                            src_ranks=None):
     pg = None
     genv = _get_global_env()
     if backend != 'heter':
@@ -285,6 +286,9 @@ def _new_process_group_impl(backend,
     elif backend == "xccl":
         place = core.CustomPlace(genv.device_type, genv.device_id)
         pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
+    elif backend == "mpi":
+        pg = core.ProcessGroupMPI.create(
+            list(range(world_size)) if src_ranks is None else src_ranks, gid)
     elif backend == "heter":
         place = None
         if core.is_compiled_with_cuda():
@@ -458,21 +462,21 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 "equal to that of the default global group.")
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend == 'mpi':
-            pg = core.ProcessGroupNCCL.create(ranks, gid)
-        elif backend == 'heter' or (size > 1 and global_rank in ranks):
+        if backend == 'heter' or (size > 1 and global_rank in ranks):
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
-            pg = _new_process_group_impl(backend,
-                                         _default_store,
-                                         rank,
-                                         size,
-                                         group_name,
-                                         pg_options=None,
-                                         group_id=gid,
-                                         src_rank=src_rank,
-                                         dst_rank=dst_rank)
+            pg = _new_process_group_impl(
+                backend,
+                _default_store,
+                rank,
+                size,
+                group_name,
+                pg_options=None,
+                group_id=gid,
+                src_rank=src_rank,
+                dst_rank=dst_rank,
+                src_ranks=ranks)
         else:
             rank = -1
             pg = None
