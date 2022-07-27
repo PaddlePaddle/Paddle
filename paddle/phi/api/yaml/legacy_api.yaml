@@ -236,9 +236,10 @@
   backward : assign_out__grad
 
 # assgin_value
-- api : assign_value
-  args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
-  output : Tensor
+- api : assign_value_
+  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values)
+  output : Tensor(out)
+  inplace: (output -> out)
   infer_meta :
     func : AssignValueInferMeta
     param : [shape, dtype]
@@ -246,7 +247,6 @@
     func : assign_value
     param: [shape, dtype, values]
     data_type : dtype
-    backend : place
 
 # atan
 - api : atan

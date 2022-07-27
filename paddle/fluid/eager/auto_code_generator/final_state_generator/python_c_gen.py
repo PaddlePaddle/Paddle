@@ -86,6 +86,7 @@ no_amp_list = [
     'rmsprop',
     'sgd_',
     'sgd',
+    'assign_value_',
     'sparse_momentum_',
     'sparse_momentum',
 ]
