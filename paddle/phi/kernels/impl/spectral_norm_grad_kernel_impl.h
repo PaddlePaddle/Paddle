@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/spectral_norm.h"
+#include "paddle/phi/kernels/impl/spectral_norm_kernel_impl.h"
 
 namespace phi {
 

@@ -1048,9 +1048,11 @@ void SpectralNormInferMeta(const MetaTensor& weight,
             w));
   }
 
-  out->set_dims(dim_weight);
-  out->set_dtype(weight.dtype());
-  out->share_lod(weight);
+  if (out) {
+    out->set_dims(dim_weight);
+    out->set_dtype(weight.dtype());
+    out->share_lod(weight);
+  }
 }
 
 void ViterbiDecodeInferMeta(const MetaTensor& input,
