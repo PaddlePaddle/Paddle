@@ -157,7 +157,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -170,7 +170,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -183,7 +183,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -196,7 +196,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -209,7 +209,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
@@ -222,7 +222,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                self.real_result = x1 == y1
+                self.real_result = (x1 == y1).astype(np.int64)
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
