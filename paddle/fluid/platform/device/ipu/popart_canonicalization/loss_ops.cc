@@ -402,7 +402,7 @@ Node *binary_cross_entropy_handler(Graph *graph, Node *node) {
     reduction = RemoveTailReduction(graph, node, "Out");
   }
   bool append_identity_loss =
-      is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Loss", node));
+      is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Out", node));
 
   auto x = GetInputVarNode("X", node);
   auto label = GetInputVarNode("Label", node);
@@ -595,12 +595,12 @@ Node *warpctc_handler(Graph *graph, Node *node) {
   auto loss = CreateBaseOp(
       graph,
       node,
-      "popart_ctcloss",
+      "popart_ctcloss_v2",
       {log_softmax_logits, cast_label, cast_logits_length, cast_label_length},
       append_identity_loss
           ? std::vector<Node *>{}
           : std::vector<Node *>{GetOutputVarNode("Loss", node)},
-      {{"blank", blank},
+      {{"blank", int64_t{blank}},
        {"reduction", reduction},
        {"outDataType", std::string("UNDEFINED")}});
   if (append_identity_loss) {
