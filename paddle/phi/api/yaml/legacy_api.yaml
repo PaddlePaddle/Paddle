@@ -48,6 +48,17 @@
   kernel :
     func : adadelta
 
+- api : adagrad_
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float epsilon)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : AdagradInferMeta
+  kernel :
+    func : adagrad {dense, dense, dense, dense -> dense, dense}
+           adagrad_dense_param_sparse_grad {dense, selected_rows, dense, dense -> dense, dense}
+    data_type : param
+  inplace : (param -> param_out), (moment -> moment_out)
+
 - api : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
@@ -1850,6 +1861,17 @@
   kernel :
     func : reverse_array
   backward : reverse_array_grad
+
+- api : rmsprop_
+  args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, float epsilon, float decay, float momentum, bool centered)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out)
+  infer_meta :
+    func : RmspropInferMeta
+  kernel :
+    func : rmsprop {dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense}
+           rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense -> dense, dense, dense, dense}
+    optional : mean_grad
+  inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out)
 
 - api : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
