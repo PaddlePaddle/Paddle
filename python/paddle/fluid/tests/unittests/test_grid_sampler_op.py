@@ -144,6 +144,7 @@ class TestGridSamplerOp(OpTest):
         self.use_cudnn = False
         self.numeric_grad_delta = 0.0001
         self.op_type = 'grid_sampler'
+        self.python_api = paddle.nn.functional.grid_sample
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
@@ -171,13 +172,14 @@ class TestGridSamplerOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Grid'],
                         'Output',
                         max_relative_error=0.01,
-                        numeric_grad_delta=self.numeric_grad_delta)
+                        numeric_grad_delta=self.numeric_grad_delta,
+                        check_eager=True)
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)

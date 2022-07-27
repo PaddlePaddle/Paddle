@@ -197,20 +197,28 @@ class PADDLE_API GPUContext : public DeviceContext {
   void SetStream(gpuStream_t);
 
   void SetEigenDevice(Eigen::GpuDevice*);
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
 
   void SetBlasHandle(blasHandle_t);
+  void SetBlasHandle(std::function<blasHandle_t()>&&);
 
   void SetBlasTensorCoreHandle(blasHandle_t);
+  void SetBlasTensorCoreHandle(std::function<blasHandle_t()>&&);
 
   void SetBlasTF32Handle(blasHandle_t);
+  void SetBlasTF32Handle(std::function<blasHandle_t()>&&);
 
   void SetBlasLtHandle(blasLtHandle_t);
+  void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
 
   void SetDnnHandle(dnnHandle_t);
+  void SetDnnHandle(std::function<dnnHandle_t()>&&);
 
   void SetSolverHandle(solverHandle_t);
+  void SetSolverHandle(std::function<solverHandle_t()>&&);
 
   void SetSparseHandle(sparseHandle_t);
+  void SetSparseHandle(std::function<sparseHandle_t()>&&);
 
   void SetDnnWorkspaceHandle(DnnWorkspaceHandle*);
 

@@ -75,7 +75,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
 #if CUDA_VERSION >= 11070
   /* Step1: Forward: softmax{CSR} * value{Dense} -> out{Dense}, reuse */
   SparseCsrTensor dsoftmax;
-  CsrDenseMatmulGradKernel<T, Context>(
+  MatmulCsrDenseGradKernel<T, Context>(
       dev_ctx, softmax, value, dout, &dsoftmax, dvalue);
 
   /* Step2: Calculate grad of sdd_result, manualy not reuse */

@@ -1025,6 +1025,44 @@ void InferMetaFromVecValue(const MetaTensor& x,
   }
 }
 
+void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto input_dims = x.dims();
+  int64_t input_rank = input_dims.size();
+  PADDLE_ENFORCE_GE(
+      input_rank,
+      2,
+      errors::InvalidArgument(
+          "The dimension of Input(Input) is expected to be no less than 2. "
+          "But received: Input(Input)'s dimension = %d, shape = [%s].",
+          input_rank,
+          input_dims));
+  for (int64_t i = 0; i < input_rank; ++i) {
+    PADDLE_ENFORCE_EQ(
+        (input_dims[i] == -1) || (input_dims[i] > 0),
+        true,
+        errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but received %d. Input's shape is [%s].",
+            input_dims[i],
+            input_dims));
+  }
+  if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
+    PADDLE_ENFORCE_EQ(input_dims[input_rank - 2],
+                      input_dims[input_rank - 1],
+                      errors::InvalidArgument(
+                          "The last two dimensions are expected to be equal. "
+                          "But received: %d and %d; "
+                          "Input(Input)'s shape = [%s].",
+                          input_dims[input_rank - 2],
+                          input_dims[input_rank - 1],
+                          input_dims));
+  }
+
+  out->set_dims(input_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(phi::make_ddim({1}));
   out->set_dtype(DataType::BOOL);
@@ -2128,6 +2166,25 @@ void ReverseInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+                           const std::vector<int>& axis,
+                           std::vector<phi::MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      axis.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of axis must be 1 when the Input(X) is LoDTensorArray, "
+          "but received %d.",
+          axis.size()));
+  PADDLE_ENFORCE_EQ(
+      axis[0],
+      0,
+      phi::errors::InvalidArgument("The value of axis should be 1 when "
+                                   "the Input(X) is LoDTensorArray, "
+                                   "but received %d.",
+                                   axis[0]));
+}
+
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
@@ -2452,6 +2509,10 @@ void SplitInferMeta(const MetaTensor& x,
   }
 }
 
+void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims({1});
+}
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const std::vector<int>& axes,
                       MetaTensor* out) {
@@ -2672,6 +2733,53 @@ void SumRawInferMeta(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh) {
+  auto UDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 1] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto VHDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    return phi::make_ddim(x_vec);
+  };
+
+  auto SDDim = [](const DDim& x_dim, int k) {
+    // get x_dim and return the ddim of U
+    auto x_vec = vectorize(x_dim);
+    x_vec[x_vec.size() - 2] = k;
+    x_vec.erase(x_vec.end() - 1);  // rank - 1
+    return phi::make_ddim(x_vec);
+  };
+
+  auto in_dims = x.dims();
+  int x_rank = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      in_dims.size(),
+      2,
+      phi::errors::InvalidArgument("the rank of input must greater than 2"));
+  int m = in_dims[x_rank - 2];
+  int n = in_dims[x_rank - 1];
+  int k = std::min(m, n);
+  u->set_dims(!full_matrices ? UDDim(in_dims, k) : UDDim(in_dims, m));
+  vh->set_dims(!full_matrices ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
+  s->set_dims(SDDim(in_dims, k));
+  u->share_lod(x);
+  vh->share_lod(x);
+  s->share_lod(x);
+  u->set_dtype(x.dtype());
+  vh->set_dtype(x.dtype());
+  s->set_dtype(x.dtype());
 }
 
 void TemporalShiftInferMeta(const MetaTensor& x,
