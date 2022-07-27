@@ -356,7 +356,11 @@ void GpuCpuMapMatmulV2ToMulPass::ApplyImpl(ir::Graph* graph) const {
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
     flag = flag && x_rank >= 2 && y_rank == 2;
-
+    int64_t merged_channel =
+        std::accumulate(
+            x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>()) /
+        x_shape[0];
+    flag = flag && merged_channel == y_shape[0];
     if (flag) {
       if (!IsCompat(subgraph, g)) {
         LOG(WARNING) << "GpuCpuMapMatmulV2ToMulPass in op compat failed.";
