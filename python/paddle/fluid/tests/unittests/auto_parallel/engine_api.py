@@ -47,6 +47,7 @@ paddle.seed(44)
 
 
 class MyDataset(Dataset):
+
     def __init__(self, num_samples):
         super(MyDataset, self).__init__()
         self.num_samples = num_samples
@@ -61,6 +62,7 @@ class MyDataset(Dataset):
 
 
 class MLPLayer(nn.Layer):
+
     def __init__(self,
                  hidden_size=1024,
                  intermediate_size=4 * 1024,
@@ -69,43 +71,45 @@ class MLPLayer(nn.Layer):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=initializer_range))
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
         bias_attr = None
 
-        self.linear0 = nn.Linear(
-            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr)
-        self.linear1 = nn.Linear(
-            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr)
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=bias_attr)
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=bias_attr)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(
-            self.norm, dist_attr={"process_mesh": PP_MESH_0})(input)[0]
-        out = self.linear0(input)
+        out = auto.shard_op(self.norm, dist_attr={"process_mesh":
+                                                  PP_MESH_0})(input)
+        out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        out = auto.shard_op(
-            self.linear1, dist_attr={"process_mesh": PP_MESH_1})(out)[0]
+        out = auto.shard_op(self.linear1, dist_attr={"process_mesh":
+                                                     PP_MESH_1})(out)
         out = self.dropout(out)
         out = self.linear2(out)
         return out
 
 
 def train():
-    mlp = MLPLayer(
-        hidden_size=hidden_size,
-        intermediate_size=4 * hidden_size,
-        dropout_ratio=0.1,
-        initializer_range=0.02)
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
-        learning_rate=0.00001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        grad_clip=None)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
 
     dataset = MyDataset(batch_num * batch_size)
     inputs_spec = InputSpec([batch_size, hidden_size], 'float32', 'x')
@@ -119,11 +123,10 @@ def train():
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
-    engine = Engine(
-        mlp,
-        inputs_spec=inputs_spec,
-        labels_spec=labels_spec,
-        strategy=dist_strategy)
+    engine = Engine(mlp,
+                    inputs_spec=inputs_spec,
+                    labels_spec=labels_spec,
+                    strategy=dist_strategy)
     engine.prepare(optimizer, loss)
     engine.fit(dataset,
                batch_size=batch_size,
