@@ -76,7 +76,7 @@ void TestConv3dBase(const std::vector<int>& indices,
          kernel.size() * sizeof(T));
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    auto tensor_out = paddle::experimental::sparse::conv3d_coo(
+    auto tensor_out = paddle::experimental::sparse::conv3d(
         x, weight, paddings, dilations, strides, 1, false, "Conv3d");
 
     auto out =
