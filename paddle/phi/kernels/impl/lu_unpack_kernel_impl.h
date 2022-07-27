@@ -42,10 +42,10 @@ void LUUnpackKernel(const Context& dev_ctx,
 
     if (m >= n) {
       phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
-      Tensor_narrow<Context, T>(ctx, &U, utensor, 0, k, 0, k);
+      Tensor_narrow<Context, T>(dev_ctx, &U, u, 0, k, 0, k);
     } else {
       phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
-      Tensor_narrow<Context, T>(ctx, &L, ltensor, 0, k, 0, k);
+      Tensor_narrow<Context, T>(dev_ctx, &L, l, 0, k, 0, k);
     }
   }
 
