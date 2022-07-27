@@ -1684,8 +1684,8 @@ template class DepthwiseConvInputGradFunctor<phi::GPUContext,
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                             platform::float16,
-                                             false>;
+                                              platform::float16,
+                                              false>;
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, true>;
@@ -1700,8 +1700,8 @@ template class DepthwiseConvInputGradFunctor<phi::GPUContext,
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
-                                             platform::float16,
-                                             true>;
+                                              platform::float16,
+                                              true>;
 
 }  // namespace math
 }  // namespace operators
