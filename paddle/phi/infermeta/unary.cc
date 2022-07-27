@@ -1140,6 +1140,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
   }
 
   out->set_dims(input_dims);
+  out->set_dtype(x.dtype());
   out->share_lod(x);
 }
 

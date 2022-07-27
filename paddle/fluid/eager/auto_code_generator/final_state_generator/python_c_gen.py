@@ -111,7 +111,7 @@ PARSE_PYTHON_C_ARGS_TEMPLATE = \
 
 
 RECORD_EVENT_TEMPLATE = \
-"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::Operator, 1);"
+"paddle::platform::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::UserDefined, 1);"
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = \

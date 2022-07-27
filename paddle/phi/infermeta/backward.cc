@@ -419,6 +419,7 @@ void InverseGradInferMeta(const MetaTensor& out,
                           MetaTensor* dx) {
   if (dx) {
     dx->set_dims(dout.dims());
+    dx->set_dtype(out.dtype());
   }
 }
 

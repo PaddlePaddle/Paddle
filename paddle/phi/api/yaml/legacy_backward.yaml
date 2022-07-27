@@ -2386,6 +2386,18 @@
   inplace : (out_grad -> x_grad)
   backward : unsqueeze_double_grad
 
+- backward_api : warpctc_grad
+  forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times) -> Tensor(loss), Tensor(warpctcgrad) 
+  args : (Tensor logits, Tensor logits_length, Tensor warpctcgrad, Tensor loss_grad, int blank, bool norm_by_times)
+  output : Tensor(logits_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [logits]
+  kernel :
+    func : warpctc_grad
+  optional : logits_length
+  no_need_buffer : logits
+
 - backward_api : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)

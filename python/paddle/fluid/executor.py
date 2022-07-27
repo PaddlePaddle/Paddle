@@ -1445,9 +1445,11 @@ class Executor(object):
                 if key not in self._executor_cache._cached_executors:
                     # To apply IR pass, compile the Program to IrGraph and convert it back to Program
                     if isinstance(program, compiler.CompiledProgram):
+                        # print(f"Program before convert:\n {inner_program}", flush=True)
                         program._compile(scope, self.place)
                         ir_graph = framework.IrGraph(program._graph)
                         inner_program = ir_graph.to_program()
+                        # print(f"Program after convert:\n {inner_program}", flush=True)
                     else:
                         from paddle.incubate.autograd import prim_enabled, prim2orig
                         if prim_enabled() and program == default_main_program():
@@ -1484,7 +1486,11 @@ class Executor(object):
                     # NOTE(dev): `set` always call TensorCopySync that is a
                     # blocking behavior. So we use `_copy_from` to replace it.
                     cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                    tensor._copy_from(cpu_tensor, self.place)
+                    # for ipu, tensor is allocated on cpu
+                    if core.is_compiled_with_ipu():
+                        tensor._copy_from(cpu_tensor, tensor._place())
+                    else:
+                        tensor._copy_from(cpu_tensor, self.place)
 
                 return new_exe.run(scope, list(feed.keys()), fetch_list,
                                    return_numpy)
@@ -1673,8 +1679,8 @@ class Executor(object):
         return res
 
     def _dump_debug_info(self, program=None, trainer=None):
-        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
-            fout.write(str(trainer))
+        print("program_id: {}, trainer_desc:\n {}".format(
+            id(program), str(trainer)))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
