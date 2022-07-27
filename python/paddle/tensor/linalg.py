@@ -2197,6 +2197,11 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             # one can verify : X = P @ L @ U ;   
     """
 
+    if in_dygraph_mode():
+        P, L, U = _C_ops.final_state_lu_unpack(x, y, unpack_ludata,
+                                               unpack_pivots)
+        return P, L, U
+
     if paddle.in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, 'unpack_ludata', unpack_ludata,
                                    'unpack_pivots', unpack_pivots)

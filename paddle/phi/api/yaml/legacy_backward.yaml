@@ -1212,6 +1212,15 @@
   kernel :
     func : lu_grad
 
+- backward_api : lu_unpack_grad
+  forward : lu_unpack (Tensor x, Tensor pivots, bool unpack_ludata, bool unpack_pivots) -> Tensor(pmat), Tensor(l), Tensor(u)
+  args : (Tensor x, Tensor pivots, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUUnpackGradInferMeta
+  kernel :
+    func : lu_unpack_grad
+
 - backward_api : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
