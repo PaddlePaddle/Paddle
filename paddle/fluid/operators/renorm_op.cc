@@ -93,12 +93,12 @@ class RenormGradOp : public framework::OperatorWithKernel {
   //   ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
   // }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(dtype, ctx.GetPlace());
-  }
+  //  protected:
+  //   framework::OpKernelType GetExpectedKernelType(
+  //       const framework::ExecutionContext& ctx) const override {
+  //     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  //     return framework::OpKernelType(dtype, ctx.GetPlace());
+  //   }
 };
 
 template <typename T>
