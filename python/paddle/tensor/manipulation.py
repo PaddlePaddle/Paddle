@@ -2705,8 +2705,7 @@ def scatter_nd_add(x, index, updates, name=None):
             # [3, 5, 9, 10]
     """
     if in_dygraph_mode():
-        op = getattr(_C_ops, 'scatter_nd_add')
-        return op(x, index, updates)
+        return _C_ops.final_state_scatter_nd_add(x, index, updates)
     else:
         if _in_legacy_dygraph():
             op = getattr(_C_ops, 'scatter_nd_add')
@@ -3001,7 +3000,9 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
         return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
@@ -3877,8 +3878,10 @@ def as_complex(x, name=None):
             # [[ 0. +1.j  2. +3.j  4. +5.j]
             #  [ 6. +7.j  8. +9.j 10.+11.j]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_complex(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_complex(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_complex(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
     op_type = "as_complex"
@@ -3926,8 +3929,10 @@ def as_real(x, name=None):
             #   [ 8.  9.]
             #   [10. 11.]]]
     """
-    if paddle.in_dynamic_mode():
-        return paddle._C_ops.as_real(x)
+    if in_dygraph_mode():
+        return _C_ops.final_state_as_real(x)
+    if _in_legacy_dygraph():
+        return _C_ops.as_real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
     op_type = "as_real"
