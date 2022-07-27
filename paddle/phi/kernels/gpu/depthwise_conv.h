@@ -1012,7 +1012,8 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
               kernel_id;
           T s(0);
           if (fuse_relu_before_conv) {
-            s = output_grad_data[output_id] * T(max(0.0f, float(input_data[input_id])));
+            s = output_grad_data[output_id] *
+                T(max(0.0f, float(input_data[input_id])));
           } else {
             s = output_grad_data[output_id] * input_data[input_id];
           }
@@ -1676,11 +1677,15 @@ template class DepthwiseConvFunctor<phi::GPUContext, platform::float16, false>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, platform::float16, false>;
+template class DepthwiseConvInputGradFunctor<phi::GPUContext,
+                                             platform::float16,
+                                             false>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, false>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, false>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, platform::float16, false>;
+template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
+                                             platform::float16,
+                                             false>;
 
 template class DepthwiseConvFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFunctor<phi::GPUContext, double, true>;
@@ -1688,11 +1693,15 @@ template class DepthwiseConvFunctor<phi::GPUContext, platform::float16, true>;
 
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvInputGradFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvInputGradFunctor<phi::GPUContext, platform::float16, true>;
+template class DepthwiseConvInputGradFunctor<phi::GPUContext,
+                                             platform::float16,
+                                             true>;
 
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, float, true>;
 template class DepthwiseConvFilterGradFunctor<phi::GPUContext, double, true>;
-template class DepthwiseConvFilterGradFunctor<phi::GPUContext, platform::float16, true>;
+template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
+                                             platform::float16,
+                                             true>;
 
 }  // namespace math
 }  // namespace operators
