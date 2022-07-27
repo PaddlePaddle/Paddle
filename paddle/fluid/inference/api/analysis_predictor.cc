@@ -1331,11 +1331,11 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       }
 
 
-  // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
-       // auto_growth
-       if (config.tensorrt_engine_enabled()) {
-         gflags.push_back("--allocator_strategy=naive_best_fit");
-       }
+  // // TODO(Jingzhuangzhuang): Fix trt error when allocator_strategy is
+  //      // auto_growth
+  //      if (config.tensorrt_engine_enabled()) {
+  //        gflags.push_back("--allocator_strategy=naive_best_fit");
+  //      }
        
 
       if (framework::InitGflags(gflags)) {
