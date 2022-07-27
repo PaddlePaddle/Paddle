@@ -1778,6 +1778,16 @@
     func : relu6
   backward : relu6_grad
 
+- api : renorm
+  args : (Tensor x, float p, int axis, float max_norm)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : renorm
+  backward : renorm_grad
+
 - api : reshape
   args : (Tensor x, IntArray shape)
   output : Tensor(out), Tensor(xshape)
