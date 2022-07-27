@@ -133,17 +133,6 @@ class TestMultipleCustomCPU(unittest.TestCase):
 
 class TestProcessGroup(TestMultipleCustomCPU):
 
-    def setUp(self):
-        # compile so and set to current path
-        cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git && cd PaddleCustomDevice/backends/custom_cpu && mkdir build && cd build && cmake .. && make -j8'
-        os.system(cmd)
-
-        # set environment for loading and registering compiled custom kernels
-        # only valid in current process
-        os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
-
     def test_process_group_xccl(self):
         from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
