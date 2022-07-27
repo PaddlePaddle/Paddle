@@ -41,13 +41,12 @@ void ProductRuleBook(const Context& dev_ctx,
                      const DDim& out_dims,
                      const bool subm,
                      DenseTensor* rulebook,
-                     DenseTensor* counter_per_kernel) {
+                     int* counter_per_kernel) {
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const IntT* indices_ptr = non_zero_indices.data<IntT>();
-  int* counter_ptr = counter_per_kernel->data<int>();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  memset(counter_ptr, 0, kernel_size * sizeof(int));
+  memset(counter_per_kernel, 0, kernel_size * sizeof(int));
 
   int rulebook_len = 0;
   // calc the rulebook_len
@@ -107,7 +106,7 @@ void ProductRuleBook(const Context& dev_ctx,
               }
 
               if (rulebook_ptr == nullptr) {
-                counter_ptr[kernel_index - 1] += 1;
+                counter_per_kernel[kernel_index - 1] += 1;
                 ++rulebook_len;
               } else {
                 rulebook_ptr[rulebook_index] = kernel_index - 1;

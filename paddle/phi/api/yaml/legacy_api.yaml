@@ -264,6 +264,17 @@
   kernel :
     func : auc
 
+#average_accumulates
+- api : average_accumulates_
+  args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
+  output : Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates), Tensor(out_old_num_accumulates), Tensor(out_num_updates)
+  infer_meta:
+    func : AverageAccumulatesInferMeta
+  kernel :
+    func : average_accumulates {dense, dense, dense, dense, dense ,dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
+  inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
+
 # batch_norm
 - api : batch_norm
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
@@ -325,6 +336,26 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_xor
+
+# bmm
+- api : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
+
+# box_coder
+- api : box_coder
+  args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type, bool box_normalized, int axis, float[] variance)
+  output : Tensor(output_box)
+  infer_meta :
+    func : BoxCoderInferMeta
+  kernel :
+    func : box_coder
+  optional : prior_box_var
 
 # brelu
 - api : brelu
@@ -1802,6 +1833,24 @@
   intermediate : xshape
   backward: reshape_grad
 
+- api : reverse
+  args : (Tensor x, int[] axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  backward : reverse_grad
+
+- api : reverse_array
+  args : (Tensor[] x, int[] axis)
+  output : Tensor[]{x.size()}
+  infer_meta :
+    func : ReverseArrayInferMeta
+  kernel :
+    func : reverse_array
+  backward : reverse_array_grad
+
 - api : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
   output : Tensor
@@ -2029,6 +2078,15 @@
     func : slice
   backward : slice_grad
 
+- api : slogdet
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : slogdeterminant
+  backward : slogdet_grad
+
 # soft_shrink
 - api : soft_shrink
   args : (Tensor x, float lambda)
@@ -2130,6 +2188,15 @@
     func : sum
     data_type : x
   backward : sum_grad
+
+- api : svd
+  args : (Tensor x, bool full_metrices)
+  output : Tensor(u), Tensor(s), Tensor(vh)
+  infer_meta :
+    func : SvdInferMeta
+  kernel :
+    func : svd
+  backward : svd_grad
 
 # The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
 - api : swish
@@ -2356,6 +2423,18 @@
   kernel :
     func : viterbi_decode
     data_type : input
+
+- api : warpctc
+  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times)
+  output :  Tensor(loss), Tensor(warpctcgrad)
+  infer_meta :
+    func : WarpctcInferMeta
+  kernel :
+    func : warpctc
+    data_type: logits
+  optional: logits_length, labels_length
+  intermediate: warpctcgrad
+  backward : warpctc_grad
 
 - api : where
   args : (Tensor condition, Tensor x, Tensor y)
