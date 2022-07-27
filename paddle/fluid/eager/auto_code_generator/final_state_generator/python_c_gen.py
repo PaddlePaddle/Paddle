@@ -57,6 +57,8 @@ no_amp_list = [
     'adam',
     'adamw_',
     'adamw',
+    'average_accumulates',
+    'average_accumulates_',
     'decayed_adagrad_',
     'decayed_adagrad',
     'dgc_momentum_',
