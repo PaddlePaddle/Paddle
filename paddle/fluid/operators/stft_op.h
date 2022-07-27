@@ -60,14 +60,14 @@ class StftKernel : public framework::OpKernel<T> {
     framework::DDim frames_dims(out->dims());
     frames_dims.at(axes.back()) = n_fft;
     frames.mutable_data<T>(frames_dims, ctx.GetPlace());
-    phi::FrameFunctor<DeviceContext, T>()(dev_ctx,
-                                          x,
-                                          &frames,
-                                          seq_length,
-                                          n_fft,
-                                          n_frames,
-                                          hop_length,
-                                          /*is_grad*/ false);
+    phi::funcs::FrameFunctor<DeviceContext, T>()(dev_ctx,
+                                                 x,
+                                                 &frames,
+                                                 seq_length,
+                                                 n_fft,
+                                                 n_frames,
+                                                 hop_length,
+                                                 /*is_grad*/ false);
 
     // Window
     Tensor frames_w;
@@ -175,14 +175,14 @@ class StftGradKernel : public framework::OpKernel<T> {
         ctx, &d_frames_w, window, axes.back(), MulFunctor<T>(), &d_frames);
 
     // d_frames -> dx
-    phi::FrameFunctor<DeviceContext, T>()(dev_ctx,
-                                          &d_frames,
-                                          dx,
-                                          seq_length,
-                                          n_fft,
-                                          n_frames,
-                                          hop_length,
-                                          /*is_grad*/ true);
+    phi::funcs::FrameFunctor<DeviceContext, T>()(dev_ctx,
+                                                 &d_frames,
+                                                 dx,
+                                                 seq_length,
+                                                 n_fft,
+                                                 n_frames,
+                                                 hop_length,
+                                                 /*is_grad*/ true);
   }
 };
 

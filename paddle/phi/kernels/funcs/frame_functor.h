@@ -14,11 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/seq2col.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/seq2col.h"
 
 namespace phi {
+namespace funcs {
+
 template <typename Context, typename T>
 struct FrameFunctor {
   void operator()(const Context& dev_ctx,
@@ -33,24 +35,26 @@ struct FrameFunctor {
     const auto* input_data = input->data<T>();
     auto* output_data = output->data<T>();
 
-    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
     if (!is_grad) {
-      paddle::operators::math::Seq2ColFunctor<T> functor(input_data,
-                                                         output_data,
-                                                         seq_length,
-                                                         frame_length,
-                                                         n_frames,
-                                                         hop_length);
+      phi::funcs::Seq2ColFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     } else {
-      paddle::operators::math::Col2SeqFunctor<T> functor(input_data,
-                                                         output_data,
-                                                         seq_length,
-                                                         frame_length,
-                                                         n_frames,
-                                                         hop_length);
+      phi::funcs::Col2SeqFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     }
   }
 };
+
+}  // namespace funcs
 }  // namespace phi

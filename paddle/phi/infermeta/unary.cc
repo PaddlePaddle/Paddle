@@ -840,6 +840,9 @@ void FrameInferMeta(const MetaTensor& x,
                     int axis,
                     MetaTensor* out,
                     MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output(Out) of FrameOp should not be null."));
   const auto x_dims = x.dims();
   const int x_rank = x_dims.size();
 

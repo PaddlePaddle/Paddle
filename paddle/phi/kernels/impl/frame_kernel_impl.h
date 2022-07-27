@@ -70,7 +70,7 @@ void FrameKernel(const Context& dev_ctx,
       trans_out.Resize(phi::make_ddim(out_dims_vec));
 
       dev_ctx.template Alloc<T>(&trans_out);
-      funcs::TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     } else {
       std::vector<int> perm_x{1, 0};
@@ -80,7 +80,7 @@ void FrameKernel(const Context& dev_ctx,
       }
       trans_x.Resize(phi::make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
-      funcs::TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_tmp, &trans_x, perm_x);
 
       std::vector<int> perm_out{2, 1, 0};
@@ -90,7 +90,7 @@ void FrameKernel(const Context& dev_ctx,
       }
       trans_out.Resize(phi::make_ddim(out_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out);
-      funcs::TransCompute<Context, T>(
+      phi::funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     }
   } else {
@@ -98,14 +98,14 @@ void FrameKernel(const Context& dev_ctx,
     trans_out = *out;
   }
 
-  FrameFunctor<Context, T>()(dev_ctx,
-                             &trans_x,
-                             &trans_out,
-                             seq_length,
-                             frame_length,
-                             n_frames,
-                             hop_length,
-                             /*is_grad*/ false);
+  phi::funcs::FrameFunctor<Context, T>()(dev_ctx,
+                                         &trans_x,
+                                         &trans_out,
+                                         seq_length,
+                                         frame_length,
+                                         n_frames,
+                                         hop_length,
+                                         /*is_grad*/ false);
 
   // Transpose output in case axis is 0.
   if (axis == 0) {
