@@ -148,6 +148,72 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
+        def test_dynamic_api_inf_1(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('inf')])
+                y = paddle.to_tensor([1, 2, float('inf')])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 1]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_inf_2(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('inf')])
+                y = paddle.to_tensor([1, 2, float('-inf')])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_inf_3(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('inf')])
+                y = paddle.to_tensor([1, 2, 1])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_nan_1(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('nan')])
+                y = paddle.to_tensor([1, 2, float('nan')])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 1]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_nan_2(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('nan')])
+                y = paddle.to_tensor([1, 2, float('-nan')])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
+        def test_dynamic_api_nan_3(self):
+            if self.op_type == "equal":
+                paddle.disable_static()
+                x = paddle.to_tensor([1, 2, float('nan')])
+                y = paddle.to_tensor([1, 2, 1])
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([1, 1, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
         def test_not_equal(self):
             if self.op_type == "not_equal":
                 paddle.disable_static()

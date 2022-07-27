@@ -35,6 +35,8 @@ template <typename InT, typename OutT = bool>
 struct EqualFunctor {
   HOSTDEVICE OutT operator()(const InT a, const InT b) const {
     if (std::is_floating_point<InT>::value) {
+      if (std::isinf(a) || std::isinf(b)) return a == b;
+      if (std::isnan(a) || std::isnan(b)) return a == b;
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
       return static_cast<OutT>(a == b);
