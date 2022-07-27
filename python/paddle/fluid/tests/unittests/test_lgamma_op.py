@@ -17,6 +17,7 @@ import math
 import numpy as np
 import paddle
 from op_test import OpTest
+from scipy import special
 
 paddle.enable_static()
 
@@ -67,11 +68,7 @@ class TestLgammaOpApi(unittest.TestCase):
         data = np.random.random(shape).astype(self.dtype) + 1
         data_ = paddle.to_tensor(data)
         out = paddle.fluid.layers.lgamma(data_)
-        result = np.ones(shape).astype(self.dtype)
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                result[i][j] = math.lgamma(data[i][j])
-
+        result = special.gammaln(data)
         self.assertTrue(np.allclose(result, out.numpy()))
         paddle.enable_static()
 
