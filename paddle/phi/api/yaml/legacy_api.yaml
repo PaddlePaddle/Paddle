@@ -1951,17 +1951,6 @@
   kernel :
     func : shard_index
 
-# softsign
-- api : softsign
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : softsign
-  backward : softsign_grad
-
 # sigmoid
 - api : sigmoid
   args : (Tensor x)
@@ -2060,6 +2049,17 @@
     func : softmax
     use_gpudnn : true
   backward : softmax_grad
+
+# softsign
+- api : softsign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softsign
+  backward : softsign_grad
 
 - api : split
   args : (Tensor x, IntArray num_or_sections, Scalar(int) axis)

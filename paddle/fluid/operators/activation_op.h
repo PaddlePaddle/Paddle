@@ -497,5 +497,5 @@ inline void ExtractDoubleGradTensorWithInputDOut(
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_ACTIVATION_OP(__macro)                               \
+#define FOR_EACH_ACTIVATION_OP(__macro) \
   __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);
