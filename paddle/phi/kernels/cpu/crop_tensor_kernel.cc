@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/crop_tensor_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/crop_tensor_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void InverseKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(crop_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CropTensorKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

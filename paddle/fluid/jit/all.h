@@ -14,13 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-
-namespace phi {
-
-template <typename T, typename Context>
-void InverseKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   DenseTensor* out);
-
-}  // namespace phi
+#include "base_function.h"
+#include "layer.h"
+#include "serializer.h"
+#include "serializer_utils.h"

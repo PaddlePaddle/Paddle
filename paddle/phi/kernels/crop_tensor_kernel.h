@@ -14,13 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void InverseKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   DenseTensor* out);
+void CropTensorKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const IntArray& shape,
+                      const IntArray& offsets,
+                      DenseTensor* out);
 
 }  // namespace phi
