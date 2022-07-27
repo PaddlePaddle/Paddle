@@ -727,8 +727,8 @@ class GraphTable : public Table {
   // std::shared_ptr<::ThreadPool> graph_sample_pool;
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
-  std::string feature_separator_ = std::string(" ");
 #endif
+  std::string feature_separator_ = std::string(" ");
 };
 
 /*
