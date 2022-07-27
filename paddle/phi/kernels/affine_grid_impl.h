@@ -39,12 +39,12 @@ struct Linspace {
 };
 
 template <typename Context, typename T>
-inline void GetIdxMap(const Context& dev_ctx,
-                      int n,
+inline void GetIdxMap(int n,
                       int h,
                       int w,
                       bool align_corners,
-                      DenseTensor* grid) {
+                      DenseTensor* grid,
+                      const Context& dev_ctx) {
   auto& place = *dev_ctx.eigen_device();
   grid->Resize(phi::make_ddim({n, h, w, 3}));
   dev_ctx.template Alloc<T>(grid);
@@ -60,7 +60,7 @@ inline void GetIdxMap(const Context& dev_ctx,
   auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
   // Get constant ones tensor with shape [height, width, 1]
   DenseTensor ones;
-  ones.Resize(phi::make_ddim({h, w, 1}))
+  ones.Resize(phi::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
   phi::funcs::SetConstant<Context, T>()(

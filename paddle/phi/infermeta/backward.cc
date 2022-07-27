@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace phi {
 
-void AffineGridGradInferMeta(const paddle::optional<MetaTensor>& outputShape,
+void AffineGridGradInferMeta(const MetaTensor& outputShape,
                              const MetaTensor& output_grad,
                              bool align_corners,
                              std::vector<int> output_shape,

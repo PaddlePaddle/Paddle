@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/affine_grid.h"
+#include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -29,9 +29,9 @@ using ScopedSpatialTransformerDescriptor =
     paddle::platform::ScopedSpatialTransformerDescriptor;
 
 template <typename T, typename Context>
-void AffineGridKernel(const Context& dev_ctx,
+void AffineGridCudnnKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
+                      const DenseTensor& outputShape,
                       bool align_corners,
                       std::vector<int> output_shape,
                       DenseTensor* output) {
@@ -51,7 +51,7 @@ void AffineGridKernel(const Context& dev_ctx,
     int* h_size_data;
     if (size_attr.size() == 0) {
       auto* output_shape = &outputShape;
-      phi::Copy(*output_shape, phi::CPUPlace(), &h_sizes);
+      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
       h_sizes.Resize(phi::make_ddim({4}));
@@ -78,8 +78,8 @@ void AffineGridKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(affine_grid,
-                   GPU,
+                   GPUDNN,
                    ALL_LAYOUT,
-                   phi::AffineGridKernel,
+                   phi::AffineGridCudnnKernel,
                    float,
                    double) {};

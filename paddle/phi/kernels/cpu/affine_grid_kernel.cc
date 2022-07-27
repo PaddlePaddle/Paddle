@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/kernels/affine_grid.h"
+#include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
@@ -27,7 +25,7 @@ struct Linspace<phi::CPUContext, T> {
                   int count,
                   bool align_corners,
                   DenseTensor* numbers,
-                  const Context& dev_ctx) {
+                  const phi::CPUContext& dev_ctx) {
     numbers->Resize(phi::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
@@ -44,7 +42,7 @@ struct Linspace<phi::CPUContext, T> {
 template <typename T, typename Context>
 void AffineGridKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
+                      const DenseTensor& outputShape,
                       bool align_corners,
                       std::vector<int> output_shape,
                       DenseTensor* output) {
@@ -57,7 +55,7 @@ void AffineGridKernel(const Context& dev_ctx,
   if (size_attr.size() == 0) {
     //auto* output_shape = ctx.Input<Tensor>("OutputShape");
     DenseTensor h_sizes;
-    phi::Copy(outputShape, phi::CPUPlace(), &h_sizes);
+    phi::Copy(dev_ctx, outputShape, phi::CPUPlace(), false, &h_sizes);
     const int* h_size_data = h_sizes.data<int>();
     h = h_size_data[2];
     w = h_size_data[3];

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/affine_grid_grad.h"
+#include "paddle/phi/kernels/affine_grid_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -37,7 +37,7 @@ struct Linspace<phi::GPUContext, T> {
                   int count,
                   bool align_corners,
                   DenseTensor* numbers,
-                  const Context& dev_ctx) {
+                  const phi::GPUContext& dev_ctx) {
     numbers->Resize(phi::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
@@ -78,15 +78,15 @@ __global__ void affine_grid_grad_kernel(const int count,
     paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x);
 
     T out_grad_y = out_grad[index * 2 + 1];
-    padddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * w_coor);
+    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * w_coor);
     paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * h_coor);
     paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y);
   }
 }
 
 template <typename T, typename Context>
-void AffineGridGradKernel(const Context& dev_ctx,
-                          const paddle::optional<DenseTensor>& outputShape,
+void AffineGridGradCUDAKernel(const Context& dev_ctx,
+                          const DenseTensor& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
                           std::vector<int> output_shape,
@@ -100,7 +100,7 @@ void AffineGridGradKernel(const Context& dev_ctx,
     if (size_attr.size() == 0) {
       auto* output_shape = &outputShape;
       DenseTensor h_sizes;
-      phi::Copy(*output_shape, phi::CPUPlace(), &h_sizes);
+      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];
@@ -152,6 +152,6 @@ void AffineGridGradKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(affine_grid_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AffineGridGradKernel,
+                   phi::AffineGridGradCUDAKernel,
                    float,
                    double) {};

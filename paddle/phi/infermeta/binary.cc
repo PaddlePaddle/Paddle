@@ -81,7 +81,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }  // namespace detail
 
 void AffineGridInferMeta(const MetaTensor& input,
-                         const paddle::optional<MetaTensor>& outputShape,
+                         const MetaTensor& outputShape,
                          bool align_corners,
                          std::vector<int> output_shape,
                          MetaTensor* output) {
@@ -135,7 +135,8 @@ void AffineGridInferMeta(const MetaTensor& input,
 
     // N * H * W * 2
     output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
-    output->set_lod(input.lod());
+    output->set_dtype(input.dtype());
+    output->share_lod(input);
 }
 
 void AllValueCompareInferMeta(const MetaTensor& x,

@@ -33,7 +33,7 @@ namespace phi {
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
 void AffineGridInferMeta(const MetaTensor& input,
-                         const paddle::optional<MetaTensor>& outputShape,
+                         const MetaTensor& outputShape,
                          bool align_corners,
                          std::vector<int> output_shape,
                          MetaTensor* output);

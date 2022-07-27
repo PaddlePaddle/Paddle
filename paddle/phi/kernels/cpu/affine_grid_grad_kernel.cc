@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/kernels/affine_grid_grad.h"
+#include "paddle/phi/kernels/affine_grid_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
@@ -27,7 +25,7 @@ struct Linspace<phi::CPUContext, T> {
                   int count,
                   bool align_corners,
                   DenseTensor* numbers,
-                  const Context& dev_ctx) {
+                  const phi::CPUContext& dev_ctx) {
     numbers->Resize(phi::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
@@ -43,7 +41,7 @@ struct Linspace<phi::CPUContext, T> {
 
 template <typename T, typename Context>
 void AffineGridGradKernel(const Context& dev_ctx,
-                          const paddle::optional<DenseTensor>& outputShape,
+                          const DenseTensor& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
                           std::vector<int> output_shape,
@@ -58,7 +56,7 @@ void AffineGridGradKernel(const Context& dev_ctx,
     if (size_attr.size() == 0) {
       //auto* output_shape = ctx.Input<Tensor>("OutputShape");
       DenseTensor h_sizes;
-      phi::Copy(outputShape, phi::CPUPlace(), &h_sizes);
+      phi::Copy(dev_ctx, outputShape, dev_ctx.GetPlace(), false, &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];
@@ -66,7 +64,7 @@ void AffineGridGradKernel(const Context& dev_ctx,
       h = size_attr[2];
       w = size_attr[3];
     }
-    theta_grad->Resize(phi:make_ddim({n, 2, 3}));
+    theta_grad->Resize(phi::make_ddim({n, 2, 3}));
     dev_ctx.template Alloc<T>(theta_grad);
     phi::funcs::SetConstant<Context, T>()(
         dev_ctx,

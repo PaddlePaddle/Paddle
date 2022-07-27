@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/affine_grid_grad.h"
+#include "paddle/phi/kernels/affine_grid_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -26,8 +26,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AffineGridGradKernel(const Context& dev_ctx,
-                          const paddle::optional<DenseTensor>& outputShape,
+void AffineGridGradCudnnKernel(const Context& dev_ctx,
+                          const DenseTensor& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
                           std::vector<int> output_shape,
@@ -48,7 +48,7 @@ void AffineGridGradKernel(const Context& dev_ctx,
     int* h_size_data;
     if (size_attr.size() == 0) {
       auto* output_shape = &outputShape;
-      phi::Copy(*output_shape, phi::CPUPlace(), &h_sizes);
+      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {
       h_sizes.Resize(phi::make_ddim({4}));
@@ -74,8 +74,8 @@ void AffineGridGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(affine_grid_grad,
-                   GPU,
+                   GPUDNN,
                    ALL_LAYOUT,
-                   phi::AffineGridGradKernel,
+                   phi::AffineGridGradCudnnKernel,
                    float,
                    double) {};

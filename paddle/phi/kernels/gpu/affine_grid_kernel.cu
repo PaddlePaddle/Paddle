@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/affine_grid.h"
+#include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -37,7 +37,7 @@ struct Linspace<phi::GPUContext, T> {
                   int count,
                   bool align_corners,
                   DenseTensor* numbers,
-                  const Context& dev_ctx) {
+                  const phi::GPUContext& dev_ctx) {
     numbers->Resize(phi::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
@@ -85,9 +85,9 @@ __global__ void affine_grid_kernel(const int count,
 
 
 template <typename T, typename Context>
-void AffineGridKernel(const Context& dev_ctx,
+void AffineGridCUDAKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
+                      const DenseTensor& outputShape,
                       bool align_corners,
                       std::vector<int> output_shape,
                       DenseTensor* output) {
@@ -100,7 +100,7 @@ void AffineGridKernel(const Context& dev_ctx,
     if (size_attr.size() == 0) {
       auto* output_shape = &outputShape;
       DenseTensor h_sizes;
-      phi::Copy(*output_shape, phi::CPUPlace(), &h_sizes);
+      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];
@@ -149,6 +149,6 @@ void AffineGridKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(affine_grid,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AffineGridKernel,
+                   phi::AffineGridCUDAKernel,
                    float,
                    double) {};
