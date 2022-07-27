@@ -20,6 +20,7 @@ from ..framework import convert_np_dtype_to_dtype_, Variable, in_dygraph_mode
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
+import paddle
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -37,27 +38,9 @@ __activations_noattr__ = [
 ]
 
 __unary_func__ = [
-    'exp',
-    'expm1',
-    'atan',
-    'sqrt',
-    'rsqrt',
-    'abs',
-    'ceil',
-    'floor',
-    'cos',
-    'tan',
-    'acos',
-    'sin',
-    'sinh',
-    'asin',
-    'cosh',
-    'round',
-    'reciprocal',
-    'square',
-    'acosh',
-    'asinh',
-    'atanh',
+    'exp', 'expm1', 'atan', 'sqrt', 'rsqrt', 'abs', 'ceil', 'floor', 'cos',
+    'tan', 'acos', 'sin', 'sinh', 'asin', 'cosh', 'round', 'reciprocal',
+    'square', 'acosh', 'asinh', 'atanh', 'lgamma'
 ]
 
 __inplace_unary_func__ = [

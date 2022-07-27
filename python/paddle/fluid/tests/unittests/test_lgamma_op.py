@@ -58,5 +58,23 @@ class TestLgammaOpFp32(TestLgammaOp):
                         check_eager=True)
 
 
+class TestLgammaOpApi(unittest.TestCase):
+
+    def test_lgamma(self):
+        paddle.disable_static()
+        self.dtype = "float32"
+        shape = (1, 4)
+        data = np.random.random(shape).astype(self.dtype) + 1
+        data_ = paddle.to_tensor(data)
+        out = paddle.fluid.layers.lgamma(data_)
+        result = np.ones(shape).astype(self.dtype)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                result[i][j] = math.lgamma(data[i][j])
+
+        self.assertTrue(np.allclose(result, out.numpy()))
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
