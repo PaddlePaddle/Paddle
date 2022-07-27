@@ -248,7 +248,6 @@ void BindCudaStream(py::module *m_ptr) {
           "__init__",
           [](phi::CUDAStream &self, platform::CUDAPlace *place, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            std::cout << 1 << std::endl;
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
@@ -274,7 +273,6 @@ void BindCudaStream(py::module *m_ptr) {
           "__init__",
           [](phi::CUDAStream &self, int device, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-            std::cout << 2 << std::endl;
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
@@ -304,7 +302,6 @@ void BindCudaStream(py::module *m_ptr) {
           py::arg("priority") = 2)
       .def("__init__", [](phi::CUDAStream &self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        std::cout << 3 << std::endl;
         auto prio = phi::CUDAStream::Priority::kNormal;
         auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
 

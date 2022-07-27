@@ -79,7 +79,7 @@ class DnnWorkspaceHandle {
 
 class PADDLE_API GPUContext : public DeviceContext {
  public:
-  explicit GPUContext(bool init = true);
+  GPUContext();
   explicit GPUContext(const GPUPlace& place, bool init = true);
 
   GPUContext(GPUContext&&);
