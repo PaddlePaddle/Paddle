@@ -2336,3 +2336,5 @@
   kernel:
     func: eigvalsh_grad
     data_type: out_v
+  data_transform:
+    skip_transform: out_w_grad

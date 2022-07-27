@@ -2382,8 +2382,8 @@
 - api: eigvalsh
   args: (Tensor x, str uplo, bool is_test)
   output: Tensor(out_w), Tensor(out_v)
-  infer_meta: 
+  infer_meta:
     func: EigvalshInferMeta
-  kernel: 
+  kernel:
     func: eigvalsh
   backward: eigvalsh_grad
