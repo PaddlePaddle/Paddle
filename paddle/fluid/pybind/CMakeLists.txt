@@ -99,6 +99,7 @@ if(NOT ON_INFER)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
   if(WITH_MPI)
+    set (PYBIND_DEPS ${PYBIND_DEPS} dynload_mpi)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_mpi)
   endif()
   if(WITH_ASCEND_CL)
@@ -375,6 +376,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_MPI)
+    target_link_libraries(paddle_pybind ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

@@ -480,6 +480,7 @@ void* GetMPIDsoHandle() {
       "openmpi, MPICH2, MVAPICH, MVAPICH2, Intel MPI and so on."
       "before install PaddlePaddle.");
 
+  LOG(INFO) << "=======+AAAAAAAAa=====FLAGS_mpi_dir===" << FLAGS_mpi_dir;
   return GetDsoHandleFromSearchPath(
       FLAGS_mpi_dir, "libmpi.so", true, {}, warning_msg);
 }

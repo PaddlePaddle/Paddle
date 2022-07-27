@@ -13,8 +13,9 @@ if(WITH_MPI)
     include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
     string(REGEX REPLACE "(.+)\\libmpi.so" "\\1" MPI_CXX_LIBRARIES_ROOT ${MPI_CXX_LIBRARIES})
     message(STATUS "MPI libraries root: " ${MPI_CXX_LIBRARIES_ROOT})
-    link_directories("${MPI_CXX_LIBRARIES_ROOT}")
+    
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
+    
     add_definitions(-DMPI_CXX_LIBRARIES_ROOT=\"${MPI_CXX_LIBRARIES_ROOT}\")
     add_definitions("-DPADDLE_WITH_MPI")
   else()

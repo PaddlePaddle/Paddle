@@ -34,9 +34,6 @@ class TestCollectiveBroadcastAPI(TestDistBase):
         self.check_with_place("collective_broadcast_api.py", "broadcast",
                               "gloo", "0")
 
-    def test_broadcast_nccl(self):
-        self.check_with_place("collective_broadcast_api.py", "broadcast", "mpi")
-
 
 if __name__ == '__main__':
     unittest.main()
