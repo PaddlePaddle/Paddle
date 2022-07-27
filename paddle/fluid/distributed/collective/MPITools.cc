@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/MPITools.h"
+#include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 
 namespace paddle {
 namespace distributed {
 
 MPI_Op ToMPIRedType(ReduceOp reduction) {
-  static const std::map<ReduceOp, ncclRedOp_t> red_type = {
+  static const std::map<ReduceOp, MPI_Op> red_type = {
       {ReduceOp::MIN, MPI_MIN},
       {ReduceOp::MAX, MPI_MAX},
       {ReduceOp::SUM, MPI_SUM},
@@ -51,14 +52,15 @@ void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors) {
       tensors.size() == 1, true,
       platform::errors::InvalidArgument("the inputs size of MPI must be 1!"));
 
-  PADDLE_ENFORCE_EQ(tensors[0].is_cuda() && !CheckMpiCudaAware(), false,
+  PADDLE_ENFORCE_EQ(CheckTensorsInCudaPlace(tensors) && !CheckMpiCudaAware(),
+                    false,
                     platform::errors::InvalidArgument(
                         "Found CUDA Tensor. But CUDA-aware MPI not support!"));
 }
 
 void CheckValidSizeAndType(const phi::DenseTensor& t_in,
                            const std::vector<phi::DenseTensor>& inputs) {
-  CheckValidInputs(tensors);
+  CheckValidInputs(inputs);
   for (const auto& tensor : inputs) {
     PADDLE_ENFORCE_EQ(
         (tensor.numel() != t_in.numel()) || (tensor.dtype() != t_in.dtype()),

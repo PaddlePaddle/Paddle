@@ -353,9 +353,6 @@ if(WITH_GPU)
     endif()
 endif()
 
-if(WITH_MPI)
-    include(mpi)
-endif()
 
 if(WITH_MLU)
     include(neuware)
@@ -405,6 +402,10 @@ if(WITH_DISTRIBUTE)
         MESSAGE(WARNING "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF.")
         set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496" FORCE)
     endif()
+endif()
+
+if(WITH_MPI)
+    include(mpi)
 endif()
 
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies

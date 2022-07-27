@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mpi-ext.h>
-#include <iostream>
-#include <limits>
-#include <map>
-
-#include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/distributed/collective/MPITools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
+#include "paddle/fluid/distributed/collective/Common.h"
+#include "paddle/phi/backends/device_guard.h"
 
+// #include <mpi-ext.h>
 constexpr int64_t kWaitBlockTImeout = 10;
+std::map<phi::DataType, MPI_Datatype> mpiDatatype = {
+    {phi::DataType::FLOAT32, MPI_FLOAT},
+    {phi::DataType::FLOAT64, MPI_DOUBLE},
+    {phi::DataType::INT32, MPI_INT},
+    {phi::DataType::INT64, MPI_LONG},
+};
 
 namespace paddle {
 namespace distributed {
@@ -46,7 +48,7 @@ ProcessGroupMPI::MPIAsyncTask::~MPIAsyncTask() {
   }
 }
 
-bool ProcessGroupMPI::MPIAsyncTask::isCompleted() {
+bool ProcessGroupMPI::MPIAsyncTask::IsCompleted() {
   if (request_ == MPI_REQUEST_NULL) {
     return true;
   }
@@ -89,7 +91,7 @@ void ProcessGroupMPI::MPIAsyncTask::appearException() {
       std::make_exception_ptr(std::runtime_error(std::string(buf.data(), len)));
 }
 
-void ProcessGroupNCCL::MPIAsyncTask::SetOutputs(
+void ProcessGroupMPI::MPIAsyncTask::SetOutputs(
     std::vector<phi::DenseTensor>& outputs) {  // NOLINT
   outputs_ = std::make_shared<std::vector<phi::DenseTensor>>(outputs);
 }
@@ -108,9 +110,8 @@ void ProcessGroupMPI::initOneTimeMPI() {
   std::call_once(onceFlag, []() {
     MPI_CHECK(MPI_Init_thread(nullptr, nullptr, MPI_THREAD_SERIALIZED,
                               &mpi_thread_support));
-
     PADDLE_ENFORCE_EQ(
-        mpi_thread_support < MPI_THREAD_SERIALIZED, false,
+        mpi_thread_support < MPI_THREAD_SERIALIZED, true,
         platform::errors::InvalidArgument("MPI supports the number of threads "
                                           "less than MPI_THREAD_SERIALIZED. "));
 
@@ -118,12 +119,14 @@ void ProcessGroupMPI::initOneTimeMPI() {
   });
 }
 
-static std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
+std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
     std::vector<int> ranks, int gid) {
   // init once mpi
   initOneTimeMPI();
 
   MPI_Comm groupComm = MPI_COMM_WORLD;
+  int rank = -1;
+  int size = -1;
 
   {
     std::lock_guard<std::mutex> globalLock(pg_global_mutex);
@@ -152,7 +155,6 @@ static std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
     }
 
     // Fetch rank and world size for this group (MPI_COMM_WORLD or new)
-    int rank = -1, size = -1;
     if (groupComm != MPI_COMM_NULL) {
       MPI_CHECK(MPI_Comm_rank(groupComm, &rank));
       MPI_CHECK(MPI_Comm_size(groupComm, &size));
@@ -163,12 +165,15 @@ static std::shared_ptr<ProcessGroupMPI> ProcessGroupMPI::createProcessGroupMPI(
     }
   }
 
-  if (groupComm == MPI_COMM_NULL) {
-    return std::shared_ptr<ProcessGroupMPI>();
-  }
+  PADDLE_ENFORCE_EQ(
+      groupComm == MPI_COMM_NULL, false,
+      platform::errors::InvalidArgument("MPI comm group create failed!"));
 
-  return std::shared_ptr<ProcessGroupMPI>(rank, size, groupComm, gid);
+  return std::make_shared<ProcessGroupMPI>(rank, size, groupComm, gid);
 }
+
+// ProcessGroupMPI::ProcessGroupMPI(int rank, int size, int pg_comm, int gid)
+//    : ProcessGroup(rank, size, gid){}
 
 ProcessGroupMPI::ProcessGroupMPI(int rank, int size, MPI_Comm pg_comm, int gid)
     : ProcessGroup(rank, size, gid), stop_(false), pg_comm(pg_comm) {
@@ -210,9 +215,9 @@ void ProcessGroupMPI::workLoop() {
 
     try {
       taskEntry->run(taskEntry);
-      task->finishWorkMPI();
+      task->finishMPITask();
     } catch (...) {
-      task->finishWorkMPIError(std::current_exception());
+      task->finishMPITaskError(std::current_exception());
     }
 
     lock.lock();
@@ -222,7 +227,7 @@ void ProcessGroupMPI::workLoop() {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::enqueue(
     std::unique_ptr<TaskEntry> entry,
     const std::vector<phi::DenseTensor>& inputs) {
-  auto task = std::shared_ptr<MPITask>(entry->dst, inputs);
+  auto task = std::make_shared<MPITask>(entry->dst, inputs);
   std::unique_lock<std::mutex> lock(pg_mutex);
   queue_.push_back(std::make_tuple(std::move(entry), task));
   lock.unlock();
@@ -232,19 +237,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::enqueue(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupMPI::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const BroadcastOptions& opts = BroadcastOptions()) {
+    std::vector<phi::DenseTensor>& out_tensors, const BroadcastOptions& opts) {
   CheckValidInputs(in_tensors);
   const auto places = GetPlaceList(in_tensors);
 
   std::function<void(std::unique_ptr<TaskEntry>&)> runFunc =
-      [opts, this](std::unique_ptr<TaskEntry>& entry) {
+      [opts, in_tensors, this](std::unique_ptr<TaskEntry>& entry) {
         auto data = (entry->src)[0];
-        DeviceGuard guard(data.place());
+        phi::DeviceGuard guard(data.place());
         std::unique_lock<std::mutex> globalLock(pg_global_mutex);
-        MPI_CHECK(MPI_Bcast(data.data_ptr(), data.numel(),
-                            mpiDatatype.at(data.scalar_type()), opts.rootRank,
-                            pg_comm));
+        const auto root =
+            opts.source_rank * in_tensors.size() + opts.source_root;
+        MPI_CHECK(MPI_Bcast(data.data(), data.numel(),
+                            mpiDatatype.at(data.dtype()), root, pg_comm));
       };
   auto entry = std::make_unique<TaskEntry>(&in_tensors, &out_tensors,
                                            std::move(runFunc));

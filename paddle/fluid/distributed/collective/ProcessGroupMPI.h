@@ -26,6 +26,7 @@
 #include <exception>
 #include <mutex>
 
+#include "paddle/fluid/distributed/collective/MPITools.h"
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -94,7 +95,7 @@ class ProcessGroupMPI : public ProcessGroup {
 
    private:
     // about mpi
-    void finish(std::exception_ptr exception) {
+    void finish(std::exception_ptr exception = nullptr) {
       is_completed_ = true;
       exception_ = exception;
       cv_.notify_all();
@@ -130,9 +131,11 @@ class ProcessGroupMPI : public ProcessGroup {
     std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
     MPI_Request request_;
     MPI_Status status_;
+    std::exception_ptr exception_;
   };
 
   ProcessGroupMPI(int rank, int size, MPI_Comm pgComm, int gid);
+  // ProcessGroupMPI(int rank, int size, int pgComm, int gid);
   ~ProcessGroupMPI();
 
   const std::string GetBackendName() const override {
@@ -205,7 +208,7 @@ class ProcessGroupMPI : public ProcessGroup {
   static std::once_flag onceFlag;
 
   static std::mutex pg_global_mutex;
-  // static int mpi_thread_support;
+  static int mpi_thread_support;
 
   MPI_Comm pg_comm;
 };

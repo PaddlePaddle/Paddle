@@ -16,8 +16,8 @@
 
 #include <error.h>
 #include <mpi.h>
+#include <iostream>
 #include <string>
-
 #include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
@@ -28,14 +28,14 @@
 namespace paddle {
 namespace distributed {
 
-#define MPICHECK(cmd)                                                        \
-  do {                                                                       \
-    int r = cmd;                                                             \
-    if (r != MPI_SUCCESS) {                                                  \
-      printf("Failed, MPI error in %s:%d with error code: '%s'\n", __FILE__, \
-             __LINE__, std::to_string(r));                                   \
-      exit(EXIT_FAILURE);                                                    \
-    }                                                                        \
+#define MPI_CHECK(cmd)                                                    \
+  do {                                                                    \
+    int r = cmd;                                                          \
+    if (r != MPI_SUCCESS) {                                               \
+      std::cout << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
+                << "with error code: " << std::to_string(r) << std::endl; \
+      exit(EXIT_FAILURE);                                                 \
+    }                                                                     \
   } while (0)
 
 MPI_Op ToMPIRedType(ReduceOp reduction);

@@ -255,10 +255,13 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupMPI,
              std::shared_ptr<distributed::ProcessGroupMPI>>(
       *m, "ProcessGroupMPI", ProcessGroup)
-      .def_static("create", [](std::vector<int> ranks, int gid) {
-        return paddle::distributed::ProcessGroupMPI::createProcessGroupMPI(
-            ranks, gid);
-      });
+      .def_static(
+          "create",
+          [](std::vector<int> ranks,
+             int gid) -> std::shared_ptr<distributed::ProcessGroupMPI> {
+            return paddle::distributed::ProcessGroupMPI::createProcessGroupMPI(
+                ranks, gid);
+          });
 #endif
 
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \

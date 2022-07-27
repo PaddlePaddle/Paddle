@@ -5,6 +5,10 @@ if (WITH_DISTRIBUTE)
   cc_library(processgroup_gloo SRCS ProcessGroupGloo.cc DEPS phi_api eager_api gloo_wrapper)
 endif()
 
+if(WITH_MPI)
+  cc_library(processgroup_mpi SRCS ProcessGroupMPI.cc MPITools.cc Common.cc DEPS collective_helper device_context phi_api eager_api)
+endif()
+
 if(WITH_NCCL)
   cc_library(processgroup_nccl SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc DEPS place cuda_stream enforce collective_helper device_context phi_api eager_api)
   if (WITH_DISTRIBUTE AND WITH_PSCORE)
