@@ -55,9 +55,20 @@ Node *MakeOpNode(Graph *graph,
   op_desc->SetType(type);
   auto op = graph->CreateOpNode(op_desc.get());
 
+  // inputs
+  std::vector<std::string> input_names;
   for (auto *in : inputs) {
-    ConnectNodes(in, op);
+    if (in != nullptr) {
+      ConnectNodes(in, op);
+      input_names.push_back(in->Name());
+    } else {
+      input_names.push_back(std::string(""));
+    }
   }
+  op->Op()->SetInput("__inputs__", input_names);
+
+  // outputs
+  std::vector<std::string> output_names;
   if (outputs.empty()) {
     auto var = MakeVarNode(graph, node);
     ConnectNodes(op, var);
@@ -66,14 +77,6 @@ Node *MakeOpNode(Graph *graph,
       ConnectNodes(op, out);
     }
   }
-
-  // i/o
-  std::vector<std::string> input_names;
-  for (auto node : op->inputs) {
-    input_names.push_back(node->Name());
-  }
-  op->Op()->SetInput("__inputs__", input_names);
-  std::vector<std::string> output_names;
   for (auto node : op->outputs) {
     output_names.push_back(node->Name());
   }
@@ -136,6 +139,19 @@ Node *CreateCast(Graph *graph,
   auto to = VarType2PopartStr(otype);
   return CreateBaseOp(
       graph, node, "popart_cast", inputs, outputs, {{"to", to}});
+}
+
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction) {
+  return CreateBaseOp(graph,
+                      node,
+                      "popart_identity_loss",
+                      inputs,
+                      outputs,
+                      {{"reduction", reduction}});
 }
 
 Node *CreateGemm(Graph *graph,
@@ -237,6 +253,69 @@ Node *CreateSoftmaxOpset11(Graph *graph,
                         new_softmax->outputs,
                         outputs,
                         {{"perm", perm}});
+  }
+}
+
+Node *CreateSlice(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int> &starts,
+                  const std::vector<int> &ends,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &strides) {
+  auto *starts_node =
+      CreateConst(
+          graph, node, starts, {int64_t(starts.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *ends_node =
+      CreateConst(
+          graph, node, ends, {int64_t(ends.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *axes_node =
+      CreateConst(
+          graph, node, axes, {int64_t(axes.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *strides_node =
+      CreateConst(
+          graph, node, strides, {int64_t(strides.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  return CreateBaseOp(
+      graph,
+      node,
+      "popart_slice",
+      {inputs[0], starts_node, ends_node, axes_node, strides_node},
+      outputs);
+}
+
+Node *CreateSplit(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int64_t> &split,
+                  const int64_t axis) {
+  if (!outputs.empty()) {
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        outputs,
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
+  } else {
+    std::vector<Node *> splits_output_nodes;
+    for (int j = 0; j < split.size(); j++) {
+      splits_output_nodes.push_back(MakeVarNode(graph, node));
+    }
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        {splits_output_nodes},
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
   }
 }
 

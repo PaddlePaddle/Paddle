@@ -32,3 +32,18 @@ PD_REGISTER_KERNEL(squeeze,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(squeeze_with_xshape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SqueezeWithXShapeKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   bool,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

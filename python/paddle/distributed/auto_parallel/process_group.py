@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
+
 import paddle
 import paddle.fluid.core as core
+
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
+from paddle.fluid.framework import _enable_legacy_dygraph
 
 
 def get_all_process_groups():
@@ -130,15 +134,23 @@ class ProcessGroup:
             else:
                 assert False, ("No CUDA device found")
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of
-        # hang caused by cross-creation of new_group
-        tmp = paddle.to_tensor(
-            [1], dtype="int32") if _non_static_mode() else fill_constant(
-                [0], dtype="int32", value="1")
-        paddle.distributed.all_reduce(tmp, use_calc_stream=True)
-        paddle.distributed.wait(tmp)
+            # TODO(shenliang03): This is a temporary solution to solve the problem of
+            # hang caused by cross-creation of new_group
+            paddle.disable_static()
+            _enable_legacy_dygraph()
+            paddle.set_device('gpu:%d' %
+                              paddle.distributed.ParallelEnv().dev_id)
+            tmp = paddle.to_tensor(
+                [1], dtype="int32") if _non_static_mode() else fill_constant(
+                    [0], dtype="int32", value="1")
+            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            paddle.distributed.wait(tmp, group=self)
+            paddle.enable_static()
 
         self._is_instantiate = True
+
+    def is_member(self):
+        return True
 
     # def __eq__(self, other):
     #     if not isinstance(other, ProcessGroup):
@@ -158,5 +170,5 @@ class ProcessGroup:
 
 # Note that Process group 0 is reserved for representing all ranks.
 # At the beginning, group 0 is empty and new ranks will be added automatically.
-_g_process_group_map = {}
+_g_process_group_map = OrderedDict()
 _g_process_group_map[0] = ProcessGroup(0, [])

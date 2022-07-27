@@ -15,12 +15,14 @@
 import copy
 import logging
 from collections import defaultdict
+import socket
 
 import paddle
 import paddle.utils as utils
 
 from paddle import fluid, static
 from paddle.io import Dataset
+from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
@@ -28,14 +30,16 @@ from paddle.fluid import program_guard
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Operator
+from paddle.fluid.framework import Operator, Parameter, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
-# from .cluster import Cluster, get_default_cluster
+from .hepler import ProgramHelper
+from ..collective import _get_global_env
+from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
 from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
@@ -59,8 +63,8 @@ class Engine:
         self.inputs_spec = self._validate_spec(inputs_spec)
         self.labels_spec = self._validate_spec(labels_spec)
         self.cluster = cluster
-        # if self.cluster is None:
-        #     self.cluster = get_default_cluster()
+        if self.cluster is None:
+            self.cluster = get_default_cluster()
         self.strategy = strategy
         if self.strategy is None:
             self.strategy = fleet.DistributedStrategy()
@@ -82,6 +86,12 @@ class Engine:
         self._feed_vars = {}
         self._fetch_vars = {}
         self._planners = {}
+        self._mode_init_states = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
+        self._dygraph_mode = False
 
     def prepare(self,
                 optimizer=None,
@@ -97,6 +107,7 @@ class Engine:
                         " or `paddle.fluid.optimizer.Optimizer`."
                 )
         self._optimizer = optimizer
+        self._all_ranks = all_ranks
 
         if loss and not isinstance(loss,
                                    paddle.nn.Layer) and not callable(loss):
@@ -112,46 +123,71 @@ class Engine:
                     metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._gradient_scale = gradient_scale
-
         self._planned_mode = None
-        self._modes = ['train', 'eval', 'predict']
+        self._prepare_single_mode("train")
 
-        # Build program and do auto parallel process
-        for mode in self._modes:
-            # Build forward program
-            self._build(mode)
+    def _prepare_single_mode(self, mode):
+        self._modes = [mode]
+        self._build(self._modes[0])
+        # Do auto parallel process
         for mode in self._modes:
             # Do the planning process
             self._plan(mode)
         for mode in self._modes:
             # Do the parallel process
-            self._parallel(mode, all_ranks)
+            self._parallel(mode, self._all_ranks)
+
             # Init comm and startup program
             self._initialize(mode)
+            self._mode_init_states[mode] = True
 
     def _build(self, mode):
+        if _non_static_mode() or self._dygraph_mode:
+            paddle.disable_static()
+            self._dygraph_mode = True
+            self._logger.info("Building model with 'to_static' method.")
 
-        serial_main_prog = self._serial_main_progs.get(mode, None)
-        if serial_main_prog is not None:
-            return
+            program_helper = ProgramHelper(self.model, self._loss,
+                                           self._metrics, self.inputs_spec,
+                                           self.labels_spec)
+            # build forward main program
+            program_helper.build_program(mode)
 
-        losses = []
-        metrics = []
-        serial_main_prog = self._orig_main_prog.clone()
-        serial_startup_prog = self._orig_startup_prog.clone()
-        with static.program_guard(serial_main_prog, serial_startup_prog), \
-            utils.unique_name.guard():
-            inputs_spec = self.inputs_spec
-            labels_spec = self.labels_spec if self.labels_spec else []
-            inputs = [s._create_feed_layer() for s in inputs_spec]
-            labels = [s._create_feed_layer() for s in labels_spec]
-            outputs = to_list(self.model(*inputs))
-            if mode != "predict" and self._loss:
-                losses = to_list(self._loss(*(outputs + labels)))
+            self.concrete_program = program_helper.concrete_program
+            serial_main_prog = program_helper.main_program
+            serial_startup_prog = program_helper.startup_program
 
-            if mode != "predict":
-                for metric in self._metrics:
-                    metrics.extend(to_list(metric.compute(*(outputs + labels))))
+            inputs = program_helper.input_vars
+            outputs = program_helper.output_vars
+            labels = program_helper.label_vars
+            losses = program_helper.loss_vars
+            metrics = program_helper.metric_vars
+
+            paddle.enable_static()
+        else:
+            # build program in static mode
+            serial_main_prog = self._serial_main_progs.get(mode, None)
+            if serial_main_prog is not None:
+                return
+
+            losses = []
+            metrics = []
+            serial_main_prog = self._orig_main_prog.clone()
+            serial_startup_prog = self._orig_startup_prog.clone()
+            with static.program_guard(serial_main_prog, serial_startup_prog), \
+                utils.unique_name.guard():
+                inputs_spec = self.inputs_spec
+                labels_spec = self.labels_spec if self.labels_spec else []
+                inputs = [s._create_feed_layer() for s in inputs_spec]
+                labels = [s._create_feed_layer() for s in labels_spec]
+                outputs = to_list(self.model(*inputs))
+                if mode != "predict" and self._loss:
+                    losses = to_list(self._loss(*(outputs + labels)))
+
+                if mode != "predict":
+                    for metric in self._metrics:
+                        metrics.extend(
+                            to_list(metric.compute(*(outputs + labels))))
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -172,6 +208,7 @@ class Engine:
             serial_main_prog, serial_startup_prog, self._optimizer, losses,
             feed_vars, fetch_vars, self.cluster, self.strategy)
         self._dist_contexts[mode].gradient_scale = self._gradient_scale
+        self._dist_contexts[mode]._dygraph_mode = self._dygraph_mode
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -228,6 +265,8 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
+
+            # NOTE: add the comm init control in the future for auto search
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
@@ -236,6 +275,35 @@ class Engine:
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+
+        if self._dygraph_mode:
+            paddle.disable_static()
+            main_program = self._dist_main_progs[mode][self._cur_rank]
+            for param in self.concrete_program.parameters:
+                # create var in scope and share parameters to scope
+                if param.name not in main_program.global_block().vars:
+                    continue
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = self._dist_contexts[
+                    mode].get_tensor_dist_attr_for_program(var)
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.topology,
+                    "process_group": var_dist_attr.process_mesh.processes
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                from .converter import Converter
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr)
+                shared_tensor = paddle.to_tensor(sliced_param,
+                                                 place=self._place)
+                param_tensor._share_data_with(
+                    shared_tensor.value().get_tensor())
+            paddle.enable_static()
+
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
             uninitialized = []
@@ -259,6 +327,12 @@ class Engine:
             return_numpy=True):
         # TODO: callbacks
         # TODO: evaluate after training
+
+        if not self._mode_init_states['train']:
+            raise Exception(
+                "train program is not initialized yet, please call engine.prepare() before calling fit() funtion."
+            )
+
         self.mode = 'train'
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine.prepare()` first."
@@ -294,6 +368,9 @@ class Engine:
                  use_program_cache=False,
                  return_numpy=True):
         self.mode = 'eval'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine.prepare()` first."
         eval_dataloader = self._create_dataloader(eval_data, batch_size)
@@ -336,6 +413,9 @@ class Engine:
                 use_program_cache=False,
                 return_numpy=True):
         self.mode = 'predict'
+        if not self._mode_init_states[self.mode]:
+            self._prepare_single_mode(self.mode)
+
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine.prepare()` first."
         test_dataloader = self._create_dataloader(test_data, batch_size)

@@ -1998,7 +1998,9 @@ def inverse(x, name=None):
             print(inv) # [[0.5, 0], [0, 0.5]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_inverse(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.inverse(x)
 
     def _check_input(x):
@@ -4500,7 +4502,9 @@ def angle(x, name=None):
             #  [-1.1071488 -0.7853982  0.         0.7853982]]
     """
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_angle(x)
+    elif paddle.in_dynamic_mode():
         return _C_ops.angle(x)
 
     check_variable_and_dtype(x, 'x',

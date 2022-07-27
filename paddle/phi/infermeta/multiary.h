@@ -234,6 +234,43 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& base,
                        MetaTensor* out);
 
+void MergedAdamInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const std::vector<const MetaTensor*>& moment1,
+    const std::vector<const MetaTensor*>& moment2,
+    const std::vector<const MetaTensor*>& beta1_pow,
+    const std::vector<const MetaTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> moment1_out,
+    std::vector<MetaTensor*> moment2_out,
+    std::vector<MetaTensor*> beta1_pow_out,
+    std::vector<MetaTensor*> beta2_pow_out,
+    std::vector<MetaTensor*> master_param_out);
+
+void MergedMomentumInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    float mu,
+    bool use_nesterov,
+    const std::vector<std::string>& regularization_method,
+    const std::vector<float>& regularization_coeff,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out);
+
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
@@ -321,7 +358,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctc_grad,
+                      MetaTensor* warpctcgrad,
                       MetaTensor* loss);
 
 void WhereInferMeta(const MetaTensor& condition,
