@@ -1189,6 +1189,7 @@ class Executor(object):
 
         Examples 1:
             .. code-block:: python
+                :name: code-example-1
 
                 import paddle
                 import numpy
@@ -1217,6 +1218,7 @@ class Executor(object):
 
         Examples 2:
             .. code-block:: python
+                :name: code-example-2
 
                 import paddle
                 import numpy as np
