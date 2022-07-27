@@ -458,6 +458,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
     VLOG(0) << "in gpu_graph_mode";
+#ifdef PADDLE_WITH_HETERPS
     graph_all_type_total_keys_.clear();
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
     auto node_to_id = gpu_graph_ptr->feature_to_id;
@@ -531,7 +532,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
         }
       }
     }
-
+#endif
   } else {
     for (int64_t i = 0; i < thread_num_; ++i) {
       load_threads.push_back(std::thread(

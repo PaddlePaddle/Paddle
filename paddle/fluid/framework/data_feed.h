@@ -781,6 +781,7 @@ class DLManager {
 
 struct engine_wrapper_t {
   std::default_random_engine engine;
+#if !defined(_WIN32)
   engine_wrapper_t() {
     struct timespec tp;
     clock_gettime(CLOCK_REALTIME, &tp);
@@ -789,6 +790,7 @@ struct engine_wrapper_t {
     std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
     engine.seed(sseq);
   }
+#endif
 };
 
 struct BufState {

@@ -331,7 +331,7 @@ void DeviceWorker::DumpField(const Scope& scope,
         // ', false) + ">";
       }
     };
-    std::thread threads[tensor_iterator_thread_num];
+    std::vector<std::thread> threads(tensor_iterator_thread_num);
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
       if (var == nullptr) {
