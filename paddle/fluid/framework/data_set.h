@@ -163,6 +163,9 @@ class Dataset {
 
   virtual std::vector<std::string> GetSlots() = 0;
 
+  virtual void SetGpuGraphMode(int is_graph_mode) = 0;
+  virtual int GetGpuGraphMode() = 0;
+
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) = 0;
@@ -210,6 +213,8 @@ class DatasetImpl : public Dataset {
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
   }
+  virtual void SetGpuGraphMode(int is_graph_mode);
+  virtual int GetGpuGraphMode();
   virtual std::string GetDownloadCmd();
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
@@ -331,7 +336,7 @@ class DatasetImpl : public Dataset {
   std::vector<T> input_records_;  // only for paddleboxdatafeed
   std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
-  int gpu_graph_mode_ = 1;
+  int gpu_graph_mode_ = 0;
   // std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
   std::vector<std::vector<std::vector<uint64_t>>> graph_all_type_total_keys_;
   std::vector<uint64_t> gpu_graph_total_keys_;
