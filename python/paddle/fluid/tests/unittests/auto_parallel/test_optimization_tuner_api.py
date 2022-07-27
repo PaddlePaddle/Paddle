@@ -25,7 +25,7 @@ class TestOptimizationTunerAPI(unittest.TestCase):
 
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "optimization_tunner_api.py")
+        launch_model_path = os.path.join(file_dir, "optimization_tuner_api.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
