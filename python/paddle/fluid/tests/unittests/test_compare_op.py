@@ -164,7 +164,7 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_inf_2(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                1 = np.array([1, 2, float('inf')])
+                x1 = np.array([1, 2, float('inf')])
                 x = paddle.to_tensor(x1)
                 y1 = np.array([1, 2, float('-inf')])
                 y = paddle.to_tensor(y1)
@@ -177,7 +177,7 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_inf_3(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                1 = np.array([1, 2, float('inf')])
+                x1 = np.array([1, 2, float('inf')])
                 x = paddle.to_tensor(x1)
                 y1 = np.array([1, 2, 1])
                 y = paddle.to_tensor(y1)
