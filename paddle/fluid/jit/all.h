@@ -14,23 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
-
-namespace paddle {
-namespace jit {
-
-using Tensor = paddle::experimental::Tensor;
-using DenseTensor = phi::DenseTensor;
-
-class BaseFunction {
- public:
-  virtual std::vector<DenseTensor> operator()(
-      const std::vector<DenseTensor> &inputs) = 0;
-
-  virtual std::vector<Tensor> operator()(const std::vector<Tensor> &inputs) = 0;
-
-  virtual ~BaseFunction() {}
-};
-
-}  // namespace jit
-}  // namespace paddle
+#include "base_function.h"
+#include "layer.h"
+#include "serializer.h"
+#include "serializer_utils.h"
