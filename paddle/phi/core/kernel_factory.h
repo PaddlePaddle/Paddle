@@ -280,11 +280,6 @@ class KernelFactory {
                                         const KernelKey& kernel_key,
                                         bool use_gpudnn = false) const;
 
-  // KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-  //                                        Backend backend,
-  //                                        DataLayout layout,
-  //                                        DataType dtype) const;
-
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
 

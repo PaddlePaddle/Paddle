@@ -121,7 +121,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 
   bool has_fallback_cpu = false;
-
   if (kernel_iter == iter->second.end()) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
@@ -146,15 +145,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 
   return {kernel_iter->second, has_fallback_cpu};
 }
-
-// const Kernel& KernelFactory::SelectKernelOrThrowError(
-//     const std::string& kernel_name,
-//     Backend backend,
-//     DataLayout layout,
-//     DataType dtype) const {
-//   return SelectKernelOrThrowError(kernel_name,
-//                                   KernelKey(backend, layout, dtype));
-// }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
     const std::string& kernel_name) const {

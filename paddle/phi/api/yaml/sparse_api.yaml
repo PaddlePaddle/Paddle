@@ -80,7 +80,7 @@
     data_type : x
   backward : cast_grad
 
-- api : conv3d_coo
+- api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(out), Tensor(rulebook), Tensor(counter) 
   kernel :

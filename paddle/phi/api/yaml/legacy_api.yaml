@@ -48,6 +48,17 @@
   kernel :
     func : adadelta
 
+- api : adagrad_
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float epsilon)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : AdagradInferMeta
+  kernel :
+    func : adagrad {dense, dense, dense, dense -> dense, dense}
+           adagrad_dense_param_sparse_grad {dense, selected_rows, dense, dense -> dense, dense}
+    data_type : param
+  inplace : (param -> param_out), (moment -> moment_out)
+
 - api : adam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, bool lazy_mode, int64_t min_row_size_to_use_multithread, bool multi_precision, bool use_global_beta_pow)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
@@ -264,6 +275,17 @@
   kernel :
     func : auc
 
+#average_accumulates
+- api : average_accumulates_
+  args : (Tensor param, Tensor in_sum_1, Tensor in_sum_2, Tensor in_sum_3, Tensor in_num_accumulates, Tensor in_old_num_accumulates, Tensor in_num_updates, float average_window, int64_t max_average_window, int64_t min_average_window)
+  output : Tensor(out_sum_1), Tensor(out_sum_2), Tensor(out_sum_3), Tensor(out_num_accumulates), Tensor(out_old_num_accumulates), Tensor(out_num_updates)
+  infer_meta:
+    func : AverageAccumulatesInferMeta
+  kernel :
+    func : average_accumulates {dense, dense, dense, dense, dense ,dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
+  inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
+
 # batch_norm
 - api : batch_norm
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
@@ -325,6 +347,16 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_xor
+
+# bmm
+- api : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
 
 # box_coder
 - api : box_coder
@@ -480,6 +512,16 @@
   kernel :
     func : cosh
   backward : cosh_grad
+
+- api : crop_tensor
+  args : (Tensor x, IntArray shape, IntArray offsets)
+  output : Tensor(out)
+  infer_meta :
+    func : CropTensorInferMeta
+  kernel :
+    func : crop_tensor
+    data_type : x
+  backward : crop_tensor_grad
 
 # Part of python API paddle.nn.functional.cross_entropy
 - api : cross_entropy_with_softmax
@@ -995,6 +1037,18 @@
   kernel :
     func : hard_swish
   backward : hard_swish_grad
+
+# hierarchical_sigmoid
+- api : hierarchical_sigmoid
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
+  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
+  infer_meta :
+    func : HierarchicalSigmoidInferMeta
+  optional: path, code, bias
+  kernel :
+    func : hierarchical_sigmoid
+    data_type : x
+  backward : hierarchical_sigmoid_grad
 
 # histogram
 - api : histogram
@@ -1829,6 +1883,17 @@
   kernel :
     func : reverse_array
   backward : reverse_array_grad
+
+- api : rmsprop_
+  args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, float epsilon, float decay, float momentum, bool centered)
+  output : Tensor(param_out), Tensor(moment_out), Tensor(mean_square_out), Tensor(mean_grad_out)
+  infer_meta :
+    func : RmspropInferMeta
+  kernel :
+    func : rmsprop {dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense}
+           rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense -> dense, dense, dense, dense}
+    optional : mean_grad
+  inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out)
 
 - api : roi_align
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)

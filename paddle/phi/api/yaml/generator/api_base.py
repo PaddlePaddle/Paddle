@@ -135,7 +135,7 @@ class BaseAPI(object):
             'double': 'double',
             'bool': 'bool',
             'str': 'const std::string&',
-            'str[] ': 'const std::vector<std::string>&',
+            'str[]': 'const std::vector<std::string>&',
             'Place': 'const Place&',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
