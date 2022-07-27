@@ -459,8 +459,7 @@ void build_op_func_list(const platform::Place& place,
         op->Type() == "rnn_memory_helper_grad" ||
         op->Type() == "conditional_block" ||
         op->Type() == "conditional_block_grad" || op->Type() == "while" ||
-        op->Type() == "while_grad" ||
-        op->Type() == "fused_elemwise_add_activation") {
+        op->Type() == "while_grad") {
       enforce_exist = false;
     }
     std::tie(ins_map, ins_name2id) =
