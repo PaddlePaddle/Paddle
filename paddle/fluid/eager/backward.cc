@@ -851,7 +851,7 @@ void Backward(
     bool retain_graph) {
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
-      "backward", paddle::platform::TracerEventType::Operator, 1);
+      "backward", paddle::platform::TracerEventType::UserDefined, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
