@@ -375,27 +375,39 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       VLOG(3) << "cuDNN forward algo " << algo;
 #endif
     } else {
-      std::function<cudnnConvolutionFwdAlgo_t()> search_func =
-          [&]() -> cudnnConvolutionFwdAlgo_t {
-        int returned_algo_count;
-        std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
-            fwd_perf_stat;
-        auto cudnn_find_func = [&](void* cudnn_workspace) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                  handle,
-                  cudnn_input_desc,
-                  input_data,
-                  cudnn_filter_desc,
-                  filter_data,
-                  cudnn_conv_desc,
-                  cudnn_output_desc,
-                  output_data,
-                  kNUM_CUDNN_FWD_ALGS,
-                  &returned_algo_count,
-                  fwd_perf_stat.data(),
-                  cudnn_workspace,
-                  workspace_size_limit));
+      if (cache_algo.find(&ctx.GetOp()) != cache_algo.end()) {
+        algo = cache_algo[&ctx.GetOp()];
+      } else {
+        std::function<cudnnConvolutionFwdAlgo_t()> search_func =
+            [&]() -> cudnnConvolutionFwdAlgo_t {
+          int returned_algo_count;
+          std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
+              fwd_perf_stat;
+          auto cudnn_find_func = [&](void* cudnn_workspace) {
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                platform::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+                    handle,
+                    cudnn_input_desc,
+                    input_data,
+                    cudnn_filter_desc,
+                    filter_data,
+                    cudnn_conv_desc,
+                    cudnn_output_desc,
+                    output_data,
+                    kNUM_CUDNN_FWD_ALGS,
+                    &returned_algo_count,
+                    fwd_perf_stat.data(),
+                    cudnn_workspace,
+                    workspace_size_limit));
+          };
+          workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
+          VLOG(3) << "Perf result: (algo: stat, time, memory)";
+          for (int i = 0; i < returned_algo_count; ++i) {
+            const auto& stat = fwd_perf_stat[i];
+            VLOG(3) << stat.algo << ": " << stat.status << " " << stat.time
+                    << " " << stat.memory;
+          }
+          return fwd_perf_stat[0].algo;
         };
         workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
         VLOG(3) << "Perf result: (algo: stat, time, memory)";
@@ -405,7 +417,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   << stat.memory;
         }
         return fwd_perf_stat[0].algo;
-      };
+      }
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetConvFusion());
       int search_times = ctx.Attr<int>("search_times");
@@ -431,24 +443,20 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       VLOG(3) << "choose algo " << algo;
     }
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-            handle,
-            cudnn_input_desc,
-            cudnn_filter_desc,
-            cudnn_conv_desc,
-            cudnn_output_desc,
-            algo,
-            &workspace_size_in_bytes));
-    PADDLE_ENFORCE_LE(
-        workspace_size_in_bytes,
-        workspace_size_limit,
-        platform::errors::InvalidArgument(
-            "The actual workspace size to be allocated for cuDNN is expected "
-            "to be less than the limit. But received: the actual workspace "
-            "size = %d, limit = %d.",
-            workspace_size_in_bytes,
-            workspace_size_limit));
+    if (cache_worksize.find(&ctx.GetOp()) != cache_worksize.end()) {
+      workspace_size_in_bytes = cache_worksize[&ctx.GetOp()];
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+              handle,
+              cudnn_input_desc,
+              cudnn_filter_desc,
+              cudnn_conv_desc,
+              cudnn_output_desc,
+              algo,
+              &workspace_size_in_bytes));
+      cache_worksize[&ctx.GetOp()] = workspace_size_in_bytes;
+    }
 
     if ((activation == "identity") && (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is

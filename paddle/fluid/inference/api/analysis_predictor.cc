@@ -1334,6 +1334,8 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         process_level_allocator_enabled = true;
       }
 
+      gflags.push_back("--cudnn_exhaustive_search=1");
+
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
