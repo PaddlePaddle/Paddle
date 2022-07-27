@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <cmath>
 
 namespace phi {
 namespace funcs {
