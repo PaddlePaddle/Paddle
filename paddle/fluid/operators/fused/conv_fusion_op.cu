@@ -332,6 +332,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     auto x_dims = phi::vectorize(transformed_input.dims());
     auto f_dims = phi::vectorize(filter->dims());
+
+    static std::map<const framework::OperatorBase*, size_t> cache_worksize;
+    static std::map<const framework::OperatorBase*, cudnnConvolutionFwdAlgo_t>
+        cache_algo;
     if (!exhaustive_search) {
 #if CUDNN_VERSION >= 8000
       int perf_count;
@@ -409,38 +413,32 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           }
           return fwd_perf_stat[0].algo;
         };
-        workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
-        VLOG(3) << "Perf result: (algo: stat, time, memory)";
-        for (int i = 0; i < returned_algo_count; ++i) {
-          const auto& stat = fwd_perf_stat[i];
-          VLOG(3) << stat.algo << ": " << stat.status << " " << stat.time << " "
-                  << stat.memory;
+        AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
+            *(framework::ConvSearchCache::Instance().GetConvFusion());
+        int search_times = ctx.Attr<int>("search_times");
+        search_times =
+            std::max(static_cast<int>(FLAGS_cudnn_exhaustive_search_times),
+                     search_times);
+        // TODO(dangqingqing): Unify this if-else.
+        if (search_times > 0) {
+          // The searched algo will be cached by `search_times` times for
+          // different input dimension. For other dimensions, select the algo
+          // of closest area.
+          algo = algo_cache.GetAlgorithm(
+              x_dims[2] * x_dims[3], search_times, 0, search_func);
+        } else {
+          algo = algo_cache.GetAlgorithm(x_dims,
+                                         f_dims,
+                                         strides,
+                                         paddings,
+                                         dilations,
+                                         0,
+                                         dtype,
+                                         search_func);
         }
-        return fwd_perf_stat[0].algo;
+        VLOG(3) << "choose algo " << algo;
+        cache_algo[&ctx.GetOp()] = algo;
       }
-      AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
-          *(framework::ConvSearchCache::Instance().GetConvFusion());
-      int search_times = ctx.Attr<int>("search_times");
-      search_times = std::max(
-          static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
-      // TODO(dangqingqing): Unify this if-else.
-      if (search_times > 0) {
-        // The searched algo will be cached by `search_times` times for
-        // different input dimension. For other dimensions, select the algo
-        // of closest area.
-        algo = algo_cache.GetAlgorithm(
-            x_dims[2] * x_dims[3], search_times, 0, search_func);
-      } else {
-        algo = algo_cache.GetAlgorithm(x_dims,
-                                       f_dims,
-                                       strides,
-                                       paddings,
-                                       dilations,
-                                       0,
-                                       dtype,
-                                       search_func);
-      }
-      VLOG(3) << "choose algo " << algo;
     }
 
     if (cache_worksize.find(&ctx.GetOp()) != cache_worksize.end()) {
