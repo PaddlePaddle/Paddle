@@ -87,17 +87,6 @@ copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
-file(
-  GLOB
-  kernel_cc
-  "*.cc"
-  "cpu/*.cc"
-  "selected_rows/*.cc"
-  "selected_rows/cpu/*.cc"
-  "sparse/*.cc"
-  "sparse/cpu/*.cc"
-  "strings/*.cc"
-  "strings/cpu/*.cc")
 
 file(
   GLOB
@@ -112,18 +101,36 @@ file(
   "strings/gpu/*.cu")
 
 if(WITH_MKLDNN)
-  file(GLOB kernel_onednn "onednn/*.cc")
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc"
+    "onednn/*.cc")
 else()
-  set(kernel_onednn)
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc")
 endif()
 
 file(GLOB kernel_xpu "xpu/*.cc")
 
-add_library(phi_cpu ${kernel_cc} ${kernel_onednn})
+add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
-if(WITH_MKLDNN)
-  kernel_declare(${kernel_onednn})
-endif()
 target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
 
 set(ADD_PHI_KERNELS phi_cpu)
