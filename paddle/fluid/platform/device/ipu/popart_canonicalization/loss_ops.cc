@@ -278,6 +278,123 @@ Node *kldiv_loss_handler(Graph *graph, Node *node) {
   return loss;
 }
 
+Node *sigmoid_cross_entropy_with_logits_handler(Graph *graph, Node *node) {
+  // Out = max(logits, 0) - logits * label + log(1 + exp(-abs(logits)))
+  auto *op = node->Op();
+  int reduction = 2;
+  if (is_dynamic_graph()) {
+    reduction = RemoveTailReduction(graph, node, "Out");
+  }
+  bool append_identity_loss =
+      is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Out", node));
+
+  auto logits = GetInputVarNode("X", node);
+  auto label = GetInputVarNode("Label", node);
+  // sigmoid_cross_entropy_with_logits uses float label as input.
+  auto ignore_index_value =
+      static_cast<float>(PADDLE_GET_CONST(int, op->GetAttr("ignore_index")));
+  auto normalize = PADDLE_GET_CONST(bool, op->GetAttr("normalize"));
+
+  // const
+  auto one = CreateConst(
+                 graph, node, std::vector<float>{1.0}, {1}, GetVarDType(logits))
+                 ->outputs.front();
+  auto zero =
+      CreateConst(
+          graph, node, std::vector<float>{0.0}, {1}, GetVarDType(logits))
+          ->outputs.front();
+  auto ignore_index = CreateConst(graph,
+                                  node,
+                                  std::vector<float>{ignore_index_value},
+                                  {1},
+                                  GetVarDType(label))
+                          ->outputs.front();
+  // max(logits, 0)
+  auto max_zero =
+      CreateBaseOp(graph, node, "popart_max", {logits, zero}, {}, {})
+          ->outputs.front();
+
+  // logits * label
+  auto mul = CreateBaseOp(graph, node, "popart_mul", {logits, label}, {}, {})
+                 ->outputs.front();
+
+  // abs(logits)
+  auto abs = CreateBaseOp(graph, node, "popart_abs", {logits}, {}, {})
+                 ->outputs.front();
+  // -abs(logits)
+  auto neg_abs =
+      CreateBaseOp(graph, node, "popart_neg", {abs}, {}, {})->outputs.front();
+  // exp(-abs(logits))
+  auto exp_neg_abs = CreateBaseOp(graph, node, "popart_exp", {neg_abs}, {}, {})
+                         ->outputs.front();
+  // 1+exp(-abs(logits))
+  auto log_term =
+      CreateBaseOp(graph, node, "popart_add", {exp_neg_abs, one}, {}, {})
+          ->outputs.front();
+  // log(1+exp(-abs(logits)))
+  auto log = CreateBaseOp(graph, node, "popart_log", {log_term}, {}, {})
+                 ->outputs.front();
+
+  // max(logits, 0) - logits * label
+  auto sub = CreateBaseOp(graph, node, "popart_sub", {max_zero, mul}, {}, {})
+                 ->outputs.front();
+  // max(logits, 0) - logits * label + log(1 + exp(-abs(logits)))
+  auto loss = CreateBaseOp(graph, node, "popart_add", {sub, log}, {}, {})
+                  ->outputs.front();
+
+  // label == ignore_index ? 0 : loss
+  auto equal_cond =
+      CreateBaseOp(graph, node, "popart_equal", {label, ignore_index}, {}, {})
+          ->outputs.front();
+  loss = CreateBaseOp(graph,
+                      node,
+                      "popart_where",
+                      {equal_cond, zero, loss},
+                      append_identity_loss || normalize
+                          ? std::vector<Node *>{}
+                          : std::vector<Node *>{GetOutputVarNode("Out", node)},
+                      {});
+
+  if (normalize) {
+    // normalize the output as: loss = loss / sum(label != ignore_index)
+    auto not_equal =
+        CreateBaseOp(graph, node, "popart_logical_not", {equal_cond}, {}, {})
+            ->outputs.front();
+    auto mask =
+        CreateCast(graph, node, {not_equal}, {}, logits->Var()->GetDataType())
+            ->outputs.front();
+    auto sum = CreateBaseOp(graph,
+                            node,
+                            "popart_reducesum",
+                            {mask},
+                            {},
+                            {{"keepdims", int64_t{0}}})
+                   ->outputs.front();
+    auto eps =
+        CreateConst(
+            graph, node, std::vector<float>{1e-5}, {1}, GetVarDType(logits))
+            ->outputs.front();
+    // avoid division by zero
+    auto add_eps = CreateBaseOp(graph, node, "popart_add", {sum, eps}, {}, {})
+                       ->outputs.front();
+    loss =
+        CreateBaseOp(graph,
+                     node,
+                     "popart_div",
+                     {loss->outputs[0], add_eps},
+                     append_identity_loss
+                         ? std::vector<Node *>{}
+                         : std::vector<Node *>{GetOutputVarNode("Out", node)},
+                     {});
+  }
+
+  if (append_identity_loss) {
+    loss = CreateIdentityLossOp(
+        graph, node, loss->outputs, {GetOutputVarNode("Out", node)}, reduction);
+  }
+  return loss;
+}
+
 Node *binary_cross_entropy_handler(Graph *graph, Node *node) {
   // Out = -1 * weight * (label * log(x) + (1 - label) * log(1 - x))
   int reduction = 2;
@@ -285,7 +402,7 @@ Node *binary_cross_entropy_handler(Graph *graph, Node *node) {
     reduction = RemoveTailReduction(graph, node, "Out");
   }
   bool append_identity_loss =
-      is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Loss", node));
+      is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Out", node));
 
   auto x = GetInputVarNode("X", node);
   auto label = GetInputVarNode("Label", node);
@@ -478,17 +595,108 @@ Node *warpctc_handler(Graph *graph, Node *node) {
   auto loss = CreateBaseOp(
       graph,
       node,
-      "popart_ctcloss",
+      "popart_ctcloss_v2",
       {log_softmax_logits, cast_label, cast_logits_length, cast_label_length},
       append_identity_loss
           ? std::vector<Node *>{}
           : std::vector<Node *>{GetOutputVarNode("Loss", node)},
-      {{"blank", blank},
+      {{"blank", int64_t{blank}},
        {"reduction", reduction},
        {"outDataType", std::string("UNDEFINED")}});
   if (append_identity_loss) {
     loss = CreateIdentityLossOp(
         graph, node, loss->outputs, {GetOutputVarNode("Loss", node)}, 2);
+  }
+  return loss;
+}
+
+Node *rank_loss_handler(Graph *graph, Node *node) {
+  // (1.0f + (left - right).exp()).log() - label * (left - right)
+  auto label = GetInputVarNode("Label", node);
+  auto left = GetInputVarNode("Left", node);
+  auto right = GetInputVarNode("Right", node);
+  auto output = GetOutputVarNode("Out", node);
+  int reduction = 2;
+  if (is_dynamic_graph()) {
+    reduction = RemoveTailReduction(graph, node, "Out");
+  }
+  bool append_identity_loss = is_dynamic_graph() && IsLastVarNode(output);
+
+  auto sub = CreateBaseOp(graph, node, "popart_sub", {left, right}, {}, {})
+                 ->outputs.front();
+  auto mul = CreateBaseOp(graph, node, "popart_mul", {label, sub}, {}, {})
+                 ->outputs.front();
+  // const
+  auto one =
+      CreateConst(graph, node, std::vector<float>{1.0}, {1}, GetVarDType(label))
+          ->outputs.front();
+  auto exp =
+      CreateBaseOp(graph, node, "popart_exp", {sub}, {}, {})->outputs.front();
+  auto add = CreateBaseOp(graph, node, "popart_add", {one, exp}, {}, {})
+                 ->outputs.front();
+  auto log =
+      CreateBaseOp(graph, node, "popart_log", {add}, {}, {})->outputs.front();
+  auto loss = CreateBaseOp(graph,
+                           node,
+                           "popart_sub",
+                           {log, mul},
+                           append_identity_loss ? std::vector<Node *>{}
+                                                : std::vector<Node *>{output},
+                           {})
+                  ->outputs.front();
+  if (append_identity_loss) {
+    loss =
+        CreateIdentityLossOp(graph, node, loss->outputs, {output}, reduction);
+  }
+  return loss;
+}
+
+Node *margin_rank_loss_handler(Graph *graph, Node *node) {
+  // rank_loss = max(0, -label * (left - right) + margin)
+  auto *op = node->Op();
+  auto label = GetInputVarNode("Label", node);
+  auto left = GetInputVarNode("X1", node);
+  auto right = GetInputVarNode("X2", node);
+  auto output = GetOutputVarNode("Out", node);
+  auto margin_value = PADDLE_GET_CONST(float, op->GetAttr("margin"));
+  int reduction = 2;
+  if (is_dynamic_graph()) {
+    reduction = RemoveTailReduction(graph, node, "Out");
+  }
+  bool append_identity_loss = is_dynamic_graph() && IsLastVarNode(output);
+
+  // -(left - right)
+  auto sub = CreateBaseOp(graph, node, "popart_sub", {right, left}, {}, {})
+                 ->outputs.front();
+  // -label * (left - right)
+  auto mul = CreateBaseOp(graph, node, "popart_mul", {label, sub}, {}, {})
+                 ->outputs.front();
+  // const
+  auto zero =
+      CreateConst(graph, node, std::vector<float>{0.0}, {1}, GetVarDType(label))
+          ->outputs.front();
+  auto margin = CreateConst(graph,
+                            node,
+                            std::vector<float>{margin_value},
+                            {1},
+                            GetVarDType(label))
+                    ->outputs.front();
+  auto margin_add =
+      CreateBaseOp(graph, node, "popart_add", {mul, margin}, {}, {})
+          ->outputs.front();
+
+  // max(0, term)
+  auto loss = CreateBaseOp(graph,
+                           node,
+                           "popart_max",
+                           {zero, margin_add},
+                           append_identity_loss ? std::vector<Node *>{}
+                                                : std::vector<Node *>{output},
+                           {})
+                  ->outputs.front();
+  if (append_identity_loss) {
+    loss =
+        CreateIdentityLossOp(graph, node, loss->outputs, {output}, reduction);
   }
   return loss;
 }
@@ -502,7 +710,11 @@ REGISTER_HANDLER(identity_loss, identity_loss_handler);
 REGISTER_HANDLER(softmax_with_cross_entropy,
                  softmax_with_cross_entropy_handler);
 REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
+REGISTER_HANDLER(sigmoid_cross_entropy_with_logits,
+                 sigmoid_cross_entropy_with_logits_handler);
 REGISTER_HANDLER(kldiv_loss, kldiv_loss_handler);
 REGISTER_HANDLER(bce_loss, binary_cross_entropy_handler);
 REGISTER_HANDLER(huber_loss, huber_loss_handler);
 REGISTER_HANDLER(warpctc, warpctc_handler);
+REGISTER_HANDLER(rank_loss, rank_loss_handler);
+REGISTER_HANDLER(margin_rank_loss, margin_rank_loss_handler);

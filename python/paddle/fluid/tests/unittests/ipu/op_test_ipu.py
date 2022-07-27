@@ -179,7 +179,7 @@ class IPUOpTest(IPUTest):
     @classmethod
     def cast_model_to_fp16(cls, main_program):
         amp_list = paddle.static.amp.CustomOpLists()
-        amp_list.unsupported_list = {}
+        amp_list.unsupported_list = {'scale'}
         to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
             main_program, amp_list, use_fp16_guard=False)
         paddle.static.amp.cast_parameters_to_fp16(
