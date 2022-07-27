@@ -33,12 +33,12 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    bool use_mp = PADDLE_GET_CONST(bool, this->GetAttr("use_model_parallel"));
-    if (use_mp) {
-      retv->SetType("c_identity");
-    } else {
-      retv->SetType("c_allreduce_sum");
-    }
+    // bool use_mp = PADDLE_GET_CONST(bool,
+    // this->GetAttr("use_model_parallel")); if (use_mp) {
+    retv->SetType("c_identity");
+    // } else {
+    //   retv->SetType("c_allreduce_sum");
+    // }
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());

@@ -85,9 +85,11 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const int rid = ctx.Attr<int>("ring_id");
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
+      VLOG(0) << "----- 1 pg -----";
       CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> functor_;
       functor_(ctx);
     } else {
+      VLOG(0) << "----- 2 op -----";
       CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> functor_;
       functor_(ctx);
     }
@@ -300,7 +302,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     std::vector<phi::DenseTensor> in_out;
     in_out.push_back(logits_max);
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    // pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts);
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -351,7 +354,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(predicted_logits);
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    // pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts);
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -368,7 +372,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(sum_exp_logits);
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    // pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(in_out, in_out, opts);
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
