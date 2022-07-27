@@ -1697,7 +1697,7 @@ def renorm(x, p, axis, max_norm):
             raise ValueError("the axis:{} should not be less than -1 * length of input_shape:{}".format(axis,-1 * len(input_shape)))
         axis = axis + len(input_shape)
     if paddle.in_dynamic_mode():
-        out = _C_ops.renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
+        out = _C_ops.final_state_renorm(x, 'p',p, 'axis',axis, 'max_norm', max_norm)
         return out
 
     inputs = {'X': x}
