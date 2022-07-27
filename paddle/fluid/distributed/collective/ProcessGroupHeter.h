@@ -46,6 +46,11 @@
 #include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
+#endif
+
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||        \
      defined(PADDLE_WITH_ASCEND_CL))
