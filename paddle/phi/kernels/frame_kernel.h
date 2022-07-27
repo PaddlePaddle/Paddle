@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 template <typename T, typename Context>

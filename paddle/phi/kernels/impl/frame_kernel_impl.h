@@ -33,8 +33,7 @@ void FrameKernel(const Context& dev_ctx,
   // When the number of input dims is larger than 2, it needs to copy
   // from x to resize input into 2d and output into 3d. Morevoer, output
   // dims will be restored at the last step.
-  DenseTensor x_(x.type());
-  x_ = x;
+  DenseTensor x_tmp = x;
 
   DDim preserved_dims;
   if (x_rank > 2) {
@@ -43,25 +42,25 @@ void FrameKernel(const Context& dev_ctx,
     DDim x_resized_dims;
     DDim out_resized_dims;
     if (axis == 0) {
-      preserved_dims = phi::slice_ddim(x_.dims(), 1, x_rank);
+      preserved_dims = phi::slice_ddim(x_tmp.dims(), 1, x_rank);
       x_resized_dims = {seq_length, phi::product(preserved_dims)};
       out_resized_dims = {n_frames, frame_length, phi::product(preserved_dims)};
     } else {
-      preserved_dims = phi::slice_ddim(x_.dims(), 0, x_rank - 1);
+      preserved_dims = phi::slice_ddim(x_tmp.dims(), 0, x_rank - 1);
       x_resized_dims = {phi::product(preserved_dims), seq_length};
       out_resized_dims = {phi::product(preserved_dims), frame_length, n_frames};
     }
-    x_.Resize(x_resized_dims);
+    x_tmp.Resize(x_resized_dims);
     out->Resize(out_resized_dims);
   }
 
-  DenseTensor trans_x(x_.type());
-  DenseTensor trans_out(out->type());
+  DenseTensor trans_x;
+  DenseTensor trans_out;
 
   // Transpose input and output in case that axis is 0.
   if (axis == 0) {
     if (x_rank == 1U) {
-      trans_x = x_;
+      trans_x = x_tmp;
 
       std::vector<int> perm_out{1, 0};
       auto out_dims_vec = phi::vectorize(out->dims());
@@ -75,14 +74,14 @@ void FrameKernel(const Context& dev_ctx,
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     } else {
       std::vector<int> perm_x{1, 0};
-      auto x_dims_vec = phi::vectorize(x_.dims());
-      for (int i = 0; i < x_.dims().size(); ++i) {
-        x_dims_vec[i] = x_.dims()[perm_x[i]];
+      auto x_dims_vec = phi::vectorize(x_tmp.dims());
+      for (int i = 0; i < x_tmp.dims().size(); ++i) {
+        x_dims_vec[i] = x_tmp.dims()[perm_x[i]];
       }
       trans_x.Resize(phi::make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
       funcs::TransCompute<Context, T>(
-          perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
+          perm_x.size(), dev_ctx, x_tmp, &trans_x, perm_x);
 
       std::vector<int> perm_out{2, 1, 0};
       auto out_dims_vec = phi::vectorize(out->dims());
@@ -95,7 +94,7 @@ void FrameKernel(const Context& dev_ctx,
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     }
   } else {
-    trans_x = x_;
+    trans_x = x_tmp;
     trans_out = *out;
   }
 

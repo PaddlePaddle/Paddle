@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +32,7 @@ void FrameGradKernel(const Context& dev_ctx,
   const int n_frames =
       (axis == 0) ? dout.dims()[0] : dout.dims()[dout_rank - 1];
   const int seq_length = (axis == 0) ? dx->dims()[0] : dx->dims()[dx_rank - 1];
-  DenseTensor dout_(dout.type());
-  dout_ = dout;
+  DenseTensor dout_tmp = dout;
 
   DDim preserved_dims;
   if (dx_rank > 2) {
@@ -54,11 +52,11 @@ void FrameGradKernel(const Context& dev_ctx,
           phi::product(preserved_dims), frame_length, n_frames};
     }
     dx->Resize(dx_resized_dims);
-    dout_.Resize(dout_resized_dims);
+    dout_tmp.Resize(dout_resized_dims);
   }
 
-  DenseTensor trans_dx(dx->type());
-  DenseTensor trans_dout(dout_.type());
+  DenseTensor trans_dx;
+  DenseTensor trans_dout;
 
   // Transpose input and output in case that axis is 0.
   if (axis == 0) {
@@ -66,14 +64,14 @@ void FrameGradKernel(const Context& dev_ctx,
       trans_dx = *dx;
 
       std::vector<int> perm_dout{1, 0};
-      auto dout_dims_vec = phi::vectorize(dout_.dims());
-      for (int i = 0; i < dout_.dims().size(); ++i) {
-        dout_dims_vec[i] = dout_.dims()[perm_dout[i]];
+      auto dout_dims_vec = phi::vectorize(dout_tmp.dims());
+      for (int i = 0; i < dout_tmp.dims().size(); ++i) {
+        dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
       trans_dout.Resize(phi::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
       funcs::TransCompute<Context, T>(
-          perm_dout.size(), dev_ctx, dout_, &trans_dout, perm_dout);
+          perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     } else {
       std::vector<int> perm_dx{1, 0};
       auto dx_dims_vec = phi::vectorize(dx->dims());
@@ -86,18 +84,18 @@ void FrameGradKernel(const Context& dev_ctx,
           perm_dx.size(), dev_ctx, *dx, &trans_dx, perm_dx);
 
       std::vector<int> perm_dout{2, 1, 0};
-      auto dout_dims_vec = phi::vectorize(dout_.dims());
-      for (int i = 0; i < dout_.dims().size(); ++i) {
-        dout_dims_vec[i] = dout_.dims()[perm_dout[i]];
+      auto dout_dims_vec = phi::vectorize(dout_tmp.dims());
+      for (int i = 0; i < dout_tmp.dims().size(); ++i) {
+        dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
       trans_dout.Resize(phi::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
       funcs::TransCompute<Context, T>(
-          perm_dout.size(), dev_ctx, dout_, &trans_dout, perm_dout);
+          perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     }
   } else {
     trans_dx = *dx;
-    trans_dout = dout_;
+    trans_dout = dout_tmp;
   }
 
   FrameFunctor<Context, T>()(dev_ctx,

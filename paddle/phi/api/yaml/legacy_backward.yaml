@@ -798,7 +798,8 @@
   args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
   output : Tensor(x_grad)
   infer_meta :
-    func : FrameGradInferMeta
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : frame_grad
 

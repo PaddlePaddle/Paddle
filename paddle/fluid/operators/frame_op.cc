@@ -92,7 +92,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(frame,
 
 DECLARE_INFER_SHAPE_FUNCTOR(frame_grad,
                             FrameGradInferShapeFunctor,
-                            PD_INFER_META(phi::FrameGradInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(frame,
                   ops::FrameOp,
