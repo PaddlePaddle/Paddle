@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/lu.h"
+#include "paddle/phi/kernels/impl/lu_kernel_impl.h"
 
 namespace phi {
 
