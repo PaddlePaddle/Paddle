@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
-#include "paddle/phi/kernels/impl/lu_impl.h"
+#include "paddle/phi/kernels/impl/lu_kernel_impl.h"
 
 namespace phi {
 
