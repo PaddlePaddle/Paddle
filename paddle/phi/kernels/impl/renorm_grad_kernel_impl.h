@@ -34,6 +34,7 @@ void RenormGradKernel(const Context& dev_ctx,
   auto input_dims = x.dims();
   int dim = axis;
   auto dimension_each = input_dims[dim];
+  dx->Resize(x.dims());
   dev_ctx.template Alloc<T>(dx);
   phi::funcs::RenormGradFunc(dev_ctx,
                              dout_data,

@@ -26,6 +26,7 @@ void RenormKernel(const Context& dev_ctx,
                   int axis,
                   float max_norm,
                   DenseTensor* out) {
+  out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
   auto x_ptr = x.template data<T>();
   auto numel = x.numel();
