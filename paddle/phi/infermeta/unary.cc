@@ -518,6 +518,19 @@ void DiagonalInferMeta(const MetaTensor& input,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
+  const auto alpha_dim = alpha.dims();
+  PADDLE_ENFORCE_GE(alpha_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: The number of dimensions of 'Alpha' "
+                        "must be greater than or euqal to 1. "
+                        "But received Alpha's dimensions = %d,",
+                        alpha_dim.size()));
+  out->set_dims(alpha_dim);
+  out->set_dtype(alpha.dtype());
+}
+
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   auto x_dims = x.dims();
   int rank = x_dims.size();
@@ -873,6 +886,90 @@ void FlipInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(output_dims));
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void FrameInferMeta(const MetaTensor& x,
+                    int frame_length,
+                    int hop_length,
+                    int axis,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output(Out) of FrameOp should not be null."));
+  const auto x_dims = x.dims();
+  const int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(x_rank,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of FrameOp should be a tensor which contains "
+                        "at least 1 dimension, but got rank %s.",
+                        x_rank));
+  PADDLE_ENFORCE_GT(hop_length,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Attribute(hop_length) of FrameOp should be greater "
+                        "than 0, but got %s.",
+                        hop_length));
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      phi::errors::InvalidArgument(
+          "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
+
+  std::vector<int64_t> output_shape;
+  int seq_length;
+  int n_frames;
+
+  int start_axis;
+  int end_axis;
+
+  if (axis == 0) {
+    seq_length = x_dims[0];
+    start_axis = 1;
+    end_axis = x_rank - 1;
+  } else {
+    seq_length = x_dims[x_rank - 1];
+    start_axis = 0;
+    end_axis = x_rank - 2;
+  }
+
+  bool contain_unknown_dim = phi::contain_unknown_dim(x_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_LE(frame_length,
+                      seq_length,
+                      phi::errors::InvalidArgument(
+                          "Attribute(frame_length) of FrameOp should be less "
+                          "equal than sequence length, but got (%s) > (%s).",
+                          frame_length,
+                          seq_length));
+  }
+
+  // It won't go into for loop when x_rank == 1U.
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (seq_length == -1) {
+    n_frames = -1;
+  } else {
+    n_frames = 1 + (seq_length - frame_length) / hop_length;
+  }
+
+  if (axis == 0) {
+    // (n_frames, frame_length, ...)
+    output_shape.insert(output_shape.begin(), frame_length);
+    output_shape.insert(output_shape.begin(), n_frames);
+  } else {
+    // (..., frame_length, n_frames)
+    output_shape.push_back(frame_length);
+    output_shape.push_back(n_frames);
+  }
+
+  out->set_dims(phi::make_ddim(output_shape));
+  out->set_dtype(x.dtype());
 }
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
