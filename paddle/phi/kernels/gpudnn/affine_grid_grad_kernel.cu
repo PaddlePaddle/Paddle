@@ -12,33 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef PADDLE_WITH_HIP
 
-#include "paddle/phi/kernels/affine_grid_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 
 namespace phi {
 
+using ScopedSpatialTransformerDescriptor =
+    paddle::platform::ScopedSpatialTransformerDescriptor;
+
 template <typename T, typename Context>
 void AffineGridGradCudnnKernel(const Context& dev_ctx,
-                          const DenseTensor& outputShape,
-                          const DenseTensor& output_grad,
-                          bool align_corners,
-                          std::vector<int> output_shape,
-                          DenseTensor* input_grad) {
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(dev_ctx),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Only "
-                          "support for CUDAPlace. Please switch "
-                          "your context from CPUPlace to "
-                          "CUDAPlace or update your cudnn."));
+                               const DenseTensor& outputShape,
+                               const DenseTensor& output_grad,
+                               bool align_corners,
+                               const std::vector<int>& output_shape,
+                               DenseTensor* input_grad) {
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+        true,
+        phi::errors::InvalidArgument(
+            "Only support for CUDAPlace.Please switch your context from "
+            "CPUPlace to CUDAPlace or update your cudnn."));
     auto handle = dev_ctx.cudnn_handle();
     auto &theta_grad = input_grad;
 
@@ -79,3 +81,4 @@ PD_REGISTER_KERNEL(affine_grid_grad,
                    phi::AffineGridGradCudnnKernel,
                    float,
                    double) {};
+#endif

@@ -83,7 +83,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 void AffineGridInferMeta(const MetaTensor& input,
                          const MetaTensor& outputShape,
                          bool align_corners,
-                         std::vector<int> output_shape,
+                         const std::vector<int>& output_shape,
                          MetaTensor* output) {
     auto theta_dims = input.dims();
     PADDLE_ENFORCE_EQ(

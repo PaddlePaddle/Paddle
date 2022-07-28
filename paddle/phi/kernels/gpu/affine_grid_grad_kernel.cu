@@ -89,7 +89,7 @@ void AffineGridGradCUDAKernel(const Context& dev_ctx,
                           const DenseTensor& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
-                          std::vector<int> output_shape,
+                          const std::vector<int>& output_shape,
                           DenseTensor* input_grad) {
     //auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
     auto &theta_grad = input_grad;

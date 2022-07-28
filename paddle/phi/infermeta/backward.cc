@@ -22,7 +22,7 @@ namespace phi {
 void AffineGridGradInferMeta(const MetaTensor& outputShape,
                              const MetaTensor& output_grad,
                              bool align_corners,
-                             std::vector<int> output_shape,
+                             const std::vector<int>& output_shape,
                              MetaTensor* input_grad) {
   auto output_dims = output_grad.dims();
   input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -30,13 +29,13 @@ using ScopedSpatialTransformerDescriptor =
 
 template <typename T, typename Context>
 void AffineGridCudnnKernel(const Context& dev_ctx,
-                      const DenseTensor& input,
-                      const DenseTensor& outputShape,
-                      bool align_corners,
-                      std::vector<int> output_shape,
-                      DenseTensor* output) {
+                           const DenseTensor& input,
+                           const DenseTensor& outputShape,
+                           bool align_corners,
+                           const std::vector<int>& output_shape,
+                           DenseTensor* output) {
     PADDLE_ENFORCE_EQ(
-        paddle::platform::is_gpu_place(dev_ctx),
+        paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
         true,
         phi::errors::InvalidArgument(
             "Only support for CUDAPlace.Please switch your context from "

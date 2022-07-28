@@ -35,7 +35,7 @@ namespace phi {
 void AffineGridInferMeta(const MetaTensor& input,
                          const MetaTensor& outputShape,
                          bool align_corners,
-                         std::vector<int> output_shape,
+                         const std::vector<int>& output_shape,
                          MetaTensor* output);
 
 void AllValueCompareInferMeta(const MetaTensor& x,

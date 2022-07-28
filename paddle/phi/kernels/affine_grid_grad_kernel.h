@@ -19,9 +19,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void AffineGridGradKernel(const Context& dev_ctx,
-                       const paddle::optional<DenseTensor>& outputShape,
+                       const DenseTensor& outputShape,
                        const DenseTensor& output_grad,
                        bool align_corners,
-                       std::vector<int> output_shape,
+                       const std::vector<int>& output_shape,
                        DenseTensor* input_grad);
 }  // namespace phi

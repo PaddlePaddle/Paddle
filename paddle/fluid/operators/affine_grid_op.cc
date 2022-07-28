@@ -12,14 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/affine_grid_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
@@ -181,20 +184,20 @@ class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(affine_grid, AffineGridInferShapeFunctor,
-                            PT_INFER_META(phi::AffineGridInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(affine_grid, AffineGridInferMetaFunctor,
+                            PD_INFER_META(phi::AffineGridInferMeta));
 REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridOp,
                   ops::AffineGridOpMaker,
                   ops::AffineGridGradMaker<paddle::framework::OpDesc>,
                   ops::AffineGridGradMaker<paddle::imperative::OpBase>,
-                  AffineGridInferShapeFunctor);
+                  AffineGridInferMetaFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(affine_grid_grad, AffineGridGradInferShapeFunctor,
-                            PT_INFER_META(phi::AffineGridGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(affine_grid_grad, AffineGridGradInferMetaFunctor,
+                            PD_INFER_META(phi::AffineGridGradInferMeta));
 REGISTER_OPERATOR(affine_grid_grad,
                   ops::AffineGridOpGrad,
-                  AffineGridGradInferShapeFunctor);
+                  AffineGridGradInferMetaFunctor);
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

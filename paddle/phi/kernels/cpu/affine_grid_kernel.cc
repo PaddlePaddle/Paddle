@@ -44,7 +44,7 @@ void AffineGridKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       const DenseTensor& outputShape,
                       bool align_corners,
-                      std::vector<int> output_shape,
+                      const std::vector<int>& output_shape,
                       DenseTensor* output) {
   //auto* theta = ctx.Input<Tensor>("Theta");
   auto* theta = &input;
@@ -64,11 +64,11 @@ void AffineGridKernel(const Context& dev_ctx,
     w = size_attr[3];
   }
   output->Resize(phi::make_ddim({n, h, w, 2}));
-  T* output_data = dev_ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   //output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
   phi::funcs::SetConstant<Context, T>()(
       dev_ctx,
-      output_data,
+      output,
       static_cast<T>(0));
   DenseTensor grid;
   GetIdxMap<Context, T>(n, h, w, align_corners, &grid, dev_ctx);
