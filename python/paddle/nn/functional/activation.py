@@ -1279,6 +1279,8 @@ def softsign(x, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_softsign(x)
     if in_dynamic_mode():
         return _C_ops.softsign(x)
 

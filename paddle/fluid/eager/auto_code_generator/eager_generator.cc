@@ -1386,7 +1386,7 @@ static std::string GenerateGradNodeCreationContent(
       "%s"
       "  {\n"
       "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-      "paddle::platform::TracerEventType::Operator, 1);\n"
+      "paddle::platform::TracerEventType::OperatorInner, 1);\n"
       "%s"
       "    if(require_any_grad) {\n"
       "      VLOG(6) << \" Construct Grad for %s \"; \n"
