@@ -841,6 +841,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
   }
 
+  VLOG(6) << "Run Backward Final hook size: "
+          << egr::Controller::Instance().FinalBackwardHooks().size();
+  for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
+    (*hook)();
+  }
+  egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
