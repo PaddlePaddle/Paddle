@@ -281,4 +281,13 @@ void StackGradInferMeta(const MetaTensor& out_grad,
                         int axis,
                         std::vector<MetaTensor*> x_grad);
 
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad);
+
 }  // namespace phi

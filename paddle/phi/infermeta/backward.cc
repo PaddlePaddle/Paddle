@@ -704,4 +704,17 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
+                                       float min,
+                                       float max,
+                                       int seed,
+                                       int diag_num,
+                                       int diag_step,
+                                       float diag_val,
+                                       MetaTensor* x_grad) {
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 }  // namespace phi

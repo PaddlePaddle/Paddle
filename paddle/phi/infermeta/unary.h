@@ -447,6 +447,15 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void UniformRandomInplaceInferMeta(const MetaTensor& x,
+                                   float min,
+                                   float max,
+                                   int seed,
+                                   int diag_num,
+                                   int diag_step,
+                                   float diag_val,
+                                   MetaTensor* out);
+
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
