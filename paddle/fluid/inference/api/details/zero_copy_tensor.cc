@@ -720,10 +720,6 @@ void Tensor::SetOrtBinding(const std::shared_ptr<Ort::IoBinding> binding) {
   binding_ = binding;
 }
 
-void Tensor::SetOrtBuffer(const std::shared_ptr<std::vector<int8_t>> buffer) {
-  buffer_ = buffer;
-}
-
 template <typename T>
 void Tensor::ORTCopyToCpu(T *data) const {
   auto binding = binding_.lock();
