@@ -280,6 +280,18 @@
     func : brelu_grad
   inplace : (out_grad -> x_grad)
 
+- backward_api : broadcast_tensors_grad
+  forward : broadcast_tensors (Tensor[] x) -> Tensor[](out)
+  args : (Tensor[] x, Tensor[] out_grad)
+  output : Tensor[](x_grad)
+  infer_meta :
+    func : UnchangedMultiInferMeta
+    param : [x]
+  kernel :
+    func : broadcast_tensors_grad
+    param : [out_grad]
+  no_need_buffer : x
+
 - backward_api : cast_grad
   forward : cast (Tensor x, DataType out_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
