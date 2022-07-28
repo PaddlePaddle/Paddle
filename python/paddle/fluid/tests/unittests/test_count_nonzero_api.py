@@ -81,32 +81,6 @@ class TestCountNonzeroAPI(unittest.TestCase):
             x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(ValueError, paddle.count_nonzero, x, axis=10)
 
-    def test_api_dygraph_grad(self):
-        paddle.disable_static(self.place)
-
-        def test_case(x, axis=None, keepdim=False):
-            if isinstance(axis, list):
-                axis = list(axis)
-                if len(axis) == 0:
-                    axis = None
-            x_tensor = paddle.to_tensor(x, stop_gradient=False)
-            y = paddle.count_nonzero(x_tensor, axis, keepdim)
-            dx = paddle.grad(y, x_tensor)[0].numpy()
-            self.assertEqual(
-                np.allclose(np.sum(np.ones_like(x, dtype=np.int64)), dx.sum()),
-                True)
-
-        test_case(self.x)
-        test_case(self.x, None)
-        test_case(self.x, -1)
-        test_case(self.x, keepdim=True)
-        test_case(self.x, 2, keepdim=True)
-        test_case(self.x, [0, 2])
-        test_case(self.x, (0, 2))
-        test_case(self.x, (0, 1, 3))
-        test_case(self.x, [0, 1, 2, 3])
-        paddle.enable_static()
-
 
 if __name__ == "__main__":
     unittest.main()
