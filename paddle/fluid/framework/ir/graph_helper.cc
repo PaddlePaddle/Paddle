@@ -549,6 +549,18 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
   }
 }
 
+template <class T = Node *>
+static void GetGraphVarDesc(const Graph &graph,
+                            const std::unordered_set<T> &nodes,
+                            std::vector<proto::VarDesc> *vars) {
+  for (T node : nodes) {
+    if (node->IsVar() && node->Var() &&
+        node->GetVarNodeBlockId() == graph.GetBlockId()) {
+      vars->emplace_back(*node->Var()->Proto());
+    }
+  }
+}
+
 static void GraphToBlock(const Graph &graph,
                          proto::BlockDesc *block,
                          const SortKind *sort_kind) {
@@ -562,11 +574,11 @@ static void GraphToBlock(const Graph &graph,
   }
 
   std::vector<proto::VarDesc> vars_in_graph;
-  for (Node *node : graph.Nodes()) {
-    if (node->IsVar() && node->Var() &&
-        node->GetVarNodeBlockId() == graph.GetBlockId()) {
-      vars_in_graph.emplace_back(*node->Var()->Proto());
-    }
+  GetGraphVarDesc<Node *>(graph, graph.Nodes(), &vars_in_graph);
+  if (graph.Has(details::kRemovedVars)) {
+    auto &removed_vars = graph.Get<details::RemovedVars>(details::kRemovedVars);
+    GetGraphVarDesc<std::shared_ptr<ir::Node>>(
+        graph, removed_vars, &vars_in_graph);
   }
 
   // add vars_in_graph to blcok
