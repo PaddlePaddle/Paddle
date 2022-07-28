@@ -18,7 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/dirichlet.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
@@ -57,13 +56,11 @@ struct GammaCUDAFunctor {
 
     // sample
     auto uniform_lambda = [&state]() { return COMPAT_RAND_UNIFORM(&state); };
-    funcs::BaseSampler<T, decltype(uniform_lambda)> standard_uniform(
-        uniform_lambda);
+    BaseSampler<T, decltype(uniform_lambda)> standard_uniform(uniform_lambda);
     auto normal_lambda = [&state]() { return COMPAT_RAND_NORMAL(&state); };
-    funcs::BaseSampler<T, decltype(normal_lambda)> standard_normal(
-        normal_lambda);
+    BaseSampler<T, decltype(normal_lambda)> standard_normal(normal_lambda);
 
-    auto sample = funcs::
+    auto sample =
         sample_gamma<T, T, decltype(uniform_lambda), decltype(normal_lambda)>(
             alpha_[index], standard_uniform, standard_normal);
     gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);
@@ -86,36 +83,31 @@ struct DirichletSampler<GPUContext, T> {
     auto offset = seed_and_offset.second;
 
     // sample from K gamma distributions, where K=alpha.numel()
-    DenseTensor* gamma_samples = new DenseTensor();
-    gamma_samples->Resize(alpha.dims());
-    dev_ctx.template Alloc<T>(gamma_samples);
+    DenseTensor gamma_samples;
+    gamma_samples.Resize(alpha.dims());
+    dev_ctx.template Alloc<T>(&gamma_samples);
 
     GammaCUDAFunctor<T> gamma_functor(
-        alpha.data<T>(), gamma_samples->data<T>(), seed, offset);
+        alpha.data<T>(), gamma_samples.data<T>(), seed, offset);
     funcs::ForRange<GPUContext> for_range(dev_ctx, out->numel());
     for_range(gamma_functor);
 
     // normalize them into a simplex, along the last axis
-    DenseTensor* gamma_sum = new DenseTensor();
-    auto new_shape = gamma_samples->dims();
+    DenseTensor gamma_sum;
+    auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
-    gamma_sum->Resize(new_shape);
-    dev_ctx.template Alloc<T>(gamma_sum);
+    gamma_sum.Resize(new_shape);
+    dev_ctx.template Alloc<T>(&gamma_sum);
 
     ReduceKernelImpl<GPUContext, T, T, funcs::SumFunctor>(
         dev_ctx,
-        *gamma_samples,
-        gamma_sum,
+        gamma_samples,
+        &gamma_sum,
         {new_shape.size() - 1},
         true,
         false);
     funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T, T>(
-        dev_ctx,
-        *gamma_samples,
-        *gamma_sum,
-        -1,
-        funcs::DivideFunctor<T>(),
-        out);
+        dev_ctx, gamma_samples, gamma_sum, -1, funcs::DivideFunctor<T>(), out);
   }
 };
 }  // namespace phi

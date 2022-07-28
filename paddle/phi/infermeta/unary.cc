@@ -518,6 +518,19 @@ void DiagonalInferMeta(const MetaTensor& input,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
+  const auto alpha_dim = alpha.dims();
+  PADDLE_ENFORCE_GE(alpha_dim.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "ShapeError: The number of dimensions of 'Alpha' "
+                        "must be greater than or euqal to 1. "
+                        "But received Alpha's dimensions = %d,",
+                        alpha_dim.size()));
+  out->set_dims(alpha_dim);
+  out->set_dtype(alpha.dtype());
+}
+
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   auto x_dims = x.dims();
   int rank = x_dims.size();
@@ -3675,18 +3688,6 @@ void IdentityLossInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim({1}));
     out->set_dtype(x.dtype());
   }
-}
-
-void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
-  const auto alpha_dim = alpha.dims();
-  PADDLE_ENFORCE_GE(alpha_dim.size(),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "ShapeError: The number of dimensions of 'Alpha' "
-                        "must be greater than or euqal to 1. "
-                        "But received Alpha's dimensions = %d,",
-                        alpha_dim.size()));
-  out->set_dims(alpha_dim);
 }
 
 }  // namespace phi

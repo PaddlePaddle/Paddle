@@ -90,6 +90,8 @@ void DiagInferMeta(const MetaTensor& x,
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
+
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 
 void EighInferMeta(const MetaTensor& x,
@@ -527,6 +529,4 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              MetaTensor* out);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
-
-void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
 }  // namespace phi
