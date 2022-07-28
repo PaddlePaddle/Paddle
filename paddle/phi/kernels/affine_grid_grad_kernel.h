@@ -13,15 +13,16 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/phi/kernels/affine_grid_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void AffineGridGradKernel(const Context& dev_ctx,
-                       const paddle::optional<DenseTensor>& outputShape,
-                       const DenseTensor& output_grad,
-                       bool align_corners,
-                       const std::vector<int>& output_shape,
-                       DenseTensor* input_grad);
+                          const paddle::optional<DenseTensor>& outputShape,
+                          const DenseTensor& output_grad,
+                          bool align_corners,
+                          const std::vector<int>& output_shape,
+                          DenseTensor* input_grad);
 }  // namespace phi

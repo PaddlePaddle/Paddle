@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/phi/kernels/affine_grid_impl.h"
+
 namespace phi {
 
 template <typename T, typename Context>

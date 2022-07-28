@@ -15,12 +15,12 @@
 #pragma once
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -28,7 +28,6 @@ template <typename T>
 __global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
   CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
 }
-
 
 template <typename T>
 struct Linspace<phi::GPUContext, T> {
@@ -83,72 +82,66 @@ __global__ void affine_grid_kernel(const int count,
   }
 }
 
-
 template <typename T, typename Context>
 void AffineGridCUDAKernel(const Context& dev_ctx,
-                      const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
-                      bool align_corners,
-                      const std::vector<int>& output_shape,
-                      DenseTensor* output) {
-    //auto* theta = ctx.Input<Tensor>("Theta");
-    auto* theta = &input;
-    int n = theta->dims()[0];
-    auto &size_attr = output_shape;
-    int h = 0;
-    int w = 0;
-    if (size_attr.size() == 0) {
-      auto* output_shape = outputShape.get_ptr();
-      DenseTensor h_sizes;
-      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
-      const int* h_size_data = h_sizes.data<int>();
-      h = h_size_data[2];
-      w = h_size_data[3];
-    } else {
-      h = size_attr[2];
-      w = size_attr[3];
-    }
-    output->Resize(phi::make_ddim({n, h, w, 2}));
-    T* out_data = dev_ctx.template Alloc<T>(output);
+                          const DenseTensor& input,
+                          const paddle::optional<DenseTensor>& outputShape,
+                          bool align_corners,
+                          const std::vector<int>& output_shape,
+                          DenseTensor* output) {
+  // auto* theta = ctx.Input<Tensor>("Theta");
+  auto* theta = &input;
+  int n = theta->dims()[0];
+  auto& size_attr = output_shape;
+  int h = 0;
+  int w = 0;
+  if (size_attr.size() == 0) {
+    auto* output_shape = outputShape.get_ptr();
+    DenseTensor h_sizes;
+    phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
+    const int* h_size_data = h_sizes.data<int>();
+    h = h_size_data[2];
+    w = h_size_data[3];
+  } else {
+    h = size_attr[2];
+    w = size_attr[3];
+  }
+  output->Resize(phi::make_ddim({n, h, w, 2}));
+  T* out_data = dev_ctx.template Alloc<T>(output);
 
-    T h_step;
-    T w_step;
-    T h_start = -1;
-    T w_start = -1;
-    if (align_corners) {
-      h_step = static_cast<T>(2) / static_cast<T>(h - 1);
-      w_step = static_cast<T>(2) / static_cast<T>(w - 1);
-    } else {
-      h_step = static_cast<T>(2) / static_cast<T>(h);
-      w_step = static_cast<T>(2) / static_cast<T>(w);
+  T h_step;
+  T w_step;
+  T h_start = -1;
+  T w_start = -1;
+  if (align_corners) {
+    h_step = static_cast<T>(2) / static_cast<T>(h - 1);
+    w_step = static_cast<T>(2) / static_cast<T>(w - 1);
+  } else {
+    h_step = static_cast<T>(2) / static_cast<T>(h);
+    w_step = static_cast<T>(2) / static_cast<T>(w);
 
-      h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
-      w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
-    }
+    h_start *= static_cast<T>(h - 1) / static_cast<T>(h);
+    w_start *= static_cast<T>(w - 1) / static_cast<T>(w);
+  }
 
-    const int count = n * h * w;
-    int block = 512;
-    int grid = (count + block - 1) / block;
-    auto cu_stream = dev_ctx.stream();
-    affine_grid_kernel<<<grid, block, 0, cu_stream>>>(
-        count,
-        n,
-        h,
-        w,
-        h_start,
-        w_start,
-        h_step,
-        w_step,
-        theta->data<T>(),  // N, 2, 3
-        out_data);
+  const int count = n * h * w;
+  int block = 512;
+  int grid = (count + block - 1) / block;
+  auto cu_stream = dev_ctx.stream();
+  affine_grid_kernel<<<grid, block, 0, cu_stream>>>(
+      count,
+      n,
+      h,
+      w,
+      h_start,
+      w_start,
+      h_step,
+      w_step,
+      theta->data<T>(),  // N, 2, 3
+      out_data);
 }
 
 }  // namespace phi
 
-
-PD_REGISTER_KERNEL(affine_grid,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AffineGridCUDAKernel,
-                   float,
-                   double) {};
+PD_REGISTER_KERNEL(
+    affine_grid, GPU, ALL_LAYOUT, phi::AffineGridCUDAKernel, float, double){};

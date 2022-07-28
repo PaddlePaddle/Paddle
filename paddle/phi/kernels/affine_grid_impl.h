@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/utils/optional.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
@@ -63,8 +63,7 @@ inline void GetIdxMap(int n,
   ones.Resize(phi::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
-  phi::funcs::SetConstant<Context, T>()(
-      dev_ctx, &ones, static_cast<T>(1));
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
   auto ones_t = EigenTensor<T, 3>::From(ones);
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
   // ones

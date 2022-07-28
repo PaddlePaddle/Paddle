@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -34,44 +34,44 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
                            bool align_corners,
                            const std::vector<int>& output_shape,
                            DenseTensor* output) {
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
-        true,
-        phi::errors::InvalidArgument(
-            "Only support for CUDAPlace.Please switch your context from "
-            "CPUPlace to CUDAPlace or update your cudnn."));
-    auto handle = dev_ctx.cudnn_handle();
-    auto* theta = &input;
-    const T* theta_data = theta->data<T>();
+  PADDLE_ENFORCE_EQ(
+      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      true,
+      phi::errors::InvalidArgument(
+          "Only support for CUDAPlace.Please switch your context from "
+          "CPUPlace to CUDAPlace or update your cudnn."));
+  auto handle = dev_ctx.cudnn_handle();
+  auto* theta = &input;
+  const T* theta_data = theta->data<T>();
 
-    int n = theta->dims()[0];
-    auto &size_attr = output_shape;
-    DenseTensor h_sizes;
-    int* h_size_data;
-    if (size_attr.size() == 0) {
-      auto* output_shape = outputShape.get_ptr();
-      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
-      h_size_data = h_sizes.data<int>();
-    } else {
-      h_sizes.Resize(phi::make_ddim({4}));
-      h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
-      h_size_data[0] = n;
-      h_size_data[1] = size_attr[1];
-      h_size_data[2] = size_attr[2];
-      h_size_data[3] = size_attr[3];
-    }
-    output->Resize(phi::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
-    T* output_data = dev_ctx.template Alloc<T>(output);
-    ScopedSpatialTransformerDescriptor st_desc;
-    cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
-        st_desc.descriptor<T>(4, h_size_data);
+  int n = theta->dims()[0];
+  auto& size_attr = output_shape;
+  DenseTensor h_sizes;
+  int* h_size_data;
+  if (size_attr.size() == 0) {
+    auto* output_shape = outputShape.get_ptr();
+    phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
+    h_size_data = h_sizes.data<int>();
+  } else {
+    h_sizes.Resize(phi::make_ddim({4}));
+    h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
+    h_size_data[0] = n;
+    h_size_data[1] = size_attr[1];
+    h_size_data[2] = size_attr[2];
+    h_size_data[3] = size_attr[3];
+  }
+  output->Resize(phi::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
+  T* output_data = dev_ctx.template Alloc<T>(output);
+  ScopedSpatialTransformerDescriptor st_desc;
+  cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
+      st_desc.descriptor<T>(4, h_size_data);
 
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::dynload::cudnnSpatialTfGridGeneratorForward(
-            handle, cudnn_st_desc, theta_data, output_data),
-        0,
-        phi::errors::Fatal("Some errors has occurred "
-                                "during forward computation in cudnn."));
+  PADDLE_ENFORCE_EQ(
+      paddle::platform::dynload::cudnnSpatialTfGridGeneratorForward(
+          handle, cudnn_st_desc, theta_data, output_data),
+      0,
+      phi::errors::Fatal("Some errors has occurred "
+                         "during forward computation in cudnn."));
 }
 
 }  // namespace phi
@@ -81,4 +81,4 @@ PD_REGISTER_KERNEL(affine_grid,
                    ALL_LAYOUT,
                    phi::AffineGridCudnnKernel,
                    float,
-                   double) {};
+                   double){};

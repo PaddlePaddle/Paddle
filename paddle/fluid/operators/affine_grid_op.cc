@@ -16,20 +16,19 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/fluid/platform/for_range.h"
-#include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/infermeta/backward.h"
-#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
 
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
@@ -220,6 +219,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
                         {output_dims[0], 2, 3});
     }
   }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -264,8 +264,7 @@ REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridGradMaker<paddle::framework::OpDesc>,
                   ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(affine_grid_grad,
-                  ops::AffineGridOpGrad);
+REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

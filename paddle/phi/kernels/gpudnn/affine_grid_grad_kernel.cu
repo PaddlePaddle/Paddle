@@ -14,14 +14,13 @@
 
 #ifndef PADDLE_WITH_HIP
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -35,42 +34,42 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
                                bool align_corners,
                                const std::vector<int>& output_shape,
                                DenseTensor* input_grad) {
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
-        true,
-        phi::errors::InvalidArgument(
-            "Only support for CUDAPlace.Please switch your context from "
-            "CPUPlace to CUDAPlace or update your cudnn."));
-    auto handle = dev_ctx.cudnn_handle();
-    auto &theta_grad = input_grad;
+  PADDLE_ENFORCE_EQ(
+      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      true,
+      phi::errors::InvalidArgument(
+          "Only support for CUDAPlace.Please switch your context from "
+          "CPUPlace to CUDAPlace or update your cudnn."));
+  auto handle = dev_ctx.cudnn_handle();
+  auto& theta_grad = input_grad;
 
-    int n = output_grad.dims()[0];
-    auto &size_attr = output_shape;
-    DenseTensor h_sizes;
-    int* h_size_data;
-    if (size_attr.size() == 0) {
-      auto* output_shape = &outputShape;
-      phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
-      h_size_data = h_sizes.data<int>();
-    } else {
-      h_sizes.Resize(phi::make_ddim({4}));
-      h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
-      h_size_data[0] = n;
-      h_size_data[1] = size_attr[1];
-      h_size_data[2] = size_attr[2];
-      h_size_data[3] = size_attr[3];
-    }
+  int n = output_grad.dims()[0];
+  auto& size_attr = output_shape;
+  DenseTensor h_sizes;
+  int* h_size_data;
+  if (size_attr.size() == 0) {
+    auto* output_shape = &outputShape;
+    phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
+    h_size_data = h_sizes.data<int>();
+  } else {
+    h_sizes.Resize(phi::make_ddim({4}));
+    h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
+    h_size_data[0] = n;
+    h_size_data[1] = size_attr[1];
+    h_size_data[2] = size_attr[2];
+    h_size_data[3] = size_attr[3];
+  }
 
-    ScopedSpatialTransformerDescriptor st_desc;
-    cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
-        st_desc.descriptor<T>(4, h_size_data);
+  ScopedSpatialTransformerDescriptor st_desc;
+  cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
+      st_desc.descriptor<T>(4, h_size_data);
 
-    const T* output_grad_data = output_grad.data<T>();
-    T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
+  const T* output_grad_data = output_grad.data<T>();
+  T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnSpatialTfGridGeneratorBackward(
-            handle, cudnn_st_desc, output_grad_data, theta_grad_data));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::cudnnSpatialTfGridGeneratorBackward(
+          handle, cudnn_st_desc, output_grad_data, theta_grad_data));
 }
 
 }  // namespace phi
@@ -80,5 +79,5 @@ PD_REGISTER_KERNEL(affine_grid_grad,
                    ALL_LAYOUT,
                    phi::AffineGridGradCudnnKernel,
                    float,
-                   double) {};
+                   double){};
 #endif
