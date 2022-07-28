@@ -2543,6 +2543,7 @@
     func: broadcast_tensors
   backward: broadcast_tensors_grad
 
+# decode_jpeg
 - api: decode_jpeg
   args: (Tensor x, str mode)
   output: Tensor(out)
