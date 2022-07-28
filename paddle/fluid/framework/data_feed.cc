@@ -2108,7 +2108,9 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
@@ -2676,7 +2678,9 @@ int SlotRecordInMemoryDataFeed::Next() {
             << " baych_size: " << this->batch_size_;
   } else {
     VLOG(3) << "datafeed in gpu graph mode";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
+#endif
   }
 
   return this->batch_size_;

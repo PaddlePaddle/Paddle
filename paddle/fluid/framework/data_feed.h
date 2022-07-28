@@ -1038,7 +1038,9 @@ class DataFeed {
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
+#endif
   }
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
@@ -1127,7 +1129,9 @@ class DataFeed {
   // The input type of pipe reader, 0 for one sample, 1 for one batch
   int input_type_;
   int gpu_graph_mode_ = 0;
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   GraphDataGenerator gpu_graph_data_generator_;
+#endif
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
