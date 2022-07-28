@@ -240,12 +240,20 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           x = paddle.to_tensor(x)
+          x = x.to_sparse_coo(len(x.shape)-1)
 
           if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
               print(hidden1)
-              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+              # Tensor(shape=[1, 2, 2, 2], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+              #        indices=[[0, 0, 0, 0],
+              #                 [0, 0, 1, 1],
+              #                 [0, 1, 0, 1]],
+              #        values=[[-0.40730840, -0.13725480],
+              #                 [-0.40730840, -1.20299828],
+              #                 [ 1.69877410, -0.23414057],
+              #                 [-0.88415730,  1.57439375]])
     """
 
     def __init__(self,

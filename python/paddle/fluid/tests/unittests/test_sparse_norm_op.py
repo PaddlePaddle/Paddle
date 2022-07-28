@@ -86,7 +86,19 @@ class TestSparseBatchNorm(unittest.TestCase):
             # [1, 6, 6, 6, 3]
 
 
-class TestConvertSyncBatchNorm(unittest.TestCase):
+class TestSyncBatchNorm(unittest.TestCase):
+
+    def test_sync_batch_norm(self):
+        with _test_eager_guard():
+            x = np.array([[[[0.3, 0.4], [0.3, 0.07]],
+                           [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor(x)
+            x = x.to_sparse_coo(len(x.shape) - 1)
+
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
 
     def test_convert(self):
         base_model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
