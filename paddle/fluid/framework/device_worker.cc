@@ -35,7 +35,7 @@ template <typename T>
 std::string PrintLodTensorType(Tensor* tensor,
                                int64_t start,
                                int64_t end,
-                               char separator = ':',
+                               char separator = ',',
                                bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -59,7 +59,7 @@ void PrintLodTensorType(Tensor* tensor,
                         int64_t start,
                         int64_t end,
                         std::string& out_val,
-                        char separator = ':',
+                        char separator = ',',
                         bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -112,7 +112,7 @@ void PrintLodTensorType<float>(Tensor* tensor,
 std::string PrintLodTensorIntType(Tensor* tensor,
                                   int64_t start,
                                   int64_t end,
-                                  char separator = ':',
+                                  char separator = ',',
                                   bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
@@ -136,7 +136,7 @@ void PrintLodTensorIntType(Tensor* tensor,
                            int64_t start,
                            int64_t end,
                            std::string& out_val,
-                           char separator = ':',
+                           char separator = ',',
                            bool need_leading_separator = true) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
