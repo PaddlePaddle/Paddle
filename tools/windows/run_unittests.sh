@@ -336,7 +336,13 @@ function run_unittest_gpu() {
     if [ "$2" == "" ]; then
         parallel_job=$parallel_level_base
     else
-        parallel_job=`expr $2 \* $parallel_level_base`
+        # set parallel_job according to CUDA memory and suggested parallel num,
+        # the latter is derived in linux server with 16G CUDA memory.
+        cuda_memory=$(nvidia-smi --query-gpu=memory.total --format=csv | tail -1 | awk -F ' ' '{print $1}')
+        parallel_job=$(($2 * $cuda_memory / 16000))
+        if [$parallel_job -lt 1]; then
+            parallel_job=1
+        fi
     fi
     echo "************************************************************************"
     echo "********These unittests run $parallel_job job each time with 1 GPU**********"
