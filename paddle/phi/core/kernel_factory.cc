@@ -17,6 +17,8 @@
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
+DECLARE_bool(enable_api_kernel_fallback);
+
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
@@ -121,7 +123,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 
   bool has_fallback_cpu = false;
-  if (kernel_iter == iter->second.end()) {
+  if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
@@ -133,13 +135,20 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter = iter->second.find(any_layout_kernel_key);
     }
     has_fallback_cpu = true;
+
+    VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallbacking to CPU one!";
   }
 
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
       phi::errors::NotFound(
-          "The kernel with key %s of kernel `%s` is not registered.",
+          "The kernel with key %s of kernel `%s` is not registered and"
+          " the current value of FLAGS_enable_api_kernel_fallback(bool,"
+          " default true) is false. If you want to fallback this kernel"
+          " to CPU, please set the flag true before run again.",
           kernel_key,
           kernel_name));
 
