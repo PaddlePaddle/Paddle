@@ -23,7 +23,6 @@ from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils
 import numpy as np
-
 # TODO: define functions to manipulate a tensor
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
