@@ -2390,6 +2390,14 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
+- api: decode_jpeg
+  args: (Tensor x, str mode)
+  output: Tensor(out)
+  infer_meta:
+    func: DecodeJpegInferMeta
+  kernel:
+    func: decode_jpeg
+
 # eig
 - api: eig
   args: (Tensor x)

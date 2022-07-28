@@ -1035,6 +1035,8 @@ def decode_jpeg(x, mode='unchanged', name=None):
 
             print(img.shape)
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_decode_jpeg(x, mode)
 
     if _non_static_mode():
         return _C_ops.decode_jpeg(x, "mode", mode)
