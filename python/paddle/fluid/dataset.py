@@ -1037,13 +1037,34 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.set_heter_ps(enable_heter_ps)
 
-    def set_graph_device_keys(self, device_keys):
-        """
-        """
-        self.dataset.set_graph_device_keys(device_keys)
-
     def set_graph_config(self, config):
         """
+        Set graph config, user can set graph config in gpu graph mode. 
+
+        Args:
+            config(dict): config dict.
+
+        Returns:
+            The size of shuffle data.
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              graph_config = {"walk_len": 24,
+                    "walk_degree": 10,
+                    "once_sample_startid_len": 80000,
+                    "sample_times_one_chunk": 5,
+                    "window": 3,
+                    "debug_mode": 0,
+                    "batch_size": 800,
+                    "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+                    "gpu_graph_training": 1}
+              dataset.set_graph_config(graph_config)
+
         """
         self.proto_desc.graph_config.walk_degree = config.get("walk_degree", 1)
         self.proto_desc.graph_config.walk_len = config.get("walk_len", 20)

@@ -446,18 +446,6 @@ void MultiSlotDataset::PrepareTrain() {
   return;
 }
 
-template <typename T>
-void DatasetImpl<T>::SetGraphDeviceKeys(
-    const std::vector<uint64_t>& h_device_keys) {
-  //  for (size_t i = 0; i < gpu_graph_device_keys_.size(); i++) {
-  //    gpu_graph_device_keys_[i].clear();
-  //  }
-  //  size_t device_num = gpu_graph_device_keys_.size();
-  //  for (size_t i = 0; i < h_device_keys.size(); i++) {
-  //    int shard = h_device_keys[i] % device_num;
-  //    gpu_graph_device_keys_[shard].push_back(h_device_keys[i]);
-  //  }
-}
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
 template <typename T>

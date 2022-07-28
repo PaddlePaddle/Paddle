@@ -29,7 +29,7 @@ TEST(LodTensor, PrintLodTensor) {
   std::string res = PrintLodTensor(&tensor1, -1, 2);
   ASSERT_EQ(res, "access violation");
   res = PrintLodTensor(&tensor1, 0, 2);
-  ASSERT_EQ(res, ":0.2:0.5");
+  ASSERT_EQ(res, "0.2:0.5");
 
   LoDTensor tensor2;
   tensor2.Resize({2});
@@ -39,7 +39,7 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor2, -1, 2);
   ASSERT_EQ(res, "access violation");
   res = PrintLodTensor(&tensor2, 0, 2);
-  ASSERT_EQ(res, ":1:2");
+  ASSERT_EQ(res, "1:2");
 
   LoDTensor tensor3;
   tensor3.Resize({2});
@@ -47,7 +47,7 @@ TEST(LodTensor, PrintLodTensor) {
   tensor3.data<double>()[0] = 0.1;
   tensor3.data<double>()[1] = 0.2;
   res = PrintLodTensor(&tensor3, 0, 2);
-  ASSERT_EQ(res, ":0.1:0.2");
+  ASSERT_EQ(res, "0.1:0.2");
 }
 
 TEST(LodTensor, GetTensorBound) {

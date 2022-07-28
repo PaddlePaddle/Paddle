@@ -162,8 +162,6 @@ class Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
-  virtual void SetGraphDeviceKeys(
-      const std::vector<uint64_t>& h_device_keys) = 0;
 
   virtual std::vector<std::string> GetSlots() = 0;
 
@@ -253,7 +251,6 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
-  virtual void SetGraphDeviceKeys(const std::vector<uint64_t>& h_device_keys);
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
