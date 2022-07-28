@@ -122,7 +122,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
 
-  bool has_fallback_cpu = false;
+  PADDLE_ENFORCE_NE(
+      kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
+      true,
+      phi::errors::NotFound(
+          "The kernel with key %s of kernel `%s` is not registered.",
+          kernel_key,
+          kernel_name));
+
   if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
@@ -134,11 +141,21 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
       kernel_iter = iter->second.find(any_layout_kernel_key);
     }
-    has_fallback_cpu = true;
+
+    PADDLE_ENFORCE_NE(
+        kernel_iter,
+        iter->second.end(),
+        phi::errors::NotFound(
+            "The kernel with key %s of kernel `%s` is not registered and"
+            " fail to fallback to CPU one.",
+            kernel_key,
+            kernel_name));
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
+
+    return {kernel_iter->second, true};
   }
 
   PADDLE_ENFORCE_NE(
@@ -148,11 +165,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           "The kernel with key %s of kernel `%s` is not registered and"
           " the current value of FLAGS_enable_api_kernel_fallback(bool,"
           " default true) is false. If you want to fallback this kernel"
-          " to CPU, please set the flag true before run again.",
+          " to CPU one, please set the flag true before run again.",
           kernel_key,
           kernel_name));
 
-  return {kernel_iter->second, has_fallback_cpu};
+  return {kernel_iter->second, false};
 }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
