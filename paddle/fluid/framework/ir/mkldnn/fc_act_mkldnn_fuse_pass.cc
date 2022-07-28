@@ -56,14 +56,14 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
     if (fc_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE(
-          BOOST_GET_CONST(bool, fc_op->GetAttr("use_mkldnn")),
+          PADDLE_GET_CONST(bool, fc_op->GetAttr("use_mkldnn")),
           platform::errors::PreconditionNotMet(
               "The FC+Act fusion may happen only when oneDNN library "
               "is used."));
     }
 
     if (act_type == "gelu" && act_op->HasAttr("approximate")) {
-      bool approximate = BOOST_GET_CONST(bool, act_op->GetAttr("approximate"));
+      bool approximate = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"));
       std::string type = approximate ? "_tanh" : "_erf";
       fc_op->SetAttr("activation_type", act_type + type);
     } else {

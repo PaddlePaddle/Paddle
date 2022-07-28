@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from op_test_ipu import IPUOpTest
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):

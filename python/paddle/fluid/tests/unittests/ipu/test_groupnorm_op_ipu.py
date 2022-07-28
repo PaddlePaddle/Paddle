@@ -113,8 +113,8 @@ class TestTrainCase2(TestBase):
     def set_atol(self):
         self.atol = 7e-4
         self.rtol = 1e-6
-        self.atol_fp16 = 4e-3
-        self.rtol_fp16 = 1e-3
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-2
 
     def set_op_attrs(self):
         self.attrs = {

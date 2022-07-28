@@ -150,9 +150,6 @@ TEST(MemorySparseTable, SGD) {
       VLOG(3) << update_val << ": " << pull_values[i * (emb_dim + 1) + j];
     }
   }
-
-  MemorySparseTable *ctr_table = dynamic_cast<MemorySparseTable *>(table);
-  ctr_table->SaveLocalFS("./work/table.save", "0", "test");
 }
 
 }  // namespace distributed

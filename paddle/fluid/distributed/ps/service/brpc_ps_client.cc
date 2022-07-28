@@ -18,9 +18,21 @@
 #include <sstream>
 #include <string>
 
+#include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/framework/archive.h"
+#include "paddle/fluid/string/split.h"
 
 static const int max_port = 65535;
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace distributed {
 
 DEFINE_int32(pserver_push_dense_merge_limit,
              12,
@@ -66,16 +78,6 @@ DEFINE_int32(pserver_sparse_table_shard_num,
              1000,
              "sparse table shard for save & load");
 
-namespace paddle {
-namespace framework {
-class Scope;
-class Variable;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace distributed {
-
 inline size_t get_sparse_shard(uint32_t shard_num,
                                uint32_t server_num,
                                uint64_t key) {
@@ -101,7 +103,7 @@ void DownpourPsClientService::service(
   }
 }
 
-// 启动client端RpcService 用于数据互发等操作
+// 启动 client 端 RpcService 用于数据互发等操作
 int32_t BrpcPsClient::StartClientService() {
   if (_service.Configure(this, _client_id) != 0) {
     LOG(ERROR)
@@ -122,6 +124,35 @@ int32_t BrpcPsClient::StartClientService() {
   _server_started = true;
   _env->RegistePsClient(
       butil::my_ip_cstr(), _server.listen_address().port, _client_id);
+  VLOG(0) << "BrpcPsClient Service addr: " << butil::my_ip_cstr() << ", "
+          << _server.listen_address().port << ", " << _client_id;
+  return 0;
+}
+
+// 启动 FlClientService，用户接收 coordinator 数据
+int32_t BrpcPsClient::StartFlClientService(const std::string &self_endpoint) {
+  _fl_server.AddService(&_service, brpc::SERVER_DOESNT_OWN_SERVICE);
+  brpc::ServerOptions options;
+  if (self_endpoint.empty()) {
+    LOG(ERROR) << "fl-ps > fl client endpoint not set";
+    return -1;
+  }
+
+  if (_fl_server.Start(self_endpoint.c_str(), &options) != 0) {
+    VLOG(0) << "fl-ps > StartFlClientService failed. Try again.";
+    auto ip_port = paddle::string::Split(self_endpoint, ':');
+    std::string ip = ip_port[0];
+    int port = std::stoi(ip_port[1]);
+    std::string int_ip_port = GetIntTypeEndpoint(ip, port);
+    if (_fl_server.Start(int_ip_port.c_str(), &options) != 0) {
+      LOG(ERROR) << "fl-ps > StartFlClientService failed, ip_port= "
+                 << int_ip_port;
+      return -1;
+    }
+  } else {
+    VLOG(0) << "fl-ps > StartFlClientService succeed! listen on "
+            << self_endpoint;
+  }
   return 0;
 }
 
@@ -164,6 +195,96 @@ int32_t BrpcPsClient::CreateClient2ClientConnection(
   }
   LOG(INFO) << "Client connect success:" << os.str();
   return 0;
+}
+
+int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
+  brpc::ChannelOptions options;
+  options.protocol = "baidu_std";
+  options.timeout_ms = FLAGS_pserver_timeout_ms;
+  options.connection_type = "pooled";
+  options.connect_timeout_ms =
+      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
+  options.max_retry = 3;
+  // 获取 coordinator 列表，并连接
+  std::string coordinator_ip_port;
+  std::vector<PSHost> coordinator_list = _env->GetCoordinators();
+  _coordinator_channels.resize(coordinator_list.size());
+  for (size_t i = 0; i < coordinator_list.size(); ++i) {
+    coordinator_ip_port.assign(coordinator_list[i].ip.c_str());
+    coordinator_ip_port.append(":");
+    coordinator_ip_port.append(std::to_string(coordinator_list[i].port));
+    VLOG(0) << "fl-ps > BrpcFlclient connetcting to coordinator: "
+            << coordinator_ip_port;
+    for (size_t j = 0; j < _coordinator_channels[i].size(); ++j) {
+      _coordinator_channels[i][j].reset(new brpc::Channel());
+      if (_coordinator_channels[i][j]->Init(
+              coordinator_ip_port.c_str(), "", &options) != 0) {
+        LOG(ERROR) << "fl-ps > BrpcFlclient connect to coordinator:"
+                   << coordinator_ip_port << " Failed! Try again.";
+        std::string int_ip_port = GetIntTypeEndpoint(coordinator_list[i].ip,
+                                                     coordinator_list[i].port);
+        if (_coordinator_channels[i][j]->Init(
+                int_ip_port.c_str(), "", &options) != 0) {
+          LOG(ERROR) << "fl-ps > BrpcFlclient connect to coordinator:"
+                     << int_ip_port << " Failed!";
+          return -1;
+        }
+      }
+    }
+  }
+  StartFlClientService(self_endpoint);
+  VLOG(0) << "fl-ps > InitializeFlWorker finished!";
+  return 0;
+}
+
+void BrpcPsClient::PushFLClientInfoSync(const std::string &fl_client_info) {
+  size_t request_call_num = _coordinator_channels.size();
+  FlClientBrpcClosure *closure =
+      new FlClientBrpcClosure(request_call_num, [request_call_num](void *done) {
+        auto *closure = reinterpret_cast<FlClientBrpcClosure *>(done);
+        int ret = 0;
+        for (size_t i = 0; i < request_call_num; i++) {
+          if (closure->check_response(i, PUSH_FL_CLIENT_INFO_SYNC) != 0) {
+            LOG(ERROR) << "fl-ps > PushFLClientInfoSync response from "
+                          "coordinator is failed";
+            ret = -1;
+            return;
+          } else {
+            VLOG(0) << "fl-ps > rpc service call cost time: "
+                    << (closure->cntl(i)->latency_us() / 1000) << " ms";
+          }
+        }
+        closure->set_promise_value(ret);
+      });
+  auto promise = std::make_shared<std::promise<int32_t>>();
+  std::future<int32_t> fut = promise->get_future();
+  closure->add_promise(promise);
+  for (size_t i = 0; i < request_call_num; ++i) {
+    closure->request(i)->set_cmd_id(PUSH_FL_CLIENT_INFO_SYNC);
+    closure->request(i)->set_client_id(_client_id);
+    closure->request(i)->set_str_params(fl_client_info);
+    brpc::Channel *rpc_channel = _coordinator_channels[0][0].get();
+    if (rpc_channel == nullptr) {
+      LOG(ERROR) << "_coordinator_channels is null";
+      return;
+    }
+    PsService_Stub rpc_stub(rpc_channel);  // CoordinatorService
+    rpc_stub.FLService(
+        closure->cntl(i), closure->request(i), closure->response(i), closure);
+    fut.wait();
+  }
+  VLOG(0) << "fl-ps > PushFLClientInfoSync finished, client id: " << _client_id;
+  return;
+}
+
+std::string BrpcPsClient::PullFlStrategy() {
+  while (!_service._is_fl_strategy_ready) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    VLOG(0) << "fl-ps > waiting for fl strategy returned from coordinator";
+  }
+  _service._is_fl_strategy_ready =
+      false;  // only support single thread, no need for multi-threads
+  return _service._fl_strategy;
 }
 
 int32_t BrpcPsClient::Initialize() {
@@ -298,6 +419,24 @@ int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
 std::string DownpourBrpcClosure::get_response(size_t request_idx, int cmd_id) {
   std::string data = _responses[request_idx].data();
   return data;
+}
+
+int FlClientBrpcClosure::check_response(size_t request_idx, int cmd_id) {
+  if (_cntls[request_idx]->Failed()) {
+    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+               << " failed, "
+                  "err:"
+               << _cntls[request_idx]->ErrorText();
+    return -1;
+  }
+  if (_responses[request_idx].err_code() != 0) {
+    LOG(ERROR) << "response ret bad, server_idx:" << request_idx
+               << "cmd_id:" << cmd_id
+               << " err_code:" << _responses[request_idx].err_code()
+               << " err_msg:" << _responses[request_idx].err_msg();
+    return -1;
+  }
+  return 0;
 }
 
 std::future<int32_t> BrpcPsClient::PrintTableStat(uint32_t table_id) {
@@ -482,7 +621,7 @@ std::future<int32_t> BrpcPsClient::GetCacheThreshold(uint32_t table_id,
       request_call_num,
       [request_call_num, cmd_id, &cache_threshold](void *done) {
         int ret = 0;
-        auto *closure = (DownpourBrpcClosure *)done;
+        auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
         std::vector<double> cache_thresholds(request_call_num, 0);
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, cmd_id) != 0) {
@@ -528,6 +667,14 @@ std::future<int32_t> BrpcPsClient::Clear() {
 }
 std::future<int32_t> BrpcPsClient::Clear(uint32_t table_id) {
   return SendCmd(table_id, PS_CLEAR_ONE_TABLE, {});
+}
+
+std::future<int32_t> BrpcPsClient::Revert() {
+  return SendCmd(-1, PS_REVERT, {});
+}
+
+std::future<int32_t> BrpcPsClient::CheckSavePrePatchDone() {
+  return SendCmd(-1, PS_CHECK_SAVE_PRE_PATCH_DONE, {});
 }
 
 std::future<int32_t> BrpcPsClient::Flush() {
@@ -1170,6 +1317,7 @@ std::future<int32_t> BrpcPsClient::PullSparseParam(float **select_values,
         }
         closure->set_promise_value(ret);
       });
+
   closure->add_timer(timer);
   auto promise = std::make_shared<std::promise<int32_t>>();
   closure->add_promise(promise);

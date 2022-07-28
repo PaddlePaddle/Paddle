@@ -31,6 +31,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
@@ -241,9 +242,11 @@ class Communicator {
       envs[iter.first] = iter.second;
       VLOG(3) << iter.first << ": " << iter.second;
     }
-    barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
-    trainer_id_ = std::stoi(envs.at("trainer_id"));
-    trainers_ = std::stoi(envs.at("trainers"));
+    if (!envs.empty()) {
+      barrier_table_id_ = std::stoi(envs.at("barrier_table_id"));
+      trainer_id_ = std::stoi(envs.at("trainer_id"));
+      trainers_ = std::stoi(envs.at("trainers"));
+    }
   }
 
   virtual void InitBrpcClient(const std::string &dist_desc,
@@ -279,6 +282,15 @@ class Communicator {
   virtual void SendGlobalStep(const CommContext &ctx,
                               int batches,
                               Scope *send_scope);
+
+  virtual std::unordered_map<uint32_t, std::string> QueryFLClientsInfo() {
+    return {};
+  }
+  virtual void SaveFLStrategy(
+      const std::unordered_map<uint32_t, std::string> &fl_strategy) {}
+  virtual void StartCoordinator(
+      const std::string &self_endpoint,
+      const std::vector<std::string> &trainer_endpoints) {}
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
@@ -375,10 +387,6 @@ class Communicator {
   }
 
   PSClient *GetPsClient() { return _worker_ptr.get(); }
-
-  std::shared_ptr<paddle::distributed::PSClient> GetPsClientPtr() {
-    return std::move(_worker_ptr);
-  }
 
   RecvCtxMap &GetRecvCtxMap() { return recv_varname_to_ctx_; }
 
@@ -655,6 +663,51 @@ class GeoCommunicator : public AsyncCommunicator {
       std::string,
       paddle::framework::Channel<std::shared_ptr<std::vector<int64_t>>>>
       sparse_id_queues_;
+};
+
+class FLCommunicator : public GeoCommunicator {
+ public:
+  FLCommunicator() : GeoCommunicator() {}
+
+  ~FLCommunicator() {
+    is_running_ = false;
+    async_send_thread_->join();
+  }
+
+  explicit FLCommunicator(const std::map<std::string, std::string> &envs)
+      : GeoCommunicator(envs) {}
+
+  void InitEnvs() override {}
+
+  virtual void InitBrpcClient(const std::string &dist_desc,
+                              const std::vector<std::string> &host_sign_list);
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override {}
+
+  void StartCoordinatorClient(
+      const std::vector<std::string> &trainer_endpoints);
+
+  void StartCoordinatorServer();
+
+  void StartCoordinator(
+      const std::string &self_endpoint,
+      const std::vector<std::string> &trainer_endpoints) override;
+
+  std::unordered_map<uint32_t, std::string> QueryFLClientsInfo();
+  void SaveFLStrategy(
+      const std::unordered_map<uint32_t, std::string> &fl_strategy);
+
+  void SendThreadAsync();
+  void RpcSendFLStrategy();
+
+ private:
+  int thread_pool_size_ = 1;
+  bool is_running_ = true;
+  PaddlePSEnvironment ps_env_;
+  std::shared_ptr<CoordinatorClient> coordinator_client_ptr_{nullptr};
+  std::unique_ptr<std::thread> async_send_thread_{nullptr};
 };
 
 }  // namespace distributed

@@ -12,98 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/average_accumulates_op.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
-template <>
-void GetAccumulators<phi::CPUContext>(const framework::ExecutionContext& ctx,
-                                      int64_t* num_updates,
-                                      int64_t* num_accumulates,
-                                      int64_t* old_num_accumulates) {
-  auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
-  auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
-  auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
-
-  *old_num_accumulates = in_old_num_accumulates->data<int64_t>()[0];
-  *num_accumulates = in_num_accumulates->data<int64_t>()[0];
-  *num_updates = in_num_updates->data<int64_t>()[0];
-}
-
-template <>
-void SetAccumulators<phi::CPUContext>(const framework::ExecutionContext& ctx,
-                                      int64_t num_updates,
-                                      int64_t num_accumulates,
-                                      int64_t old_num_accumulates) {
-  auto* out_old_num_accumulates = ctx.Output<Tensor>("out_old_num_accumulates");
-  auto* out_num_accumulates = ctx.Output<Tensor>("out_num_accumulates");
-  auto* out_num_updates = ctx.Output<Tensor>("out_num_updates");
-
-  out_old_num_accumulates->data<int64_t>()[0] = old_num_accumulates;
-  out_num_accumulates->data<int64_t>()[0] = num_accumulates;
-  out_num_updates->data<int64_t>()[0] = num_updates;
-}
-
 class AverageAccumulatesOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("param"), "Input", "param", "AverageAccumulates");
-    OP_INOUT_CHECK(
-        ctx->HasInput("in_sum_1"), "Input", "in_sum_1", "AverageAccumulates");
-    OP_INOUT_CHECK(
-        ctx->HasInput("in_sum_2"), "Input", "in_sum_2", "AverageAccumulates");
-    OP_INOUT_CHECK(
-        ctx->HasInput("in_sum_3"), "Input", "in_sum_3", "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasInput("in_num_accumulates"),
-                   "Input",
-                   "in_num_accumulates",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasInput("in_old_num_accumulates"),
-                   "Input",
-                   "in_old_num_accumulates",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasInput("in_num_updates"),
-                   "Input",
-                   "in_num_updates",
-                   "AverageAccumulates");
-
-    OP_INOUT_CHECK(ctx->HasOutput("out_sum_1"),
-                   "Output",
-                   "out_sum_1",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasOutput("out_sum_2"),
-                   "Output",
-                   "out_sum_2",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasOutput("out_sum_3"),
-                   "Output",
-                   "out_sum_3",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasOutput("out_num_accumulates"),
-                   "Output",
-                   "out_num_accumulates",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasOutput("out_old_num_accumulates"),
-                   "Output",
-                   "out_old_num_accumulates",
-                   "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasOutput("out_num_updates"),
-                   "Output",
-                   "out_num_updates",
-                   "AverageAccumulates");
-    auto in_dim = ctx->GetInputDim("param");
-
-    ctx->SetOutputDim("out_sum_1", in_dim);
-    ctx->SetOutputDim("out_sum_2", in_dim);
-    ctx->SetOutputDim("out_sum_3", in_dim);
-    ctx->SetOutputDim("out_num_accumulates", {1});
-    ctx->SetOutputDim("out_old_num_accumulates", {1});
-    ctx->SetOutputDim("out_num_updates", {1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -209,12 +129,14 @@ And for a mini-batch in training, accumulators were computed as below steps:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(average_accumulates,
+                            AverageAccumulatesInferShapeFunctor,
+                            PD_INFER_META(phi::AverageAccumulatesInferMeta));
+
 REGISTER_OPERATOR(
     average_accumulates,
     ops::AverageAccumulatesOp,
     ops::AverageAccumulatesOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(average_accumulates,
-                       ops::AverageAccumulatesKernel<phi::CPUContext, float>,
-                       ops::AverageAccumulatesKernel<phi::CPUContext, double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AverageAccumulatesInferShapeFunctor);

@@ -38,6 +38,7 @@ class ExecutorFunction : public BaseFunction {
       : info_(info), place_(place), inner_exe_(place_) {
     utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, &scope_);
     VLOG(6) << framework::GenScopeTreeDebugInfo(&scope_);
+    info_->RemoveDescFeedFetch();
   }
 
   ~ExecutorFunction() noexcept {}
