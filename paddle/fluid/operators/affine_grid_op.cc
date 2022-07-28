@@ -34,6 +34,74 @@ using Tensor = framework::Tensor;
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Theta"),
+                      true,
+                      platform::errors::NotFound(
+                          "The input 'Theta' of AffineGridOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"),
+                      true,
+                      platform::errors::NotFound(
+                          "The output 'Output' of AffineGridOp is not found."));
+    auto theta_dims = ctx->GetInputDim("Theta");
+    PADDLE_ENFORCE_EQ(
+        theta_dims.size(),
+        3,
+        platform::errors::InvalidArgument(
+            "The input Theta's dimensions size should be 3. But received "
+            "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+            theta_dims.size(),
+            theta_dims));
+
+    auto output_shape = ctx->Attrs().Get<std::vector<int>>("output_shape");
+    if (output_shape.size() == 0) {
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("OutputShape"),
+          true,
+          platform::errors::NotFound(
+              "The input 'OutputShape' of AffineGridOp should not be null if "
+              "'output_shape' is not configured."));
+      auto output_shape_dims = ctx->GetInputDim("OutputShape");
+      PADDLE_ENFORCE_EQ(
+          output_shape_dims.size(),
+          1,
+          platform::errors::InvalidArgument(
+              "The dimesions size of input OutputShape in AffineGridOp should "
+              "be 1. But received OutputShape's  dimesions size=[%d], "
+              "OutputShape's  dimesions=[%s]",
+              output_shape_dims.size(),
+              output_shape_dims));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          output_shape.size(),
+          4,
+          platform::errors::InvalidArgument(
+              "The size of attribute 'output_shape' in AffineGridOp should be "
+              "4. But received output_shape's size=[%d].",
+              output_shape.size()));
+    }
+
+    PADDLE_ENFORCE_EQ(
+        theta_dims[1],
+        2,
+        platform::errors::InvalidArgument(
+            "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+            "But received second dimesion=[%d], dimesions=[%s]",
+            theta_dims[1],
+            theta_dims));
+    PADDLE_ENFORCE_EQ(
+        theta_dims[2],
+        3,
+        platform::errors::InvalidArgument(
+            "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+            "But received third dimesion=[%d], dimesions=[%s]",
+            theta_dims[2],
+            theta_dims));
+
+    // N * H * W * 2
+    ctx->SetOutputDim("Output", phi::make_ddim({theta_dims[0], -1, -1, 2}));
+    ctx->ShareLoD("Theta", "Output");
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -145,7 +213,13 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
 class AffineGridOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->HasOutput(framework::GradVarName("Theta"))) {
+      auto output_dims = ctx->GetInputDim(framework::GradVarName("Output"));
+      ctx->SetOutputDim(framework::GradVarName("Theta"),
+                        {output_dims[0], 2, 3});
+    }
+  }
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -184,20 +258,14 @@ class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(affine_grid, AffineGridInferMetaFunctor,
-                            PD_INFER_META(phi::AffineGridInferMeta));
 REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridOp,
                   ops::AffineGridOpMaker,
                   ops::AffineGridGradMaker<paddle::framework::OpDesc>,
-                  ops::AffineGridGradMaker<paddle::imperative::OpBase>,
-                  AffineGridInferMetaFunctor);
+                  ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 
-DECLARE_INFER_SHAPE_FUNCTOR(affine_grid_grad, AffineGridGradInferMetaFunctor,
-                            PD_INFER_META(phi::AffineGridGradInferMeta));
 REGISTER_OPERATOR(affine_grid_grad,
-                  ops::AffineGridOpGrad,
-                  AffineGridGradInferMetaFunctor);
+                  ops::AffineGridOpGrad);
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

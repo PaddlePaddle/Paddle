@@ -86,7 +86,7 @@ __global__ void affine_grid_grad_kernel(const int count,
 
 template <typename T, typename Context>
 void AffineGridGradCUDAKernel(const Context& dev_ctx,
-                          const DenseTensor& outputShape,
+                          const paddle::optional<DenseTensor>& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
                           const std::vector<int>& output_shape,
@@ -98,7 +98,7 @@ void AffineGridGradCUDAKernel(const Context& dev_ctx,
     int h = 0;
     int w = 0;
     if (size_attr.size() == 0) {
-      auto* output_shape = &outputShape;
+      auto* output_shape = outputShape.get_ptr();
       DenseTensor h_sizes;
       phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       const int* h_size_data = h_sizes.data<int>();

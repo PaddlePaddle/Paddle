@@ -41,7 +41,7 @@ struct Linspace<phi::CPUContext, T> {
 
 template <typename T, typename Context>
 void AffineGridGradKernel(const Context& dev_ctx,
-                          const DenseTensor& outputShape,
+                          const paddle::optional<DenseTensor>& outputShape,
                           const DenseTensor& output_grad,
                           bool align_corners,
                           const std::vector<int>& output_shape,
@@ -56,7 +56,8 @@ void AffineGridGradKernel(const Context& dev_ctx,
     if (size_attr.size() == 0) {
       //auto* output_shape = ctx.Input<Tensor>("OutputShape");
       DenseTensor h_sizes;
-      phi::Copy(dev_ctx, outputShape, dev_ctx.GetPlace(), false, &h_sizes);
+      auto *outputShape_ptr = outputShape.get_ptr();
+      phi::Copy(dev_ctx, *outputShape_ptr, dev_ctx.GetPlace(), false, &h_sizes);
       const int* h_size_data = h_sizes.data<int>();
       h = h_size_data[2];
       w = h_size_data[3];

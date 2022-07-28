@@ -30,7 +30,7 @@ using ScopedSpatialTransformerDescriptor =
 template <typename T, typename Context>
 void AffineGridCudnnKernel(const Context& dev_ctx,
                            const DenseTensor& input,
-                           const DenseTensor& outputShape,
+                           const paddle::optional<DenseTensor>& outputShape,
                            bool align_corners,
                            const std::vector<int>& output_shape,
                            DenseTensor* output) {
@@ -49,7 +49,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
     DenseTensor h_sizes;
     int* h_size_data;
     if (size_attr.size() == 0) {
-      auto* output_shape = &outputShape;
+      auto* output_shape = outputShape.get_ptr();
       phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
       h_size_data = h_sizes.data<int>();
     } else {

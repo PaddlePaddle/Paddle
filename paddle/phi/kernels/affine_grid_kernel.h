@@ -19,7 +19,7 @@ namespace phi {
 template <typename T, typename Context>
 void AffineGridKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const DenseTensor& outputShape,
+                      const paddle::optional<DenseTensor>& outputShape,
                       bool align_corners,
                       const std::vector<int>& output_shape,
                       DenseTensor* output);
