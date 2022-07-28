@@ -28,9 +28,6 @@ void UniformRandomInplaceKernel(const Context& ctx,
                                 int diag_step,
                                 float diag_val,
                                 DenseTensor* out) {
-  // auto out_var = ctx.OutputVar("Out");
-  // auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-  // T *data = tensor->mutable_data<T>(ctx.GetPlace());
   T* data = ctx.template Alloc<T>(out);
   int64_t size = out->numel();
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
