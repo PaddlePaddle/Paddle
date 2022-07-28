@@ -237,7 +237,7 @@
 
 # assgin_value
 - api : assign_value_
-  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values)
+  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
   inplace: (output -> out)
   infer_meta :
@@ -245,8 +245,9 @@
     param : [shape, dtype]
   kernel :
     func : assign_value
-    param: [shape, dtype, values]
+    param : [shape, dtype, values]
     data_type : dtype
+    backend : place > output 
 
 # atan
 - api : atan

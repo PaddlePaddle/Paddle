@@ -1573,7 +1573,7 @@ def assign(x, output=None):
             if output is None:
                 output = zeros(list(input.shape), dtype)
             _C_ops.final_state_assign_value_(output, list(input.shape), dtype,
-                                             values)
+                                             values, _current_expected_place())
         elif _in_legacy_dygraph():
             if output is None:
                 output = core.VarBase()
