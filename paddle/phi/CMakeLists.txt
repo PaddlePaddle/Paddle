@@ -30,7 +30,7 @@ endif()
 set(PHI_DEPS
     convert_utils
     dense_tensor
-    phi_context
+    phi_backends
     kernel_factory
     kernel_context
     arg_map_context

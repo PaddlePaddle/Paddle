@@ -29,12 +29,11 @@ function(detection_library TARGET_NAME)
 endfunction()
 
 if(WITH_ASCEND_CL)
-  detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu
-                    box_coder_op_npu.cc)
+  detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op_npu.cc)
   detection_library(density_prior_box_op SRCS density_prior_box_op.cc
                     density_prior_box_op.cu density_prior_box_op_npu.cc)
 else()
-  detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu)
+  detection_library(box_coder_op SRCS box_coder_op.cc)
   detection_library(density_prior_box_op SRCS density_prior_box_op.cc
                     density_prior_box_op.cu)
 endif()

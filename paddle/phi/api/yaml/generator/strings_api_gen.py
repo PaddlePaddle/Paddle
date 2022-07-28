@@ -55,13 +55,13 @@ class StringsAPI(ForwardAPI):
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
         return_type = self.get_return_type(inplace_flag)
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             kernel_tensor_out_type = self.get_kernel_tensor_out_type(
                 self.outputs['names'][0])
@@ -78,7 +78,7 @@ class StringsAPI(ForwardAPI):
   {return_type} api_output;"""
 
             for i in range(len(out_dtype_list)):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 kernel_tensor_out_type = self.get_kernel_tensor_out_type(
                     self.outputs['names'][i])
@@ -91,7 +91,6 @@ class StringsAPI(ForwardAPI):
                 output_create = output_create + f"""
   {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -178,13 +177,14 @@ class StringsAPI(ForwardAPI):
 
         return f"""
   // 1. Get kernel signature and kernel
-  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
   VLOG(6) << "{self.api} api strings kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
+  const auto& kernel = kernel_result.kernel;
   VLOG(6) << "{self.api} api strings kernel: " << kernel;
 
   // 2. Get Device Context and input
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
   {input_tensors}
 
   //  3. Set output
@@ -195,7 +195,7 @@ class StringsAPI(ForwardAPI):
 
 {code_indent}  using kernel_signature = {kernel_signature};
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  (*kernel_fn)({kernel_args}, {outputs_args});
+{code_indent}  (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
 
 {code_indent}  {self.gene_return_code()}"""
 

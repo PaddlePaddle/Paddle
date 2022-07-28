@@ -336,7 +336,12 @@ endif()
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
    AND NOT ON_INFER)
-  set(WITH_CUSTOM_DEVICE ON)
+  set(WITH_CUSTOM_DEVICE
+      ON
+      CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)
+  message(
+    "Enable Custom Device when compiling for Linux. Force WITH_CUSTOM_DEVICE=ON."
+  )
 endif()
 
 if(WIN32)
@@ -430,6 +435,7 @@ endif()
 if(WITH_ROCM)
   include(hip)
   include(miopen) # set miopen libraries, must before configure
+  include(cupti)
 endif()
 
 if(WITH_XPU_KP)

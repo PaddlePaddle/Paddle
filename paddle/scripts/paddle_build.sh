@@ -60,17 +60,6 @@ function init() {
 
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
-
-    # set CI_SKIP_CPP_TEST if only *.py changed
-    # In order to avoid using in some CI(such as daily performance), the current
-    # branch must not be `${BRANCH}` which is usually develop.
-    if [ ${CI_SKIP_CPP_TEST:-ON} == "OFF"  ];then
-        echo "CI_SKIP_CPP_TEST=OFF"
-    else
-        if [ "$(git branch | grep "^\*" | awk '{print $2}')" != "${BRANCH}" ]; then
-            git diff --name-only ${BRANCH} | grep -v "\.py$" || export CI_SKIP_CPP_TEST=ON
-        fi
-    fi
 }
 
 function cmake_base() {
@@ -209,6 +198,8 @@ function cmake_base() {
     gloo_flag=${distibuted_flag}
 
     if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
       python -m pip install distro
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
@@ -1880,6 +1871,18 @@ function precise_card_test_single {
     done
 }
 
+function parallel_card_test_single {
+    set +e
+    set +x
+    testcases=$1
+    num=$2
+    for case in $(echo $testcases | tr "$|^" "\n")
+    do
+        cd ${PADDLE_ROOT}/build
+        precise_card_test "^${case}$" $num
+    done
+}
+
 function precise_card_test() {
     set -m
     testcases=$1
@@ -1927,6 +1930,8 @@ function get_precise_tests_map_file {
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
+
+    single_card_test_num=0
 set +x
 
     while read -r line; do
@@ -1962,7 +1967,8 @@ set +x
                     multiple_card_tests="$multiple_card_tests|^$testcase$"
                 fi
             else
-                if [[ "${single_card_tests}" -gt 3000 ]];then
+                single_card_test_num=$(($single_card_test_num+1))
+                if [[ $single_card_test_num -gt 3000 ]];then
                     if [[ "$single_card_tests_1" == "" ]]; then
                         single_card_tests_1="^$testcase$"
                     else
@@ -2006,7 +2012,86 @@ set -x
 
     #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
+    
+}
 
+function get_parallel_tests_map_file {
+    cd ${PADDLE_ROOT}/build
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    ut_total_startTime_s=`date +%s`
+    EXIT_CODE=0;
+    test_cases=$(ctest -N -V) # get all test cases
+    single_card_tests='' # all cases list which would take one graph card
+    exclusive_tests=''        # cases list which would be run exclusively
+    multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
+    is_exclusive=''           # indicate whether the case is exclusive type
+    is_multicard=''           # indicate whether the case is multiple GPUs type
+    single_card_test_num=0
+set +x
+
+    while read -r line; do
+        if [[ "$line" == "" ]]; then
+            continue
+        fi
+            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            if [[ "$matchstr" == "" ]]; then
+                # Any test case with LABELS property would be parse here
+                # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
+                # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+            if [[ "$is_multicard" == "" ]]; then
+                # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
+                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+            fi
+
+            if [[ "$is_exclusive" != "" ]]; then
+                if [[ "$exclusive_tests" == "" ]]; then
+                    exclusive_tests="^$testcase$"
+                else
+                    exclusive_tests="$exclusive_tests|^$testcase$"
+                fi
+            elif [[ "$is_multicard" != "" ]]; then
+                if [[ "$multiple_card_tests" == "" ]]; then
+                    multiple_card_tests="^$testcase$"
+                else
+                    multiple_card_tests="$multiple_card_tests|^$testcase$"
+                fi
+            else
+                single_card_test_num=$(($single_card_test_num+1))
+                if [[ $single_card_test_num -gt 3000 ]];then
+                    if [[ "$single_card_tests_1" == "" ]]; then
+                        single_card_tests_1="^$testcase$"
+                    else
+                        single_card_tests_1="$single_card_tests_1|^$testcase$"
+                    fi
+                    continue
+                fi
+                if [[ "$single_card_tests" == "" ]]; then
+                    single_card_tests="^$testcase$"
+                else
+                    single_card_tests="$single_card_tests|^$testcase$"
+                fi
+            fi
+            is_exclusive=''
+            is_multicard=''
+            is_nightly=''
+            matchstr=''
+            testcase=''
+    done <<< "$test_cases";
+
+set -x
+    mkdir -p ${PADDLE_ROOT}/build/ut_map
+    mkdir -p ${PADDLE_ROOT}/build/pytest
+
+    parallel_card_test_single "$single_card_tests" 1
+    parallel_card_test_single "$single_card_tests_1" 1
+    parallel_card_test_single "$multiple_card_tests" 2
+    parallel_card_test_single "$exclusive_tests"
 
     wait;
     #classify_case_by_cardNum
@@ -2289,7 +2374,14 @@ EOF
 
 set +x
         test_cases=$(ctest -N -V) # get all test cases
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+
+        mlu_card_num=$(cnmon info -t | grep Card | wc -l)
+        if [[ $mlu_card_num == 1 ]]; then
+            get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        else
+            disable_ut_quickly='disable_ut'
+        fi
+        
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2385,7 +2477,6 @@ set +x
                     else 
                         break
                     fi
-
                 done
         fi
 
@@ -3232,7 +3323,6 @@ function reuse_so_cache() {
     down_proto_so=`echo $?`
     set -e
     if [ "${down_proto_so}" -eq 0 ];then
-        export CI_SKIP_CPP_TEST=ON
         cd build && mv ../proto_so.tar.gz .
         tar --use-compress-program=pigz -xpf proto_so.tar.gz
         cmake_gen ${PYTHON_ABI:-""} ${parallel_number}
@@ -3468,8 +3558,10 @@ function main() {
       ci_preciseTest)
         insert_pile_to_h_cu_diff 
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        enable_unused_var_check
         get_precise_tests_map_file
+        ;;
+      ci_parallelTest)
+        get_parallel_tests_map_file
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}

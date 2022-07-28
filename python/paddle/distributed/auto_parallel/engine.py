@@ -37,6 +37,7 @@ from paddle.distributed import fleet
 from paddle.distributed.utils import get_logger
 from paddle.distributed.passes import new_pass, PassContext
 
+from .hepler import ProgramHelper
 from ..collective import _get_global_env
 from .cluster import Cluster, get_default_cluster
 from .planner_v2 import Planner
@@ -141,87 +142,28 @@ class Engine:
             self._mode_init_states[mode] = True
 
     def _build(self, mode):
-
         if _non_static_mode() or self._dygraph_mode:
+            paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
+            program_helper = ProgramHelper(self.model, self._loss,
+                                           self._metrics, self.inputs_spec,
+                                           self.labels_spec)
             # build forward main program
-            self.static_model = to_static(self.model,
-                                          input_spec=self.inputs_spec)
-            inputs = self.static_model.forward.inputs
-            outputs = self.static_model.forward.outputs
-            forward_main_prog = self.static_model.forward.main_program
-            forward_startup_prog = self.static_model.forward.concrete_program.startup_program
-            self.concrete_program = self.static_model.forward.concrete_program
+            program_helper.build_program(mode)
 
-            # build loss main program
-            outputs_spec = []
-            outputs_name = []
-            for out in outputs:
-                outputs_spec.append(InputSpec(out.shape, out.dtype, out.name))
-                outputs_name.append(out.name)
-            if isinstance(self._loss, paddle.nn.Layer):
-                self.static_loss = to_static(self._loss.forward,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
-            elif callable(self._loss):
-                self.static_loss = to_static(self._loss,
-                                             input_spec=outputs_spec +
-                                             self.labels_spec)
-                loss_main_prog = self.static_loss.main_program
+            self.concrete_program = program_helper.concrete_program
+            serial_main_prog = program_helper.main_program
+            serial_startup_prog = program_helper.startup_program
 
-            # build startup program
-            for param in self.concrete_program.parameters:
-                Parameter(name=param.name,
-                          desc=param,
-                          type=param.type,
-                          shape=param.shape,
-                          dtype=param.dtype,
-                          stop_gradient=param.stop_gradient,
-                          block=forward_startup_prog.global_block())
+            inputs = program_helper.input_vars
+            outputs = program_helper.output_vars
+            labels = program_helper.label_vars
+            losses = program_helper.loss_vars
+            metrics = program_helper.metric_vars
 
             paddle.enable_static()
-
-            # NOTE: pure program will loss dist_attr
-            # feeded_var_names = [var.name for var in inputs]
-            # main_prog_0 = main_prog_0._prune_with_input(
-            #     feeded_var_names=feeded_var_names, targets=outputs)
-
-            labels = []
-            losses = []
-            metrics = []
-            # concat forward and loss prog
-            if mode != 'predict' and self._loss:
-                forward_block = forward_main_prog.global_block()
-                loss_block = loss_main_prog.global_block()
-                for idx, op in enumerate(loss_block.ops):
-                    op_desc = forward_block.desc.append_op()
-                    op_desc.copy_from(op.desc)
-                    for in_name in op.input_arg_names:
-                        if in_name in outputs_name:
-                            continue
-                        in_var = forward_block._clone_variable(
-                            loss_block.vars[in_name], force_persistable=False)
-                        if loss_block.vars[in_name].is_data:
-                            labels.append(in_var)
-                    for out_name in op.output_arg_names:
-                        out_var = forward_block._clone_variable(
-                            loss_block.vars[out_name], force_persistable=False)
-                        if idx == len(loss_block.ops) - 1:
-                            losses.append(out_var)
-                forward_block._sync_with_cpp()
-            serial_main_prog = forward_main_prog
-            serial_startup_prog = forward_startup_prog
-            # update metrics op in program
-            with static.program_guard(serial_main_prog, serial_startup_prog), \
-                utils.unique_name.guard():
-                if mode != "predict":
-                    for metric in self._metrics:
-                        metrics.extend(
-                            to_list(metric.compute(*(outputs + labels))))
-
         else:
             # build program in static mode
             serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -324,65 +266,11 @@ class Engine:
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
 
-            has_recv_by_socket = []
-            # This is a magic number and the rank number for training is usually less than 5000
-            magic_num = 5000
-            genv = _get_global_env()
-            cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
-            cur_rank_recv_port = int(cur_rank_port) + magic_num
-            server_socket = None
-            # Large enough for recv rank
-            buff_size = 1024
-            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.bind((cur_rank_ip, cur_rank_recv_port))
-            # The 10 is an empirical value
-            server_socket.listen(10)
-            client_sockets = {}
+            # NOTE: add the comm init control in the future for auto search
             for process_group in all_process_groups:
                 if self._cur_rank not in process_group.ranks:
                     continue
-                if len(process_group.ranks) == 2:
-                    index = process_group.ranks.index(self._cur_rank)
-                    is_send = True if index == 0 else False
-                    if is_send:
-                        recv_rank = process_group.ranks[1]
-                        recv_rank_ip, recv_rank_port = genv.trainer_endpoints[
-                            recv_rank].split(":")
-                        connect_port = int(recv_rank_port) + magic_num
-                        client_socket = socket.socket(socket.AF_INET,
-                                                      socket.SOCK_STREAM)
-                        client_socket.connect((recv_rank_ip, connect_port))
-                        client_socket.send(str(self._cur_rank).encode('utf-8'))
-                        rank = client_socket.recv(buff_size).decode('utf-8')
-                        rank = int(rank)
-                        if rank != recv_rank:
-                            raise ValueError(
-                                "Please check comm pair, the recv rank should be {} but got {}."
-                                .format(recv_rank, rank))
-                        else:
-                            print("It is able to instantiate {} as sender now.".
-                                  format(process_group.ranks))
-                        client_socket.close()
-                    else:
-                        send_rank = process_group.ranks[0]
-                        while True:
-                            if send_rank not in has_recv_by_socket:
-                                client_socket, recv_addr = server_socket.accept(
-                                )
-                                rank = int(
-                                    client_socket.recv(buff_size).decode())
-                                client_sockets[rank] = client_socket
-                                has_recv_by_socket.append(rank)
-                            else:
-                                client_sockets[send_rank].send(
-                                    str(self._cur_rank).encode("utf-8"))
-                                client_sockets[send_rank].close()
-                                print(
-                                    "It is able to instantiate {} as recver now."
-                                    .format(process_group.ranks))
-                                break
                 process_group.instantiate()
-            server_socket.close()
 
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):

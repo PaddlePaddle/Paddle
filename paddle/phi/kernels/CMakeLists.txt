@@ -62,6 +62,7 @@ set(COMMON_KERNEL_DEPS
     pooling
     maxouting
     matrix_inverse
+    matrix_solve
     phi_dynload_warpctc
     sequence_padding
     sequence_scale)
@@ -156,7 +157,7 @@ endif()
 if(WITH_MKLDNN)
   add_library(phi_onednn ${kernel_onednn})
   kernel_declare(${kernel_onednn})
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} onednn_context)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_backends)
   target_link_libraries(phi_onednn ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_onednn)
 endif()

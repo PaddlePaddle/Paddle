@@ -52,7 +52,7 @@ if(WITH_GPU)
   cc_library(
     layout_autotune
     SRCS layout_autotune.cc
-    DEPS op_info phi_gpu_info)
+    DEPS op_info phi_backends)
 else()
   cc_library(
     layout_autotune

@@ -205,5 +205,21 @@ class TestOpsNMS(unittest.TestCase):
                         origin, res))
         paddle.enable_static()
 
+    def test_matrix_nms_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                boxes, scores, category_idxs, categories = gen_args(
+                    self.num_boxes, dtype)
+                scores = np.random.rand(1, 4, self.num_boxes).astype(dtype)
+                paddle.set_device(device)
+                out = paddle.vision.ops.matrix_nms(
+                    paddle.to_tensor(boxes).unsqueeze(0),
+                    paddle.to_tensor(scores),
+                    self.threshold,
+                    post_threshold=0.,
+                    nms_top_k=400,
+                    keep_top_k=100,
+                )
+
 if __name__ == '__main__':
     unittest.main()

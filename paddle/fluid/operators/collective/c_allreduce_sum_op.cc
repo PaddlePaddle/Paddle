@@ -33,7 +33,7 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    bool use_mp = BOOST_GET_CONST(bool, this->GetAttr("use_model_parallel"));
+    bool use_mp = PADDLE_GET_CONST(bool, this->GetAttr("use_model_parallel"));
     if (use_mp) {
       retv->SetType("c_identity");
     } else {

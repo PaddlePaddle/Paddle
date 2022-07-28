@@ -190,11 +190,13 @@ class FleetWrapper {
       const std::vector<std::string>& input_names,
       std::vector<const LoDTensor*>* inputs,    // NOLINT
       std::vector<const LoDTensor*>* outputs);  // NOLINT
+
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
                                  platform::Place place,
                                  std::vector<const LoDTensor*>* inputs,
+                                 std::vector<int>& slots,  // NOLINT
                                  const LoDTensor* shows,
                                  const LoDTensor* clicks,
                                  std::vector<LoDTensor*>* outputs,
@@ -300,6 +302,16 @@ class FleetWrapper {
                     const int mode,
                     const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  void Revert();
+  void CheckSavePrePatchDone();
+
+  //********* for fl-coordinator
+  void InitFlWorker(const std::vector<std::string>& host_list,
+                    int index,
+                    const std::string& self_endpoint);
+  void PushFLClientInfoSync(const std::string& fl_client_info);
+  std::string PullFlStrategy();
+  //**********
 
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
   static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
