@@ -130,283 +130,283 @@ namespace capi {
   PD_CUSTOM_PHI_KERNEL_EXPAND(                                            \
       _PD_BUILD_KERNEL_INSTANTIATION_14(meta_kernel_fn, backend, __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype)                          \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  int TouchCustomKernelSymbolFor_##kernel_name##_##backend##_##layout() {     \
-    return 0;                                                                 \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype)                           \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  int TouchCustomKernelSymbolFor_##kernel_name##_##backend##_##layout() {      \
+    return 0;                                                                  \
   }
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_1(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_2(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_3(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_4(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_5(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_6(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_7(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                    \
-                                          kernel_name,                        \
-                                          backend,                            \
-                                          layout,                             \
-                                          registrar_id,                       \
-                                          meta_kernel_fn,                     \
-                                          cpp_dtype,                          \
-                                          ...)                                \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                     \
+                                          kernel_name,                         \
+                                          backend,                             \
+                                          layout,                              \
+                                          registrar_id,                        \
+                                          meta_kernel_fn,                      \
+                                          cpp_dtype,                           \
+                                          ...)                                 \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_8(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                      \
-                                        kernel_name,                          \
-                                        backend,                              \
-                                        layout,                               \
-                                        PD_CUSTOM_PHI_KERNEL_ID,              \
-                                        meta_kernel_fn,                       \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_9(registrar_class,                       \
+                                        kernel_name,                           \
+                                        backend,                               \
+                                        layout,                                \
+                                        PD_CUSTOM_PHI_KERNEL_ID,               \
+                                        meta_kernel_fn,                        \
                                         __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_10(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_11(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_12(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_13(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
-#define _PD_BUILD_KERNEL_REGISTRAR_INIT_15(registrar_class,                   \
-                                           kernel_name,                       \
-                                           backend,                           \
-                                           layout,                            \
-                                           registrar_id,                      \
-                                           meta_kernel_fn,                    \
-                                           cpp_dtype,                         \
-                                           ...)                               \
-  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(   \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
-  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                \
-      _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                     \
-                                         kernel_name,                         \
-                                         backend,                             \
-                                         layout,                              \
-                                         PD_CUSTOM_PHI_KERNEL_ID,             \
-                                         meta_kernel_fn,                      \
+#define _PD_BUILD_KERNEL_REGISTRAR_INIT_15(registrar_class,                    \
+                                           kernel_name,                        \
+                                           backend,                            \
+                                           layout,                             \
+                                           registrar_id,                       \
+                                           meta_kernel_fn,                     \
+                                           cpp_dtype,                          \
+                                           ...)                                \
+  static const registrar_class<cpp_dtype> PD_CUSTOM_PHI_KERNEL_CONCATENATE(    \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id); \
+  PD_CUSTOM_PHI_KERNEL_EXPAND(                                                 \
+      _PD_BUILD_KERNEL_REGISTRAR_INIT_14(registrar_class,                      \
+                                         kernel_name,                          \
+                                         backend,                              \
+                                         layout,                               \
+                                         PD_CUSTOM_PHI_KERNEL_ID,              \
+                                         meta_kernel_fn,                       \
                                          __VA_ARGS__))
 
 #define _PD_BUILD_KERNEL_REGISTRAR_INIT(                                   \

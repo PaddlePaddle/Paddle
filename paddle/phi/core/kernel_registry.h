@@ -563,7 +563,7 @@ struct KernelRegistrar {
                                     meta_kernel_fn,                           \
                                     cpp_dtype)                                \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -586,7 +586,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -617,7 +617,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -648,7 +648,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -679,7 +679,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -710,7 +710,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -741,7 +741,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -772,7 +772,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -803,7 +803,7 @@ struct KernelRegistrar {
                                     cpp_dtype,                                \
                                     ...)                                      \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -834,7 +834,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -865,7 +865,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -896,7 +896,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -927,7 +927,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -958,7 +958,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -989,7 +989,7 @@ struct KernelRegistrar {
                                      cpp_dtype,                               \
                                      ...)                                     \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                         \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
       reg_type,                                                               \
       #kernel_name,                                                           \
       #backend,                                                               \
@@ -1035,7 +1035,7 @@ struct KernelRegistrar {
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   static const ::phi::KernelRegistrar                                       \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \
@@ -1055,7 +1055,7 @@ struct KernelRegistrar {
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   static const ::phi::KernelRegistrar                                       \
-      __reg_pt_kernel_##kernel_name##_##backend##_##layout(                 \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
           reg_type,                                                         \
           #kernel_name,                                                     \
           #backend,                                                         \

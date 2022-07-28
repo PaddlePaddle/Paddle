@@ -597,13 +597,13 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         VLOG(4) << "Run phi kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
-        phi::KernelContext pt_kernel_context;
+        phi::KernelContext phi_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
-            &pt_kernel_context);
+            &phi_kernel_context);
 
-        (*instr_node.PhiKernel())(&pt_kernel_context);
+        (*instr_node.PhiKernel())(&phi_kernel_context);
 
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
