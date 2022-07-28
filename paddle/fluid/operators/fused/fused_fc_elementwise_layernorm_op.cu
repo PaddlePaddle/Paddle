@@ -457,4 +457,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_fc_elementwise_layernorm,
     ops::FusedFCElementwiseLayerNormOpKernel<phi::dtype::float16>,
-    ops::FusedFCElementwiseLayerNormOpKernel<float>);
+    ops::FusedFCElementwiseLayerNormOpKernel<float>,
+    ops::FusedFCElementwiseLayerNormOpKernel<double>);
