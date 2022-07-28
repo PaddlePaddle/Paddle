@@ -640,6 +640,7 @@ def crop(x, shape=None, offsets=None, name=None):
             # if offsets = [1, 1], out = [[5,6], [8,9]]
 
     """
+
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
@@ -649,6 +650,9 @@ def crop(x, shape=None, offsets=None, name=None):
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_crop_tensor(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -3000,8 +3004,10 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.final_state_expand(x, shape)
+    if _in_legacy_dygraph():
+        return _C_ops.expand_v2(x, 'shape', shape)
 
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')

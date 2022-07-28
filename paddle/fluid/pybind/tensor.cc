@@ -379,6 +379,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
+           &TensorCopyFrom<paddle::platform::IPUPlace>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from",
            &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"),
            py::arg("place"),
