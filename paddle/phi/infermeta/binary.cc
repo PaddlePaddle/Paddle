@@ -852,6 +852,77 @@ void CrossInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
+                                     const MetaTensor& label,
+                                     const MetaTensor& softmax,
+                                     const MetaTensor& loss_grad,
+                                     bool return_softmax,
+                                     int ring_id,
+                                     int rank,
+                                     int nranks,
+                                     float margin1,
+                                     float margin2,
+                                     float margin3,
+                                     float scale,
+                                     MetaTensor* logit_grad) {
+  auto softmax_dims = softmax.dims();
+  logit_grad->set_dims(softmax_dims);
+  logit_grad->set_dtype(softmax.dtype());
+}
+
+void MarginCrossEntropyInferMeta(const MetaTensor& logits,
+                                 const MetaTensor& label,
+                                 bool return_softmax,
+                                 int ring_id,
+                                 int rank,
+                                 int nranks,
+                                 float margin1,
+                                 float margin2,
+                                 float margin3,
+                                 float scale,
+                                 MetaTensor* softmax,
+                                 MetaTensor* loss,
+                                 MetaConfig config) {
+  auto logits_dims = logits.dims();
+  auto labels_dims = label.dims();
+
+  auto logits_rank = logits_dims.size();
+  auto axis = logits_rank - 1;
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[i],
+                          labels_dims[i],
+                          phi::errors::InvalidArgument(
+                              "Input(Logits) and Input(Label) should in "
+                              "same shape in dimensions except axis."));
+      }
+    }
+  }
+
+  if (labels_dims.size() > 1) {
+    PADDLE_ENFORCE_EQ(
+        labels_dims[logits_rank - 1],
+        1UL,
+        phi::errors::InvalidArgument(
+            "the last dimension of Input(Label) should be 1."
+            "But received: the last dimension of Input(Label) is [%d],"
+            "the last dimension is [%d]",
+            labels_dims[logits_rank - 1],
+            logits_rank - 1));
+  }
+
+  softmax->set_dims(logits_dims);
+  softmax->set_dtype(logits.dtype());
+
+  logits_dims[axis] = 1;
+  loss->set_dims(logits_dims);
+  loss->set_dtype(logits.dtype());
+
+  softmax->share_lod(logits);
+  loss->share_lod(logits);
+}
+
 void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       const MetaTensor& label,
                                       bool soft_label,

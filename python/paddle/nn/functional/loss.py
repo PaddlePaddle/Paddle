@@ -1927,7 +1927,19 @@ def margin_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        softmax, loss = _C_ops.final_state_margin_cross_entropy(
+            logits, label, ring_id, rank, nranks, margin1, margin2, margin3,
+            scale, return_softmax)
+        if reduction == 'mean':
+            loss = paddle.mean(loss)
+        elif reduction == 'sum':
+            loss = paddle.sum(loss)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+    elif paddle.in_dynamic_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
