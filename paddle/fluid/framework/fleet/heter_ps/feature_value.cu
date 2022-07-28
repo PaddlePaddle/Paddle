@@ -22,7 +22,7 @@ const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
 #define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
 #define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 
-template <typename FVAccessor>
+template <typename GPUAccessor>
 __global__ void PullCopy(float** dest,
                          const float* src,
                          const int64_t* len,
@@ -31,7 +31,7 @@ __global__ void PullCopy(float** dest,
                          uint64_t** keys,
                          uint64_t max_val_size,
                          int* gpu_dim,
-                         FVAccessor feature_value_accessor) {
+                         GPUAccessor gpu_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -47,7 +47,7 @@ __global__ void PullCopy(float** dest,
     float* feature_value_ptr =
         (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
-    feature_value_accessor.Select(
+    gpu_accessor.Select(
         dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
   }
 }
@@ -98,7 +98,7 @@ __global__ void PullDedupCopy(
   }
 }
 
-template <typename FVAccessor>
+template <typename GPUAccessor>
 __global__ void PushCopyWithPool(float* dest,
                                  float** src,
                                  int64_t* len,
@@ -108,7 +108,7 @@ __global__ void PushCopyWithPool(float* dest,
                                  int* slot_vector,
                                  int* mf_dim_vector,
                                  size_t grad_value_size,
-                                 FVAccessor feature_value_accessor) {
+                                 GPUAccessor gpu_accessor) {
   CUDA_KERNEL_LOOP(i, total_len) {
     int low = 0;
     int high = slot_num - 1;
@@ -123,19 +123,19 @@ __global__ void PushCopyWithPool(float* dest,
     int y = i - (x ? len[low - 1] : 0);
     float* cur = (float*)((char*)dest + i * grad_value_size);
 
-    cur[feature_value_accessor.common_push_value.SlotIndex()] =
+    cur[gpu_accessor.common_push_value.SlotIndex()] =
         (float)slot_vector[x];
     int mf_dim = mf_dim_vector[x];
-    cur[feature_value_accessor.common_push_value.MfDimIndex()] = mf_dim;
+    cur[gpu_accessor.common_push_value.MfDimIndex()] = mf_dim;
 
-    cur[feature_value_accessor.common_push_value.ShowIndex()] =
+    cur[gpu_accessor.common_push_value.ShowIndex()] =
         *(src[x] + y * (mf_dim + 3));
-    cur[feature_value_accessor.common_push_value.ClickIndex()] =
+    cur[gpu_accessor.common_push_value.ClickIndex()] =
         *(src[x] + y * (mf_dim + 3) + 1);
-    cur[feature_value_accessor.common_push_value.EmbedGIndex()] =
+    cur[gpu_accessor.common_push_value.EmbedGIndex()] =
         *(src[x] + y * (mf_dim + 3) + 2) * -1. * bs;
     for (int j = 0; j < mf_dim; j++) {
-      cur[feature_value_accessor.common_push_value.EmbedxGIndex() + j] =
+      cur[gpu_accessor.common_push_value.EmbedxGIndex() + j] =
           *(src[x] + y * (mf_dim + 3) + 3 + j) * -1. * bs;
     }
   }

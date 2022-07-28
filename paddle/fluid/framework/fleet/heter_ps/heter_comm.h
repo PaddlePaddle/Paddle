@@ -46,10 +46,11 @@ namespace framework {
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 template <typename KeyType, typename ValType, typename GradType,
-          typename FVAccessor>
+          typename GPUAccessor>
 class HeterComm {
  public:
-  HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+ HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource);
+  HeterComm(size_t capacity, std::shared_ptr<HeterPsResource> resource, GPUAccessor& gpu_accessor);
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
@@ -123,9 +124,6 @@ class HeterComm {
     max_mf_dim_ = max_mf_dim;
   }
 
-  void set_accessor(FVAccessor& accessor) {
-    feature_value_accessor_ = accessor;
-  }
 #endif
 
   bool need_transfer(int send_id, int receive_id) {
@@ -267,7 +265,7 @@ class HeterComm {
   int block_size_{256};
   std::unique_ptr<HeterCommKernel> heter_comm_kernel_;
 
-  FVAccessor feature_value_accessor_;
+  GPUAccessor gpu_accessor_;
 
  private:
   int topo_aware_{0};

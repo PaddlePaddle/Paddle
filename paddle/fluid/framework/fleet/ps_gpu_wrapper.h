@@ -371,8 +371,8 @@ class PSGPUWrapper {
     }
 
     fleet_config_ = config;
-    GlobalAccessorTransfor::GetInstance().Init(accessor_class_);
-    GlobalAccessorTransfor::GetInstance().GetAccessorWrapper()->Configure(
+    GlobalAccessorFactory::GetInstance().Init(accessor_class_);
+    GlobalAccessorFactory::GetInstance().GetAccessorWrapper()->Configure(
         config);
     InitializeGPUServer(config);
   }
@@ -549,7 +549,7 @@ class PSGPUWrapper {
     }
 
     auto accessor_wrapper_ptr =
-        GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+        GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
     val_type_size_ = accessor_wrapper_ptr->GetFeatureValueSize(max_mf_dim_);
     grad_type_size_ = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
     pull_type_size_ = accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);

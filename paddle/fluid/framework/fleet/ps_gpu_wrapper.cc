@@ -625,7 +625,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   std::vector<std::thread> threads(device_num);
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   HeterPs_ = HeterPsBase::get_instance(
       size_max, resource_, fleet_config_, accessor_class_, optimizer_type_);
 #ifdef PADDLE_WITH_CUDA
@@ -636,7 +636,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   auto build_dynamic_mf_func = [this, &gpu_task, &accessor_wrapper_ptr](int i,
                                                                         int j) {
     this->HeterPs_->set_multi_mf_dim(multi_mf_dim_, max_mf_dim_);
-    // this->HeterPs_->set_accessor(feature_value_accessor_);
     int mf_dim = this->index_dim_vec_[j];
     VLOG(0) << "building table: " << i << "with mf dim: " << mf_dim
             << " feature_value_size:"
@@ -859,7 +858,7 @@ void PSGPUWrapper::EndPass() {
   }
 
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   auto dump_pool_to_cpu_func = [this, &accessor_wrapper_ptr](int i, int j) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(this->resource_->dev_id(i)));
     auto& hbm_pool = this->hbm_pools_[i * this->multi_mf_dim_ + j];
@@ -956,7 +955,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
   all_timer.Start();
 
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t feature_value_size =
       accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
   VLOG(3) << "PullSparse max_dim:" << max_mf_dim_
@@ -1239,7 +1238,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
   platform::Timer push_gpups_timer;
   all_timer.Start();
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   if (platform::is_cpu_place(place)) {
