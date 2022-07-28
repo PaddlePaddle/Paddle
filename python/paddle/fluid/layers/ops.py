@@ -471,6 +471,7 @@ Examples:
 
 _softplus_ = generate_layer_fn('softplus')
 
+
 def softplus(x, beta: float = 1.0, threshold: float = 20.0, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'softplus')
     locals_val = locals().copy()
