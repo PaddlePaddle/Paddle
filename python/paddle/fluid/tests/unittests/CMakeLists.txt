@@ -1330,13 +1330,13 @@ if(WITH_DISTRIBUTE)
   #                                                                       120)
   # set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
   #                      PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
+  # set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
 if(WITH_DISTRIBUTE AND NOT APPLE)
   if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 360)
+    # set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 360)
   endif()
 endif()
 
