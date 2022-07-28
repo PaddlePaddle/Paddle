@@ -1360,6 +1360,59 @@ struct PriorBox : public PatternBase {
   PATTERN_DECL_NODE(prior_box_variances);
 };
 
+struct SwinAttention1Fuse : public PatternBase{
+  SwinAttention1(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "swin_attention1_fuse") {}
+  PDNode* operator()(PDNode* atten1_in);
+  PATTERN_DECL_NODE(matmul_00_op);
+  PATTERN_DECL_NODE(matmul_00_in_y);
+  PATTERN_DECL_NODE(matmul_00_out);
+
+  PATTERN_DECL_NODE(elementwise_10_op);
+  PATTERN_DECL_NODE(elementwise_10_in_y);
+  PATTERN_DECL_NODE(elementwise_10_out);
+
+  PATTERN_DECL_NODE(reshape_20_op);
+  PATTERN_DECL_NODE(reshape_20_out);
+
+  PATTERN_DECL_NODE(transpose_30_op);
+  PATTERN_DECL_NODE(transpose_30_out);
+
+  PATTERN_DECL_NODE(slice_40_op);
+  PATTERN_DECL_NODE(slice_40_out);
+
+  PATTERN_DECL_NODE(slice_41_op);
+  PATTERN_DECL_NODE(slice_41_out);
+
+  PATTERN_DECL_NODE(slice_42_op);
+  PATTERN_DECL_NODE(slice_42_out);
+
+  PATTERN_DECL_NODE(scale_50_op);
+  PATTERN_DECL_NODE(scale_50_out);
+  
+  PATTERN_DECL_NODE(transpose_51_op);
+  PATTERN_DECL_NODE(transpose_51_out);
+
+  PATTERN_DECL_NODE(matmul_60_op);
+  PATTERN_DECL_NODE(matmul_60_out);
+
+  PATTERN_DECL_NODE(elementwise_70_op);
+  PATTERN_DECL_NODE(elementwise_70_in_y);
+  PATTERN_DECL_NODE(elementwise_70_out);
+
+  PATTERN_DECL_NODE(softmax_80_op);
+  PATTERN_DECL_NODE(softmax_80_out);
+
+  PATTERN_DECL_NODE(matmul_90_op);
+  PATTERN_DECL_NODE(matmul_90_out);
+
+  PATTERN_DECL_NODE(transpose_a0_op);
+  PATTERN_DECL_NODE(transpose_a0_out);
+
+  PATTERN_DECL_NODE(reshape_b0_op);
+  PATTERN_DECL_NODE(reshape_b0_out);
+};
+
 // Conv + ElementwiseAdd + an activation
 // This pattern can further fuse the conv related ops after the conv+bn fusion.
 struct ConvElementwiseaddAct : public PatternBase {
