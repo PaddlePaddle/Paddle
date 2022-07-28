@@ -51,6 +51,13 @@ from .process_group import new_process_group, get_all_process_groups, get_world_
 from .dist_context import DistributedContext, get_default_distributed_context
 
 
+def _prepare_cinn_if_enabled(main_program, startup_program):
+    if core.globals()['FLAGS_use_cinn']:
+        from paddle.distributed.passes import new_pass, PassManager
+        pass_manager = PassManager([new_pass("build_cinn")])
+        pass_manager.apply([main_program], [startup_program])
+
+
 class Engine:
 
     def __init__(self,
@@ -314,8 +321,11 @@ class Engine:
                     continue
                 uninitialized.append(var)
             if uninitialized:
-                prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                self._executor.run(prune_startup_prog)
+                dist_startup_prog = dist_startup_prog._prune(uninitialized)
+            _prepare_cinn_if_enabled(
+                self._dist_main_progs[mode][self._cur_rank], dist_startup_prog)
+            if uninitialized:
+                self._executor.run(dist_startup_prog)
 
     def fit(self,
             train_data,

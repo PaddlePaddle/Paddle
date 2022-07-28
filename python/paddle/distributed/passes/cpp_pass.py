@@ -102,6 +102,13 @@ class InplaceAddtoOpPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
 
+def _set_cinn_op_flag(flag_name, extra_ops):
+    values = core.globals()[flag_name]
+    values = [v.strip() for v in values.split(";") if v.strip()]
+    values.extend(extra_ops)
+    core.globals()[flag_name] = ";".join(values)
+
+
 @register_pass("build_cinn")
 class BuildCINNPass(CPPPassWrapper):
 
@@ -118,16 +125,14 @@ class BuildCINNPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        allow_ops = ";".join(self.get_attr("allow_ops"))
-        deny_ops = ";".join(self.get_attr("deny_ops"))
-
         assert 'FLAGS_allow_cinn_ops' in core.globals(
         ), "PaddlePaddle is not compiled with CINN support"
         old_allow_ops = core.globals()['FLAGS_allow_cinn_ops']
         old_deny_ops = core.globals()['FLAGS_deny_cinn_ops']
         try:
-            core.globals()['FLAGS_allow_cinn_ops'] = allow_ops
-            core.globals()['FLAGS_deny_cinn_ops'] = deny_ops
+            _set_cinn_op_flag('FLAGS_allow_cinn_ops',
+                              self.get_attr("allow_ops"))
+            _set_cinn_op_flag('FLAGS_deny_cinn_ops', self.get_attr("deny_ops"))
             _apply_cpp_pass(main_program, startup_program, self.cpp_name, {},
                             self.cpp_attr_types)
         finally:
