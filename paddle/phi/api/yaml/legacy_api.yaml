@@ -2531,6 +2531,15 @@
   kernel:
     func: broadcast_tensors
   backward: broadcast_tensors_grad
+  
+# dirichlet
+- api: dirichlet
+  args: (Tensor alpha)
+  output: Tensor
+  infer_meta:
+    func: DirichletInferMeta
+  kernel:
+    func: dirichlet
 
 # eig
 - api: eig
