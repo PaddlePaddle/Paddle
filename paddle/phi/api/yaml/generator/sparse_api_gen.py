@@ -36,7 +36,7 @@ class SparseAPI(ForwardAPI):
                     out_tensor_type_list=None,
                     code_indent='',
                     inplace_flag=False):
-        kernel_output = ""
+        kernel_output = []
         output_names = []
         output_create = ""
         return_type = self.get_return_type_with_intermediate(inplace_flag)
@@ -47,7 +47,7 @@ class SparseAPI(ForwardAPI):
         }
 
         if len(out_dtype_list) == 1:
-            kernel_output = 'kernel_out'
+            kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = " = " + self.inplace_map[self.outputs['names'][
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
@@ -73,12 +73,11 @@ class SparseAPI(ForwardAPI):
                 output_create = output_create[:-2] + '};'
 
             for i in range(len(out_dtype_list)):
-                kernel_output = kernel_output + f'kernel_out_{i}, '
+                kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 output_create = output_create + f"""
     auto* kernel_out_{i} = SetSparseKernelOutput(&std::get<{i}>(api_output), {output_type_map[out_dtype_list[i]]});"""
 
-            kernel_output = kernel_output[:-2]
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
@@ -147,11 +146,12 @@ class SparseAPI(ForwardAPI):
             self.gene_return_code()) == 0 else "  " + self.gene_return_code()
         return f"""
     VLOG(6) << "{self.api} api sparse kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-    auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+    auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
         "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+    const auto& phi_kernel = kernel_result.kernel;
     VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
 
-    auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+    auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
     auto kernel_context = phi::KernelContext(dev_ctx);
 {output_create}
 {kernel_context_code}

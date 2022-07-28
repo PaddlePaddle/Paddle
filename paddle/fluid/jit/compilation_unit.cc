@@ -16,6 +16,8 @@
 
 #include "paddle/phi/core/enforce.h"
 
+#include "paddle/fluid/jit/base_function.h"
+
 namespace paddle {
 namespace jit {
 

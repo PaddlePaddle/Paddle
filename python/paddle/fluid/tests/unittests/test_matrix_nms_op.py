@@ -19,6 +19,7 @@ import copy
 from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 def softmax(x):
@@ -237,22 +238,22 @@ class TestMatrixNMSOpGaussian(TestMatrixNMSOp):
 class TestMatrixNMSError(unittest.TestCase):
 
     def test_errors(self):
+        M = 1200
+        N = 7
+        C = 21
+        BOX_SIZE = 4
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = 0.01
+        post_threshold = 0.
+
+        boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
+        scores = np.random.random((N * M, C)).astype('float32')
+        scores = np.apply_along_axis(softmax, 1, scores)
+        scores = np.reshape(scores, (N, M, C))
+        scores_np = np.transpose(scores, (0, 2, 1))
+
         with program_guard(Program(), Program()):
-            M = 1200
-            N = 7
-            C = 21
-            BOX_SIZE = 4
-            nms_top_k = 400
-            keep_top_k = 200
-            score_threshold = 0.01
-            post_threshold = 0.
-
-            boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
-            scores = np.random.random((N * M, C)).astype('float32')
-            scores = np.apply_along_axis(softmax, 1, scores)
-            scores = np.reshape(scores, (N, M, C))
-            scores_np = np.transpose(scores, (0, 2, 1))
-
             boxes_data = fluid.data(name='bboxes',
                                     shape=[M, C, BOX_SIZE],
                                     dtype='float32')
@@ -268,6 +269,12 @@ class TestMatrixNMSError(unittest.TestCase):
                                         keep_top_k=keep_top_k,
                                         score_threshold=score_threshold,
                                         post_threshold=post_threshold)
+                paddle.vision.ops.matrix_nms(bboxes=boxes_np,
+                                             scores=scores_data,
+                                             nms_top_k=nms_top_k,
+                                             keep_top_k=keep_top_k,
+                                             score_threshold=score_threshold,
+                                             post_threshold=post_threshold)
 
             def test_scores_Variable():
                 # the scores type must be Variable
@@ -277,6 +284,12 @@ class TestMatrixNMSError(unittest.TestCase):
                                         keep_top_k=keep_top_k,
                                         score_threshold=score_threshold,
                                         post_threshold=post_threshold)
+                paddle.vision.ops.matrix_nms(bboxes=boxes_data,
+                                             scores=scores_np,
+                                             nms_top_k=nms_top_k,
+                                             keep_top_k=keep_top_k,
+                                             score_threshold=score_threshold,
+                                             post_threshold=post_threshold)
 
             def test_empty():
                 # when all score are lower than threshold
@@ -289,6 +302,15 @@ class TestMatrixNMSError(unittest.TestCase):
                                             post_threshold=post_threshold)
                 except Exception as e:
                     self.fail(e)
+                try:
+                    paddle.vision.ops.matrix_nms(bboxes=boxes_data,
+                                                 scores=scores_data,
+                                                 nms_top_k=nms_top_k,
+                                                 keep_top_k=keep_top_k,
+                                                 score_threshold=10.,
+                                                 post_threshold=post_threshold)
+                except Exception as e:
+                    self.fail(e)
 
             def test_coverage():
                 # cover correct workflow
@@ -299,6 +321,16 @@ class TestMatrixNMSError(unittest.TestCase):
                                             keep_top_k=keep_top_k,
                                             score_threshold=score_threshold,
                                             post_threshold=post_threshold)
+                except Exception as e:
+                    self.fail(e)
+                try:
+                    paddle.vision.ops.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold)
                 except Exception as e:
                     self.fail(e)
 

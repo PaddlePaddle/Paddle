@@ -238,6 +238,7 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
       x_indexs_ptr, x_indexs.numel(), table.data<int>());
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, mask_indexs.numel(), 1);
+
   const int VecBytes = 16;
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {

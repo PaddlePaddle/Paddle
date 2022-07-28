@@ -73,6 +73,17 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void BmmGradInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      const MetaTensor& out_grad,
+                      MetaTensor* x_grad,
+                      MetaTensor* y_grad) {
+  x_grad->set_dims(x.dims());
+  y_grad->set_dims(y.dims());
+  x_grad->set_dtype(x.dtype());
+  y_grad->set_dtype(y.dtype());
+}
+
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
                                  int groups,
                                  const std::string& data_format,
@@ -142,6 +153,18 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
 
   if (ddout) {
     ddout->share_meta(dout);
+  }
+}
+
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
   }
 }
 
@@ -408,6 +431,7 @@ void InverseGradInferMeta(const MetaTensor& out,
                           MetaTensor* dx) {
   if (dx) {
     dx->set_dims(dout.dims());
+    dx->set_dtype(out.dtype());
   }
 }
 
@@ -658,6 +682,21 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void SpectralNormGradInferMeta(const MetaTensor& weight,
+                               const MetaTensor& u,
+                               const MetaTensor& v,
+                               const MetaTensor& out_grad,
+                               int dim,
+                               int power_iters,
+                               float eps,
+                               MetaTensor* weight_grad) {
+  auto dim_x = weight.dims();
+  if (weight_grad) {
+    weight_grad->set_dims(dim_x);
+    weight_grad->set_dtype(out_grad.dtype());
   }
 }
 
