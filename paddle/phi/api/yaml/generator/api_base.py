@@ -691,15 +691,21 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], out_tensor_type_list, code_indent,
             inplace_flag)
+        fallback_kernel_output_trans = ""
+        for kernel_out in outputs_args:
+            fallback_kernel_output_trans += (f"""
+{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+                                             )
         cudnn_args = '' if self.kernel[
             'use_gpudnn'] == 'false' else ', ' + self.kernel['use_gpudnn']
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-{code_indent}  const auto& kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
+{code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
 {self.gene_infer_meta(kernel_output_names, code_indent)}
@@ -708,7 +714,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 {code_indent}  {{
 {code_indent}    paddle::platform::RecordEvent kernel_record_event(\"{kernel_name} compute\", paddle::platform::TracerEventType::OperatorInner, 1);
-{code_indent}    (*kernel_fn)({kernel_args}, {outputs_args});
+{code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  }}
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{fallback_kernel_output_trans}
 {code_indent}  }}
 
 {code_indent}  {self.gene_return_code()}"""
