@@ -70,13 +70,14 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       LOG(WARNING) << "matmul_elementwise_add can be fused once";
       return;
     }
-
     if (elementwise_addend->Var()->GetShape() !=
         matmul_out->Var()->GetShape()) {
       LOG(WARNING) << "Fuses with elementwise_add require same addends shape";
       return;
     }
 
+    // This block is temporary workaround, until matmul_v1 is refactored
+    // --
     if (matmul_type == "matmul") {
       OpDesc desc(matmul->Op()->Block());
       desc.SetType("matmul_v2");
@@ -94,12 +95,34 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
         desc.SetAttr("Input_scale", matmul->Op()->GetAttr("Input_scale"));
         desc.SetAttr("out_threshold", matmul->Op()->GetAttr("out_threshold"));
       }
+      if (matmul->Op()->HasAttr("fused_reshape_X") ||
+          matmul->Op()->HasAttr("fused_transpose_X")) {
+        desc.SetAttr("fused_reshape_X",
+                     matmul->Op()->GetAttr("fused_reshape_X"));
+        desc.SetAttr("fused_transpose_X",
+                     matmul->Op()->GetAttr("fused_transpose_X"));
+      }
+      if (matmul->Op()->HasAttr("fused_reshape_Y") ||
+          matmul->Op()->HasAttr("fused_transpose_Y")) {
+        desc.SetAttr("fused_reshape_Y",
+                     matmul->Op()->GetAttr("fused_reshape_Y"));
+        desc.SetAttr("fused_transpose_Y",
+                     matmul->Op()->GetAttr("fused_transpose_Y"));
+      }
+      if (matmul->Op()->HasAttr("fused_reshape_Out") ||
+          matmul->Op()->HasAttr("fused_transpose_Out")) {
+        desc.SetAttr("fused_reshape_Out",
+                     matmul->Op()->GetAttr("fused_reshape_Out"));
+        desc.SetAttr("fused_transpose_Out",
+                     matmul->Op()->GetAttr("fused_transpose_Out"));
+      }
       GraphSafeRemoveNodes(graph, {matmul});
       matmul = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(matmul_x, matmul);
       IR_NODE_LINK_TO(matmul_y, matmul);
       IR_NODE_LINK_TO(matmul, matmul_out);
     }
+    // --
     matmul->Op()->SetInput("Bias", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
@@ -133,7 +156,7 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsTensor()
       .End()
       .AddAttr("alpha")
-      .IsType<float>()
+      .IsNumEQ(1.0f)
       .End()
       .AddAttr("transpose_X")
       .IsType<bool>()
