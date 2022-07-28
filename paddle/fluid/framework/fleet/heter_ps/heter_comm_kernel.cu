@@ -129,17 +129,16 @@ __global__ void fill_dvals_kernel(ValType* d_shard_vals,
 }
 
 template <typename KeyType, typename GPUAccessor>
-__global__ void merge_gradients_basic_kernel(
-    const KeyType* d_keys,
-    const uint32_t* offset,
-    const uint32_t* fea_num,
-    const uint32_t* index,
-    const char* input,
-    char* output,
-    int n,
-    size_t grad_value_size,
-    DynamicGradMerger& merger,
-    GPUAccessor& feature_value_accessor) {
+__global__ void merge_gradients_basic_kernel(const KeyType* d_keys,
+                                             const uint32_t* offset,
+                                             const uint32_t* fea_num,
+                                             const uint32_t* index,
+                                             const char* input,
+                                             char* output,
+                                             int n,
+                                             size_t grad_value_size,
+                                             DynamicGradMerger& merger,
+                                             GPUAccessor& gpu_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (i < n) {
