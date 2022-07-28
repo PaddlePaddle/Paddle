@@ -191,6 +191,16 @@ class CTCForward(object):
         return self.loss
 
 
+def python_api(logits,
+               label,
+               logits_length=None,
+               labels_length=None,
+               blank=0,
+               norm_by_times=False):
+    return paddle.fluid.layers.warpctc(logits, label, blank, norm_by_times,
+                                       logits_length, labels_length)
+
+
 class TestWarpCTCOp(OpTest):
 
     def config(self):
@@ -280,6 +290,8 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -344,7 +356,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -387,6 +399,8 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = python_api
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -451,11 +465,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Loss", check_eager=True)
 
 
 class TestWarpCTCOpError(unittest.TestCase):

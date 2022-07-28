@@ -211,6 +211,10 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
                           type=str,
                           default="",
                           help="User defined workers ip:port")
+    ps_group.add_argument("--coordinators",
+                          type=str,
+                          default="",
+                          help="User defined coordinators ip:port")
     ps_group.add_argument(
         "--heter_workers",
         type=str,
@@ -223,6 +227,9 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         help="User defined heter devices in each stage cpu;gpu;cpu")
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
+    ps_group.add_argument("--coordinator_num",
+                          type=int,
+                          help="number of coordinators")
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument("--heter_worker_num",
                           type=str,
@@ -474,6 +481,8 @@ def which_distributed_mode(args):
 
     ps_heter_args = ["--heter_worker_num", "--heter_workers", "--heter_devices"]
 
+    coordinator_args = ["--coordinator_num", "--coordinators"]
+
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
     ]
@@ -503,6 +512,7 @@ def which_distributed_mode(args):
             "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}"
             .format(has_ps_args, accelerators))
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
+        has_coordinator_args = list(set(has_ps_args) & set(coordinator_args))
         if len(has_ps_heter_args) > 0:
             return DistributeMode.PS_HETER
         else:
