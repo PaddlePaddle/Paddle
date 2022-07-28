@@ -121,8 +121,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 
   bool has_fallback_cpu = false;
-  if (kernel_iter == iter->second.end()) {
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() != Backend::CPU) {
     // Fallback CPU backend
+    LOG(WARNING)
+        << kernel_name << " : " << kernel_key.backend()
+        << " kernel is not registered, and will fallback to CPU kernel.";
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
