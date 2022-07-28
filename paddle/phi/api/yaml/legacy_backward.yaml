@@ -1118,16 +1118,6 @@
   kernel :
     func : lerp_grad
 
-- backward_api : lgamma_grad
-  forward : lgamma(Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : lgamma_grad
-
 - backward_api : log10_grad
   forward : log10 (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
