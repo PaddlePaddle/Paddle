@@ -45,27 +45,27 @@ struct DeleteUnsqueeze : public PatternBase {
   PDNode *operator()(PDNode *x);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(unsqz);
+  PATTERN_DECL_NODE(common_op);
   // declare variable node's name
-  PATTERN_DECL_NODE(unsqz_in);
-  PATTERN_DECL_NODE(unsqz_out);
+  PATTERN_DECL_NODE(common_op_in);
+  PATTERN_DECL_NODE(common_op_out);
 };
 
-PDNode *DeleteUnsqueeze::operator()(PDNode *x) {
+PDNode *DeleteUnsqueeze::operator()(PDNode *persis_x) {
   
-  auto assert_ops = std::unordered_set<std::string>{"unsqueeze2", "reshape2"};
-  x->assert_is_ops_input(assert_ops);
+  auto assert_ops = std::unordered_set<std::string>{"unsqueeze2"};
+  persis_x->assert_is_ops_input(assert_ops);
 
-  auto *unsqz = pattern->NewNode(unsqz_repr());
-  unsqz->assert_has_n_inputs(1);
-  unsqz->assert_is_ops(assert_ops);
+  auto *op = pattern->NewNode(common_op_repr());
+  op->assert_has_n_inputs(1);
+  op->assert_is_ops(assert_ops);
 
-  auto *unsqz_out = pattern->NewNode(unsqz_out_repr())
+  auto *op_out = pattern->NewNode(common_op_out_repr())
                   ->assert_is_ops_output(assert_ops, "Out");
 
-  unsqz->LinksFrom({x});
-  unsqz_out->LinksFrom({unsqz});
-  return unsqz_out;
+  op->LinksFrom({persis_x});
+  op_out->LinksFrom({op});
+  return op_out;
 }
 
 }  // namespace patterns
@@ -73,24 +73,6 @@ PDNode *DeleteUnsqueeze::operator()(PDNode *x) {
 DeleteUnsqueezePass::DeleteUnsqueezePass() {
 }
 
-static Node* PickOneOut(std::vector<Node*> outputs)
-{
-  if (outputs.size() == 1)
-  {
-    return outputs[0];
-  }
-  else
-  {
-    for (auto node : outputs)
-    {
-      if(node->outputs.size())
-      {
-        return node;
-      }
-    }
-  }
-  return nullptr;
-}
 
 void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -99,73 +81,108 @@ void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
   int found_subgraph_count = 0;
   GraphPatternDetector gpd;
 
-  auto *unsqueeze2_x = gpd.mutable_pattern()
-                ->NewNode("unsqueeze2_x")
+  auto *persis_x_node = gpd.mutable_pattern()
+                ->NewNode("persis_x_node")
                 ->AsInput()
                 ->assert_is_persistable_var();
 
   patterns::DeleteUnsqueeze fused_pattern(gpd.mutable_pattern(), "delete_unsqueeze2");
-  fused_pattern(unsqueeze2_x);
+  fused_pattern(persis_x_node);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *graph) {
-    if (subgraph.count(unsqueeze2_x) <= 0) {
+    if (subgraph.count(persis_x_node) <= 0) {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
     VLOG(4) << "handle DeleteUnsqueeze fuse";
 
-    GET_IR_NODE_FROM_SUBGRAPH(unsqz_op, unsqz, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(unsqz_out, unsqz_out, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(op, common_op, fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(op_out, common_op_out, fused_pattern);
 
-    auto x_shape = subgraph.at(unsqueeze2_x)->Var()->GetShape();
-    std::cout << subgraph.at(unsqueeze2_x)->Name() << std::endl;
+    auto x_shape = subgraph.at(persis_x_node)->Var()->GetShape();
+    std::cout << subgraph.at(persis_x_node)->Name() << std::endl;
+   
 
-    auto out_shape = unsqz_out->Var()->GetShape();
+    auto out_shape = op_out->Var()->GetShape();
     auto* scope = param_scope();
-     auto unsqz_out_desc = unsqz_out->Var();
-    framework::Scope *new_scope = new framework::Scope();
-    new_scope->Var(subgraph.at(unsqueeze2_x)->Name());
-    for (auto out_node : unsqz_op->outputs) {
-      new_scope->Var(out_node->Var()->Name());
-      new_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
-    }
-
-    auto* persis_x_tensor = scope->FindVar(subgraph.at(unsqueeze2_x)->Name())->GetMutable<LoDTensor>();
+    auto unsqz_out_desc = op_out->Var();
+    auto* persis_x_tensor = scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
     auto* persis_x_ptr = persis_x_tensor->mutable_data<float>(platform::CPUPlace());
-
-    auto* x_tensor = new_scope->FindVar(subgraph.at(unsqueeze2_x)->Name())->GetMutable<LoDTensor>();
-    x_tensor->Resize(phi::make_ddim(std::vector<int64_t>{16,144,144}));
+    
+    framework::Scope *new_scope = new framework::Scope();
+    new_scope->Var(subgraph.at(persis_x_node)->Name());
+    auto* x_tensor = new_scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
+    x_tensor->Resize(persis_x_tensor->dims());
+    std::cout << persis_x_tensor->dims()[0] << std::endl;
+    std::cout << persis_x_tensor->dims()[1] << std::endl;
+    std::cout << persis_x_tensor->dims()[2] << std::endl;
+    std::cout << persis_x_tensor->dims()[3] << std::endl;
     auto* x_ptr = x_tensor->mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < x_tensor->numel(); i++) {
       x_ptr[i] = persis_x_ptr[i];
     }
 
-    std::unique_ptr<OperatorBase> run_op = paddle::framework::OpRegistry::CreateOp(*unsqz_op->Op());
-    run_op->Run(*new_scope, platform::CPUPlace());
-    auto* y_tensor = new_scope->FindVar(unsqz_out_desc->Name())->GetMutable<LoDTensor>();
+    auto* iter_node = op;
+    std::vector<std::unique_ptr<OperatorBase>> ops;
+    std::unordered_set<const paddle::framework::ir::Node*> remove_nodes{subgraph.at(persis_x_node)};
 
-    std::cout << y_tensor->dims()[0] << std::endl;
-    std::cout << y_tensor->dims()[1] << std::endl;
-    std::cout << y_tensor->dims()[2] << std::endl;
-    std::cout << y_tensor->dims()[3] << std::endl;
 
-    auto* iter_node = PickOneOut(unsqz_out->outputs);
-    while(false && iter_node)
+
+// for Op Nodes, it return the op's ith output, and make sure all others outputs muse be no outputs
+// for Var Nodes, it return 0th output if outputs.size() == 1 and then return nullptr
+auto PickOneOut = [&](Node* node) -> Node* {
+  if(node->outputs.size() == 1) {
+    return node->outputs[0];
+  }
+  else if(node->outputs.size() == 0) {
+    return nullptr;
+  }
+  else
+  {
+    if(node->IsOp())
     {
-      if (iter_node->IsOp() && iter_node->inputs.size() == 1)
+      for(size_t i = 0; i < node->outputs.size(); i++)
       {
-        std::cout << iter_node->Op()->Type() << std::endl;
-        std::unique_ptr<OperatorBase> run_op = paddle::framework::OpRegistry::CreateOp(*iter_node->Op());
-        run_op->Run(*scope, platform::CPUPlace());
-        iter_node = PickOneOut(iter_node->outputs);
+        if(node->outputs[i]->outputs.size() >= 1) return node->outputs[i];
+      }
+    }
+    else
+    {
+      return nullptr;
+    }
+  }
+  return nullptr;
+};
+    auto* last_node = iter_node;
+    while(iter_node)
+    {
+      last_node = iter_node;
+      if (iter_node->IsOp() && iter_node->inputs.size() == 1) {
+        remove_nodes.emplace(iter_node);
+        for (auto in_node : iter_node->inputs) {
+          new_scope->Var(in_node->Var()->Name());
+          new_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
+          remove_nodes.emplace(in_node);
+        }
+        for (auto out_node : iter_node->outputs) {
+          new_scope->Var(out_node->Var()->Name());
+          new_scope->FindVar(out_node->Var()->Name())->GetMutable<LoDTensor>();
+        }
+        ops.emplace_back(paddle::framework::OpRegistry::CreateOp(*iter_node->Op()));
+        iter_node = PickOneOut(iter_node);
       }
       else if(iter_node->IsVar()) {
         std::cout << iter_node->Var()->Name() << std::endl;
-        iter_node = PickOneOut(iter_node->outputs);
+        iter_node = PickOneOut(iter_node);
       } else {
         break;
       }
+    }
+    std::cout <<last_node->Var()->Name() << std::endl;
+
+    for (size_t i = 0; i < ops.size(); i++) {
+      ops[i]->Run(*new_scope, platform::CPUPlace());
     }
 
 if(0)    unsqz_out_desc->SetShape(out_shape);
@@ -176,7 +193,7 @@ if(0)    unsqz_out_desc->SetShape(out_shape);
     //unsqz_out_tensor->mutable_data<float>(platform::CPUPlace());
 
     // Remove links in graph
-    //GraphSafeRemoveNodes(graph, {unsqz_op});
+    GraphSafeRemoveNodes(graph, remove_nodes);
   };
 
   gpd(graph, handler);

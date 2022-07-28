@@ -55,15 +55,19 @@ void NaiveExecutor::Run() {
 
     //std::cout << "begin" << std::endl;
     bool all_input_persistable = true;
-    for (size_t i = 0; i < op->InputVars().size(); i++) {
+    for (size_t i = 0; i < op->InputVars().size() * 0; i++) {
       auto name = op->InputVars()[i];
       auto *var = scope_->FindVar(name);
+      if(!var) {
+         std::cout << var << std::endl;
+         std::cout << name << std::endl;
+      }
       all_input_persistable &= var->persistable;
       if (var->persistable) {
       //  std::cout << name << std::endl;
       }
     }
-    for (size_t i = 0; i < op->OutputVars(true).size(); i++) {
+    for (size_t i = 0; i < op->OutputVars(true).size() * 0; i++) {
       auto name = op->OutputVars(true)[i];
       auto *var = scope_->FindVar(name);
       var->persistable = all_input_persistable;
