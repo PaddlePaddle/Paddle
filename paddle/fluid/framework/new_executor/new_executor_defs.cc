@@ -564,6 +564,11 @@ VariableScope::VariableScope(Scope* scope) {
   var_list_.push_back(nullptr);
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
+  VLOG(2) << "construct VarScope by Scope " << scope;
+  VLOG(2) << "VarScope is" << scope_;
+  for (size_t i = 0; i < scope_->LocalVarNames().size(); i++) {
+    std::cout << scope_->LocalVarNames()[i] << std::endl;
+  }
   PADDLE_ENFORCE_NE(
       scope,
       nullptr,
@@ -622,11 +627,20 @@ size_t VariableScope::VarSize() const { return name2id_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
+  VLOG(2) << "VariableScope :: AddVar";
   if (!HasVar(name)) {
+    VLOG(2) << "not has var, add var";
     auto id = VarSize();
+    VLOG(2) << "add var id is: " << id;
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
-    var_list_.push_back(local_scope_->FindVar(name));
+    if (local_scope_ != nullptr) {
+      VLOG(2) << "local_scope_ is not null" << local_scope_;
+      var_list_.push_back(local_scope_->FindVar(name));
+    } else {
+      VLOG(2) << "local_scope_ is null" << local_scope_;
+      var_list_.push_back(scope_->FindVar(name));
+    }
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),

@@ -2442,9 +2442,12 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto* name : ctx.InNameList()) {
+    VLOG(2) << "IndicateDataType: " << name;
     if (ctx.InputSize(*name) == 1UL) {
+      VLOG(2) << "IndicateDataType: ParseInputDataType";
       ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
     } else {
+      VLOG(2) << "IndicateDataType: ParseMultiInputDataType";
       ParseMultiInputDataType(ctx.MultiInputVar(*name), *name, &data_type);
     }
   }

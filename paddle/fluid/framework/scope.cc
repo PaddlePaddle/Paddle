@@ -64,7 +64,10 @@ Variable* Scope::Var(const std::string& name) {
   // will do callback after unlock.
   Variable* ret = nullptr;
   {
+    VLOG(2) << "SCOPE_VARS_WRITER_LOCK start";
+    VLOG(2) << "&vars_lock_ ptr is: " << &vars_lock_;
     SCOPE_VARS_WRITER_LOCK
+    VLOG(2) << "SCOPE_VARS_WRITER_LOCK end";
     ret = VarInternal(name);
   }
   return ret;

@@ -133,6 +133,72 @@ void ParseSafeEagerDeletionSkipVars(
   VLOG(3) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars->size();
 }
 
+void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
+                            std::set<std::string> *all_vars) {
+  for (auto &var : append_vars) {
+    all_vars->insert(var);
+  }
+}
+
+/*
+ * NOTE(Aurelius84): In ParallelExecutor, memory optimized pass will be applied.
+ * To avoid eagerly deleting last alive variables which are necessary in
+ * backward program, we firstly parse these variable names as
+ * skip_eager_vars. While executing pe.run skip_eager_vars are used to
+ * skip memory optimization.
+ *
+ * Variables satisfying the following rules are considered as skip_eager_var:
+ *
+ *   1. it is an output var in run_program_op
+ *   2. it is an input var used in backward_op
+ */
+void ParseSafeEagerDeletionSkipVars(
+    const ProgramDesc &backward_program,
+    std::set<std::string> *skip_eager_delete_vars) {
+  // 所有反向的op
+  auto backward_ops = backward_program.Block(0).AllOps();
+  auto &op_info_map = OpInfoMap::Instance();
+  // step 2: parse the necessary variable of backward op
+  std::unordered_set<std::string> op_outputs;
+  std::unordered_set<std::string> op_inputs;
+  std::unordered_set<std::string> no_need_buffer_ins;
+  // 遍历反向op，进行分析
+  for (size_t i = 0; i < backward_ops.size(); ++i) {
+    framework::OpDesc *op = backward_ops[i];
+    // NOTE: skip NoNeedBufferVars of grad_op and GC its memory in advance.
+    auto &op_info = op_info_map.Get(op->Type());
+    auto &inferer = op_info.NoNeedBufferVarsInferer();
+    no_need_buffer_ins.clear();
+    if (inferer != nullptr) {
+      no_need_buffer_ins =
+          inferer(op->Inputs(), op->Outputs(), op->GetAttrMap());
+    }
+    for (auto &in_names : op->Inputs()) {
+      if (no_need_buffer_ins.count(in_names.first) == 0) {
+        for (auto &in_name : in_names.second) {
+          op_inputs.emplace(in_name);
+        }
+      } else {
+        VLOG(2) << op->Type() << " has no_need_buffer_in: " << in_names.first
+                << " , skip it.";
+      }
+    }
+    for (const std::string &out_arg_name : op->OutputArgumentNames()) {
+      op_outputs.emplace(out_arg_name);
+    }
+  }
+  // For the grad op input variables, if it is not output of grad_op, it may
+  // be output of forward op and we should set the variables as skip_var to
+  // prevent it being deleted when grad op is called multiple times.
+  for (const std::string &var_name : op_inputs) {
+    if (op_outputs.find(var_name) == op_outputs.end()) {
+      VLOG(2) << "skip eager var: " << var_name;
+      skip_eager_delete_vars->insert(var_name);
+    }
+  }
+  VLOG(3) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars->size();
+}
+
 }  // namespace details
 
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
@@ -218,6 +284,60 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     parallel_executor->PrepareVariables(scope);
 
     return std::make_pair(parallel_executor, /*is_new_created=*/false);
+  }
+}
+
+InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
+  static InterpreterCoreInfoCache g_info_cache;
+  return g_info_cache;
+}
+
+// Create a sub program form promgram_desc by [start_op_index, end_op_index].
+// in dy2static, origin program include forward program and backward program,
+// forward op use [end_op_index+ (out_grad.size() * 2,  global_block->OpSize()]
+GettedCacheInfo GetInterpreterCoreInfoFromCache(const ProgramDesc &program_desc,
+                                                const platform::Place &place,
+                                                bool is_grad,
+                                                int64_t program_id,
+                                                framework::Scope *scope) {
+  auto &interpretercore_info_cache =
+      framework::InterpreterCoreInfoCache::Instance();
+  // 1. Check whether has cached exe
+  if (!interpretercore_info_cache.Has(program_id, is_grad)) {
+    VLOG(1) << "No interpretercore from cache by: <program_id: " << program_id
+            << ", is_grad: " << is_grad << ">.";
+
+    if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+      VLOG(2) << "The cached_info size has exceeded max_cached_size: 4, so "
+                 "clear all cache!";
+      interpretercore_info_cache.Finalize();
+    }
+    // 2. Create a new exe.
+    VLOG(1) << "Create a new interpretercore for: <program_id: " << program_id
+            << ", is_grad: " << is_grad << ">.";
+    VLOG(2) << "scope ptr is: " << scope;
+    auto core = std::make_shared<InterpreterCore>(
+        place,
+        program_desc.Block(0),
+        /*skip_gc_vars=*/std::set<std::string>(),
+        scope);
+
+    // 3. Insert exe into cached map.
+    auto &cached_value =
+        interpretercore_info_cache.GetMutable(program_id, is_grad);
+    cached_value.core_ = core;
+    return std::make_pair(core, /*is_new_created=*/true);
+
+  } else {
+    // 4. Get cached exe for cache.
+    VLOG(1) << "Get a interpretercore from cache by: <program_id: "
+            << program_id << ", is_grad: " << is_grad << ">.";
+    auto &cached_value =
+        interpretercore_info_cache.GetMutable(program_id, is_grad);
+
+    auto &core = cached_value.core_;
+
+    return std::make_pair(core, /*is_new_created=*/false);
   }
 }
 

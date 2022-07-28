@@ -18,6 +18,7 @@ import six
 
 import paddle
 from paddle.fluid import framework, backward, core, program_guard
+from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
@@ -615,7 +616,7 @@ class PartialProgramLayer:
 
         self._cast_fp16_if_pure_fp16(in_vars)
 
-        print("len(self._outputs.var_ids: ", len(self._outputs.var_ids))
+        # -------ci 监测program转换是否成功 -----
         self.whole_program
         self.forward_program
         self.backward_program
@@ -631,6 +632,18 @@ class PartialProgramLayer:
                 ('cuda_graph_capture_mode', self._cuda_graph_capture_mode,
                  'cuda_graph_pool_id', self._cuda_graph_pool_id))
 
+        print("_is_enable_standalone_executor",
+              _is_enable_standalone_executor())
+        print(self.forward_program)
+        use_interpretorcore = _is_enable_standalone_executor()
+        attrs.extend(('use_interpretorcore', False))
+        if use_interpretorcore:
+            attrs.extend(
+                ('forward_global_block', self.forward_program.desc.block(0),
+                 'backward_global_block', self.backward_program.desc.block(0),
+                 'forward_program_id', self.forward_program_id,
+                 'backward_program_id', self.backward_program_id))
+
         _C_ops.run_program(self._valid_vars(in_vars),
                            self._valid_vars(self._params),
                            self._valid_vars(out_vars), self._create_scope_vec(),
@@ -644,6 +657,16 @@ class PartialProgramLayer:
                 name = var.name
                 if (self.program.global_block().has_var(name)
                         and self.program.global_block().var(name).dtype
+                        == paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
+                if (self.forward_program.global_block().has_var(name)
+                        and self.forward_program.global_block().var(name).dtype
+                        == paddle.float16):
+                    in_vars[i] = var.astype('float16')
+                    in_vars[i].name = name
+                if (self.backward_program.global_block().has_var(name)
+                        and self.backward_program.global_block().var(name).dtype
                         == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name

@@ -215,14 +215,18 @@ void build_variable_scope(const framework::BlockDesc& block,
                           bool use_local_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
+  VLOG(3) << "inner_scope is: " << inner_scope;
 
   // NOTE(zhiqiu): if create_local_scope_ is true, the persistable is
   // created in var_scope.scope_ , and other scope is created in local scope.
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
+  VLOG(2) << "local_scope ptr is: " << local_scope;
+
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
+    VLOG(3) << "var_name is: " << var_name;
     // TODO(xiongkun): user may create a variable with name that exists before.
     // under such circumstances, we should raise a error. Currently we can't
     // get the var_desc of startup_program, so leave it later.
@@ -247,6 +251,17 @@ void build_variable_scope(const framework::BlockDesc& block,
               << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
+  }
+  VLOG(4) << "end build_variable_scope: =========";
+  VLOG(3) << "inner scope size is: " << inner_scope << ", "
+          << inner_scope->Size();
+  for (size_t i = 0; i < inner_scope->Size(); i++) {
+    std::cout << inner_scope->LocalVarNames()[i] << std::endl;
+  }
+  VLOG(2) << "local scope size is: " << local_scope << ", "
+          << local_scope->Size();
+  for (size_t i = 0; i < local_scope->Size(); i++) {
+    std::cout << local_scope->LocalVarNames()[i] << std::endl;
   }
 }
 
@@ -308,6 +323,8 @@ std::tuple<VariableValueMap, VariableIdMap> build_variable_map(
         }
       }
       auto* var = local_scope->FindVar(var_name);
+      VLOG(3) << "build_variable_map get Variable " << var_name
+              << " global, which pointer is " << var;
       auto var_id = var_scope->VarId(var_name);
       vars.push_back(var);
       ids.push_back(var_id);
@@ -398,10 +415,10 @@ void deal_operator_base(const platform::Place& place,
     PADDLE_THROW(
         platform::errors::Fatal("Unsupported current place %s", place));
   }
-
+  VLOG(4) << "deal_operator_base: get op_func_node";
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-
+  VLOG(4) << "deal_operator_base: Run op_base";
   std::unordered_set<int> no_data_transform_index;
   for (auto& it : op_func_node->input_index) {
     for (auto& id : it.second) {
@@ -419,8 +436,10 @@ void build_op_func_list(const platform::Place& place,
                         std::vector<OpFuncNode>* vec_func_list,
                         VariableScope* var_scope,
                         bool use_local_scope) {
+  VLOG(2) << "build_op_func_list";
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
+  VLOG(2) << "scope_ is: " << var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
@@ -437,13 +456,14 @@ void build_op_func_list(const platform::Place& place,
 #ifdef PADDLE_WITH_MKLDNN
   platform::RegisterModelLayout(ops_unique, place);
 #endif
-
+  VLOG(2) << "create all ops: " << ops_unique.size();
   // its elements will be moved to vec_func_list
   std::vector<std::shared_ptr<OperatorBase>> ops;
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
   auto unused_var_map = get_unused_vars(block, ops);
+  VLOG(2) << "get unused_var_map: " << unused_var_map.size();
 
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
@@ -490,13 +510,17 @@ void build_op_func_list(const platform::Place& place,
     if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
       // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
       deal_operator_base(place, var_scope, ops[i], &op_func_node, local_scope);
+      VLOG(4) << "deal_operator_base";
     } else {
+      VLOG(4) << "OP is not null";
       auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
           static_cast<const framework::OperatorWithKernel*>(op));
+      VLOG(4) << "get op_with_kernel";
       // construct RuntimeContext and analysis KernelType
       RuntimeContext runtime_context({}, {});
       runtime_context.inputs.swap(ins_map);
       runtime_context.outputs.swap(outs_map);
+      VLOG(4) << "get RuntimeContext";
 
       Scope scope, *runtime_scope = &scope;
       // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
@@ -512,10 +536,13 @@ void build_op_func_list(const platform::Place& place,
 
       auto& pool = platform::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(place);
+      VLOG(4) << "get dev_ctx";
       auto exec_ctx = ExecutionContext(
           *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
+      VLOG(4) << "get exec_ctx";
       auto expected_kernel_key =
           op_with_kernel->GetExpectedKernelType(exec_ctx);
+      VLOG(4) << "get expected_kernel_key";
       // change device by the device_guard()
       apply_device_guard(op, place, &expected_kernel_key);
       VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
@@ -548,6 +575,7 @@ void build_op_func_list(const platform::Place& place,
           }
         }
       }
+      VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
       if (!run_phi_kernel) {
         op_with_kernel->ChooseKernel(exec_ctx);
         op_func_node.kernel_func_ = *op_with_kernel->kernel_func();
@@ -581,7 +609,7 @@ void build_op_func_list(const platform::Place& place,
                          &op_func_node,
                          vec_func_list,
                          use_local_scope);
-
+      VLOG(4) << "apply data transform done. ";
       // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc for
       // why.
       if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
@@ -594,14 +622,18 @@ void build_op_func_list(const platform::Place& place,
 
       // step 5. run kernel
       if (run_phi_kernel) {
+        VLOG(4) << "start run phi kernel. ";
         phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPhiKernelContext(
             runtime_context, dev_ctx, &pt_kernel_context);
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
+        VLOG(4) << "end run phi kernel. ";
       } else {
+        VLOG(4) << "start run kernel. ";
         // the place of exec_ctx maybe has changed.
         op_func_node.kernel_func_(ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+        VLOG(4) << "end run kernel. ";
       }
 
       // post-process grad_op.outputs if need cast complex grad into real

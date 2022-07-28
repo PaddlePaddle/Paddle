@@ -93,6 +93,18 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   }
   var_scope_.SetLocalScope(local_scope_);
 
+  // 执行器执行
+  VLOG(2) << "construct interpertercore scope var is: ";
+  for (size_t i = 0; i < scope->LocalVarNames().size(); i++) {
+    std::cout << scope->LocalVarNames()[i] << std::endl;
+  }
+
+  VLOG(2) << "construct scope ptr is: " << scope;
+  VLOG(2) << "varscope's var size is: " << var_scope_.VarSize();
+  for (size_t i = 0; i < var_scope_.VarSize(); i++) {
+    std::cout << var_scope_.GetNameById(i) << std::endl;
+  }
+
   // prune
 
   // optmize graph pass
@@ -176,7 +188,8 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   if (!is_build_) {
-    paddle::framework::interpreter::build_variable_scope(block_, &var_scope_);
+    paddle::framework::interpreter::build_variable_scope(
+        block_, &var_scope_, create_local_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(place_,
@@ -186,6 +199,7 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                        &var_scope_,
                                                        create_local_scope_);
     is_build_ = true;
+    VLOG(2) << "Done build_op_func_list ----------";
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -206,7 +220,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     ClearLoDTensorArrayInLocalScope();
   }
   // return Fetch Tensors
-  auto* fetch_var = local_scope_->FindVar(interpreter::kFetchVarName);
+  Scope* inner_scope =
+      create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
+  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var) {
     return std::move(*fetch_var->GetMutable<framework::FetchList>());
   } else {
@@ -216,6 +232,16 @@ paddle::framework::FetchList InterpreterCore::Run(
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
+}
+
+void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
+  PADDLE_ENFORCE_EQ(
+      skip_gc_vars_.empty(),
+      true,
+      platform::errors::PreconditionNotMet(
+          "Skip_gc_vars_ can only be initialized once, now skip_gc_vars_ is "
+          "not empty, do not call SetSkipGcVars method repeatedly."));
+  skip_gc_vars_ = skip_gc_vars;
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -249,14 +275,16 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
 }
 
 void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
+  VLOG(2) << "BuildAndCacheInstructionCtx";
+  Scope* inner_scope =
+      create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
 
     input_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      input_vars.emplace_back(
-          local_scope_->FindVar(var_scope_.GetNameById(id)));
+      input_vars.emplace_back(inner_scope->FindVar(var_scope_.GetNameById(id)));
     }
     ins_map.emplace(var_name_item.first, std::move(input_vars));
   }
@@ -267,7 +295,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 
     out_vars.reserve(var_name_item.second.size());
     for (auto& id : var_name_item.second) {
-      out_vars.emplace_back(local_scope_->FindVar(var_scope_.GetNameById(id)));
+      out_vars.emplace_back(inner_scope->FindVar(var_scope_.GetNameById(id)));
     }
     outs_map.emplace(var_name_item.first, std::move(out_vars));
   }
@@ -284,6 +312,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
 }
 
 void InterpreterCore::BuildInplace() {
+  VLOG(2) << "BuildInplace";
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
     auto* op_base = instr.OpBase();
@@ -309,9 +338,12 @@ void InterpreterCore::BuildInplace() {
         if (BuildInplaceCheckVarIsOnlyInput(iter->second[0])) {
           auto iterout = outputs.find(pair.second);
           if (iterout != outputs.end() && !iterout->second.empty()) {
+            Scope* inner_scope = create_local_scope_
+                                     ? local_scope_
+                                     : var_scope_.GetMutableScope();
             auto invar =
-                local_scope_->FindVar(var_scope_.GetNameById(iter->second[0]));
-            auto outvar = local_scope_->FindVar(
+                inner_scope->FindVar(var_scope_.GetNameById(iter->second[0]));
+            auto outvar = inner_scope->FindVar(
                 var_scope_.GetNameById(iterout->second[0]));
             if (invar && outvar && invar->IsType<LoDTensor>() &&
                 outvar->IsType<LoDTensor>()) {
@@ -335,6 +367,7 @@ void InterpreterCore::BuildOperatorDependences() {
   dependecy_count_.resize(op_nums);
   auto op2downstream = interpreter::build_op_downstream_map(
       vec_instruction_, &op_happens_before_);
+  VLOG(2) << "op2downstream size is: " << op2downstream.size();
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
     std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
@@ -344,6 +377,7 @@ void InterpreterCore::BuildOperatorDependences() {
       dependecy_count_[inst_id]++;
     }
   }
+  VLOG(2) << "dependecy_count_ size is: " << dependecy_count_.size();
 }
 
 // At the end of each step, the holder of Tensor in LoDTensorArray is null.
@@ -361,27 +395,33 @@ void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
 
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  VLOG(2) << "start Convert : ---- op_func_node size is: "
+          << op_func_nodes->size();
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
   auto var_nums = var_scope_.VarSize();
   input_var2op_info_.resize(var_nums);
   auto nodes = *op_func_nodes;
+  VLOG(2) << "vec_meta_info size is: ---- " << vec_meta_info.size();
+  VLOG(2) << "var_nums size is: ---- " << var_nums;
 
   auto op_nums = nodes.size();
+  VLOG(2) << "op_nums size is: ---- " << op_nums;
   vec_instruction_.reserve(op_nums);
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
-
+  VLOG(2) << "start BuildOperatorDependences ----";
   BuildOperatorDependences();
-
+  VLOG(2) << "end BuildOperatorDependences ----";
   // calculate last_live_ops_
+  VLOG(2) << "start calculate last_live_ops_ ----";
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
     std::set<size_t> gc_check_inputs;
-
+    VLOG(2) << "analyse instr.Inputs ----";
     for (auto& item : instr.Inputs()) {
       for (auto id : item.second) {
         if (id == kEmptyVarIndex) {
@@ -402,10 +442,12 @@ void InterpreterCore::Convert(
         }
       }
     }
-
+    VLOG(2) << "analyse gc_check_inputs ----";
     for (auto var_id : gc_check_inputs) {
+      Scope* inner_scope =
+          create_local_scope_ ? local_scope_ : var_scope_.GetMutableScope();
       paddle::framework::Variable* var =
-          local_scope_->FindVar(var_scope_.GetNameById(var_id));
+          inner_scope->FindVar(var_scope_.GetNameById(var_id));
       if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
@@ -416,7 +458,8 @@ void InterpreterCore::Convert(
       }
     }
   }
-
+  VLOG(2) << "end calculate last_live_ops_ ----";
+  VLOG(2) << "start calculate last_live_ops_ checkout output----";
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     // checkout output
     for (auto& item : vec_instruction_[i].Outputs()) {
@@ -427,6 +470,9 @@ void InterpreterCore::Convert(
       }
     }
   }
+  VLOG(2) << "end calculate last_live_ops_ checkout output----";
+  VLOG(2)
+      << "start clear the last_live_ops list for all vars in skip_gc_vars----";
 
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : skip_gc_vars_) {
@@ -436,6 +482,8 @@ void InterpreterCore::Convert(
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
+  VLOG(2)
+      << "end clear the last_live_ops list for all vars in skip_gc_vars----";
 
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
@@ -995,7 +1043,7 @@ void InterpreterCore::Prepare(
                         "but received %d != %d",
                         feed_names.size(),
                         feed_tensors.size()));
-
+  VLOG(2) << "start interpreter core Prepare";
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1012,6 +1060,7 @@ void InterpreterCore::Prepare(
   };
 
   if (!is_build_) {
+    VLOG(2) << "start interpreter core Prepare: not build";
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, create_local_scope_);
     FeedInput();

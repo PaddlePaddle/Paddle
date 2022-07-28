@@ -58,6 +58,8 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
  private:
   bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
 
@@ -104,7 +106,7 @@ class InterpreterCore {
 
   const platform::Place& place_;
   const BlockDesc& block_;  // not owned
-  const std::set<std::string> skip_gc_vars_;
+  std::set<std::string> skip_gc_vars_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to

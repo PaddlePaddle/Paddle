@@ -47,8 +47,10 @@ class Variable {
   template <typename T>
   T* GetMutable() {
     if (!holder_) {
+      VLOG(2) << "holder is null. create new";
       holder_.reset(new PlaceholderImpl<T>());
     } else {
+      VLOG(2) << "holder is not null.";
       PADDLE_ENFORCE_EQ(
           holder_->Type(),
           VarTypeTrait<T>::kId,
@@ -56,6 +58,7 @@ class Variable {
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId),
               ToTypeName(holder_->Type())));
+      VLOG(2) << "holder is not null done.";
     }
     return static_cast<T*>(holder_->Ptr());
   }
