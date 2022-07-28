@@ -1,3 +1,5 @@
+
+
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/dirichlet_op.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <curand_kernel.h>
@@ -38,8 +42,7 @@ using COMPAT_RANDSTATEPHILOX4_32_10_T = hiprandStatePhilox4_32_10_t;
 #define COMPAT_RAND_NORMAL hiprand_normal
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
 template <typename T>
 struct GammaCUDAFunctor {
   GammaCUDAFunctor(const T* alpha, T* gamma, uint64_t seed, uint64_t offset)
@@ -70,47 +73,44 @@ struct GammaCUDAFunctor {
 };
 
 template <typename T>
-struct DirichletSampler<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* alpha,
-                  framework::Tensor* out) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
-
-    // init state, seed & offset for all threads
-    int device_id = ctx.GetPlace().GetDeviceId();
-    auto p_gen = framework::DefaultCUDAGenerator(device_id);
+struct DirichletSampler<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
+                  const DenseTensor& alpha,
+                  DenseTensor* out) {
+    auto p_gen = dev_ctx.GetGenerator();
     auto seed_and_offset = p_gen->IncrementOffset(10);  // hard-coded offset
     auto seed = seed_and_offset.first;
     auto offset = seed_and_offset.second;
 
     // sample from K gamma distributions, where K=alpha.numel()
-    framework::Tensor gamma_samples;
-    gamma_samples.mutable_data<T>(alpha->dims(), dev_ctx.GetPlace());
+    DenseTensor gamma_samples;
+    gamma_samples.Resize(alpha.dims());
+    dev_ctx.template Alloc<T>(&gamma_samples);
+
     GammaCUDAFunctor<T> gamma_functor(
-        alpha->data<T>(), gamma_samples.data<T>(), seed, offset);
-    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
-                                                              out->numel());
+        alpha.data<T>(), gamma_samples.data<T>(), seed, offset);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, out->numel());
     for_range(gamma_functor);
 
     // normalize them into a simplex, along the last axis
-    framework::Tensor gamma_sum;
+    DenseTensor gamma_sum;
     auto new_shape = gamma_samples.dims();
     new_shape[new_shape.size() - 1] = 1;
-    gamma_sum.mutable_data<T>(new_shape, dev_ctx.GetPlace());
+    gamma_sum.Resize(new_shape);
+    dev_ctx.template Alloc<T>(&gamma_sum);
 
-    ReduceKernelFunctor<platform::CUDADeviceContext, T, SumFunctor>(
-        &gamma_samples, &gamma_sum, {new_shape.size() - 1}, true, false, ctx)
-        .template apply<T>();
-    ElementwiseComputeEx<DivFunctor<T>, platform::CUDADeviceContext, T, T>(
-        ctx, &gamma_samples, &gamma_sum, -1, DivFunctor<T>(), out);
+    ReduceKernelImpl<GPUContext, T, T, funcs::SumFunctor>(
+        dev_ctx,
+        gamma_samples,
+        &gamma_sum,
+        {new_shape.size() - 1},
+        true,
+        false);
+    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T, T>(
+        dev_ctx, gamma_samples, gamma_sum, -1, funcs::DivideFunctor<T>(), out);
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
 
-namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(
-    dirichlet,
-    ops::DirichletKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DirichletKernel<paddle::platform::CUDADeviceContext, double>);
+PD_REGISTER_KERNEL(
+    dirichlet, GPU, ALL_LAYOUT, phi::Dirichletkernel, float, double) {}

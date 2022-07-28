@@ -18,11 +18,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/seq2col.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/seq2col.h"
 
 namespace paddle {
 namespace operators {
@@ -44,20 +44,20 @@ struct OverlapAddFunctor {
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     if (!is_grad) {
-      math::Col2SeqFunctor<T> functor(input_data,
-                                      output_data,
-                                      seq_length,
-                                      frame_length,
-                                      n_frames,
-                                      hop_length);
+      phi::funcs::Col2SeqFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     } else {
-      math::Seq2ColFunctor<T> functor(input_data,
-                                      output_data,
-                                      seq_length,
-                                      frame_length,
-                                      n_frames,
-                                      hop_length);
+      phi::funcs::Seq2ColFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     }
   }

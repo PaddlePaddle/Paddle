@@ -63,7 +63,6 @@ from .ops import erf    # noqa: F401
 from .ops import sqrt    # noqa: F401
 from .ops import sqrt_    # noqa: F401
 from .ops import sin    # noqa: F401
-from .ops import lgamma    # noqa: F401
 from .ops import asinh    # noqa: F401
 from .ops import acosh    # noqa: F401
 from .ops import atanh    # noqa: F401
@@ -3712,6 +3711,43 @@ def digamma(x, name=None):
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
     return out
+
+def lgamma(x, name=None):
+    r"""
+    Calculates the lgamma of the given input tensor, element-wise.
+
+    This operator performs elementwise lgamma for input $X$.
+    :math:`out = log\Gamma(x)`
+
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.lgamma(x)
+            print(out)
+            # [1.31452441, 1.76149750, 2.25271273, 1.09579802]
+    """
+    if in_dygraph_mode():
+        return _C_ops.final_state_lgamma(x)
+    elif _in_legacy_dygraph():
+        return _C_ops.lgamma(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lgamma')
+    helper = LayerHelper('lgamma', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})
+    return out
+
 
 def neg(x, name=None):
     """
