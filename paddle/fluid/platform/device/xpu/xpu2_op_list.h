@@ -276,6 +276,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"log_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log_softmax", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log_softmax_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
