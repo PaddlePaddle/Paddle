@@ -131,11 +131,6 @@ class Engine:
     def _prepare_single_mode(self, mode):
 
         self._build(mode)
-        with open(
-                "./build_main_program.txt.%d" % (paddle.distributed.get_rank()),
-                'w') as f:
-            f.write(str(
-                self._dist_contexts[mode]._original_serial_main_program))
         # Do the planning process
         self._plan(mode)
 
@@ -427,16 +422,13 @@ class Engine:
         usr_fetch = self._validate_fetches(fetches)
         fetch_loss = self._validate_fetches(self.fetch_vars["loss"])
         fetch_list, fetch_map = self._fetch_map(fetch_loss, usr_fetch)
-        import time
         for epoch in range(epochs):
             train_logs = {"epoch": epoch}
-            reader_start = time.time()
             for step, _ in enumerate(train_dataloader):
                 outs = self._executor.run(self.main_program,
                                           fetch_list=fetch_list,
                                           use_program_cache=use_program_cache,
                                           return_numpy=return_numpy)
-                train_run_cost = time.time() - reader_start
                 train_logs["step"] = step
                 # inner fetches
                 if fetch_loss:
@@ -446,11 +438,7 @@ class Engine:
                 user_fetch_list = fetch_list[len(fetch_loss):]
                 for i, out in enumerate(user_outs):
                     train_logs["train_" + fetch_map[user_fetch_list[i]]] = out
-                speed = 1.0 / train_run_cost
-                train_logs['step/s'] = speed
-                train_logs['tokens/s'] = speed * batch_size * 1024
                 self._logger.info(train_logs)
-                reader_start = time.time()
 
     def evaluate(self,
                  eval_data,
