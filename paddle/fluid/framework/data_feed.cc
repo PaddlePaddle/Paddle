@@ -2647,6 +2647,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   CHECK(paddle::platform::is_gpu_place(this->place_));
   pack_ = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
+#endif
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocResource(this->place_, feed_vec_);
 #endif
   return true;
