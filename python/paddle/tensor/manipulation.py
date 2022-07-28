@@ -1132,7 +1132,9 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if paddle.in_dynamic_mode():
+    if paddle.framework.in_dygraph_mode():
+        return _C_ops.final_state_broadcast_tensors(input)
+    if paddle.framework._non_static_mode():
         return _C_ops.broadcast_tensors(input, num_inputs)
 
     check_type(input, 'input', (list, tuple), 'broadcast_tensors')

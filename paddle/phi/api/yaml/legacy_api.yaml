@@ -2513,6 +2513,15 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
+- api: broadcast_tensors
+  args: (Tensor[] x)
+  output: Tensor[]{x.size()}
+  infer_meta:
+    func: BroadcastTensorsInferMeta
+  kernel:
+    func: broadcast_tensors
+  backward: broadcast_tensors_grad
+
 # eig
 - api: eig
   args: (Tensor x)
