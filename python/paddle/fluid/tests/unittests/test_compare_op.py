@@ -151,9 +151,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_inf_1(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('inf')])
+                x1 = np.array([1, 2, float('inf')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, float('inf')])
+                y1 = np.array([1, 2, float('inf')]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
@@ -164,9 +164,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_inf_2(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('inf')])
+                x1 = np.array([1, 2, float('inf')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, float('-inf')])
+                y1 = np.array([1, 2, float('-inf')]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
@@ -177,9 +177,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_inf_3(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('inf')])
+                x1 = np.array([1, 2, float('inf')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, 1])
+                y1 = np.array([1, 2, 1]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
@@ -190,9 +190,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_nan_1(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('nan')])
+                x1 = np.array([1, 2, float('nan')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, float('nan')])
+                y1 = np.array([1, 2, float('nan')]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
@@ -203,9 +203,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_nan_2(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('nan')])
+                x1 = np.array([1, 2, float('nan')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, float('-nan')])
+                y1 = np.array([1, 2, float('-nan')]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
@@ -216,9 +216,9 @@ def create_paddle_case(op_type, callback):
         def test_dynamic_api_nan_3(self):
             if self.op_type == "equal":
                 paddle.disable_static()
-                x1 = np.array([1, 2, float('nan')])
+                x1 = np.array([1, 2, float('nan')]).astype(np.int64)
                 x = paddle.to_tensor(x1)
-                y1 = np.array([1, 2, 1])
+                y1 = np.array([1, 2, 1]).astype(np.int64)
                 y = paddle.to_tensor(y1)
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
