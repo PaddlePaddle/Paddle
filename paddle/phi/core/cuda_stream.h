@@ -73,6 +73,7 @@ class CUDAStream {
           &stream, static_cast<unsigned int>(flag), 0));
 #endif
     }
+    VLOG(10) << "CUDAStream " << stream;
     stream_ = Stream(reinterpret_cast<StreamId>(stream));
     owned_ = true;
   }
@@ -118,7 +119,10 @@ class CUDAStream {
     return false;
   }
 
-  void Synchronize() const { backends::gpu::GpuStreamSync(raw_stream()); }
+  void Synchronize() const {
+    VLOG(10) << "Synchronize " << raw_stream();
+    backends::gpu::GpuStreamSync(raw_stream());
+  }
 
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
@@ -129,6 +133,7 @@ class CUDAStream {
   }
 
   ~CUDAStream() {
+    VLOG(10) << "~CUDAStream " << raw_stream();
     Synchronize();
     if (owned_ && stream_.id() != 0) {
       backends::gpu::GPUDeviceGuard guard(place_.device);
