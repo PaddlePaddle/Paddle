@@ -36,27 +36,10 @@ typedef uint64_t FeatureKey;
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
-class FeatureValueAccessor {
- public:
-  __host__ __device__ FeatureValueAccessor() {}
-  __host__ __device__ ~FeatureValueAccessor() {}
-
-  __host__ __device__ virtual int Configure(
-      std::unordered_map<std::string, float> config) {
-    _config = config;
-    Initialize();
-    return 0;
-  }
-  __host__ __device__ virtual int Initialize() = 0;
-
- protected:
-  std::unordered_map<std::string, float> _config;
-};
-
 // adagrad: embed_sgd_dim=1, embedx_sgd_dim=1,embedx_dim=n
 // adam std:  embed_sgd_dim=4, embedx_sgd_dim=n*2+2,embedx_dim=n
 // adam shared:  embed_sgd_dim=4, embedx_sgd_dim=4,embedx_dim=n
-class CommonFeatureValueAccessor : public FeatureValueAccessor {
+class CommonFeatureValueAccessor {
  public:
   struct CommonFeatureValue {
     /*
@@ -256,7 +239,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
   __host__ __device__ CommonFeatureValueAccessor() {}
   __host__ __device__ ~CommonFeatureValueAccessor() {}
 
-  __host__ __device__ virtual int Initialize() {
+  __host__ int Initialize() {
     int optimizer_type = (_config.find("optimizer_type") == _config.end())
                              ? 1
                              : int(_config["optimizer_type"]);
@@ -276,6 +259,12 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
     common_feature_value.optimizer_type_ = optimizer_type;
     common_feature_value.embedx_dim = sparse_embedx_dim;
 
+    return 0;
+  }
+
+  __host__ int Configure(std::unordered_map<std::string, float>& config) {
+    _config = config;
+    Initialize();
     return 0;
   }
 
@@ -572,6 +561,7 @@ class CommonFeatureValueAccessor : public FeatureValueAccessor {
   }
 
  public:
+  std::unordered_map<std::string, float> _config;
   CommonFeatureValue common_feature_value;
   CommonPushValue common_push_value;
   CommonPullValue common_pull_value;
@@ -759,6 +749,8 @@ class AccessorWrapper : public VirtualAccessor {
   virtual size_t GetPullValueSize(int& mf_dim) {
     return gpu_accessor_.common_pull_value.Size(mf_dim);
   }
+
+  GPUAccessor* AccessorPtr() { return &gpu_accessor_; }
 
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
@@ -975,10 +967,10 @@ class AccessorWrapper : public VirtualAccessor {
   GPUAccessor gpu_accessor_;
 };
 
-class GlobalAccessorTransfor {
+class GlobalAccessorFactory {
  public:
-  static GlobalAccessorTransfor& GetInstance() {
-    static GlobalAccessorTransfor ins;
+  static GlobalAccessorFactory& GetInstance() {
+    static GlobalAccessorFactory ins;
     return ins;
   }
   void Init(std::string accessor_type) {
@@ -988,7 +980,7 @@ class GlobalAccessorTransfor {
     if (accessor_type == "CtrDymfAccessor") {
       accessor_wrapper_ptr_ = new AccessorWrapper<CommonFeatureValueAccessor>();
     } else {
-      VLOG(0) << "GlobalAccessorTransfor Init not support accessor_type:"
+      VLOG(0) << "GlobalAccessorFactory Init not support accessor_type:"
               << accessor_type;
       accessor_wrapper_ptr_ = new AccessorWrapper<CommonFeatureValueAccessor>();
     }

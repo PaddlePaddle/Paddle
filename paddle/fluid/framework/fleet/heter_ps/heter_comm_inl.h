@@ -35,8 +35,8 @@ namespace framework {
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
+          typename GPUAccessor>
+HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
     size_t capacity, std::shared_ptr<HeterPsResource> resource) {
   VLOG(1) << "Construct new HeterComm";
   resource_ = resource;
@@ -56,7 +56,7 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
     } else {
       max_mf_dim_ = resource_->max_mf_dim();
       auto accessor_wrapper_ptr =
-          GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+          GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
       size_t val_type_size =
           accessor_wrapper_ptr->GetFeatureValueSize(max_mf_dim_);
       size_t grad_type_size =
@@ -68,7 +68,6 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
               << ", feature_value_push_size:" << grad_type_size
               << ", feature_pull_type_size:" << pull_type_size;
       auto ptr_table = new PtrTable(capacity / load_factor_);
-      // ptr_table->set_accessor(feature_value_accessor_);
       ptr_table->set_feature_value_size(pull_type_size, grad_type_size);
       ptr_tables_.push_back(ptr_table);
     }
@@ -83,8 +82,58 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::HeterComm(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::init_path() {
+          typename GPUAccessor>
+HeterComm<KeyType, ValType, GradType, GPUAccessor>::HeterComm(
+    size_t capacity,
+    std::shared_ptr<HeterPsResource> resource,
+    GPUAccessor& gpu_accessor) {
+  VLOG(1) << "Construct new HeterComm";
+  resource_ = resource;
+  storage_.resize(resource_->total_device());
+  multi_mf_dim_ = resource->multi_mf();
+  gpu_accessor_ = gpu_accessor;
+  load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
+  VLOG(0) << "load_factor = " << load_factor_;
+  for (int i = 0; i < resource_->total_device(); ++i) {
+#if defined(PADDLE_WITH_CUDA)
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    allocators_.push_back(std::make_shared<cub::CachingDeviceAllocator>(
+        8, 1, (unsigned int)-1, (size_t)-1, false, false));  // NOLINT
+#endif
+    if (!multi_mf_dim_) {
+      auto table = new Table(capacity / load_factor_);
+      tables_.push_back(table);
+    } else {
+      max_mf_dim_ = resource_->max_mf_dim();
+      auto accessor_wrapper_ptr =
+          GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
+      size_t val_type_size =
+          accessor_wrapper_ptr->GetFeatureValueSize(max_mf_dim_);
+      size_t grad_type_size =
+          accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
+      size_t pull_type_size =
+          accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
+
+      VLOG(0) << " HeterComm init, max feature_value_size:" << val_type_size
+              << ", feature_value_push_size:" << grad_type_size
+              << ", feature_pull_type_size:" << pull_type_size;
+      auto ptr_table = new PtrTable(capacity / load_factor_);
+      ptr_table->set_feature_value_size(pull_type_size, grad_type_size);
+      ptr_tables_.push_back(ptr_table);
+    }
+    if (multi_node_) {
+      storage_[i].init(feanum_, resource_->dev_id(i));
+    }
+  }
+  heter_comm_kernel_ = std::make_unique<HeterCommKernel>(block_size_);
+  init_path();
+}
+
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::init_path() {
   int total_device = resource_->total_device();
   path_.resize(total_device);
   if (!topo_aware_) {
@@ -139,9 +188,9 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::init_path() {
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
+          typename GPUAccessor>
 template <typename DstPlace, typename SrcPlace, typename StreamType>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::memory_copy(
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::memory_copy(
     DstPlace dst_place,
     void* dst,
     SrcPlace src_place,
@@ -161,8 +210,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::memory_copy(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::create_storage(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_storage(
     int start_index, int end_index, size_t keylen, size_t vallen) {
 #if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
@@ -200,8 +249,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::create_storage(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::destroy_storage(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::destroy_storage(
     int start_index, int end_index) {
 #if defined(PADDLE_WITH_CUDA)
   auto& allocator = allocators_[start_index];
@@ -220,8 +269,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::destroy_storage(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_dest(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_dest(
     int start_index,
     int num,
     int* h_left,
@@ -307,8 +356,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_dest(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_dest(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_dest(
     int start_index,
     int gpu_num,
     int* h_left,
@@ -375,8 +424,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_dest(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_src(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::walk_to_src(
     int start_index,
     int gpu_num,
     int* h_left,
@@ -438,8 +487,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::walk_to_src(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-HeterComm<KeyType, ValType, GradType, FVAccessor>::~HeterComm() {
+          typename GPUAccessor>
+HeterComm<KeyType, ValType, GradType, GPUAccessor>::~HeterComm() {
   if (!multi_mf_dim_) {
     for (auto& table : tables_) {
       delete table;
@@ -460,8 +509,8 @@ HeterComm<KeyType, ValType, GradType, FVAccessor>::~HeterComm() {
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::show_one_table(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::show_one_table(
     int gpu_num) {
   if (!multi_mf_dim_) {
     tables_[gpu_num]->show();
@@ -471,8 +520,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::show_one_table(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
     show_table_collisions() {
   size_t idx = 0;
   for (auto& table : tables_) {
@@ -491,8 +540,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-int HeterComm<KeyType, ValType, GradType, FVAccessor>::log2i(int x) {
+          typename GPUAccessor>
+int HeterComm<KeyType, ValType, GradType, GPUAccessor>::log2i(int x) {
   unsigned res = 0;
   while (x >>= 1) {
     ++res;
@@ -503,8 +552,8 @@ int HeterComm<KeyType, ValType, GradType, FVAccessor>::log2i(int x) {
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-int HeterComm<KeyType, ValType, GradType, FVAccessor>::get_index_by_devid(
+          typename GPUAccessor>
+int HeterComm<KeyType, ValType, GradType, GPUAccessor>::get_index_by_devid(
     int devid) {
   return resource_->get_index_by_devid(devid);
 }
@@ -512,8 +561,8 @@ int HeterComm<KeyType, ValType, GradType, FVAccessor>::get_index_by_devid(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_sparse_sgd(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_sparse_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
@@ -528,8 +577,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_sparse_sgd(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_embedx_sgd(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::set_embedx_sgd(
     const OptimizerConfig& optimizer_config) {
   for (int i = 0; i < resource_->total_device(); ++i) {
     AnyDeviceGuard guard(resource_->dev_id(i));
@@ -544,8 +593,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::set_embedx_sgd(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::build_ps(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int dev_num,
     KeyType* h_keys,
     ValType* h_vals,
@@ -618,8 +667,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::build_ps(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::build_ps(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::build_ps(
     int num,
     KeyType* h_keys,
     char* pool,
@@ -684,8 +733,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::build_ps(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::merge_grad(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
     int dev_num,
     KeyType* d_keys,
     GradType* d_grads,
@@ -761,8 +810,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::merge_grad(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::dynamic_merge_grad(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::dynamic_merge_grad(
     int gpu_num,
     KeyType* d_keys,
     float* d_grads,
@@ -778,7 +827,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::dynamic_merge_grad(
   size_t temp_storage_bytes;
   size_t grad_dim = max_mf_dim_;
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   auto d_merge_keys = memory::Alloc(place, len * sizeof(KeyType));
@@ -899,7 +948,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::dynamic_merge_grad(
                                        grad_value_size,
                                        merger_,
                                        stream,
-                                       feature_value_accessor_);
+                                       gpu_accessor_);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(d_grads,
                                                d_merge_grads_ptr,
                                                grad_value_size * uniq_len,
@@ -912,8 +961,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::dynamic_merge_grad(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::segment_merge_grad(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::segment_merge_grad(
     int gpu_num,  // the device number
     KeyType*
         d_keys,  // the sorted keys list, which will be modified after merged
@@ -933,7 +982,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::segment_merge_grad(
 
   auto grad_dim = max_mf_dim_;
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   auto d_buffer1 = memory::Alloc(place, sizeof(uint32_t) * len);
@@ -1045,7 +1094,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::segment_merge_grad(
                                      grad_value_size,
                                      merger_,
                                      stream,
-                                     feature_value_accessor_);
+                                     gpu_accessor_);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(d_keys,
@@ -1064,8 +1113,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::segment_merge_grad(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::split_input_to_shard(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::split_input_to_shard(
     KeyType* d_keys,
     int* d_idx_ptr,
     size_t len,
@@ -1124,8 +1173,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::split_input_to_shard(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::merge_keys(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_keys(
     int gpu_num,
     const KeyType* d_keys,
     size_t len,               // input
@@ -1140,7 +1189,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::merge_keys(
 
   size_t grad_dim = max_mf_dim_;
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
 
   auto d_fea_num_info = memory::Alloc(place, sizeof(uint32_t) * (len * 4 + 1));
@@ -1243,8 +1292,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::merge_keys(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_merge_sparse(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
     int num, KeyType* d_keys, float* d_vals, size_t len) {
   int total_device = resource_->total_device();
   int dev_id = resource_->dev_id(num);
@@ -1286,7 +1335,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_merge_sparse(
 #endif
 
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t val_type_size = accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
   VLOG(3) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;
   auto d_sorted_keys = memory::Alloc(place, len * sizeof(KeyType));
@@ -1361,14 +1410,14 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_merge_sparse(
                           node.val_storage,
                           h_right[i] - h_left[i] + 1,
                           resource_->remote_stream(i, num),
-                          feature_value_accessor_);
+                          gpu_accessor_);
     } else {
       ptr_tables_[i]->get(
           d_shard_keys_ptr + h_left[i],
           reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
           h_right[i] - h_left[i] + 1,
           resource_->remote_stream(i, num),
-          feature_value_accessor_);
+          gpu_accessor_);
     }
   }
 
@@ -1424,8 +1473,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_merge_sparse(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_normal_sparse(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
     int num, KeyType* d_keys, float* d_vals, size_t len) {
   int total_device = resource_->total_device();
   int dev_id = resource_->dev_id(num);
@@ -1470,7 +1519,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_normal_sparse(
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t val_type_size = accessor_wrapper_ptr->GetPullValueSize(max_mf_dim_);
   VLOG(3) << "pull_sparse len:" << len << "  val_type_size: " << val_type_size;
   auto d_shard_keys = memory::Alloc(place, len * sizeof(KeyType));
@@ -1527,14 +1576,14 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_normal_sparse(
                           node.val_storage,
                           h_right[i] - h_left[i] + 1,
                           resource_->remote_stream(i, num),
-                          feature_value_accessor_);
+                          gpu_accessor_);
     } else {
       ptr_tables_[i]->get(
           d_shard_keys_ptr + h_left[i],
           reinterpret_cast<char*>(d_shard_vals_ptr) + h_left[i] * val_type_size,
           h_right[i] - h_left[i] + 1,
           resource_->remote_stream(i, num),
-          feature_value_accessor_);
+          gpu_accessor_);
     }
   }
 
@@ -1575,8 +1624,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_normal_sparse(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_sparse(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_sparse(
     int num, KeyType* d_keys, float* d_vals, size_t len) {
   if (len == 0) {
     return;
@@ -1592,9 +1641,9 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::pull_sparse(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
+          typename GPUAccessor>
 template <typename Sgd>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
     int dev_num,
     KeyType* d_keys,
     float* d_grads,
@@ -1608,7 +1657,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
   int dev_id = resource_->dev_id(dev_num);
 
   auto accessor_wrapper_ptr =
-      GlobalAccessorTransfor::GetInstance().GetAccessorWrapper();
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
   size_t grad_value_size = accessor_wrapper_ptr->GetPushValueSize(max_mf_dim_);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
@@ -1689,7 +1738,7 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
                                              uniq_len,
                                              grad_value_size,
                                              stream,
-                                             feature_value_accessor_);
+                                             gpu_accessor_);
 
   sync_stream(stream);
 
@@ -1779,8 +1828,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
     int dev_num, KeyType* d_keys, GradType* d_grads, size_t len) {
   if (len == 0) {
     return;
@@ -1918,9 +1967,9 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
+          typename GPUAccessor>
 template <typename Sgd>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::update_one_table(
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::update_one_table(
     int gpu_num,
     KeyType* d_keys,
     GradType* d_grads,
@@ -1942,9 +1991,9 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::update_one_table(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
+          typename GPUAccessor>
 template <typename Sgd>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse_multi_node(
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse_multi_node(
     int gpu_num,
     KeyType* d_keys,
     GradType* d_grads,
@@ -1974,8 +2023,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::push_sparse_multi_node(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-int HeterComm<KeyType, ValType, GradType, FVAccessor>::gather_one_node_grad(
+          typename GPUAccessor>
+int HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_one_node_grad(
     int gpu_num, KeyType* d_keys, GradType* d_grads, int len) {
   int total_gpu = resource_->total_device();
   int dev_id = resource_->dev_id(gpu_num);
@@ -2078,8 +2127,8 @@ int HeterComm<KeyType, ValType, GradType, FVAccessor>::gather_one_node_grad(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-int HeterComm<KeyType, ValType, GradType, FVAccessor>::gather_multi_node_grad(
+          typename GPUAccessor>
+int HeterComm<KeyType, ValType, GradType, GPUAccessor>::gather_multi_node_grad(
     int gpu_num, KeyType* d_keys, GradType* d_grads, int len) {
   int dev_id = resource_->dev_id(gpu_num);
   auto& storage = storage_[gpu_num];
@@ -2152,8 +2201,8 @@ int HeterComm<KeyType, ValType, GradType, FVAccessor>::gather_multi_node_grad(
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-void HeterComm<KeyType, ValType, GradType, FVAccessor>::end_pass() {
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::end_pass() {
   int total_device = resource_->total_device();
   std::vector<std::thread> threads;
 
@@ -2178,8 +2227,8 @@ void HeterComm<KeyType, ValType, GradType, FVAccessor>::end_pass() {
 template <typename KeyType,
           typename ValType,
           typename GradType,
-          typename FVAccessor>
-int HeterComm<KeyType, ValType, GradType, FVAccessor>::dedup_keys_and_fillidx(
+          typename GPUAccessor>
+int HeterComm<KeyType, ValType, GradType, GPUAccessor>::dedup_keys_and_fillidx(
     const int gpu_id,
     const int total_fea_num,
     const KeyType* d_keys,   // input

@@ -138,12 +138,12 @@ class HashTable {
            size_t len,
            StreamType stream);
 
-  template <typename StreamType, typename FVAccessor>
+  template <typename StreamType, typename GPUAccessor>
   void get(const KeyType* d_keys,
            char* d_vals,
            size_t len,
            StreamType stream,
-           FVAccessor& fv_accessor);
+           GPUAccessor& fv_accessor);
 
   void show();
 

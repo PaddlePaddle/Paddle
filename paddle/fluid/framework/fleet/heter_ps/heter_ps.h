@@ -26,15 +26,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename FVAccessor>
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 class HeterPs : public HeterPsBase {
  public:
   HeterPs() {}
   HeterPs(size_t capacity,
           std::shared_ptr<HeterPsResource> resource,
-          std::unordered_map<std::string, float> fleet_config,
-          std::string accessor_type,
-          int optimizer_type);
+          GPUAccessor& gpu_accessor);
   virtual ~HeterPs();
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
@@ -58,7 +56,6 @@ class HeterPs : public HeterPsBase {
                               int comm_size) override;
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
 
-  void set_accessor(FVAccessor& accessor);
 #endif
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config) override;
@@ -83,11 +80,9 @@ class HeterPs : public HeterPsBase {
                              bool filter_zero);
 #endif
  private:
-  std::shared_ptr<HeterComm<FeatureKey, float*, float*, FVAccessor>> comm_;
+  std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
 #if defined(PADDLE_WITH_CUDA)
-  FVAccessor feature_value_accessor_;
-  std::string accessor_type_;
-  int optimizer_type_;
+  GPUOptimizer<GPUAccessor> opt_;
 #endif
 };
 

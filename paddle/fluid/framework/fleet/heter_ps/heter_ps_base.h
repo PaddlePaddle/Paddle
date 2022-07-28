@@ -66,7 +66,6 @@ class HeterPsBase {
   static HeterPsBase* get_instance(
       size_t capacity,
       std::shared_ptr<HeterPsResource> resource,
-      //  CommonFeatureValueAccessor feature_value_accessor,
       std::unordered_map<std::string, float> fleet_config,
       std::string accessor_type,
       int optimizer_type);

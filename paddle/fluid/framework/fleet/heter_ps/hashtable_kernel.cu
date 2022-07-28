@@ -83,13 +83,13 @@ __global__ void search_kernel(Table* table,
   }
 }
 
-template <typename Table, typename FVAccessor>
+template <typename Table, typename GPUAccessor>
 __global__ void dy_mf_search_kernel(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals,
                                     size_t len,
                                     size_t pull_feature_value_size,
-                                    FVAccessor feature_value_accessor) {
+                                    GPUAccessor gpu_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   // return;
   if (i < len) {
@@ -98,7 +98,7 @@ __global__ void dy_mf_search_kernel(Table* table,
       uint64_t offset = i * pull_feature_value_size;
       float* cur = (float*)(vals + offset);
       float* input = it->second;
-      feature_value_accessor.PullValueFill(cur, input);
+      gpu_accessor.PullValueFill(cur, input);
     }
   }
 }
@@ -197,12 +197,12 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
 }
 
 template <typename KeyType, typename ValType>
-template <typename StreamType, typename FVAccessor>
+template <typename StreamType, typename GPUAccessor>
 void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
                                       char* d_vals,
                                       size_t len,
                                       StreamType stream,
-                                      FVAccessor& fv_accessor) {
+                                      GPUAccessor& fv_accessor) {
   if (len == 0) {
     return;
   }
@@ -446,6 +446,7 @@ template void HashTable<unsigned long, float*>::dump_to_cpu<cudaStream_t>(
     int devid, cudaStream_t stream);
 
 template void
+<<<<<<< HEAD
 HashTable<unsigned long, float*>::update<SparseAdagradOptimizer, cudaStream_t>(
     const unsigned long* d_keys,
     const char* d_grads,
@@ -466,6 +467,29 @@ template void HashTable<unsigned long, float*>::update<
                   size_t len,
                   SparseAdamSharedOptimizer sgd,
                   cudaStream_t stream);
+=======
+HashTable<unsigned long, float*>::update<
+    SparseAdagradOptimizer<CommonFeatureValueAccessor>,
+    cudaStream_t>(const unsigned long* d_keys,
+                  const char* d_grads,
+                  size_t len,
+                  SparseAdagradOptimizer<CommonFeatureValueAccessor> sgd,
+                  cudaStream_t stream);
+template void HashTable<unsigned long, float*>::update<
+    SparseAdamOptimizer<CommonFeatureValueAccessor>,
+    cudaStream_t>(const unsigned long* d_keys,
+                  const char* d_grads,
+                  size_t len,
+                  SparseAdamOptimizer<CommonFeatureValueAccessor> sgd,
+                  cudaStream_t stream);
+template void HashTable<unsigned long, float*>::update<
+    SparseAdamSharedOptimizer<CommonFeatureValueAccessor>,
+    cudaStream_t>(const unsigned long* d_keys,
+                  const char* d_grads,
+                  size_t len,
+                  SparseAdamSharedOptimizer<CommonFeatureValueAccessor> sgd,
+                  cudaStream_t stream);
+>>>>>>> eed5f6bcb546e50aa15ba4ef84da5977f0b017e9
 
 // template void HashTable<unsigned long,
 // paddle::framework::FeatureValue>::update<
