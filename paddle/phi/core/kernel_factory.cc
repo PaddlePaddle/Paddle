@@ -84,7 +84,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
-const Kernel& KernelFactory::SelectKernelOrThrowError(
+KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name,
     const KernelKey& kernel_key,
     bool use_gpudnn) const {
@@ -104,12 +104,13 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
           {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     }
     if (kernel_iter != iter->second.end()) {
-      return kernel_iter->second;
+      return {kernel_iter->second, false};
     }
     LOG(WARNING) << "The cudnn kernel for [" << kernel_name
                  << "] is not registered.";
   }
 #endif
+
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
@@ -118,6 +119,22 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
         kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
+
+  bool has_fallback_cpu = false;
+  if (kernel_iter == iter->second.end()) {
+    // Fallback CPU backend
+    phi::KernelKey cpu_kernel_key(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+    kernel_iter = iter->second.find(cpu_kernel_key);
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      phi::KernelKey any_layout_kernel_key(
+          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+      kernel_iter = iter->second.find(any_layout_kernel_key);
+    }
+    has_fallback_cpu = true;
+  }
+
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
@@ -126,16 +143,7 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  return kernel_iter->second;
-}
-
-const Kernel& KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name,
-    Backend backend,
-    DataLayout layout,
-    DataType dtype) const {
-  return SelectKernelOrThrowError(kernel_name,
-                                  KernelKey(backend, layout, dtype));
+  return {kernel_iter->second, has_fallback_cpu};
 }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(

@@ -66,29 +66,6 @@ struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
-struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // softsign(x) = x / (1 + abs(x))
-  __device__ __forceinline__ T operator()(const T x) const {
-    return x / (one + abs(x));
-  }
-};
-
-template <typename T>
-struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // dx = dout / (1 + abs(x))^2
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    T temp = one + abs(x);
-    return dout / (temp * temp);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 template <typename DeviceContext, typename Functor>
 class ActivationCudaKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -174,6 +151,7 @@ USE_PHI_FUNCTOR(CudaSoftShrink)
 USE_PHI_FUNCTOR(CudaTanhShrink)
 USE_PHI_FUNCTOR(CudaSilu)
 USE_PHI_FUNCTOR(CudaELU)
+USE_PHI_FUNCTOR(CudaSoftsign)
 USE_PHI_FUNCTOR(CudaSigmoid)
 USE_PHI_FUNCTOR(CudaLogSigmoid)
 USE_PHI_FUNCTOR(CudaHardSigmoid)

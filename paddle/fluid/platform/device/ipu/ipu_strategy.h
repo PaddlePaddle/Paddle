@@ -159,8 +159,8 @@ class IpuStrategy {
       const std::string &type_str) {
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it,
-        options.end(),
+        it == options.end(),
+        true,
         platform::errors::InvalidArgument("Cannot find option: %s, type: %s "
                                           "when setting IpuStrategy options",
                                           key,
@@ -174,8 +174,8 @@ class IpuStrategy {
       std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
     auto it = options.find(key);
     PADDLE_ENFORCE_NE(
-        it,
-        options.end(),
+        it == options.end(),
+        true,
         platform::errors::InvalidArgument(
             "Cannot find option name: %s when trying to get IpuStrategy option",
             key));

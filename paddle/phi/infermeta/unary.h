@@ -66,6 +66,12 @@ void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CropTensorInferMeta(const MetaTensor& x,
+                         const IntArray& shape,
+                         const IntArray& offsets,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,
@@ -87,6 +93,8 @@ void DiagInferMeta(const MetaTensor& x,
 
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
+
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 
@@ -127,6 +135,13 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
 void FlipInferMeta(const MetaTensor& x,
                    const std::vector<int>& axis,
                    MetaTensor* out);
+
+void FrameInferMeta(const MetaTensor& x,
+                    int frame_length,
+                    int hop_length,
+                    int axis,
+                    MetaTensor* out,
+                    MetaConfig = MetaConfig());
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
@@ -302,6 +317,10 @@ void ReverseInferMeta(const MetaTensor& x,
                       const std::vector<int>& axis,
                       MetaTensor* out);
 
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+                           const std::vector<int>& axis,
+                           std::vector<phi::MetaTensor*> out);
+
 void RollInferMeta(const MetaTensor& x,
                    const IntArray& shifts,
                    const std::vector<int64_t>& axis,
@@ -390,6 +409,12 @@ void SumRawInferMeta(const MetaTensor& x,
                      bool reduce_all,
                      DataType dtype,
                      MetaTensor* out);
+
+void SvdInferMeta(const MetaTensor& x,
+                  bool full_matrices,
+                  MetaTensor* u,
+                  MetaTensor* s,
+                  MetaTensor* vh);
 
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,
@@ -515,5 +540,4 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              MetaTensor* out);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
-
 }  // namespace phi
