@@ -159,7 +159,7 @@ class Accessor:
         if not graph_sgd_param.HasField("nodeid_slot"):
             graph_sgd_param.nodeid_slot = 9008
         if not graph_sgd_param.HasField("feature_learning_rate"):
-            graph_sgd_param.feture_learning_rate = 0.05
+            graph_sgd_param.feature_learning_rate = 0.05
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
         if not ctr_accessor_param.HasField("nonclk_coeff"):
