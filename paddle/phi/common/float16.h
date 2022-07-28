@@ -1083,8 +1083,8 @@ struct numeric_limits<phi::dtype::float16> {
   }
 };
 
-// HOSTDEVICE inline phi::dtype::float16 abs(const phi::dtype::float16& a) {
-//   return phi::dtype::abs(a);
-// }
+HOSTDEVICE inline phi::dtype::float16 abs(const phi::dtype::float16& a) {
+  return phi::dtype::abs(a);
+}
 
 }  // namespace std

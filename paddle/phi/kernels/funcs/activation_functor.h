@@ -3051,7 +3051,8 @@ struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
 
   // softsign(x) = x / (1 + abs(x))
   __device__ __forceinline__ T operator()(const T x) const {
-    return x / (one + abs(x));
+    // Using abs directly will cause namespace conflict
+    return x / (one + (x > -x ? x : -x));
   }
 };
 
@@ -3061,7 +3062,8 @@ struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout / (1 + abs(x))^2
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    T temp = one + abs(x);
+    // Using abs directly will cause namespace conflict
+    T temp = one + (x > -x ? x : -x);
     return dout / (temp * temp);
   }
 
