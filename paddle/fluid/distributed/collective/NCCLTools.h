@@ -44,6 +44,13 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/variant.h"
 
+#if defined(NCCL_MAJOR) && (NCCL_MAJOR == 2) && defined(NCCL_MINOR) && \
+    (NCCL_MINOR >= 4)
+#define PADDLE_ENABLE_NCCL_ERROR_CHECKING
+#elif defined(NCCL_MAJOR) && (NCCL_MAJOR >= 3)
+#define PADDLE_ENABLE_NCCL_ERROR_CHECKING
+#endif
+
 namespace paddle {
 namespace distributed {
 
@@ -214,8 +221,13 @@ class NCCLCommManager {
 
   ~NCCLCommManager() noexcept {
     std::unique_lock<std::mutex> lock(mutex_);
+    // NOTE(liyurui): Prevent ncclCommDestroy hang for uncertain reason.
     if (nccl_comm_) {
+#ifdef PADDLE_ENABLE_NCCL_ERROR_CHECKING
+      platform::dynload::ncclCommAbort(nccl_comm_);
+#else
       platform::dynload::ncclCommDestroy(nccl_comm_);
+#endif
     }
   }
 
@@ -239,6 +251,19 @@ class NCCLCommManager {
   ncclComm_t GetNcclComm() const {
     std::unique_lock<std::mutex> lock(mutex_);
     return nccl_comm_;
+  }
+
+  void AbortNcclComm() {
+    std::unique_lock<std::mutex> lock(mutex_);
+#ifdef PADDLE_ENABLE_NCCL_ERROR_CHECKING
+    if (nccl_comm_) {
+      platform::dynload::ncclCommAbort(nccl_comm_);
+      nccl_comm_ = nullptr;
+    }
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot abort nccl comm for the version of nccl is lower than 2.4."));
+#endif
   }
 
   NCCLCommManager(const NCCLCommManager&) = delete;

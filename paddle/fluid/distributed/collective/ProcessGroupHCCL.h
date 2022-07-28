@@ -53,7 +53,7 @@ class ProcessGroupHCCL : public ProcessGroup {
 
     void SynchronizeStreams();
 
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
+    bool Wait();
 
     void Synchronize();
 
@@ -114,8 +114,8 @@ class ProcessGroupHCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,
-                   int root,  // NOLINT
+  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,  // NOLINT
+                   int root,
                    int server_fd);
 
   void BroadcastUniqueHCCLID(std::vector<HcclRootInfo>& hccl_ids);  // NOLINT

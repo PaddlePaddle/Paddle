@@ -74,7 +74,7 @@ class ProcessGroupHeter : public ProcessGroup {
 
     void SynchronizeStreams() {}
 
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
+    bool Wait();
 
     void Synchronize() {}
 

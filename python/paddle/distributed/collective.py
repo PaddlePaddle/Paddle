@@ -16,7 +16,7 @@ import numpy as np
 import os
 import pickle
 import io
-from datetime import timedelta
+import datetime
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
@@ -149,6 +149,7 @@ _default_group_name = "_default_pg"
 _valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter']
 _default_store = None  # the default tcp store
 _default_backend = None
+_default_pg_timeout = datetime.timedelta(seconds=1800)
 
 
 def _set_default_backend(backend):
@@ -254,9 +255,15 @@ def _new_process_group_impl(backend,
                             pg_options,
                             group_id=0,
                             src_rank=None,
-                            dst_rank=None):
+                            dst_rank=None,
+                            timeout=None):
     pg = None
     genv = _get_global_env()
+    if timeout is None:
+        timeout = _default_pg_timeout
+    if not isinstance(timeout, datetime.timedelta):
+        raise RuntimeError(
+            "The type of argument timeout should be datetime.timedelta")
     if backend != 'heter':
         assert src_rank is None and dst_rank is None, (
             "src_rank and dst_rank "
@@ -267,7 +274,10 @@ def _new_process_group_impl(backend,
         pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
     elif backend == "nccl":
         place = core.CUDAPlace(genv.device_id)
-        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
+        pg_options = core.ProcessGroupNCCLOptions()
+        pg_options.set_timeout(timeout)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id,
+                                   pg_options)
     elif backend == "hccl":
         place = core.NPUPlace(genv.device_id)
         pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
@@ -365,7 +375,7 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None):
+def new_group(ranks=None, backend=None, timeout=None):
     """
 
     Creates a new distributed communication group.
@@ -373,6 +383,7 @@ def new_group(ranks=None, backend=None):
     Args:
         ranks (list): The global ranks of group members.
         backend (str): The backend used to create group, only nccl is supported now.
+        timeout (datetime.timedelta): The waiting timeout for backend communication operators. Now only works in NCCL backends with `FLAGS_nccl_blocking_wait` turn on. The default value is 30 minutes.
 
     Returns:
         Group: The group instance.
@@ -418,7 +429,8 @@ def new_group(ranks=None, backend=None):
                                          pg_options=None,
                                          group_id=gid,
                                          src_rank=src_rank,
-                                         dst_rank=dst_rank)
+                                         dst_rank=dst_rank,
+                                         timeout=timeout)
         else:
             rank = -1
             pg = None

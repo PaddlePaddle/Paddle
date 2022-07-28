@@ -91,7 +91,7 @@ def _check_var_exists(var_name):
                          var_name)
 
 
-def init_parallel_env():
+def init_parallel_env(timeout=None):
     """
     Initialize parallel training environment in dynamic graph mode.
 
@@ -99,9 +99,7 @@ def init_parallel_env():
         Now initialize both `NCCL` and `GLOO` contexts for communication.
 
     Args:
-        backend (string): A string represents the backend used by DataParallel,
-            should be one of 'gloo'(for cpu), 'nccl'(for cuda), 'bkcl'(for xpu), 'auto'(auto detect).
-            The auto detection prefer 'nccl', 'bkcl' than 'gloo'.
+        timeout (timedelta): The waiting timeout for backend communication operators. Now only works in NCCL backends with `FLAGS_nccl_blocking_wait` turn on. The default value is 30 minutes.
 
     Returns:
         None
@@ -248,7 +246,8 @@ def init_parallel_env():
                                      rank,
                                      world_size,
                                      _default_group_name,
-                                     pg_options=None)
+                                     pg_options=None,
+                                     timeout=timeout)
         ranks = list(range(world_size))
         group = Group(rank,
                       world_size,

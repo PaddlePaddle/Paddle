@@ -24,10 +24,10 @@
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
-constexpr int64_t kWaitBlockTImeout = 10;
-
 namespace paddle {
 namespace distributed {
+
+constexpr int64_t kBusyWaitInterval = 10;
 
 void SyncDefaultStream(
     const std::vector<Place>& places,
@@ -55,7 +55,9 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(
     int rank,
     CommType CommType,
     const std::vector<phi::DenseTensor>& inputs)
-    : Task(rank, inputs, CommType), places_(places) {
+    : Task(rank, inputs, CommType),
+      places_(places),
+      start_timestamp_(std::chrono::steady_clock::now()) {
   control_events_.resize(places.size());
   ncclComms_.resize(places.size());
 }
@@ -114,13 +116,35 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
   }
 }
 
-// TODO(sheniang03): Add timeout for wait, now timeout unused
-bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
+bool ProcessGroupNCCL::NCCLTask::IsTimeout(std::chrono::milliseconds timeout) {
+  auto current_timestamp = std::chrono::steady_clock::now();
+  bool is_timeout = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        current_timestamp - start_timestamp_) >= timeout;
+  return is_timeout;
+}
+
+void ProcessGroupNCCL::NCCLTask::WaitWithTimeout(
+    std::chrono::milliseconds timeout) {
   SynchronizeStreams();
   if (FLAGS_nccl_blocking_wait) {
     // NOTE(shenliang03): It will block host for sync
     while (!IsCompleted()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(kWaitBlockTImeout));
+      if (IsTimeout(timeout)) {
+        for (const auto& nccl_comm : ncclComms_) {
+          nccl_comm->AbortNcclComm();
+        }
+        PADDLE_THROW(platform::errors::Unavailable(
+            "We wait for %d ms and abort this NCCLTask. Two reasons may cause "
+            "this problem.\n"
+            "1. The communication operators hangs for some reasons. [High "
+            "Possibility]\n"
+            "2. The timeout you set is too short, try to adjust the timeout "
+            "argument in the following three functions you may use: "
+            "task.wait(), "
+            "new_group() and init_parallel_env().\n",
+            timeout.count()));
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(kBusyWaitInterval));
     }
   }
 
@@ -135,11 +159,30 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 #endif
     }
   }
+}
+
+bool ProcessGroupNCCL::NCCLTask::Wait() {
+  WaitWithTimeout(timeout_);
+  return true;
+}
+
+bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
+  WaitWithTimeout(timeout);
   return true;
 }
 
 // Same as Wait
-void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
+void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kProcessGroupNoTimeout); }
+
+ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+                                   int rank,
+                                   int size,
+                                   const platform::Place& place,
+                                   int gid,
+                                   std::shared_ptr<NCCLOptions> options)
+    : ProcessGroup(rank, size, place, gid), store_(store), options_(options) {
+  platform::SetDeviceId(place_.device);
+}
 
 ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                                    int rank,
@@ -147,6 +190,8 @@ ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                                    const platform::Place& place,
                                    int gid)
     : ProcessGroup(rank, size, place, gid), store_(store) {
+  options_ = ProcessGroupNCCL::NCCLOptions::create();
+  options_->SetTimeout(kProcessGroupDefaultTimeout);
   platform::SetDeviceId(place_.device);
 }
 
@@ -245,6 +290,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
   auto task = CreateTask(places, rank_, op_type, inputs);
   task->SetOutputs(outputs);
+  task->SetTimeout(options_->Timeout());
 
   // construct uninitialize guard for device
   platform::CUDADeviceGuard cuda_guard;
@@ -269,6 +315,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   for (size_t i = 0; i < inputs.size(); ++i) {
     cuda_guard.SetDevice(places[i]);
     task->control_events_[i].Record(*places_to_ctx_[key][i]);
+    task->ncclComms_[i] = nccl_comms[i];
   }
   return task;
 }
@@ -356,6 +403,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
   for (size_t i = 0; i < tensors.size(); ++i) {
     cuda_guard.SetDevice(places[i]);
     task->control_events_[i].Record(*places_to_ctx_[key][i]);
+    task->ncclComms_[i] = nccl_comms[i];
   }
   return task;
 }

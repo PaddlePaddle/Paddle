@@ -381,6 +381,13 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+  py::class_<distributed::ProcessGroupNCCL::NCCLOptions,
+             std::shared_ptr<distributed::ProcessGroupNCCL::NCCLOptions>>(
+      *m, "ProcessGroupNCCLOptions")
+      .def(py::init<>(), py::call_guard<py::gil_scoped_release>())
+      .def("set_timeout",
+           &distributed::ProcessGroupNCCL::NCCLOptions::SetTimeout);
+
   auto processGroupNCCL =
       py::class_<distributed::ProcessGroupNCCL,
                  std::shared_ptr<distributed::ProcessGroupNCCL>>(
@@ -389,12 +396,15 @@ void BindDistributed(py::module *m) {
                         int,
                         int,
                         const platform::CUDAPlace &,
-                        int>(),
+                        int,
+                        std::shared_ptr<
+                            distributed::ProcessGroupNCCL::NCCLOptions> &>(),
                py::arg("store"),
                py::arg("rank"),
                py::arg("world_size"),
                py::arg("place"),
                py::arg("group_id") = 0,
+               py::arg("pg_options"),
                py::call_guard<py::gil_scoped_release>());
 
   processGroupNCCL.def_static(
@@ -464,8 +474,11 @@ void BindDistributed(py::module *m) {
              std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
       .def("is_completed", &distributed::ProcessGroup::Task::IsCompleted)
       .def("wait",
-           &distributed::ProcessGroup::Task::Wait,
-           py::arg("timeout") = kWaitTimeout,
+           py::overload_cast<>(&distributed::ProcessGroup::Task::Wait),
+           py::call_guard<py::gil_scoped_release>())
+      .def("wait",
+           py::overload_cast<std::chrono::milliseconds>(
+               &distributed::ProcessGroup::Task::Wait),
            py::call_guard<py::gil_scoped_release>())
       .def("synchronize",
            &distributed::ProcessGroup::Task::Synchronize,

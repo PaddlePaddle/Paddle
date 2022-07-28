@@ -90,7 +90,7 @@ bool ProcessGroupHCCL::HCCLTask::IsCompleted() {
 }
 
 // TODO(sandyhouse): Add timeout for wait, now timeout unused
-bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
+bool ProcessGroupHCCL::HCCLTask::Wait() {
   SynchronizeStreams();
   // NOTE(sandyhouse): It will block host for sync
   while (!IsCompleted()) {
@@ -100,7 +100,7 @@ bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
 }
 
 // Same as Wait
-void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(kWaitTimeout); }
+void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(); }
 
 ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
                                    int rank,

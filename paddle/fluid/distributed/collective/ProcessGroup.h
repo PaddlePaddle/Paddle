@@ -25,10 +25,12 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
-constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
-
 namespace paddle {
 namespace distributed {
+
+constexpr auto kProcessGroupDefaultTimeout =
+    std::chrono::milliseconds(30 * 60 * 1000);
+constexpr auto kProcessGroupNoTimeout = std::chrono::milliseconds(0);
 
 constexpr int IGNORE_ID = -1;
 using Tensor = paddle::experimental::Tensor;
@@ -60,7 +62,8 @@ class ProcessGroup {
 
     virtual ~Task();
     virtual bool IsCompleted();
-    virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
+    virtual bool Wait();
+    virtual bool Wait(std::chrono::milliseconds timeout);
     virtual void Synchronize();
 
    protected:

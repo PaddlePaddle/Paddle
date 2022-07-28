@@ -29,6 +29,8 @@ bool ProcessGroup::Task::IsCompleted() {
   return is_completed_;
 }
 
+bool ProcessGroup::Task::Wait() { return false; }
+
 bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
   return false;
 }

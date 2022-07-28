@@ -45,9 +45,7 @@ ProcessGroupHeter::HeterTask::~HeterTask() {}
 bool ProcessGroupHeter::HeterTask::IsCompleted() { return true; }
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
-bool ProcessGroupHeter::HeterTask::Wait(std::chrono::milliseconds timeout) {
-  return true;
-}
+bool ProcessGroupHeter::HeterTask::Wait() { return true; }
 
 ProcessGroupHeter::ProcessGroupHeter(const std::shared_ptr<Store>& store,
                                      int rank,

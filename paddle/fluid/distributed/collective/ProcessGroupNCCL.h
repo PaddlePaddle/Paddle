@@ -63,23 +63,44 @@ class ProcessGroupNCCL : public ProcessGroup {
 
     void SynchronizeStreams();
 
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
+    bool Wait();
+    bool Wait(std::chrono::milliseconds timeout);
 
     void Synchronize();
 
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
 
+    void SetTimeout(std::chrono::milliseconds timeout) { timeout_ = timeout; }
+
     virtual ~NCCLTask();
 
+   protected:
+    void WaitWithTimeout(std::chrono::milliseconds timeout);
+    bool IsTimeout(std::chrono::milliseconds timeout);
     std::vector<EventManager> control_events_;
     std::vector<phi::DenseTensor> barrierTensors_;
-
-   protected:
     std::vector<Place> places_;
     std::vector<std::shared_ptr<NCCLCommManager>> ncclComms_;
     std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
+    std::chrono::time_point<std::chrono::steady_clock> start_timestamp_;
+    std::chrono::milliseconds timeout_;
 
    private:
+    friend class ProcessGroupNCCL;
+  };
+
+  class NCCLOptions {
+   public:
+    NCCLOptions() = default;
+    ~NCCLOptions() = default;
+    static std::shared_ptr<NCCLOptions> create() {
+      return std::make_shared<NCCLOptions>();
+    }
+    void SetTimeout(std::chrono::milliseconds timeout) { timeout_ = timeout; }
+    std::chrono::milliseconds Timeout() { return timeout_; }
+
+   private:
+    std::chrono::milliseconds timeout_;
   };
 
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
@@ -87,6 +108,13 @@ class ProcessGroupNCCL : public ProcessGroup {
                    int size,
                    const platform::Place& place,
                    int gid);
+
+  ProcessGroupNCCL(const std::shared_ptr<Store>& store,
+                   int rank,
+                   int size,
+                   const platform::Place& place,
+                   int gid,
+                   std::shared_ptr<NCCLOptions> options);
 
   const std::string GetBackendName() const override {
     return std::string(NCCL_BACKEND_NAME);
@@ -181,6 +209,7 @@ class ProcessGroupNCCL : public ProcessGroup {
       places_to_ctx_;
 
   std::set<int> used_place_ids_;
+  std::shared_ptr<NCCLOptions> options_;
 
  private:
   void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
