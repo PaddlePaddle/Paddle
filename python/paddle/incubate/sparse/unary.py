@@ -12,10 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only, core, convert_np_dtype_to_dtype_
 
 __all__ = []
+
+_int_dtype_ = [
+    core.VarDesc.VarType.UINT8,
+    core.VarDesc.VarType.INT8,
+    core.VarDesc.VarType.INT16,
+    core.VarDesc.VarType.INT32,
+    core.VarDesc.VarType.INT64,
+    core.VarDesc.VarType.BOOL,
+]
 
 
 @dygraph_only
@@ -472,3 +483,128 @@ def abs(x, name=None):
             
     """
     return _C_ops.final_state_sparse_abs(x)
+
+
+@dygraph_only
+def coalesce(x):
+    r"""
+    the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+    Parameters:
+        x (Tensor): the input SparseCooTensor.
+
+    Returns:
+        Tensor: return the SparseCooTensor after coalesced.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            from paddle.incubate import sparse
+
+            indices = [[0, 0, 1], [1, 1, 2]]
+            values = [1.0, 2.0, 3.0]
+            sp_x = sparse.sparse_coo_tensor(indices, values)
+            sp_x = sparse.coalesce(sp_x)
+            print(sp_x.indices())
+            #[[0, 1], [1, 2]]
+            print(sp_x.values())
+            #[3.0, 3.0]
+	"""
+    return _C_ops.final_state_sparse_coalesce(x)
+
+
+@dygraph_only
+def rad2deg(x, name=None):
+    """
+    Convert each of the elements of input x from angles in radians to degrees,
+    requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        rad2deg(x) = 180/ \pi * x
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([3.142, 0., -3.142])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.rad2deg(sparse_x)
+            
+    """
+    if x.dtype in _int_dtype_:
+        x = _C_ops.final_state_sparse_cast(x, None, core.VarDesc.VarType.FP32)
+    return _C_ops.final_state_sparse_scale(x, 180.0 / np.pi, 0.0, True)
+
+
+@dygraph_only
+def deg2rad(x, name=None):
+    """
+    Convert each of the elements of input x from degrees to angles in radians,
+    requiring x to be a SparseCooTensor or SparseCsrTensor.
+    
+    .. math::
+
+        deg2rad(x) = \pi * x / 180
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-180, 0, 180])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.deg2rad(sparse_x)
+            
+    """
+    if x.dtype in _int_dtype_:
+        x = _C_ops.final_state_sparse_cast(x, None, core.VarDesc.VarType.FP32)
+    return _C_ops.final_state_sparse_scale(x, np.pi / 180.0, 0.0, True)
+
+
+@dygraph_only
+def expm1(x, name=None):
+    """
+    Calculate elementwise `exp(x)-1` , requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    .. math::
+
+        out = exp(x) - 1
+
+    Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([-2., 0., 1.])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out = paddle.incubate.sparse.expm1(sparse_x)
+    """
+    return _C_ops.final_state_sparse_expm1(x)

@@ -256,6 +256,69 @@ Node *CreateSoftmaxOpset11(Graph *graph,
   }
 }
 
+Node *CreateSlice(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int> &starts,
+                  const std::vector<int> &ends,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &strides) {
+  auto *starts_node =
+      CreateConst(
+          graph, node, starts, {int64_t(starts.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *ends_node =
+      CreateConst(
+          graph, node, ends, {int64_t(ends.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *axes_node =
+      CreateConst(
+          graph, node, axes, {int64_t(axes.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  auto *strides_node =
+      CreateConst(
+          graph, node, strides, {int64_t(strides.size())}, ONNXDataType::INT32)
+          ->outputs[0];
+  return CreateBaseOp(
+      graph,
+      node,
+      "popart_slice",
+      {inputs[0], starts_node, ends_node, axes_node, strides_node},
+      outputs);
+}
+
+Node *CreateSplit(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int64_t> &split,
+                  const int64_t axis) {
+  if (!outputs.empty()) {
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        outputs,
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
+  } else {
+    std::vector<Node *> splits_output_nodes;
+    for (int j = 0; j < split.size(); j++) {
+      splits_output_nodes.push_back(MakeVarNode(graph, node));
+    }
+    return CreateBaseOp(graph,
+                        node,
+                        "popart_split",
+                        inputs,
+                        {splits_output_nodes},
+                        {{"num_outputs", int64_t(split.size())},
+                         {"axis", int64_t(axis)},
+                         {"split", split}});
+  }
+}
+
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle

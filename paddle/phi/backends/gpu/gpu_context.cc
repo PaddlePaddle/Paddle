@@ -213,7 +213,6 @@ struct GPUContext::Impl {
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
     phi::InitStream(&stream_);
-    InitEigenDevice();
     InitDnnWorkspace();
   }
 
@@ -234,7 +233,6 @@ struct GPUContext::Impl {
   void PartialInitWithAllocator() {
     owned_ = true;
     backends::gpu::GPUDeviceGuard guard(place_.device);
-    InitEigenDevice();
     InitDnnWorkspace();
   }
 
@@ -317,27 +315,49 @@ struct GPUContext::Impl {
 
   void SetEigenDevice(Eigen::GpuDevice* device) { eigen_device_ = device; }
 
-  Eigen::GpuDevice* eigen_device() const {
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&& creator) {
+    eigen_device_creator_ = std::move(creator);
+  }
+
+  Eigen::GpuDevice* eigen_device() {
+    std::call_once(flag_eigen_device_, [&]() {
+      if (!eigen_device_) {
+        if (!eigen_device_creator_)
+          InitEigenDevice();
+        else
+          eigen_device_ = eigen_device_creator_();
+      }
+    });
     PD_CHECK(eigen_device_ != nullptr, "the gpu eigen_device is nullptr.");
     return eigen_device_;
   }
 
   blasHandle_t GetBlasHandle() {
-    std::call_once(flag_blas_, [=]() {
+    std::call_once(flag_blas_, [&]() {
       if (!blas_handle_) {
-        phi::InitBlasHandle(&blas_handle_, stream_);
+        if (!blas_handle_creator_)
+          phi::InitBlasHandle(&blas_handle_, stream_);
+        else
+          blas_handle_ = blas_handle_creator_();
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        if (!blas_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        else
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        if (!blas_tf32_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        else
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -350,27 +370,53 @@ struct GPUContext::Impl {
 
   void SetBlasHandle(blasHandle_t blas) { blas_handle_ = blas; }
 
+  void SetBlasHandle(std::function<blasHandle_t()>&& handle_creator) {
+    blas_handle_creator_ = std::move(handle_creator);
+  }
+
   void SetBlasTensorCoreHandle(blasHandle_t handle) {
     blas_tensor_core_handle_ = handle;
+  }
+
+  void SetBlasTensorCoreHandle(std::function<blasHandle_t()>&& handle_creator) {
+    blas_tensor_core_handle_creator_ = std::move(handle_creator);
   }
 
   void SetBlasTF32Handle(blasHandle_t handle) {
     blas_tf32_tensor_core_handle_ = handle;
   }
 
+  void SetBlasTF32Handle(std::function<blasHandle_t()>&& handle_creator) {
+    blas_tf32_tensor_core_handle_creator_ = std::move(handle_creator);
+  }
+
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
+  void SetBlasLtHandle(std::function<blasLtHandle_t()>&& handle_creator) {
+    blaslt_handle_creator_ = std::move(handle_creator);
+  }
+
   blasLtHandle_t GetBlasLtHandle() {
-    std::call_once(flag_blaslt_, [=]() {
-      if (!blaslt_handle_) phi::InitBlasLtHandle(&blaslt_handle_);
+    std::call_once(flag_blaslt_, [&]() {
+      if (!blaslt_handle_) {
+        if (!blaslt_handle_creator_)
+          phi::InitBlasLtHandle(&blaslt_handle_);
+        else
+          blaslt_handle_ = blaslt_handle_creator_();
+      }
     });
     PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
     return blaslt_handle_;
   }
 
   dnnHandle_t GetDnnHandle() {
-    std::call_once(flag_dnn_, [=]() {
-      if (!dnn_handle_) phi::InitDnnHandle(&dnn_handle_, stream_, place_);
+    std::call_once(flag_dnn_, [&]() {
+      if (!dnn_handle_) {
+        if (!dnn_handle_creator_)
+          phi::InitDnnHandle(&dnn_handle_, stream_, place_);
+        else
+          dnn_handle_ = dnn_handle_creator_();
+      }
     });
     PD_CHECK(dnn_handle_ != nullptr, "the gpu dnn handle is nullptr.");
     return dnn_handle_;
@@ -392,9 +438,18 @@ struct GPUContext::Impl {
 
   void SetDnnHandle(dnnHandle_t handle) { dnn_handle_ = handle; }
 
+  void SetDnnHandle(std::function<dnnHandle_t()>&& handle_creator) {
+    dnn_handle_creator_ = std::move(handle_creator);
+  }
+
   solverHandle_t GetSolverHandle() {
-    std::call_once(flag_slover_, [=]() {
-      if (!solver_handle_) phi::InitSolverHandle(&solver_handle_, stream_);
+    std::call_once(flag_slover_, [&]() {
+      if (!solver_handle_) {
+        if (!solver_handle_creator_)
+          phi::InitSolverHandle(&solver_handle_, stream_);
+        else
+          solver_handle_ = solver_handle_creator_();
+      }
     });
     PD_CHECK(solver_handle_ != nullptr, "the gpu solver handle is nullptr.");
     return solver_handle_;
@@ -402,15 +457,28 @@ struct GPUContext::Impl {
 
   void SetSolverHandle(solverHandle_t handle) { solver_handle_ = handle; }
 
+  void SetSolverHandle(std::function<solverHandle_t()>&& handle_creator) {
+    solver_handle_creator_ = std::move(handle_creator);
+  }
+
   sparseHandle_t GetSparseHandle() {
-    std::call_once(flag_sparse_, [=]() {
-      if (!sparse_handle_) phi::InitSparseHandle(&sparse_handle_, stream_);
+    std::call_once(flag_sparse_, [&]() {
+      if (!sparse_handle_) {
+        if (!sparse_handle_creator_)
+          phi::InitSparseHandle(&sparse_handle_, stream_);
+        else
+          sparse_handle_ = sparse_handle_creator_();
+      }
     });
     PD_CHECK(sparse_handle_ != nullptr, "the gpu sparse handle is nullptr.");
     return sparse_handle_;
   }
 
   void SetSparseHandle(sparseHandle_t handle) { sparse_handle_ = handle; }
+
+  void SetSparseHandle(std::function<sparseHandle_t()>&& handle_creator) {
+    sparse_handle_creator_ = std::move(handle_creator);
+  }
 
   void Wait() const {
 #ifdef PADDLE_WITH_HIP
@@ -461,21 +529,31 @@ struct GPUContext::Impl {
   }
 
   inline void CublasCall(const std::function<void(blasHandle_t)>& callback) {
-    std::call_once(flag_cublas_, [=]() {
+    std::call_once(flag_cublas_, [&]() {
       if (!blas_handle_) {
-        phi::InitBlasHandle(&blas_handle_, stream_);
+        if (!blas_handle_creator_)
+          phi::InitBlasHandle(&blas_handle_, stream_);
+        else
+          blas_handle_ = blas_handle_creator_();
       }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        if (!blas_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        else
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        if (!blas_tf32_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        else
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -493,19 +571,31 @@ struct GPUContext::Impl {
 
   inline void TensorCoreCublasCallIfAvailable(
       const std::function<void(blasHandle_t)>& callback) {
-    std::call_once(flag_tensorcore_cublas_, [=]() {
-      if (!blas_handle_) phi::InitBlasHandle(&blas_handle_, stream_);
+    std::call_once(flag_tensorcore_cublas_, [&]() {
+      if (!blas_handle_) {
+        if (!blas_handle_creator_)
+          phi::InitBlasHandle(&blas_handle_, stream_);
+        else
+          blas_handle_ = blas_handle_creator_();
+      }
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 9000
       if (!blas_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        if (!blas_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream_);
+        else
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
       }
 #endif
 #if CUDA_VERSION >= 11000
       if (!blas_tf32_tensor_core_handle_) {
-        phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        if (!blas_tf32_tensor_core_handle_creator_)
+          phi::InitBlasHandle(&blas_tf32_tensor_core_handle_, stream_);
+        else
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tf32_tensor_core_handle_, CUBLAS_TF32_TENSOR_OP_MATH));
       }
@@ -523,9 +613,12 @@ struct GPUContext::Impl {
 
   inline void CusparseCall(
       const std::function<void(sparseHandle_t)>& callback) {
-    std::call_once(flag_sparse_, [=]() {
+    std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
-        phi::InitSparseHandle(&sparse_handle_, stream_);
+        if (!sparse_handle_creator_)
+          phi::InitSparseHandle(&sparse_handle_, stream_);
+        else
+          sparse_handle_ = sparse_handle_creator_();
       }
     });
     std::lock_guard<std::mutex> guard(sparse_mtx_);
@@ -597,13 +690,21 @@ struct GPUContext::Impl {
 
   gpuStream_t stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
+  std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   blasHandle_t blas_handle_{nullptr};
+  std::function<blasHandle_t()> blas_handle_creator_{nullptr};
   blasHandle_t blas_tensor_core_handle_{nullptr};
+  std::function<blasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
+  std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
   blasLtHandle_t blaslt_handle_{nullptr};
+  std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
   dnnHandle_t dnn_handle_{nullptr};
+  std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
   solverHandle_t solver_handle_{nullptr};
+  std::function<solverHandle_t()> solver_handle_creator_{nullptr};
   sparseHandle_t sparse_handle_{nullptr};
+  std::function<sparseHandle_t()> sparse_handle_creator_{nullptr};
   DnnWorkspaceHandle* workspace_{nullptr};
 
   std::once_flag flag_sparse_;
@@ -613,6 +714,7 @@ struct GPUContext::Impl {
   std::once_flag flag_slover_;
   std::once_flag flag_cublas_;
   std::once_flag flag_tensorcore_cublas_;
+  std::once_flag flag_eigen_device_;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
@@ -752,32 +854,64 @@ void GPUContext::SetEigenDevice(Eigen::GpuDevice* device) {
   impl_->SetEigenDevice(device);
 }
 
+void GPUContext::SetEigenDevice(std::function<Eigen::GpuDevice*()>&& creator) {
+  impl_->SetEigenDevice(std::move(creator));
+}
+
 void GPUContext::SetBlasHandle(blasHandle_t blas) {
   impl_->SetBlasHandle(blas);
+}
+
+void GPUContext::SetBlasHandle(std::function<blasHandle_t()>&& func) {
+  impl_->SetBlasHandle(std::move(func));
 }
 
 void GPUContext::SetBlasTensorCoreHandle(blasHandle_t handle) {
   impl_->SetBlasTensorCoreHandle(handle);
 }
 
+void GPUContext::SetBlasTensorCoreHandle(std::function<blasHandle_t()>&& func) {
+  impl_->SetBlasTensorCoreHandle(std::move(func));
+}
+
 void GPUContext::SetBlasTF32Handle(blasHandle_t handle) {
   impl_->SetBlasTF32Handle(handle);
+}
+
+void GPUContext::SetBlasTF32Handle(std::function<blasHandle_t()>&& func) {
+  impl_->SetBlasTF32Handle(std::move(func));
 }
 
 void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
   impl_->SetBlasLtHandle(blaslt);
 }
 
+void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
+  impl_->SetBlasLtHandle(std::move(func));
+}
+
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {
   impl_->SetDnnHandle(handle);
+}
+
+void GPUContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
+  impl_->SetDnnHandle(std::move(func));
 }
 
 void GPUContext::SetSolverHandle(solverHandle_t handle) {
   impl_->SetSolverHandle(handle);
 }
 
+void GPUContext::SetSolverHandle(std::function<solverHandle_t()>&& func) {
+  impl_->SetSolverHandle(std::move(func));
+}
+
 void GPUContext::SetSparseHandle(sparseHandle_t handle) {
   impl_->SetSparseHandle(handle);
+}
+
+void GPUContext::SetSparseHandle(std::function<sparseHandle_t()>&& func) {
+  impl_->SetSparseHandle(std::move(func));
 }
 
 void GPUContext::SetDnnWorkspaceHandle(DnnWorkspaceHandle* handle) {
