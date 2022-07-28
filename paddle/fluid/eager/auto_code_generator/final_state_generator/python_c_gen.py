@@ -80,6 +80,21 @@ RETURN_INPLACE_PYOBJECT_TEMPLATE = \
     inplace_var_idx_map[{}] = {};
 """
 
+LAYOUT_LOGIC_TEMPLATE=\
+"""
+  if (paddle::imperative::LayoutAutoTune::Instance().UseLayoutAutoTune()) {{
+    VLOG(5) << "Check and Prepare For LAYOUT";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
+    {}
+    {} 
+    // Call dygraph function
+    decltype({}({})) out = {}({});
+    {}
+    PyEval_RestoreThread(tstate);
+    tstate = nullptr;
+    {}
+}}
+"""
 
 PYTHON_C_FUNCTION_TEMPLATE = \
 """
@@ -98,12 +113,14 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
     // Set Device ID
 {}
+    // LayoutAutoTune
+    {} 
     // Call dygraph function
     decltype({}({})) out = {}({});
 
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-{}
+    {}
   }} catch(...) {{
     if (tstate) {{
       PyEval_RestoreThread(tstate);
@@ -154,6 +171,7 @@ PYTHON_C_WRAPPER_TEMPLATE = \
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
 #include  "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include  <Python.h>
 
 namespace paddle {{
@@ -281,11 +299,16 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         forward_outputs_position_map = self.forward_outputs_position_map
         optional_inputs = self.optional_inputs
         is_forward_only = self.is_forward_only
+        intermediate_outputs = self.intermediate_outputs
 
         inplace_args_pos_map = {}
         inplace_returns_pos_map = {}
         # Generate Python-C Tensors Parsing Logic
         get_eager_tensor_str = ""
+        # layout autotune
+        layout_tensors_vector_list = []
+        layout_autotune_list = []
+        layout_tensors_vector_optional_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             if forward_inplace_map and name in forward_inplace_map.keys():
                 inplace_args_pos_map[name] = pos
@@ -294,15 +317,28 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                     name, "GetTensorListFromArgs", forward_api_name, name, pos,
                     "false")
+                #layout 1.set layout_tensors_vector
+                layout_tensors_vector_list.append(f"{name}")
+                #layout 3. trans in tensor
+                layout_autotune_list.append(f"auto new_{name} = {name};\n")
             else:
                 if is_optional:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetOptionalTensorFromArgs", forward_api_name,
                         name, pos, "true")
+                    layout_tensors_vector_optional_list.append(
+                        f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
+                    )
+                    layout_autotune_list.append(f"auto new_{name} = {name};\n")
                 else:
                     get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
                         name, "GetTensorFromArgs", forward_api_name, name, pos,
                         "false")
+                    layout_tensors_vector_list.append(f"{{{name}}}")
+                    #layout 3. trans in tensor
+                    layout_autotune_list.append(
+                        f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                    )
 
         if forward_inplace_map:
             for name, (ttype, pos) in forward_outputs_position_map.items():
@@ -351,12 +387,107 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
             "pythonc_record_event", forward_api_name, "pybind_imperative_func")
 
+        # Autotune Layout logic
+        # layout.2 get transformer
+        lightly_sensitive_attr = [
+            'axis',
+            'axes',
+            'dim',
+            'dims',
+            'start',
+            'end',
+            'stop',
+            'keepdims'  # for argmax
+        ]
+        heavily_sensitive_attr = ['data_format', 'data_layout']
+        layout_autotune_attr = []
+        layout_autotune_attr_code_list = []
+        layout_autotune_attr_type_list = []
+        layout_autotune_attr_code_list.append(
+            f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");\n"
+        )
+        for name, atype, default_val, pos in orig_forward_attrs_list:
+            lightly_flag = False
+            heavily_flag = False
+            for attr_name in lightly_sensitive_attr:
+                if name.find(
+                        attr_name) != -1 and name not in layout_autotune_attr:
+                    lightly_flag = True
+                    layout_autotune_attr.append(name)
+                    layout_autotune_attr_type_list.append(atype)
+            if lightly_flag is False:
+                for attr_name in heavily_sensitive_attr:
+                    if name.find(attr_name
+                                 ) != -1 and name not in layout_autotune_attr:
+                        layout_autotune_attr.append(name)
+                        layout_autotune_attr_type_list.append(atype)
+                        heavily_flag = True
+        if len(layout_autotune_attr) == 0:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
+            )
+        elif len(layout_autotune_attr) == 1:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, &{layout_autotune_attr[0]});\n"
+            )
+        elif len(layout_autotune_attr) == 2:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}, {layout_autotune_attr_type_list[1]}>(op_name, tensors_vector, &{layout_autotune_attr[0]}, &{layout_autotune_attr[1]});\n"
+            )
+        else:
+            layout_autotune_attr_code_list.append(
+                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector, {len(layout_autotune_attr)});\n"
+            )
+        #layout 4. call forward api
+        layout_function_call_list = ["" for i in range(num_args)]
+        for name, (_, pos) in forward_inputs_position_map.items():
+            layout_function_call_list[pos] = f"new_{name}"
+        for name, _, _, pos in orig_forward_attrs_list:
+            layout_function_call_list[pos] = f"{name}"
+        layout_function_call_str = ",".join(layout_function_call_list)
+        #layout 5. set output tensor
+        num_outputs = len(
+            forward_outputs_position_map.keys()) - len(intermediate_outputs)
+        returns_list = []
+        for name, (rtype, pos) in forward_outputs_position_map.items():
+            if name in intermediate_outputs:
+                continue
+            returns_list.append(f"{name}")
+        layout_tmp_result_list = []
+        layout_autotune_outs_list = ""
+        if num_outputs == 1:
+            returns_str = returns_list[0]
+            layout_autotune_outs_list += f"  auto& new_out = out;\n"
+            layout_autotune_outs_list += f"  transformer -> SetOutTensorLayout(&new_out);\n"
+        else:
+            for name, (rtype, pos) in forward_outputs_position_map.items():
+                if name in intermediate_outputs:
+                    continue
+                layout_autotune_outs_list += f"  auto& new_{name} = std::get<{len(layout_tmp_result_list)}>(out);\n"
+                layout_autotune_outs_list += f"  transformer -> SetOutTensorLayout(&new_{name});\n"
+                layout_tmp_result_list.append(f"{name}")
+
+        #layoutfinal.
+        layout_tensors_vector_optional_list_str = "".join(
+            layout_tensors_vector_optional_list)
+        layout_tensors_vector_list_str = "{ " + ",".join(
+            layout_tensors_vector_list) + " }"
+        layout_logic_str = LAYOUT_LOGIC_TEMPLATE.format(
+            layout_tensors_vector_list_str,
+            layout_tensors_vector_optional_list_str,
+            "    ".join(layout_autotune_attr_code_list) + "    " +
+            "    ".join(layout_autotune_list), fwd_function_name,
+            layout_function_call_str, fwd_function_name,
+            layout_function_call_str, layout_autotune_outs_list, return_str)
+        if is_forward_only is False:
+            layout_logic_str = ""
+
         # Generate Python-C Function Definetion
         self.python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             forward_api_name, pythonc_record_event_str, forward_api_name,
             get_eager_tensor_str, parse_attributes_str, set_device_str,
-            fwd_function_name, dygraph_function_call_str, fwd_function_name,
-            dygraph_function_call_str, return_str)
+            layout_logic_str, fwd_function_name, dygraph_function_call_str,
+            fwd_function_name, dygraph_function_call_str, return_str)
 
         # Set prefix of forward_api_name to avoid conflicts
         prefix = self.namespace.strip("::")
@@ -390,7 +521,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             python_c_inplace_func_str = PYTHON_C_FUNCTION_TEMPLATE.format(
                 inplaced_forward_api_name, pythonc_record_event_str,
                 inplaced_forward_api_name, get_eager_tensor_str,
-                parse_attributes_str, set_device_str,
+                parse_attributes_str, set_device_str, "",
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 inplaced_fwd_function_name, dygraph_function_call_str,
                 return_str)

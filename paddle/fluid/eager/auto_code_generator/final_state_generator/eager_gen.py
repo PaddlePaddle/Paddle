@@ -181,9 +181,9 @@ FORWARD_FUNCTION_TEMPLATE = \
 {} {}({}) {{
   // Dygraph Record Event
 {}
-  // Layout autotune
-{}
   // AMP Logic
+{}
+  // Layout autotune
 {}
   // Get Input AutoGradMeta
 {}
@@ -337,6 +337,8 @@ BUMP_INPLACE_VERSION_TEMPLATE = \
 
 AMP_LOGIC_TEMPLATE = \
 """ 
+    {}
+    VLOG(5) << "Check and Prepare For AMP" << op_name;
     if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
     {}
@@ -1143,6 +1145,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         forward_function_name = GetDygraphForwardFunctionName(forward_api_name)
         # Forward amp logic
         kernel_trans2_op_name_str = f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
+        kernel_trans2_op_name_str2 = f"auto op_name2 = phi::TransToFluidOpName(\"{forward_api_name}\");"
         amp_tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
         amp_tensors_vector_optional_list_str = "".join(
@@ -1157,7 +1160,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_logic_str = ""
         else:
             amp_logic_str = AMP_LOGIC_TEMPLATE.format(
-                kernel_trans2_op_name_str, amp_tensors_vector_list_str,
+                kernel_trans2_op_name_str, kernel_trans2_op_name_str,
+                amp_tensors_vector_list_str,
                 amp_tensors_vector_optional_list_str, amp_get_dst_dtype_str,
                 amp_autocast_list_str, amp_call_str)
 

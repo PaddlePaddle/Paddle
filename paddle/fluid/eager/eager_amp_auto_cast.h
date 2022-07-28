@@ -66,7 +66,8 @@ inline paddle::experimental::Tensor EagerAmpAutoCast(
     const std::string& op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
-          << paddle::framework::DataType2String(dst_dtype) << ").";
+          << paddle::framework::DataType2String(dst_dtype) << "). layout is"
+          << paddle::framework::DataLayoutToString(input.layout());
   if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;

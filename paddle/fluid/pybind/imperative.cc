@@ -2025,7 +2025,7 @@ void BindImperative(py::module *m_ptr) {
               VLOG(4) << "old layout asdf"
                       << paddle::framework::DataLayoutToString(tensor.layout());
               bool use_autotune = tensor.autotune();
-              if (use_autotune) {
+              if (use_autotune && false) {
                 if (tensor.layout() == paddle::experimental::DataLayout::NCHW) {
                   // NCHW -> NHWC
                   value[1] = tmp_value[2];

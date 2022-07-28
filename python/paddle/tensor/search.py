@@ -176,7 +176,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     if axis is None:
         flatten = True
         axis = 0
-
+    print("this is final_state_argmax")
     if in_dygraph_mode():
         return _C_ops.final_state_argmax(x, axis, keepdim, flatten, var_dtype)
     if _in_legacy_dygraph():

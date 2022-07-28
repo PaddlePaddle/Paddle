@@ -1035,6 +1035,7 @@ def argmax(x, axis=0):
                 # [[2 3 1]
                 #  [0 3 1]]
     """
+    print("arg_max")
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
         'argmax')

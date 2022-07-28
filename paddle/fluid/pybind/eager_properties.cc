@@ -183,7 +183,7 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
     auto tmp_value = value;
     bool use_layout_autotune = self->tensor.autotune();
-    if (use_layout_autotune) {
+    if (use_layout_autotune && false) {
       if (self->tensor.layout() == paddle::experimental::DataLayout::NCHW &&
           value.size() == 4) {
         // NCHW -> NHWC
