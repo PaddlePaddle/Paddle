@@ -300,6 +300,27 @@ void CumInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void DecodeJpegInferMeta(const MetaTensor& x,
+                         const std::string& mode,
+                         MetaTensor* out) {
+  std::vector<int> out_dims;
+
+  if (mode == "unchanged") {
+    out_dims = {-1, -1, -1};
+  } else if (mode == "gray") {
+    out_dims = {1, -1, -1};
+  } else if (mode == "rgb") {
+    out_dims = {3, -1, -1};
+  } else {
+    errors::Fatal("The provided mode is not supported for JPEG files on GPU: ",
+                  mode);
+  }
+  if (out != nullptr) {
+    out->set_dims(phi::make_ddim(out_dims));
+    out->set_dtype(x.dtype());
+  }
+}
+
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
   auto x_dims = x.dims();
