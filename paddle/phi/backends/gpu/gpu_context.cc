@@ -297,7 +297,14 @@ struct GPUContext::Impl {
     return DnnWorkspaceHandle(allocator_, stream());
   }
 
-  void SetStream(gpuStream_t stream) { stream_->set_raw_stream(stream); }
+  void SetStream(gpuStream_t stream) {
+    if (stream_ == nullptr) {
+      auto s = Stream(reinterpret_cast<StreamId>(stream));
+      stream_ = new CUDAStream(place_, s);
+      stream_owned_ = true;
+    }
+    stream_->set_raw_stream(stream);
+  }
 
   void SetCUDAStream(CUDAStream* stream, bool clear = true) {
     if (clear && stream_owned_ && stream_) {
