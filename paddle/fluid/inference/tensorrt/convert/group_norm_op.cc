@@ -33,15 +33,17 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "@@ convert a fluid group_norm op";
+    VLOG(0) << "@@ convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);
-
-    auto* input_itensor = engine_->GetITensor(op_desc.Input("X").front());
+    int input_num = op_desc.Input("X").size();
+    VLOG(0)<<"@@@ input num: "<<input_num;
 
     int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
-
+    
+    VLOG(0)<<"@@@@ eps: "<<epsilon;
+    VLOG(0)<<"@@@@ num_groups: "<<groups;
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
 
@@ -51,7 +53,6 @@ class GroupNormOpConverter : public OpConverter {
       auto* temp_variable = scope.FindVar(variable_name);
       auto* temp_tensor = temp_variable->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
-
       auto weight = engine_->GetTrtWeight(variable_name, *temp_tensor);
       return weight;
     };
@@ -60,28 +61,31 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
-    
-    if(engine_->with_dynamic_shape()){
+    nvinfer1::ILayer *groupnorm_layer = nullptr;
+    auto* input_itensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
+    if(engine_->with_dynamic_shape()){
+        VLOG(0) << "@@ with_dynamic_shape";
         //TODO wang bojun PADDLE_ENFORCE_NE CHECK
+
         int gn_num= input_itensor->getDimensions().d[0]*groups;
-        std::vector<int64_t> mean_shape(gn_num);
-        std::vector<int64_t> variance_shape(gn_num);
+        std::vector<int64_t> mean_shape({gn_num});
+        std::vector<int64_t> variance_shape({gn_num});
         plugin::GroupNormPluginDynamic* plugin =
             new plugin::GroupNormPluginDynamic(
                 static_cast<const float*>(scale_weights.get().values),
                 scale_weights.get().count,
                 static_cast<const float*>(bias_weights.get().values),
                 bias_weights.get().count,
-                groups,
                 epsilon,
+                groups,
                 mean_shape,
                 variance_shape);
-        nvinfer1::ILayer* groupnorm_layer=engine_->AddDynamicPlugin(&input_itensor,1,plugin);
-        auto output_name = op_desc.Output("Y")[0];
-        RreplenishLayerAndOutput(
-            groupnorm_layer,"group_norm",{output_name}, test_mode);
+        groupnorm_layer=engine_->AddDynamicPlugin(&input_itensor,1,plugin);
+        VLOG(0)<<"@@@ call dyanmic plugin finished";
     }else{
+        VLOG(0) << "@@ with_static_shape";
+
         nvinfer1::Dims scale_nv_dims;
         nvinfer1::Dims bias_nv_dims;
         scale_nv_dims.nbDims = scale_dims.size();
@@ -106,26 +110,30 @@ class GroupNormOpConverter : public OpConverter {
             {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
             {"num_groups", &groups, nvinfer1::PluginFieldType::kINT32, 1},
         };
-
         nvinfer1::PluginFieldCollection* plugin_collections =
             static_cast<nvinfer1::PluginFieldCollection*>(
                 malloc(sizeof(*plugin_collections) +
                     fields.size() * sizeof(nvinfer1::PluginField)));
         plugin_collections->nbFields = static_cast<int>(fields.size());
         plugin_collections->fields = fields.data();
-
+        VLOG(0)<<"@@@ group norm, static pin";
         auto creator =
             GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
         auto group_norm_plugin =
             creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
         free(plugin_collections);
+        VLOG(0)<<"@@@ group norm, static pin 2";
 
-        auto group_norm_plugin_layer = engine_->network()->addPluginV2(
+        groupnorm_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
-        auto output_name = op_desc.Output("Y")[0];
-        RreplenishLayerAndOutput(
-            group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
+
+        VLOG(0) << "@@ group norm with_static_shape finished";
+
     }
+    auto output_name = op_desc.Output("Y")[0];
+    RreplenishLayerAndOutput(
+        groupnorm_layer, "group_norm", {output_name}, test_mode);
+
   }
 };
 

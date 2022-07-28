@@ -37,17 +37,17 @@ namespace plugin {
           eps_(eps),
           mean_shape_(mean_shape),
           variance_shape_(variance_shape) {
-            bias_.resize(bias_num);
             scale_.resize(scale_num);
-            std::copy(bias,bias+bias_num,bias_.data());
+            bias_.resize(bias_num);
             std::copy(scale,scale+scale_num,scale_.data());
+            std::copy(bias,bias+bias_num,bias_.data());
         }
 
         GroupNormPluginDynamic(void const * serialData, size_t serialLength){
             DeserializeValue(&serialData,&serialLength,&scale_);
             DeserializeValue(&serialData,&serialLength,&bias_);
-            DeserializeValue(&serialData,&serialLength,&groups_);
             DeserializeValue(&serialData,&serialLength,&eps_);
+            DeserializeValue(&serialData,&serialLength,&groups_);
             DeserializeValue(&serialData,&serialLength,&mean_shape_);
             DeserializeValue(&serialData,&serialLength,&variance_shape_);
         }
@@ -70,15 +70,15 @@ namespace plugin {
         int initialize() TRT_NOEXCEPT override { return 0; }
         
         size_t getSerializationSize() const TRT_NOEXCEPT override {
-            return SerializedSize(bias_)+SerializedSize(scale_)+
-                   SerializedSize(groups_)+SerializedSize(eps_)+
+            return SerializedSize(scale_)+SerializedSize(bias_)+
+                   SerializedSize(eps_)+SerializedSize(groups_)+
                    SerializedSize(mean_shape_)+SerializedSize(variance_shape_);
         }
         void serialize(void * buffer) const TRT_NOEXCEPT override {
-            SerializeValue(&buffer, bias_);
             SerializeValue(&buffer, scale_);
-            SerializeValue(&buffer, groups_);
+            SerializeValue(&buffer, bias_);
             SerializeValue(&buffer, eps_);
+            SerializeValue(&buffer, groups_);
             SerializeValue(&buffer, mean_shape_);
             SerializeValue(&buffer, variance_shape_);
         }
@@ -103,8 +103,6 @@ namespace plugin {
                                 const nvinfer1::PluginTensorDesc* outputs,
                                 int nbOutputs) const TRT_NOEXCEPT override {
         return 0;
-        //TODO wang bojun return the appromix workspace layout need by plugin
-        // a optim point Maybes 
         }
         int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                     const nvinfer1::PluginTensorDesc* outputDesc,
@@ -145,13 +143,13 @@ namespace plugin {
             return &field_collection_;
         }
         */
-
+/*
         nvinfer1::IPluginV2* createPlugin(const char* name,
                                           const nvinfer1::PluginFieldCollection* fc)
             TRT_NOEXCEPT override {
                 return nullptr;
             }
-
+*/ 
         nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                                const void* serial_data,
                                                size_t serial_length) TRT_NOEXCEPT override 

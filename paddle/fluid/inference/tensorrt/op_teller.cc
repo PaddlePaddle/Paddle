@@ -579,7 +579,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (registry == nullptr) return false;
       std::string layout_str=BOOST_GET_CONST(std::string,desc.GetAttr("data_layout"));
       if (layout_str!="NCHW") return false;
-      VLOG(3)<<"@@group norm tell not false";
+      VLOG(3)<<"@@ group norm tell not false";
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
@@ -2108,9 +2108,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 #endif
     }
+    bool teller_result=false;
 
-    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
-  }
+    if ((*teller)(op_type, desc, use_no_calib_int8)) teller_result=true;
+    if (teller_result==true){
+      VLOG(3)<<"@@@@ op: "<<op_type<<", tell: true";
+    } else
+    {
+      VLOG(3)<<"@@@@ op: "<<op_type<<", tell: false";
+    }
+    return teller_result;
+  } 
 
   return false;
 }
