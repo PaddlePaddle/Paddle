@@ -850,6 +850,15 @@
     func : fmin
   backward : fmin_grad
 
+- api : frame
+  args : (Tensor x, int frame_length, int hop_length, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : FrameInferMeta
+  kernel :
+    func : frame
+  backward : frame_grad 
+
 - api : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
@@ -1262,15 +1271,6 @@
     func : CompareInferMeta
   kernel :
     func : less_than
-
-- api : lgamma
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : lgamma
-  backward : lgamma_grad
 
 - api : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
@@ -2152,6 +2152,17 @@
     use_gpudnn : true
   backward : softmax_grad
 
+# softsign
+- api : softsign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softsign
+  backward : softsign_grad
+
 - api : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps)
   output : Tensor
@@ -2531,6 +2542,15 @@
   kernel:
     func: broadcast_tensors
   backward: broadcast_tensors_grad
+  
+# dirichlet
+- api: dirichlet
+  args: (Tensor alpha)
+  output: Tensor
+  infer_meta:
+    func: DirichletInferMeta
+  kernel:
+    func: dirichlet
 
 # eig
 - api: eig

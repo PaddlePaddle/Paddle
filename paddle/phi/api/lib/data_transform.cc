@@ -294,5 +294,30 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
   return paddle::none;
 }
 
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out) {
+  if (tensor) {
+    *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
+  }
+}
+
+void TransDataBackend(const std::vector<phi::DenseTensor*>& tensors,
+                      Backend target_backend,
+                      std::vector<phi::DenseTensor*> outs) {
+  size_t n = tensors.size();
+  for (size_t i = 0; i < n; ++i) {
+    TransDataBackend(tensors[i], target_backend, outs[i]);
+  }
+}
+
+void TransDataBackend(const phi::SelectedRows* tensor,
+                      Backend target_backend,
+                      phi::SelectedRows* out) {
+  if (tensor) {
+    TransDataBackend(&tensor->value(), target_backend, out->mutable_value());
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle

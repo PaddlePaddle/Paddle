@@ -555,8 +555,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         rank_id = _get_corresponding_rank(
                             ctx, process_mesh, rank_id)
 
+                    # NOTE: consider that the variable's shape is None
                     mesh_shape = process_mesh.topology
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = var_dim_mapping[0] if len(
+                        var_dim_mapping) > 0 else -1
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
                         group_ranks = _get_comm_group(process_mesh.processes,

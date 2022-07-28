@@ -90,6 +90,8 @@ void DiagInferMeta(const MetaTensor& x,
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
+void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out);
+
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v);
 
 void EighInferMeta(const MetaTensor& x,
@@ -129,6 +131,13 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
 void FlipInferMeta(const MetaTensor& x,
                    const std::vector<int>& axis,
                    MetaTensor* out);
+
+void FrameInferMeta(const MetaTensor& x,
+                    int frame_length,
+                    int hop_length,
+                    int axis,
+                    MetaTensor* out,
+                    MetaConfig = MetaConfig());
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
@@ -527,5 +536,4 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              MetaTensor* out);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
-
 }  // namespace phi
