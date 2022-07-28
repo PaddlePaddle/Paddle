@@ -1276,14 +1276,14 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        value.emplace_back(phi::Scalar(PyFloat_AsDouble(item)));
+        value.emplace_back(phi::Scalar{PyFloat_AsDouble(item)});
       }
       return value;
     } else if (PyObject_CheckLongOrToLong(&item)) {
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        value.emplace_back(phi::Scalar(PyLong_AsLong(item)));
+        value.emplace_back(phi::Scalar{PyLong_AsLong(item)});
       }
       return value;
     }
