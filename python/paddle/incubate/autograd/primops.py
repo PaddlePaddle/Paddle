@@ -122,6 +122,21 @@ def tanh(x, out=None):
     return _simple_unop(LayerHelper('tanh_p', **locals()))
 
 
+@REGISTER_FN('sin_p', 'X', 'Y')
+def sin(x, out=None):
+    return _simple_unop(LayerHelper('sin_p', **locals()))
+
+
+@REGISTER_FN('cos_p', 'X', 'Y')
+def cos(x, out=None):
+    return _simple_unop(LayerHelper('cos_p', **locals()))
+
+
+@REGISTER_FN('exp_p', 'X', 'Y')
+def exp(x, out=None):
+    return _simple_unop(LayerHelper('exp_p', **locals()))
+
+
 @REGISTER_FN('reshape_p', 'X', 'Y')
 def reshape(x, shape, out=None):
     return _manipulation_unop(LayerHelper('reshape_p', **locals()))
