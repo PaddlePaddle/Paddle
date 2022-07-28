@@ -14,9 +14,8 @@
 
 #pragma once
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 struct Seq2ColFunctor {
@@ -189,6 +188,5 @@ struct Col2SeqFunctor {
   size_t hop_length_;
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

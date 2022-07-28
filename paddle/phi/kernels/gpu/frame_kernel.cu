@@ -12,13 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/frame_kernel.h"
 
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/frame_kernel_impl.h"
 
-KernelSignature LgammaGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("lgamma_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
-}  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(lgamma_grad, phi::LgammaGradOpArgumentMapping);
+PD_REGISTER_KERNEL(frame,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FrameKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
