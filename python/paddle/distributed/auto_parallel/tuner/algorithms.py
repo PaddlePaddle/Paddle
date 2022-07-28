@@ -120,7 +120,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         if stage_range:
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
-            ), "Sharding Stage should belong into range within 0 - 3 but got".format(
+            ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
                 stage_range)
             stage_range.sort(reverse=True)
         else:

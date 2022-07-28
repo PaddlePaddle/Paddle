@@ -25,9 +25,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_engine_api_dp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 
-  py_test_modules(test_optimization_tuner MODULES test_optimization_tuner ENVS
-                  ${dist_ENVS})
-  set_tests_properties(test_optimization_tuner
+  py_test_modules(test_optimization_tuner_api MODULES
+                  test_optimization_tuner_api ENVS ${dist_ENVS})
+  set_tests_properties(test_optimization_tuner_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 
   py_test_modules(test_converter MODULES test_converter ENVS ${dist_ENVS})
