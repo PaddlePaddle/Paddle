@@ -176,7 +176,7 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
         int offset = in_offset + h_in * input_width + w_in;
         T in_data = input_data[offset];
         if (fuse_relu_before_conv) {
-          value += weight[weight_offset] * T(max(0.0f, float(in_data)));
+          value += weight[weight_offset] * T(max(0.0f, double(in_data)));
         } else {
           value += weight[weight_offset] * in_data;
         }
@@ -228,7 +228,7 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
         T in_data = input_data[offset];
         const T* weight = filter_data + weight_offset * output_channels + c_out;
         if (fuse_relu_before_conv) {
-          value += weight[0] * T(max(0.0f, float(in_data)));
+          value += weight[0] * T(max(0.0f, double(in_data)));
         } else {
           value += weight[0] * in_data;
         }
@@ -281,7 +281,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
             int offset = in_offset + h_in * input_width + w_in;
             if (fuse_relu_before_conv) {
               value += r_weight[h_f * c_filter + w_f] *
-                       T(max(0.0f, float(input_data[offset])));
+                       T(max(0.0f, double(input_data[offset])));
             } else {
               value += r_weight[h_f * c_filter + w_f] * input_data[offset];
             }
@@ -337,7 +337,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
                 in_offset + (h_in * input_width + w_in) * input_channels + c_in;
             if (fuse_relu_before_conv) {
               value += r_weight[h_f * c_filter + w_f] *
-                       T(max(0.0, float(input_data[offset])));
+                       T(max(0.0, double(input_data[offset])));
             } else {
               value += r_weight[h_f * c_filter + w_f] * input_data[offset];
             }
@@ -880,7 +880,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
                        image_wk;
         if (fuse_relu_before_conv) {
           s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
-               T(max(0.0f, float(input_data[input_id])));
+               T(max(0.0f, double(input_data[input_id])));
         } else {
           s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
                input_data[input_id];
@@ -941,7 +941,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
           kernel_id / filter_multiplier;
       if (fuse_relu_before_conv) {
         s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             T(max(0.0f, float(input_data[input_id])));
+             T(max(0.0f, double(input_data[input_id])));
       } else {
         s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
              input_data[input_id];
@@ -1013,7 +1013,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
           T s(0);
           if (fuse_relu_before_conv) {
             s = output_grad_data[output_id] *
-                T(max(0.0f, float(input_data[input_id])));
+                T(max(0.0f, double(input_data[input_id])));
           } else {
             s = output_grad_data[output_id] * input_data[input_id];
           }
