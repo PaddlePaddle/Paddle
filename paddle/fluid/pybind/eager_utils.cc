@@ -1283,7 +1283,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        value.emplace_back(phi::Scalar{PyLong_AsLong(item)});
+        value.emplace_back(
+            phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
       }
       return value;
     }
