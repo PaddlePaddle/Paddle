@@ -101,6 +101,7 @@ class Context(object):
             return False
 
     def set_env_in_args(self):
+        # this logic may not propre to replace args with env, but ...
         for k, v in env_args_mapping.items():
             if k in self.envs:
-                setattr(self.args, v, self.envs[k])
+                setattr(self.args, v, type(getattr(self.args, v))(self.envs[k]))
