@@ -231,11 +231,13 @@ int32_t SparseAccessor::Update(float** update_values,
     _embed_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedWIndex(),
         update_value + sparse_feature_value.EmbedG2SumIndex(),
-        push_value + SparsePushValue::EmbedGIndex());
+        push_value + SparsePushValue::EmbedGIndex(),
+        push_show);
     _embedx_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedxWIndex(),
         update_value + sparse_feature_value.EmbedxG2SumIndex(),
-        push_value + SparsePushValue::EmbedxGIndex());
+        push_value + SparsePushValue::EmbedxGIndex(),
+        push_show);
   }
   return 0;
 }

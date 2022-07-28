@@ -671,6 +671,11 @@ class DistributedStrategy(object):
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 
+            save_data0 = table_data.accessor.table_accessor_save_param.add()
+            save_data0.param = 0
+            save_data0.converter = ""
+            save_data0.deconverter = "python ctr2unit_accessor.py"
+
             save_data1 = table_data.accessor.table_accessor_save_param.add()
             save_data1.param = 1
             save_data1.converter = converter

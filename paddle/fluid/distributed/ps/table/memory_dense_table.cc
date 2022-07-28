@@ -281,7 +281,14 @@ int32_t MemoryDenseTable::Load(const std::string& path,
             if (param_col_ids_[col_idx] < 0) {
               continue;
             }
-            values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
+            // zcb begin load dense converter
+            if (col_idx < str_len - 1 || _config.common().name() == "summary") {
+              values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
+            } else {
+              values_[param_col_ids_[col_idx]][dim_idx] = -data_buffer[col_idx];
+            }
+            // zcb end load dense converter
+            // values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
             VLOG(2) << "MemoryDenseTable::load param x: "
                     << param_col_ids_[col_idx] << " y: " << dim_idx
                     << " value: " << values_[param_col_ids_[col_idx]][dim_idx]
