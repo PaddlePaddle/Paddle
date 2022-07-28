@@ -201,6 +201,16 @@ void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
 }
 
 template <typename T>
+void DatasetImpl<T>::SetGpuGraphMode(int is_graph_mode) {
+  gpu_graph_mode_ = is_graph_mode;
+}
+
+template <typename T>
+int DatasetImpl<T>::GetGpuGraphMode() {
+  return gpu_graph_mode_;
+}
+
+template <typename T>
 std::vector<paddle::framework::DataFeed*> DatasetImpl<T>::GetReaders() {
   std::vector<paddle::framework::DataFeed*> ret;
   ret.reserve(readers_.size());

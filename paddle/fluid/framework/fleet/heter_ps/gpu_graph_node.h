@@ -22,6 +22,7 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/core/enforce.h"
+DECLARE_bool(gpugraph_load_node_list_into_hbm);
 namespace paddle {
 namespace framework {
 struct GpuPsNodeInfo {
@@ -32,7 +33,9 @@ struct GpuPsNodeInfo {
 };
 
 struct GpuPsCommGraph {
-  uint64_t *node_list;            // locate on both side
+  uint64_t *node_list;
+  // when FLAGS_gpugraph_load_node_list_into_hbm is ture locate on both side
+  // else only locate on host side
   int64_t node_size;              //  the size of node_list
   GpuPsNodeInfo *node_info_list;  // only locate on host side
   uint64_t *neighbor_list;        // locate on both side

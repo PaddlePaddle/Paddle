@@ -1059,6 +1059,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
         self.proto_desc.graph_config.gpu_graph_training = config.get(
             "gpu_graph_training", True)
+        self.dataset.set_gpu_graph_mode(True)
 
 
 class QueueDataset(DatasetBase):

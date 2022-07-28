@@ -363,6 +363,9 @@ NodeQueryResult GraphGpuWrapper::query_node_list(int gpu_id,
                                                  int idx,
                                                  int start,
                                                  int query_size) {
+  PADDLE_ENFORCE(FLAGS_gpugraph_load_node_list_into_hbm == true,
+                 "when use query_node_list should set "
+                 "gpugraph_load_node_list_into_hbm true");
   return ((GpuPsGraphTable *)graph_table)
       ->query_node_list(gpu_id, idx, start, query_size);
 }

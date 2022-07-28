@@ -86,9 +86,9 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph,
                                     int n) {
   int idx = blockIdx.x * blockDim.y + threadIdx.y;
   if (idx < n) {
-    int node_offset = fea_info_array[idx].feature_offset;
+    int feature_size = fea_info_array[idx].feature_size;
     int offset = idx * slot_num;
-    if (node_offset == 0) {
+    if (feature_size == 0) {
       for (int k = 0; k < slot_num; ++k) {
         feature[offset + k] = 0;
       }
@@ -486,12 +486,14 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
   size_t capacity = std::max((uint64_t)1, (uint64_t)g.node_size) / load_factor_;
   tables_[table_offset] = new Table(capacity);
   if (g.node_size > 0) {
-    CUDA_CHECK(cudaMalloc((void**)&gpu_graph_list_[offset].node_list,
-                          g.node_size * sizeof(uint64_t)));
-    CUDA_CHECK(cudaMemcpy(gpu_graph_list_[offset].node_list,
-                          g.node_list,
-                          g.node_size * sizeof(uint64_t),
-                          cudaMemcpyHostToDevice));
+    if (FLAGS_gpugraph_load_node_list_into_hbm) {
+      CUDA_CHECK(cudaMalloc((void**)&gpu_graph_list_[offset].node_list,
+                            g.node_size * sizeof(uint64_t)));
+      CUDA_CHECK(cudaMemcpy(gpu_graph_list_[offset].node_list,
+                            g.node_list,
+                            g.node_size * sizeof(uint64_t),
+                            cudaMemcpyHostToDevice));
+    }
 
     build_ps(i,
              g.node_list,
