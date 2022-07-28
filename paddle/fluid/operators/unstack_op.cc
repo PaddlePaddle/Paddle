@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -84,4 +84,6 @@ REGISTER_OPERATOR(unstack,
                   ops::UnStackGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnStackGradOpMaker<paddle::imperative::OpBase>,
                   UnStackInferMetaFunctor);
-REGISTER_OPERATOR(unstack_grad, ops::UnStackGradOp, UnStackGradInferMetaFunctor);
+REGISTER_OPERATOR(unstack_grad,
+                  ops::UnStackGradOp,
+                  UnStackGradInferMetaFunctor);

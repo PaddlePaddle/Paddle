@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
-
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"

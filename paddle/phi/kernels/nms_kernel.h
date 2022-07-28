@@ -49,8 +49,8 @@ HOSTDEVICE inline bool CalculateIoU(const T* const box_1,
 
 template <typename T, typename Context>
 void NMSKernel(const Context& dev_ctx,
-                   const DenseTensor& boxes,
-                   float threshold,
-                   DenseTensor* output);
+               const DenseTensor& boxes,
+               float threshold,
+               DenseTensor* output);
 
 }  // namespace phi

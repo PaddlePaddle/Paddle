@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/nms_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -60,18 +61,13 @@ static void NMS(const T* boxes_data,
 
 template <typename T, typename Context>
 void NMSKernel(const Context& dev_ctx,
-                   const DenseTensor& boxes,
-                   float threshold,
-                   DenseTensor* output){
-    auto output_data = dev_ctx.template Alloc<int64_t>(output);
-    NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
+               const DenseTensor& boxes,
+               float threshold,
+               DenseTensor* output) {
+  auto output_data = dev_ctx.template Alloc<int64_t>(output);
+  NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nms,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::NMSKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(nms, CPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}

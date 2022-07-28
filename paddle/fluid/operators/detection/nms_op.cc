@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/infermeta/unary.h"
+#include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/framework/infershape_utils.h"
-
-#include <vector>
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -69,6 +69,7 @@ class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
 class NMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -78,8 +79,7 @@ class NMSOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class NMSKernel : public framework::OpKernel<T> {
-};
+class NMSKernel : public framework::OpKernel<T> {};
 
 }  // namespace operators
 }  // namespace paddle

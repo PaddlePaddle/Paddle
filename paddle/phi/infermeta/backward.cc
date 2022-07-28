@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/backward.h"
-
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
@@ -747,7 +746,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
   std::vector<phi::DDim> input_dims(out_grad.size());
-  for(size_t i = 0; i < out_grad.size(); ++i){
+  for (size_t i = 0; i < out_grad.size(); ++i) {
     input_dims[i] = out_grad[i]->dims();
   }
   for (size_t i = 1; i < input_dims.size(); ++i) {
