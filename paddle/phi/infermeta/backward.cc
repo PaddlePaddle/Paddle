@@ -24,10 +24,8 @@ void AffineGridGradInferMeta(const MetaTensor& outputShape,
                              bool align_corners,
                              const std::vector<int>& output_shape,
                              MetaTensor* input_grad) {
-  if(input_grad){
   auto output_dims = output_grad.dims();
   input_grad->set_dims(phi::make_ddim({output_dims[0], 2, 3}));
-  }
 }
 
 void AngleGradInferMeta(const MetaTensor& x,
