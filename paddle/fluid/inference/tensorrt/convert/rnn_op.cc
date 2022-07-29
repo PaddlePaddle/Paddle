@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,28 +23,50 @@ class RnnNativeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert a fluid rnn op to tensorrt rnn native layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // [seq_len, batch ,in_size],
-    // [num_layers, batch ,in_size], [num_layers, batch ,in_size]
+    // [K * num_layers, batch ,in_size], [K * num_layers, batch ,in_size]
+    // K is defined below
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     auto* prev_c = engine_->GetITensor(op_desc.Input("PreState")[0]);
     auto* prev_h = engine_->GetITensor(op_desc.Input("PreState")[1]);
 
-    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims, 3);
-    PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims, 3);
-    PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims, 3);
+    PADDLE_ENFORCE_EQ(input->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s input must be 3 dimensions, i.e. "
+                          "[seq_len, batch, input_size],"
+                          "but now is %d  dimensions.",
+                          input->getDimensions().nbDims));
 
-    int num_layers = BOOST_GET_CONST(int, op_desc.GetAttr("num_layers"));
-    int hidden_size = BOOST_GET_CONST(int, op_desc.GetAttr("hidden_size"));
-    int input_size = input->getDimensions().d[2];
-    bool is_bidirec = BOOST_GET_CONST(bool, op_desc.GetAttr("is_bidirec"));
+    PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s PreState(Hidden) must be 3 dimensions, "
+                          "i.e. [num_layers, batch, hidden_size],"
+                          "but now is %d  dimensions.",
+                          prev_h->getDimensions().nbDims));
+
+    PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "RNN(LSTM)'s PreState(Cell) must be 3 dimensions, "
+                          "i.e. [num_layers, batch, hidden_size],"
+                          "but now is %d  dimensions.",
+                          prev_c->getDimensions().nbDims));
+
+    int num_layers = PADDLE_GET_CONST(int, op_desc.GetAttr("num_layers"));
+    int hidden_size = PADDLE_GET_CONST(int, op_desc.GetAttr("hidden_size"));
+    int input_size = PADDLE_GET_CONST(int, op_desc.GetAttr("input_size"));
+    bool is_bidirec = PADDLE_GET_CONST(bool, op_desc.GetAttr("is_bidirec"));
     int K = is_bidirec ? 2 : 1;
 
     // extract weights
     // if is_bidirec, make forward and backward weight/bias concated
-    std::vector<float*> weight_bias_vec;
+    std::vector<const float*> weight_bias_vec;
     for (int layer_id = 0; layer_id < num_layers; layer_id++) {
       if (is_bidirec) {
         auto extract_and_combine_weight = [&](int start) {
@@ -57,14 +79,10 @@ class RnnNativeOpConverter : public OpConverter {
             auto* var1_v = scope.FindVar(var1_name);
             auto* var0_t = var0_v->GetMutable<framework::LoDTensor>();
             auto* var1_t = var1_v->GetMutable<framework::LoDTensor>();
-            float* data0_ptr =
-                (float*)(engine_->GetTrtWeight(var0_name, *var0_t)
-                             .get()
-                             .values);
-            float* data1_ptr =
-                (float*)(engine_->GetTrtWeight(var1_name, *var1_t)
-                             .get()
-                             .values);
+            const float* data0_ptr = reinterpret_cast<const float*>(
+                engine_->GetTrtWeight(var0_name, *var0_t).get().values);
+            const float* data1_ptr = reinterpret_cast<const float*>(
+                engine_->GetTrtWeight(var1_name, *var1_t).get().values);
             float* data_ptr = new float[K * var0_t->numel()];
             // remember free
             memcpy(data_ptr, data0_ptr, sizeof(float) * var0_t->numel());
@@ -82,8 +100,8 @@ class RnnNativeOpConverter : public OpConverter {
             std::string var_name = op_desc.Input("WeightList")[k + start];
             auto* var_v = scope.FindVar(var_name);
             auto* var_t = var_v->GetMutable<framework::LoDTensor>();
-            float* data_ptr =
-                (float*)(engine_->GetTrtWeight(var_name, *var_t).get().values);
+            const float* data_ptr = reinterpret_cast<const float*>(
+                engine_->GetTrtWeight(var_name, *var_t).get().values);
             weight_bias_vec.push_back(data_ptr);
           }
         };
@@ -93,7 +111,8 @@ class RnnNativeOpConverter : public OpConverter {
     }
     // [seq_len, batch ,in_size]
 
-    nvinfer1::ITensor* this_input = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input)->getOutput(0);
+    nvinfer1::ITensor* this_input =
+        TRT_ENGINE_ADD_LAYER(engine_, Identity, *input)->getOutput(0);
 
     nvinfer1::ILayer* finally_layer = nullptr;
     for (int layer_id = 0; layer_id < num_layers; layer_id++) {
@@ -114,54 +133,42 @@ class RnnNativeOpConverter : public OpConverter {
       auto* iter_input_forward_tensor =
           loop->addIterator(*this_input)->getOutput(0);  // [batch, input_size]
 
+      // this function shuffle tensor -> 4 dims
+      auto reshape2four = [&](nvinfer1::ITensor** tensor) {
+#if TRT_VERSION == 7234
+        auto* tmp_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, **tensor);
+        std::vector<nvinfer1::ITensor*> concat_inputs{
+            Add1DConstantLayer(1), Add1DConstantLayer(1), Shape(*tensor)};
+        tmp_layer->setInput(1, *Concat(concat_inputs));
+        *tensor = tmp_layer->getOutput(0);
+#endif
+      };
 
-      auto* tmp_layer0 =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_forward_tensor);
-      std::vector<nvinfer1::ITensor*> concat_inputs0{Add1DConstantLayer(1), Add1DConstantLayer(1), Shape(iter_input_forward_tensor)};
-      tmp_layer0->setInput(1, *Concat(concat_inputs0));
-      iter_input_forward_tensor = tmp_layer0->getOutput(0);
-
-
+      reshape2four(&iter_input_forward_tensor);
 
       if (is_bidirec) {
         auto* iter_input_reverse_tensor =
             loop->addIterator(*this_input, 0, true)
                 ->getOutput(0);  // [batch, input_size]
-      
-      auto* tmp_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_reverse_tensor);
-      std::vector<nvinfer1::ITensor*> concat_inputs0{Add1DConstantLayer(1), Add1DConstantLayer(1), Shape(iter_input_reverse_tensor)};
-      tmp_layer->setInput(1, *Concat(concat_inputs0));
-      iter_input_reverse_tensor = tmp_layer->getOutput(0);
-      
-      std::vector<nvinfer1::ITensor*> concat_inputs{
+
+        reshape2four(&iter_input_reverse_tensor);
+
+        std::vector<nvinfer1::ITensor*> concat_inputs{
             iter_input_forward_tensor, iter_input_reverse_tensor};
-      iter_input_tensor = Concat(concat_inputs);
-      
+        iter_input_tensor = Concat(concat_inputs);
       } else {
         iter_input_tensor = iter_input_forward_tensor;
       }
 
-std::cout << iter_input_tensor->getDimensions().d[0] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[1] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[2] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[3] << std::endl;
-
       auto* tmp_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *iter_input_tensor);
 
-     if(0) tmp_layer->setReshapeDimensions(nvinfer1::Dims3{K, 12, input_size});
-
-   if(1)   tmp_layer->setInput(1,
+      tmp_layer->setInput(1,
                           *Concat(std::vector<nvinfer1::ITensor*>{
                               K_tensor, batch_tensor, input_size_tensor}));
 
-      auto* iter_input_tensor1 = tmp_layer->getOutput(0);
-
-std::cout << iter_input_tensor->getDimensions().d[0] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[1] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[2] << std::endl;
-std::cout << iter_input_tensor->getDimensions().d[3] << std::endl;
+      iter_input_tensor = tmp_layer->getOutput(0);
+      // [K, batch, input_size]
 
       std::vector<int32_t> tmp_vec(K);
       std::iota(tmp_vec.begin(), tmp_vec.end(), 2 * layer_id);
@@ -178,15 +185,15 @@ std::cout << iter_input_tensor->getDimensions().d[3] << std::endl;
         int w = is_input ? input_size : hidden_size;
         if (is_input && k > 0) w = K * hidden_size;
 
-        std::vector<int32_t> weight_shape{K, h, w};
+        auto weight_shape = nvinfer1::Dims3{K, h, w};
         auto* weight_tensor =
             AddConstantLayer(weight_bias_vec[k], weight_shape, " ");
-        std::vector<int32_t> bias_shape{K, 1, h};
+        auto bias_shape = nvinfer1::Dims3{K, 1, h};
         auto* bias_tensor =
             AddConstantLayer(weight_bias_vec[k + 2], bias_shape, " ");
 
         nvinfer1::ITensor* iter_tensor =
-            k % 2 ? Hlayer->getOutput(0) : TRT_ENGINE_ADD_LAYER(engine_, Identity, *iter_input_tensor1)->getOutput(0);
+            k % 2 ? Hlayer->getOutput(0) : iter_input_tensor;
 
         auto* iter_w_tensor =
             TRT_ENGINE_ADD_LAYER(engine_,
@@ -246,12 +253,6 @@ std::cout << iter_input_tensor->getDimensions().d[3] << std::endl;
       auto* Ht = Prod(o_gate, tanh_Ct);
       Hlayer->setInput(1, *Ht);
 
-
-std::cout << Ht->getDimensions().d[0] << std::endl;
-std::cout << Ht->getDimensions().d[1] << std::endl;
-std::cout << Ht->getDimensions().d[2] << std::endl;
-std::cout << Ht->getDimensions().d[3] << std::endl;
-
       // Ht: [K, batch, hidden_size]
       nvinfer1::ILayer* layer = nullptr;
       nvinfer1::ITensor* tensor = nullptr;
@@ -280,15 +281,12 @@ std::cout << Ht->getDimensions().d[3] << std::endl;
                                            nvinfer1::LoopOutput::kCONCATENATE);
         auto* layer1 = loop->addLoopOutput(*slice_reverse_layer->getOutput(0),
                                            nvinfer1::LoopOutput::kREVERSE);
-        auto* layer2 = loop->addLoopOutput(*Ht, nvinfer1::LoopOutput::kCONCATENATE);
         layer0->setInput(1, *seq_len_scalar);
         layer1->setInput(1, *seq_len_scalar);
-        layer2->setInput(1, *seq_len_scalar);
 
         std::vector<nvinfer1::ITensor*> concat_inputs{layer0->getOutput(0),
                                                       layer1->getOutput(0)};
         tensor = Concat(concat_inputs, 3);
-     //   tensor = layer2->getOutput(0);
       } else {
         layer = loop->addLoopOutput(*Ht, nvinfer1::LoopOutput::kCONCATENATE);
         layer->setInput(1, *seq_len_scalar);
@@ -311,6 +309,7 @@ std::cout << Ht->getDimensions().d[3] << std::endl;
       for (size_t i = 0; i < weight_bias_vec.size(); i++)
         delete[] weight_bias_vec[i];
     }
+#endif
   }
 };
 

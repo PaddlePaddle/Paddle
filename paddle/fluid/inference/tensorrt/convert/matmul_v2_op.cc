@@ -55,8 +55,8 @@ class MatMulV2OpConverter : public OpConverter {
     nvinfer1::Dims dims_x = input1->getDimensions();
     nvinfer1::Dims dims_y = input2->getDimensions();
 
-    bool transpose_X = BOOST_GET_CONST(bool, op_desc.GetAttr("trans_x"));
-    bool transpose_Y = BOOST_GET_CONST(bool, op_desc.GetAttr("trans_y"));
+    bool transpose_X = PADDLE_GET_CONST(bool, op_desc.GetAttr("trans_x"));
+    bool transpose_Y = PADDLE_GET_CONST(bool, op_desc.GetAttr("trans_y"));
 
     auto output_name = op_desc.Output("Out")[0];
 

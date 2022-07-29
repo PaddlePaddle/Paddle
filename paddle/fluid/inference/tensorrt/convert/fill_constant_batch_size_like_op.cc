@@ -28,16 +28,16 @@ class FillConstantBatchSizeLikeOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
-    int dtype = BOOST_GET_CONST(int, op_desc.GetAttr("dtype"));
+    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
     // be float
     PADDLE_ENFORCE_EQ(dtype, 5);
-    int input_dim_idx = BOOST_GET_CONST(int, op_desc.GetAttr("input_dim_idx"));
+    int input_dim_idx = PADDLE_GET_CONST(int, op_desc.GetAttr("input_dim_idx"));
     size_t output_dim_idx =
-        BOOST_GET_CONST(int, op_desc.GetAttr("output_dim_idx"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("output_dim_idx"));
     std::string str_value =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("str_value"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("str_value"));
     std::vector<int32_t> shape =
-        BOOST_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
     float value = std::stof(str_value);
 
     auto* input_shape_tensor = Shape(input);

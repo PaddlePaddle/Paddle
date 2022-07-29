@@ -2091,8 +2091,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #if !IS_TRT_VERSION_GE(7000)
       return false;
 #endif
-      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
-      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+      int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
 
       // Although TRT supports bool type, we do not recommend putting this OP
       // into TRT

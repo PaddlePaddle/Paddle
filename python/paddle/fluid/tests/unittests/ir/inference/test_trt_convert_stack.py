@@ -41,33 +41,33 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
 
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
@@ -194,7 +194,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -203,7 +203,7 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True), 1e-3
 
     def add_skip_trt_case(self):
         pass
