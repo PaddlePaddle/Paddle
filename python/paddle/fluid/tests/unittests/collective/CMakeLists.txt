@@ -4,6 +4,7 @@ file(
   "test_collective*.py")
 string(REPLACE ".py" "" TEST_CASES "${TEST_CASES}")
 list(REMOVE_ITEM TEST_CASES test_collective_optimizer)
+list(APPEND TEST_CASES test_eager_dist_api)
 if(WITH_GPU)
   foreach(TEST_CASE ${TEST_CASES})
     bash_test_modules(
