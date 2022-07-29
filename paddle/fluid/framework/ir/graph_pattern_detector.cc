@@ -1057,11 +1057,20 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
 }
 
 PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
-                                       bool with_bias) {
+                                       bool with_residual_data) {
   // Create shared nodes.
   x->assert_is_op_input("fc", "Input");
 
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+
+  if (!with_residual_data) {
+    fc_op->assert_more([&](Node *x) {
+      if (!HasOutput(x, "ResidualData") ||
+          x->Op()->Output("ResidualData").size() == 0)
+        return true;
+      return false;
+    });
+  }
   // Create variables
   // Input
   auto *input_var = pattern->NewNode(input_repr())
@@ -1081,8 +1090,16 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
-      .LinksTo({fc_out_var});
+  std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
+
+  if (with_residual_data) {
+    auto res_fc_var = pattern->NewNode(residual_data_repr())
+                          ->AsOutput()
+                          ->assert_is_op_output("conv2d", "ResidualData");
+    links_from.push_back(res_fc_var);
+  }
+
+  fc_op->LinksFrom(links_from).LinksTo({fc_out_var});
   return fc_out_var;
 }
 

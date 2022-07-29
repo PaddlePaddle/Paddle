@@ -85,14 +85,16 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
                                     std::string scale_attr_name,
                                     float shift,
                                     std::string shift_attr_name) const {
-  auto inputs = op->Op()->InputNames();
+  bool residual_fc = input_name == "ResidualData" && op->Op()->Type() == "fc";
+  auto inputs = residual_fc ? op->Op()->OutputNames() : op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
                     platform::errors::InvalidArgument(
-                        "Var(%s) isn't the input of the %s operator.",
+                        "Var(%s) isn't the %s of the %s operator.",
                         input_name,
+                        residual_fc ? "output" : "input",
                         op->Op()->Type()));
   unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
@@ -467,7 +469,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       ((with_residual_data) ? "with residual connection" : ""));
 }
 
-void CPUQuantizePass::QuantizeFc(Graph* graph) const {
+void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
@@ -475,7 +477,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
                        ->NewNode("fc_quantizer/input")
                        ->AsInput()
                        ->assert_is_op_input("fc", "Input");
-  fc_pattern(fc_input, false);
+  fc_pattern(fc_input, with_residual_data);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -497,9 +499,29 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
-    if (!AreScalesPresentForNodes({input, weights})) {
-      MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
-      return;
+    if (with_residual_data) {
+      GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data, fc_pattern);
+      if (!AreScalesPresentForNodes({input, weights, residual_data})) {
+        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+        return;
+      }
+
+      bool is_residual_unsigned{false};
+      auto residual_scale =
+          GetScaleValueForNode(residual_data, &is_residual_unsigned);
+
+      QuantizeInput(g,
+                    fc,
+                    residual_data,
+                    "ResidualData",
+                    residual_scale,
+                    is_residual_unsigned,
+                    "Scale_in_eltwise");
+    } else {
+      if (!AreScalesPresentForNodes({input, weights})) {
+        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+        return;
+      }
     }
 
     bool is_input_unsigned{false};
