@@ -31,8 +31,10 @@ namespace interpreter {
 
 class DependencyBuilder {
  public:
-  explicit DependencyBuilder() : instructions_(nullptr) {}
+  DependencyBuilder() : is_build_(false), instructions_(nullptr) {}
 
+  // build op dependencies and return the mapping from op to its downstream-op
+  // set
   const std::map<int, std::set<int>>& Build(
       const std::vector<Instruction>& instructions);
 
@@ -53,12 +55,16 @@ class DependencyBuilder {
 
   void ShrinkDownstreamMap();
 
-  bool is_build_{false};
+  bool is_build_;
   const std::vector<Instruction>* instructions_;  // not_own
   size_t op_num_;
 
   // op_happens_before_[i][j] == true means op[i] happens before op[j]
   std::vector<std::vector<bool>> op_happens_before_;
+
+  // op_downstream_map_ is the mapping from op to its downstream-op set, that is
+  // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
+  // should be dispatched after op[i]
   std::map<int, std::set<int>> op_downstream_map_;
 };
 
