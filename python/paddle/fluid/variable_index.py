@@ -495,10 +495,8 @@ def _getitem_impl_(var, item):
             if op_type == "strided_slice":
                 out = paddle._C_ops.final_state_strided_slice(
                     var, axes, starts, ends, steps)
-                #  (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
 
             if op_type == "slice":
-                #   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
                 out = paddle._C_ops.final_state_slice(var, axes, starts, ends,
                                                       infer_flags, [])
         else:
