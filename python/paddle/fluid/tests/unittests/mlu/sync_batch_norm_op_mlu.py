@@ -35,9 +35,9 @@ from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
 from test_sync_batch_norm_base_mlu import TestSyncBatchNormRunnerBase, runtime_main
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from op_test import OpTest, _set_use_system_allocator
 
-from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+from test_sync_batch_norm_op import create_or_get_tensor
 
 _set_use_system_allocator(False)
 paddle.enable_static()

@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/jit/property.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 
 namespace py = pybind11;
 
@@ -433,15 +433,6 @@ void BindJitProperty(pybind11::module *m) {
            "set list of string",
            py::arg("name"),
            py::arg("val"))
-      .def("set_tensor",
-           [](const pd::VarDesc &tensor, const std::string name) {
-             throw platform::errors::Unimplemented("Not implement set_tensor.");
-           })
-      .def(
-          "set_tensors",
-          [](const pybind11::list &tensors, const std::string name) {
-            throw platform::errors::Unimplemented("Not implement set_tensors.");
-          })
       .def("serialize_to_string", SerializeMessage<jit::Property>)
       .def("parse_from_string", DeserializeMessage<jit::Property>);
 }

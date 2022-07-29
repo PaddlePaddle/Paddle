@@ -29,6 +29,7 @@ class TestSvdOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.linalg.svd
         self.generate_input()
         self.generate_output()
         self.op_type = "svd"
@@ -55,7 +56,7 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'])
+        self.check_output(no_check_set=['U', 'VH'], check_eager=True)
 
     def test_svd_forward(self):
         """ u matmul diag(s) matmul vt must become X
@@ -75,13 +76,19 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['S'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
 
     def check_U_grad(self):
-        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['U'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
 
     def check_V_grad(self):
-        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['VH'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
 
     def test_check_grad(self):
         """ 

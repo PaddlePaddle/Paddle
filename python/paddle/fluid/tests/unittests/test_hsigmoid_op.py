@@ -172,10 +172,30 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     return pre_output, out
 
 
+def python_api(input,
+               weight,
+               label,
+               path_table=None,
+               path_code=None,
+               bias=None,
+               num_classes=-1,
+               is_sparse=False,
+               remote_prefetch=False):
+    assert is_sparse == remote_prefetch, "is_sparse is equal to remote_prefetch in dygraph."
+    return paddle.nn.functional.hsigmoid_loss(input, label, num_classes, weight,
+                                              bias, path_table, path_code,
+                                              is_sparse)
+
+
+python_out_sig = ["Out"]
+
+
 class TestHSigmoidOp(OpTest):
 
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
+        self.python_api = python_api
+        self.python_out_sig = python_out_sig
         num_classes = 101
         feature_size = 5
         batch_size = 20
@@ -193,11 +213,12 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'W', 'Bias'], ['Out'],
-                        user_defined_grads=self.user_grads)
+                        user_defined_grads=self.user_grads,
+                        check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -208,6 +229,8 @@ class TestHSigmoidOpSparse(OpTest):
 
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
+        self.python_api = python_api
+        self.python_out_sig = python_out_sig
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
@@ -237,7 +260,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
@@ -318,6 +341,8 @@ class TestHSigmoidOpWithCostumTree(OpTest):
 
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
+        self.python_api = python_api
+        self.python_out_sig = python_out_sig
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
@@ -347,10 +372,12 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(['Bias', 'X', 'W'], ['Out'],
+                        no_grad_set=set('Label'),
+                        check_eager=True)
 
 
 @skip_check_grad_ci(
@@ -361,6 +388,8 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
 
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
+        self.python_api = python_api
+        self.python_out_sig = python_out_sig
         num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
@@ -394,10 +423,12 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(['X', 'W'], ['Out'],
+                        no_grad_set=set('Label'),
+                        check_eager=True)
 
 
 class TestHSigmoidLossAPI(unittest.TestCase):

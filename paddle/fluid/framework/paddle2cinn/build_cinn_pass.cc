@@ -141,14 +141,14 @@ int ExtractOpRole(const GraphNodeSet& cluster) {
   }
 }
 
-// Deal with subgraph's feed input var node:
+// Deal with input var nodes of the target subgraph:
 // create a new input var node and it's feed op node
-void AddFeedOpAndVar(const GraphNodeSet& feed_vars,
+void AddFeedOpAndVar(const GraphNodeSet& input_vars,
                      const GraphNodeSet& cluster,
                      const GraphNodeMap& old_op2new_op,
                      const GraphNodeMap& old_var2new_var,
                      Graph* graph) {
-  for (auto* old_var : feed_vars) {
+  for (auto* old_var : input_vars) {
     // create feed op
     OpDesc desc;
     desc.SetType("feed");
@@ -157,7 +157,7 @@ void AddFeedOpAndVar(const GraphNodeSet& feed_vars,
 
     // get new feed var node
     auto* var = old_var2new_var.at(old_var);
-    VLOG(4) << "Add Feed Op before: " << var->Name();
+    VLOG(4) << "Add Feed Op before the input var: " << var->Name();
 
     // link feed op and feed var
     IR_NODE_LINK_TO(op, var);
@@ -170,26 +170,6 @@ void AddFeedOpAndVar(const GraphNodeSet& feed_vars,
       // Do not need relink old op or old var here, they will be
       // fixed in RemoveSubGraphFromGraph, here we just deal with
       // new subgraph's node.
-    }
-  }
-}
-
-// Deal with subgraph's parameter var node:
-// create a new input var node, it's data will get by scope,
-// so it don't need feed op
-void AddParamVar(const GraphNodeSet& param_vars,
-                 const GraphNodeSet& cluster,
-                 const GraphNodeMap& old_op2new_op,
-                 const GraphNodeMap& old_var2new_var,
-                 Graph* graph) {
-  for (auto* old_var : param_vars) {
-    auto* var = old_var2new_var.at(old_var);
-    VLOG(4) << "Add Param Var Node: " << var->Name();
-
-    for (auto* old_op : old_var->outputs) {
-      if (cluster.count(old_op)) {
-        IR_NODE_LINK_TO(var, old_op2new_op.at(old_op));
-      }
     }
   }
 }
@@ -389,7 +369,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   AddFeedOpAndVar(
       need_feed_vars, cluster, old_op2new_op, old_var2new_var, subgraph.get());
-  AddParamVar(
+  AddFeedOpAndVar(
       param_vars, cluster, old_op2new_op, old_var2new_var, subgraph.get());
   AddOutputVar(
       output_vars, cluster, old_op2new_op, old_var2new_var, subgraph.get());

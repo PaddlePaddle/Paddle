@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/operators/one_hot_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace operators {
@@ -28,9 +29,13 @@ template <typename DeviceContext, typename T>
 class OneHotXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
+    const auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
+
+    // get depth from attr
     int depth = context.Attr<int>("depth");
+
+    // get depth from input tensor
     if (context.HasInput("depth_tensor")) {
       auto* depth_tensor = context.Input<Tensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
@@ -50,18 +55,14 @@ class OneHotXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
     int len = in->numel();
+    // int one_hot(Context* ctx, const T* x, float* y, int len, int depth, float
+    // on_value = 1.0f, float off_value = 0.0f);
     int ret = xpu::one_hot<T>(dev_ctx.x_context(),
                               in->data<T>(),
                               out->mutable_data<float>(context.GetPlace()),
                               len,
                               depth);
-
-    PADDLE_ENFORCE_EQ(ret,
-                      XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU one_hot kernel return wrong value[%d %s]",
-                          ret,
-                          XPUAPIErrorMsg[ret]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "one_hot");
   }
 };
 
