@@ -73,6 +73,24 @@ PDNode *DeleteUnsqueeze::operator()(PDNode *persis_x) {
 DeleteUnsqueezePass::DeleteUnsqueezePass() {
 }
 
+static bool ValidateOp(Node* op) 
+{
+  if(op->inputs.size() == 1)
+  {
+    return true;
+  }
+  else if(op->inputs.size() == 2)
+  {
+    for (int i = 0; i < 2; i++) {
+      auto input_i_persis = op->inputs[i]->Var()->Persistable();
+      auto input_i_outnum = op->inputs[i]->outputs.size();
+      if (input_i_persis && input_i_outnum == 1) return true;
+    }
+    return false;
+  } else {
+    return false;
+  }
+}
 
 void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -112,10 +130,6 @@ void DeleteUnsqueezePass::ApplyImpl(ir::Graph *graph) const {
     auto* x_tensor = new_scope->FindVar(subgraph.at(persis_x_node)->Name())->GetMutable<LoDTensor>();
     x_tensor->Resize(persis_x_tensor->dims());
     *x_tensor = *persis_x_tensor;
-    // auto* x_ptr = x_tensor->mutable_data<float>(platform::CPUPlace());
-    // for (int i = 0; i < x_tensor->numel(); i++) {
-    //   x_ptr[i] = persis_x_ptr[i];
-    // }
 
     auto* iter_op = op;
     std::vector<std::unique_ptr<OperatorBase>> ops;
@@ -130,17 +144,14 @@ auto PickOneOut = [&](Node* node) -> Node* {
   else if(node->outputs.size() == 0) {
     return nullptr;
   }
-  else
-  {
-    if(node->IsOp())
-    {
+  else {
+    if(node->IsOp()) {
       for(size_t i = 0; i < node->outputs.size(); i++)
       {
         if(node->outputs[i]->outputs.size() >= 1) return node->outputs[i];
       }
     }
-    else
-    {
+    else {
       return nullptr;
     }
   }
@@ -151,11 +162,14 @@ auto PickOneOut = [&](Node* node) -> Node* {
     while(iter_op)
     {
       last_op = iter_op;
-      if (iter_op->inputs.size() == 1) {
+      if (ValidateOp(iter_op)) {
         remove_nodes.emplace(iter_op);
         for (auto in_node : iter_op->inputs) {
           new_scope->Var(in_node->Var()->Name());
-          new_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
+          auto in_node_tensor = new_scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>();
+          if (in_node->Var()->Persistable()) {
+            *in_node_tensor = *(scope->FindVar(in_node->Var()->Name())->GetMutable<LoDTensor>());
+          }
           remove_nodes.emplace(in_node);
         }
         for (auto out_node : iter_op->outputs) {
@@ -179,20 +193,14 @@ auto PickOneOut = [&](Node* node) -> Node* {
     auto out_desc = last_persis_node->Var();
     auto out_name = out_desc->Name();
     auto* local_out_tensor = new_scope->FindVar(out_name)->GetMutable<LoDTensor>();
-    //auto* local_out_ptr =  local_out_tensor->mutable_data<float>(platform::CPUPlace());
 
     std::vector<int64_t> out_shape;
     for(int64_t i = 0; i < local_out_tensor->dims().size(); i++) {
       out_shape.push_back(local_out_tensor->dims()[i]);
     }
-
     out_desc->SetShape(out_shape);
     out_desc->SetPersistable(true);
     auto* out_tensor = scope->Var(out_name)->GetMutable<LoDTensor>();
-    //auto dtype = framework::TransToPhiDataType(out_desc->GetDataType());
-    //out_tensor->Resize(phi::make_ddim(out_shape));
-    //auto* out_ptr =  out_tensor->mutable_data<float>(platform::CPUPlace());
-    //memcpy(out_ptr, local_out_ptr, sizeof(float) * out_tensor->numel());
     *out_tensor = *local_out_tensor;
 
     // Remove links in graph
