@@ -18,7 +18,7 @@
 namespace paddle {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-InferGPUContext::InferGPUContext(phi::Place place)
+InferGPUContext::InferGPUContext(const phi::Place& place)
     : phi::GPUContext(place, false) {}
 #endif
 

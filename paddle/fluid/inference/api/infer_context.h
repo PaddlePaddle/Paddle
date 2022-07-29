@@ -26,7 +26,7 @@ class InferCPUContext : public phi::CPUContext {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class InferGPUContext : public phi::GPUContext {
  public:
-  explicit InferGPUContext(phi::Place place);
+  explicit InferGPUContext(const phi::Place& place);
   using phi::GPUContext::SetBlasHandle;
   using phi::GPUContext::SetBlasTensorCoreHandle;
   using phi::GPUContext::SetBlasTF32Handle;

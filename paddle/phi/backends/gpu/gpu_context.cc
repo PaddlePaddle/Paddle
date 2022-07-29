@@ -240,8 +240,6 @@ struct GPUContext::Impl {
     InitDnnWorkspace();
   }
 
-  Impl() : place_(GPUPlace()) {}
-
   explicit Impl(const GPUPlace& place) : place_(place) {}
 
   ~Impl() {
