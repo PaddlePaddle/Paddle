@@ -1536,13 +1536,12 @@ def assign(x, output=None):
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
         # We now support the form of [var, VAR...] if the Var.shape=[1,]
-        if (len(input.shape) > 0
-                and any(isinstance(x, Variable) for x in input)):
+        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
                 [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
                 raise RuntimeError(
-                    "Don't support paddle.assign([Variable, Variable...]) with non-scalar variable."
+                    "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
@@ -1559,7 +1558,7 @@ def assign(x, output=None):
             """ may be this form [[Var], [Var], [3], [4]], we reject them.
             """
             raise RuntimeError(
-                "The type of received input == `object`, it is not supported to convert to tensor"
+                "The type of received input == `object`, it is not supported to convert to tensor, such as [[Var], [Var], [3], [4]]"
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)

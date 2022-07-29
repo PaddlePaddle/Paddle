@@ -130,7 +130,8 @@ def monkey_patch_variable():
 
     @static_only
     def cpu(self):
-        """ variable should not have cpu() and cuda() interface.
+        """ 
+            Variable should not have cpu() and cuda() interface.
             But this interface can greatly facilitate dy2static.
             We do nothing here.
         """
@@ -138,7 +139,8 @@ def monkey_patch_variable():
 
     @static_only
     def cuda(self):
-        """ variable should not have cpu() and cuda() interface.
+        """ 
+            Variable should not have cpu() and cuda() interface.
             But this interface can greatly facilitate dy2static.
             We do nothing here.
         """
