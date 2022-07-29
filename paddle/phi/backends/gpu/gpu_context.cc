@@ -784,8 +784,6 @@ struct GPUContext::Impl {
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
-GPUContext::GPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
-
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
