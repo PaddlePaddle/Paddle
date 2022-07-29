@@ -87,5 +87,12 @@ class TestStackOp6(TestUnStackOpBase):
         self.axis = 2
 
 
+class TestStackOp7(TestUnStackOpBase):
+
+    def initParameters(self):
+        self.input_dim = (0, 0, 0)
+        self.axis = 1
+
+
 if __name__ == '__main__':
     unittest.main()
