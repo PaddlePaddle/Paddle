@@ -1007,14 +1007,14 @@ def dropout(x,
             print(y_01)
 
     """
-    # fast return for p == 0
-    if p == 0:
-        return x
+    if not isinstance(p, (float, int, Variable)):
+        raise TypeError("p argument should be a number or Variable")
 
-    if not isinstance(p, (float, int)):
-        raise TypeError("p argument should be a number")
-    if p < 0 or p > 1:
-        raise ValueError("p argument should between 0 and 1")
+    if isinstance(p, (int, float)):
+        # fast return for p == 0
+        if p == 0: return x
+        elif p < 0 or p > 1:
+            raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
@@ -1053,6 +1053,12 @@ def dropout(x,
         def get_attrs(prog, dropout_prob, is_test, seed):
             if (seed is None or seed == 0) and prog.random_seed != 0:
                 seed = prog.random_seed
+
+            if isinstance(dropout_prob,
+                          Variable) and not dropout_prob.shape != [1]:
+                raise TypeError(
+                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
+                    .format(p.shape))
             attrs = {
                 'dropout_prob': dropout_prob,
                 'is_test': is_test,

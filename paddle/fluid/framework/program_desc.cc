@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 
+#include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -97,6 +98,23 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             block_descs.push_back(MutableBlock(block_id));
           }
           op->SetBlocksAttr(attr_name, block_descs);
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VAR) {
+          VarDesc *var_desc =
+              PADDLE_GET_CONST(VarDesc *, op->GetAttr(attr_name, true));
+          op->SetVarAttr(attr_name,
+                         o.Block(block_id).FindVarRecursive(var_desc->Name()));
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VARS) {
+          std::vector<VarDesc *> vars_desc = PADDLE_GET_CONST(
+              std::vector<VarDesc *>, op->GetAttr(attr_name, true));
+          std::vector<VarDesc *> new_vars_desc;
+          std::transform(
+              vars_desc.begin(),
+              vars_desc.end(),
+              std::back_inserter(new_vars_desc),
+              [&](VarDesc *var_desc) {
+                return o.Block(block_id).FindVarRecursive(var_desc->Name());
+              });
+          op->SetVarsAttr(attr_name, new_vars_desc);
         }
       }
     }

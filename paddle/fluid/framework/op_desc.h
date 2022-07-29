@@ -56,7 +56,10 @@ class OpDesc {
 
   const std::vector<std::string> &Input(const std::string &name) const;
 
-  std::vector<std::string> InputArgumentNames() const;
+  std::vector<std::string> Input(const std::string &name,
+                                 bool with_attr_var) const;
+
+  std::vector<std::string> InputArgumentNames(bool with_attr_var = false) const;
 
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
@@ -73,13 +76,12 @@ class OpDesc {
 
   void RemoveInput(const std::string &name);
 
-  bool HasAttr(const std::string &name) const {
-    return attrs_.find(name) != attrs_.end();
-  }
+  bool HasAttr(const std::string &name, bool with_attr_var = false) const;
 
   bool HasProtoAttr(const std::string &name) const;
 
-  proto::AttrType GetAttrType(const std::string &name) const;
+  proto::AttrType GetAttrType(const std::string &name,
+                              bool with_attr_var = false) const;
 
   std::vector<std::string> AttrNames() const;
 
@@ -94,7 +96,7 @@ class OpDesc {
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
-  Attribute GetAttr(const std::string &name) const;
+  Attribute GetAttr(const std::string &name, bool with_attr_var = false) const;
 
   template <typename T>
   T GetAttrIfExists(const std::string &name) const {
@@ -125,10 +127,14 @@ class OpDesc {
   // Only be used in C++
   void SetAttrMap(const AttributeMap &attr_map);
 
-  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
+  std::vector<std::string> InputNames(bool with_attr_var = false) const {
+    return MapKeys(inputs_);
+  }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
   const VariableNameMap &Inputs() const { return inputs_; }
+
+  VariableNameMap Inputs(bool with_attr_var) const;
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
@@ -171,6 +177,8 @@ class OpDesc {
   // Find VarDesc from OpDesc located Block into global Block
   VarDesc *FindVarRecursive(const std::string &name);
 
+  void InitAttrs(const AttributeMap &attrs);
+
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
     std::vector<typename MapType::key_type> ret_val;
@@ -197,7 +205,10 @@ class OpDesc {
   VariableNameMap inputs_;
   // output arg name => output variable names
   VariableNameMap outputs_;
+  // attribute name => all original attrs
   AttributeMap attrs_;
+  // attribute name => only var(s) attrs, default empty
+  AttributeMap attrs_var_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
@@ -211,5 +222,7 @@ class OpDesc {
   // current OpDesc is not built from the other one.
   uint64_t original_id_ = id_;
 };
+
+std::vector<std::string> AttrVarNames(const Attribute &attr);
 }  // namespace framework
 }  // namespace paddle

@@ -2850,10 +2850,10 @@ class Operator(object):
                     self._update_desc_attr(ipu_stage_attr_name,
                                            global_ipu_stage)
 
-            self.desc.check_attrs()
+            # self.desc.check_attrs()
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
-                self.desc.infer_shape(self.block.desc)
+                # self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -2935,6 +2935,16 @@ class Operator(object):
                 continue
 
             attr_type = self.desc.attr_type(name)
+            # TODO(dev): add GetAttrVarName in OpDesc
+            if attr_type == core.AttrType.VAR:
+                a = "{name} = Var[{value}]".format(name=name,
+                                                   type=attr_type,
+                                                   value=name)
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
             if attr_type == core.AttrType.BLOCK:
                 a = "{name} = block[{value}]".format(
                     name=name, type=attr_type, value=self._block_attr_id(name))
@@ -3128,7 +3138,12 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            self.desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and all(
+                isinstance(v, Variable) for v in val):
+            self.desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             self.desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and all(
                 isinstance(v, Block) for v in val):
@@ -4394,6 +4409,9 @@ class IrOpNode(IrNode):
         desc = self.node.op()
         if isinstance(val, Variable):
             desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and all(
+                isinstance(v, Variable) for v in val):
+            desc.set_vars_attr(name, [v.desc for v in val])
         elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and \
@@ -4852,7 +4870,12 @@ class IrGraph(object):
         """
         Update the value of desc's attribute by attribute's name.
         """
-        if isinstance(val, Block):
+        if isinstance(val, Variable):
+            desc.set_var_attr(name, val.desc)
+        elif isinstance(val, list) and all(
+                isinstance(v, Variable) for v in val):
+            desc.set_vars_attr(name, [v.desc for v in val])
+        elif isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
         elif isinstance(val, list) and val and all(
                 isinstance(v, Block) for v in val):

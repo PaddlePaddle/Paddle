@@ -221,6 +221,28 @@ inline proto::AttrType AttrTypeID(const Attribute& attr) {
   return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
+inline bool IsAttVar(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VAR;
+}
+
+inline bool IsAttVars(const Attribute& attr) {
+  return AttrTypeID(attr) == proto::AttrType::VARS;
+}
+
+inline bool HasAttrVar(const Attribute& attr) {
+  return IsAttVar(attr) || IsAttVars(attr);
+}
+
+inline AttributeMap FilterAttrVar(const AttributeMap& attrs) {
+  AttributeMap attrs_var;
+  for (auto& attr : attrs) {
+    if (HasAttrVar(attr.second)) {
+      attrs_var.emplace(attr);
+    }
+  }
+  return attrs_var;
+}
+
 class AttrReader {
  public:
   explicit AttrReader(const AttributeMap& attrs)
@@ -349,6 +371,33 @@ class EnumInContainer {
   std::unordered_set<T> container_;
 };
 
+// template <typename T>
+// class ValueDataTypeCheck {
+
+//   static DataType expected_dtype =
+//   experimental::CppTypeToDataType<T>::Type();
+
+//   public:
+//     static void check()(const Attribute& attr, const std::string& name){
+//       if(IsAttVar){
+//         enforce(GetAttrValue(attr));
+//       }else{
+//         for(auto &var_desc : GetAttrValue(attr)){
+//           enforce(var_desc);
+//         }
+//       }
+//     }
+//     static void enforce(const VarDesc* var){
+//       auto dtype = TransToPhiDataType(var->GetDataType());
+//       PADDLE_ENFORCE_EQ(
+//         expected_dtype,
+//         dtype,
+//         platform::errors::InvalidArgument(
+//                 "Expected Attribute(%s) DataType is %s, but received %.",
+//                 name, expected_dtype, dtype);
+//     }
+// };
+
 // check whether a certain attribute fit its limits
 // an attribute can have more than one limits
 template <typename T>
@@ -415,8 +464,15 @@ class TypedAttrChecker {
       return;
     }
 
+    auto it = attr_map->find(attr_name_);
+    // If attribute is VarDesc(s), we should verify it's dtype and shape.
+    if (it != attr_map->end() && HasAttrVar(it->second)) {
+      VLOG(1) << "Found Attribute " << attr_name_
+              << " with Variable, skip attr_checker.";
+      // ValueDataTypeCheck::check(it->second);
+      return;
+    }
     if (only_check_exist_value) {
-      auto it = attr_map->find(attr_name_);
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
         T* attr_value = extract_attr(it->second);
@@ -425,7 +481,6 @@ class TypedAttrChecker {
         }
       }
     } else {
-      auto it = attr_map->find(attr_name_);
       if (it == attr_map->end()) {
         // user do not set this attr
         PADDLE_ENFORCE_EQ(
