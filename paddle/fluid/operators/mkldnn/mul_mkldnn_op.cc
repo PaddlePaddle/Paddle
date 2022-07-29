@@ -416,8 +416,8 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                      bool trans_y,
                      Tensor *out) const {
     static const std::vector<int64_t> vec_placeholder;
-    dnnl::primitive_attr matmul_attrs;
-    MatMulV2MKLDNNHandler<XT> handler(onednn_engine,
+    MatMulV2MKLDNNHandler<XT> handler(ctx,
+                                      onednn_engine,
                                       ctx.GetPlace(),
                                       x_dims,
                                       trans_x,
@@ -425,8 +425,7 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
                                       trans_y,
                                       false,
                                       vec_placeholder,
-                                      vec_placeholder,
-                                      matmul_attrs);
+                                      vec_placeholder);
 
     const auto src_memory_p = handler.AcquireSrcMemory(x);
     const auto weights_memory_p = handler.AcquireWeightsMemory(y);

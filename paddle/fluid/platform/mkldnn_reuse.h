@@ -778,6 +778,59 @@ class BroadcastDataMKLDNNHandler
   }
 };
 
+static void AppendActivation(const framework::ExecutionContext& ctx,
+                             dnnl::post_ops& post_ops,
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation").empty()
+          : true;
+  if (invalid_attribute) return;
+
+  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+  const auto fuse_alpha =
+      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+  const auto fuse_beta =
+      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        platform::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
 template <typename T>
 class ReductionMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction> {
@@ -810,7 +863,8 @@ template <typename T>
 class MatMulV2MKLDNNHandler
     : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const dnnl::engine engine,
+  MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
+                        const dnnl::engine engine,
                         paddle::platform::Place cpu_place,
                         const std::vector<int64_t>& x_org_dims,
                         bool trans_x,
@@ -818,8 +872,7 @@ class MatMulV2MKLDNNHandler
                         bool trans_y,
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
-                        const std::vector<int64_t>& y_strides_override,
-                        const dnnl::primitive_attr matmul_attrs)
+                        const std::vector<int64_t>& y_strides_override)
       : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
                                                                    cpu_place) {
     // M X K * K X N
@@ -889,7 +942,31 @@ class MatMulV2MKLDNNHandler
     auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
     auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
 
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
+
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+  }
+
+  // TODO(jczaja) : Adapt to int8
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const framework::ExecutionContext& ctx) {
+    dnnl::primitive_attr matmul_attrs;
+    dnnl::post_ops post_operations;
+
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    if (alpha != 1.0f) {
+      matmul_attrs.set_output_scales(0, {alpha});
+    }
+
+    auto sum_scale = 1.0f;
+    if (ctx.HasInput("Bias")) {
+      post_operations.append_sum(sum_scale);
+    }
+
+    AppendActivation(ctx, post_operations);
+
+    matmul_attrs.set_post_ops(post_operations);
+    return matmul_attrs;
   }
 
   std::vector<int64_t> FakeTransposeStrides(
@@ -1013,59 +1090,6 @@ class ActivationMKLDNNHandler
                                             to_void_cast<T>(input_data));
   }
 };
-
-static void AppendActivation(const framework::ExecutionContext& ctx,
-                             dnnl::post_ops& post_ops,
-                             float activation_scale = 1.0f) {
-  const auto invalid_attribute =
-      ctx.HasAttr("fuse_activation")
-          ? ctx.Attr<std::string>("fuse_activation").empty()
-          : true;
-  if (invalid_attribute) return;
-
-  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
-  const auto fuse_alpha =
-      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
-  const auto fuse_beta =
-      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
-
-  if (fuse_activation == "hard_sigmoid") {
-    post_ops.append_eltwise(activation_scale,
-                            dnnl::algorithm::eltwise_linear,
-                            fuse_alpha,
-                            fuse_beta);
-    post_ops.append_eltwise(
-        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-  } else {
-    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-        {"abs", dnnl::algorithm::eltwise_abs},
-        {"clip", dnnl::algorithm::eltwise_clip},
-        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"leaky_relu", dnnl::algorithm::eltwise_relu},
-        {"mish", dnnl::algorithm::eltwise_mish},
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"sqrt", dnnl::algorithm::eltwise_sqrt},
-        {"swish", dnnl::algorithm::eltwise_swish},
-        {"tanh", dnnl::algorithm::eltwise_tanh}};
-
-    const auto& activation_type = activation_map.find(fuse_activation);
-
-    PADDLE_ENFORCE_NE(
-        activation_type,
-        activation_map.end(),
-        platform::errors::InvalidArgument(
-            "Activation '%s' not found in oneDNN algorithms mapper",
-            fuse_activation));
-
-    post_ops.append_eltwise(
-        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
-  }
-}
 
 static std::unordered_map<std::string, std::string> GetAttributeMap(
     std::string act_type) {

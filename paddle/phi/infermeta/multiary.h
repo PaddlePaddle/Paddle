@@ -358,7 +358,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctc_grad,
+                      MetaTensor* warpctcgrad,
                       MetaTensor* loss);
 
 void WhereInferMeta(const MetaTensor& condition,

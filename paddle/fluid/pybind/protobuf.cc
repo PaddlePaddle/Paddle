@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/jit/property.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 
 namespace py = pybind11;
 

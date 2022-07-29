@@ -50,7 +50,8 @@ class TestL2LossOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'],
                         'Out',
-                        max_relative_error=self.max_relative_error)
+                        max_relative_error=self.max_relative_error,
+                        check_eager=True)
 
 
 class TestL2LossDeterministic(unittest.TestCase):
