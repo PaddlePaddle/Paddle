@@ -379,6 +379,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
+           &TensorCopyFrom<paddle::platform::IPUPlace>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from",
            &TensorCopyFrom<paddle::platform::Place>,
            py::arg("tensor"),
            py::arg("place"),
@@ -801,7 +806,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // TODO(ZHUI): use cuda event, to avoid sync.
              const auto &device_id = paddle::platform::GetCurrentDeviceId();
              auto stream =
-                 paddle::platform::stream::get_current_stream(device_id);
+                 paddle::platform::get_current_stream(device_id);
              stream->Synchronize();
 
              int type_idx = static_cast<int>(self.type());

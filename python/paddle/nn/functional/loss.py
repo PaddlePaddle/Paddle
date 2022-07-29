@@ -920,7 +920,11 @@ def hsigmoid_loss(input,
             #  [2.11009121]
             #  [1.92374969]]
     """
-
+    if in_dygraph_mode():
+        out, _, _ = _C_ops.final_state_hierarchical_sigmoid(
+            input, weight, label, path_table, path_code, bias, num_classes,
+            is_sparse, 0, [], [], [], is_sparse)
+        return out
     if _non_static_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(input, weight, label,
                                                 path_table, path_code, bias,

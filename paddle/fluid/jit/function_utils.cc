@@ -15,7 +15,9 @@
 #include "paddle/fluid/jit/function_utils.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -75,7 +77,7 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
   for (size_t i = 0; i < param_names.size(); ++i) {
     std::string name = param_names[i];
     auto &param = params_dict.find(name)->second;
-    auto &dense_tensor = param.Get<DenseTensor>();
+    auto &dense_tensor = param->Get<DenseTensor>();
     VLOG(3) << "share into scope: " << name;
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();

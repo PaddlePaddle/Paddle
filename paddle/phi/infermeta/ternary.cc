@@ -1088,6 +1088,83 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void SpectralNormInferMeta(const MetaTensor& weight,
+                           const MetaTensor& u,
+                           const MetaTensor& v,
+                           int dim,
+                           int power_iters,
+                           float eps,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  auto dim_weight = weight.dims();
+  auto rank_weight = dim_weight.size();
+  PADDLE_ENFORCE_GE(rank_weight,
+                    2,
+                    errors::InvalidArgument(
+                        "The rank of Input(Weights) should be greater equal "
+                        "than 2, but received Weight rank(%d)",
+                        rank_weight));
+  PADDLE_ENFORCE_LE(
+      rank_weight,
+      5,
+      errors::InvalidArgument("The rank of Input(Weights) should be less equal "
+                              "than 5, but received Weight rank(%d)",
+                              rank_weight));
+
+  auto dim_valid = dim == 0 || dim == 1;
+  PADDLE_ENFORCE_EQ(dim_valid,
+                    true,
+                    errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_GE(
+      power_iters,
+      0,
+      errors::InvalidArgument(
+          "Attr(power_iters) should be greater equal then 0, but received %d",
+          power_iters));
+
+  int h = dim_weight[dim];
+  int w = 1;
+  for (int i = 0; i < rank_weight; i++) {
+    if (i != dim) {
+      w *= dim_weight[i];
+    }
+  }
+  auto dim_u = u.dims();
+  auto dim_v = v.dims();
+
+  if (config.is_runtime || (dim_u[0] > 0 && h > 0)) {
+    PADDLE_ENFORCE_EQ(dim_u[0],
+                      h,
+                      errors::InvalidArgument(
+                          "Input(U) dimension[0] should be equal to "
+                          "Input(Weight) dimension[Attr(dim)], but received "
+                          "U dimension[0](%d) != Weight dimension[%d](%d)",
+                          dim_u[0],
+                          dim,
+                          h));
+  }
+
+  if (config.is_runtime || (dim_v[0] > 0 && w > 0)) {
+    PADDLE_ENFORCE_EQ(
+        dim_v[0],
+        w,
+        errors::InvalidArgument(
+            "Input(V) dimension[0] should be equal to the product of "
+            "Input(Weight) dimension except dimension[Attr(dim)], but "
+            "received V dimension[0](%d) != product of Input(Weight) "
+            "dimension(%d)",
+            dim_v[0],
+            w));
+  }
+
+  if (out) {
+    out->set_dims(dim_weight);
+    out->set_dtype(weight.dtype());
+    out->share_lod(weight);
+  }
+}
+
 void ViterbiDecodeInferMeta(const MetaTensor& input,
                             const MetaTensor& transition,
                             const MetaTensor& length,
