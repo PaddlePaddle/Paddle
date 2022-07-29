@@ -45,7 +45,6 @@ namespace paddle {
 namespace distributed {
 
 using Place = paddle::platform::Place;
-using phi::GPUContext = phi::GPUContext;
 
 class ProcessGroupNCCL : public ProcessGroup {
  public:

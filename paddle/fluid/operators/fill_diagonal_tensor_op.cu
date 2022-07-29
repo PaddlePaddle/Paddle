@@ -18,7 +18,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using phi::GPUContext = phi::GPUContext;
 
 template <typename T>
 __global__ void fill_diagonal_tensor_kernel(int64_t size,
