@@ -416,9 +416,10 @@ OpDesc::OpDesc(const std::string &type,
   desc_.set_type(type);
   inputs_ = inputs;
   outputs_ = outputs;
-  attrs_ = attrs;
   need_update_ = true;
   block_ = nullptr;
+
+  InitAttrs(attrs);
 }
 
 OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
@@ -432,6 +433,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  attrs_var_ = op_desc.attrs_var_;
   // The record of original_id_ is only for auto parallel.
   original_id_ = op_desc.original_id_;
   need_update_ = true;
@@ -465,9 +467,13 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
-    // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS attr here.
-    if (attr.type() != proto::AttrType::BLOCK &&
-        attr.type() != proto::AttrType::BLOCKS) {
+    // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS/VAR/VARS attr
+    // here.
+    auto attr_type = attr.type();
+    if (attr_type != proto::AttrType::BLOCK &&
+        attr_type != proto::AttrType::BLOCKS &&
+        attr_type != proto::AttrType::VAR &&
+        attr_type != proto::AttrType::VARS) {
       attrs_[attr_name] = GetAttrValue(attr);
     }
   }
@@ -489,9 +495,30 @@ const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   return it->second;
 }
 
-std::vector<std::string> OpDesc::InputArgumentNames() const {
+std::vector<std::string> OpDesc::Input(const std::string &name,
+                                       bool with_attr_var) const {
+  // Attribute with VarDesc type will consider as Input
+  if (with_attr_var) {
+    auto it = attrs_var_.find(name);
+    if (it != attrs_var_.end()) return AttrVarNames(it->second);
+  }
+  return this->Input(name);
+}
+
+VariableNameMap OpDesc::Inputs(bool with_attr_var) const {
+  if (!with_attr_var || attrs_var_.empty()) {
+    return inputs_;
+  }
+  VariableNameMap res = inputs_;
+  for (auto &attr : attrs_var_) {
+    res[attr.first] = AttrVarNames(attr.second);
+  }
+  return res;
+}
+
+std::vector<std::string> OpDesc::InputArgumentNames(bool with_attr_var) const {
   std::vector<std::string> retv;
-  for (auto &ipt : this->inputs_) {
+  for (auto &ipt : this->Inputs(with_attr_var)) {
     retv.insert(retv.end(), ipt.second.begin(), ipt.second.end());
   }
   return retv;
@@ -558,13 +585,10 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
   return false;
 }
 
-proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
-  auto it = attrs_.find(name);
-  PADDLE_ENFORCE_NE(
-      it,
-      attrs_.end(),
-      platform::errors::NotFound("Attribute %s is not found.", name));
-  return static_cast<proto::AttrType>(it->second.index() - 1);
+proto::AttrType OpDesc::GetAttrType(const std::string &name,
+                                    bool with_attr_var) const {
+  auto attr = this->GetAttr(name, with_attr_var);
+  return static_cast<proto::AttrType>(attr.index() - 1);
 }
 
 std::vector<std::string> OpDesc::AttrNames() const {
@@ -574,6 +598,14 @@ std::vector<std::string> OpDesc::AttrNames() const {
     retv.push_back(attr.first);
   }
   return retv;
+}
+
+bool OpDesc::HasAttr(const std::string &name, bool with_attr_var) const {
+  bool is_found = attrs_.find(name) != attrs_.end();
+  if (!with_attr_var) {
+    return is_found;
+  }
+  return is_found || attrs_var_.find(name) == attrs_var_.find(name);
 }
 
 void OpDesc::RemoveAttr(const std::string &name) {
@@ -648,12 +680,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
 }
 
 void OpDesc::SetVarAttr(const std::string &name, VarDesc *var) {
-  this->attrs_[name] = var;
+  this->attrs_var_[name] = var;
   need_update_ = true;
 }
 
 void OpDesc::SetVarsAttr(const std::string &name, std::vector<VarDesc *> vars) {
-  this->attrs_[name] = vars;
+  this->attrs_var_[name] = vars;
   need_update_ = true;
 }
 
@@ -670,11 +702,15 @@ void OpDesc::SetBlocksAttr(const std::string &name,
 
 void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
-  attrs_ = attr_map;
+  InitAttrs(attr_map);
   need_update_ = true;
 }
 
-Attribute OpDesc::GetAttr(const std::string &name) const {
+Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
+  if (with_attr_var) {
+    auto it = attrs_var_.find(name);
+    if (it != attrs_var_.end()) return it->second;
+  }
   auto it = attrs_.find(name);
   PADDLE_ENFORCE_NE(
       it,
@@ -917,6 +953,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
       sout << "]";
       VLOG(10) << sout.str();
     }
+    // TODO(dev): need to deal with attr_vars
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
@@ -954,15 +991,29 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
       cur_block->ID()));
 }
 
+void OpDesc::InitAttrs(const AttributeMap &attrs) {
+  attrs_.clear();
+  attrs_var_.clear();
+  for (auto &attr : attrs) {
+    if (HasAttrVar(attr.second)) {
+      attrs_var_.emplace(attr);
+    } else {
+      attrs_.emplace(attr);
+    }
+  }
+}
+
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(
     const OpDesc &op, const BlockDesc &block)
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
-  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+  auto inputs = op_.Inputs(/*with_attr_var=*/true);
+  if (inputs.find(name) == inputs.end()) {
     return false;
   }
-  const std::vector<std::string> &input_names = op_.Input(name);
+  const std::vector<std::string> &input_names =
+      op_.Input(name, /*with_attr_var=*/true);
   auto length = input_names.size();
   if (length == 0) {
     return false;
@@ -997,14 +1048,16 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasAttr(const std::string &name) const {
-  return op_.HasAttr(name);
+  return op_.HasAttr(name, /*with_attr_var=*/false);
 }
 
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
-  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+  auto inputs = op_.Inputs(/*with_attr_var=*/true);
+  if (inputs.find(name) == inputs.end()) {
     return false;
   }
-  const std::vector<std::string> &input_names = op_.Input(name);
+  const std::vector<std::string> &input_names =
+      op_.Input(name, /*with_attr_var=*/true);
   if (input_names.empty()) {
     return false;
   }
@@ -1042,7 +1095,7 @@ AttrReader CompileTimeInferShapeContext::Attrs() const {
 
 std::vector<std::string> CompileTimeInferShapeContext::Inputs(
     const std::string &name) const {
-  return op_.Input(name);
+  return op_.Input(name, /*with_attr_var=*/true);
 }
 
 std::vector<std::string> CompileTimeInferShapeContext::Outputs(
@@ -1090,6 +1143,22 @@ bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
+}
+
+std::vector<std::string> AttrVarNames(const Attribute &attr) {
+  std::vector<std::string> vars_name;
+  if (IsAttVar(attr)) {
+    vars_name.emplace_back(PADDLE_GET_CONST(VarDesc *, attr)->Name());
+  } else if (IsAttVars(attr)) {
+    for (auto &iter : PADDLE_GET_CONST(std::vector<VarDesc *>, attr)) {
+      vars_name.emplace_back(iter->Name());
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported Attribute value type `%s` for AttrVarNames",
+        platform::demangle(attr.type().name())));
+  }
+  return vars_name;
 }
 
 }  // namespace framework

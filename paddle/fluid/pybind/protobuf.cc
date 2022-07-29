@@ -289,7 +289,9 @@ void BindOpDesc(pybind11::module *m) {
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
       .value("BLOCK", pd::proto::AttrType::BLOCK)
-      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS)
+      .value("VAR", pd::proto::AttrType::VAR)
+      .value("VARS", pd::proto::AttrType::VARS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -300,8 +302,16 @@ void BindOpDesc(pybind11::module *m) {
       .def("copy_from", &pd::OpDesc::CopyFrom)
       .def("type", &pd::OpDesc::Type)
       .def("set_type", &pd::OpDesc::SetType)
-      .def("input", &pd::OpDesc::Input)
-      .def("input_names", &pd::OpDesc::InputNames)
+      .def("input",
+           [](pd::OpDesc &self, const std::string &name) {
+             return self.Input(name);
+           })
+      .def(
+          "input_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.InputNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("output", &pd::OpDesc::Output)
       .def("output_names", &pd::OpDesc::OutputNames)
       .def("set_input",
@@ -318,17 +328,41 @@ void BindOpDesc(pybind11::module *m) {
            })
       .def("remove_output", &pd::OpDesc::RemoveOutput)
       .def("remove_input", &pd::OpDesc::RemoveInput)
-      .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
+      .def(
+          "input_arg_names",
+          [](pd::OpDesc &self, bool with_attr_var) {
+            return self.InputArgumentNames(with_attr_var);
+          },
+          py::arg("with_attr_var") = false)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)
       .def("_rename_output", &pd::OpDesc::RenameOutput)
-      .def("has_attr", &pd::OpDesc::HasAttr)
-      .def("attr_type", &pd::OpDesc::GetAttrType)
+      .def(
+          "has_attr",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.HasAttr(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
+      .def(
+          "attr_type",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.GetAttrType(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
       .def("attr_names", &pd::OpDesc::AttrNames)
       .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("remove_attr", &pd::OpDesc::RemoveAttr)
-      .def("attr", &pd::OpDesc::GetAttr)
+      .def(
+          "attr",
+          [](pd::OpDesc &self, const std::string &name, bool with_attr_var) {
+            return self.GetAttr(name, with_attr_var);
+          },
+          py::arg("name"),
+          py::arg("with_attr_var") = false)
       .def("set_var_attr", &pd::OpDesc::SetVarAttr)
+      .def("set_vars_attr", &pd::OpDesc::SetVarsAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
@@ -352,7 +386,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("id", &pd::OpDesc::Id)
       .def("original_id", &pd::OpDesc::OriginalId)
       .def("set_original_id", &pd::OpDesc::SetOriginalId)
-      .def("inputs", &pd::OpDesc::Inputs)
+      .def("inputs", [](pd::OpDesc &self) { return self.Inputs(); })
       .def("outputs", &pd::OpDesc::Outputs);
 }
 
