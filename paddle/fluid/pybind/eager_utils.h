@@ -191,6 +191,10 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               const std::string& op_type,
                                               ssize_t arg_pos);
 
+std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
+                                               const std::string& op_type,
+                                               ssize_t arg_pos);
+
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos);
