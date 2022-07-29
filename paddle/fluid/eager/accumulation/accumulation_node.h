@@ -51,7 +51,7 @@ class GradNodeAccumulation : public GradNodeBase {
   /**
    * Register ReduceHook
    * **/
-  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
+  void RegisterReduceHook(std::shared_ptr<VoidHook>&& hook);
 
   /**
    * Apply ReduceHook here
@@ -70,7 +70,7 @@ class GradNodeAccumulation : public GradNodeBase {
   // TODO(Jiabin): remove this when we make our clear gradient really cleared;
   bool is_fake_empty_ = {false};
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
-  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
+  std::vector<std::shared_ptr<VoidHook>> reduce_hooks_;
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;

@@ -220,6 +220,7 @@ from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
+from .tensor.math import count_nonzero  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -561,6 +562,7 @@ __all__ = [  # noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tile',
     'greater_equal',
     'isfinite',

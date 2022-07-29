@@ -166,7 +166,11 @@ static void MultiTensorL2Norm(const platform::CUDAPlace &place,
 
   constexpr int kNumTensor = MaxTensorNumPerLaunch;
   constexpr int kNumChunk = MaxChunkNumPerLaunch;
+#ifdef PADDLE_WITH_HIP
+  constexpr int kBlockDim = 256;
+#else
   constexpr int kBlockDim = 512;
+#endif
 
   int max_chunk_num = -1;
   int vec_size = 8;
@@ -805,7 +809,11 @@ static void MultiTensorUpdateLambParamAndBetaPows(
         platform::errors::InvalidArgument("Beta2Pow should be nullptr."));
   }
 
+#ifdef PADDLE_WITH_HIP
+  const int block_dim = 256;
+#else
   const int block_dim = 512;
+#endif
 
   int vec_size = 8;
   for (int i = 0; i < n; ++i) {

@@ -12,10 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/inverse_op.h"
-
 #include <string>
 #include <unordered_map>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace paddle {
 namespace operators {
@@ -23,46 +29,6 @@ namespace operators {
 class InverseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Inverse");
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Inverse");
-
-    auto input_dims = ctx->GetInputDim("Input");
-    int64_t input_rank = input_dims.size();
-    PADDLE_ENFORCE_GE(
-        input_rank,
-        2,
-        platform::errors::InvalidArgument(
-            "The dimension of Input(Input) is expected to be no less than 2. "
-            "But received: Input(Input)'s dimension = %d, shape = [%s].",
-            input_rank,
-            input_dims));
-    for (int64_t i = 0; i < input_rank; ++i) {
-      PADDLE_ENFORCE_EQ(
-          (input_dims[i] == -1) || (input_dims[i] > 0),
-          true,
-          platform::errors::InvalidArgument(
-              "Each dimension of input tensor is expected to be -1 or a "
-              "positive number, but received %d. Input's shape is [%s].",
-              input_dims[i],
-              input_dims));
-    }
-    if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
-      PADDLE_ENFORCE_EQ(input_dims[input_rank - 2],
-                        input_dims[input_rank - 1],
-                        platform::errors::InvalidArgument(
-                            "The last two dimensions are expected to be equal. "
-                            "But received: %d and %d; "
-                            "Input(Input)'s shape = [%s].",
-                            input_dims[input_rank - 2],
-                            input_dims[input_rank - 1],
-                            input_dims));
-    }
-
-    ctx->SetOutputDim("Output", input_dims);
-    ctx->ShareLoD("Input", /*->*/ "Output");
-  }
 };
 
 class InverseOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
@@ -78,19 +44,6 @@ class InverseOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 class InverseGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    auto input_grad = framework::GradVarName("Input");
-    auto output_grad = framework::GradVarName("Output");
-
-    OP_INOUT_CHECK(ctx->HasInput("Output"), "Input", "Output", "InverseGrad");
-    OP_INOUT_CHECK(
-        ctx->HasInput(output_grad), "Input", output_grad, "InverseGrad");
-
-    if (ctx->HasOutput(input_grad)) {
-      ctx->SetOutputDim(input_grad, ctx->GetInputDim(output_grad));
-    }
-  }
 };
 
 class InverseOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -128,18 +81,23 @@ class InverseGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(inverse,
+                            InverseInferShapeFunctor,
+                            PD_INFER_META(phi::InverseInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(inverse_grad,
+                            InverseGradInferShapeFunctor,
+                            PD_INFER_META(phi::InverseGradInferMeta));
+
 REGISTER_OPERATOR(inverse,
                   ops::InverseOp,
                   ops::InverseOpMaker,
                   ops::InverseOpInferVarType,
                   ops::InverseGradOpMaker<paddle::framework::OpDesc>,
-                  ops::InverseGradOpMaker<paddle::imperative::OpBase>);
+                  ops::InverseGradOpMaker<paddle::imperative::OpBase>,
+                  InverseInferShapeFunctor);
 
-REGISTER_OPERATOR(inverse_grad, ops::InverseGradOp);
-
-REGISTER_OP_CPU_KERNEL(inverse,
-                       ops::InverseKernel<phi::CPUContext, float>,
-                       ops::InverseKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(inverse_grad,
-                       ops::InverseGradKernel<phi::CPUContext, float>,
-                       ops::InverseGradKernel<phi::CPUContext, double>);
+REGISTER_OPERATOR(inverse_grad,
+                  ops::InverseGradOp,
+                  InverseGradInferShapeFunctor);

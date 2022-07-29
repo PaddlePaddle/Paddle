@@ -3,7 +3,7 @@ if(WITH_GPU)
   nv_library(
     gpu_info
     SRCS gpu_info.cc
-    DEPS phi_gpu_info gflags glog enforce monitor dynload_cuda)
+    DEPS phi_backends gflags glog enforce monitor dynload_cuda)
 
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
   nv_test(
@@ -15,7 +15,7 @@ elseif(WITH_ROCM)
   hip_library(
     gpu_info
     SRCS gpu_info.cc
-    DEPS phi_gpu_info gflags glog enforce monitor dynload_cuda)
+    DEPS phi_backends gflags glog enforce monitor dynload_cuda)
 
   hip_test(cuda_helper_test SRCS cuda_helper_test.cu)
   hip_test(

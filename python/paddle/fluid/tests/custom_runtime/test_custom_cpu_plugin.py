@@ -32,12 +32,17 @@ class TestCustomCPUPlugin(unittest.TestCase):
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
             cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
 
-    def test_custom_device_dataloader(self):
+    def test_custom_device(self):
         import paddle
 
         with paddle.fluid.framework._test_eager_guard():
             self._test_custom_device_dataloader()
+            self._test_custom_device_mnist()
+            self._test_eager_backward_api()
+            self._test_eager_copy_to()
+            self._test_fallback_kernel()
         self._test_custom_device_dataloader()
+        self._test_custom_device_mnist()
 
     def _test_custom_device_dataloader(self):
         import paddle
@@ -59,13 +64,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self.assertTrue(image.place.is_custom_place())
             self.assertTrue(label.place.is_custom_place())
             break
-
-    def test_custom_device_mnist(self):
-        import paddle
-
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_device_mnist()
-        self._test_custom_device_mnist()
 
     def _test_custom_device_mnist(self):
         import paddle
@@ -119,6 +117,58 @@ class TestCustomCPUPlugin(unittest.TestCase):
         sgd.clear_grad()
 
         self.assertTrue(pred.place.is_custom_place())
+
+    def _test_eager_backward_api(self):
+        x = np.random.random([2, 2]).astype("float32")
+        y = np.random.random([2, 2]).astype("float32")
+        grad = np.ones([2, 2]).astype("float32")
+
+        import paddle
+        paddle.set_device('custom_cpu')
+        x_tensor = paddle.to_tensor(x, stop_gradient=False)
+        y_tensor = paddle.to_tensor(y)
+        z1_tensor = paddle.matmul(x_tensor, y_tensor)
+        z2_tensor = paddle.matmul(x_tensor, y_tensor)
+
+        grad_tensor = paddle.to_tensor(grad)
+        paddle.autograd.backward([z1_tensor, z2_tensor], [grad_tensor, None])
+
+        self.assertTrue(x_tensor.grad.place.is_custom_place())
+
+    def _test_eager_copy_to(self):
+        import paddle
+        x = np.random.random([2, 2]).astype("float32")
+        # cpu -> custom
+        cpu_tensor = paddle.to_tensor(x,
+                                      dtype='float32',
+                                      place=paddle.CPUPlace())
+        custom_cpu_tensor = cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        self.assertTrue(np.array_equal(custom_cpu_tensor, x))
+        self.assertTrue(custom_cpu_tensor.place.is_custom_place())
+        # custom -> custom
+        another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
+        # custom -> cpu
+        another_cpu_tensor = custom_cpu_tensor._copy_to(paddle.CPUPlace(), True)
+        self.assertTrue(np.array_equal(another_cpu_tensor, x))
+        self.assertTrue(another_cpu_tensor.place.is_cpu_place())
+        # custom -> custom self
+        another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
+            paddle.CustomPlace('custom_cpu', 0), True)
+        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
+
+    def _test_fallback_kernel(self):
+        # using (custom_cpu, add, int16) which is not registered
+        import paddle
+        r = np.array([6, 6, 6], 'int16')
+        x = paddle.to_tensor([5, 4, 3], 'int16')
+        y = paddle.to_tensor([1, 2, 3], 'int16')
+        z = paddle.add(x, y)
+        self.assertTrue(np.array_equal(z, r))
 
     def tearDown(self):
         del os.environ['CUSTOM_DEVICE_ROOT']
