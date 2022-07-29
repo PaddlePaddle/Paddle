@@ -3252,6 +3252,10 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
                         "The uniform_random's diag_step must greater than or "
                         "equal 0. But recevied diag_step (%d) < 0.",
                         diag_step));
+  PADDLE_ENFORCE_NE(out,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "uniform_random should have output tensor out."));
   auto xdim = x.dims();
   out->set_dims(xdim);
   out->set_dtype(x.dtype());
