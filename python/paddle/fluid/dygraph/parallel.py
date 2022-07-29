@@ -118,8 +118,7 @@ class ParallelEnv(object):
     def __init__(self):
         self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._device_type = str(
-            os.environ.get('PADDLE_DISTRI_CUSTOM_DEVICE_TYPE', ""))
+        self._device_type = str(os.getenv("PADDLE_XCCL_BACKEND", ""))
 
         # imperative only support one gpu or xpu
         if self._device_type != "":
@@ -213,7 +212,7 @@ class ParallelEnv(object):
         """
         The type of custom device for parallel training.
 
-        Its value is equal to the value of the environment variable ``PADDLE_DISTRI_CUSTOM_DEVICE_TYPE`` . The default value is None.
+        Its value is equal to the value of the environment variable ``PADDLE_XCCL_BACKEND`` . The default value is None.
 
         """
         return self._device_type

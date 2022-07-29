@@ -21,7 +21,8 @@ rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCus
 echo "begin test use custom_cpu"
 
 export FLAGS_selected_custom_cpus=0,1
+export CUSTOM_CPU_VISIBLE_DEVICES=0,1
 export CUSTOM_DEVICE_ROOT=PaddleCustomDevice/backends/custom_cpu/build
 
-distributed_args="--ips=127.0.0.1 --backend=xccl --custom_device_type=custom_cpu --custom_devices=0,1 --run_mode=collective --log_dir=testlog"
+distributed_args="--devices=0,1"
 python -m paddle.distributed.fleet.launch ${distributed_args} custom_device_multi_process_collective.py fleetlaunch_custom_cpu
