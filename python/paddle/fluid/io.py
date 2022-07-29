@@ -1290,7 +1290,7 @@ def save_inference_model(dirname,
                                       Default: False.
 
     Returns:
-        list, The fetch variables' name list
+        list, The fetch variables' name list.
 
     Examples:
         .. code-block:: python
