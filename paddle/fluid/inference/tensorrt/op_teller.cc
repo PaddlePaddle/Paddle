@@ -123,7 +123,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
       "roll",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "squeeze2",
+      "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -188,7 +190,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "preln_skip_layernorm",
       "roll",
-      "multiclass_nms3"};
+      "multiclass_nms3",
+      "squeeze2",
+      "unsqueeze2"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -276,6 +280,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           }
         }
       }
+    }
+    
+    if (op_type == "squeeze2") {
+    	return false;
+    }
+
+    if (op_type == "unsqueeze2") {
+    	return false;
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
@@ -425,11 +437,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
           const auto shape = var_desc->GetShape();
-          if (shape.size() < 3) {
-            VLOG(3)
-                << "matmul op dims < 3 not supported in tensorrt, but got dims "
-                << shape.size() << ", so jump it.";
-            return false;
+          if (with_dynamic_shape) {
+            if (shape.size() < 2) {
+              VLOG(3) << "matmul op dims < 2 not supported in tensorrt "
+                         "with_dynamic_shape, but got dims "
+                      << shape.size() << ", so jump it.d";
+              return false;
+            }
+          } else {
+            if (shape.size() < 3) {
+              VLOG(3) << "matmul op dims < 3 not supported in tensorrt, but "
+                         "got dims "
+                      << shape.size() << ", so jump it.d";
+              return false;
+            }
           }
         }
       }
@@ -1106,7 +1127,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
-        op_type == "elementwise_sub" || op_type == "elementwise_div") {
+        op_type == "elementwise_sub" || op_type == "elementwise_div" ||
+        op_type == "elementwise_pow") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1136,34 +1158,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (op_type == "elementwise_add" && y_var_desc->Persistable()) {
-        if (y_shape.size() != 1) {
-          return false;
-        }
-        if (y_shape[0] != x_shape[1]) {
-          return false;
-        }
-      }
       if (x_shape.size() == 1 && y_shape.size() == 1) {
         VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
         return false;
       }
-      if (op_type == "elementwise_add" || op_type == "elementwise_mul") {
-        if (x_var_desc->Persistable()) {
-          VLOG(3) << "Input X is a parameter which is not supported for "
-                     "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                     "y will work";
-          return false;
-        }
-      }
-      if (op_type == "elementwise_sub" || op_type == "elementwise_div") {
-        if (x_var_desc->Persistable() || y_var_desc->Persistable()) {
-          VLOG(3) << "Input X or Input Y is a parameter which is not supported "
-                     "for elementwise_sub/elementwise_div in tensorrt";
-          return false;
-        }
+      if (x_var_desc->Persistable()) {
+        VLOG(3) << "Input X is a parameter which is not supported for "
+                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
+                   "y will work";
+        return false;
       }
     }
+
 
     if (op_type == "stack") {
       if (!with_dynamic_shape) {
@@ -1485,13 +1491,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "shuffle_channel") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "You are running the TRT Dynamic Shape mode, "
-                   "the shuffle_channel op does not support dynamic shape yet";
-        return false;
-      }
-    }
 
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {

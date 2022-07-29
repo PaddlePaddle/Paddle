@@ -30,23 +30,28 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-#if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     auto word_id_name = op_desc.Input("WordId").front();
-    auto pos_id_name = op_desc.Input("PosId").front();
+    auto pos_id_name = engine_->tensorrt_transformer_posid();
     engine_->Set("ernie_pos_name", new std::string(pos_id_name));
 
     auto sent_id_name = op_desc.Input("SentId").front();
+    auto mask_id_name = engine_->tensorrt_transformer_maskid();
     auto word_emb_name = op_desc.Input("WordEmbedding").front();
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
 
     std::vector<std::string> id_names;
     std::vector<std::string> emb_names;
+    bool flag_varseqlen =
+        engine_->use_varseqlen() && pos_id_name != "" && mask_id_name != "";
 
-    if (engine_->use_oss()) {
+    if (flag_varseqlen) {
+      engine_->SetITensor("word_id", engine_->GetITensor(word_id_name));
+      engine_->SetITensor("pos_id", engine_->GetITensor(pos_id_name));
+      engine_->SetITensor("mask_id", engine_->GetITensor(mask_id_name));
       id_names =
           std::vector<std::string>{word_id_name, pos_id_name, sent_id_name};
       emb_names =
@@ -106,7 +111,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
-    if (engine_->use_oss()) {
+    if (flag_varseqlen) {
       int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
       if (enable_int8) {
         output_fp16 = 1;
@@ -121,7 +126,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           output_fp16, 1,
           platform::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
-              "ernie(bert) model with config.EnableTensorRtOSS(). "
+              "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
       const std::vector<nvinfer1::PluginField> fields{
           {"bert_embeddings_layernorm_beta", bias,
@@ -159,8 +164,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_inputs.emplace_back(
           engine_->GetITensor(pos_id_name));  // cu_seqlens,
                                               // eval_placeholder_2
-      auto max_seqlen_tensor =
-          engine_->GetITensor(engine_->network()->getInput(3)->getName());
+      auto max_seqlen_tensor = engine_->GetITensor(mask_id_name);
       auto* shuffle_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *max_seqlen_tensor);
       nvinfer1::Dims shape_dim;
@@ -193,8 +197,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         engine_->SetTensorDynamicRange(plugin_layer->getOutput(1), out_scale);
       }
       if (engine_->with_interleaved()) {
-        VLOG(4)
-            << "fused emb_eltwise_layernorm op: use_oss and with_interleaved";
+        VLOG(4) << "fused emb_eltwise_layernorm op: use_varseqlen and "
+                   "with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
               platform::errors::Fatal("use with_interleaved must be int8."));
@@ -229,12 +233,6 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
                                test_mode);
     }
-
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
   }
 };
 

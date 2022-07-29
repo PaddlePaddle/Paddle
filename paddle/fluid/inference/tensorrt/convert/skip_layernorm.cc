@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,10 +49,13 @@ class SkipLayerNormOpConverter : public OpConverter {
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     nvinfer1::ILayer* layer = nullptr;
-
-    if (engine_->use_oss()) {
+    bool flag_varseqlen = engine_->use_varseqlen() &&
+                          engine_->tensorrt_transformer_posid() != "" &&
+                          engine_->tensorrt_transformer_maskid() != "";
+    if (flag_varseqlen) {
       if (engine_->with_interleaved()) {
-        VLOG(4) << "fused skip_layernorm op: use_oss and with_interleaved";
+        VLOG(4)
+            << "fused skip_layernorm op: use_varseqlen and with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
               platform::errors::Fatal("use with_interleaved must be int8."));
