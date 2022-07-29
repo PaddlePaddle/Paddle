@@ -1,3 +1,7 @@
+if(WITH_XPU)
+  cc_library(beam_search_xpu SRCS beam_search_xpu.cc)
+endif()
+
 if(WITH_ASCEND_CL)
   cc_library(
     beam_search_npu
@@ -44,6 +48,8 @@ math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
 if(WITH_ASCEND_CL)
   math_library(beam_search DEPS math_function beam_search_npu)
+elseif(WITH_XPU)
+  math_library(beam_search DEPS math_function beam_search_xpu)
 else()
   math_library(beam_search DEPS math_function)
 endif()
