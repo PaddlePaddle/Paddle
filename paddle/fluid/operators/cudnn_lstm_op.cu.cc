@@ -24,13 +24,6 @@ limitations under the License. */
 #endif
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
