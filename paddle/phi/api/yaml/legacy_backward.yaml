@@ -1670,6 +1670,17 @@
   kernel :
     func : put_along_axis_grad
 
+- backward_api : qr_grad
+  forward : qr (Tensor x, str mode) -> Tensor(q), Tensor(r)
+  args : (Tensor x, Tensor q, Tensor r, Tensor q_grad, Tensor r_grad, str mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : qr_grad
+  # optional: q_grad, r_grad
+
 - backward_api : real_grad
   forward : real (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)

@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/lstsq_op.h"
-#include "paddle/fluid/operators/qr_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
@@ -28,6 +27,29 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
+
+template <typename DeviceContext, typename T>
+void BatchedGeqrf(const DeviceContext& dev_ctx,
+                  int batch_size,
+                  int m,
+                  int n,
+                  T* a,
+                  int lda,
+                  T* tau,
+                  int a_stride,
+                  int tau_stride);
+
+template <typename DeviceContext, typename T>
+void BatchedOrgqr(const DeviceContext& dev_ctx,
+                  int batch_size,
+                  int m,
+                  int n,
+                  int k,
+                  T* a,
+                  int lda,
+                  T* tau,
+                  int a_stride,
+                  int tau_stride);
 
 template <typename DeviceContext, typename T>
 class LstsqCUDAKernel : public framework::OpKernel<T> {
@@ -297,6 +319,218 @@ void BatchedOrmqr<platform::CUDADeviceContext, double>(
         0,
         platform::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
+  }
+}
+
+template <>
+void BatchedGeqrf<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& dev_ctx,
+    int batch_size,
+    int m,
+    int n,
+    float* a,
+    int lda,
+    float* tau,
+    int a_stride,
+    int tau_stride) {
+  int lwork = 0;
+
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSgeqrf_bufferSize(
+      handle, m, n, a, lda, &lwork));
+  auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
+  float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
+  auto info = memory::Alloc(dev_ctx, sizeof(int));
+  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  for (int i = 0; i < batch_size; ++i) {
+    float* a_working_ptr = &a[i * a_stride];
+    float* tau_working_ptr = &tau[i * tau_stride];
+    // compute geqrf
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnSgeqrf(handle,
+                                            m,
+                                            n,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
+    // Do we need synchronized here?
+    // check the error info
+    int info_h;
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        info_h,
+        0,
+        platform::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
+  }
+}
+
+template <>
+void BatchedGeqrf<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& dev_ctx,
+    int batch_size,
+    int m,
+    int n,
+    double* a,
+    int lda,
+    double* tau,
+    int a_stride,
+    int tau_stride) {
+  int lwork = 0;
+
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDgeqrf_bufferSize(
+      handle, m, n, a, lda, &lwork));
+  auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
+  double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
+  auto info = memory::Alloc(dev_ctx, sizeof(int));
+  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  for (int i = 0; i < batch_size; ++i) {
+    double* a_working_ptr = &a[i * a_stride];
+    double* tau_working_ptr = &tau[i * tau_stride];
+    // compute geqrf
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnDgeqrf(handle,
+                                            m,
+                                            n,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
+    // Do we need synchronized here?
+    // check the error info
+    int info_h;
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        info_h,
+        0,
+        platform::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
+  }
+}
+
+template <>
+void BatchedOrgqr<platform::CUDADeviceContext, float>(
+    const platform::CUDADeviceContext& dev_ctx,
+    int batch_size,
+    int m,
+    int n,
+    int k,
+    float* a,
+    int lda,
+    float* tau,
+    int a_stride,
+    int tau_stride) {
+  int lwork = 0;
+
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnSorgqr_bufferSize(
+      handle, m, n, k, a, lda, tau, &lwork));
+  auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(float));
+  float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
+  auto info = memory::Alloc(dev_ctx, sizeof(int));
+  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  for (int i = 0; i < batch_size; ++i) {
+    float* a_working_ptr = &a[i * a_stride];
+    float* tau_working_ptr = &tau[i * tau_stride];
+    // compute orggr
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnSorgqr(handle,
+                                            m,
+                                            n,
+                                            k,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
+    // Do we need synchronized here?
+    // check the error info
+    int info_h;
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        info_h,
+        0,
+        platform::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
+  }
+}
+
+template <>
+void BatchedOrgqr<platform::CUDADeviceContext, double>(
+    const platform::CUDADeviceContext& dev_ctx,
+    int batch_size,
+    int m,
+    int n,
+    int k,
+    double* a,
+    int lda,
+    double* tau,
+    int a_stride,
+    int tau_stride) {
+  int lwork = 0;
+
+  auto handle = dev_ctx.cusolver_dn_handle();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cusolverDnDorgqr_bufferSize(
+      handle, m, n, k, a, lda, tau, &lwork));
+  auto workspace = memory::Alloc(dev_ctx, lwork * sizeof(double));
+  double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
+  auto info = memory::Alloc(dev_ctx, sizeof(int));
+  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  for (int i = 0; i < batch_size; ++i) {
+    double* a_working_ptr = &a[i * a_stride];
+    double* tau_working_ptr = &tau[i * tau_stride];
+    // compute orggr
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cusolverDnDorgqr(handle,
+                                            m,
+                                            n,
+                                            k,
+                                            a_working_ptr,
+                                            lda,
+                                            tau_working_ptr,
+                                            workspace_ptr,
+                                            lwork,
+                                            info_d));
+    // Do we need synchronized here?
+    // check the error info
+    int info_h;
+    memory::Copy(platform::CPUPlace(),
+                 &info_h,
+                 dev_ctx.GetPlace(),
+                 info_d,
+                 sizeof(int),
+                 dev_ctx.stream());
+    PADDLE_ENFORCE_EQ(
+        info_h,
+        0,
+        platform::errors::PreconditionNotMet(
+            "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
 
