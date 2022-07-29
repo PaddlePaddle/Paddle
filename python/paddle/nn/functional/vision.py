@@ -93,7 +93,12 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Tensor.")
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        _out_shape = out_shape.numpy().tolist() if isinstance(
+            out_shape, Variable) else out_shape
+        return _C_ops.final_state_affine_grid(theta, _out_shape, align_corners,
+                                              use_cudnn)
+    elif in_dynamic_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
         return _C_ops.affine_grid(theta, "output_shape", _out_shape,

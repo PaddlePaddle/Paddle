@@ -101,6 +101,18 @@
     func : addmm
   backward : addmm_grad
 
+- api : affine_grid
+  args : (Tensor input, Tensor outputShape, bool align_corners, int[] output_shape)
+  output : Tensor(output)
+  infer_meta :
+    func : AffineGridInferMeta
+    param: [input]
+  kernel :
+    func : affine_grid
+    data_type : input
+  optional : outputShape
+  backward : affine_grid_grad
+
 - api : all
   args : (Tensor x, int64_t[] dims={}, bool keep_dim=false)
   output : Tensor(out)
