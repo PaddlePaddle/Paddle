@@ -96,8 +96,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if in_dygraph_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
-        return _C_ops.final_state_affine_grid(theta, _out_shape, align_corners,
-                                              use_cudnn)
+        return _C_ops.final_state_affine_grid(theta, use_cudnn, align_corners,
+                                              _out_shape)
     elif in_dynamic_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape

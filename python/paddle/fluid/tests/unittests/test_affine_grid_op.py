@@ -50,7 +50,6 @@ class TestAffineGridOp(OpTest):
         self.initTestCase()
         self.op_type = "affine_grid"
         self.python_api = paddle.nn.functional.vision.affine_grid
-        paddle.disable_static()
         theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
         self.inputs = {'Theta': theta}
         self.attrs = {
@@ -64,7 +63,6 @@ class TestAffineGridOp(OpTest):
         self.outputs = {
             'Output': AffineGrid(theta, self.output_shape, self.align_corners)
         }
-        paddle.enable_static()
 
     def test_check_output(self):
         self.check_output(check_eager=True)
