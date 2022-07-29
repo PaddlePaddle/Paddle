@@ -40,7 +40,7 @@ __global__ void PullCopy(float** dest,
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
     float* feature_value_ptr =
-        static_cast<float*>((char*)src + uint64_t(i) * uint64_t(max_val_size));
+        (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     feature_value_accessor.Select(
         dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
@@ -70,7 +70,7 @@ __global__ void PushCopyWithPool(float* dest,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    float* cur = static_cast<float*>((char*)dest + i * grad_value_size);
+    float* cur = (float*)((char*)dest + i * grad_value_size);
 
     cur[feature_value_accessor.common_push_value.SlotIndex()] =
         (float)slot_vector[x];
