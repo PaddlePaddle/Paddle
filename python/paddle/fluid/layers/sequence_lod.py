@@ -723,11 +723,9 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             None by default. 
 
     Returns: 
-            The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
+            Tensor, The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
             ``N`` depends on the lod info of ``x`` and ``y``. \
             The data type is same as input.
-
-    Return Type: Variable
 
     Examples:
         .. code-block:: python
