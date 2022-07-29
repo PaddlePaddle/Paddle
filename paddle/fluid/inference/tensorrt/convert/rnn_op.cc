@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,8 @@ class RnnNativeOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // [seq_len, batch ,in_size],
-    // [num_layers, batch ,in_size], [num_layers, batch ,in_size]
+    // [K * num_layers, batch ,in_size], [K * num_layers, batch ,in_size]
+    // K is defined below
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     auto* prev_c = engine_->GetITensor(op_desc.Input("PreState")[0]);
     auto* prev_h = engine_->GetITensor(op_desc.Input("PreState")[1]);
@@ -167,6 +168,7 @@ class RnnNativeOpConverter : public OpConverter {
                               K_tensor, batch_tensor, input_size_tensor}));
 
       iter_input_tensor = tmp_layer->getOutput(0);
+      // [K, batch, input_size]
 
       std::vector<int32_t> tmp_vec(K);
       std::iota(tmp_vec.begin(), tmp_vec.end(), 2 * layer_id);
