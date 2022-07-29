@@ -38,10 +38,8 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     auto* solution = context.Output<Tensor>("Solution");
 
     auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(context);
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+        math::DeviceIndependenceTensorOperations<phi::GPUContext, T>(context);
+    auto& dev_ctx = context.template device_context<phi::GPUContext>();
 
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -163,20 +161,19 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <>
-void BatchedOrmqr<platform::CUDADeviceContext, float>(
-    const platform::CUDADeviceContext& dev_ctx,
-    bool left,
-    bool transpose,
-    int batch_size,
-    int m,
-    int n,
-    int k,
-    float* a,
-    int a_stride,
-    float* tau,
-    int tau_stride,
-    float* other,
-    int other_stride) {
+void BatchedOrmqr<phi::GPUContext, float>(const phi::GPUContext& dev_ctx,
+                                          bool left,
+                                          bool transpose,
+                                          int batch_size,
+                                          int m,
+                                          int n,
+                                          int k,
+                                          float* a,
+                                          int a_stride,
+                                          float* tau,
+                                          int tau_stride,
+                                          float* other,
+                                          int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -232,20 +229,19 @@ void BatchedOrmqr<platform::CUDADeviceContext, float>(
 }
 
 template <>
-void BatchedOrmqr<platform::CUDADeviceContext, double>(
-    const platform::CUDADeviceContext& dev_ctx,
-    bool left,
-    bool transpose,
-    int batch_size,
-    int m,
-    int n,
-    int k,
-    double* a,
-    int a_stride,
-    double* tau,
-    int tau_stride,
-    double* other,
-    int other_stride) {
+void BatchedOrmqr<phi::GPUContext, double>(const phi::GPUContext& dev_ctx,
+                                           bool left,
+                                           bool transpose,
+                                           int batch_size,
+                                           int m,
+                                           int n,
+                                           int k,
+                                           double* a,
+                                           int a_stride,
+                                           double* tau,
+                                           int tau_stride,
+                                           double* other,
+                                           int other_stride) {
   int lwork = 0;
   auto side = left ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
   auto trans = transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -305,9 +301,8 @@ void BatchedOrmqr<platform::CUDADeviceContext, double>(
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    lstsq,
-    ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LstsqCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(lstsq,
+                        ops::LstsqCUDAKernel<phi::GPUContext, float>,
+                        ops::LstsqCUDAKernel<phi::GPUContext, double>);
 
 #endif  // not PADDLE_WITH_HIP

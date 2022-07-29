@@ -23,9 +23,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(lu_unpack,
-                        ops::LU_UnpackKernel<plat::CUDADeviceContext, float>,
-                        ops::LU_UnpackKernel<plat::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    lu_unpack_grad,
-    ops::LU_UnpackGradKernel<plat::CUDADeviceContext, float>,
-    ops::LU_UnpackGradKernel<plat::CUDADeviceContext, double>);
+                        ops::LU_UnpackKernel<phi::GPUContext, float>,
+                        ops::LU_UnpackKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(lu_unpack_grad,
+                        ops::LU_UnpackGradKernel<phi::GPUContext, float>,
+                        ops::LU_UnpackGradKernel<phi::GPUContext, double>);

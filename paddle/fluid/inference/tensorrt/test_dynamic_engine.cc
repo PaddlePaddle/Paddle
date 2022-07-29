@@ -34,7 +34,7 @@ namespace tensorrt {
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -94,7 +94,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   framework::Tensor input_;
   framework::Tensor output_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTDynamicEngineTest, test_spmm) {
@@ -199,7 +199,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
 class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
   void SetUp() override {
-    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+    ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
                            .get());
@@ -279,7 +279,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   std::vector<framework::Tensor> inputs_;
   std::vector<framework::Tensor> outputs_;
   TensorRTEngine *engine_;
-  platform::CUDADeviceContext *ctx_;
+  phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {

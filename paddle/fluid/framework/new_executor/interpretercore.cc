@@ -854,9 +854,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
-  gpuStream_t stream = reinterpret_cast<const platform::CUDADeviceContext&>(
-                           instr.DeviceContext())
-                           .stream();
+  gpuStream_t stream =
+      reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
   auto TensorRecordStream = [&stream](Tensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {

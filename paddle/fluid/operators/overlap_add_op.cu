@@ -18,26 +18,22 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     overlap_add,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::complex<float>>,
-    ops::OverlapAddKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::complex<double>>);
+    ops::OverlapAddKernel<phi::GPUContext, int>,
+    ops::OverlapAddKernel<phi::GPUContext, int64_t>,
+    ops::OverlapAddKernel<phi::GPUContext, float>,
+    ops::OverlapAddKernel<phi::GPUContext, double>,
+    ops::OverlapAddKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::OverlapAddKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::OverlapAddKernel<phi::GPUContext, paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     overlap_add_grad,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::float16>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext,
+    ops::OverlapAddGradKernel<phi::GPUContext, int>,
+    ops::OverlapAddGradKernel<phi::GPUContext, int64_t>,
+    ops::OverlapAddGradKernel<phi::GPUContext, float>,
+    ops::OverlapAddGradKernel<phi::GPUContext, double>,
+    ops::OverlapAddGradKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::OverlapAddGradKernel<phi::GPUContext,
                               paddle::platform::complex<float>>,
-    ops::OverlapAddGradKernel<paddle::platform::CUDADeviceContext,
+    ops::OverlapAddGradKernel<phi::GPUContext,
                               paddle::platform::complex<double>>);

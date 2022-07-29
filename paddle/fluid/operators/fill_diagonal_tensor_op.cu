@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
+using phi::GPUContext = phi::GPUContext;
 
 template <typename T>
 __global__ void fill_diagonal_tensor_kernel(int64_t size,
@@ -109,7 +109,7 @@ class FillDiagonalTensorCUDAKernel : public framework::OpKernel<T> {
 
     auto size = out->numel();
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto stream = dev_ctx.stream();
     Tensor tensor_tmp;
     int64_t *memory_block_cu =
@@ -175,8 +175,7 @@ class FillDiagonalTensorGradCUDAKernel : public framework::OpKernel<T> {
 
       auto size = dx->numel();
 
-      auto &dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
+      auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
       auto stream = dev_ctx.stream();
       Tensor tensor_tmp;
       int64_t *memory_block_cu =

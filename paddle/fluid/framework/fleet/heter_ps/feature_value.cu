@@ -40,7 +40,7 @@ __global__ void PullCopy(float** dest,
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
     float* feature_value_ptr =
-        (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
+        static_cast<float*>((char*)src + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     feature_value_accessor.Select(
         dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
@@ -70,7 +70,7 @@ __global__ void PushCopyWithPool(float* dest,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    float* cur = (float*)((char*)dest + i * grad_value_size);
+    float* cur = static_cast<float*>((char*)dest + i * grad_value_size);
 
     cur[feature_value_accessor.common_push_value.SlotIndex()] =
         (float)slot_vector[x];
@@ -102,7 +102,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
     const int64_t total_length,
     int* gpu_dim,
     int feature_value_size) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
@@ -135,7 +135,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
     size_t grad_value_size,
     std::vector<int>& slot_vector,
     std::vector<int>& slot_mf_dim_vector) {
-  auto stream = dynamic_cast<paddle::platform::CUDADeviceContext*>(
+  auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;

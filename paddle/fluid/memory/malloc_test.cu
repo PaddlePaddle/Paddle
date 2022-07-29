@@ -37,7 +37,7 @@ const int NUM_STREAMS = 8;
 const int N = 2;
 const float DELTA = 1e-1;
 
-using CudaDevCtxVec = std::vector<std::unique_ptr<platform::CUDADeviceContext>>;
+using CudaDevCtxVec = std::vector<std::unique_ptr<phi::GPUContext>>;
 
 __global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -65,7 +65,7 @@ void CheckKernelOutput(float *x, int n) {
 
 void MultiStreamCompute(float **data,
                         float **second_data,
-                        const platform::CUDADeviceContext &ctx) {
+                        const phi::GPUContext &ctx) {
   // multi-streams
   AllocationPtr allocation_ptr = Alloc(ctx, N * sizeof(float));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
@@ -88,7 +88,7 @@ void MultiStreamCompute(float **data,
 #endif
 }
 
-TEST(Malloc, CUDADeviceContextMultiStream) {
+TEST(Malloc, phi::GPUContextMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -110,8 +110,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -143,7 +142,7 @@ TEST(Malloc, CUDADeviceContextMultiStream) {
   }
 }
 
-TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
+TEST(Malloc, phi::GPUContextMultiThreadMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -166,8 +165,7 @@ TEST(Malloc, CUDADeviceContextMultiThreadMultiStream) {
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::unique_ptr<platform::CUDADeviceContext>(
-        new platform::CUDADeviceContext(place));
+    auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());

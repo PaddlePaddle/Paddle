@@ -104,7 +104,7 @@ class EventManager {
   bool DeviceId() const { return device_index_; }
   gpuEvent_t GetRawCudaEvent() const { return event_; }
 
-  void Record(const paddle::platform::CUDADeviceContext& ctx) {
+  void Record(const phi::GPUContext& ctx) {
     auto device_index = ctx.GetPlace().device;
     if (!is_created_) {
       CreateEvent(device_index);
@@ -112,7 +112,7 @@ class EventManager {
     PADDLE_ENFORCE_EQ(device_index,
                       device_index_,
                       platform::errors::PreconditionNotMet(
-                          "CUDADeviceContext's device %d does not match"
+                          "phi::GPUContext's device %d does not match"
                           "Event's device %d",
                           device_index,
                           device_index_));
@@ -157,13 +157,13 @@ class EventManager {
     }
   }
 
-  void Block(const paddle::platform::CUDADeviceContext& ctx) const {
+  void Block(const phi::GPUContext& ctx) const {
     if (is_created_) {
       auto device_index = ctx.GetPlace().device;
       PADDLE_ENFORCE_EQ(device_index,
                         device_index_,
                         platform::errors::PreconditionNotMet(
-                            "CUDADeviceContext's device %d does not match"
+                            "phi::GPUContext's device %d does not match"
                             "Event's device %d",
                             device_index,
                             device_index_));

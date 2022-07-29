@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using CUDADeviceContext = paddle::platform::CUDADeviceContext;
+using phi::GPUContext = phi::GPUContext;
 
 template <typename T>
 __global__ void fill_constant_kernel(const int64_t featuresize,
