@@ -9377,11 +9377,7 @@ def crop(x, shape=None, offsets=None, name=None):
             None by default.
 
     Returns:
-        The cropped Tensor, which has the same rank and data type with `x`
-
-    Return Type:
-        Variable
-
+        Tensor, The cropped Tensor, which has the same rank and data type with `x`.
 
     Raises:
         ValueError: If shape is not a list, tuple or Variable.
