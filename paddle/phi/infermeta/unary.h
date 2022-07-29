@@ -181,6 +181,12 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         bool reduce_all,
                         MetaTensor* out);
 
+void LUInferMeta(const MetaTensor& x,
+                 bool pivot,
+                 MetaTensor* out,
+                 MetaTensor* pivots,
+                 MetaTensor* infos);
+
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MatrixRankInferMeta(const MetaTensor& x,
