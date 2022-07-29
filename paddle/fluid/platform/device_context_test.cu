@@ -50,7 +50,7 @@ TEST(Device, Init) {
   }
 }
 
-TEST(Device, phi::GPUContext) {
+TEST(Device, GPUContext) {
   using paddle::platform::CUDAPlace;
   using phi::GPUContext;
 

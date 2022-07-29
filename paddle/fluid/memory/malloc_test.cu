@@ -88,7 +88,7 @@ void MultiStreamCompute(float **data,
 #endif
 }
 
-TEST(Malloc, phi::GPUContextMultiStream) {
+TEST(Malloc, GPUContextMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
@@ -142,7 +142,7 @@ TEST(Malloc, phi::GPUContextMultiStream) {
   }
 }
 
-TEST(Malloc, phi::GPUContextMultiThreadMultiStream) {
+TEST(Malloc, GPUContextMultiThreadMultiStream) {
   auto place = platform::CUDAPlace(0);
   platform::SetDeviceId(0);
 
