@@ -80,21 +80,19 @@ TEST(CpuLayerTest, Construct) {
   std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
 
-  if (layer.HasAttribute()) {
-    float fbias = layer.Attribute<float>("fbias");
-    EXPECT_FLOAT_EQ(fbias, 1.4);
-    int ds = layer.Attribute<int>("down_sampling");
-    EXPECT_EQ(ds, 4);
-    std::string fstr = layer.Attribute<std::string>("fstr");
-    EXPECT_STREQ(fstr.c_str(), "save str property");
-    std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
-    EXPECT_THAT(ints, ElementsAre(10, 20));
-    std::vector<float> floats = layer.Attribute<std::vector<float>>("floats");
-    EXPECT_THAT(floats, ElementsAre(FloatEq(1.1), FloatEq(2.2)));
-    std::vector<std::string> strs =
-        layer.Attribute<std::vector<std::string>>("strs");
-    EXPECT_THAT(strs, ElementsAre("hello", "world"));
-  }
+  float fbias = layer.Attribute<float>("fbias");
+  EXPECT_FLOAT_EQ(fbias, 1.4);
+  int ds = layer.Attribute<int>("down_sampling");
+  EXPECT_EQ(ds, 4);
+  std::string fstr = layer.Attribute<std::string>("fstr");
+  EXPECT_STREQ(fstr.c_str(), "save str property");
+  std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
+  EXPECT_THAT(ints, ElementsAre(10, 20));
+  std::vector<float> floats = layer.Attribute<std::vector<float>>("floats");
+  EXPECT_THAT(floats, ElementsAre(FloatEq(1.1), FloatEq(2.2)));
+  std::vector<std::string> strs =
+      layer.Attribute<std::vector<std::string>>("strs");
+  EXPECT_THAT(strs, ElementsAre("hello", "world"));
 
   // functions
   auto inputs = PrepareInputs(place);

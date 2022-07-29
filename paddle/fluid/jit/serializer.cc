@@ -61,6 +61,7 @@ Layer Deserializer::operator()(const std::string& path,
 
   if (utils::FileExists(path + PROPERTY_SUFFIX)) {
     ReadAttributeData(path + PROPERTY_SUFFIX, &attrs_dict);
+    VLOG(3) << "Read Property Success!";
   }
 
   Layer layer = Layer(params_dict, attrs_dict, place);

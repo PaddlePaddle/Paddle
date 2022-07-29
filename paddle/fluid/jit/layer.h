@@ -64,8 +64,6 @@ class Layer {
 
   const Name2FunctionMap& FunctionMap() const;
 
-  bool HasAttribute() const;
-
  private:
   Name2VariableMap params_dict_;
   Name2VariableMap attrs_dict_;

@@ -86,31 +86,31 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
       auto &n = entry.name();
       // remove Class Name suffix
       auto key = n.substr(n.find_first_of(".") + 1);
-      Variable var;
+      std::shared_ptr<Variable> var(new Variable());
       auto type = entry.type();
       switch (type) {
         case ValueProto::FLOAT:
-          *var.GetMutable<float>() = GetFloat(n);
+          *var->GetMutable<float>() = GetFloat(n);
           break;
         case ValueProto::INT:
-          *var.GetMutable<int>() = static_cast<int>(GetInt64(n));
+          *var->GetMutable<int>() = static_cast<int>(GetInt64(n));
           break;
         case ValueProto::STRING:
-          *var.GetMutable<std::string>() = GetString(n);
+          *var->GetMutable<std::string>() = GetString(n);
           break;
         case ValueProto::FLOATS:
-          *var.GetMutable<std::vector<float>>() = GetFloats(n);
+          *var->GetMutable<std::vector<float>>() = GetFloats(n);
           break;
         case ValueProto::INTS:
-          *var.GetMutable<std::vector<int>>() = GetInt64s(n);
+          *var->GetMutable<std::vector<int>>() = GetInt64s(n);
           break;
         case ValueProto::STRINGS:
-          *var.GetMutable<std::vector<std::string>>() = GetStrings(n);
+          *var->GetMutable<std::vector<std::string>>() = GetStrings(n);
           break;
         default:
           break;
       }
-      res[key] = std::make_shared<Variable>(var);
+      res[key] = var;
       VLOG(3) << "read property: " << n << " to " << key;
     } else {
       LOG(WARNING) << "JIT::Property entry " << i
