@@ -1425,6 +1425,15 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- api : lstsq
+  args : (Tensor x, Tensor y, Scalar rcond, str driver)
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+    dtype : x
+  kernel :
+    func : lstsq
+
 - api : lu
   args : (Tensor x, bool pivot)
   output : Tensor(out), Tensor(pivots), Tensor(infos)
@@ -1614,6 +1623,15 @@
   kernel :
     func : multi_dot
   backward : multi_dot_grad
+
+- api : multiclass_nms3
+  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
+  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  infer_meta :
+    func : MultiClassNMSInferMeta
+  kernel :
+    func : multiclass_nms3
+  optional : rois_num
 
 # multinomial
 - api : multinomial
@@ -2174,6 +2192,16 @@
     func : softmax
     use_gpudnn : true
   backward : softmax_grad
+
+- api : softplus
+  args : (Tensor x, float beta, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus
+  backward : softplus_grad
 
 # softsign
 - api : softsign
