@@ -60,16 +60,17 @@ const Name2FunctionMap& Layer::FunctionMap() const {
   return unit_->FunctionMap();
 }
 
-#define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                   \
-  template <>                                            \
-  T Layer::Attribute<T>(const std::string& name) const { \
-    if (attrs_dict_.find(name) == attrs_dict_.end()) {   \
-      PADDLE_THROW("Not Found Attribute %s", name);      \
-      return T();                                        \
-    }                                                    \
-    auto var = attrs_dict_.at(name);                     \
-    T ret = var->Get<T>();                               \
-    return ret;                                          \
+#define PD_SPECIALZE_ATTRIBUTE_TYPE(T)                                   \
+  template <>                                                            \
+  T Layer::Attribute<T>(const std::string& name) const {                 \
+    if (attrs_dict_.find(name) == attrs_dict_.end()) {                   \
+      PADDLE_THROW("Not Found Attribute %s, please check if it exists.", \
+                   name);                                                \
+      return T();                                                        \
+    }                                                                    \
+    auto var = attrs_dict_.at(name);                                     \
+    T ret = var->Get<T>();                                               \
+    return ret;                                                          \
   }
 
 PD_SPECIALZE_ATTRIBUTE_TYPE(int)
