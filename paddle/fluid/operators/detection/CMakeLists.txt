@@ -123,9 +123,5 @@ cc_test(
   mask_util_test
   SRCS mask_util_test.cc
   DEPS memory mask_util)
-cc_library(
-  gpc
-  SRCS gpc.cc
-  DEPS enforce op_registry)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)
