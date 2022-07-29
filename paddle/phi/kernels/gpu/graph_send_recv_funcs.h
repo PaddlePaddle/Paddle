@@ -164,7 +164,8 @@ __global__ void ManipulateMinMaxGradCUDAKernel(const T* params,
     int64_t out_i = dst_i * slice_size + slice_i;
     paddle::platform::CudaAtomicAdd(
         output + out_i,
-        *(params + in_i) * (*(ptr_input + out_i) == *(ptr_output + in_i)));
+        *(params + in_i) *
+            static_cast<T>(*(ptr_input + out_i) == *(ptr_output + in_i)));
   }
 }
 
