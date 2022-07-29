@@ -902,8 +902,21 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                         "two value is\
                         {}\n{}, check diff!".format(np_res, paddle_res))
 
-    def test_compute_all_with_max_fp16(self):
+    def test_reshape_lhs_rhs(self):
         paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float32")
+        x = x.reshape(shape=[3, 3, 1])
+        e = paddle.ones([4, 1], dtype="float32")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "min")
+        np_add = np.array([[1, 3, 4], [1, 3, 4], [2, 5, 6]],
+                          dtype="float16").reshape([3, 3, 1])
+        self.assertTrue(
+            np.allclose(np_add, res_add, atol=1e-6), "two value is\
+                        {}\n{}, check diff!".format(np_add, res_add))
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -945,7 +958,10 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             self.test_compute_all_with_sum()
             self.test_compute_all_with_mean()
             self.test_compute_all_with_max()
+            self.test_compute_all_with_max_fp16()
             self.test_compute_all_with_min()
+            self.test_compute_all_with_min_fp16()
+            self.test_reshape_lhs_rhs()
 
 
 if __name__ == "__main__":
