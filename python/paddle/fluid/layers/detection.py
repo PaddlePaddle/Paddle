@@ -3643,7 +3643,7 @@ def matrix_nms(bboxes,
                                           normalized=False)
     """
     if in_dygraph_mode():
-        attrs = (score_threshold, post_threshold, nms_top_k, keep_top_k,
+        attrs = (score_threshold, nms_top_k, keep_top_k, post_threshold,
                  use_gaussian, gaussian_sigma, background_label, normalized)
 
         out, index = _C_ops.final_state_matrix_nms(bboxes, scores, *attrs)

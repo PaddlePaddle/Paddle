@@ -22,6 +22,29 @@ from paddle.fluid import Program, program_guard
 import paddle
 
 
+def python_matrix_nms(bboxes,
+                      scores,
+                      score_threshold,
+                      nms_top_k,
+                      keep_top_k,
+                      post_threshold,
+                      use_gaussian=False,
+                      gaussian_sigma=2.,
+                      background_label=0,
+                      normalized=True,
+                      return_index=True,
+                      return_rois_num=True):
+    out, rois_num, index = paddle.vision.ops.matrix_nms(
+        bboxes, scores, score_threshold, post_threshold, nms_top_k, keep_top_k,
+        use_gaussian, gaussian_sigma, background_label, normalized,
+        return_index, return_rois_num)
+    if not return_index:
+        index = None
+    if not return_rois_num:
+        rois_num = None
+    return out, index, rois_num
+
+
 def softmax(x):
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
@@ -167,7 +190,7 @@ class TestMatrixNMSOp(OpTest):
 
     def setUp(self):
         self.set_argument()
-        self.python_api = paddle.fluid.layers.detection.matrix_nms
+        self.python_api = python_matrix_nms
         N = 7
         M = 1200
         C = 21
@@ -210,9 +233,9 @@ class TestMatrixNMSOp(OpTest):
         }
         self.attrs = {
             'score_threshold': score_threshold,
-            'post_threshold': post_threshold,
             'nms_top_k': nms_top_k,
             'keep_top_k': keep_top_k,
+            'post_threshold': post_threshold,
             'use_gaussian': use_gaussian,
             'gaussian_sigma': gaussian_sigma,
             'background_label': 0,
@@ -220,7 +243,7 @@ class TestMatrixNMSOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
 
 class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
@@ -266,50 +289,51 @@ class TestMatrixNMSError(unittest.TestCase):
                 # the bboxes type must be Variable
                 fluid.layers.matrix_nms(bboxes=boxes_np,
                                         scores=scores_data,
-                                        nms_top_k=nms_top_k,
-                                        keep_top_k=keep_top_k,
                                         score_threshold=score_threshold,
-                                        post_threshold=post_threshold)
+                                        post_threshold=post_threshold,
+                                        nms_top_k=nms_top_k,
+                                        keep_top_k=keep_top_k)
                 paddle.vision.ops.matrix_nms(bboxes=boxes_np,
                                              scores=scores_data,
-                                             nms_top_k=nms_top_k,
-                                             keep_top_k=keep_top_k,
                                              score_threshold=score_threshold,
-                                             post_threshold=post_threshold)
+                                             post_threshold=post_threshold,
+                                             nms_top_k=nms_top_k,
+                                             keep_top_k=keep_top_k)
 
             def test_scores_Variable():
                 # the scores type must be Variable
                 fluid.layers.matrix_nms(bboxes=boxes_data,
                                         scores=scores_np,
-                                        nms_top_k=nms_top_k,
-                                        keep_top_k=keep_top_k,
                                         score_threshold=score_threshold,
-                                        post_threshold=post_threshold)
+                                        post_threshold=post_threshold,
+                                        nms_top_k=nms_top_k,
+                                        keep_top_k=keep_top_k)
                 paddle.vision.ops.matrix_nms(bboxes=boxes_data,
                                              scores=scores_np,
-                                             nms_top_k=nms_top_k,
-                                             keep_top_k=keep_top_k,
                                              score_threshold=score_threshold,
-                                             post_threshold=post_threshold)
+                                             post_threshold=post_threshold,
+                                             nms_top_k=nms_top_k,
+                                             keep_top_k=keep_top_k)
 
             def test_empty():
                 # when all score are lower than threshold
                 try:
                     fluid.layers.matrix_nms(bboxes=boxes_data,
                                             scores=scores_data,
+                                            score_threshold=score_threshold,
+                                            post_threshold=post_threshold,
                                             nms_top_k=nms_top_k,
-                                            keep_top_k=keep_top_k,
-                                            score_threshold=10.,
-                                            post_threshold=post_threshold)
+                                            keep_top_k=keep_top_k)
                 except Exception as e:
                     self.fail(e)
                 try:
-                    paddle.vision.ops.matrix_nms(bboxes=boxes_data,
-                                                 scores=scores_data,
-                                                 nms_top_k=nms_top_k,
-                                                 keep_top_k=keep_top_k,
-                                                 score_threshold=10.,
-                                                 post_threshold=post_threshold)
+                    paddle.vision.ops.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k)
                 except Exception as e:
                     self.fail(e)
 
@@ -318,20 +342,20 @@ class TestMatrixNMSError(unittest.TestCase):
                 try:
                     fluid.layers.matrix_nms(bboxes=boxes_data,
                                             scores=scores_data,
-                                            nms_top_k=nms_top_k,
-                                            keep_top_k=keep_top_k,
                                             score_threshold=score_threshold,
-                                            post_threshold=post_threshold)
+                                            post_threshold=post_threshold,
+                                            nms_top_k=nms_top_k,
+                                            keep_top_k=keep_top_k)
                 except Exception as e:
                     self.fail(e)
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
                         scores=scores_data,
-                        nms_top_k=nms_top_k,
-                        keep_top_k=keep_top_k,
                         score_threshold=score_threshold,
-                        post_threshold=post_threshold)
+                        post_threshold=post_threshold,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k)
                 except Exception as e:
                     self.fail(e)
 
@@ -341,4 +365,5 @@ class TestMatrixNMSError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

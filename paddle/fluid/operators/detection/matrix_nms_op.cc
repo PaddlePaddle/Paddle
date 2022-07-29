@@ -62,9 +62,10 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Threshold to filter out bounding boxes with low "
                    "confidence score.");
     AddAttr<float>("post_threshold",
-                   "(float) "
+                   "(float, default 0.) "
                    "Threshold to filter out bounding boxes with low "
-                   "confidence score AFTER decaying.");
+                   "confidence score AFTER decaying.")
+        .SetDefault(0.);
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
