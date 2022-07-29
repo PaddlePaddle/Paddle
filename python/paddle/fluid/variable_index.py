@@ -490,18 +490,29 @@ def _getitem_impl_(var, item):
 
     out = var
     if len(axes) > 0:
-        target_block = default_main_program().current_block()
         op_type = "strided_slice" if use_strided_slice else "slice"
+        if paddle.fluid.framework.in_dygraph_mode():
+            if op_type == "strided_slice":
+                out = paddle._C_ops.final_state_strided_slice(
+                    var, axes, starts, ends, steps)
+                #  (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
 
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_" +
-                                                         op_type),
-            dtype=var.dtype)
-        target_block.append_op(type=op_type,
-                               inputs=inputs,
-                               outputs={'Out': [slice_out_var]},
-                               attrs=attrs)
-        out = slice_out_var
+            if op_type == "slice":
+                #   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+                out = paddle._C_ops.final_state_slice(var, axes, starts, ends,
+                                                      infer_flags, [])
+        else:
+            target_block = default_main_program().current_block()
+
+            slice_out_var = target_block.create_var(
+                name=unique_name.generate_with_ignorable_key(var.name + "_" +
+                                                             op_type),
+                dtype=var.dtype)
+            target_block.append_op(type=op_type,
+                                   inputs=inputs,
+                                   outputs={'Out': [slice_out_var]},
+                                   attrs=attrs)
+            out = slice_out_var
 
     if len(reverse_axes) > 0:
         from .layers.tensor import reverse

@@ -213,8 +213,8 @@ def slice(input, axes, starts, ends):
             ends_tensor = ends
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
-        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
-                            'axes', axes, 'infer_flags', infer_flags, *attrs)
+        return _C_ops.final_state_slice(input, axes, starts_tensor, ends_tensor,
+                                        infer_flags, [])
     else:
         if _in_legacy_dygraph():
             attrs = ()
