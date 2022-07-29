@@ -14,7 +14,12 @@
 
 #include <cmath>
 #include <string>
+#include <vector>
 
+#include "gmock/gmock-matchers.h"
+#include "gmock/gmock-more-matchers.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest-spi.h"
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -51,6 +56,9 @@ PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 #endif
 
+using ::testing::ElementsAre;
+using ::testing::FloatEq;
+
 namespace paddle {
 namespace jit {
 using DenseTensor = phi::DenseTensor;
@@ -71,8 +79,25 @@ TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
-  auto inputs = PrepareInputs(place);
 
+  if (layer.HasAttribute()) {
+    float fbias = layer.Attribute<float>("fbias");
+    EXPECT_FLOAT_EQ(fbias, 1.4);
+    int ds = layer.Attribute<int>("down_sampling");
+    EXPECT_EQ(ds, 4);
+    std::string fstr = layer.Attribute<std::string>("fstr");
+    EXPECT_STREQ(fstr.c_str(), "save str property");
+    std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
+    EXPECT_THAT(ints, ElementsAre(10, 20));
+    std::vector<float> floats = layer.Attribute<std::vector<float>>("floats");
+    EXPECT_THAT(floats, ElementsAre(FloatEq(1.1), FloatEq(2.2)));
+    std::vector<std::string> strs =
+        layer.Attribute<std::vector<std::string>>("strs");
+    EXPECT_THAT(strs, ElementsAre("hello", "world"));
+  }
+
+  // functions
+  auto inputs = PrepareInputs(place);
   auto outs = layer.forward(inputs);
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);

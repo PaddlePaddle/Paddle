@@ -37,7 +37,6 @@ Layer Deserializer::operator()(const std::string& path,
   // set is ordered
   std::set<std::string> param_names_set;
   std::vector<std::shared_ptr<FunctionInfo>> infos;
-  Name2VariableMap params_dict;
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
     auto program_desc = LoadProgram(it.second);
@@ -56,10 +55,15 @@ Layer Deserializer::operator()(const std::string& path,
         func_name, persist_var_names, program_desc));
   }
 
+  Name2VariableMap params_dict;
+  Name2VariableMap attrs_dict;
   ReadTensorData(path + PDPARAMS_SUFFIX, param_names_set, place, &params_dict);
-  // ReadAttributeData();
 
-  Layer layer = Layer(params_dict, place);
+  if (utils::FileExists(path + PROPERTY_SUFFIX)) {
+    ReadAttributeData(path + PROPERTY_SUFFIX, &attrs_dict);
+  }
+
+  Layer layer = Layer(params_dict, attrs_dict, place);
 
   for (auto& info : infos) {
     if (FLAGS_jit_engine_type == "Executor") {
@@ -99,7 +103,13 @@ void Deserializer::ReadTensorData(const std::string& file_name,
 }
 
 void Deserializer::ReadAttributeData(const std::string& file_path,
-                                     Name2VariableMap* attrs_dict) const {}
+                                     Name2VariableMap* attrs_dict) const {
+  VLOG(3) << "ReadPropertyData from: " << file_path;
+  Property p;
+  p.Deserialization(file_path);
+  *attrs_dict = static_cast<Name2VariableMap>(p.Values());
+  return;
+}
 
 framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   VLOG(3) << "LoadProgram from: " << file_name;
