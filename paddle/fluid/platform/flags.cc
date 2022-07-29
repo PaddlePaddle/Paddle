@@ -753,6 +753,18 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls get all neighbor id when running sub part graph.");
 
 /**
+ * Distributed related FLAG
+ * Name: enable_exit_when_partial_worker
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control  whether exit trainer when an worker has no ins.
+ *       If it is not set, trainer will exit until all worker finish train.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_exit_when_partial_worker, false,
+    "It controls whether exit trainer when an worker has no ins.");
+/**
  * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0

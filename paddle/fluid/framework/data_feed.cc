@@ -2066,6 +2066,11 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
     so_parser_name_.clear();
   }
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
+  if (gpu_graph_mode_) {
+    train_mode_ = true;
+  } else {
+    train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
+  }
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {

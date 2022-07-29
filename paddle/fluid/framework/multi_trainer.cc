@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+extern Barrier g_barrier;
+
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
@@ -61,7 +63,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
         thread_num_);
   }
 #endif
-
+  g_barrier.reset(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -73,6 +75,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetThreadNum(thread_num_);
   }
 
   // set debug here

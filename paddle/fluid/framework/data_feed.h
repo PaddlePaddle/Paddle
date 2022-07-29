@@ -1047,6 +1047,7 @@ class DataFeed {
     return ins_content_vec_;
   }
   virtual int GetCurBatchSize() { return batch_size_; }
+  virtual bool IsTrainMode() { return train_mode_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
@@ -1119,6 +1120,7 @@ class DataFeed {
   int input_type_;
   int gpu_graph_mode_ = 0;
   GraphDataGenerator gpu_graph_data_generator_;
+  bool train_mode_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
