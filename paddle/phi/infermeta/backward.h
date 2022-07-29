@@ -206,6 +206,13 @@ void InverseGradInferMeta(const MetaTensor& out,
 
 void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
 
+void LUGradInferMeta(const MetaTensor& x,
+                     const MetaTensor& out,
+                     const MetaTensor& pivots,
+                     const MetaTensor& out_grad,
+                     bool pivot,
+                     MetaTensor* x_grad);
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,

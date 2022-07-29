@@ -452,6 +452,20 @@ void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx) {
   dx->share_lod(xshape);
 }
 
+void LUGradInferMeta(const MetaTensor& x,
+                     const MetaTensor& out,
+                     const MetaTensor& pivots,
+                     const MetaTensor& out_grad,
+                     bool pivot,
+                     MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
