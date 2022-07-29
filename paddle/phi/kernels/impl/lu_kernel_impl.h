@@ -1,40 +1,42 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/operators/set_value_op.h"
-#include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/triangular_solve_kernel.h"
+#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-using Tensor = framework::Tensor;
-using LoDTensorArray = framework::LoDTensorArray;
+template <typename T>
+using SubFunctor = phi::funcs::SubtractFunctor<T>;
 
-template <typename DeviceContext, typename T, size_t D>
-void SetValueCompute(const framework::ExecutionContext& ctx,
-                     framework::Tensor* in,
-                     framework::Tensor* value_tensor,
-                     framework::Tensor* out,
+template <typename Context, typename T, size_t D>
+void SetValueCompute(const Context& dev_ctx,
+                     DenseTensor* in,
+                     DenseTensor* value_tensor,
+                     DenseTensor* out,
                      const std::vector<int64_t>& axes,
                      std::vector<int64_t>* starts,
                      std::vector<int64_t>* ends,
@@ -43,7 +45,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   std::vector<int64_t> decrease_axes = {};
   std::vector<int64_t> none_axes = {};
 
-  auto dtype = framework::TransToProtoVarType(in->dtype());
+  auto dtype = in->dtype();
 
   auto in_dims = in->dims();
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
@@ -79,9 +81,8 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
   }
 
-  auto place = ctx.GetPlace();
-  auto& eigen_place =
-      *ctx.template device_context<DeviceContext>().eigen_device();
+  auto place = dev_ctx.GetPlace();
+  auto& eigen_place = *dev_ctx.eigen_device();
 
   // Here copy data from input to avoid data loss at PE and Graph level.
   // TODO(liym27): Speed up in the future version.
@@ -94,16 +95,17 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // be two ops points to the output in graph: op1 -> output <- set_value.
   // In this case, we have to find a way to handle the running order of
   // set_value is what we want.
-  paddle::framework::TensorCopy(*in, place, out);
+  phi::Copy(dev_ctx, *in, place, false, out);
 
-  Tensor slice_tensor(framework::TransToPhiDataType(dtype)),
-      pad_tensor(framework::TransToPhiDataType(dtype));
-  slice_tensor.mutable_data<T>(slice_dims, place);
-  pad_tensor.mutable_data<T>(in_dims, place);
+  DenseTensor slice_tensor(dtype), pad_tensor(dtype);
+  slice_tensor.Resize(slice_dims);
+  dev_ctx.template Alloc<T>(&slice_tensor);
+  pad_tensor.Resize(in_dims);
+  dev_ctx.template Alloc<T>(&pad_tensor);
 
-  auto pad_e = framework::EigenTensor<T, D>::From(pad_tensor, in_dims);
-  auto out_e = framework::EigenTensor<T, D>::From(*out);
-  auto slice_e = framework::EigenTensor<T, D>::From(slice_tensor, slice_dims);
+  auto pad_e = EigenTensor<T, D>::From(pad_tensor, in_dims);
+  auto out_e = EigenTensor<T, D>::From(*out);
+  auto slice_e = EigenTensor<T, D>::From(slice_tensor, slice_dims);
 
   // Step 1: Set the value of out at `_index` to zero
   slice_e.device(eigen_place) = slice_e.constant(T(0));
@@ -151,20 +153,21 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
     CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    // ElementwiseComputeEx can do broadcasting
-    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-        ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(dev_ctx,
+                                                        slice_tensor,
+                                                        *value_tensor,
+                                                        -1,
+                                                        SubFunctor<T>(),
+                                                        &slice_tensor);
   } else {
-    Tensor value_t(framework::TransToPhiDataType(dtype));
+    DenseTensor value_t(dtype);
     auto value_dims = phi::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
-    value_t.mutable_data<T>(value_dims, place);
-    auto value_name = GetValueName(dtype);
-    CopyVectorToTensor<T>(value_name.c_str(), &value_t, ctx);
     value_t.Resize(value_dims);
-    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-        ctx, &slice_tensor, &value_t, -1, SubFunctor<T>(), &slice_tensor);
+    dev_ctx.template Alloc<T>(&value_t);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
+        dev_ctx, slice_tensor, value_t, -1, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
 
@@ -177,11 +180,11 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   out_e.device(eigen_place) = out_e - pad_e;
 }
 
-template <typename DeviceContext, typename T>
-void SetValueCompute_dispatch(const framework::ExecutionContext& ctx,
-                              framework::Tensor* in,
-                              framework::Tensor* value_tensor,
-                              framework::Tensor* out,
+template <typename Context, typename T>
+void SetValueCompute_dispatch(const Context& dev_ctx,
+                              DenseTensor* in,
+                              DenseTensor* value_tensor,
+                              DenseTensor* out,
                               const std::vector<int64_t>& axes,
                               std::vector<int64_t>* starts,
                               std::vector<int64_t>* ends,
@@ -189,90 +192,73 @@ void SetValueCompute_dispatch(const framework::ExecutionContext& ctx,
                               int rank) {
   switch (rank) {
     case 1:
-      SetValueCompute<DeviceContext, T, 1>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 1>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     case 2:
-      SetValueCompute<DeviceContext, T, 2>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 2>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     case 3:
-      SetValueCompute<DeviceContext, T, 3>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 3>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     case 4:
-      SetValueCompute<DeviceContext, T, 4>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 4>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     case 5:
-      SetValueCompute<DeviceContext, T, 5>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 5>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     case 6:
-      SetValueCompute<DeviceContext, T, 6>(
-          ctx, in, value_tensor, out, axes, starts, ends, shape);
+      SetValueCompute<Context, T, 6>(
+          dev_ctx, in, value_tensor, out, axes, starts, ends, shape);
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
 
-template <typename DeviceContext, typename T>
-void Tensor_Conj(const DeviceContext& dev_ctx,
-                 const framework::Tensor& tensor,
-                 framework::Tensor* out) {
+template <typename Context, typename T>
+void Tensor_Conj(const Context& dev_ctx,
+                 const DenseTensor& tensor,
+                 DenseTensor* out) {
   out->Resize(tensor.dims());
-  platform::ForRange<DeviceContext> out_for_range(dev_ctx, tensor.numel());
+  phi::funcs::ForRange<Context> out_for_range(dev_ctx, tensor.numel());
+  dev_ctx.template Alloc<T>(out);
   phi::funcs::ConjFunctor<T> out_functor(
-      tensor.data<T>(),
-      tensor.numel(),
-      out->mutable_data<T>(dev_ctx.GetPlace()));
+      tensor.data<T>(), tensor.numel(), out->data<T>());
   out_for_range(out_functor);
 }
 
-template <typename DeviceContext, typename T>
-void Tensor_Add(const DeviceContext& dev_ctx,
-                const framework::Tensor& src1,
-                const framework::Tensor& src2,
-                framework::Tensor* out) {
+template <typename Context, typename T>
+void Tensor_Add(const Context& dev_ctx,
+                const DenseTensor& src1,
+                const DenseTensor& src2,
+                DenseTensor* out) {
   out->Resize(src1.dims());
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
-  phi::AddRawKernel<
-      T,
-      typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPhiContext<
-          DeviceContext>::TYPE&>(dev_ctx),
-      src1,
-      src2,
-      -1,
-      out);
+  phi::AddRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
 }
 
-template <typename DeviceContext, typename T>
-void Tensor_Sub(const DeviceContext& dev_ctx,
-                const framework::Tensor& src1,
-                const framework::Tensor& src2,
-                framework::Tensor* out) {
+template <typename Context, typename T>
+void Tensor_Sub(const Context& dev_ctx,
+                const DenseTensor& src1,
+                const DenseTensor& src2,
+                DenseTensor* out) {
   out->Resize(src1.dims());
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractRawKernel<
-      T,
-      typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPhiContext<
-          DeviceContext>::TYPE&>(dev_ctx),
-      src1,
-      src2,
-      -1,
-      out);
+  phi::SubtractRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
 }
 
-template <typename DeviceContext, typename T, size_t D>
-void SliceCompute(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* in,
-                  framework::Tensor* out,
+template <typename Context, typename T, size_t D>
+void SliceCompute(const Context& dev_ctx,
+                  const DenseTensor* in,
+                  DenseTensor* out,
                   const std::vector<int>& axes_int,
                   const std::vector<int>& starts_int,
                   const std::vector<int>& ends_int) {
@@ -286,11 +272,11 @@ void SliceCompute(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_EQ(
       starts.size(),
       axes.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of starts must be equal to the size of axes."));
   PADDLE_ENFORCE_EQ(ends.size(),
                     axes.size(),
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of ends must be equal to the size of axes."));
 
   // Step 2: Compute output
@@ -328,12 +314,11 @@ void SliceCompute(const framework::ExecutionContext& ctx,
   }
 
   out->Resize(slice_dims);
-  out->mutable_data<T>(ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
-  auto in_t = framework::EigenTensor<T, D>::From(*in, in_dims);
-  auto out_t = framework::EigenTensor<T, D>::From(*out, slice_dims);
-  auto& eigen_place =
-      *ctx.template device_context<DeviceContext>().eigen_device();
+  auto in_t = EigenTensor<T, D>::From(*in, in_dims);
+  auto out_t = EigenTensor<T, D>::From(*out, slice_dims);
+  auto& eigen_place = *dev_ctx.eigen_device();
 
   if (in->numel() <= Eigen::NumTraits<int>::highest()) {
     // similar to tf.slice:
@@ -343,25 +328,25 @@ void SliceCompute(const framework::ExecutionContext& ctx,
       offsets_32bit[i] = offsets[i];
       extents_32bit[i] = extents[i];
     }
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
-        framework::To32BitIndex(out_t),
-        framework::To32BitIndex(in_t),
+        To32BitIndex(out_t),
+        To32BitIndex(in_t),
         offsets_32bit,
         extents_32bit);
   } else {
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place, out_t, in_t, offsets, extents);
   }
 
   out->Resize(out_dims);
-  out->mutable_data<T>(ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 }
 
-template <typename DeviceContext, typename T>
-void Tensor_narrow(const framework::ExecutionContext& ctx,
-                   const framework::Tensor* src,
-                   framework::Tensor* out,
+template <typename Context, typename T>
+void Tensor_narrow(const Context& dev_ctx,
+                   const DenseTensor* src,
+                   DenseTensor* out,
                    int row_s,
                    int row_e,
                    int col_s,
@@ -372,44 +357,44 @@ void Tensor_narrow(const framework::ExecutionContext& ctx,
   std::vector<int> ends_int = {row_e, col_e};
   switch (rank) {
     case 1:
-      SliceCompute<DeviceContext, T, 1>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 1>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     case 2:
-      SliceCompute<DeviceContext, T, 2>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 2>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     case 3:
-      SliceCompute<DeviceContext, T, 3>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 3>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     case 4:
-      SliceCompute<DeviceContext, T, 4>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 4>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     case 5:
-      SliceCompute<DeviceContext, T, 5>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 5>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     case 6:
-      SliceCompute<DeviceContext, T, 6>(
-          ctx, src, out, axes_int, starts_int, ends_int);
+      SliceCompute<Context, T, 6>(
+          dev_ctx, src, out, axes_int, starts_int, ends_int);
       break;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
 
-template <typename DeviceContext>
-void arange(const DeviceContext& dev_ctx,
-            framework::Tensor* tmp,
+template <typename Context>
+void arange(const Context& dev_ctx,
+            DenseTensor* tmp,
             int w,
             int batchsize = 1,
             int h = 1) {
   tmp->Resize(phi::make_ddim({batchsize * w}));
-  platform::CPUPlace cpu;
-  auto tmpdata = tmp->mutable_data<int32_t>(cpu);
+  dev_ctx.template HostAlloc<int32_t>(tmp);
+  auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
     for (int i = 0; i < w; i++) {
       tmpdata[b * w + i] = static_cast<int32_t>(b * h + i);
@@ -432,87 +417,87 @@ struct OneFunctor {
   int dim_;
 };
 
-template <typename DeviceContext, typename T>
-void LU_Unpack(const DeviceContext& dev_ctx,
-               const framework::Tensor* LU,
-               framework::Tensor* L,
-               framework::Tensor* U) {
+template <typename Context, typename T>
+void LU_Unpack(const Context& dev_ctx,
+               const DenseTensor* LU,
+               DenseTensor* L,
+               DenseTensor* U) {
   const auto udims = LU->dims();
   L->Resize(udims);
   U->Resize(udims);
   const auto H = udims[udims.size() - 2];
   const auto W = udims[udims.size() - 1];
-  auto L_dataptr = L->mutable_data<T>(dev_ctx.GetPlace());
-  platform::ForRange<DeviceContext> x_for_range(dev_ctx, LU->numel());
+  dev_ctx.template Alloc<T>(L);
+  auto L_dataptr = L->data<T>();
+  phi::funcs::ForRange<Context> x_for_range(dev_ctx, LU->numel());
   phi::funcs::TrilTriuCompute<T> tril_computer(
       LU->data<T>(), -1, true, H, W, L_dataptr);
   x_for_range(tril_computer);
 
+  dev_ctx.template Alloc<T>(U);
   phi::funcs::TrilTriuCompute<T> triu_computer(
-      LU->data<T>(), 0, false, H, W, U->mutable_data<T>(dev_ctx.GetPlace()));
+      LU->data<T>(), 0, false, H, W, U->data<T>());
   x_for_range(triu_computer);
 
   // set L's diagonal 1
   auto dim = std::min(H, W);
-  framework::Tensor rowtensor, rt_dev;
+  DenseTensor rowtensor, rt_dev;
   auto batchsize = product(phi::slice_ddim(udims, 0, udims.size() - 2));
   batchsize = std::max(static_cast<int>(batchsize), 1);
-  arange<DeviceContext>(dev_ctx, &rowtensor, dim, batchsize, H);
+  arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-    framework::TensorCopy(rowtensor, dev_ctx.GetPlace(), &rt_dev);
+  if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
+    phi::Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
 
-  platform::ForRange<DeviceContext> for_range(dev_ctx, rowtensor.numel());
+  phi::funcs::ForRange<Context> for_range(dev_ctx, rowtensor.numel());
   OneFunctor<T> functor(L_dataptr, idtptr, W, dim);
   for_range(functor);
 }
 
-template <typename DeviceContext, typename T>
-void scatterpivot(const DeviceContext& dev_ctx,
-                  T* out_data,
-                  framework::Tensor* idlst,
-                  int w,
-                  int dim) {
-  framework::Tensor idlst_tmp;
+template <typename Context, typename T>
+void scatterpivot(
+    const Context& dev_ctx, T* out_data, DenseTensor* idlst, int w, int dim) {
+  DenseTensor idlst_tmp;
   idlst_tmp.Resize(idlst->dims());
-  idlst_tmp.mutable_data<int32_t>(dev_ctx.GetPlace());
-  framework::TensorCopy(*idlst, dev_ctx.GetPlace(), &idlst_tmp);
+  dev_ctx.template Alloc<int32_t>(&idlst_tmp);
+  phi::Copy(dev_ctx, *idlst, dev_ctx.GetPlace(), false, &idlst_tmp);
   auto idtptr = idlst_tmp.data<int32_t>();
 
-  platform::ForRange<DeviceContext> for_range(dev_ctx, idlst_tmp.numel());
+  phi::funcs::ForRange<Context> for_range(dev_ctx, idlst_tmp.numel());
   OneFunctor<T> functor(out_data, idtptr, w, dim);
   for_range(functor);
 }
 
-template <typename DeviceContext, typename T>
-void Unpack_Pivot(const DeviceContext& dev_ctx,
-                  const framework::Tensor& Pivot,
-                  framework::Tensor* P,
+template <typename Context, typename T>
+void Unpack_Pivot(const Context& dev_ctx,
+                  const DenseTensor& Pivot,
+                  DenseTensor* P,
                   int h,
                   int w) {
   auto dims = Pivot.dims();
   auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
-  framework::Tensor Pivot_cpu;
-  platform::CPUPlace cpu;
-  framework::TensorCopy(Pivot, cpu, &Pivot_cpu);
+  DenseTensor Pivot_cpu;
+  phi::CPUPlace cpu;
+  phi::Copy(dev_ctx, Pivot, cpu, false, &Pivot_cpu);
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
   auto Pdim = phi::make_ddim(Pdimvec);
   P->Resize(Pdim);
-  auto pdata = P->mutable_data<T>(dev_ctx.GetPlace());
-  phi::funcs::SetConstant<DeviceContext, T> setter;
+  dev_ctx.template Alloc<T>(P);
+  auto pdata = P->data<T>();
+  phi::funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
   auto batchsize = product(phi::slice_ddim(dims, 0, prank - 1));
   batchsize = std::max(static_cast<int>(batchsize), 1);
-  framework::Tensor idt;
+  DenseTensor idt;
   for (int i = 0; i < batchsize; i++) {
-    arange<DeviceContext>(dev_ctx, &idt, h);
+    arange<Context>(dev_ctx, &idt, h);
     auto idlst = idt.data<int32_t>();
     for (int j = 0; j < Pnum; j++) {
       if (idlst[pdataptr[i * Pnum + j] - 1] == idlst[j]) continue;
@@ -524,5 +509,55 @@ void Unpack_Pivot(const DeviceContext& dev_ctx,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+template <typename Context, typename T>
+DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
+  // transpose the last two dimision
+  DenseTensor ret;
+  auto x_dim = x.dims();
+  auto x_vec = phi::vectorize<int>(x_dim);
+  int rank = x_vec.size();
+  std::swap(x_vec[rank - 1], x_vec[rank - 2]);
+  std::vector<int> out_shape = x_vec;
+  std::vector<int> axis(rank);
+  for (int i = 0; i < rank; ++i) {
+    axis[i] = i;
+  }
+  std::swap(axis[rank - 1], axis[rank - 2]);
+  ret.Resize(phi::make_ddim(x_vec));
+  dev_ctx.template Alloc<T>(&ret);
+  switch (rank) {
+    case 2: {
+      phi::funcs::Transpose<Context, T, 2> trans;
+      trans(dev_ctx, x, &ret, axis);
+      break;
+    }
+    case 3: {
+      phi::funcs::Transpose<Context, T, 3> trans;
+      trans(dev_ctx, x, &ret, axis);
+      break;
+    }
+    case 4: {
+      phi::funcs::Transpose<Context, T, 4> trans;
+      trans(dev_ctx, x, &ret, axis);
+      break;
+    }
+    case 5: {
+      phi::funcs::Transpose<Context, T, 5> trans;
+      trans(dev_ctx, x, &ret, axis);
+      break;
+    }
+    case 6: {
+      phi::funcs::Transpose<Context, T, 6> trans;
+      trans(dev_ctx, x, &ret, axis);
+      break;
+    }
+    default: {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Invalid Rank number, "
+          "currently only support rank between 2~6"));
+    }
+  }
+  return ret;
+}
+
+}  // namespace phi

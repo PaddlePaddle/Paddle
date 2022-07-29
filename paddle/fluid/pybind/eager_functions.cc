@@ -907,10 +907,25 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
 }
 #endif
 
+static PyObject* eager_api__add_backward_final_hook(PyObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+  egr::Controller::Instance().RegisterBackwardFinalHook(
+      std::make_shared<PyVoidHook>(hook_func));
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_functions[] = {
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
      (PyCFunction)(void (*)(void))eager_api_scale,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_add_backward_final_hook",
+     (PyCFunction)(void (*)(void))eager_api__add_backward_final_hook,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"run_backward",
