@@ -22,7 +22,6 @@ from paddle.common_ops_import import dygraph_only
 from paddle.common_ops_import import OpProtoHolder
 from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
-from pip import main
 
 from .manipulation import cast
 from .creation import _complex_to_real_dtype
