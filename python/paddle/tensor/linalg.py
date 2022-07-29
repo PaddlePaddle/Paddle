@@ -3174,21 +3174,12 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
     if _non_static_mode():
-        solution, rank, singular_values = _C_ops.lstsq(x, y, "rcond", rcond,
-                                                       "driver", driver)
-        if x.shape[-2] > x.shape[-1]:
-            matmul_out = _varbase_creator(dtype=x.dtype)
-            _C_ops.matmul(x, solution, matmul_out, 'trans_x', False, 'trans_y',
-                          False)
-            minus_out = _C_ops.elementwise_sub(matmul_out, y)
-            pow_out = _C_ops.pow(minus_out, 'factor', 2)
-            if in_dygraph_mode():
-                residuals = _C_ops.final_state_sum(pow_out, [-2], None, False)
-            else:
-                residuals = _C_ops.reduce_sum(pow_out, 'dim', [-2], 'keepdim',
-                                              False, 'reduce_all', False)
+        if in_dygraph_mode():
+            solution, residuals, rank, singular_values = _C_ops.final_state_lstsq(
+                x, y, rcond, driver)
         else:
-            residuals = paddle.empty(shape=[0], dtype=x.dtype)
+            solution, residuals, rank, singular_values = _C_ops.lstsq(
+                x, y, 'rcond', rcond, 'driver', driver)
 
         if driver == "gels":
             rank = paddle.empty(shape=[0], dtype=paddle.int32)
@@ -3218,47 +3209,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
                      },
                      outputs={
                          'Solution': solution,
+                         'Residuals': residuals,
                          'Rank': rank,
                          'SingularValues': singular_values
                      },
                      attrs={
                          'rcond': rcond,
                          'driver': driver
-                     })
-
-    matmul_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    minus_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    pow_out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='matmul_v2',
-                     inputs={
-                         'X': x,
-                         'Y': solution
-                     },
-                     outputs={'Out': matmul_out},
-                     attrs={
-                         'trans_x': False,
-                         'trans_y': False,
-                     })
-
-    helper.append_op(type='elementwise_sub',
-                     inputs={
-                         'X': matmul_out,
-                         'Y': y
-                     },
-                     outputs={'Out': minus_out})
-
-    helper.append_op(type='pow',
-                     inputs={'X': minus_out},
-                     outputs={'Out': pow_out},
-                     attrs={'factor': 2})
-
-    helper.append_op(type='reduce_sum',
-                     inputs={'X': pow_out},
-                     outputs={'Out': residuals},
-                     attrs={
-                         'dim': [-2],
-                         'keep_dim': False,
-                         'reduce_all': False
                      })
 
     if driver == "gels":
