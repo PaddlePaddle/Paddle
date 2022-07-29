@@ -905,8 +905,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
       }
 
       paddle::experimental::Tensor new_out;
-      framework::AttributeMap attrs = {{"axes", none_axes}};
-      new_out = std::get<0>(unsqueeze2_dygraph_function(out, std::move(attrs)));
+      new_out = unsqueeze_final_state_dygraph_function(out, none_axes);
       return ToPyObject(new_out);
     }
   }

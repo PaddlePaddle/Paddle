@@ -421,7 +421,18 @@ def conv1d(x,
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
+        if l_type == 'depthwise_conv2d':
+            out = _C_ops.final_state_depthwise_conv2d(
+                x, weight, stride, padding, padding_algorithm, groups, dilation,
+                conv2d_data_format, False, -1, False, False, use_cudnn)
+        elif l_type == 'conv2d':
+            out = _C_ops.final_state_conv2d(x, weight, stride, padding,
+                                            padding_algorithm, groups, dilation,
+                                            conv2d_data_format, False, -1,
+                                            False)
+
+    elif _in_legacy_dygraph():
         attrs = ('strides', stride, 'paddings', padding, 'dilations', dilation,
                  'groups', groups, 'use_cudnn', use_cudnn, 'use_mkldnn', False,
                  'fuse_relu_before_depthwise_conv', False, "padding_algorithm",
