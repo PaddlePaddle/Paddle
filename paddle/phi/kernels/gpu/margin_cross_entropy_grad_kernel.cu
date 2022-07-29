@@ -74,7 +74,64 @@ void GetClassInterval(const gpuStream_t& stream,
     paddle::framework::TensorFromVector(shard_dim_vec, ctx, class_interval);
     return;
   }
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  Tensor num_classes_per_device;
+  paddle::framework::TensorFromVector(
+      shard_dim_vec, dev_ctx, &num_classes_per_device);
+  int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
+
+  auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
+  if (map->has(rid)) {
+    // Use ProcessGroup
+    paddle::distributed::ProcessGroup* pg = map->get(rid);
+    std::vector<phi::DenseTensor> in_tensor;
+    std::vector<phi::DenseTensor> out_tensor;
+    in_tensor.push_back(num_classes_per_device);
+    out_tensor.push_back(num_classes_per_device);
+
+    paddle::distributed::AllreduceOptions opts;
+    opts.reduce_op = paddle::distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    task->Wait();
+  } else {
+    const auto& comm =
+        paddle::platform::NCCLCommContext::Instance().Get(rid, place);
+    // use global calculate stream
+    const auto calcu_stream =
+        static_cast<paddle::platform::CUDADeviceContext*>(
+            paddle::platform::DeviceContextPool::Instance().Get(place))
+            ->stream();
+
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+        num_classes_per_device_ptr,
+        num_classes_per_device_ptr,
+        num_classes_per_device.numel(),
+        paddle::platform::ToNCCLDataType(paddle::framework::TransToProtoVarType(
+            num_classes_per_device.dtype())),
+        ncclSum,
+        comm->comm(),
+        calcu_stream));
+  }
+
+  // auto class_interval_ptr =
+  //     class_interval->mutable_data<int>({nranks + 1}, place);
+  class_interval->Resize({nranks + 1});
+  auto class_interval_ptr = dev_ctx.template Alloc<int>(class_interval);
+
+  size_t cub_temp_storage_bytes = 0;
+  cub::DeviceScan::InclusiveSum<int*, int*>(
+      nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
+  auto cub_temp_storage = paddle::memory::Alloc(place, cub_temp_storage_bytes);
+  cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
+                                            cub_temp_storage_bytes,
+                                            num_classes_per_device_ptr,
+                                            class_interval_ptr,
+                                            nranks + 1,
+                                            stream);
+  return;
+#endif
 }
+
 template <typename T, typename IndexT>
 __global__ void CalculateGrad(T* logits_grad,
                               const T* loss_grad,
@@ -134,7 +191,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
   const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
 
   if (return_softmax) {
-    phi::Copy(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
+    phi::Copy<Context>(dev_ctx, softmax, dev_ctx.GetPlace(), false, logit_grad);
   } else {
     logit_grad->ShareDataWith(softmax);
   }

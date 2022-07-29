@@ -56,7 +56,7 @@ static inline int NumBlocks(const int N) {
 template <typename T, typename Context>
 void GetClassInterval(const gpuStream_t& stream,
                       const phi::Place& place,
-                      const Context& ctx,
+                      const Context& dev_ctx,
                       const int rid,
                       const int rank,
                       const int nranks,
@@ -65,7 +65,7 @@ void GetClassInterval(const gpuStream_t& stream,
   std::vector<int> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = D;
   if (nranks <= 1) {
-    paddle::framework::TensorFromVector(shard_dim_vec, ctx, class_interval);
+    paddle::framework::TensorFromVector(shard_dim_vec, dev_ctx, class_interval);
     return;
   }
 
@@ -108,8 +108,8 @@ void GetClassInterval(const gpuStream_t& stream,
         calcu_stream));
   }
 
-  auto class_interval_ptr =
-      class_interval->mutable_data<int>({nranks + 1}, place);
+  class_interval->Resize({nranks + 1});
+  auto class_interval_ptr = dev_ctx.template Alloc<int>(class_interval);
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
@@ -261,8 +261,6 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 #endif
 
   // allocate memory on device.
-  // T* softmax_ptr = softmax->mutable_data<T>(place);
-  // T* loss_ptr = loss->mutable_data<T>(place);
   T* softmax_ptr = dev_ctx.template Alloc<T>(softmax);
   T* loss_ptr = dev_ctx.template Alloc<T>(loss);
 
@@ -280,7 +278,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
   // copy logits to softmax variable since we can't modify logits,
   // and it also be used when calculate grad
-  phi::Copy(dev_ctx, logits, dev_ctx.GetPlace(), true, softmax);
+  phi::Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), true, softmax);
 
   Tensor softmax_2d;
   softmax_2d.ShareDataWith(*softmax).Resize({N, D});
@@ -344,9 +342,6 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   Tensor logits_max;
   logits_max.Resize({N, 1});
   dev_ctx.template Alloc<T>(&logits_max);
-  // logits_max =
-  //     dev_ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>({N,
-  //     1}, dev_ctx);
   T* logits_max_buff = dev_ctx.template Alloc<T>(&logits_max);
 
   phi::funcs::
@@ -399,13 +394,6 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       &sum_exp_logits,
       phi::kps::ExpFunctor<T>(),
       {1});
-  // TensorReduceImpl<T, T, phi::kps::AddFunctor, phi::kps::ExpFunctor<T>>(
-  //     dev_ctx,
-  //     softmax_2d,
-  //     &sum_exp_logits,
-  //     phi::kps::ExpFunctor<T>(),
-  //     {1},
-  //     dev_ctx.stream());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {

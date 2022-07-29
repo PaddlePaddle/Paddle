@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature MarginCrossEntropyOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("margin_cross_entropy",
-                         {"Logits", "Lable"},
+                         {"Logits", "Label"},
                          {"return_softmax",
                           "ring_id",
                           "rank",

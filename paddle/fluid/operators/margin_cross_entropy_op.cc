@@ -130,12 +130,19 @@ namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(margin_cross_entropy,
                             MarginCrossEntropyInferShapeFunctor,
                             PD_INFER_META(phi::MarginCrossEntropyInferMeta));
+REGISTER_OPERATOR(margin_cross_entropy,
+                  ops::MarginCrossEntropyOp,
+                  ops::MarginCrossEntropyOpMaker,
+                  MarginCrossEntropyInferShapeFunctor);
+
+DECLARE_INFER_SHAPE_FUNCTOR(
+    margin_cross_entropy_grad,
+    MarginCrossEntropyGradInferShapeFunctor,
+    PD_INFER_META(phi::MarginCrossEntropyGradInferMeta));
+
 REGISTER_OPERATOR(
-    margin_cross_entropy,
-    ops::MarginCrossEntropyOp,
-    ops::MarginCrossEntropyOpMaker,
+    margin_cross_entropy_grad,
+    ops::MarginCrossEntropyOpGrad,
     ops::MarginCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
     ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>,
-    MarginCrossEntropyInferShapeFunctor);
-
-REGISTER_OPERATOR(margin_cross_entropy_grad, ops::MarginCrossEntropyOpGrad);
+    MarginCrossEntropyGradInferShapeFunctor);
