@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/log_softmax_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
