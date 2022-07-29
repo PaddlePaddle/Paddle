@@ -234,6 +234,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
     Examples:
         .. code-block:: python
 
+          # required: gpu
           import paddle
           import paddle.incubate.sparse.nn as nn
           import numpy as np
