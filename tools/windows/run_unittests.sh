@@ -340,7 +340,7 @@ function run_unittest_gpu() {
         # the latter is derived in linux server with 16G CUDA memory.
         cuda_memory=$(nvidia-smi --query-gpu=memory.total --format=csv | tail -1 | awk -F ' ' '{print $1}')
         parallel_job=$(($2 * $cuda_memory / 16000))
-        if [$parallel_job -lt 1]; then
+        if [ $parallel_job -lt 1 ]; then
             parallel_job=1
         fi
     fi
