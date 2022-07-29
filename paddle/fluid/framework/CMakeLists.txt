@@ -517,13 +517,13 @@ cc_test(
   DEPS op_call_stack)
 
 cc_library(
-  program_processing
-  SRCS program_processing.cc
+  program_utils
+  SRCS program_utils.cc
   DEPS proto_desc)
 cc_test(
-  program_processing_test
-  SRCS program_processing_test.cc
-  DEPS proto_desc program_processing)
+  program_utils_test
+  SRCS program_utils_test.cc
+  DEPS proto_desc program_utils)
 
 if(WITH_GPU)
   nv_test(

@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature LgammaGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("lgamma_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
+template <typename T, typename Context>
+void CropTensorKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const IntArray& shape,
+                      const IntArray& offsets,
+                      DenseTensor* out);
 
 }  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(lgamma_grad, phi::LgammaGradOpArgumentMapping);

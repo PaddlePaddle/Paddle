@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #pragma once
+
 #include <cmath>
 #include <random>
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/dirichlet_kernel.h"
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
 #if defined(PADDLE_WITH_CUDA)
@@ -42,10 +41,7 @@
 #define COMPAT_LOG1P std::log1p
 #endif
 
-namespace paddle {
-namespace operators {
-template <typename DeviceContext, typename T>
-struct DirichletSampler;
+namespace phi {
 
 template <typename ScalarT, typename SamplerT>
 struct BaseSampler {
@@ -117,17 +113,19 @@ sample_gamma(ScalarT alpha,
   }
 }
 
-template <typename DeviceContext, typename T>
-class DirichletKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* alpha = ctx.Input<framework::Tensor>("Alpha");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    DirichletSampler<DeviceContext, T> sampler;
-    sampler(ctx, alpha, out);
-  }
+template <typename Context, typename T>
+struct DirichletSampler {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& alpha,
+                  DenseTensor* out);
 };
-}  // namespace operators
-}  // namespace paddle
+
+template <typename T, typename Context>
+void Dirichletkernel(const Context& dev_ctx,
+                     const DenseTensor& alpha,
+                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  DirichletSampler<Context, T> sampler;
+  sampler(dev_ctx, alpha, out);
+}
+}  // namespace phi

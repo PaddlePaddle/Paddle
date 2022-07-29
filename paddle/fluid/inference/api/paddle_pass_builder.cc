@@ -161,7 +161,9 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_fuse_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",     //
     "gpu_cpu_map_matmul_v2_to_matmul_pass",  //
-    "fc_fuse_pass"};
+    "fc_fuse_pass",
+    "fc_elementwise_layernorm_fuse_pass",
+};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     // "conv_bn_fuse_pass",
