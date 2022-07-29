@@ -16,7 +16,7 @@
 # cuda moduel lazy loading is supported by CUDA 11.7+
 # this experiment option makes Paddle supports lazy loading before CUDA 11.7.
 
-option(EXP_CUDA_MODULE_LOADING_LAZY "enable lazy cuda module loading" OFF)
+option(EXP_CUDA_MODULE_LOADING_LAZY "enable lazy cuda module loading" ON)
 if(${EXP_CUDA_MODULE_LOADING_LAZY})
   if(NOT ${ON_INFER} OR NOT ${LINUX})
     message(

@@ -43,8 +43,8 @@ STUBF=$(find $BUILDDIR -name *.cudafe1.stub.c)
 CUFILE=$(basename -s '.cudafe1.stub.c' $STUBF)
 sed -i -e '/__sti____cudaRegisterAll.*__attribute__/a static void __try____cudaRegisterAll(int);' $STUBF
 sed -i -e 's/__sti____cudaRegisterAll\(.*{\)/__do____cudaRegisterAll\1/' $STUBF
-# sed -i -e "/__do____cudaRegisterAll\(.*{\)/a static void __try____cudaRegisterAll(int l){static int _ls = 0; if (_ls) return; const char* lm = getenv(\"CUDA_MODULE_LOADING\"); if (lm&&(lm[0]=='L')&&(lm[1]=='A')&&(lm[2]=='Z')&&(lm[3]=='Y')&&(l!=1)) return; _ls = 1; fprintf(stderr,\"===> ${CUFILE} lazy-load? %d\\\\n\", l); __do____cudaRegisterAll();}" $STUBF
-sed -i -e "/__do____cudaRegisterAll\(.*{\)/a static void __try____cudaRegisterAll(int l){static int _ls = 0; if (_ls) return; const char* lm = getenv(\"CUDA_MODULE_LOADING\"); if (lm&&(lm[0]=='L')&&(lm[1]=='A')&&(lm[2]=='Z')&&(lm[3]=='Y')&&(l!=1)) return; _ls = 1; __do____cudaRegisterAll();}" $STUBF
+# sed -i -e "/__do____cudaRegisterAll\(.*{\)/a static void __try____cudaRegisterAll(int l){static int _ls = 0; if (_ls) return; const char* lm = \"LAZY\"; if (lm&&(lm[0]=='L')&&(lm[1]=='A')&&(lm[2]=='Z')&&(lm[3]=='Y')&&(l!=1)) return; _ls = 1; fprintf(stderr,\"===> ${CUFILE} lazy-load? %d\\\\n\", l); __do____cudaRegisterAll();}" $STUBF
+sed -i -e "/__do____cudaRegisterAll\(.*{\)/a static void __try____cudaRegisterAll(int l){static int _ls = 0; if (_ls) return; const char* lm = \"LAZY\"; if (lm&&(lm[0]=='L')&&(lm[1]=='A')&&(lm[2]=='Z')&&(lm[3]=='Y')&&(l!=1)) return; _ls = 1; __do____cudaRegisterAll();}" $STUBF
 sed -i -e '/__try____cudaRegisterAll\(.*{\)/a static void __sti____cudaRegisterAll(void){__try____cudaRegisterAll(0);}' $STUBF
 sed -i -e 's/{\(__device_stub__\)/{__try____cudaRegisterAll(1);\1/' $STUBF
 /usr/bin/env bash ${BUILDSH}.post
