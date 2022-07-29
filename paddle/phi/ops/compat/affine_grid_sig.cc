@@ -16,18 +16,30 @@
 namespace phi {
 
 KernelSignature AffineGridOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("affine_grid",
-                         {"Theta", "OutputShape"},
-                         {"align_corners", "output_shape"},
-                         {"Output"});
+  if (ctx.HasInput("OutputShape")) {
+    return KernelSignature(
+        "affine_grid", {"Theta"}, {"OutputShape", "align_corners"}, {"Output"});
+  } else {
+    return KernelSignature("affine_grid",
+                           {"Theta"},
+                           {"output_shape", "align_corners"},
+                           {"Output"});
+  }
 }
 
 KernelSignature AffineGridGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("affine_grid_grad",
-                         {"OutputShape", "Output@GRAD"},
-                         {"align_corners", "output_shape"},
-                         {"Theta@GRAD"});
+  if (ctx.HasInput("OutputShape")) {
+    return KernelSignature("affine_grid_grad",
+                           {"Output@GRAD"},
+                           {"OutputShape", "align_corners"},
+                           {"Theta@GRAD"});
+  } else {
+    return KernelSignature("affine_grid_grad",
+                           {"Output@GRAD"},
+                           {"output_shape", "align_corners"},
+                           {"Theta@GRAD"});
+  }
 }
 }  // namespace phi
 

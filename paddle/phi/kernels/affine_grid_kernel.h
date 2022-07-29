@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/kernels/affine_grid_impl.h"
 
 namespace phi {
@@ -21,8 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void AffineGridKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
+                      const IntArray& outputShape,
                       bool align_corners,
-                      const std::vector<int>& output_shape,
                       DenseTensor* output);
 }  // namespace phi

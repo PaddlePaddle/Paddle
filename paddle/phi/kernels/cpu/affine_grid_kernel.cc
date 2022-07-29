@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -42,28 +43,16 @@ struct Linspace<phi::CPUContext, T> {
 template <typename T, typename Context>
 void AffineGridKernel(const Context& dev_ctx,
                       const DenseTensor& input,
-                      const paddle::optional<DenseTensor>& outputShape,
+                      const IntArray& outputShape,
                       bool align_corners,
-                      const std::vector<int>& output_shape,
                       DenseTensor* output) {
-  // auto* theta = ctx.Input<Tensor>("Theta");
   auto* theta = &input;
   int n = theta->dims()[0];
-  auto& size_attr = output_shape;
+  auto& size_attr = outputShape.GetData();
   int h = 0;
   int w = 0;
-  if (size_attr.size() == 0) {
-    // auto* output_shape = ctx.Input<Tensor>("OutputShape");
-    DenseTensor h_sizes;
-    auto* outputShape_ptr = outputShape.get_ptr();
-    phi::Copy(dev_ctx, *outputShape_ptr, phi::CPUPlace(), false, &h_sizes);
-    const int* h_size_data = h_sizes.data<int>();
-    h = h_size_data[2];
-    w = h_size_data[3];
-  } else {
-    h = size_attr[2];
-    w = size_attr[3];
-  }
+  h = size_attr[2];
+  w = size_attr[3];
   output->Resize(phi::make_ddim({n, h, w, 2}));
   dev_ctx.template Alloc<T>(output);
   // output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());

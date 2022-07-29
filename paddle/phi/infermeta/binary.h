@@ -32,12 +32,6 @@ namespace phi {
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void AffineGridInferMeta(const MetaTensor& input,
-                         const MetaTensor& outputShape,
-                         bool align_corners,
-                         const std::vector<int>& output_shape,
-                         MetaTensor* output);
-
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,

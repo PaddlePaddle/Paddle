@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -29,10 +30,9 @@ using ScopedSpatialTransformerDescriptor =
 
 template <typename T, typename Context>
 void AffineGridGradCudnnKernel(const Context& dev_ctx,
-                               const DenseTensor& outputShape,
                                const DenseTensor& output_grad,
+                               const IntArray& outputShape,
                                bool align_corners,
-                               const std::vector<int>& output_shape,
                                DenseTensor* input_grad) {
   PADDLE_ENFORCE_EQ(
       paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
@@ -44,21 +44,15 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
   auto& theta_grad = input_grad;
 
   int n = output_grad.dims()[0];
-  auto& size_attr = output_shape;
+  auto& size_attr = outputShape.GetData();
   DenseTensor h_sizes;
   int* h_size_data;
-  if (size_attr.size() == 0) {
-    auto* output_shape = &outputShape;
-    phi::Copy(dev_ctx, *output_shape, phi::CPUPlace(), false, &h_sizes);
-    h_size_data = h_sizes.data<int>();
-  } else {
-    h_sizes.Resize(phi::make_ddim({4}));
-    h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
-    h_size_data[0] = n;
-    h_size_data[1] = size_attr[1];
-    h_size_data[2] = size_attr[2];
-    h_size_data[3] = size_attr[3];
-  }
+  h_sizes.Resize(phi::make_ddim({4}));
+  h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
+  h_size_data[0] = n;
+  h_size_data[1] = size_attr[1];
+  h_size_data[2] = size_attr[2];
+  h_size_data[3] = size_attr[3];
 
   ScopedSpatialTransformerDescriptor st_desc;
   cudnnSpatialTransformerDescriptor_t cudnn_st_desc =

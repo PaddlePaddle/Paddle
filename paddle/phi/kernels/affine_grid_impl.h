@@ -19,7 +19,6 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/utils/optional.h"
 
 namespace phi {
 

@@ -44,6 +44,51 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 }
 }  // namespace detail
 
+void AffineGridInferMeta(const MetaTensor& input,
+                         const IntArray& outputShape,
+                         bool align_corners,
+                         MetaTensor* output) {
+  auto theta_dims = input.dims();
+  PADDLE_ENFORCE_EQ(
+      theta_dims.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "The input Theta's dimensions size should be 3. But received "
+          "Theta's demensions size=[%d],  Theta's dimensions=[%s].",
+          theta_dims.size(),
+          theta_dims));
+
+  PADDLE_ENFORCE_EQ(
+      outputShape.GetData().size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of attribute 'output_shape' in AffineGridOp should be "
+          "4. But received output_shape's size=[%d].",
+          outputShape.GetData().size()));
+
+  PADDLE_ENFORCE_EQ(
+      theta_dims[1],
+      2,
+      phi::errors::InvalidArgument(
+          "The second dimesion of input 'theta' in AffineGridOp should be 2. "
+          "But received second dimesion=[%d], dimesions=[%s]",
+          theta_dims[1],
+          theta_dims));
+  PADDLE_ENFORCE_EQ(
+      theta_dims[2],
+      3,
+      phi::errors::InvalidArgument(
+          "The third dimesion of input 'theta' in AffineGridOp should be 3. "
+          "But received third dimesion=[%d], dimesions=[%s]",
+          theta_dims[2],
+          theta_dims));
+
+  // N * H * W * 2
+  output->set_dims(phi::make_ddim({theta_dims[0], -1, -1, 2}));
+  output->set_dtype(input.dtype());
+  output->share_lod(input);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
                         bool keepdims,

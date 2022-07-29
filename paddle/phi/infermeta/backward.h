@@ -28,10 +28,9 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
-void AffineGridGradInferMeta(const MetaTensor& outputShape,
-                             const MetaTensor& output_grad,
+void AffineGridGradInferMeta(const MetaTensor& output_grad,
+                             const IntArray& outputShape,
                              bool align_corners,
-                             const std::vector<int>& output_shape,
                              MetaTensor* input_grad);
 
 void AngleGradInferMeta(const MetaTensor& x,
