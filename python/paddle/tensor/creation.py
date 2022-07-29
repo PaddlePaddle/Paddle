@@ -1535,11 +1535,33 @@ def assign(x, output=None):
                              inputs={'X': [input]},
                              outputs={'Out': [output]})
     elif isinstance(input, np.ndarray):
-        # Not support [var, var, ...] currently.
-        if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
-            raise TypeError(
-                "Required type(input) numpy.ndarray, but found `list(Variable)` in input."
+        # We now support the form of [var, VAR...] if the Var.shape=[1,]
+        if (len(input.shape) > 0
+                and any(isinstance(x, Variable) for x in input)):
+            # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
+            if not all(
+                [x.shape == (1, ) for x in input if isinstance(x, Variable)]):
+                raise RuntimeError(
+                    "Don't support paddle.assign([Variable, Variable...]) with non-scalar variable."
+                )
+
+            def convert_scalar(x):
+                if not isinstance(x, Variable):
+                    return assign(x)
+                return x
+
+            to_stack_list = list(map(convert_scalar, input))
+            ret = paddle.stack(to_stack_list)
+            ret = paddle.squeeze(ret, -1)
+            return ret
+
+        if input.dtype == 'object':
+            """ may be this form [[Var], [Var], [3], [4]], we reject them.
+            """
+            raise RuntimeError(
+                "The type of received input == `object`, it is not supported to convert to tensor"
             )
+
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == core.VarDesc.VarType.FP64:
             # Setting FP64 numpy data is not supported in Paddle, so we
