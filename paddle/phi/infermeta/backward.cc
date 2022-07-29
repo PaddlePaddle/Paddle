@@ -241,6 +241,18 @@ void EigGradInferMeta(const MetaTensor& out_w,
   }
 }
 
+void EigvalshGradInferMeta(const MetaTensor& out_v,
+                           const MetaTensor& out_w_grad,
+                           const std::string& uplo,
+                           bool is_test,
+                           MetaTensor* x_grad) {
+  auto dims = out_v.dims();
+  if (x_grad != nullptr) {
+    x_grad->set_dims(dims);
+    x_grad->set_dtype(out_v.dtype());
+  }
+}
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,
@@ -659,16 +671,6 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
   }
-}
-
-void EigvalshGradInferMeta(const MetaTensor& out_v,
-                           const MetaTensor& out_w_grad,
-                           const std::string& uplo,
-                           bool is_test,
-                           MetaTensor* x_grad) {
-  auto dims = out_v.dims();
-  x_grad->set_dims(dims);
-  x_grad->set_dtype(out_v.dtype());
 }
 
 void StackGradInferMeta(const MetaTensor& out_grad,

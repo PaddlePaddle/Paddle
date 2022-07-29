@@ -95,6 +95,12 @@ void EigvalsInferMeta(const MetaTensor& x,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void EigvalshInferMeta(const MetaTensor& x,
+                       const std::string& uplo,
+                       bool is_test,
+                       MetaTensor* out_w,
+                       MetaTensor* out_v);
+
 void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out);
@@ -507,12 +513,6 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
                              MetaTensor* out);
-
-void EigvalshInferMeta(const MetaTensor& x,
-                       const std::string& uplo,
-                       bool is_test,
-                       MetaTensor* out_w,
-                       MetaTensor* out_v);
 
 void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
