@@ -2175,6 +2175,16 @@
     use_gpudnn : true
   backward : softmax_grad
 
+- api : softplus
+  args : (Tensor x, float beta, float threshold)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus
+  backward : softplus_grad
+
 # softsign
 - api : softsign
   args : (Tensor x)
