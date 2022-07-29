@@ -76,54 +76,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       return;
     }
 
-    // This block is temporary workaround, until matmul_v1 is refactored
-    // --
-    if (matmul_type == "matmul") {
-      OpDesc desc(matmul->Op()->Block());
-      desc.SetType("matmul_v2");
-      desc.SetInput("X", {matmul_x->Name()});
-      desc.SetInput("Y", {matmul_y->Name()});
-      desc.SetOutput("Out", {matmul_out->Name()});
-      desc.SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
-      desc.SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
-
-      if (matmul->Op()->HasAttr("use_mkldnn")) {
-        desc.SetAttr("use_mkldnn", matmul->Op()->GetAttr("use_mkldnn"));
-      }
-      if (matmul->Op()->HasAttr("enable_int8")) {
-        desc.SetAttr("enable_int8", matmul->Op()->GetAttr("enable_int8"));
-        desc.SetAttr("Input_scale", matmul->Op()->GetAttr("Input_scale"));
-        desc.SetAttr("out_threshold", matmul->Op()->GetAttr("out_threshold"));
-      }
-      if (matmul->Op()->HasAttr("fused_reshape_X") ||
-          matmul->Op()->HasAttr("fused_transpose_X")) {
-        desc.SetAttr("fused_reshape_X",
-                     matmul->Op()->GetAttr("fused_reshape_X"));
-        desc.SetAttr("fused_transpose_X",
-                     matmul->Op()->GetAttr("fused_transpose_X"));
-      }
-      if (matmul->Op()->HasAttr("fused_reshape_Y") ||
-          matmul->Op()->HasAttr("fused_transpose_Y")) {
-        desc.SetAttr("fused_reshape_Y",
-                     matmul->Op()->GetAttr("fused_reshape_Y"));
-        desc.SetAttr("fused_transpose_Y",
-                     matmul->Op()->GetAttr("fused_transpose_Y"));
-      }
-      if (matmul->Op()->HasAttr("fused_reshape_Out") ||
-          matmul->Op()->HasAttr("fused_transpose_Out")) {
-        desc.SetAttr("fused_reshape_Out",
-                     matmul->Op()->GetAttr("fused_reshape_Out"));
-        desc.SetAttr("fused_transpose_Out",
-                     matmul->Op()->GetAttr("fused_transpose_Out"));
-      }
-      GraphSafeRemoveNodes(graph, {matmul});
-      matmul = g->CreateOpNode(&desc);
-      IR_NODE_LINK_TO(matmul_x, matmul);
-      IR_NODE_LINK_TO(matmul_y, matmul);
-      IR_NODE_LINK_TO(matmul, matmul_out);
-    }
-    // --
-    matmul->Op()->SetInput("Bias", {elementwise_addend->Name()});
+    matmul->Op()->SetOutput("Bias", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
     GraphSafeRemoveNodes(g, {matmul_out, elementwise_add});

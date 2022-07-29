@@ -959,7 +959,7 @@ class MatMulV2MKLDNNHandler
     }
 
     auto sum_scale = 1.0f;
-    if (ctx.HasInput("Bias")) {
+    if (ctx.HasOutput("Bias")) {
       post_operations.append_sum(sum_scale);
     }
 
