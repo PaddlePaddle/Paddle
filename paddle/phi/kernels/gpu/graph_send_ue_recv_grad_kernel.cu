@@ -609,4 +609,5 @@ PD_REGISTER_KERNEL(graph_send_ue_recv_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16) {}

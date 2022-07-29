@@ -419,6 +419,112 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
   return __longlong_as_double(old);
 }
 
+#ifdef PADDLE_CUDA_FP16
+template <typename T>
+struct Cast {
+  // unused.
+  static __device__ __forceinline__ unsigned int Encode(T val) {
+    return static_cast<unsigned int>(val);
+  }
+  static __device__ __forceinline__ T Decode(unsigned int code) {
+    return static_cast<T>(code);
+  }
+};
+
+template <>
+struct Cast<half> {
+  static __device__ __forceinline__ unsigned short int Encode(  // NOLINT
+      half val) {
+    return __half_as_ushort(val);
+  }
+  static __device__ __forceinline__ half
+  Decode(unsigned short int code) {  // NOLINT
+    return __ushort_as_half(code);
+  }
+};
+
+static __device__ __forceinline__ unsigned short int atomicCASshort(  // NOLINT
+    unsigned short int *address,                                      // NOLINT
+    unsigned short int compare,                                       // NOLINT
+    unsigned short int val) {                                         // NOLINT
+  static_assert(CUDA_VERSION >= 10000, "Requires at least CUDA 10");
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__) >= 700)
+  return atomicCAS(address, compare, val);
+#else
+  (void)address;
+  (void)compare;
+  (void)val;
+  printf(
+      "Atomic operations are not supported for half precision (FP16) "
+      "on this GPU.\n");
+  __trap();
+  return val;
+#endif
+}
+
+inline static __device__ uint32_t max_to_low_half(uint32_t val, float x) {
+  float16 low_half;
+  // the float16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half = static_cast<float16>(max(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t max_to_high_half(uint32_t val, float x) {
+  float16 high_half;
+  // the float16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half = static_cast<float16>(max(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+CUDA_ATOMIC_WRAPPER(Max, float16) {
+  if (*address >= val) {
+    return *address;
+  }
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // the float16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, max_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // the float16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, max_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+
+/*
+  CUDA_ATOMIC_WRAPPER(Max, float16) {
+  typedef unsigned short int FT;
+  half* address_h = &(address->to_half());
+  half val_h = val.to_half();
+  FT* addr_as_ui = reinterpret_cast<T*>(address_h);
+  FT old = *addr_as_ui;
+  FT assumed = old;
+  do {
+    assumed = old;
+    old = atomicCASshort(addr_as_ui, assumed, )
+  }
+}
+*/
+#endif
+
 // For atomicMin
 USE_CUDA_ATOMIC(Min, int);
 USE_CUDA_ATOMIC(Min, unsigned int);
@@ -502,6 +608,55 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
 
   return __longlong_as_double(old);
 }
+
+inline static __device__ uint32_t min_to_low_half(uint32_t val, float x) {
+  float16 low_half;
+  // the float16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half = static_cast<float16>(min(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t min_to_high_half(uint32_t val, float x) {
+  float16 high_half;
+  // the float16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half = static_cast<float16>(min(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+#ifdef PADDLE_CUDA_FP16
+CUDA_ATOMIC_WRAPPER(Min, float16) {
+  if (*address <= val) {
+    return *address;
+  }
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // the float16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, min_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // the float16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ui, assumed, min_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    float16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle

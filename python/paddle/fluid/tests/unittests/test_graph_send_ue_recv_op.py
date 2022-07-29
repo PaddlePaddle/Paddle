@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
 from op_test import OpTest
@@ -805,6 +806,35 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
                 {}\n{}, check diff!".format(np_res, paddle_res))
 
+    def test_compute_all_with_max_fp16(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
+                             dtype="float16")
+        e = paddle.ones(shape=[4, 1], dtype="float16")
+        src_index = paddle.to_tensor(np.array([0, 1, 2, 0]), dtype="int32")
+        dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]), dtype="int32")
+
+        res_add = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "add", "max")
+        res_sub = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "sub", "max")
+        res_mul = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "mul", "max")
+        res_div = paddle.geometric.send_ue_recv(x, e, src_index, dst_index,
+                                                "div", "max")
+        res = [res_add, res_sub, res_mul, res_div]
+
+        np_add = np.array([[1, 3, 4], [3, 7, 8], [2, 5, 6]], dtype="float16")
+        np_sub = np.array([[-1, 1, 2], [1, 5, 6], [0, 3, 4]], dtype="float16")
+        np_mul = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float16")
+        np_div = np.array([[0, 2, 3], [2, 6, 7], [1, 4, 5]], dtype="float16")
+
+        self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
+        for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
+            self.assertTrue(
+                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, paddle_res))
+
     def test_compute_all_with_min(self):
         paddle.disable_static()
         x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6, 7]]),
@@ -828,11 +858,52 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
         np_mul = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="float32")
         np_div = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]], dtype="float32")
 
-        self.assertTrue(np.allclose(np_sub, res_sub, atol=1e-6))
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
             self.assertTrue(
                 np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
                 {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_with_min_fp16(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                x = paddle.to_tensor(np.array([[0, 2, 3], [1, 4, 5], [2, 6,
+                                                                      7]]),
+                                     dtype="float16")
+                e = paddle.ones(shape=[4, 1], dtype="float16")
+                src_index = paddle.to_tensor(np.array([0, 1, 2, 0]),
+                                             dtype="int32")
+                dst_index = paddle.to_tensor(np.array([1, 2, 1, 0]),
+                                             dtype="int32")
+                res_add = paddle.geometric.send_ue_recv(x, e, src_index,
+                                                        dst_index, "add", "min")
+                res_sub = paddle.geometric.send_ue_recv(x, e, src_index,
+                                                        dst_index, "sub", "min")
+                res_mul = paddle.geometric.send_ue_recv(x, e, src_index,
+                                                        dst_index, "mul", "min")
+                res_div = paddle.geometric.send_ue_recv(x, e, src_index,
+                                                        dst_index, "div", "min")
+                res = [res_add, res_sub, res_mul, res_div]
+
+                np_add = np.array([[1, 3, 4], [1, 3, 4], [2, 5, 6]],
+                                  dtype="float16")
+                np_sub = np.array([[-1, 1, 2], [-1, 1, 2], [0, 3, 4]],
+                                  dtype="float16")
+                np_mul = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]],
+                                  dtype="float16")
+                np_div = np.array([[0, 2, 3], [0, 2, 3], [1, 4, 5]],
+                                  dtype="float16")
+
+                for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
+                                              res):
+                    self.assertTrue(
+                        np.allclose(np_res, paddle_res, atol=1e-6),
+                        "two value is\
+                        {}\n{}, check diff!".format(np_res, paddle_res))
+
+    def test_compute_all_with_max_fp16(self):
+        paddle.disable_static()
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
