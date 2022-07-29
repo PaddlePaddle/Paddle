@@ -131,7 +131,8 @@ class CollectiveElasticController(CollectiveController):
 
     def run(self):
 
-        timeout = self.ctx.args.elastic_timeout if self.job.elastic else self.ctx.args.elastic_timeout * 10
+        timeout = int(self.ctx.args.elastic_timeout)
+        timeout = timeout if self.job.elastic else timeout * 10
         self.register()
 
         while self.pod.restart <= self.ctx.args.max_restart:

@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/dynload/nvjpeg.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace operators {
@@ -69,7 +68,7 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
     nvjpegStatus_t info_status =
         platform::dynload::nvjpegGetImageInfo(nvjpeg_handle,
                                               x_data,
-                                              (size_t)x->numel(),
+                                              static_cast<size_t>(x->numel()),
                                               &components,
                                               &subsampling,
                                               widths,

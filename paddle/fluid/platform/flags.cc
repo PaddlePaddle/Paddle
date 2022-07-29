@@ -184,6 +184,19 @@ PADDLE_DEFINE_EXPORTED_string(
     "please refer to the documents");
 #endif
 
+/*
+ * Kernel related FLAG
+ * Name: FLAGS_enable_api_kernel_fallback
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_api_kernel_fallback=true would allow kernel of current
+ * backend fallback to CPU one when not found
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_api_kernel_fallback,
+    true,
+    "Whether enable api kernel fallback to CPU one when not found");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * CUDNN related FLAG
