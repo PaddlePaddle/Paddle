@@ -37,6 +37,7 @@ from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.utils import deprecated
 from paddle import _C_ops
+from ..framework import in_dygraph_mode
 
 __all__ = [
     'prior_box',
@@ -948,6 +949,22 @@ def box_coder(prior_box,
                              'box_coder')
     check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
                              'box_coder')
+    if in_dygraph_mode():
+        if isinstance(prior_box_var, Variable):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box,
+                                                        prior_box_var,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        [])
+        elif isinstance(prior_box_var, list):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        prior_box_var)
+        else:
+            raise TypeError(
+                "Input variance of box_coder must be Variable or lisz")
+        return box_coder_op
     helper = LayerHelper("box_coder", **locals())
 
     output_box = helper.create_variable_for_type_inference(
@@ -3009,63 +3026,18 @@ def generate_proposals(scores,
                          im_info, anchors, variances)
 
     """
-    if _non_static_mode():
-        assert return_rois_num, "return_rois_num should be True in dygraph mode."
-        attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
-                 'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
-            scores, bbox_deltas, im_info, anchors, variances, *attrs)
-        return rpn_rois, rpn_roi_probs, rpn_rois_num
-
-    helper = LayerHelper('generate_proposals', **locals())
-
-    check_variable_and_dtype(scores, 'scores', ['float32'],
-                             'generate_proposals')
-    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
-                             'generate_proposals')
-    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
-                             'generate_proposals')
-    check_variable_and_dtype(anchors, 'anchors', ['float32'],
-                             'generate_proposals')
-    check_variable_and_dtype(variances, 'variances', ['float32'],
-                             'generate_proposals')
-
-    rpn_rois = helper.create_variable_for_type_inference(
-        dtype=bbox_deltas.dtype)
-    rpn_roi_probs = helper.create_variable_for_type_inference(
-        dtype=scores.dtype)
-    outputs = {
-        'RpnRois': rpn_rois,
-        'RpnRoiProbs': rpn_roi_probs,
-    }
-    if return_rois_num:
-        rpn_rois_num = helper.create_variable_for_type_inference(dtype='int32')
-        rpn_rois_num.stop_gradient = True
-        outputs['RpnRoisNum'] = rpn_rois_num
-
-    helper.append_op(type="generate_proposals",
-                     inputs={
-                         'Scores': scores,
-                         'BboxDeltas': bbox_deltas,
-                         'ImInfo': im_info,
-                         'Anchors': anchors,
-                         'Variances': variances
-                     },
-                     attrs={
-                         'pre_nms_topN': pre_nms_top_n,
-                         'post_nms_topN': post_nms_top_n,
-                         'nms_thresh': nms_thresh,
-                         'min_size': min_size,
-                         'eta': eta
-                     },
-                     outputs=outputs)
-    rpn_rois.stop_gradient = True
-    rpn_roi_probs.stop_gradient = True
-
-    if return_rois_num:
-        return rpn_rois, rpn_roi_probs, rpn_rois_num
-    else:
-        return rpn_rois, rpn_roi_probs
+    return paddle.vision.ops.generate_proposals(scores=scores,
+                                                bbox_deltas=bbox_deltas,
+                                                img_size=im_info[:2],
+                                                anchors=anchors,
+                                                variances=variances,
+                                                pre_nms_top_n=pre_nms_top_n,
+                                                post_nms_top_n=post_nms_top_n,
+                                                nms_thresh=nms_thresh,
+                                                min_size=min_size,
+                                                eta=eta,
+                                                return_rois_num=return_rois_num,
+                                                name=name)
 
 
 def box_clip(input, im_info, name=None):

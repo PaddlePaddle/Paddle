@@ -1521,6 +1521,9 @@ def bmm(x, y, name=None):
             "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}"
             .format(x_shape, y_shape))
 
+    if in_dygraph_mode():
+        return _C_ops.final_state_bmm(x, y)
+
     if paddle.in_dynamic_mode():
         return _C_ops.bmm(x, y)
 
@@ -1781,7 +1784,10 @@ def slogdet(x, name=None):
         # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_slogdet(x)
+
+    elif paddle.in_dynamic_mode():
         return _C_ops.slogdeterminant(x)
 
     check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -1854,8 +1860,9 @@ def svd(x, full_matrices=False, name=None):
             #                  U * UH == I
             #                  V * VH == I
     """
-
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_svd(x, full_matrices)
+    if _in_legacy_dygraph():
         return _C_ops.svd(x, 'full_matrices', full_matrices)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
     check_type(full_matrices, 'full_matrices', bool, 'svd')
@@ -2095,27 +2102,27 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
             # one can verify : X = P @ L @ U ;     
     """
-    if paddle.in_dynamic_mode():
-        LU, Piv, Info = _C_ops.lu(x, 'pivots', pivot)
-        if get_infos:
-            return LU, Piv, Info
-        else:
-            return LU, Piv
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
-    helper = LayerHelper('lu', **locals())
-    lu = helper.create_variable_for_type_inference(dtype=x.dtype)
-    p = helper.create_variable_for_type_inference(dtype='int')
-    info = helper.create_variable_for_type_inference(dtype='int')
-    attrs = dict()
-    attrs['pivots'] = pivot
-    helper.append_op(type='lu',
-                     inputs={'X': x},
-                     outputs={
-                         'Out': lu,
-                         'Pivots': p,
-                         'Infos': info
-                     },
-                     attrs=attrs)
+
+    if in_dygraph_mode():
+        lu, p, info = _C_ops.final_state_lu(x, pivot)
+    elif paddle.in_dynamic_mode():
+        lu, p, info = _C_ops.lu(x, 'pivot', pivot)
+    else:
+        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+        helper = LayerHelper('lu', **locals())
+        lu = helper.create_variable_for_type_inference(dtype=x.dtype)
+        p = helper.create_variable_for_type_inference(dtype='int')
+        info = helper.create_variable_for_type_inference(dtype='int')
+        attrs = dict()
+        attrs['pivot'] = pivot
+        helper.append_op(type='lu',
+                         inputs={'X': x},
+                         outputs={
+                             'Out': lu,
+                             'Pivots': p,
+                             'Infos': info
+                         },
+                         attrs=attrs)
     if get_infos:
         return lu, p, info
     else:
@@ -2269,7 +2276,9 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_eig(x)
+    elif paddle.in_dynamic_mode():
         w, v = _C_ops.eig(x)
         return w, v
 
@@ -2853,7 +2862,10 @@ def solve(x, y, name=None):
         print(out)
         # [2., 3.])
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_solve(x, y)
+
+    if _in_legacy_dygraph():
         return _C_ops.solve(x, y)
 
     inputs = {"X": [x], "Y": [y]}

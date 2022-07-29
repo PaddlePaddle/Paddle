@@ -161,7 +161,7 @@ class OpConverter {
     // only one out settensordynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
       std::string output_name = "";
       if (op_desc.HasOutput("Output")) {
         output_name = op_desc.Output("Output").front();
@@ -184,7 +184,7 @@ class OpConverter {
     // outs settensordynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
-        float out_scale = BOOST_GET_CONST(
+        float out_scale = PADDLE_GET_CONST(
             float, op_desc.GetAttr("out_" + std::to_string(i) + "_threshold"));
         std::string output_name =
             op_desc.Output(op_desc.OutputNames()[i]).front();
@@ -205,7 +205,7 @@ class OpConverter {
         std::string input_tensor_name = op_desc.Input(inputs_name[i])[0];
         auto* input_itensor = engine->GetITensor(input_tensor_name);
         float input_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(inputs_name[i]));
         engine->SetTensorDynamicRange(input_itensor, input_scale);
         VLOG(1) << "Set input tensor scale = " << input_scale
                 << " for tensor: " << input_tensor_name << ".";
@@ -216,7 +216,7 @@ class OpConverter {
         std::string output_tensor_name = op_desc.Output(outputs_name[i])[0];
         auto* output_itensor = engine->GetITensor(output_tensor_name);
         float output_scale =
-            BOOST_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
+            PADDLE_GET_CONST(float, op_desc.GetAttr(outputs_name[i]));
         engine->SetTensorDynamicRange(output_itensor, output_scale);
         VLOG(1) << "Set output tensor scale = " << output_scale
                 << " for tensor: " << output_tensor_name << ".";
@@ -484,10 +484,18 @@ class OpConverter {
   template <typename T>
   // Create and add Multi-D constant float/int32 layer
   nvinfer1::ITensor* AddConstantLayer(const T* data,
-                                      const std::vector<int32_t>& weight_dims,
-                                      const std::string& weight_name) {
+                                      nvinfer1::Dims shape,
+                                      const std::string& weight_name = "") {
+    if (!(std::is_same<T, float>::value ||
+          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, int32_t>::value)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
+          "supports float, half or int32_t."));
+    }
+
     int data_size = std::accumulate(
-        weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int>());
+        shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
@@ -504,12 +512,9 @@ class OpConverter {
     TensorRTEngine::Weight weight{trt_dtype,
                                   static_cast<void*>(tmp_data),
                                   static_cast<size_t>(data_size)};
-    nvinfer1::Dims trt_dims;
-    trt_dims.nbDims = weight_dims.size();
-    for (size_t i = 0; i < weight_dims.size(); i++)
-      trt_dims.d[i] = weight_dims[i];
+
     auto const_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims, weight.get());
+        TRT_ENGINE_ADD_LAYER(engine_, Constant, shape, weight.get());
     return const_layer->getOutput(0);
   }
 
@@ -518,6 +523,14 @@ class OpConverter {
   nvinfer1::ITensor* Add1DConstantLayer(const std::vector<T>& data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
+    if (!(std::is_same<T, float>::value ||
+          std::is_same<T, platform::float16>::value ||
+          std::is_same<T, int32_t>::value)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
+          "supports float, half or int32_t."));
+    }
+
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
@@ -551,12 +564,13 @@ class OpConverter {
     return Add1DConstantLayer(tmp_data, weight_name, scalar);
   }
 
-  nvinfer1::ITensor* Add1DConstantLayer(int32_t data,
+  template <typename T>
+  nvinfer1::ITensor* Add1DConstantLayer(T data,
                                         const std::string& weight_name = "",
                                         bool scalar = false) {
-    std::vector<int> tmp_data;
-    tmp_data.push_back(data);
-    return Add1DConstantLayer(tmp_data, weight_name, scalar);
+    std::vector<T> input_data;
+    input_data.push_back(data);
+    return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
   // For cases when input is not middle-tensor , but persistable tensor

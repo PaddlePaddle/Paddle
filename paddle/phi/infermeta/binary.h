@@ -60,6 +60,8 @@ void BincountInferMeta(const MetaTensor& x,
                        int minlength,
                        MetaTensor* out);
 
+void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -304,5 +306,7 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
+
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 }  // namespace phi

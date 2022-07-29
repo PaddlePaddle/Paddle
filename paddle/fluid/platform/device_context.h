@@ -67,9 +67,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/stream/cuda_stream.h"
-#endif
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
@@ -279,16 +276,8 @@ class CUDADeviceContext : public phi::GPUContext {
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
 
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  stream::CUDAStream* GetCudaStream() const;
-  stream::CUDAStream* SetCudaStream(stream::CUDAStream*);
-
  private:
-  // NOTE: Just for compatibility with the past, please delete if there is an
-  // elegant way.
-  std::unique_ptr<stream::CUDAStream> cuda_stream_;
-
+  int place_holder_;  // TO BE REMOVED
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
 

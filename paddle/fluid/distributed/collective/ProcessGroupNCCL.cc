@@ -85,18 +85,19 @@ bool ProcessGroupNCCL::NCCLTask::IsCompleted() {
   return true;
 }
 
-void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>& split_sizes,
+void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                                        std::vector<int64_t> tensor_shape) {
-  int64_t len_size = split_sizes.size();
+  int64_t len_size = (*split_sizes).size();
   if (len_size == 0) {
     PADDLE_ENFORCE_EQ(tensor_shape[0] % size_ == 0,
                       true,
                       platform::errors::InvalidArgument(
                           "Tensor's dim[0] must be divisible by group size "
                           "when split_sizes not given."));
-    split_sizes.insert(split_sizes.end(),
-                       size_,
-                       static_cast<int64_t>(tensor_shape[0] / size_));
+    (*split_sizes)
+        .insert((*split_sizes).end(),
+                size_,
+                static_cast<int64_t>(tensor_shape[0] / size_));
   } else {
     PADDLE_ENFORCE_EQ(
         len_size == size_,
@@ -104,7 +105,7 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>& split_sizes,
         platform::errors::InvalidArgument(
             "The length of split_sizes must be equal to group size."));
     auto sum_size = std::accumulate(
-        split_sizes.begin(), split_sizes.end(), static_cast<int64_t>(0));
+        (*split_sizes).begin(), (*split_sizes).end(), static_cast<int64_t>(0));
     PADDLE_ENFORCE_EQ(
         sum_size == tensor_shape[0],
         true,
@@ -626,6 +627,37 @@ void* GetPointerByOffset(void* raw_pointer,
   return nullptr;
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather_Partial(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    int offset,
+    int length) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors),
+      true,
+      platform::errors::InvalidArgument("All outputs should be in CudaPlace."));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        return platform::dynload::ncclAllGather(
+            GetPointerByOffset(input.data(), offset, input.dtype()),
+            output.data(),
+            length,
+            platform::ToNCCLDataType(input.dtype()),
+            comm,
+            stream);
+      },
+      CommType::ALLGATHER);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
@@ -695,8 +727,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll_Single(
 
         std::vector<int64_t> in_dims = phi::vectorize(input.dims());
         std::vector<int64_t> out_dims = phi::vectorize(output.dims());
-        CheckSplitSizes(in_sizes, in_dims);
-        CheckSplitSizes(out_sizes, out_dims);
+        CheckSplitSizes(&in_sizes, in_dims);
+        CheckSplitSizes(&out_sizes, out_dims);
 
         size_t in_offset = 0, out_offset = 0;
         size_t in_length = 0, out_length = 0;

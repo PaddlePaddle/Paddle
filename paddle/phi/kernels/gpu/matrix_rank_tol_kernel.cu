@@ -35,17 +35,17 @@
 namespace phi {
 
 template <typename T>
-void GesvdjBatched(const phi::GPUContext& dev_ctx,
-                   int batchSize,
-                   int m,
-                   int n,
-                   int k,
-                   T* A,
-                   T* U,
-                   T* V,
-                   T* S,
-                   int* info,
-                   int thin_UV = 1);
+static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+                          int batchSize,
+                          int m,
+                          int n,
+                          int k,
+                          T* A,
+                          T* U,
+                          T* V,
+                          T* S,
+                          int* info,
+                          int thin_UV = 1);
 
 template <typename T>
 void SyevjBatched(const phi::GPUContext& dev_ctx,

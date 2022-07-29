@@ -82,9 +82,9 @@ class TestProfilerStatistic(unittest.TestCase):
                                       profiler.TracerEventType.Forward, 50, 110,
                                       1000, 1001)
 
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          100, 110, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            100, 110, 1000, 1001)
 
         communication_node = HostPythonNode(
             'Communication', profiler.TracerEventType.Communication, 105, 110,
@@ -209,7 +209,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 0, profiler.TracerEventType.Memcpy), 60)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.UserDefined), 25)
+                profiler.TracerEventType.UserDefined), 15)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Communication), 5)
@@ -277,9 +277,9 @@ class TestProfilerStatistic(unittest.TestCase):
                                       profiler.TracerEventType.Forward, 50, 110,
                                       1000, 1001)
 
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          100, 110, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            100, 110, 1000, 1001)
         allreduce_launchkernel0 = HostPythonNode(
             'cudalaunchkernel', profiler.TracerEventType.CudaRuntime, 102, 104,
             1000, 1001)
@@ -451,7 +451,7 @@ class TestProfilerStatistic(unittest.TestCase):
                 0, profiler.TracerEventType.Memcpy), 60)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
-                profiler.TracerEventType.UserDefined), 25)
+                profiler.TracerEventType.UserDefined), 15)
         self.assertEqual(
             time_range_summary.get_cpu_range_sum(
                 profiler.TracerEventType.Communication), 5)
@@ -518,9 +518,9 @@ class TestProfilerStatistic(unittest.TestCase):
         optimization_node = HostPythonNode(
             'Optimization', profiler.TracerEventType.Optimization, 220, 300,
             1000, 1001)
-        userdefined_node = HostPythonNode('Communication Time',
-                                          profiler.TracerEventType.UserDefined,
-                                          60, 70, 1000, 1001)
+        userdefined_node = HostPythonNode(
+            'Communication Time', profiler.TracerEventType.PythonUserDefined,
+            60, 70, 1000, 1001)
 
         conv2d_node = HostPythonNode('conv2d',
                                      profiler.TracerEventType.Operator, 25, 25,

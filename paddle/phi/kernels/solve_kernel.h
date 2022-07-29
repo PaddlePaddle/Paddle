@@ -18,6 +18,15 @@ limitations under the License. */
 
 namespace phi {
 
+/**
+ * @brief This kernrel is used to computes the solution of a square system of
+ * linear equations with a unique solution for input x and y.
+ *        $$Out = X^-1 * Y$$
+ * @param  ctx     device context
+ * @param  x       the input tensor of solve
+ * @param  y       the input tensor of solve
+ * @param  out     the output tensor of solve
+ */
 template <typename T, typename Context>
 void SolveKernel(const Context& dev_ctx,
                  const DenseTensor& x,

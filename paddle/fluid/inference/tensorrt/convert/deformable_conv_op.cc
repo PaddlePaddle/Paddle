@@ -56,16 +56,16 @@ class DeformableConvOpConverter : public OpConverter {
     std::vector<int> kernel_dims = {c_o, c_i, k_h, k_w};
 
     auto strides =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     auto paddings =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
     auto dilations =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
 
-    auto groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
+    auto groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
     auto deformable_groups =
-        BOOST_GET_CONST(int, op_desc.GetAttr("deformable_groups"));
-    auto im2col_step = BOOST_GET_CONST(int, op_desc.GetAttr("im2col_step"));
+        PADDLE_GET_CONST(int, op_desc.GetAttr("deformable_groups"));
+    auto im2col_step = PADDLE_GET_CONST(int, op_desc.GetAttr("im2col_step"));
 
     nvinfer1::Weights weights;
     weights.count = filter_tensor->numel();

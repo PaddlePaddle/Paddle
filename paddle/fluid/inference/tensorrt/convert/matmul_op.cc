@@ -48,13 +48,13 @@ class MatMulOpConverter : public OpConverter {
     nvinfer1::Dims dims_x = input1->getDimensions();
     nvinfer1::Dims dims_y = input2->getDimensions();
 
-    bool transpose_X = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
-    bool transpose_Y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+    bool transpose_X = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
+    bool transpose_Y = PADDLE_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
 
     auto output_name = op_desc.Output("Out")[0];
     float alpha = 1;
     if (op_desc.HasAttr("alpha")) {
-      float alpha_tem = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
+      float alpha_tem = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
       alpha = alpha_tem;
     }
     nvinfer1::MatrixOperation matrix_operation_X =
@@ -65,7 +65,7 @@ class MatMulOpConverter : public OpConverter {
                     : nvinfer1::MatrixOperation::kNONE;
 
     if (op_desc.HasAttr("support_int8") &&
-        BOOST_GET_CONST(bool, op_desc.GetAttr("support_int8")) &&
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8")) &&
         engine_->precision() == AnalysisConfig::Precision::kInt8 &&
         platform::GetGPUComputeCapability(0) >= 75) {
       if (engine_->with_dynamic_shape()) {
