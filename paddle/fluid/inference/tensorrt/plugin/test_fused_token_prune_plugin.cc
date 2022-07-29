@@ -25,7 +25,7 @@ TEST(fused_token_prune_op_plugin, test_plugin) {
   FusedTokenPrunePluginDynamic plugin(true,
                                       /*keep_first_token*/ false,
                                       /*keep_order*/ true,
-                                      /*flag_varseqlen*/ flase);
+                                      /*flag_varseqlen*/ false);
   plugin.configurePlugin(nullptr, 4, nullptr, 2);
   plugin.initialize();
   plugin.getPluginType();
