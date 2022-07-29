@@ -52,34 +52,38 @@ class StackOpConverter : public OpConverter {
       }
     }
 
+
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis < 0) {
       axis = axis + inputs[0]->getDimensions().nbDims + 1;
     }
 
-    auto* concat_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, inputs.data(), inputs.size());
-    // note now, axis is relative to output but not input, so we
-    concat_layer->setAxis(axis == 0 ? 0 : axis - 1);
-
-
     auto* shape_tensor = Shape(inputs[0]);
-    std::vector<int32_t> gather_index;
-    std::vector<nvinfer1::ITensor*> shape_concat = {shape_tensor, Add1DConstantLayer(input_num)};
+    std::vector<nvinfer1::ITensor*> shape_tensor_vec;
     for (int i = 0; i < inputs[0]->getDimensions().nbDims + 1; i++) {
-       if(i < axis) {
-         gather_index.push_back(i);
-       } else if(i > axis) {
-         gather_index.push_back(i - 1);
-       } else {
-         gather_index.push_back(inputs[0]->getDimensions().nbDims);
-       }
+      if(i < axis) {
+        shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i));
+      } else if(i > axis) {
+        shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i - 1));
+      }
+      else {
+        shape_tensor_vec.push_back(Add1DConstantLayer(1));
+      }
+    }
+    auto* after_shape_tensor = Concat(shape_tensor_vec);
+
+    for (int i = 0; i < input_num; ++i) {
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
+      reshape_layer->setInput(1, *after_shape_tensor);
+      inputs[i] = reshape_layer->getOutput(0);
     }
 
-    auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
-    reshape_layer->setInput(1, *Gather(Concat(shape_concat), gather_index));
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Concatenation, inputs.data(), inputs.size());
+    layer->setAxis(axis);
 
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(reshape_layer, "reshape_after_stack", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };
 
