@@ -28,6 +28,8 @@ limitations under the License. */
 
 namespace phi {
 
+class CUDAStream;
+
 class DnnWorkspaceHandle {
  public:
   inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
@@ -78,10 +80,10 @@ class DnnWorkspaceHandle {
 class PADDLE_API GPUContext : public DeviceContext {
  public:
   GPUContext();
+  explicit GPUContext(const GPUPlace& place, bool init = true);
+
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
-
-  explicit GPUContext(const GPUPlace& place);
 
   virtual ~GPUContext();
 
@@ -90,6 +92,9 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   /*! \brief  Return gpu stream in the device context. */
   gpuStream_t stream() const;
+
+  /*! \brief  Return CUDAStream in the device context. */
+  CUDAStream* cuda_stream() const;
 
   /*! \brief  Return cudnn  handle in the device context. */
   dnnHandle_t cudnn_handle() const;
@@ -189,6 +194,11 @@ class PADDLE_API GPUContext : public DeviceContext {
   // resources that require an Allocator when the SetAllocator interface is
   // called.
   void PartialInitWithAllocator();
+
+  // Note that this function is a trick implementation since all 'set' methods
+  // are protected by default.
+  // clear: whether clear the original CUDAStream or not
+  void SetCUDAStream(CUDAStream*, bool clear = true);
 
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
