@@ -572,6 +572,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
         buffers[bind_index] = static_cast<void *>(t.data<float16>());
+      } else if (type == framework::proto::VarType::BOOL) {
+#if IS_TRT_VERSION_GE(7000)
+        buffers[bind_index] = static_cast<void *>(t.data<bool>());
+#else
+        PADDLE_THROW(
+            platform::errors::Fatal("The TRT Engine OP only support "
+                                    "bool input on trt7 later."));
+#endif
       } else {
         PADDLE_THROW(
             platform::errors::Fatal("The TRT Engine OP only support "
