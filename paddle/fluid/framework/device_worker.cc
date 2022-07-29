@@ -68,17 +68,19 @@ void PrintLodTensorType(Tensor* tensor,
     return;
   }
   if (start >= end) return;
+  std::ostringstream os;
   if (!need_leading_separator) {
-    out_val += std::to_string(tensor->data<T>()[start]);
-    // os << tensor->data<T>()[start];
+    // out_val += std::to_string(tensor->data<T>()[start]);
+    os << tensor->data<T>()[start];
     start++;
   }
   for (int64_t i = start; i < end; i++) {
     // os << ":" << tensor->data<T>()[i];
-    // os << separator << tensor->data<T>()[i];
-    out_val += separator;
-    out_val += std::to_string(tensor->data<T>()[i]);
+    os << separator << tensor->data<T>()[i];
+    // out_val += separator;
+    // out_val += std::to_string(tensor->data<T>()[i]);
   }
+  out_val += os.str();
 }
 
 #define FLOAT_EPS 1e-8
