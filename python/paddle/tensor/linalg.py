@@ -2102,27 +2102,27 @@ def lu(x, pivot=True, get_infos=False, name=None):
 
             # one can verify : X = P @ L @ U ;     
     """
-    if paddle.in_dynamic_mode():
-        LU, Piv, Info = _C_ops.lu(x, 'pivots', pivot)
-        if get_infos:
-            return LU, Piv, Info
-        else:
-            return LU, Piv
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
-    helper = LayerHelper('lu', **locals())
-    lu = helper.create_variable_for_type_inference(dtype=x.dtype)
-    p = helper.create_variable_for_type_inference(dtype='int')
-    info = helper.create_variable_for_type_inference(dtype='int')
-    attrs = dict()
-    attrs['pivots'] = pivot
-    helper.append_op(type='lu',
-                     inputs={'X': x},
-                     outputs={
-                         'Out': lu,
-                         'Pivots': p,
-                         'Infos': info
-                     },
-                     attrs=attrs)
+
+    if in_dygraph_mode():
+        lu, p, info = _C_ops.final_state_lu(x, pivot)
+    elif paddle.in_dynamic_mode():
+        lu, p, info = _C_ops.lu(x, 'pivot', pivot)
+    else:
+        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+        helper = LayerHelper('lu', **locals())
+        lu = helper.create_variable_for_type_inference(dtype=x.dtype)
+        p = helper.create_variable_for_type_inference(dtype='int')
+        info = helper.create_variable_for_type_inference(dtype='int')
+        attrs = dict()
+        attrs['pivot'] = pivot
+        helper.append_op(type='lu',
+                         inputs={'X': x},
+                         outputs={
+                             'Out': lu,
+                             'Pivots': p,
+                             'Infos': info
+                         },
+                         attrs=attrs)
     if get_infos:
         return lu, p, info
     else:

@@ -1425,6 +1425,15 @@
     func : logsumexp
   backward : logsumexp_grad
 
+- api : lu
+  args : (Tensor x, bool pivot)
+  output : Tensor(out), Tensor(pivots), Tensor(infos)
+  infer_meta :
+    func : LUInferMeta
+  kernel :
+    func : lu
+  backward : lu_grad
+
 # masked_select
 - api : masked_select
   args : (Tensor x, Tensor mask)
