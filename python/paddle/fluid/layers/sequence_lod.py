@@ -845,7 +845,7 @@ def sequence_expand_as(x, y, name=None):
             None by default.
 
     Returns: 
-            The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
+            Tensor, The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
             ``N`` depends on the lod of ``y``, and the lod level must be 1. \
             The data type is same as input.
 
@@ -977,12 +977,10 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             None by default.
 
     Returns: 
-            A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
+            tuple, A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
             sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
-
-    Return Type: tuple
 
     Examples:
         .. code-block:: python
@@ -1300,11 +1298,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             None by default.
 
     Returns: 
-            The enumerate sequence variable which is a LoDTensor with \
+            Tensor, The enumerate sequence variable which is a LoDTensor with \
             shape ``[d_1, win_size]`` and 1-level lod info. \
             The data type is same as ``input``.
-
-    Return Type: Variable
 
     Examples:
         .. code-block:: python
@@ -1372,11 +1368,9 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             None by default.
 
     Returns: 
-            The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
+            Tensor, The output sequence mask. Tensor with shape [d_1, d_2, ..., d_n, maxlen] \
             and data type of :code:`dtype`. The data type should be bool, float32, float64, int8, \
             int32 or int64.
-
-    Return Type: Tensor
 
     Examples:
         .. code-block:: python
