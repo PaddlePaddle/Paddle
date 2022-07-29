@@ -70,8 +70,8 @@ class TestBase(IPUD2STest):
         self.loss_op = paddle.fluid.layers.cross_entropy
 
     def set_data_feed(self):
-        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
-        self.label = paddle.randint(0, 10, shape=[32], dtype='int64')
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[8], dtype='int64')
 
     def create_model(self, use_ipu=False):
         return SimpleLayer(loss_op=self.loss_op,
@@ -215,8 +215,8 @@ class TestWithoutIdentityLoss2(TestBase):
         self.loss_op = paddle.fluid.layers.softmax_with_cross_entropy
 
     def set_data_feed(self):
-        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
-        self.label = paddle.randint(0, 10, shape=[32, 1], dtype='int64')
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[8, 1], dtype='int64')
 
     def create_model(self, use_ipu=False):
         return SimpleLayer(loss_op=self.loss_op,
@@ -231,8 +231,41 @@ class TestWithoutIdentityLoss3(TestBase):
         self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
 
     def set_data_feed(self):
-        self.data = paddle.uniform((32, 3, 10, 10), dtype='float32')
-        self.label = paddle.rand(shape=[32, 81], dtype='float32')
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.rand(shape=[8, 81], dtype='float32')
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=True,
+                           use_reduction=True,
+                           use_identity_loss=False)
+
+
+class TestWithoutIdentityLoss4(TestBase):
+
+    def set_op_attrs(self):
+        self.loss_op = paddle.nn.functional.binary_cross_entropy
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.rand(shape=[8, 81], dtype='float32')
+
+    def create_model(self, use_ipu=False):
+        return SimpleLayer(loss_op=self.loss_op,
+                           use_softmax=True,
+                           use_reduction=False,
+                           use_identity_loss=False)
+
+
+class TestWithoutIdentityLoss5(TestBase):
+
+    def set_op_attrs(self):
+        self.loss_op = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+
+    def set_data_feed(self):
+        self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
+        self.label = paddle.randint(0, 10, shape=[8, 81],
+                                    dtype='int64').astype('float32')
 
     def create_model(self, use_ipu=False):
         return SimpleLayer(loss_op=self.loss_op,

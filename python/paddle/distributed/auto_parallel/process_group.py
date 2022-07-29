@@ -16,10 +16,12 @@ from collections import OrderedDict
 
 import paddle
 import paddle.fluid.core as core
+
 from ..collective import _get_global_env
 from ..collective import _new_ring_id
 from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
+from paddle.fluid.framework import _enable_legacy_dygraph
 
 
 def get_all_process_groups():
@@ -40,7 +42,13 @@ def get_world_process_group():
     return _g_process_group_map[0]
 
 
-def new_process_group(ranks):
+def clear_all_process_groups():
+    global _g_process_group_map
+    _g_process_group_map = {}
+    _g_process_group_map[0] = ProcessGroup(0, [])
+
+
+def new_process_group(ranks, group_id=None):
     global _g_process_group_map
     # A key constructed from ranks is used for avoiding duplication
     new_key = ''.join(map(str, sorted(ranks)))
@@ -52,7 +60,9 @@ def new_process_group(ranks):
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
-    group_id = _new_ring_id() + num_groups + 1
+    if group_id == None:
+        group_id = _new_ring_id() + num_groups + 1
+
     new_pg = ProcessGroup(group_id, ranks)
     _g_process_group_map[group_id] = new_pg
     return new_pg
@@ -134,7 +144,8 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            paddle.framework._in_legacy_dygraph()
+            paddle.disable_static()
+            _enable_legacy_dygraph()
             paddle.set_device('gpu:%d' %
                               paddle.distributed.ParallelEnv().dev_id)
             tmp = paddle.to_tensor(

@@ -321,7 +321,7 @@ EagerReducer::EagerReducer(
     const auto &accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
-        std::make_shared<egr::CppTensorVoidHook>(reduce_hook));
+        std::make_shared<egr::CppVoidHook>(reduce_hook));
 
     gradnode_index_map_[grad_node.get()] = global_var_index;
   }

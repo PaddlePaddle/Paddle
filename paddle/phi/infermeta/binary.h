@@ -60,6 +60,8 @@ void BincountInferMeta(const MetaTensor& x,
                        int minlength,
                        MetaTensor* out);
 
+void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -285,6 +287,15 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
+
+void LstsqInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    const Scalar& rcond,
+                    const std::string& driver,
+                    MetaTensor* solution,
+                    MetaTensor* residuals,
+                    MetaTensor* rank,
+                    MetaTensor* singular_values);
 
 void YoloBoxInferMeta(const MetaTensor& x,
                       const MetaTensor& img_size,
