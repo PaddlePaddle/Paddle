@@ -166,6 +166,18 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,
@@ -680,6 +692,21 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(dtype);
+  }
+}
+
+void SpectralNormGradInferMeta(const MetaTensor& weight,
+                               const MetaTensor& u,
+                               const MetaTensor& v,
+                               const MetaTensor& out_grad,
+                               int dim,
+                               int power_iters,
+                               float eps,
+                               MetaTensor* weight_grad) {
+  auto dim_x = weight.dims();
+  if (weight_grad) {
+    weight_grad->set_dims(dim_x);
+    weight_grad->set_dtype(out_grad.dtype());
   }
 }
 
