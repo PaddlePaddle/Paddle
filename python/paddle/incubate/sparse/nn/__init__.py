@@ -16,6 +16,8 @@ from . import functional
 
 from .layer.activation import ReLU
 from .layer.activation import Softmax
+from .layer.activation import ReLU6
+from .layer.activation import LeakyReLU
 from .layer.norm import BatchNorm
 from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
@@ -23,6 +25,8 @@ from .layer.pooling import MaxPool3D
 
 __all__ = [
     'ReLU',
+    'ReLU6',
+    'LeakyReLU',
     'Softmax',
     'BatchNorm',
     'Conv3D',

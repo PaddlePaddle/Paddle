@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/impl/box_coder.h"
 
 namespace phi {
 
@@ -143,6 +144,115 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dims(make_ddim(output_dims));
   out->share_lod(input);
   out->set_dtype(input.dtype());
+}
+
+void BoxCoderInferMeta(const MetaTensor& prior_box,
+                       const MetaTensor& prior_box_var,
+                       const MetaTensor& target_box,
+                       const std::string& code_type,
+                       bool box_normalized,
+                       int axis,
+                       const std::vector<float>& variance,
+                       MetaTensor* output_box,
+                       MetaConfig config) {
+  auto prior_box_dims = prior_box.dims();
+  auto target_box_dims = target_box.dims();
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(prior_box_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input PriorBox in BoxCoder operator "
+                          "must be 2. But received rank = %d",
+                          prior_box_dims.size()));
+    PADDLE_ENFORCE_EQ(prior_box_dims[1],
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of PriorBox in BoxCoder "
+                          "operator must be 4. But received dimension = %d",
+                          prior_box_dims[1]));
+    if (prior_box_var) {
+      auto prior_box_var_dims = prior_box_var.dims();
+      PADDLE_ENFORCE_EQ(
+          prior_box_var_dims.size(),
+          2,
+          phi::errors::InvalidArgument(
+              "The rank of Input(PriorBoxVar) in BoxCoder operator"
+              " should be 2. But received rank = %d",
+              prior_box_var_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          prior_box_dims,
+          prior_box_var_dims,
+          phi::errors::InvalidArgument(
+              "The dimension of Input(PriorBoxVar) should be equal to"
+              "the dimension of Input(PriorBox) in BoxCoder operator "
+              "when the rank is 2."));
+    }
+  }
+
+  auto box_code_type = phi::funcs::GetBoxCodeType(code_type);
+  if (box_code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+    PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input TargetBox in BoxCoder operator "
+                          "must be 2. But received rank is %d",
+                          target_box_dims.size()));
+    PADDLE_ENFORCE_EQ(target_box_dims[1],
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of TargetBox in BoxCoder "
+                          "operator is 4. But received dimension is %d",
+                          target_box_dims[1]));
+    output_box->set_dims({target_box_dims[0], prior_box_dims[0], 4});
+  } else if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+    PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input TargetBox in BoxCoder "
+                          "operator must be 3. But received rank is %d",
+                          target_box_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        axis == 0 || axis == 1,
+        true,
+        phi::errors::InvalidArgument("axis in BoxCoder operator must be 0 or 1."
+                                     "But received axis = %d",
+                                     axis));
+    if (config.is_runtime) {
+      if (axis == 0) {
+        PADDLE_ENFORCE_EQ(
+            target_box_dims[1],
+            prior_box_dims[0],
+            phi::errors::InvalidArgument(
+                "When axis is 0, The second "
+                "dimension of TargetBox in BoxCoder "
+                "should be equal to the first dimension of PriorBox."));
+      } else if (axis == 1) {
+        PADDLE_ENFORCE_EQ(
+            target_box_dims[0],
+            prior_box_dims[0],
+            phi::errors::InvalidArgument(
+                "When axis is 1, The first "
+                "dimension of TargetBox in BoxCoder "
+                "should be equal to the first dimension of PriorBox."));
+      }
+      PADDLE_ENFORCE_EQ(
+          target_box_dims[2],
+          prior_box_dims[1],
+          phi::errors::InvalidArgument("The third dimension of TargetBox"
+                                       " in BoxCoder should be equal to the "
+                                       "second dimension of PriorBox."));
+    }
+    output_box->share_dims(target_box);
+  }
+
+  if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize &&
+      axis == 1) {
+    output_box->share_lod(prior_box);
+  } else {
+    output_box->share_lod(target_box);
+  }
+  output_box->set_dtype(target_box.dtype());
 }
 
 void ArangeInferMeta(const MetaTensor& start,
@@ -976,6 +1086,83 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void SpectralNormInferMeta(const MetaTensor& weight,
+                           const MetaTensor& u,
+                           const MetaTensor& v,
+                           int dim,
+                           int power_iters,
+                           float eps,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  auto dim_weight = weight.dims();
+  auto rank_weight = dim_weight.size();
+  PADDLE_ENFORCE_GE(rank_weight,
+                    2,
+                    errors::InvalidArgument(
+                        "The rank of Input(Weights) should be greater equal "
+                        "than 2, but received Weight rank(%d)",
+                        rank_weight));
+  PADDLE_ENFORCE_LE(
+      rank_weight,
+      5,
+      errors::InvalidArgument("The rank of Input(Weights) should be less equal "
+                              "than 5, but received Weight rank(%d)",
+                              rank_weight));
+
+  auto dim_valid = dim == 0 || dim == 1;
+  PADDLE_ENFORCE_EQ(dim_valid,
+                    true,
+                    errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_GE(
+      power_iters,
+      0,
+      errors::InvalidArgument(
+          "Attr(power_iters) should be greater equal then 0, but received %d",
+          power_iters));
+
+  int h = dim_weight[dim];
+  int w = 1;
+  for (int i = 0; i < rank_weight; i++) {
+    if (i != dim) {
+      w *= dim_weight[i];
+    }
+  }
+  auto dim_u = u.dims();
+  auto dim_v = v.dims();
+
+  if (config.is_runtime || (dim_u[0] > 0 && h > 0)) {
+    PADDLE_ENFORCE_EQ(dim_u[0],
+                      h,
+                      errors::InvalidArgument(
+                          "Input(U) dimension[0] should be equal to "
+                          "Input(Weight) dimension[Attr(dim)], but received "
+                          "U dimension[0](%d) != Weight dimension[%d](%d)",
+                          dim_u[0],
+                          dim,
+                          h));
+  }
+
+  if (config.is_runtime || (dim_v[0] > 0 && w > 0)) {
+    PADDLE_ENFORCE_EQ(
+        dim_v[0],
+        w,
+        errors::InvalidArgument(
+            "Input(V) dimension[0] should be equal to the product of "
+            "Input(Weight) dimension except dimension[Attr(dim)], but "
+            "received V dimension[0](%d) != product of Input(Weight) "
+            "dimension(%d)",
+            dim_v[0],
+            w));
+  }
+
+  if (out) {
+    out->set_dims(dim_weight);
+    out->set_dtype(weight.dtype());
+    out->share_lod(weight);
+  }
 }
 
 void ViterbiDecodeInferMeta(const MetaTensor& input,

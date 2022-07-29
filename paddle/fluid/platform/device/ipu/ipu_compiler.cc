@@ -300,7 +300,7 @@ void Compiler::RegisterOpFunc() {
 #define INT32 std::int32_t
 #define BOOL bool
 #define STRING std::string
-#define STRING_VEC std::vector<std::string*>
+#define STRING_VEC std::vector<std::string>
 #define NONE
 
 #define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)

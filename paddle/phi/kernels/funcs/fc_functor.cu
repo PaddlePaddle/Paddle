@@ -36,6 +36,24 @@ struct FcTypeTraits<double> {
   typedef double4 Type;
 };
 
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_fp16.h>
+
+template <>
+struct FcTypeTraits<float16> {
+  typedef half2 Type;
+};
+#else
+struct float16_4 {
+  float16 x, y, z, w;
+};
+
+template <>
+struct FcTypeTraits<float16> {
+  typedef float16_4 Type;
+};
+#endif
+
 template <typename T, bool DoRelu>
 __global__ void bias_relu_v4(const int num, const T* bias, T* data, int K) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -109,30 +127,34 @@ void AddReluKernel(
 }
 
 #if defined(PADDLE_WITH_CUDA)
-
-#include <cuda_fp16.h>
-
-template <>
-struct FcTypeTraits<float16> {
-  typedef half2 Type;
-};
-
 template <bool DoRelu>
 __global__ void bias_relu_v2(const int num,
                              const half2* bias,
                              half2* data,
                              int K) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
   if (tid < num) {
     int bias_idx = tid % K;
     const half2 bias_ptr = bias[bias_idx];
     const half2 in_ptr = data[tid];
-    half2 packed_val = __hadd2(bias_ptr, in_ptr);
+    half2 packed_val;
+#if __CUDA_ARCH__ >= 530
+    packed_val = __hadd2(bias_ptr, in_ptr);
+#else
+    packed_val.x = __hadd(bias_ptr.x, in_ptr.x);
+    packed_val.y = __hadd(bias_ptr.y, in_ptr.y);
+#endif
     if (DoRelu) {
 #if __CUDA_ARCH__ >= 800
       packed_val = __hmax2(__half2(0, 0), packed_val);
-#else
+#elif __CUDA_ARCH__ >= 530
       packed_val = __hmul2(__hgt2(__half2(0, 0), packed_val), packed_val);
+#else
+      packed_val.x = static_cast<int>(static_cast<float>(packed_val.x) > 0) *
+                     static_cast<float>(packed_val.x);
+      packed_val.y = static_cast<int>(static_cast<float>(packed_val.y) > 0) *
+                     static_cast<float>(packed_val.y);
 #endif
     }
     data[tid] = packed_val;
@@ -147,15 +169,18 @@ __global__ void InplaceAddReluKernel(const int N,
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     half temp;
 #if defined(__HIPCC__) || __CUDA_ARCH__ >= 350
-    temp = __ldg(data + offset + i) + __ldg(bias + i);
+    temp = __hadd(__ldg(data + offset + i), __ldg(bias + i));
 #else
-    temp = data[offset + i] + bias[i];
+    temp = __hadd(data[offset + i], bias[i]);
 #endif
     if (DoRelu) {
 #if __CUDA_ARCH__ >= 800
       data[offset + i] = __hmax(0, temp);
-#else
+#elif __CUDA_ARCH__ >= 530
       data[offset + i] = __hmul(__hgt(temp, 0), temp);
+#else
+      data[offset + i] = static_cast<int>(static_cast<float>(temp) > 0) *
+                         static_cast<float>(temp);
 #endif
     } else {
       data[offset + i] = temp;
@@ -198,48 +223,12 @@ void AddReluKernel(cudaStream_t stream,
     }
   }
 }
-
 #else
-
-struct float16_4 {
-  float16 x, y, z, w;
-};
-template <>
-struct FcTypeTraits<float16> {
-  typedef float16_4 Type;
-};
-
-template <bool DoRelu>
-__global__ void bias_relu_v4(const int num,
-                             const float16_4* bias,
-                             float16_4* data,
-                             int K) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid < num) {
-    int bias_idx = tid % K;
-    const float16_4 bias_ptr = bias[bias_idx];
-    const float16_4 in_ptr = data[tid];
-    float16_4 packed_val;
-    packed_val.x = in_ptr.x + bias_ptr.x;
-    packed_val.y = in_ptr.y + bias_ptr.y;
-    packed_val.z = in_ptr.z + bias_ptr.z;
-    packed_val.w = in_ptr.w + bias_ptr.w;
-    if (DoRelu) {
-      packed_val.x = fmaxf(0.f, packed_val.x);
-      packed_val.y = fmaxf(0.f, packed_val.y);
-      packed_val.z = fmaxf(0.f, packed_val.z);
-      packed_val.w = fmaxf(0.f, packed_val.w);
-    }
-    data[tid] = packed_val;
-  }
-}
-
 template <bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluKernel(const int N,
                                      const float16* bias,
                                      float16* data) {
   int offset = blockIdx.x * N;
-
   for (int i = threadIdx.x; i < N; i += BlockDim) {
     float16 temp;
     temp = data[offset + i] + bias[i];

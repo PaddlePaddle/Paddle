@@ -29,6 +29,12 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-2
+
     def set_data_feed(self):
         data = np.random.uniform(size=[1, 255, 13, 13])
         self.feed_fp32 = {"in_0": data.astype(np.float32)}
