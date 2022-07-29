@@ -112,4 +112,7 @@ class Context(object):
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
             if k in self.envs:
+                print(
+                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                )
                 setattr(self.args, v, self.envs[k])

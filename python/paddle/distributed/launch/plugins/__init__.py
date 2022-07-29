@@ -32,8 +32,10 @@ def process_args(ctx):
     argdev = ctx.args.devices
     if argdev:
         for d in argdev.split(','):
-            assert d in ctx.node.device.labels, 'Device not found {}'.format(
-                argdev)
+            if d not in ctx.node.device.labels:
+                ctx.logger.error(
+                    f'Device not found {d} from {argdev} for setting {ctx.node.device.labels}'
+                )
 
 
 def collective_compatible(ctx):
