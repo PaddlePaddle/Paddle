@@ -4600,6 +4600,6 @@ def take(input, index, name=None):
 
     # This processing enables 'take' to handle negative indexes within the correct range
     index_1d = paddle.where(index_1d < 0, index_1d + input_1d.shape[0], index_1d)
-    out = input_1d.flatten().index_select(index_1d).reshape(index.shape)
+    out = input_1d.index_select(index_1d).reshape(index.shape)
 
     return out
