@@ -60,6 +60,13 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       return TRT_DT::kINT32;
     case FluidDT::VarType_Type_FP16:
       return TRT_DT::kHALF;
+    case FluidDT::VarType_Type_BOOL:
+#if IS_TRT_VERSION_GE(7000)
+      return TRT_DT::kBOOL;
+#else
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "bool input is supported on trt7 later"));
+#endif
     default:
       return TRT_DT::kINT32;
   }
