@@ -524,7 +524,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
         else:
-            # TODO(Asthestarsfalll): Use paddle.index_fill instead of where
+            # TODO: Use paddle.index_fill instead of where
             index = q_num * (valid_counts - 1)
             last_index = x.shape[axis] - 1
             nums = paddle.full_like(index, fill_value=last_index)
