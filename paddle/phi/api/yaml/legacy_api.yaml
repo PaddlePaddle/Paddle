@@ -258,7 +258,7 @@
     func : assign_value
     param : [shape, dtype, values]
     data_type : dtype
-    backend : place > output 
+    backend : place > output
 
 # atan
 - api : atan
@@ -808,7 +808,7 @@
 - api : fill_constant_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
-  inplace: (output -> out)
+  inplace : (output -> out)
   infer_meta :
     func : CreateInferMeta
     param : [shape, dtype]
