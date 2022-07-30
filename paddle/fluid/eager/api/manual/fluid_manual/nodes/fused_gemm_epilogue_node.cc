@@ -20,28 +20,69 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> fused_gemm_epilogueGradNodeCompat::operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {
+paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                     egr::kSlotSmallVectorSize>
+fused_gemm_epilogueGradNodeCompat::operator()(
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>& grads,
+    bool create_graph,
+    bool is_new_grad) {
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> outputs(3);
-    VLOG(3) << "Running Eager Backward Node: fused_gemm_epilogueGradNodeCompat";
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> hooked_grads0 = fused_gemm_epilogueGradNodeCompat::ApplyGradientHooks(grads);
-  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 = { { "DOut", egr::EagerUtils::TrySyncToVars(hooked_grads0[0]) },{ "X", egr::EagerUtils::TrySyncToVars(egr::EagerUtils::RecoverTensorWrapper(&this->X_)) },{ "Y", egr::EagerUtils::TrySyncToVars(egr::EagerUtils::RecoverTensorWrapper(&this->Y_)) } };
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      outputs(3);
+  VLOG(3) << "Running Eager Backward Node: fused_gemm_epilogueGradNodeCompat";
+  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                       egr::kSlotSmallVectorSize>
+      hooked_grads0 =
+          fused_gemm_epilogueGradNodeCompat::ApplyGradientHooks(grads);
+  std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =
+      {{"DOut", egr::EagerUtils::TrySyncToVars(hooked_grads0[0])},
+       {"X",
+        egr::EagerUtils::TrySyncToVars(
+            egr::EagerUtils::RecoverTensorWrapper(&this->X_))},
+       {"Y",
+        egr::EagerUtils::TrySyncToVars(
+            egr::EagerUtils::RecoverTensorWrapper(&this->Y_))}};
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs0;
-  if((!out_metas[2].empty()) && (!(out_metas[2][0].IsStopGradient()))){ outs0.insert({ "DBias", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}});} 
-  if((!out_metas[0].empty()) && (!(out_metas[0][0].IsStopGradient()))){ outs0.insert({ "DX", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}});} 
-  if((!out_metas[1].empty()) && (!(out_metas[1][0].IsStopGradient()))){ outs0.insert({ "DY", {std::make_shared<egr::EagerVariable>(egr::Controller::Instance().GenerateUniqueName())}});} 
- 
+  if ((!out_metas[2].empty()) && (!(out_metas[2][0].IsStopGradient()))) {
+    outs0.insert({"DBias",
+                  {std::make_shared<egr::EagerVariable>(
+                      egr::Controller::Instance().GenerateUniqueName())}});
+  }
+  if ((!out_metas[0].empty()) && (!(out_metas[0][0].IsStopGradient()))) {
+    outs0.insert({"DX",
+                  {std::make_shared<egr::EagerVariable>(
+                      egr::Controller::Instance().GenerateUniqueName())}});
+  }
+  if ((!out_metas[1].empty()) && (!(out_metas[1][0].IsStopGradient()))) {
+    outs0.insert({"DY",
+                  {std::make_shared<egr::EagerVariable>(
+                      egr::Controller::Instance().GenerateUniqueName())}});
+  }
+
   auto& attrs_map0 = this->attr_map_;
   // Pass the entire attribute map to TraceOp
   // The underlying kernel will pickup whatever attribute they need at runtime
-  egr::Controller::Instance().GetCurrentTracer()->TraceOp("fused_gemm_epilogue_grad", ins0, outs0, attrs_map0,
+  egr::Controller::Instance().GetCurrentTracer()->TraceOp(
+      "fused_gemm_epilogue_grad",
+      ins0,
+      outs0,
+      attrs_map0,
       egr::Controller::Instance().GetExpectedPlace(),
-      &this->default_attr_map_, true, {});
- if (outs0.find("DBias") != outs0.end()) { outputs[2] = egr::EagerUtils::GetOutputs(outs0["DBias"]); }
- if (outs0.find("DX") != outs0.end()) { outputs[0] = egr::EagerUtils::GetOutputs(outs0["DX"]); }
- if (outs0.find("DY") != outs0.end()) { outputs[1] = egr::EagerUtils::GetOutputs(outs0["DY"]); }
+      &this->default_attr_map_,
+      true,
+      {});
+  if (outs0.find("DBias") != outs0.end()) {
+    outputs[2] = egr::EagerUtils::GetOutputs(outs0["DBias"]);
+  }
+  if (outs0.find("DX") != outs0.end()) {
+    outputs[0] = egr::EagerUtils::GetOutputs(outs0["DX"]);
+  }
+  if (outs0.find("DY") != outs0.end()) {
+    outputs[1] = egr::EagerUtils::GetOutputs(outs0["DY"]);
+  }
 
-  if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&outputs);
+  if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&outputs);
   return outputs;
-
 }
