@@ -380,8 +380,6 @@ void GenerateProposalsV2Kernel(const Context& ctx,
     }
     rpn_rois_num->Resize(phi::make_ddim({num}));
   }
-  // rpn_rois->set_lod(lod);
-  // rpn_roi_probs->set_lod(lod);
   rpn_rois->Resize(phi::make_ddim({num_proposals, 4}));
   rpn_roi_probs->Resize(phi::make_ddim({num_proposals, 1}));
 }
