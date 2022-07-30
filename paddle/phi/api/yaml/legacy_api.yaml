@@ -805,7 +805,7 @@
     backend : place
 
 # fill_constant
-- api : fill_constant
+- api : fill_constant_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   inplace : (output -> out)
