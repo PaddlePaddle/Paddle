@@ -33,17 +33,17 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(0) << "@@ convert a fluid group_norm op";
+    VLOG(3) << "@@ convert a fluid group_norm op";
 
     framework::OpDesc op_desc(op, nullptr);
     int input_num = op_desc.Input("X").size();
-    VLOG(0)<<"@@@ input num: "<<input_num;
+    VLOG(3)<<"@@@ input num: "<<input_num;
 
     int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
     
-    VLOG(0)<<"@@@@ eps: "<<epsilon;
-    VLOG(0)<<"@@@@ num_groups: "<<groups;
+    VLOG(3)<<"@@@@ eps: "<<epsilon;
+    VLOG(3)<<"@@@@ num_groups: "<<groups;
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
 
@@ -65,7 +65,7 @@ class GroupNormOpConverter : public OpConverter {
     auto* input_itensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     if(engine_->with_dynamic_shape()){
-        VLOG(0) << "@@ with_dynamic_shape";
+        VLOG(3) << "@@ with_dynamic_shape";
         //TODO wang bojun PADDLE_ENFORCE_NE CHECK
 
         int gn_num= input_itensor->getDimensions().d[0]*groups;
@@ -82,9 +82,9 @@ class GroupNormOpConverter : public OpConverter {
                 mean_shape,
                 variance_shape);
         groupnorm_layer=engine_->AddDynamicPlugin(&input_itensor,1,plugin);
-        VLOG(0)<<"@@@ call dyanmic plugin finished";
+        VLOG(3)<<"@@@ call dyanmic plugin finished";
     }else{
-        VLOG(0) << "@@ with_static_shape";
+        VLOG(3) << "@@ with_static_shape";
 
         nvinfer1::Dims scale_nv_dims;
         nvinfer1::Dims bias_nv_dims;
@@ -116,18 +116,18 @@ class GroupNormOpConverter : public OpConverter {
                     fields.size() * sizeof(nvinfer1::PluginField)));
         plugin_collections->nbFields = static_cast<int>(fields.size());
         plugin_collections->fields = fields.data();
-        VLOG(0)<<"@@@ group norm, static pin";
+        VLOG(3)<<"@@@ group norm, static pin";
         auto creator =
             GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
         auto group_norm_plugin =
             creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
         free(plugin_collections);
-        VLOG(0)<<"@@@ group norm, static pin 2";
+        VLOG(3)<<"@@@ group norm, static pin 2";
 
         groupnorm_layer = engine_->network()->addPluginV2(
             plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
 
-        VLOG(0) << "@@ group norm with_static_shape finished";
+        VLOG(3) << "@@ group norm with_static_shape finished";
 
     }
     auto output_name = op_desc.Output("Y")[0];
