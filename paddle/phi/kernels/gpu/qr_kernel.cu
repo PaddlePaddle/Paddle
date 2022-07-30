@@ -30,35 +30,13 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
+#include "paddle/phi/kernels/impl/qr_kernel_impl.h"
 #include "paddle/phi/kernels/qr_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/tril_triu_kernel.h"
 
 namespace phi {
-
-template <typename T>
-void BatchedGeqrf(const phi::GPUContext& dev_ctx,
-                  int batch_size,
-                  int m,
-                  int n,
-                  T* a,
-                  int lda,
-                  T* tau,
-                  int a_stride,
-                  int tau_stride);
-
-template <typename T>
-void BatchedOrgqr(const phi::GPUContext& dev_ctx,
-                  int batch_size,
-                  int m,
-                  int n,
-                  int k,
-                  T* a,
-                  int lda,
-                  T* tau,
-                  int a_stride,
-                  int tau_stride);
 
 template <class T, class Context>
 static DenseTensor Fill(const Context& ctx,
@@ -133,7 +111,7 @@ void QrKernel(const Context& ctx,
   auto qr_data = ctx.template Alloc<phi::dtype::Real<T>>(&qr);
   auto tau_data = ctx.template Alloc<phi::dtype::Real<T>>(&tau);
 
-  BatchedGeqrf<T>(
+  BatchedGeqrf<Context, T>(
       ctx, batch_size, m, n, qr_data, m, tau_data, qr_stride, tau_stride);
 
   if (reduced_mode) {
@@ -154,16 +132,16 @@ void QrKernel(const Context& ctx,
     // Perform QRGQR for Q using the result from GEQRF
     // Transpose 'q' to retore the original row-major order
     if (reduced_mode) {
-      BatchedOrgqr<T>(ctx,
-                      batch_size,
-                      m,
-                      min_mn,
-                      min_mn,
-                      qr_data,
-                      m,
-                      tau_data,
-                      qr_stride,
-                      tau_stride);
+      BatchedOrgqr<Context, T>(ctx,
+                               batch_size,
+                               m,
+                               min_mn,
+                               min_mn,
+                               qr_data,
+                               m,
+                               tau_data,
+                               qr_stride,
+                               tau_stride);
       auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
       auto sliced_q = SliceKernel<T, Context>(
           ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn}, {1}, {});
@@ -183,29 +161,29 @@ void QrKernel(const Context& ctx,
                                qr_stride * sizeof(phi::dtype::Real<T>),
                                ctx.stream());
         }
-        BatchedOrgqr<T>(ctx,
-                        batch_size,
-                        m,
-                        m,
-                        min_mn,
-                        new_qr_data,
-                        m,
-                        tau_data,
-                        new_qr_stride,
-                        tau_stride);
+        BatchedOrgqr<Context, T>(ctx,
+                                 batch_size,
+                                 m,
+                                 m,
+                                 min_mn,
+                                 new_qr_data,
+                                 m,
+                                 tau_data,
+                                 new_qr_stride,
+                                 tau_stride);
         auto trans_q = TransposeLast2Dim<T, Context>(ctx, new_qr);
         phi::Copy(ctx, trans_q, q->place(), false, q);
       } else {
-        BatchedOrgqr<T>(ctx,
-                        batch_size,
-                        m,
-                        m,
-                        min_mn,
-                        qr_data,
-                        m,
-                        tau_data,
-                        qr_stride,
-                        tau_stride);
+        BatchedOrgqr<Context, T>(ctx,
+                                 batch_size,
+                                 m,
+                                 m,
+                                 min_mn,
+                                 qr_data,
+                                 m,
+                                 tau_data,
+                                 qr_stride,
+                                 tau_stride);
         auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
         auto sliced_q = SliceKernel<T, Context>(
             ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m}, {1}, {});
@@ -216,24 +194,28 @@ void QrKernel(const Context& ctx,
 }
 
 template <>
-void BatchedGeqrf<float>(const phi::GPUContext& dev_ctx,
-                         int batch_size,
-                         int m,
-                         int n,
-                         float* a,
-                         int lda,
-                         float* tau,
-                         int a_stride,
-                         int tau_stride) {
+void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
+                                     int batch_size,
+                                     int m,
+                                     int n,
+                                     float* a,
+                                     int lda,
+                                     float* tau,
+                                     int a_stride,
+                                     int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
-  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(float));
-  float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  auto info = paddle::memory::Alloc(dev_ctx, sizeof(int));
-  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  DenseTensor* workspace = new DenseTensor();
+  workspace->Resize(make_ddim({lwork}));
+  float* workspace_ptr = dev_ctx.template Alloc<float>(workspace);
+
+  DenseTensor* info = new DenseTensor();
+  info->Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(info);
 
   for (int i = 0; i < batch_size; ++i) {
     float* a_working_ptr = &a[i * a_stride];
@@ -260,30 +242,34 @@ void BatchedGeqrf<float>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
   }
 }
 
 template <>
-void BatchedGeqrf<double>(const phi::GPUContext& dev_ctx,
-                          int batch_size,
-                          int m,
-                          int n,
-                          double* a,
-                          int lda,
-                          double* tau,
-                          int a_stride,
-                          int tau_stride) {
+void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
+                                      int batch_size,
+                                      int m,
+                                      int n,
+                                      double* a,
+                                      int lda,
+                                      double* tau,
+                                      int a_stride,
+                                      int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
-  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(double));
-  double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-  auto info = paddle::memory::Alloc(dev_ctx, sizeof(int));
-  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  DenseTensor* workspace = new DenseTensor();
+  workspace->Resize(make_ddim({lwork}));
+  double* workspace_ptr = dev_ctx.template Alloc<double>(workspace);
+
+  DenseTensor* info = new DenseTensor();
+  info->Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(info);
 
   for (int i = 0; i < batch_size; ++i) {
     double* a_working_ptr = &a[i * a_stride];
@@ -310,31 +296,35 @@ void BatchedGeqrf<double>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
   }
 }
 
 template <>
-void BatchedOrgqr<float>(const phi::GPUContext& dev_ctx,
-                         int batch_size,
-                         int m,
-                         int n,
-                         int k,
-                         float* a,
-                         int lda,
-                         float* tau,
-                         int a_stride,
-                         int tau_stride) {
+void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
+                                     int batch_size,
+                                     int m,
+                                     int n,
+                                     int k,
+                                     float* a,
+                                     int lda,
+                                     float* tau,
+                                     int a_stride,
+                                     int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
-  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(float));
-  float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  auto info = paddle::memory::Alloc(dev_ctx, sizeof(int));
-  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  DenseTensor* workspace = new DenseTensor();
+  workspace->Resize(make_ddim({lwork}));
+  float* workspace_ptr = dev_ctx.template Alloc<float>(workspace);
+
+  DenseTensor* info = new DenseTensor();
+  info->Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(info);
 
   for (int i = 0; i < batch_size; ++i) {
     float* a_working_ptr = &a[i * a_stride];
@@ -362,31 +352,35 @@ void BatchedOrgqr<float>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
 
 template <>
-void BatchedOrgqr<double>(const phi::GPUContext& dev_ctx,
-                          int batch_size,
-                          int m,
-                          int n,
-                          int k,
-                          double* a,
-                          int lda,
-                          double* tau,
-                          int a_stride,
-                          int tau_stride) {
+void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
+                                      int batch_size,
+                                      int m,
+                                      int n,
+                                      int k,
+                                      double* a,
+                                      int lda,
+                                      double* tau,
+                                      int a_stride,
+                                      int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
-  auto workspace = paddle::memory::Alloc(dev_ctx, lwork * sizeof(double));
-  double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-  auto info = paddle::memory::Alloc(dev_ctx, sizeof(int));
-  int* info_d = reinterpret_cast<int*>(info->ptr());
+
+  DenseTensor* workspace = new DenseTensor();
+  workspace->Resize(make_ddim({lwork}));
+  double* workspace_ptr = dev_ctx.template Alloc<double>(workspace);
+
+  DenseTensor* info = new DenseTensor();
+  info->Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(info);
 
   for (int i = 0; i < batch_size; ++i) {
     double* a_working_ptr = &a[i * a_stride];
@@ -414,7 +408,7 @@ void BatchedOrgqr<double>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
