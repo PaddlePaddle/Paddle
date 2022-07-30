@@ -21,13 +21,13 @@
 
 #include "paddle/fluid/operators/eig_op.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
-#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 
 #define EPSILON 1e-6
 
@@ -112,8 +112,8 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
 
     Tensor input_x_trans = dito.Transpose(new_x);
     Tensor input_y_trans = dito.Transpose(*solution);
-    framework::TensorCopy(input_x_trans, new_x.place(), &new_x);
-    framework::TensorCopy(input_y_trans, solution->place(), solution);
+    framework::TensorCopy(input_x_trans, context.GetPlace(), &new_x);
+    framework::TensorCopy(input_y_trans, context.GetPlace(), solution);
 
     auto* x_vector = new_x.data<T>();
     auto* y_vector = solution->data<T>();
@@ -310,7 +310,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     }
 
     Tensor tmp_s = dito.Transpose(*solution);
-    framework::TensorCopy(tmp_s, solution->place(), solution);
+    framework::TensorCopy(tmp_s, context.GetPlace(), solution);
 
     if (m > n) {
       auto* solu_data = solution->data<T>();

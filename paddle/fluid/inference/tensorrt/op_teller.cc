@@ -170,6 +170,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
       "squeeze2",
       "unsqueeze2"};
   std::unordered_set<std::string> teller_set{
@@ -275,8 +278,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "transformer_input_convert",
       "recover_padding",
       "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
       "squeeze2",
-      "unsqueeze2"};
+      "unsqueeze2",
+      "fused_token_prune"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node,
@@ -286,7 +293,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
-       BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
@@ -350,7 +357,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
     if (op_type == "pool2d") {
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) {
         return false;
       }
@@ -366,7 +373,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       if (desc.HasAttr("data_format")) {
         std::string data_format =
-            BOOST_GET_CONST(std::string, desc.GetAttr("data_format"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_format"));
         if (data_format == "NHWC" || data_format == "NDHWC") {
           return false;
         }
@@ -375,7 +382,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       } else {
         std::string pool_type =
-            BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("pooling_type"));
         if (pool_type != "max" && pool_type != "avg") {
           VLOG(3) << "Wrong pool op type, the trt do not support the "
                   << pool_type << " pool type.";
@@ -383,11 +390,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
         if (pool_type == "avg") {
           if (desc.HasAttr("global_pooling")) {
-            if (!BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
+            if (!PADDLE_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
               if (desc.HasAttr("exclusive")) {
-                if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+                if (PADDLE_GET_CONST(bool, desc.GetAttr("exclusive"))) {
                   std::vector<int> ksize =
-                      BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+                      PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
                   for (size_t i = 0; i < ksize.size(); i++) {
                     if (ksize[i] <= paddings[i]) {
                       VLOG(3) << "the padding size should be less than the "
@@ -436,7 +443,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         } else {
           const std::vector<int> dilations =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
           if (dilations[0] != 1 || dilations[1] != 1) {
             VLOG(3) << "In conv2d_transpose, Dilations must be (1, 1) for "
                        "tensorRT, but given ("
@@ -458,10 +465,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+              PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
           if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
             const std::vector<int> strides =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+                PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
             // there is no issue if strides.size() less than 2
             if (strides.size() > 1) {
               for (size_t i = 0; i < strides.size(); i++) {
@@ -494,7 +501,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* filter_desc = block->FindVar(filter_name);
       const auto filter_shape = filter_desc->GetShape();
 
-      int groups = BOOST_GET_CONST(int, desc.GetAttr("groups"));
+      int groups = PADDLE_GET_CONST(int, desc.GetAttr("groups"));
       if (input_shape[1] != filter_shape[1] * groups) {
         VLOG(3) << "The number of input channels should be equal to filter "
                 << "channels * groups. But got input channels "
@@ -503,7 +510,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const std::vector<int> strides =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
       if (strides.size() != 2) {
         VLOG(3) << "The size of strides should be 2, but got "
                 << strides.size();
@@ -511,7 +518,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
         VLOG(3) << "The size of paddings shoule be 2, but got "
                 << paddings.size();
@@ -585,7 +592,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (!desc.HasAttr("axis")) {
         return false;
       }
-      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (!with_dynamic_shape) {
         if (axis == 0) return false;
       }
@@ -601,7 +608,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       std::vector<int> axis =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
 
@@ -647,14 +654,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #else
         if (with_dynamic_shape) return false;
 #endif
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
     }
     if (op_type == "flatten_contiguous_range") {
       if (!with_dynamic_shape) {
-        int start_axis = BOOST_GET_CONST(int, desc.GetAttr("start_axis"));
-        int stop_axis = BOOST_GET_CONST(int, desc.GetAttr("stop_axis"));
+        int start_axis = PADDLE_GET_CONST(int, desc.GetAttr("start_axis"));
+        int stop_axis = PADDLE_GET_CONST(int, desc.GetAttr("stop_axis"));
         auto x_var_name = desc.Input("X")[0];
         auto* block = desc.Block();
         if (block == nullptr) {
@@ -769,17 +776,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
     if (op_type == "arg_max") {
       int axis = desc.HasAttr("axis")
-                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
       if (axis == 0 || flatten || dtype != 2) return false;
     }
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
@@ -834,13 +841,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
       // plugin are not constient with those of multiclass_nms3
       if (desc.HasAttr("nms_eta") == false) return false;
-      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      auto nms_eta = PADDLE_GET_CONST(float, desc.GetAttr("nms_eta"));
       if (nms_eta <= 1.0) return false;
 
-      auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
+      auto nms_top_k = PADDLE_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
 
-      auto keep_top_k = BOOST_GET_CONST(int, desc.GetAttr("keep_top_k"));
+      auto keep_top_k = PADDLE_GET_CONST(int, desc.GetAttr("keep_top_k"));
       if (keep_top_k < 0) return false;
 
       auto registry = GetPluginRegistry();
@@ -855,18 +862,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       if (desc.HasAttr("data_layout")) {
         auto data_layout = framework::StringToDataLayout(
-            BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
         if (data_layout != framework::DataLayout::kNCHW &&
             data_layout != framework::DataLayout::kNHWC)
           return false;
       }
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-      auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
-      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto scale = PADDLE_GET_CONST(float, desc.GetAttr("scale"));
+      auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
+      auto align_corners =
+          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
         if (out_h <= 0) {
           VLOG(3) << "out_h must be greater than 0 if scale is not set.";
@@ -899,16 +907,16 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         if (!desc.HasAttr(attr)) return false;
       }
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
           data_layout != framework::DataLayout::kNHWC)
         return false;
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-      auto scale = BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
-      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+      auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+      auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
         if (scale.size() < 2) return false;
         if (scale[0] <= 0.f || scale[1] <= 0.f) {
@@ -953,7 +961,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
           data_layout != framework::DataLayout::kNHWC) {
         VLOG(3) << "The op_type " << op_type
@@ -961,14 +969,15 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "bilinear") {
         VLOG(3) << "The interp_method of op_type " << op_type
                 << " is not bilinear";
         return false;
       }
 
-      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto align_corners =
+          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (align_corners != false) {
         VLOG(3)
             << "The bilinear_interp_v2 only supports align_corners with false.";
@@ -980,7 +989,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
       if (has_scale_input_size && desc.Input("Scale").size() != 1) {
         const std::vector<float> scale =
-            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+            PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
           if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
             VLOG(3) << "The op_type " << op_type
@@ -988,8 +997,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                        "out_h / out_w, it will return false";
             return false;
           }
-          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
           if (!(out_h <= 0 && out_w <= 0)) {
             if (out_h <= 0) {
               VLOG(3) << "The op_type " << op_type
@@ -1032,7 +1041,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "squeeze2") {
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
-        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
@@ -1051,7 +1060,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "unsqueeze2") {
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
-        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
@@ -1124,7 +1133,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (!desc.HasAttr("axis")) {
         return false;
       }
-      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
 
       if (axis == 0) {
         VLOG(3) << "Invalid split axis. Split on batch is not supported in "
@@ -1145,11 +1154,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       std::vector<int> output_lengths;
       int num = 0;
       if (desc.HasAttr("num")) {
-        num = BOOST_GET_CONST(int, desc.GetAttr("num"));
+        num = PADDLE_GET_CONST(int, desc.GetAttr("num"));
       }
       if (desc.HasAttr("sections")) {
         output_lengths =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
       }
       if (output_lengths.size() == 0 && num == 0) {
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
@@ -1207,6 +1216,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 or float16 into trt.
+      if (!(dtype == 5 || dtype == 4)) {
+        return false;
+      }
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
         return false;
@@ -1240,7 +1254,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
         if (!with_dynamic_shape) {
           if (decrease_axis.end() !=
               std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
@@ -1256,11 +1270,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       } else {
         std::vector<int> axes =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
         std::vector<int> starts =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
         std::vector<int> ends =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
 
         if (axes.size() != starts.size() || axes.size() != ends.size()) {
           VLOG(3) << "The shape of attributes of the slice operator axes "
@@ -1360,6 +1374,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
     }
+    // remember that 1D input in static shape mode is filtered at the beginning
+    if (op_type == "sum") {
+      return true;
+    }
+
+    if (op_type == "shape" && !with_dynamic_shape) {
+      return false;
+    }
 
     if (op_type == "fused_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
@@ -1405,7 +1427,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #if IS_TRT_VERSION_LT(7000)
       if (desc.HasAttr("approximate")) {
         VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
-        if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
       }
 #endif
 
@@ -1445,6 +1467,27 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.Output("Y").size() != 1) {
         VLOG(3) << "output of layer_norm op converter should be 1, got "
                 << desc.Output("Y").size();
+        return false;
+      }
+    }
+
+    if (op_type == "fill_constant") {
+      auto fill_constant_inputs = desc.Inputs();
+      if (fill_constant_inputs.find("ValueTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ValueTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensorList") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensorList").size()) return false;
+      }
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      // only support int32, int64, float32
+      if (!(dtype == 2 || dtype == 3 || dtype == 5)) {
         return false;
       }
     }
@@ -1507,7 +1550,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "pad") {
-      const float pad_value = BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
+      const float pad_value =
+          PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
       if (pad_value != 0.0f) {
         VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
@@ -1528,7 +1572,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       int nbDims = shape.size();
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       int pad_size = paddings.size();
       if (nbDims < 2) {
         return false;
@@ -1653,15 +1697,15 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const auto pooled_height =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+          PADDLE_GET_CONST(int, desc.GetAttr("pooled_height"));
       if (pooled_height <= 0) return false;
 
       const auto pooled_width =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+          PADDLE_GET_CONST(int, desc.GetAttr("pooled_width"));
       if (pooled_width <= 0) return false;
 
       const auto spatial_scale =
-          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+          PADDLE_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
 
       auto roi_align_inputs = desc.Inputs();
@@ -1722,7 +1766,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
-          BOOST_GET_CONST(int, desc.GetAttr("head_number"));
+          PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
 
       auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
       const auto biasqk_shape = biasqk_desc->GetShape();
@@ -1779,7 +1823,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // y_num_col_dims ==1
       if (desc.HasAttr("y_num_col_dims")) {
         int y_num_col_dims =
-            BOOST_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
+            PADDLE_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
         if (y_num_col_dims != 1) {
           VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
                   << y_num_col_dims;
@@ -1789,9 +1833,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       */
       int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              ? PADDLE_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
               : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     ? PADDLE_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
                      : 1);
       if (x_num_col_dims < 1) {
         VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
@@ -1802,6 +1846,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
+      if (with_dynamic_shape) {
+        return true;
+      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
@@ -1818,7 +1865,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
       std::vector<int> shape =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape) {
         if (shape.size() == 1) {
@@ -1893,17 +1940,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // The batch size dimension cannot be reduced if it's not dynamic shape.
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
-            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+            PADDLE_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         const auto input_shape = x_var_desc->GetShape();
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
 
       } else {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
+            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
 
@@ -1947,7 +1994,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // output_padding is set when stride > 1
       if (desc.HasAttr("output_padding")) {
         const std::vector<int> output_padding =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
         if (output_padding.size() > 0) {
           int max_padding =
               *std::max_element(output_padding.begin(), output_padding.end());
@@ -1959,7 +2006,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
       if (desc.HasAttr("padding_algorithm")) {
         std::string padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
 
         // trt error is arised if conv3d_transpose and SAME
         if (op_type == "conv3d_transpose" && padding_algorithm == "SAME" &&
@@ -1975,7 +2022,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 #endif
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       // conv3d and conv3d_transpose need padding check
       if (paddings.size() > 3) return false;
@@ -1997,7 +2044,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         } else {
           const std::vector<int> dilations =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
           if (dilations[0] != 1 || dilations[1] != 1 || dilations[2] != 1) {
             VLOG(3) << "In conv3d_transpose, Dilations must be (1, 1, 1) for "
                        "tensorRT, but given ("
@@ -2036,8 +2083,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "cast") {
-      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
-      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
+      int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
       if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
         VLOG(3) << "unsupport data type conversion";
         return false;
@@ -2063,7 +2114,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       if (desc.HasAttr("axis")) {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
         if (axis == 0) {
           VLOG(3) << "top_k_v2 does not support axis == 0 in "
                      "tensorrt";
@@ -2071,7 +2122,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
       if (desc.HasAttr("sorted")) {
-        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        bool sorted = PADDLE_GET_CONST(bool, desc.GetAttr("sorted"));
         if (!sorted) {
           VLOG(3) << "top_k_v2 does not support results not sorted in "
                      "tensorrt";
@@ -2095,7 +2146,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       VLOG(3) << "compare is not supported when TensorRT < 8.0";
       return false;
 #else
-      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
         return false;
       }

@@ -594,6 +594,21 @@ class DistributedStrategy(object):
                 bounds = strategy.get(prefix + 'sparse_weight_bounds',
                                       [-10, 10])
                 sgd.adam.weight_bounds.extend(bounds)
+            elif optimizer_name == "shared_adam":
+                sgd.name = 'SparseSharedAdamSGDRule'
+                sgd.adam.learning_rate = strategy.get(
+                    prefix + 'sparse_learning_rate', 0.001)
+                sgd.adam.initial_range = strategy.get(
+                    prefix + 'sparse_initial_range', 1e-4)
+                sgd.adam.beta1_decay_rate = strategy.get(
+                    prefix + 'sparse_beta1_decay_rate', 0.9)
+                sgd.adam.beta2_decay_rate = strategy.get(
+                    prefix + 'sparse_beta2_decay_rate', 0.999)
+                sgd.adam.ada_epsilon = strategy.get(
+                    prefix + 'sparse_ada_epsilon', 1e-8)
+                bounds = strategy.get(prefix + 'sparse_weight_bounds',
+                                      [-10, 10])
+                sgd.adam.weight_bounds.extend(bounds)
 
         def set_sparse_table_config(table_data, config):
             for key in config:
@@ -1332,6 +1347,18 @@ class DistributedStrategy(object):
             self.strategy.is_fl_ps_mode = flag
         else:
             print("WARNING: is_fl_ps_mode should have value of bool type")
+
+    @property
+    def is_with_coordinator(self):
+        return self.strategy.with_coordinator
+
+    @is_with_coordinator.setter
+    @is_strict_auto
+    def is_with_coordinator(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.with_coordinator = flag
+        else:
+            print("WARNING: with_coordinator should have value of bool type")
 
     @pipeline.setter
     @is_strict_auto

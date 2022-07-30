@@ -62,29 +62,37 @@ def matmul(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard 
-            paddle.seed(100)
 
             # csr @ dense -> dense
+            crows = [0, 1, 2, 3]
+            cols = [1, 2, 0]
+            values = [1., 2., 3.]
+            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
+            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+            #        crows=[0, 1, 2, 3], 
+            #        cols=[1, 2, 0], 
+            #        values=[1., 2., 3.])
+            dense = paddle.ones([3, 2])
+            out = paddle.incubate.sparse.matmul(csr, dense)
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1., 1.],
+            #         [2., 2.],
+            #         [3., 3.]])
 
-            with _test_eager_guard():         
-                crows = [0, 2, 3, 5]
-                cols = [1, 3, 2, 0, 1]
-                values = [1., 2., 3., 4., 5.]
-                dense_shape = [3, 4]
-                csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
-                #        crows=[0, 2, 3, 5], 
-                #        cols=[1, 3, 2, 0, 1], 
-                #        values=[1., 2., 3., 4., 5.])
-                dense = paddle.randn([4, 3])
-                
-                out = paddle.incubate.sparse.matmul(csr, dense)
-                # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                #        [[-1.94294846 , -3.33990622 ,  0.62359387 ],
-                #         [-4.12815523 ,  3.46535444 , -3.27413893 ],
-                #         [-0.15209436 , -19.23207283, -3.35593438 ]])
-
+            # coo @ dense -> dense
+            indices = [[0, 1, 2], [1, 2, 0]]
+            values = [1., 2., 3.]
+            coo = paddle.incubate.sparse.sparse_coo_tensor(indices, values, [3, 3])
+            # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+            #        indices=[[0, 1, 2],
+            #                 [1, 2, 0]], 
+            #        values=[1., 2., 3.])
+            dense = paddle.ones([3, 2])
+            out = paddle.incubate.sparse.matmul(coo, dense)
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1., 1.],
+            #         [2., 2.],
+            #         [3., 3.]])
     """
     return _C_ops.final_state_sparse_matmul(x, y)
 
@@ -123,30 +131,27 @@ def masked_matmul(x, y, mask, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
             paddle.seed(100)
 
             # dense @ dense * csr_mask -> csr
+            crows = [0, 2, 3, 5]
+            cols = [1, 3, 2, 0, 1]
+            values = [1., 2., 3., 4., 5.]
+            dense_shape = [3, 4]
+            mask = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #       crows=[0, 2, 3, 5],
+            #       cols=[1, 3, 2, 0, 1],
+            #       values=[1., 2., 3., 4., 5.])
 
-            with _test_eager_guard():
-                crows = [0, 2, 3, 5]
-                cols = [1, 3, 2, 0, 1]
-                values = [1., 2., 3., 4., 5.]
-                dense_shape = [3, 4]
-                mask = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-                #       crows=[0, 2, 3, 5],
-                #       cols=[1, 3, 2, 0, 1],
-                #       values=[1., 2., 3., 4., 5.])
+            x = paddle.rand([3, 5])
+            y = paddle.rand([5, 4])
 
-                x = paddle.rand([3, 5])
-                y = paddle.rand([5, 4])
-
-                out = paddle.incubate.sparse.masked_matmul(x, y, mask)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
-                #        crows=[0, 2, 3, 5], 
-                #        cols=[1, 3, 2, 0, 1], 
-                #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
+            out = paddle.incubate.sparse.masked_matmul(x, y, mask)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True, 
+            #        crows=[0, 2, 3, 5], 
+            #        cols=[1, 3, 2, 0, 1], 
+            #        values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
     return _C_ops.final_state_sparse_masked_matmul(x, y, mask)

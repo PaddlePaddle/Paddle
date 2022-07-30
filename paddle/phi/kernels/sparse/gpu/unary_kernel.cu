@@ -67,6 +67,7 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CooKernel,               \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO); \
@@ -76,6 +77,7 @@ void DivCsrScalarKernel(const Context& dev_ctx,
                      GPU,                                          \
                      ALL_LAYOUT,                                   \
                      phi::sparse::prefix##CsrKernel,               \
+                     phi::dtype::float16,                          \
                      float,                                        \
                      double) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
@@ -96,6 +98,9 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu, Relu)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
 
 PD_REGISTER_KERNEL(divide_coo_scalar,
                    GPU,
@@ -119,6 +124,7 @@ PD_REGISTER_KERNEL(cast_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCooKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
@@ -132,6 +138,7 @@ PD_REGISTER_KERNEL(cast_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::CastCsrKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
