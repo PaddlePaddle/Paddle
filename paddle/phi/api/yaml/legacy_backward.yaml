@@ -93,13 +93,16 @@
     func : addmm_grad
 
 - backward_api : affine_grid_grad
-  forward : affine_grid (Tensor input, IntArray outputShape, bool align_corners=true) -> Tensor(output)
-  args : (Tensor output_grad, IntArray outputShape, bool align_corners=true)
+  forward : affine_grid (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true) -> Tensor(output)
+  args : (Tensor output_grad, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
   output : Tensor(input_grad)
   infer_meta :
     func : AffineGridGradInferMeta
+    param : [output_grad, outputShape, align_corners]
   kernel :
     func : affine_grid_grad
+    param : [output_grad, outputShape, align_corners]
+    use_gpudnn: use_cudnn 
 
 - backward_api : angle_grad
   forward : angle (Tensor x) -> Tensor(out)

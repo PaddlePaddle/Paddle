@@ -43,13 +43,9 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
   auto* theta = &input;
   const T* theta_data = theta->data<T>();
-
   int n = theta->dims()[0];
   auto& size_attr = outputShape.GetData();
-  DenseTensor h_sizes;
-  int* h_size_data;
-  h_sizes.Resize(phi::make_ddim({4}));
-  h_size_data = dev_ctx.template Alloc<int>(&h_sizes);
+  int h_size_data[4] = {0};
   h_size_data[0] = n;
   h_size_data[1] = size_attr[1];
   h_size_data[2] = size_attr[2];

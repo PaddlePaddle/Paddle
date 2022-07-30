@@ -113,13 +113,16 @@
   backward : addmm_grad
 
 - api : affine_grid
-  args : (Tensor input, IntArray outputShape, bool align_corners=true)
+  args : (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
   output : Tensor
   infer_meta :
     func : AffineGridInferMeta
+    param : [input, outputShape, align_corners]
   kernel :
     func : affine_grid
+    param : [input, outputShape, align_corners]
     data_type : input
+    use_gpudnn: use_cudnn
   backward : affine_grid_grad
 
 - api : all

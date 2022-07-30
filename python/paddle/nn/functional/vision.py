@@ -89,10 +89,6 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if is_compiled_with_rocm():
         use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
 
-    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
-            isinstance(out_shape, Variable)):
-        raise ValueError("The out_shape should be a list, tuple or Tensor.")
-
     if in_dygraph_mode():
         _out_shape = out_shape.numpy().tolist() if isinstance(
             out_shape, Variable) else out_shape
