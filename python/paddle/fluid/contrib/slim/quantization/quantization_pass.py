@@ -124,7 +124,8 @@ class QuantizationTransformPass(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer_func=None,
-                 executor=None):
+                 executor=None,
+                 is_test=None):
         r"""
         Constructor.
 
@@ -241,7 +242,7 @@ class QuantizationTransformPass(object):
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
-        self._is_test = None
+        self._is_test = is_test
         self._global_step = None
 
         self.create_var_map = {}
@@ -260,7 +261,8 @@ class QuantizationTransformPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
@@ -449,16 +451,21 @@ class QuantizationTransformPass(object):
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
+        scale_name = self._quantized_scale_name(name)
+        data_type = 'float64' if var_node.dtype(
+        ) == core.VarDesc.VarType.FP64 else 'float32'
+        try:
+            scale_value = np.array(
+                self._scope.find_var(scale_name).get_tensor())
+        except:
+            scale_value = np.zeros([1], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
-            name=self._quantized_scale_name(name),
+            name=scale_name,
             var_type=var_node.type(),
             shape=[1],
             var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(scale_var_node,
-                       np.zeros(scale_var_node.shape(), dtype=data_type),
-                       self._scope, self._place)
+        _init_var_node(scale_var_node, scale_value, self._scope, self._place)
+
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_abs_max',
             attrs={
@@ -487,16 +494,20 @@ class QuantizationTransformPass(object):
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
 
+        scale_name = self._quantized_scale_name(name)
+        data_type = 'float64' if var_node.dtype(
+        ) == core.VarDesc.VarType.FP64 else 'float32'
+        try:
+            scale_value = np.array(
+                self._scope.find_var(scale_name).get_tensor())
+        except:
+            scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
-            name=self._quantized_scale_name(name),
+            name=scale_name,
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(scale_in_node,
-                       np.array([_SCALE_DEFAULT_VALUE], dtype=data_type),
-                       self._scope, self._place)
+        _init_var_node(scale_in_node, scale_value, self._scope, self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         inputs = {'X': var_node, 'InScale': scale_in_node}
@@ -549,16 +560,20 @@ class QuantizationTransformPass(object):
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
+        scale_name = self._quantized_scale_name(name)
+        data_type = 'float64' if var_node.dtype(
+        ) == core.VarDesc.VarType.FP64 else 'float32'
+        try:
+            scale_value = np.array(
+                self._scope.find_var(scale_name).get_tensor())
+        except:
+            scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=self._quantized_scale_name(name),
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(scale_in_node,
-                       np.array([_SCALE_DEFAULT_VALUE], dtype=data_type),
-                       self._scope, self._place)
+        _init_var_node(scale_in_node, scale_value, self._scope, self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         ins = {'X': var_node, 'InScale': scale_in_node}
@@ -628,16 +643,21 @@ class QuantizationTransformPass(object):
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
+        scale_name = self._quantized_scale_name(name)
+        data_type = 'float64' if var_node.dtype(
+        ) == core.VarDesc.VarType.FP64 else 'float32'
+        try:
+            scale_value = np.array(
+                self._scope.find_var(scale_name).get_tensor())
+        except:
+            scale_value = np.zeros([var_node.shape()[quant_axis]],
+                                   dtype=data_type)
         scale_var_node = graph.create_persistable_node(
             name=self._quantized_scale_name(name),
             var_type=var_node.type(),
             shape=[var_node.shape()[quant_axis]],
             var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(scale_var_node,
-                       np.zeros(scale_var_node.shape(), dtype=data_type),
-                       self._scope, self._place)
+        _init_var_node(scale_var_node, scale_value, self._scope, self._place)
         quant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_quantize_abs_max',
             attrs={
@@ -1396,7 +1416,7 @@ class TransformForMobilePass(object):
 
 class OutScaleForTrainingPass(object):
 
-    def __init__(self, scope=None, place=None, moving_rate=0.9):
+    def __init__(self, scope=None, place=None, moving_rate=0.9, is_test=None):
         """
         This pass is used for calculating output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
@@ -1411,7 +1431,7 @@ class OutScaleForTrainingPass(object):
         self._scope = scope
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
-        self._is_test = None
+        self._is_test = is_test
         self._teller_set = utils._out_scale_op_list
 
     def apply(self, graph):
@@ -1424,7 +1444,8 @@ class OutScaleForTrainingPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         target_ops = []
         for op in graph.all_op_nodes():
             if op.name() in self._teller_set:
@@ -1439,7 +1460,8 @@ class OutScaleForTrainingPass(object):
                     if in_node.dtype() not in \
                         [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
                         continue
-
+                    data_type = 'float64' if in_node.dtype() \
+                        == core.VarDesc.VarType.FP64 else 'float32'
                     try:
                         graph._find_node_by_name(
                             graph.all_var_nodes(),
@@ -1451,11 +1473,10 @@ class OutScaleForTrainingPass(object):
                             var_type=core.VarDesc.VarType.LOD_TENSOR,
                             shape=[1],
                             var_dtype=in_node.dtype())
+                        _init_var_node(scale_node, np.ones([1],
+                                                           dtype=data_type),
+                                       self._scope, self._place)
 
-                    data_type = 'float64' if in_node.dtype() \
-                        == core.VarDesc.VarType.FP64 else 'float32'
-                    _init_var_node(scale_node, np.ones([1], dtype=data_type),
-                                   self._scope, self._place)
                     ins = {'X': in_node}
                     outs = {'OutScale': scale_node}
                     if not self._is_test:
@@ -1589,7 +1610,8 @@ class AddQuantDequantPass(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False):
+                 is_full_quantized=False,
+                 is_test=None):
         """
         Constructor.
 
@@ -1616,7 +1638,7 @@ class AddQuantDequantPass(object):
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        self._is_test = None
+        self._is_test = is_test
         self._skip_pattern = skip_pattern
 
         if is_full_quantized:
@@ -1645,7 +1667,8 @@ class AddQuantDequantPass(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
 
         # Forward stage, insert quant_dequant op
@@ -1711,17 +1734,22 @@ class AddQuantDequantPass(object):
                                                var_type=var_node.type(),
                                                shape=var_node.shape(),
                                                var_dtype=var_node.dtype())
+        scale_name = "{}.quant_dequant@scale".format(var_node.name())
+        data_type = 'float64' if var_node.dtype(
+        ) == core.VarDesc.VarType.FP64 else 'float32'
+        try:
+            scale_value = np.array(
+                self._scope.find_var(scale_name).get_tensor())
+        except:
+            scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
+
         scale_in_node = graph.create_persistable_node(
             name="{}.quant_dequant@scale".format(var_node.name()),
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(scale_in_node,
-                       np.array([_SCALE_DEFAULT_VALUE], dtype=data_type),
-                       self._scope, self._place)
 
+        _init_var_node(scale_in_node, scale_value, self._scope, self._place)
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
         ins = {'X': var_node, 'InScale': scale_in_node}
         outs = {'Out': quant_var_node, 'OutScale': scale_out_node}
@@ -1960,7 +1988,8 @@ class QuantizationTransformPassV2(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer_func=None,
-                 executor=None):
+                 executor=None,
+                 is_test=None):
         r"""
         Args:
             scope(paddle.Scope): When activation use 'range_abs_max' as the quantize
@@ -2074,7 +2103,7 @@ class QuantizationTransformPassV2(object):
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
-        self._is_test = None
+        self._is_test = is_test
         self._global_step = None
 
         self.create_var_map = {}
@@ -2220,7 +2249,8 @@ class QuantizationTransformPassV2(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -2270,7 +2300,8 @@ class AddQuantDequantPassV2(object):
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False):
+                 is_full_quantized=False,
+                 is_test=None):
         """
         Args:
             scope(paddle.Scope): The scope is used to initialize these new parameters.
@@ -2310,7 +2341,7 @@ class AddQuantDequantPassV2(object):
         self._place = _get_paddle_place(place)
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        self._is_test = None
+        self._is_test = is_test
         self._skip_pattern = skip_pattern
 
         if is_full_quantized:
@@ -2340,7 +2371,8 @@ class AddQuantDequantPassV2(object):
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-        self._is_test = graph.is_test()
+        if self._is_test is None:
+            self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
 
         self.persistable_vars = [
