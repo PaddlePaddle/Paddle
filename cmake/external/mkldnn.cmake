@@ -61,7 +61,7 @@ else()
       CACHE FILEPATH "mkldnn library." FORCE)
 endif()
 
-if(UNIX AND NOT APPLE)
+if(LINUX)
   set(BUILD_BYPRODUCTS_ARGS ${MKLDNN_LIB})
 else()
   set(BUILD_BYPRODUCTS_ARGS "")
