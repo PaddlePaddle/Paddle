@@ -17,8 +17,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -112,7 +110,7 @@ void QrGradKernel(const Context& ctx,
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(
         "The derivative of qr is not implemented when mode='complete' and "
-        "nrows > ncols."));
+        "nrows %d> ncols."));
   }
 
   // m >= n case
