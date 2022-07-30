@@ -576,8 +576,6 @@ void GenerateProposalsV2Kernel(const Context &ctx,
   }
   phi::LoD lod;
   lod.emplace_back(offset);
-  // rpn_rois->set_lod(lod);
-  // rpn_roi_probs->set_lod(lod);
   rpn_rois->Resize(phi::make_ddim({num_proposals, 4}));
   rpn_roi_probs->Resize(phi::make_ddim({num_proposals, 1}));
 }

@@ -371,7 +371,7 @@ void GenerateProposalsV2Kernel(const Context& ctx,
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize(phi::make_ddim({num}));
-    ctx.template Alloc<T>(rpn_rois_num);
+    ctx.template Alloc<int>(rpn_rois_num);
     int* num_data = rpn_rois_num->data<int>();
     for (int i = 0; i < num; i++) {
       num_data[i] = tmp_num[i];
