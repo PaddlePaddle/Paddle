@@ -23,5 +23,5 @@ void OverlapAddGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int hop_length,
                           int axis,
-                          DenseTensor* in_grad);
+                          DenseTensor* x_grad);
 }  // namespace phi

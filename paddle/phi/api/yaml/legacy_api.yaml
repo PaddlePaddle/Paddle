@@ -2612,3 +2612,13 @@
   kernel:
     func: eig
   backward: eig_grad
+
+# overlap_add
+- api: overlap_add
+  args: (Tensor x, int hop_length, int axis)
+  output: Tensor
+  infer_meta:
+    func: OverlapAddInferMeta
+  kernel:
+    func: overlap_add
+  backward: overlap_add_grad

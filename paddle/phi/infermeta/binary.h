@@ -322,6 +322,6 @@ void OverlapAddGradInferMeta(const MetaTensor& x,
                              const MetaTensor& out_grad,
                              int hop_length,
                              int axis,
-                             MetaTensor* in_grad);
+                             MetaTensor* x_grad);
 
 }  // namespace phi

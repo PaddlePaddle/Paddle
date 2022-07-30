@@ -2304,10 +2304,10 @@ void OverlapAddGradInferMeta(const MetaTensor& x,
                              const MetaTensor& out_grad,
                              int hop_length,
                              int axis,
-                             MetaTensor* in_grad) {
+                             MetaTensor* x_grad) {
   const auto x_dims = x.dims();
-  if (in_grad != nullptr) {
-    in_grad->set_dims(x_dims);
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
   }
 }
 
