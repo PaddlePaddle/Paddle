@@ -2007,6 +2007,90 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void LstsqInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    const Scalar& rcond,
+                    const std::string& driver,
+                    MetaTensor* solution,
+                    MetaTensor* residuals,
+                    MetaTensor* rank,
+                    MetaTensor* singular_values) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  int x_rank = x_dims.size();
+  int y_rank = y_dims.size();
+
+  int m = x_dims[x_rank - 2];
+  int n = x_dims[x_rank - 1];
+  int nrhs = y_dims[x_rank - 1];
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument("Expects input tensor x to be not less than "
+                                   "2 dimentions, but got dimention %d",
+                                   x_rank));
+  PADDLE_ENFORCE_GE(
+      y_rank,
+      2,
+      phi::errors::InvalidArgument("Expects input tensor y to be not less than "
+                                   "2 dimentions, but got dimention %d",
+                                   y_rank));
+
+  PADDLE_ENFORCE_EQ(
+      x_rank,
+      y_rank,
+      phi::errors::InvalidArgument(
+          "Expects input tensor x and y to have the same dimension "
+          "but got x's dimention [%d] and y's dimention [%d]",
+          x_rank,
+          y_rank));
+
+  std::vector<int> batch_dims_vec{};
+  for (int i = 0; i < x_rank - 2; ++i) {
+    PADDLE_ENFORCE_EQ(x_dims[i],
+                      y_dims[i],
+                      phi::errors::InvalidArgument(
+                          "Expects input tensor x and y to have the same batch "
+                          "dimension, but got x's batch dimention [%d] and "
+                          "y's batch dimention [%d] in %d-th dim",
+                          x_dims[i],
+                          y_dims[i],
+                          i));
+    batch_dims_vec.emplace_back(x_dims[i]);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      m,
+      y_dims[y_rank - 2],
+      phi::errors::InvalidArgument(
+          "Expects input tensor x and y to have the same row dimension "
+          "of the inner-most 2-dims matrix, "
+          "but got x's row dimention [%d] and y's row dimention [%d]",
+          m,
+          y_dims[y_rank - 2]));
+
+  rank->set_dims(phi::make_ddim(batch_dims_vec));
+
+  if (m > n) {
+    batch_dims_vec.emplace_back(nrhs);
+    residuals->set_dims(phi::make_ddim(batch_dims_vec));
+    batch_dims_vec.pop_back();
+  } else {
+    residuals->set_dims(phi::make_ddim({0}));
+  }
+  residuals->set_dtype(y.dtype());
+
+  batch_dims_vec.emplace_back(std::min(m, n));
+  singular_values->set_dims(phi::make_ddim(batch_dims_vec));
+  singular_values->set_dtype(y.dtype());
+
+  batch_dims_vec[x_rank - 2] = n;
+  batch_dims_vec.emplace_back(nrhs);
+  solution->set_dims(phi::make_ddim(batch_dims_vec));
+  solution->set_dtype(y.dtype());
+}
+
 void YoloBoxInferMeta(const MetaTensor& x,
                       const MetaTensor& img_size,
                       const std::vector<int>& anchors,

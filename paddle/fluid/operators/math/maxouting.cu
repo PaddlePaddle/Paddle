@@ -173,12 +173,6 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
                                                               axis);
 }
 
-template class MaxOutGradFunctor<platform::CUDADeviceContext, float>;
-template class MaxOutGradFunctor<platform::CUDADeviceContext, double>;
-
-template class MaxOutFunctor<platform::CUDADeviceContext, float>;
-template class MaxOutFunctor<platform::CUDADeviceContext, double>;
-
 template class MaxOutGradFunctor<phi::GPUContext, float>;
 template class MaxOutGradFunctor<phi::GPUContext, double>;
 

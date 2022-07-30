@@ -25,7 +25,6 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/cuda_stream.h"
 
 namespace paddle {
 namespace platform {

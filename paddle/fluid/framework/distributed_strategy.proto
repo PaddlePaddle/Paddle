@@ -27,6 +27,7 @@ message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
+  optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
 }
 
 message ShardingConfig {
@@ -46,6 +47,7 @@ message ShardingConfig {
   // Optimizer sharding. Temporary plans and may be deprecated
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
+  optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
 }
 
 message HybridConfig {

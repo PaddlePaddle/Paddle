@@ -288,6 +288,15 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool unitriangular,
                               MetaTensor* out);
 
+void LstsqInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    const Scalar& rcond,
+                    const std::string& driver,
+                    MetaTensor* solution,
+                    MetaTensor* residuals,
+                    MetaTensor* rank,
+                    MetaTensor* singular_values);
+
 void YoloBoxInferMeta(const MetaTensor& x,
                       const MetaTensor& img_size,
                       const std::vector<int>& anchors,

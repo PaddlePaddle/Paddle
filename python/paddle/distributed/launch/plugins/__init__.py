@@ -62,7 +62,7 @@ def rewrite_host_ip(ctx):
 
 
 def test_mode(ctx):
-    if ctx.args.training_script == 'test':
+    if ctx.args.training_script == 'run_check':
         ctx.logger.info('Paddle Distributed Test begin...')
         if int(ctx.args.nnodes) < 2:
             ctx.args.nnodes = 2
