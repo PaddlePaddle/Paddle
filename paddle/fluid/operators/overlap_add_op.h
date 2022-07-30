@@ -18,11 +18,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/seq2col.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/seq2col.h"
 
 namespace paddle {
 namespace operators {
@@ -30,9 +30,13 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 struct OverlapAddFunctor {
-  void operator()(const DeviceContext& dev_ctx, const Tensor* input,
-                  Tensor* output, size_t seq_length, size_t frame_length,
-                  size_t n_frames, size_t hop_length,
+  void operator()(const DeviceContext& dev_ctx,
+                  const Tensor* input,
+                  Tensor* output,
+                  size_t seq_length,
+                  size_t frame_length,
+                  size_t n_frames,
+                  size_t hop_length,
                   bool is_grad = false) const {
     auto numel = output->numel();
     const auto* input_data = input->data<T>();
@@ -40,12 +44,20 @@ struct OverlapAddFunctor {
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     if (!is_grad) {
-      math::Col2SeqFunctor<T> functor(input_data, output_data, seq_length,
-                                      frame_length, n_frames, hop_length);
+      phi::funcs::Col2SeqFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     } else {
-      math::Seq2ColFunctor<T> functor(input_data, output_data, seq_length,
-                                      frame_length, n_frames, hop_length);
+      phi::funcs::Seq2ColFunctor<T> functor(input_data,
+                                            output_data,
+                                            seq_length,
+                                            frame_length,
+                                            n_frames,
+                                            hop_length);
       for_range(functor);
     }
   }
@@ -107,8 +119,8 @@ class OverlapAddKernel : public framework::OpKernel<T> {
         }
         trans_x.Resize(phi::make_ddim(x_dims_vec));
         trans_x.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_x.size(), dev_ctx, x_, &trans_x,
-                                       perm_x);
+        TransCompute<DeviceContext, T>(
+            perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
       } else {
         std::vector<int> perm_out{1, 0};
         auto out_dims_vec = phi::vectorize(out->dims());
@@ -117,8 +129,8 @@ class OverlapAddKernel : public framework::OpKernel<T> {
         }
         trans_out.Resize(phi::make_ddim(out_dims_vec));
         trans_out.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, *out,
-                                       &trans_out, perm_out);
+        TransCompute<DeviceContext, T>(
+            perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
 
         std::vector<int> perm_x{2, 1, 0};
         auto x_dims_vec = phi::vectorize(x_.dims());
@@ -127,23 +139,28 @@ class OverlapAddKernel : public framework::OpKernel<T> {
         }
         trans_x.Resize(phi::make_ddim(x_dims_vec));
         trans_x.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_x.size(), dev_ctx, x_, &trans_x,
-                                       perm_x);
+        TransCompute<DeviceContext, T>(
+            perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
       }
     } else {
       trans_x = x_;
       trans_out = *out;
     }
 
-    OverlapAddFunctor<DeviceContext, T>()(dev_ctx, &trans_x, &trans_out,
-                                          seq_length, frame_length, n_frames,
-                                          hop_length, /*is_grad*/ false);
+    OverlapAddFunctor<DeviceContext, T>()(dev_ctx,
+                                          &trans_x,
+                                          &trans_out,
+                                          seq_length,
+                                          frame_length,
+                                          n_frames,
+                                          hop_length,
+                                          /*is_grad*/ false);
 
     // Transpose output in case axis is 0.
     if (axis == 0 && out_rank > 1U) {
       std::vector<int> perm_out{1, 0};
-      TransCompute<DeviceContext, T>(perm_out.size(), dev_ctx, trans_out, out,
-                                     perm_out);
+      TransCompute<DeviceContext, T>(
+          perm_out.size(), dev_ctx, trans_out, out, perm_out);
     }
 
     // Restore output dims when the number of dims is larger than 2.
@@ -201,13 +218,13 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
       framework::DDim d_out_resized_dims;
       if (axis == 0) {
         preserved_dims = phi::slice_ddim(d_out_.dims(), 1, d_out_rank);
-        d_x_resized_dims = {n_frames, frame_length,
-                            phi::product(preserved_dims)};
+        d_x_resized_dims = {
+            n_frames, frame_length, phi::product(preserved_dims)};
         d_out_resized_dims = {seq_length, phi::product(preserved_dims)};
       } else {
         preserved_dims = phi::slice_ddim(d_out_.dims(), 0, d_out_rank - 1);
-        d_x_resized_dims = {phi::product(preserved_dims), frame_length,
-                            n_frames};
+        d_x_resized_dims = {
+            phi::product(preserved_dims), frame_length, n_frames};
         d_out_resized_dims = {phi::product(preserved_dims), seq_length};
       }
       d_x->Resize(d_x_resized_dims);
@@ -229,8 +246,8 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
         }
         trans_d_x.Resize(phi::make_ddim(d_x_dims_vec));
         trans_d_x.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, *d_x,
-                                       &trans_d_x, perm_d_x);
+        TransCompute<DeviceContext, T>(
+            perm_d_x.size(), dev_ctx, *d_x, &trans_d_x, perm_d_x);
       } else {
         std::vector<int> perm_d_out{1, 0};
         auto d_out_dims_vec = phi::vectorize(d_out_.dims());
@@ -239,8 +256,8 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
         }
         trans_d_out.Resize(phi::make_ddim(d_out_dims_vec));
         trans_d_out.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_d_out.size(), dev_ctx, d_out_,
-                                       &trans_d_out, perm_d_out);
+        TransCompute<DeviceContext, T>(
+            perm_d_out.size(), dev_ctx, d_out_, &trans_d_out, perm_d_out);
 
         std::vector<int> perm_d_x{2, 1, 0};
         auto d_x_dims_vec = phi::vectorize(d_x->dims());
@@ -249,16 +266,20 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
         }
         trans_d_x.Resize(phi::make_ddim(d_x_dims_vec));
         trans_d_x.mutable_data<T>(ctx.GetPlace());
-        TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, *d_x,
-                                       &trans_d_x, perm_d_x);
+        TransCompute<DeviceContext, T>(
+            perm_d_x.size(), dev_ctx, *d_x, &trans_d_x, perm_d_x);
       }
     } else {
       trans_d_x = *d_x;
       trans_d_out = d_out_;
     }
 
-    OverlapAddFunctor<DeviceContext, T>()(dev_ctx, &trans_d_out, &trans_d_x,
-                                          seq_length, frame_length, n_frames,
+    OverlapAddFunctor<DeviceContext, T>()(dev_ctx,
+                                          &trans_d_out,
+                                          &trans_d_x,
+                                          seq_length,
+                                          frame_length,
+                                          n_frames,
                                           hop_length,
                                           /*is_grad*/ true);
 
@@ -266,12 +287,12 @@ class OverlapAddGradKernel : public framework::OpKernel<T> {
     if (axis == 0) {
       if (d_out_rank == 1U) {
         std::vector<int> perm_d_x{1, 0};
-        TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, trans_d_x, d_x,
-                                       perm_d_x);
+        TransCompute<DeviceContext, T>(
+            perm_d_x.size(), dev_ctx, trans_d_x, d_x, perm_d_x);
       } else {
         std::vector<int> perm_d_x{2, 1, 0};
-        TransCompute<DeviceContext, T>(perm_d_x.size(), dev_ctx, trans_d_x, d_x,
-                                       perm_d_x);
+        TransCompute<DeviceContext, T>(
+            perm_d_x.size(), dev_ctx, trans_d_x, d_x, perm_d_x);
       }
     }
 

@@ -27,17 +27,20 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PushSparseOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Outs) of PushSparseOp should not be null."));
 
     auto ids_dims = ctx->GetInputsDim("Ids");
 
     for (auto &ids_dim : ids_dims) {
-      PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(ids_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The dimension of the 'Ids' tensor must be 2."));
     }
@@ -110,6 +113,11 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_cvm_op", "(boolean, default false) Use cvm op or not.")
         .SetDefault(false);
 
+    AddAttr<std::vector<int>>("slots",
+                              "[slot_id1, slot_id2] Slots array of Ids.")
+        .SetDefault({})
+        .AsExtra();
+
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
 This operator is used to perform lookup on parameter W,
@@ -126,11 +134,11 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_push_sparse, ops::DistributedPushSparseOp,
+REGISTER_OPERATOR(distributed_push_sparse,
+                  ops::DistributedPushSparseOp,
                   ops::DistributedPushSparseOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     distributed_push_sparse,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DistributedPushSparseKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+    ops::DistributedPushSparseKernel<phi::CPUContext, float>,
+    ops::DistributedPushSparseKernel<phi::CPUContext, double>);

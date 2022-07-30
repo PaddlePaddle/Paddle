@@ -135,7 +135,8 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   dump_interval_ = desc.dump_interval();
 }
 
-void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
+void DeviceWorker::DumpField(const Scope& scope,
+                             int dump_mode,
                              int dump_interval) {  // dump_mode: 0: no random,
                                                    // 1: random with insid hash,
                                                    // 2: random with random
@@ -162,13 +163,13 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
       continue;
     }
     hit[i] = true;
-  }
+  }  // dump_mode = 0
   for (size_t i = 0; i < ins_id_vec.size(); i++) {
     if (!hit[i]) {
       continue;
     }
     ars[i] += ins_id_vec[i];
-    ars[i] = ars[i] + "\t" + ins_content_vec[i];
+    ars[i] += "\t" + ins_content_vec[i];
   }
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
@@ -201,8 +202,7 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
         continue;
       }
       auto bound = GetTensorBound(tensor, i);
-      ars[i] = ars[i] + "\t" + field + ":" +
-               std::to_string(bound.second - bound.first);
+      ars[i] += "\t" + field + ":" + std::to_string(bound.second - bound.first);
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
     }
   }

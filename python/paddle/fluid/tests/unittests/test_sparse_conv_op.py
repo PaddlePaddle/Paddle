@@ -53,6 +53,7 @@ class TestSparseConv(unittest.TestCase):
                 groups=1,
                 data_format="NDHWC")
             out.backward(out)
+            out = paddle.incubate.sparse.coalesce(out)
             assert np.array_equal(correct_out_values, out.values().numpy())
 
     def test_subm_conv3d(self):
@@ -66,7 +67,7 @@ class TestSparseConv(unittest.TestCase):
                 indices, values, dense_shape, stop_gradient=True)
             weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
             y = paddle.incubate.sparse.nn.functional.subm_conv3d(
-                sparse_x, weight)
+                sparse_x, weight, key='subm_conv')
             assert np.array_equal(sparse_x.indices().numpy(),
                                   y.indices().numpy())
 
@@ -90,7 +91,7 @@ class TestSparseConv(unittest.TestCase):
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
                 conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                    1, 1, (1, 3, 3), data_format='NCDHW')
+                    1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv')
 
     def test_SubmConv3D(self):
         with _test_eager_guard():
@@ -104,7 +105,7 @@ class TestSparseConv(unittest.TestCase):
                 indices, values, dense_shape, False)
 
             subm_conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                1, 1, (1, 3, 3), data_format='NDHWC')
+                1, 1, (1, 3, 3), data_format='NDHWC', key='subm_conv')
             # test extra_repr
             print(subm_conv3d.extra_repr())
 
@@ -116,4 +117,45 @@ class TestSparseConv(unittest.TestCase):
             with self.assertRaises(ValueError):
                 #Currently, only support data_format='NDHWC'
                 conv3d = paddle.incubate.sparse.nn.SubmConv3D(
-                    1, 1, (1, 3, 3), data_format='NCDHW')
+                    1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv')
+
+    def test_Conv3D_bias(self):
+        with _test_eager_guard():
+            paddle.seed(0)
+            shape = [1, 4, 4, 4, 3]
+            x = paddle.randn(shape)
+            sp_x = x.to_sparse_coo(4)
+            conv3d = paddle.nn.Conv3D(3, 2, 3, data_format='NDHWC')
+
+            sp_conv3d = paddle.incubate.sparse.nn.Conv3D(3,
+                                                         2,
+                                                         3,
+                                                         data_format='NDHWC')
+            sp_conv3d.weight.set_value(
+                paddle.to_tensor(conv3d.weight.numpy().transpose(2, 3, 4, 1,
+                                                                 0)))
+            sp_conv3d.bias.set_value(paddle.to_tensor(conv3d.bias.numpy()))
+
+            x.stop_gradient = False
+            out = conv3d(x)
+            loss = out.mean()
+            loss.backward()
+
+            sp_x.stop_gradient = False
+            sp_out = sp_conv3d(sp_x)
+            dense_out = sp_out.to_dense()
+            sp_loss = dense_out.mean()
+            sp_loss.backward()
+            assert np.allclose(out.numpy(),
+                               dense_out.numpy(),
+                               atol=1e-3,
+                               rtol=1e-3)
+            assert np.allclose(conv3d.weight.grad.numpy().transpose(
+                2, 3, 4, 1, 0),
+                               sp_conv3d.weight.grad.numpy(),
+                               atol=1e-3,
+                               rtol=1e-3)
+            assert np.allclose(conv3d.bias.grad.numpy(),
+                               sp_conv3d.bias.grad.numpy(),
+                               atol=1e-5,
+                               rtol=1e-5)

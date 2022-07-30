@@ -37,7 +37,12 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(utils_modules stringpiece pretty_log string_helper benchmark)
+
+if(WITH_CUSTOM_DEVICE)
+  set(fluid_modules ${fluid_modules} phi_capi)
+endif()
 
 add_subdirectory(api)
 
@@ -50,7 +55,7 @@ set(STATIC_INFERENCE_API
     reset_tensor_array
     analysis_config
     paddle_pass_builder
-    activation_functions
+    phi
     ${mkldnn_quantizer_cfg})
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
@@ -59,7 +64,7 @@ if(WIN32 AND WITH_GPU)
                                    ${utils_modules})
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
-                    ${STATIC_INFERENCE_API} ${utils_modules})
+                    ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -96,7 +101,7 @@ set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
-endif(WITH_CRYPTO)
+endif()
 
 if(WITH_PSCORE)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
@@ -107,7 +112,7 @@ if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
-endif(WITH_ONNXRUNTIME)
+endif()
 
 # Create shared inference library
 cc_library(
@@ -118,6 +123,8 @@ cc_library(
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
+  set_property(TARGET paddle_inference_shared
+               PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared gflags)
 endif()
 

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/logsumexp_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
-#include "paddle/phi/kernels/logsumexp_kernel.h"
 
 PD_REGISTER_KERNEL(
     logsumexp, GPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double) {}

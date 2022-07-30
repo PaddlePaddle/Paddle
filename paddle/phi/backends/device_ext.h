@@ -26,6 +26,33 @@ extern "C" {
 #define PADDLE_CUSTOM_RUNTIME_PATCH_VERSION 1
 
 typedef enum {
+  UNDEFINED = 0,
+  BOOL,
+  UINT8,
+  UINT16,
+  UINT32,
+  UINT64,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FLOAT16,
+  FLOAT32,
+  FLOAT64,
+  BFLOAT16,
+} C_DataType;
+
+typedef enum {
+  ANY = 0,
+  NHWC,
+  NCHW,
+  NCDHW,
+  NDHWC,
+  NUM_DATA_LAYOUTS,
+  ALL_LAYOUT = ANY,
+} C_DataLayout;
+
+typedef enum {
   C_SUCCESS = 0,    // success
   C_WARNING,        // results may not meet expectation (such as an asynchronous
                     // interface is actually synchronous)
@@ -46,6 +73,15 @@ typedef void (*C_Callback)(C_Device device,
                            C_Stream stream,
                            void* user_data,
                            C_Status* status);
+
+typedef struct {
+  size_t sz;
+  void* data;
+} C_CCLRootId;
+
+typedef struct C_CCLComm_st* C_CCLComm;
+
+typedef enum { SUM = 0, AVG, MAX, MIN, PRODUCT } C_CCLReduceOp;
 
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
@@ -499,11 +535,119 @@ struct C_DeviceInterface {
 
   void* reserved_info_api[8];
 
+  //////////////
+  // ccl api //
+  //////////////
+
+  /**
+   * @brief Get size of unique id
+   *
+   * @param[size_t*]         size
+   */
+  C_Status (*xccl_get_unique_id_size)(size_t* size);
+
+  /**
+   * @brief Get unique id
+   *
+   * @param[C_CCLRootId*]    unique_id
+   */
+  C_Status (*xccl_get_unique_id)(C_CCLRootId* unique_id);
+
+  /**
+   * @brief Initialize communicator
+   *
+   * @param[size_t]          ranks
+   * @param[C_CCLRootId*]    unique_id
+   * @param[size_t]          rank
+   * @param[C_CCLComm*]      comm
+   */
+  C_Status (*xccl_comm_init_rank)(size_t ranks,
+                                  C_CCLRootId* unique_id,
+                                  size_t rank,
+                                  C_CCLComm* comm);
+
+  /**
+   * @brief Destroy communicator
+   *
+   * @param[C_CCLComm]  comm
+   */
+  C_Status (*xccl_destroy_comm)(C_CCLComm comm);
+
+  C_Status (*xccl_all_reduce)(void* send_buf,
+                              void* recv_buf,
+                              size_t count,
+                              C_DataType data_type,
+                              C_CCLReduceOp op,
+                              C_CCLComm comm,
+                              C_Stream stream);
+
+  C_Status (*xccl_broadcast)(void* buf,
+                             size_t count,
+                             C_DataType data_type,
+                             size_t root,
+                             C_CCLComm comm,
+                             C_Stream stream);
+
+  C_Status (*xccl_reduce)(void* send_buf,
+                          void* recv_buf,
+                          size_t count,
+                          C_DataType data_type,
+                          C_CCLReduceOp op,
+                          C_CCLComm comm,
+                          C_Stream stream);
+
+  C_Status (*xccl_all_gather)(void* send_buf,
+                              void* recv_buf,
+                              size_t count,
+                              C_DataType data_type,
+                              C_CCLComm comm,
+                              C_Stream stream);
+
+  C_Status (*xccl_reduce_scatter)(void* send_buf,
+                                  void* recv_buf,
+                                  size_t count,
+                                  C_DataType data_type,
+                                  C_CCLReduceOp op,
+                                  C_CCLComm comm,
+                                  C_Stream stream);
+
+  C_Status (*xccl_group_start)();
+
+  C_Status (*xccl_group_end)();
+
+  C_Status (*xccl_send)(void* send_buf,
+                        size_t count,
+                        C_DataType data_type,
+                        size_t dest_rank,
+                        C_CCLComm comm,
+                        C_Stream stream);
+
+  C_Status (*xccl_recv)(void* recv_buf,
+                        size_t count,
+                        C_DataType data_type,
+                        size_t src_rank,
+                        C_CCLComm comm,
+                        C_Stream stream);
+
+  void* reserved_ccl_api[8];
+
   ///////////////
   // other api //
   ///////////////
 
-  void* reserved_other_api[8];
+  /**
+   * @brief y = alpha * x + beta * y
+   *
+   */
+  C_Status (*blas_axpby)(const C_Device device,
+                         C_Stream stream,
+                         C_DataType dtype,
+                         size_t numel,
+                         float alpha,
+                         void* x,
+                         float beta,
+                         void* y);
+  void* reserved_other_api[7];
 };
 
 struct CustomRuntimeVersion {

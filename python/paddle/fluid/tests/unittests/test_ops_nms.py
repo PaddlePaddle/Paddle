@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import numpy as np
 import paddle
 from test_nms_op import nms
+import tempfile
 
 
 def _find(condition):
@@ -79,6 +81,11 @@ class TestOpsNMS(unittest.TestCase):
         self.devices = ['cpu']
         if paddle.is_compiled_with_cuda():
             self.devices.append('gpu')
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, './net')
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_nms(self):
         for device in self.devices:
@@ -169,7 +176,6 @@ class TestOpsNMS(unittest.TestCase):
                                                 categories, 10)
                     return out
 
-                path = "./net"
                 boxes = np.random.rand(64, 4).astype('float32')
                 boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
                 boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
@@ -177,19 +183,35 @@ class TestOpsNMS(unittest.TestCase):
                 origin = fun(paddle.to_tensor(boxes))
                 paddle.jit.save(
                     fun,
-                    path,
+                    self.path,
                     input_spec=[
                         paddle.static.InputSpec(shape=[None, 4],
                                                 dtype='float32',
                                                 name='x')
                     ],
                 )
-                load_func = paddle.jit.load(path)
+                load_func = paddle.jit.load(self.path)
                 res = load_func(paddle.to_tensor(boxes))
                 self.assertTrue(
                     np.array_equal(origin, res),
                     "origin out: {}\n inference model out: {}\n".format(
                         origin, res))
+
+    def test_matrix_nms_dynamic(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                boxes, scores, category_idxs, categories = gen_args(
+                    self.num_boxes, dtype)
+                scores = np.random.rand(1, 4, self.num_boxes).astype(dtype)
+                paddle.set_device(device)
+                out = paddle.vision.ops.matrix_nms(
+                    paddle.to_tensor(boxes).unsqueeze(0),
+                    paddle.to_tensor(scores),
+                    self.threshold,
+                    post_threshold=0.,
+                    nms_top_k=400,
+                    keep_top_k=100,
+                )
 
 
 if __name__ == '__main__':

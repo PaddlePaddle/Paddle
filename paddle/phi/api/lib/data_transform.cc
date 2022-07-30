@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -282,6 +282,41 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
   }
 
   return pt_tensors;
+}
+
+paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (inputs) {
+    return {*PrepareData(*inputs, target_args_def, transform_flag)};
+  }
+  return paddle::none;
+}
+
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out) {
+  if (tensor) {
+    *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
+  }
+}
+
+void TransDataBackend(const std::vector<phi::DenseTensor*>& tensors,
+                      Backend target_backend,
+                      std::vector<phi::DenseTensor*> outs) {
+  size_t n = tensors.size();
+  for (size_t i = 0; i < n; ++i) {
+    TransDataBackend(tensors[i], target_backend, outs[i]);
+  }
+}
+
+void TransDataBackend(const phi::SelectedRows* tensor,
+                      Backend target_backend,
+                      phi::SelectedRows* out) {
+  if (tensor) {
+    TransDataBackend(&tensor->value(), target_backend, out->mutable_value());
+  }
 }
 
 }  // namespace experimental

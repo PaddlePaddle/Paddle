@@ -15,7 +15,7 @@ import collections
 from enum import Enum
 import re
 
-from paddle.fluid.core import TracerEventType
+from paddle.fluid.core import TracerEventType, TracerMemEventType
 
 from .statistic_helper import *
 
@@ -79,19 +79,14 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
-        self.is_terminal_operator_node = True
 
     def cal_statistic(self):
         for child in self.children_node:
             child.cal_statistic()
-            if child.is_terminal_operator_node == False:
-                self.is_terminal_operator_node = False
         for rt in self.runtime_node:
             rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         for child in self.children_node:
-            if child.type == TracerEventType.Operator:
-                self.is_terminal_operator_node = False
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= (child.end_ns - child.start_ns)
@@ -421,10 +416,11 @@ class EventSummary:
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
             for child in node.children_node:
-                if child.name not in self.operator_inners:
-                    self.operator_inners[
-                        child.name] = EventSummary.OperatorItem(child.name)
-                self.operator_inners[child.name].add_item(child)
+                if child.type != TracerEventType.Operator:
+                    if child.name not in self.operator_inners:
+                        self.operator_inners[
+                            child.name] = EventSummary.OperatorItem(child.name)
+                    self.operator_inners[child.name].add_item(child)
 
             for runtimenode in node.runtime_node:
                 for devicenode in runtimenode.device_node:
@@ -518,7 +514,8 @@ class EventSummary:
                         or 'memset' in host_statistic_node.name.lower():
                         self.add_memory_manipulation_item(host_statistic_node)
                     else:
-                        self.add_userdefined_item(host_statistic_node)
+                        if host_statistic_node.type == TracerEventType.PythonUserDefined:
+                            self.add_userdefined_item(host_statistic_node)
             self.add_kernel_item(host_statistic_nodes[0])
 
         for threadid, root_statistic_node in node_statistic_trees.items():
@@ -537,8 +534,6 @@ class EventSummary:
                         deque.append(child)
 
     def add_operator_item(self, operator_node):
-        if operator_node.is_terminal_operator_node == False:
-            return
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)
@@ -603,6 +598,83 @@ class EventSummary:
                 self.kernel_items[name].add_item(device_node)
 
 
+class MemorySummary:
+    r"""
+    Analyse memory events in profiling data.
+    """
+
+    class MemoryItem:
+
+        def __init__(self, event_name, place, memory_type='Allocated'):
+            self.event_name = event_name
+            self.place = place
+            self.allocation_count = 0
+            self.free_count = 0
+            self.allocation_size = 0
+            self.free_size = 0
+            self.increase_size = 0
+            self.memory_type = memory_type
+
+        def add_memory_record(self, size, allocation_type):
+            if allocation_type == TracerMemEventType.Allocate or allocation_type == TracerMemEventType.ReservedAllocate:
+                self.allocation_count += 1
+                self.allocation_size += size
+
+            elif allocation_type == TracerMemEventType.Free or allocation_type == TracerMemEventType.ReservedFree:
+                self.free_count += 1
+                self.free_size -= size  # size is sign(-) when free.
+
+            else:
+                print("No corresponding type.")
+            self.increase_size = self.allocation_size - self.free_size
+
+    def __init__(self):
+        self.allocated_items = collections.defaultdict(
+            dict)  # for memory summary, device type: event
+        self.reserved_items = collections.defaultdict(
+            dict)  # for memory summary, device type: event
+        self.peak_allocation_values = collections.defaultdict(int)
+        self.peak_reserved_values = collections.defaultdict(int)
+
+    def _analyse_node_memory(self, event_name, node):
+        for memnode in node.mem_node:  # self mem node
+            if memnode.type == TracerMemEventType.Allocate or memnode.type == TracerMemEventType.Free:
+                if event_name not in self.allocated_items[memnode.place]:
+                    self.allocated_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Allocated')
+                self.allocated_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            elif memnode.type == TracerMemEventType.ReservedAllocate or memnode.type == TracerMemEventType.ReservedFree:
+                if event_name not in self.reserved_items[memnode.place]:
+                    self.reserved_items[
+                        memnode.place][event_name] = MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Reserved')
+                self.reserved_items[
+                    memnode.place][event_name].add_memory_record(
+                        memnode.increase_bytes, memnode.type)
+            self.peak_allocation_values[memnode.place] = max(
+                self.peak_allocation_values[memnode.place],
+                memnode.peak_allocated)
+            self.peak_reserved_values[memnode.place] = max(
+                self.peak_reserved_values[memnode.place], memnode.peak_reserved)
+
+    def parse(self, nodetrees):
+        r"""
+        Analyse memory event in the nodetress.
+        """
+        thread2hostnodes = traverse_tree(nodetrees)
+        for threadid, host_nodes in thread2hostnodes.items():
+            for host_node in host_nodes[1:]:  #skip root node
+                if host_node.type == TracerEventType.OperatorInner:
+                    continue
+                if host_node.type == TracerEventType.Operator:
+                    for child in host_node.children_node:
+                        self._analyse_node_memory(host_node.name, child)
+                self._analyse_node_memory(host_node.name, host_node)
+
+
 class StatisticData:
     r"""
     Hold all analysed results.
@@ -614,9 +686,11 @@ class StatisticData:
         self.time_range_summary = TimeRangeSummary()
         self.event_summary = EventSummary()
         self.distributed_summary = DistributedSummary()
+        self.memory_summary = MemorySummary()
         self.time_range_summary.parse(node_trees)
         self.event_summary.parse(node_trees)
         self.distributed_summary.parse(node_trees)
+        self.memory_summary.parse(node_trees)
 
 
 def _build_table(statistic_data,
@@ -1497,5 +1571,77 @@ def _build_table(statistic_data,
                 append(row_format.format(*row_values))
         append('')
         append('')
+
+    ###### Print Memory Summary Report ######
+    if statistic_data.memory_summary.allocated_items or statistic_data.memory_summary.reserved_items:
+        for device_type, memory_events in statistic_data.memory_summary.allocated_items.items(
+        ):
+            all_row_values = []
+            sorted_items = sorted(memory_events.items(),
+                                  key=lambda x: x[1].increase_size,
+                                  reverse=True)
+
+            for event_name, item in sorted_items:
+                row_values = [
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
+                ]
+                all_row_values.append(row_values)
+
+            sorted_reserved_items = sorted(statistic_data.memory_summary.
+                                           reserved_items[device_type].items(),
+                                           key=lambda x: x[1].increase_size,
+                                           reverse=True)
+            for event_name, item in sorted_reserved_items:
+                row_values = [
+                    event_name, item.memory_type, item.allocation_count,
+                    item.free_count, item.allocation_size, item.free_size,
+                    item.increase_size
+                ]
+                all_row_values.append(row_values)
+
+            # Calculate the column width
+            headers = [
+                'Name', 'Type', 'Allocation Count', 'Free Count',
+                'Allocation Size', 'Free Size', 'Increased Size'
+            ]
+            row_format_list = [""]
+            header_sep_list = [""]
+            line_length_list = [-SPACING_SIZE]
+            name_column_width = 50
+            number_column_width = 15
+            add_column(name_column_width)
+            add_column(12)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+            add_column(number_column_width)
+
+            row_format = row_format_list[0]
+            header_sep = header_sep_list[0]
+            line_length = line_length_list[0]
+
+            # construct table string
+            append(
+                add_title(line_length,
+                          "Memory Summary - {}".format(device_type)))
+            append('Peak Allocated Memory: {}'.format(
+                statistic_data.memory_summary.
+                peak_allocation_values[device_type]))
+            append('Peak Reserved Memory: {}'.format(
+                statistic_data.memory_summary.peak_reserved_values[device_type])
+                   )
+            append(header_sep)
+            append(row_format.format(*headers))
+            append(header_sep)
+            for row_values in all_row_values:
+                if isinstance(row_values, str):
+                    append(add_title(line_length, row_values))
+                else:
+                    append(row_format.format(*row_values))
+            append('')
+            append('')
 
     return ''.join(result)

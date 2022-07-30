@@ -804,6 +804,7 @@ def monkey_patch_varbase():
     def _set_grad_ivar(self, value):
         if isinstance(self, EagerParamBase):
             self.grad = value
+            self._unset_fake_empty()
         else:
             raise TypeError(
                 "_set_grad_ivar is only supported for Parameter Tensor")
@@ -865,15 +866,20 @@ def monkey_patch_varbase():
             return res
 
     @framework.dygraph_only
-    def cuda(self, device_id=0, blocking=True):
+    def cuda(self, device_id=None, blocking=True):
         if device_id is None:
-            device_id = 0
-        if not isinstance(device_id, int):
-            raise ValueError("\'device_id\' must be a positive integer")
-        if self.place.is_gpu_place():
+            res_place = framework._current_expected_place()
+            if not isinstance(res_place, core.CUDAPlace):
+                res_place = core.CUDAPlace(0)
+        elif isinstance(device_id, int):
+            res_place = core.CUDAPlace(device_id)
+        else:
+            raise ValueError("device_id must be int|None")
+
+        if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(core.CUDAPlace(device_id), True)
+            res = self._copy_to(res_place, True)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -1038,8 +1044,11 @@ def monkey_patch_varbase():
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
+                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                if numpy_dtype == 'uint16':
+                    numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
-                return prefix + _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+                return prefix + numpy_dtype
             else:
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)

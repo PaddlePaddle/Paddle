@@ -49,19 +49,28 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
     if (root == comm->rank()) {
       PADDLE_ENFORCE_MLU_SUCCESS(
           cnclBcast(reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
-                    numel, dtype, root, comm->comm(), stream));
+                    numel,
+                    dtype,
+                    root,
+                    comm->comm(),
+                    stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
       if (out != x) {
         framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
+            *static_cast<const framework::Tensor*>(x),
+            place,
             *platform::DeviceContextPool::Instance().Get(place),
             static_cast<framework::Tensor*>(out));
       }
     } else {
-      PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place), numel,
-                                           dtype, root, comm->comm(), stream));
+      PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place),
+                                           numel,
+                                           dtype,
+                                           root,
+                                           comm->comm(),
+                                           stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
@@ -81,7 +90,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(c_broadcast, ops::CBroadcastOPMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(c_broadcast,
+                       ops::CBroadcastOPMLUKernel<float>,
                        ops::CBroadcastOPMLUKernel<plat::float16>,
                        ops::CBroadcastOPMLUKernel<int>,
                        ops::CBroadcastOPMLUKernel<int16_t>,

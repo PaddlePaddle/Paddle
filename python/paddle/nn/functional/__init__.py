@@ -69,6 +69,7 @@ from .conv import conv2d  # noqa: F401
 from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401
 from .conv import conv3d_transpose  # noqa: F401
+from .distance import pairwise_distance  # noqa: F401
 from .extension import diag_embed  # noqa: F401
 from .extension import sequence_mask
 from .loss import binary_cross_entropy  # noqa: F401
@@ -91,6 +92,10 @@ from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
 from .loss import cosine_embedding_loss  # noqa: F401
+from .loss import multi_label_soft_margin_loss
+from .loss import triplet_margin_with_distance_loss
+from .loss import triplet_margin_loss
+from .loss import soft_margin_loss
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -125,7 +130,7 @@ from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
 
-__all__ = [  #noqa
+__all__ = [  # noqa
     'celu',
     'conv1d',
     'conv1d_transpose',
@@ -133,6 +138,7 @@ __all__ = [  #noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
+    'pairwise_distance',
     'elu',
     'elu_',
     'gelu',
@@ -204,6 +210,7 @@ __all__ = [  #noqa
     'log_loss',
     'mse_loss',
     'margin_ranking_loss',
+    'multi_label_soft_margin_loss',
     'nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
@@ -232,4 +239,7 @@ __all__ = [  #noqa
     'fold',
     'cosine_embedding_loss',
     'rrelu',
+    'triplet_margin_with_distance_loss',
+    'triplet_margin_loss',
+    'soft_margin_loss',
 ]

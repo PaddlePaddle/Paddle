@@ -59,10 +59,13 @@ struct TolerableValue<platform::float16> {
 template <typename DeviceContext, typename T>
 class CrossEntropyFunctor {
  public:
-  void operator()(const DeviceContext& context, framework::Tensor* out,
+  void operator()(const DeviceContext& context,
+                  framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index, const int axis_dim);
+                  const framework::Tensor* labels,
+                  const bool softLabel,
+                  const int ignore_index,
+                  const int axis_dim);
 };
 }  // namespace math
 }  // namespace operators

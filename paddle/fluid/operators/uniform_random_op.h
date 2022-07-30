@@ -39,8 +39,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     auto* new_data = new_data_tensor->data<int64_t>();
     framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                                        &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(
+          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
@@ -52,8 +52,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     std::vector<int64_t> vec_new_data;
     framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                                        &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(
+          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int i = 0; i < new_data_tensor->numel(); ++i) {
@@ -75,7 +75,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), phi::make_ddim({1}),
+        tensor->dims(),
+        phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
             "But received tensor's dim=%s.",
@@ -122,8 +123,8 @@ struct UniformGenerator {
   T diag_val_;
   unsigned int diag_num_;
   unsigned int diag_step_;
-  __host__ __device__ UniformGenerator(T min, T max, int seed, int diag_num,
-                                       int diag_step, T diag_val)
+  __host__ __device__ UniformGenerator(
+      T min, T max, int seed, int diag_num, int diag_step, T diag_val)
       : min_(min),
         max_(max),
         seed_(seed),

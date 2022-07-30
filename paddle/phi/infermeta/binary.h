@@ -60,6 +60,8 @@ void BincountInferMeta(const MetaTensor& x,
                        int minlength,
                        MetaTensor* out);
 
+void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -72,6 +74,10 @@ void CompareAllInferMeta(const MetaTensor& x,
 void CompareInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
                       int axis,
+                      MetaTensor* out);
+
+void ComplexInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
                       MetaTensor* out);
 
 void ConvInferMeta(const MetaTensor& input,
@@ -144,6 +150,17 @@ void DropoutInferMeta(const MetaTensor& x,
                       bool fix_seed,
                       MetaTensor* out,
                       MetaTensor* mask);
+
+void DropoutNdInferMeta(const MetaTensor& x,
+                        const MetaTensor& seed_tensor,
+                        float p,
+                        bool is_test,
+                        const std::string& mode,
+                        int seed,
+                        bool fix_seed,
+                        const std::vector<int>& axis,
+                        MetaTensor* out,
+                        MetaTensor* mask);
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
@@ -271,6 +288,15 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool unitriangular,
                               MetaTensor* out);
 
+void LstsqInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    const Scalar& rcond,
+                    const std::string& driver,
+                    MetaTensor* solution,
+                    MetaTensor* residuals,
+                    MetaTensor* rank,
+                    MetaTensor* singular_values);
+
 void YoloBoxInferMeta(const MetaTensor& x,
                       const MetaTensor& img_size,
                       const std::vector<int>& anchors,
@@ -289,5 +315,7 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
+
+void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 }  // namespace phi

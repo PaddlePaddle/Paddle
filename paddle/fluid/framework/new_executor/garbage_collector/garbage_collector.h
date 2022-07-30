@@ -31,7 +31,8 @@ class InterpreterCoreGarbageCollector {
   InterpreterCoreGarbageCollector();
   virtual ~InterpreterCoreGarbageCollector() {}
   virtual void Add(Variable* var) = 0;
-  virtual void Add(Variable* var, platform::DeviceEvent* event,
+  virtual void Add(Variable* var,
+                   platform::DeviceEvent* event,
                    const platform::DeviceContext* ctx) = 0;
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 

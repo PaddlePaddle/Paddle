@@ -23,9 +23,10 @@ using Tensor = framework::Tensor;
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
-  int64_t nhw = std::accumulate(out_shape.begin(), out_shape.end(), 1,
-                                std::multiplies<int>()) /
-                c;
+  int64_t nhw =
+      std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) /
+      c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
   int32_t nhw_int32_elems = ((nhw + 31) & ~31);
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
@@ -39,8 +40,8 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const {
     // Check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX",
-                   "ResNetUnitOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("FilterX"), "Input", "FilterX", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("ScaleX"), "Input", "ScaleX", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("BiasX"), "Input", "BiasX", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("MeanX"), "Input", "MeanX", "ResNetUnitOp");
@@ -52,10 +53,10 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitOp");
     }
     if (has_shortcut) {
-      OP_INOUT_CHECK(ctx->HasInput("FilterZ"), "Input", "FilterZ",
-                     "ResNetUnitOp");
-      OP_INOUT_CHECK(ctx->HasInput("ScaleZ"), "Input", "ScaleZ",
-                     "ResNetUnitOp");
+      OP_INOUT_CHECK(
+          ctx->HasInput("FilterZ"), "Input", "FilterZ", "ResNetUnitOp");
+      OP_INOUT_CHECK(
+          ctx->HasInput("ScaleZ"), "Input", "ScaleZ", "ResNetUnitOp");
       OP_INOUT_CHECK(ctx->HasInput("BiasZ"), "Input", "BiasZ", "ResNetUnitOp");
       OP_INOUT_CHECK(ctx->HasInput("MeanZ"), "Input", "MeanZ", "ResNetUnitOp");
       OP_INOUT_CHECK(ctx->HasInput("VarZ"), "Input", "VarZ", "ResNetUnitOp");
@@ -63,45 +64,59 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
     // Check output
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
-                   "ResNetUnitOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BitMask"), "Output", "BitMask", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasOutput("ConvX"), "Output", "ConvX", "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SavedMeanX"), "Output", "SavedMeanX",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("SavedMeanX"), "Output", "SavedMeanX", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdX"),
+                   "Output",
+                   "SavedInvstdX",
                    "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdX"), "Output", "SavedInvstdX",
+    OP_INOUT_CHECK(ctx->HasOutput("RunningMeanX"),
+                   "Output",
+                   "RunningMeanX",
                    "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("RunningMeanX"), "Output", "RunningMeanX",
-                   "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("RunningVarX"), "Output", "RunningVarX",
-                   "ResNetUnitOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("RunningVarX"), "Output", "RunningVarX", "ResNetUnitOp");
     if (has_shortcut) {
-      OP_INOUT_CHECK(ctx->HasOutput("ConvZ"), "Output", "ConvZ",
+      OP_INOUT_CHECK(
+          ctx->HasOutput("ConvZ"), "Output", "ConvZ", "ResNetUnitOp");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("SavedMeanZ"), "Output", "SavedMeanZ", "ResNetUnitOp");
+      OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdZ"),
+                     "Output",
+                     "SavedInvstdZ",
                      "ResNetUnitOp");
-      OP_INOUT_CHECK(ctx->HasOutput("SavedMeanZ"), "Output", "SavedMeanZ",
+      OP_INOUT_CHECK(ctx->HasOutput("RunningMeanZ"),
+                     "Output",
+                     "RunningMeanZ",
                      "ResNetUnitOp");
-      OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdZ"), "Output", "SavedInvstdZ",
-                     "ResNetUnitOp");
-      OP_INOUT_CHECK(ctx->HasOutput("RunningMeanZ"), "Output", "RunningMeanZ",
-                     "ResNetUnitOp");
-      OP_INOUT_CHECK(ctx->HasOutput("RunningVarZ"), "Output", "RunningVarZ",
+      OP_INOUT_CHECK(ctx->HasOutput("RunningVarZ"),
+                     "Output",
+                     "RunningVarZ",
                      "ResNetUnitOp");
     }
 
     // make sure Mean/RunningMean and Var/RunningVar share memory
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("MeanX")[0], ctx->Outputs("RunningMeanX")[0],
+        ctx->Inputs("MeanX")[0],
+        ctx->Outputs("RunningMeanX")[0],
         platform::errors::InvalidArgument(
             "MeanX and RunningMeanX should share the same memory"));
-    PADDLE_ENFORCE_EQ(ctx->Inputs("VarX")[0], ctx->Outputs("RunningVarX")[0],
+    PADDLE_ENFORCE_EQ(ctx->Inputs("VarX")[0],
+                      ctx->Outputs("RunningVarX")[0],
                       platform::errors::InvalidArgument(
                           "VarX and RunningVarX should share the same memory"));
     if (has_shortcut) {
       PADDLE_ENFORCE_EQ(
-          ctx->Inputs("MeanZ")[0], ctx->Outputs("RunningMeanZ")[0],
+          ctx->Inputs("MeanZ")[0],
+          ctx->Outputs("RunningMeanZ")[0],
           platform::errors::InvalidArgument(
               "MeanZ and RunningMeanZ should share the same memory"));
       PADDLE_ENFORCE_EQ(
-          ctx->Inputs("VarZ")[0], ctx->Outputs("RunningVarZ")[0],
+          ctx->Inputs("VarZ")[0],
+          ctx->Outputs("RunningVarZ")[0],
           platform::errors::InvalidArgument(
               "VarZ and RunningVarZ should share the same memory"));
     }
@@ -116,43 +131,56 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     }
     framework::DDim bn_param_dims = phi::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 4,
+        x_dims.size(),
+        4,
         platform::errors::InvalidArgument("The dimensions of input "
                                           "must equal to 4."
                                           "But received: the shape of input "
                                           "= [%s], the dimension of input = "
                                           "[%d]",
-                                          x_dims, x_dims.size()));
-    PADDLE_ENFORCE_EQ(w_dims.size(), 4,
+                                          x_dims,
+                                          x_dims.size()));
+    PADDLE_ENFORCE_EQ(w_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The dimensions of filter "
                           "must equal to 4."
                           "But received: the shape of filter "
                           "= [%s], the dimension of filter = [%d] ",
-                          w_dims, w_dims.size()));
-    PADDLE_ENFORCE_EQ(bn_param_dims.size(), 4,
+                          w_dims,
+                          w_dims.size()));
+    PADDLE_ENFORCE_EQ(bn_param_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The dimensions of bn param "
                           "must equal to 4."
                           "But received: the shape of bn param "
                           "= [%s], the dimension of bn param = [%d] ",
-                          bn_param_dims, bn_param_dims.size()));
+                          bn_param_dims,
+                          bn_param_dims.size()));
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
-    PADDLE_ENFORCE_EQ(
-        data_format, "NHWC",
-        platform::errors::InvalidArgument("The data format must equal to NHWC. "
-                                          "But received: the data format "
-                                          "= [%s]",
-                                          data_format));
+    bool is_nchw = (data_format == "NCHW");
     // Calculate the dims of outputs
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
     int stride = ctx->Attrs().Get<int>("stride");
     int padding = ctx->Attrs().Get<int>("padding");
-    int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
-    int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
-    std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
+    std::vector<int> out_shape;
+    out_shape.push_back(batch);
+    if (is_nchw) {
+      int out_h = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[3] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(output_channel);
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+    } else {
+      int out_h = (x_dims[1] + padding * 2 - filter_size) / stride + 1;
+      int out_w = (x_dims[2] + padding * 2 - filter_size) / stride + 1;
+      out_shape.push_back(out_h);
+      out_shape.push_back(out_w);
+      out_shape.push_back(output_channel);
+    }
 
     auto y_dims = phi::make_ddim(out_shape);
     auto bitmask_dims = GetBitmaskDims(out_shape);
@@ -193,8 +221,8 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
             "Bias input should be of float type"));
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
+    return framework::OpKernelType(
+        input_data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -263,17 +291,19 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX",
-                   "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("ConvX"), "Input", "ConvX",
-                   "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("ScaleX"), "Input", "ScaleX",
-                   "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("BiasX"), "Input", "BiasX",
-                   "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("SavedMeanX"), "Input", "SavedMeanX",
-                   "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("SavedInvstdX"), "Input", "SavedInvstdX",
+    OP_INOUT_CHECK(
+        ctx->HasInput("FilterX"), "Input", "FilterX", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ConvX"), "Input", "ConvX", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ScaleX"), "Input", "ScaleX", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("BiasX"), "Input", "BiasX", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("SavedMeanX"), "Input", "SavedMeanX", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("SavedInvstdX"),
+                   "Input",
+                   "SavedInvstdX",
                    "ResNetUnitGradOp");
 
     bool fuse_add = ctx->Attrs().Get<bool>("fuse_add");
@@ -282,46 +312,67 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitGradOp");
     }
     if (has_shortcut) {
-      OP_INOUT_CHECK(ctx->HasInput("FilterZ"), "Input", "FilterZ",
+      OP_INOUT_CHECK(
+          ctx->HasInput("FilterZ"), "Input", "FilterZ", "ResNetUnitGradOp");
+      OP_INOUT_CHECK(
+          ctx->HasInput("ConvZ"), "Input", "ConvZ", "ResNetUnitGradOp");
+      OP_INOUT_CHECK(
+          ctx->HasInput("ScaleZ"), "Input", "ScaleZ", "ResNetUnitGradOp");
+      OP_INOUT_CHECK(
+          ctx->HasInput("BiasZ"), "Input", "BiasZ", "ResNetUnitGradOp");
+      OP_INOUT_CHECK(ctx->HasInput("SavedMeanZ"),
+                     "Input",
+                     "SavedMeanZ",
                      "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasInput("ConvZ"), "Input", "ConvZ",
-                     "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasInput("ScaleZ"), "Input", "ScaleZ",
-                     "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasInput("BiasZ"), "Input", "BiasZ",
-                     "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasInput("SavedMeanZ"), "Input", "SavedMeanZ",
-                     "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasInput("SavedInvstdZ"), "Input", "SavedInvstdZ",
+      OP_INOUT_CHECK(ctx->HasInput("SavedInvstdZ"),
+                     "Input",
+                     "SavedInvstdZ",
                      "ResNetUnitGradOp");
     }
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BitMask"), "Input", "BitMask", "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
                    "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "ResNetUnitGradOp");
 
     // check output
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterX")), "Output",
-                   framework::GradVarName("FilterX"), "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleX")), "Output",
-                   framework::GradVarName("ScaleX"), "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasX")), "Output",
-                   framework::GradVarName("BiasX"), "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterX")),
+                   "Output",
+                   framework::GradVarName("FilterX"),
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleX")),
+                   "Output",
+                   framework::GradVarName("ScaleX"),
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasX")),
+                   "Output",
+                   framework::GradVarName("BiasX"),
+                   "ResNetUnitGradOp");
     if (fuse_add) {
-      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Z")), "Output",
-                     framework::GradVarName("Z"), "ResNetUnitGradOp");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Z")),
+                     "Output",
+                     framework::GradVarName("Z"),
+                     "ResNetUnitGradOp");
     }
     if (has_shortcut) {
       OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterZ")),
-                     "Output", framework::GradVarName("FilterZ"),
+                     "Output",
+                     framework::GradVarName("FilterZ"),
                      "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleZ")), "Output",
-                     framework::GradVarName("ScaleZ"), "ResNetUnitGradOp");
-      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasZ")), "Output",
-                     framework::GradVarName("BiasZ"), "ResNetUnitGradOp");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleZ")),
+                     "Output",
+                     framework::GradVarName("ScaleZ"),
+                     "ResNetUnitGradOp");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasZ")),
+                     "Output",
+                     framework::GradVarName("BiasZ"),
+                     "ResNetUnitGradOp");
     }
     const auto x_dims = ctx->GetInputDim("X");
     const auto filter_x_dims = ctx->GetInputDim("FilterX");
@@ -354,8 +405,10 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace(),
+        layout,
+        library);
   }
 };
 
@@ -414,7 +467,9 @@ class ResNetUnitOpInferVarType
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(resnet_unit, ops::ResNetUnitOp, ops::ResNetUnitOpMaker,
+REGISTER_OPERATOR(resnet_unit,
+                  ops::ResNetUnitOp,
+                  ops::ResNetUnitOpMaker,
                   ops::ResNetUnitOpInferVarType,
                   ops::ResNetUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::ResNetUnitGradOpMaker<paddle::imperative::OpBase>);

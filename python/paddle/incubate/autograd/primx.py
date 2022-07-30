@@ -20,8 +20,9 @@ from paddle import compat as cpt
 from .primops import fill_const, add
 from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
 from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
-from .utils import get_input_var_list, get_output_var_list, to_tensors, flatten, flatten_and_remove_none
+from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
 from collections import OrderedDict
+from paddle.incubate.autograd.utils import as_tensors
 
 
 def topo_path(xs, ys, block=None):
@@ -407,7 +408,7 @@ class Transform(object):
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
-def _lower(block, reverse):
+def _lower(block, reverse, blacklist):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
@@ -451,13 +452,13 @@ def _lower(block, reverse):
     for op_idx in range(len(block.ops)):
         op = block.ops[op_idx]
         ops_to_remove.append(op_idx)
-        if lookup_fn(op.type) is not None:
+        if lookup_fn(op.type) is not None and op.type not in blacklist:
             input_args = get_input_var_list(op)
             bind(input_args, to_bind, value_table)
 
             for orig_out, new_out in zip(
                     expand_nested_list(get_output_var_list(op)),
-                    expand_nested_list(to_tensors(lower_fn(op, *input_args)))):
+                    expand_nested_list(as_tensors(lower_fn(op, *input_args)))):
                 assert not (orig_out is None) ^ (
                     new_out is None), "orig_out and new_out should match."
                 vars_to_remove.add(new_out.name)
@@ -534,11 +535,11 @@ def orig2prim(block=None):
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
-    _lower(block, reverse=False)
+    _lower(block, reverse=False, blacklist=[])
 
 
 @framework.static_only
-def prim2orig(block=None):
+def prim2orig(block=None, blacklist=None):
     """
     .. note::
         **ONLY available in the static mode.**
@@ -553,7 +554,11 @@ def prim2orig(block=None):
         block(paddle.static.Block|None, optional): The
             target block to process on. Default None, and will
             process on the current block of main program.
-    
+        blacklist(list[string]|None, optional): The names of automatic
+            differential basic operator that will not be transformed
+            into original operators. Default None, and the blacklist
+            is treated as empty list.
+
     Examples:
 
         .. code-block:: python
@@ -575,48 +580,5 @@ def prim2orig(block=None):
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
     ), f'block is neither None nor current block of main program'
-    _lower(block, reverse=True)
-
-
-def _gradients(ys, xs, ys_bar=None):
-    """ A drop-in replacement of paddle.gradients but instead computing
-    on primitive ops.
-    
-    Args:
-        ys: the target tensor or tensors
-        xs: the input tensor or tensors
-        ys_bar: the optional gradient tensors of `ys`
-    
-    Returns:
-        xs_bar: a list gradients of input `xs`
-    """
-
-    ys, xs = to_tensors(ys), to_tensors(xs)
-    block = default_main_program().current_block()
-    for el in xs + ys:
-        assert el is None or el.block == block, f'variable in xs and ys should be None or in current block of main program'
-    # TODO(Tongxin) without any prior knowledge about whether the program
-    # is completely lowered to primitive ops, it's mandatory to run the lowering
-    # pass once and again. This is obviously inefficient and needs to be
-    # optimized.
-    orig2prim(block)
-
-    ad = Transform(block)
-
-    xs_dot, ys_dot = ad.linearize(xs, ys)
-    if any(var is None for var in ys_dot):
-        assert False, f'Gradients cannot be computed. The given output `ys` does not depend on input `xs`.'
-    ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
-    # remove xs_dot and their constructor ops
-
-    op_indexes = []
-    for var in xs_dot:
-        if var is not None:
-            op_index = block.ops.index(var.op)
-            assert op_index >= 0, f'op_index should be greater than or equal to 0, but op_index={op_index}.'
-            op_indexes.append(op_index)
-
-    ad.erase_ops(sorted(op_indexes))
-    ad.erase_dots(xs_dot)
-
-    return xs_bar
+    blacklist = [] if blacklist is None else blacklist
+    _lower(block, reverse=True, blacklist=blacklist)

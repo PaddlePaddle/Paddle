@@ -23,7 +23,9 @@ namespace framework {
 namespace ir {
 
 static void SaveInfoInTheFirstOp(
-    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
     const std::unordered_map<std::string, std::vector<float>>& info_map) {
   VLOG(3) << "save variables in the first op's attr";
 
@@ -43,7 +45,9 @@ static void SaveInfoInTheFirstOp(
 }
 
 static void GetInfoFromTheFirstOp(
-    ir::Graph* graph, const std::string& flag, const std::string& key_suffix,
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
     std::unordered_map<std::string, std::vector<float>>* info_map) {
   VLOG(3) << "get variables from the first op's attr";
 
@@ -63,7 +67,7 @@ static void GetInfoFromTheFirstOp(
         if (pos != std::string::npos) {
           std::string name = fake_name.substr(0, pos);
           auto scales_vector =
-              BOOST_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
+              PADDLE_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
           info_map->insert(std::make_pair(name, scales_vector));
           op_desc->RemoveAttr(fake_name);
         }

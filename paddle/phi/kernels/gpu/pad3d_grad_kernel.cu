@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/pad3d_grad_kernel.h"
+
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/pad3d_grad_kernel.h"
 
 namespace phi {
 
@@ -502,5 +503,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d_grad, GPU, ALL_LAYOUT, phi::Pad3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(pad3d_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

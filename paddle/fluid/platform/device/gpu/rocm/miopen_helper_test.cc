@@ -31,8 +31,8 @@ TEST(MIOpenHelper, ScopedTensorDescriptor) {
   int nd;
   std::vector<int> dims(4);
   std::vector<int> strides(4);
-  paddle::platform::dynload::miopenGetTensorDescriptor(desc, &type, dims.data(),
-                                                       strides.data());
+  paddle::platform::dynload::miopenGetTensorDescriptor(
+      desc, &type, dims.data(), strides.data());
   paddle::platform::dynload::miopenGetTensorDescriptorSize(desc, &nd);
 
   EXPECT_EQ(nd, 4);

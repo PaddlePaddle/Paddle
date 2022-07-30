@@ -51,8 +51,8 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
       runner.Run(dev_ctx.stream());
     } else {
       Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Add", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(dev_ctx.stream());
@@ -97,7 +97,9 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           tmp.ShareDataWith(*dx);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {*dout}, {tmp},
+              NpuOpRunner("ReduceSumD",
+                          {*dout},
+                          {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -127,7 +129,9 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           tmp.ShareDataWith(*dy);
           tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {*dout}, {tmp},
+              NpuOpRunner("ReduceSumD",
+                          {*dout},
+                          {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -144,7 +148,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(elementwise_add,
+                       ops::ElementwiseAddNPUKernel<float>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::ElementwiseAddNPUKernel<int64_t>,
 #endif

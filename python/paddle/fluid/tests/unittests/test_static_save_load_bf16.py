@@ -23,11 +23,19 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel
 import numpy as np
+import tempfile
+import os
 
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  "place does not support BF16 evaluation")
 class TestSaveLoadBF16(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def set_place(self):
         return fluid.CPUPlace()
@@ -111,8 +119,8 @@ class TestSaveLoadBF16(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
-
-            fluid.save(main_program, "./test_1")
+            save_dir = os.path.join(self.temp_dir.name, "test_1")
+            fluid.save(main_program, save_dir)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -125,7 +133,8 @@ class TestSaveLoadBF16(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_1.pdparams", exe)
+            fluid.load(main_program,
+                       os.path.join(self.temp_dir.name, "test_1.pdparams"), exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:

@@ -546,6 +546,15 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        loss_out = _C_ops.final_state_warpctc(input, label, input_length,
+                                              label_length, blank,
+                                              norm_by_times)
+        return loss_out
     if _non_static_mode():
         if input_length is None or label_length is None:
             raise ValueError(
@@ -1228,6 +1237,63 @@ def softmax_with_cross_entropy(logits,
     return paddle.nn.functional.loss.fluid_softmax_with_cross_entropy(
         logits, label, soft_label, ignore_index, numeric_stable_mode,
         return_softmax, axis)
+
+
+def identity_loss(x, reduction="none"):
+    r"""Marks a tensor as being part of the loss calculation for IPU.
+
+    This operator is used to handle on the (final) loss of a model so that
+    it is used as the start of backpropagation.
+
+    When `reduction` is `none`, return raw `Out`.
+    
+    When `reduction` is `mean`, return
+
+    .. math::
+        Out = MEAN(Out)
+
+    When `reduction` is `sum`, return
+
+    .. math::
+        Out = SUM(Out)
+
+    Parameters:
+        x (Variable): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of
+             additional dimensions. It's data type should be float32, float64 on CPU and float16, float32 on IPU.
+        reduction(str|int, optional): Reduce the loss output. Supported string values are: 'sum', 'mean', 'none'
+                            the corresponding int values are 0, 1, 2 respectively. The default value is "none".
+
+    Returns:
+        Variable: The loss ``Tensor`` with the specified reduction applied.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
+            loss = fluid.data(name="loss", shape=[-1, 1], dtype="float32")
+            out = paddle.incubate.identity_loss(loss, reduction=1)
+    """
+    if isinstance(reduction, str):
+        reduction = {"sum": 0, "mean": 1, "none": 2}.get(reduction.lower())
+        if reduction is None:
+            raise Exception("Unsupported reduction type.")
+
+    if _non_static_mode():
+        return _C_ops.identity_loss(x, "reduction", reduction)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")
+    attrs = {'reduction': reduction}
+    helper = LayerHelper('identity_loss', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="identity_loss",
+                     inputs={"X": x},
+                     outputs={"Out": out},
+                     attrs=attrs)
+    return out
 
 
 def rank_loss(label, left, right, name=None):

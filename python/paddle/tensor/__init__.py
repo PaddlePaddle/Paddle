@@ -139,6 +139,7 @@ from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
 from .math import cumprod  # noqa: F401
+from .math import logcumsumexp  # noqa: F401
 from .math import logit  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
@@ -167,6 +168,7 @@ from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
 from .math import nansum  # noqa: F401
 from .math import nanmean  # noqa: F401
+from .math import count_nonzero  # noqa: F401
 from .math import tanh  # noqa: F401
 from .math import tanh_  # noqa: F401
 from .math import add_n  # noqa: F401
@@ -310,6 +312,7 @@ tensor_method_func = [  #noqa
     'cosh',
     'cumsum',
     'cumprod',
+    'logcumsumexp',
     'logit',
     'exp',
     'exp_',
@@ -341,6 +344,7 @@ tensor_method_func = [  #noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tanh',
     'tanh_',
     'add_n',

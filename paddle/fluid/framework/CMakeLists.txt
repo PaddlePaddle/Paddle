@@ -45,7 +45,7 @@ proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(
   op_def_api
   SRCS op_def_api.cc
-  DEPS op_def_proto boost)
+  DEPS op_def_proto)
 
 file(GLOB OP_DEF_FILES
      ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
@@ -57,7 +57,7 @@ foreach(OP_DEF_FILE ${OP_DEF_FILES})
   get_filename_component(OP_NAME ${OP_DEF_FILE} NAME_WE)
   file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
        "{\"${OP_NAME}\",R\"(${OP_DEF_CONTENT})\"},\n")
-endforeach(OP_DEF_FILE)
+endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt "{\"\",\"\"}};\n}")
 
 proto_library(heter_service_proto SRCS heter_service.proto)
@@ -91,7 +91,7 @@ if(WITH_GPU)
       tensor
       SRCS tensor.cc tensor_util.cu
       DEPS place memory data_type device_context profiler dense_tensor)
-  endif(WIN32)
+  endif()
 elseif(WITH_ROCM)
   hip_library(
     tensor
@@ -284,7 +284,7 @@ if(WITH_GPU)
       data_type_transform
       SRCS data_type_transform.cu
       DEPS tensor)
-  endif(WIN32)
+  endif()
   nv_test(
     data_type_transform_test
     SRCS data_type_transform_test.cc data_type_transform_test.cu
@@ -297,6 +297,15 @@ elseif(WITH_ROCM)
   hip_test(
     data_type_transform_test
     SRCS data_type_transform_test.cc data_type_transform_test.cu
+    DEPS data_type_transform)
+elseif(WITH_XPU)
+  cc_library(
+    data_type_transform
+    SRCS data_type_transform.cc
+    DEPS tensor xpulib)
+  cc_test(
+    data_type_transform_test
+    SRCS data_type_transform_test.cc
     DEPS data_type_transform)
 else()
   cc_library(
@@ -332,7 +341,7 @@ cc_library(
 cc_library(
   attribute
   SRCS attribute.cc
-  DEPS framework_proto boost enforce)
+  DEPS framework_proto enforce)
 cc_test(
   attribute_test
   SRCS attribute_test.cc
@@ -345,12 +354,12 @@ cc_test(
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
-  DEPS framework_proto boost)
+  DEPS framework_proto)
 
 cc_library(
   op_version_registry
   SRCS op_version_registry.cc
-  DEPS op_version_proto framework_proto boost)
+  DEPS op_version_proto framework_proto)
 cc_test(
   op_version_registry_test
   SRCS op_version_registry_test.cc
@@ -508,13 +517,13 @@ cc_test(
   DEPS op_call_stack)
 
 cc_library(
-  program_processing
-  SRCS program_processing.cc
-  DEPS boost proto_desc)
+  program_utils
+  SRCS program_utils.cc
+  DEPS proto_desc)
 cc_test(
-  program_processing_test
-  SRCS program_processing_test.cc
-  DEPS proto_desc program_processing)
+  program_utils_test
+  SRCS program_utils_test.cc
+  DEPS proto_desc program_utils)
 
 if(WITH_GPU)
   nv_test(
@@ -575,7 +584,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/distributed/fleet/proto."
     )
-  else(NOT WIN32)
+  else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
     string(
@@ -592,7 +601,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python proto into directory paddle/distributed/fleet/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-  endif(NOT WIN32)
+  endif()
 endif()
 
 if(WITH_PSCORE)
@@ -606,7 +615,7 @@ if(WITH_PSCORE)
     COMMENT
       "Copy generated python proto into directory paddle/distributed/fleet/proto."
   )
-endif(WITH_PSCORE)
+endif()
 
 cc_library(
   lod_rank_table
@@ -651,7 +660,7 @@ else()
          feed_fetch_method
          graph_to_program_pass
          variable_helper)
-endif(TENSORRT_FOUND)
+endif()
 
 cc_library(
   executor_gc_helper
@@ -1016,7 +1025,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto boost)
+  DEPS framework_proto)
 cc_test(
   prune_test
   SRCS prune_test.cc

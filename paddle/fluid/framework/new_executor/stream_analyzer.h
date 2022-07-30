@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <future>
 #include <memory>
 #include <vector>
 
@@ -25,15 +26,18 @@ namespace framework {
 
 class StreamAnalyzer {
  public:
-  explicit StreamAnalyzer(const platform::Place& place)
-      : place_(place), d2h_ctx_pool_({place}), h2d_ctx_pool_({place}) {}
+  using Place = platform::Place;
+  using DeviceContext = platform::DeviceContext;
+
+  explicit StreamAnalyzer(const Place& place);
 
   ~StreamAnalyzer() {}
 
   void Schedule(const std::vector<size_t>& downstream_ops,
-                std::vector<Instruction>* instructions, size_t op_index);
+                std::vector<Instruction>* instructions,
+                size_t op_index);
 
-  platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
+  DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
  private:
   std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
@@ -42,16 +46,16 @@ class StreamAnalyzer {
   void ConstructEventForVar(const std::vector<size_t>& new_event_var_id,
                             Instruction* next_instr,
                             platform::DeviceType waiter_type,
-                            const platform::Place& place);
+                            const Place& place);
 
   bool IsDirectRun(Instruction& cur_instr,  // NOLINT
                    const Instruction& next_instr);
 
   platform::DeviceType GetWaiterType(const Instruction& instr);
 
-  platform::Place place_;
-  platform::DeviceContextPool d2h_ctx_pool_;
-  platform::DeviceContextPool h2d_ctx_pool_;
+  const Place place_;
+  std::shared_future<std::unique_ptr<platform::DeviceContext>> d2h_ctx_;
+  std::shared_future<std::unique_ptr<platform::DeviceContext>> h2d_ctx_;
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 };
 

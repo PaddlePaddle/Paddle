@@ -34,11 +34,11 @@ if(WIN32)
   set(ZLIB_LIBRARIES
       "${ZLIB_INSTALL_DIR}/lib/zlibstatic.lib"
       CACHE FILEPATH "zlib library." FORCE)
-else(WIN32)
+else()
   set(ZLIB_LIBRARIES
       "${ZLIB_INSTALL_DIR}/lib/libz.a"
       CACHE FILEPATH "zlib library." FORCE)
-endif(WIN32)
+endif()
 
 ExternalProject_Add(
   extern_zlib

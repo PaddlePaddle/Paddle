@@ -25,11 +25,13 @@ namespace memory {
 namespace allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
-    DecoratedAllocationPtr underlying_allocation, gpuStream_t owning_stream,
+    DecoratedAllocationPtr underlying_allocation,
+    gpuStream_t owning_stream,
     StreamSafeCUDAAllocator* allocator)
     : Allocation(underlying_allocation->ptr(),
                  underlying_allocation->base_ptr(),
-                 underlying_allocation->size(), underlying_allocation->place()),
+                 underlying_allocation->size(),
+                 underlying_allocation->place()),
       underlying_allocation_(std::move(underlying_allocation)),
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
@@ -63,7 +65,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
   RecordGraphCapturingStreams();
 
   for (auto it = outstanding_event_map_.begin();
-       it != outstanding_event_map_.end(); ++it) {
+       it != outstanding_event_map_.end();
+       ++it) {
     gpuEvent_t& event = it->second;
 #ifdef PADDLE_WITH_CUDA
     gpuError_t err = cudaEventQuery(event);
@@ -132,8 +135,10 @@ void StreamSafeCUDAAllocation::RecordStreamWithNoGraphCapturing(
 }
 
 StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
-    std::shared_ptr<Allocator> underlying_allocator, platform::CUDAPlace place,
-    gpuStream_t default_stream, bool in_cuda_graph_capturing)
+    std::shared_ptr<Allocator> underlying_allocator,
+    platform::CUDAPlace place,
+    gpuStream_t default_stream,
+    bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),
       default_stream_(std::move(default_stream)),
@@ -187,9 +192,10 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),
-      default_stream_, this);
+      default_stream_,
+      this);
   VLOG(8) << "Allocate " << allocation->size() << " bytes at address "
-          << allocation->ptr();
+          << allocation->ptr() << "  , stream: " << default_stream_;
   return allocation;
 }
 

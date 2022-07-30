@@ -43,7 +43,7 @@ class TestZerosLikeAPI(unittest.TestCase):
         with program_guard(train_program, startup_program):
             x = paddle.fluid.data('X', shape)
             out1 = zeros_like(x)
-            out2 = zeros_like(x, np.bool)
+            out2 = zeros_like(x, np.bool_)
             out3 = zeros_like(x, 'float64')
             out4 = zeros_like(x, 'int32')
             out5 = zeros_like(x, 'int64')
@@ -54,7 +54,7 @@ class TestZerosLikeAPI(unittest.TestCase):
                        feed={'X': np.ones(shape).astype('float32')},
                        fetch_list=[out1, out2, out3, out4, out5])
         for (i, dtype) in enumerate(
-            [np.float32, np.bool, np.float64, np.int32, np.int64]):
+            [np.float32, np.bool_, np.float64, np.int32, np.int64]):
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.zeros(shape, dtype)).all(), True)
 
@@ -71,7 +71,7 @@ class TestZerosLikeImpeartive(unittest.TestCase):
                  if core.is_compiled_with_cuda() else fluid.CPUPlace())
         paddle.disable_static(place)
         x = paddle.to_tensor(np.ones(shape))
-        for dtype in [np.bool, np.float32, np.float64, np.int32, np.int64]:
+        for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
             out = zeros_like(x, dtype)
             self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
                              True)

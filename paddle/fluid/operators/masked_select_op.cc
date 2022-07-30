@@ -55,8 +55,10 @@ class MaskedSelectOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
-                   "Input", "MaskedSelect");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Input",
+                   "Input",
+                   "MaskedSelect");
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "MaskedSelect");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
@@ -93,12 +95,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(MaskedSelectedGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(masked_select, MaksedSelectInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(masked_select,
+                            MaksedSelectInferShapeFunctor,
                             PD_INFER_META(phi::MaskedSelectInferMeta));
 
-REGISTER_OPERATOR(masked_select, ops::MaskedSelectOp, ops::MaskedSelectOpMaker,
+REGISTER_OPERATOR(masked_select,
+                  ops::MaskedSelectOp,
+                  ops::MaskedSelectOpMaker,
                   ops::MaskedSelectGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaskedSelectGradOpMaker<paddle::imperative::OpBase>,
                   MaksedSelectInferShapeFunctor);
-REGISTER_OPERATOR(masked_select_grad, ops::MaskedSelectOpGrad,
+REGISTER_OPERATOR(masked_select_grad,
+                  ops::MaskedSelectOpGrad,
                   ops::MaskedSelectedGradNoNeedBufferVarsInferer);

@@ -168,7 +168,7 @@ class TestParameter(object):
             exe = fluid.Executor(place)
             result, = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = eval("np.%s(np_x)" % self.op_type)
-            self.assertEqual(result, expected)
+            self.assertTrue(np.allclose(result, expected))
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -176,11 +176,7 @@ class TestParameter(object):
             x = fluid.dygraph.to_variable(np_x)
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
-            # ROCM platform will fail in assertEqual
-            if core.is_compiled_with_rocm():
-                self.assertTrue(np.allclose(z, z_expected))
-            else:
-                self.assertEqual(z, z_expected)
+            self.assertTrue(np.allclose(z, z_expected))
 
 
 class TestSigmoid(TestActivation):
@@ -1741,6 +1737,7 @@ class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
         self.init_dtype()
+        self.python_api = paddle.nn.functional.relu6
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
@@ -1754,7 +1751,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRelu6API(unittest.TestCase):
@@ -2679,6 +2676,7 @@ class TestSoftplus(TestActivation):
 
     def setUp(self):
         self.op_type = "softplus"
+        self.python_api = paddle.nn.functional.softplus
         self.init_dtype()
 
         beta = 2
@@ -2691,10 +2689,14 @@ class TestSoftplus(TestActivation):
         self.attrs = {'beta': beta, "threshold": threshold}
         self.outputs = {'Out': out}
 
+        self.check_eager = True
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_grad(['X'], 'Out', check_eager=check_eager)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -2798,6 +2800,7 @@ class TestSoftsign(TestActivation):
     def setUp(self):
         self.op_type = "softsign"
         self.init_dtype()
+        self.python_api = paddle.nn.functional.softsign
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -2808,7 +2811,7 @@ class TestSoftsign(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSoftsignAPI(unittest.TestCase):

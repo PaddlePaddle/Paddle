@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 
-from .primreg import REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG, REGISTER_JVP, REGISTER_TRANSPOSE
-from .primreg import (lookup_fn, lookup_orig2prim, lookup_prim2orig, lookup_jvp,
-                      lookup_transpose, op_position_inputs, op_position_output)
-from .primops import (neg, add, sub, mul, div, sqrt, tanh, reshape, broadcast,
-                      transpose, split, concat, reduce, matmul, slice_select,
-                      slice_assign, gather, scatter_add, fill_const, set_value)
-from .utils import get_input_var_list, get_output_var_list, INT_DTYPE_2_STRING
+from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
+                      matmul, mul, neg, reduce, reshape, scatter_add, set_value,
+                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
+                      transpose)
+from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
+                      REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
+                      lookup_orig2prim, lookup_prim2orig, lookup_transpose,
+                      op_position_inputs, op_position_output)
+from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
 
 
 def _orig2prim(op, *args):
@@ -146,6 +149,21 @@ def elementwise_mul_orig2prim(op, x, y):
 @REGISTER_ORIG2PRIM('tanh')
 def tanh_orig2prim(op, x):
     return tanh(x)
+
+
+@REGISTER_ORIG2PRIM('sin')
+def sin_orig2prim(op, x):
+    return sin(x)
+
+
+@REGISTER_ORIG2PRIM('cos')
+def cos_orig2prim(op, x):
+    return cos(x)
+
+
+@REGISTER_ORIG2PRIM('exp')
+def exp_orig2prim(op, x):
+    return exp(x)
 
 
 @REGISTER_ORIG2PRIM('fill_zeros_like')
@@ -300,6 +318,21 @@ def tanh_prim2orig(op, x):
     return paddle.tanh(x)
 
 
+@REGISTER_PRIM2ORIG('sin_p')
+def sin_prim2orig(op, x):
+    return paddle.sin(x)
+
+
+@REGISTER_PRIM2ORIG('cos_p')
+def cos_prim2orig(op, x):
+    return paddle.cos(x)
+
+
+@REGISTER_PRIM2ORIG('exp_p')
+def exp_prim2orig(op, x):
+    return paddle.exp(x)
+
+
 @REGISTER_PRIM2ORIG('reshape_p')
 def reshape_prim2orig(op, x):
     return paddle.reshape(x, shape=op.attr('shape'))
@@ -450,6 +483,30 @@ def tanh_jvp(op, x_dot):
     c1 = fill_const(value=1.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, sub(c1, mul(y, y)))
     return y_dot
+
+
+@REGISTER_JVP('sin_p')
+def sin_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(x_dot, cos(x))
+
+
+@REGISTER_JVP('cos_p')
+def cos_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    x, = op_position_inputs(op)
+    return mul(x_dot, neg(sin(x)))
+
+
+@REGISTER_JVP('exp_p')
+def exp_jvp(op, x_dot):
+    if x_dot is None:
+        return None
+    y = op_position_output(op)
+    return mul(x_dot, y)
 
 
 @REGISTER_JVP('reshape_p')
@@ -656,10 +713,14 @@ def split_transpose(op, check_dot, ys_bar):
 @REGISTER_TRANSPOSE('concat_p')
 def concat_transpose(op, check_dot, y_bar):
     xs, = op_position_inputs(op)
+    if not isinstance(xs, typing.Sequence):
+        xs = [xs]
     for x in xs:
         assert check_dot(x), 'check_dot(x) must be True'
     axis = op.attr('axis')
     sections = [x.shape[axis] for x in xs]
+    if len(sections) == 1:
+        return y_bar
     return split(y_bar, num_or_sections=sections, axis=axis)
 
 

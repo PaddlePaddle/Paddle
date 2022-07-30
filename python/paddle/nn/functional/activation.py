@@ -860,6 +860,8 @@ def relu6(x, name=None):
             out = F.relu6(x) # [0, 0.3, 6]
     """
     threshold = 6.0
+    if in_dygraph_mode():
+        return _C_ops.final_state_relu6(x, threshold)
     if in_dynamic_mode():
         return _C_ops.relu6(x, 'threshold', threshold)
 
@@ -1175,7 +1177,11 @@ def softplus(x, beta=1, threshold=20, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
-    if in_dynamic_mode():
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_softplus(x, beta, threshold)
+
+    if _in_legacy_dygraph():
         return _C_ops.softplus(x, 'beta', beta, 'threshold', threshold)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1273,6 +1279,8 @@ def softsign(x, name=None):
             x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
             out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
+    if in_dygraph_mode():
+        return _C_ops.final_state_softsign(x)
     if in_dynamic_mode():
         return _C_ops.softsign(x)
 

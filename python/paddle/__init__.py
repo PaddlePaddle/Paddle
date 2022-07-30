@@ -35,6 +35,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
+from .fluid.dataset import *  # noqa: F401
 
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
@@ -193,6 +194,7 @@ from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
+from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
@@ -218,6 +220,7 @@ from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
+from .tensor.math import count_nonzero  # noqa: F401
 from .tensor.math import tanh  # noqa: F401
 from .tensor.math import tanh_  # noqa: F401
 from .tensor.math import add_n  # noqa: F401
@@ -369,7 +372,7 @@ if is_compiled_with_cinn():
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
     if os.path.exists(cuh_file):
-        os.environ['runtime_include_dir'] = runtime_include_dir
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
 
@@ -407,6 +410,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logcumsumexp',
     'logit',
     'sign',
     'is_empty',
@@ -557,6 +561,7 @@ __all__ = [  # noqa
     'sum',
     'nansum',
     'nanmean',
+    'count_nonzero',
     'tile',
     'greater_equal',
     'isfinite',

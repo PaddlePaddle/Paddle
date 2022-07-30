@@ -33,10 +33,19 @@ struct MinFunctor {
 };
 
 struct MaxOrMinGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     auto equals = (*x) == y->broadcast(dim);
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);
@@ -46,17 +55,33 @@ struct MaxOrMinGradFunctor {
   }
 };
 
-#define HANDLE_AXIS_DIM(BROADCAST_DIM, AXIS_DIM)                      \
-  if (broadcast_dim_size == BROADCAST_DIM && rank == AXIS_DIM) {      \
-    AMaxOrAMinAxisIsListGradFunctor<DeviceContext, X, Y, DX, DY, Dim, \
-                                    BROADCAST_DIM, AXIS_DIM>(         \
-        place, x, y, dx, dy, dim, axis_dim);                          \
+#define HANDLE_AXIS_DIM(BROADCAST_DIM, AXIS_DIM)                 \
+  if (broadcast_dim_size == BROADCAST_DIM && rank == AXIS_DIM) { \
+    AMaxOrAMinAxisIsListGradFunctor<DeviceContext,               \
+                                    X,                           \
+                                    Y,                           \
+                                    DX,                          \
+                                    DY,                          \
+                                    Dim,                         \
+                                    BROADCAST_DIM,               \
+                                    AXIS_DIM>(                   \
+        place, x, y, dx, dy, dim, axis_dim);                     \
   }
 
-template <typename DeviceContext, typename X, typename Y, typename DX,
-          typename DY, typename Dim, int R, int D>
-void AMaxOrAMinAxisIsListGradFunctor(const DeviceContext& place, X* x, Y* y,
-                                     DX* dx, DY* dy, const Dim& dim,
+template <typename DeviceContext,
+          typename X,
+          typename Y,
+          typename DX,
+          typename DY,
+          typename Dim,
+          int R,
+          int D>
+void AMaxOrAMinAxisIsListGradFunctor(const DeviceContext& place,
+                                     X* x,
+                                     Y* y,
+                                     DX* dx,
+                                     DY* dy,
+                                     const Dim& dim,
                                      const std::vector<int>& axis_dim) {
   // R is x->dimensions().size();
   // D is axis_dim->dimensions().size();
@@ -80,10 +105,19 @@ void AMaxOrAMinAxisIsListGradFunctor(const DeviceContext& place, X* x, Y* y,
 }
 
 struct AMaxOrAMinGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     auto equals = (*x) == y->broadcast(dim);
     auto ones = dx->constant(1);
     auto zeros = dx->constant(0);

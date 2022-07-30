@@ -19,11 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "boost/variant.hpp"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device/npu/dynload/hccl.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/variant.h"
 #if defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #endif
@@ -51,7 +51,6 @@ namespace platform {
 //
 // The NCCLComm instance is created and reversed in the NCCLCommContext
 // singleton with a global user specified group id.
-class CUDADeviceContext;
 
 class NCCLComm {
  public:
@@ -75,27 +74,31 @@ class NCCLCommContext {
     return comm_ctx;
   }
 
-  NCCLComm* CreateComm(ncclUniqueId* nccl_id, int nranks, int rank, int dev_id,
-                       int ring_id = 0);
+  NCCLComm* CreateComm(
+      ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id = 0);
 
   void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
   void CreateNCCLCommMultiTrainer(const std::vector<int>& dev_ids,
-                                  ncclUniqueId* nccl_id, int nranks, int rank,
+                                  ncclUniqueId* nccl_id,
+                                  int nranks,
+                                  int rank,
                                   int ring_id);
 
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  NCCLComm* AssignNCCLComm(ncclComm_t comm, int nranks, int rank, int dev_id,
-                           int ring_id = 0);
+  NCCLComm* AssignNCCLComm(
+      ncclComm_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   NCCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator in ring id %d has not been initialized.", ring_id));
-    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
@@ -105,14 +108,17 @@ class NCCLCommContext {
   // retrieve a communicator by the ring id and the device id
   NCCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
-        comm_map_.at(ring_id).count(dev_id), 0,
+        comm_map_.at(ring_id).count(dev_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator at device id %d has not been initialized in ring %d.",
-            dev_id, ring_id));
+            dev_id,
+            ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
 
@@ -179,20 +185,22 @@ class HCCLCommContext {
     return comm_ctx;
   }
 
-  HCCLComm* CreateHCCLComm(HcclRootInfo* hccl_id, int nranks, int rank,
-                           int dev_id, int ring_id);
+  HCCLComm* CreateHCCLComm(
+      HcclRootInfo* hccl_id, int nranks, int rank, int dev_id, int ring_id);
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  HCCLComm* AssignHCCLComm(HcclComm comm, int nranks, int rank, int dev_id,
-                           int ring_id);
+  HCCLComm* AssignHCCLComm(
+      HcclComm comm, int nranks, int rank, int dev_id, int ring_id);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   HCCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator in ring id %d has not been initialized.", ring_id));
-    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
@@ -202,14 +210,17 @@ class HCCLCommContext {
   // retrieve a communicator by the ring id and the device id
   HCCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
-        comm_map_.at(ring_id).count(dev_id), 0,
+        comm_map_.at(ring_id).count(dev_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator at device id %d has not been initialized in ring %d.",
-            dev_id, ring_id));
+            dev_id,
+            ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
 
@@ -281,23 +292,25 @@ class BKCLCommContext {
     return comm_ctx;
   }
 
-  BKCLComm* CreateComm(BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id,
-                       int ring_id = 0);
+  BKCLComm* CreateComm(
+      BKCLUniqueId* bkcl_id, int nranks, int rank, int dev_id, int ring_id = 0);
 
   void CreateAllBKCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  BKCLComm* AssignBKCLComm(BKCLContext_t comm, int nranks, int rank, int dev_id,
-                           int ring_id = 0);
+  BKCLComm* AssignBKCLComm(
+      BKCLContext_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   BKCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator in ring id %d has not been initialized.", ring_id));
-    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
@@ -307,14 +320,17 @@ class BKCLCommContext {
   // retrieve a communicator by the ring id and the device id
   BKCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
-        comm_map_.at(ring_id).count(dev_id), 0,
+        comm_map_.at(ring_id).count(dev_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator at device id %d has not been initialized in ring %d.",
-            dev_id, ring_id));
+            dev_id,
+            ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
 
@@ -378,22 +394,24 @@ class CNCLCommContext {
     return comm_ctx;
   }
 
-  CNCLComm* CreateComm(cnclCliqueId* cncl_id, int nranks, int rank, int dev_id,
-                       int ring_id = 0);
+  CNCLComm* CreateComm(
+      cnclCliqueId* cncl_id, int nranks, int rank, int dev_id, int ring_id = 0);
   void CreateAllCNCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  CNCLComm* AssignCNCLComm(cnclComm_t comm, int nranks, int rank, int dev_id,
-                           int ring_id = 0);
+  CNCLComm* AssignCNCLComm(
+      cnclComm_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
   CNCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator in ring id %d has not been initialized.", ring_id));
-    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
+    PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "One device id should be specified to retrieve from "
                           "multiple communicators."));
@@ -403,14 +421,17 @@ class CNCLCommContext {
   // retrieve a communicator by the ring id and the device id
   CNCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(
-        comm_map_.count(ring_id), 0,
+        comm_map_.count(ring_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
-        comm_map_.at(ring_id).count(dev_id), 0,
+        comm_map_.at(ring_id).count(dev_id),
+        0,
         platform::errors::InvalidArgument(
             "Communicator at device id %d has not been initialized in ring %d.",
-            dev_id, ring_id));
+            dev_id,
+            ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
 

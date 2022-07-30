@@ -122,10 +122,12 @@ def for_loop_dyfunc_not_support(max_len):
 
 
 def for_break_single_return(max_len):
+    x = 0
     for i in range(3):
         if i == 2:
             break
-    return i
+        x += 1
+    return x
 
 
 def while_loop_bool_op(x):
@@ -268,7 +270,7 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
-            set(["i", "j"])
+            set(["i"])
         ]
         self.create_var_names = [set(), set(["b"]), set()]
 
@@ -324,6 +326,7 @@ class TestTransformWhileLoop(unittest.TestCase):
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
+        print(static_numpy, dygraph_numpy)
         self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
 
 
@@ -438,13 +441,6 @@ class TestErrorInForLoop(TestTransformForLoop):
 
     def _init_dyfunc(self):
         self.dyfunc = for_loop_dyfunc_not_support
-
-    def test_ast_to_func(self):
-        with self.assertRaisesRegexp(
-                NotImplementedError,
-                "Dynamic-to-Static only supports the step value is a constant or negative constant "
-        ):
-            self._run_static()
 
 
 if __name__ == '__main__':

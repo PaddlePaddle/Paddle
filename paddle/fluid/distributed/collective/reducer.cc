@@ -25,7 +25,8 @@ static Backend TransToBackend(platform::Place place) {
 
   phi::AllocationType type = place.GetType();
   auto it = type_backend.find(type);
-  PADDLE_ENFORCE_EQ(it != type_backend.end(), true,
+  PADDLE_ENFORCE_EQ(it != type_backend.end(),
+                    true,
                     platform::errors::InvalidArgument(
                         "Place type (%s) is not supported. ", place));
   return it->second;
@@ -37,11 +38,13 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices) {
   PADDLE_ENFORCE_EQ(
-      tensors.size(), is_sparse_gradient.size(),
+      tensors.size(),
+      is_sparse_gradient.size(),
       platform::errors::PreconditionNotMet(
           "tensors len must be equal to is_sparse_gradient len, but "
           "[%lu] != [%lu]",
-          tensors.size(), is_sparse_gradient.size()));
+          tensors.size(),
+          is_sparse_gradient.size()));
   auto check_perm = [](const std::vector<int64_t> &x) -> bool {
     size_t len = x.size();
     std::vector<size_t> cnt(len, 0);
@@ -54,7 +57,8 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     return true;
   };
 
-  PADDLE_ENFORCE_EQ(true, check_perm(tensor_indices),
+  PADDLE_ENFORCE_EQ(true,
+                    check_perm(tensor_indices),
                     platform::errors::PreconditionNotMet(
                         "tensor_indices must be a permutation from 0 to %lu",
                         tensor_indices.size()));
@@ -127,12 +131,14 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   for (const auto &group_index : res) {
     PADDLE_ENFORCE_NE(
-        group_index.empty(), true,
+        group_index.empty(),
+        true,
         platform::errors::PreconditionNotMet(
             "AssignGroupBySize construct empty group, please check."));
   }
   if (tensor_indices.empty()) {
-    std::sort(res.begin(), res.end(),
+    std::sort(res.begin(),
+              res.end(),
               [](const std::vector<size_t> &x, const std::vector<size_t> &y) {
                 return x.front() < y.front();
               });
@@ -147,14 +153,17 @@ static void ConcatTensorsForAllReduce(
     Tensor *p_dense_contents) {
   operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(
-      context, dense_tensors_, 0,
+      context,
+      dense_tensors_,
+      0,
       std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
           .get());
 }
 
 template <typename DeviceContext, typename T>
 static void SplitTensorsForAllReduce(
-    const DeviceContext &context, Tensor *p_dense_contents,
+    const DeviceContext &context,
+    Tensor *p_dense_contents,
     std::vector<phi::DenseTensor> *p_dense_tensors) {
   auto *in =
       std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
@@ -179,19 +188,20 @@ template <typename DeviceContext>
 static void ConcatTensorsWithType(
     const DeviceContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
-    Tensor *p_dense_contents, phi::DataType type) {
+    Tensor *p_dense_contents,
+    phi::DataType type) {
   switch (type) {
     case phi::DataType::FLOAT16:
       ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
           context, dense_tensors_, p_dense_contents);
       break;
     case phi::DataType::FLOAT32:
-      ConcatTensorsForAllReduce<DeviceContext, float>(context, dense_tensors_,
-                                                      p_dense_contents);
+      ConcatTensorsForAllReduce<DeviceContext, float>(
+          context, dense_tensors_, p_dense_contents);
       break;
     case phi::DataType::FLOAT64:
-      ConcatTensorsForAllReduce<DeviceContext, double>(context, dense_tensors_,
-                                                       p_dense_contents);
+      ConcatTensorsForAllReduce<DeviceContext, double>(
+          context, dense_tensors_, p_dense_contents);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -213,12 +223,12 @@ static void SplitTensorsWithType(const DeviceContext &context,
           context, p_dense_contents, p_dense_tensors);
       break;
     case phi::DataType::FLOAT32:
-      SplitTensorsForAllReduce<DeviceContext, float>(context, p_dense_contents,
-                                                     p_dense_tensors);
+      SplitTensorsForAllReduce<DeviceContext, float>(
+          context, p_dense_contents, p_dense_tensors);
       break;
     case phi::DataType::FLOAT64:
-      SplitTensorsForAllReduce<DeviceContext, double>(context, p_dense_contents,
-                                                      p_dense_tensors);
+      SplitTensorsForAllReduce<DeviceContext, double>(
+          context, p_dense_contents, p_dense_tensors);
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -233,18 +243,18 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    ConcatTensorsWithType(*default_ctx, dense_tensors_, &dense_contents_,
-                          dtype_);
+    ConcatTensorsWithType(
+        *default_ctx, dense_tensors_, &dense_contents_, dtype_);
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+    auto *default_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    ConcatTensorsWithType(*default_ctx, dense_tensors_, &dense_contents_,
-                          dtype_);
+    ConcatTensorsWithType(
+        *default_ctx, dense_tensors_, &dense_contents_, dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Concat grad tensor not supported on place (%s)", place));
@@ -256,18 +266,18 @@ void EagerGroup::SplitTensors(const platform::Place &place) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(*default_ctx, &dense_contents_, &dense_tensors_,
-                         dtype_);
+    SplitTensorsWithType(
+        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+    auto *default_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(*default_ctx, &dense_contents_, &dense_tensors_,
-                         dtype_);
+    SplitTensorsWithType(
+        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));
@@ -279,7 +289,8 @@ EagerReducer::EagerReducer(
     const std::vector<std::vector<size_t>> &group_indices,
     const std::vector<bool> &is_sparse_gradient,
     std::shared_ptr<distributed::ProcessGroup> process_group,
-    const std::vector<size_t> &group_size_limits, bool find_unused_parameters)
+    const std::vector<size_t> &group_size_limits,
+    bool find_unused_parameters)
     : tensors_(tensors),
       group_indices_(group_indices),
       is_sparse_gradient_(is_sparse_gradient),
@@ -310,7 +321,7 @@ EagerReducer::EagerReducer(
     const auto &accumulation_grad_node =
         std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
     accumulation_grad_node->RegisterReduceHook(
-        std::make_shared<egr::CppTensorVoidHook>(reduce_hook));
+        std::make_shared<egr::CppVoidHook>(reduce_hook));
 
     gradnode_index_map_[grad_node.get()] = global_var_index;
   }
@@ -320,7 +331,8 @@ EagerReducer::EagerReducer(
 
   if (find_unused_vars_each_step_) {
     global_used_vars_ = paddle::experimental::empty(
-        IntArray({static_cast<int32_t>(tensors_.size())}), DataType::INT32,
+        IntArray({static_cast<int32_t>(tensors_.size())}),
+        DataType::INT32,
         inner_place_);
   }
 }
@@ -348,7 +360,8 @@ void EagerReducer::InitializeGroups(
   for (size_t group_index = 0; group_index < group_nums; ++group_index) {
     const auto &tensor_indices_ = group_indices[group_index];
     PADDLE_ENFORCE_GT(
-        tensor_indices_.size(), 0,
+        tensor_indices_.size(),
+        0,
         platform::errors::PreconditionNotMet(
             "The number of group[%d]'s elements is 0.", group_index));
 
@@ -392,18 +405,21 @@ void EagerReducer::InitializeDenseGroups(
     auto &tensor = tensors_[tensor_index];
     auto &tensor_name = tensor.name();
 
-    PADDLE_ENFORCE_EQ(is_sparse_gradient_[tensor_index], false,
+    PADDLE_ENFORCE_EQ(is_sparse_gradient_[tensor_index],
+                      false,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s's GRAD must be Tensor, but received "
                           "GRAD is SelectedRows",
                           tensor_name));
 
-    PADDLE_ENFORCE_EQ(tensor.initialized(), true,
+    PADDLE_ENFORCE_EQ(tensor.initialized(),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Tensor %s is not initialized.", tensor_name));
     const auto size = tensor.numel();
     PADDLE_ENFORCE_GT(
-        size, 0,
+        size,
+        0,
         platform::errors::PreconditionNotMet(
             "The number of tensor %s's elements is 0.", tensor_name));
     all_length += size;
@@ -417,7 +433,8 @@ void EagerReducer::InitializeDenseGroups(
     const auto &dtype = tensor.dtype();
     const auto &inner_place = tensor.impl()->place();
     if (index > 0) {
-      PADDLE_ENFORCE_EQ(dtype, p_group->dtype_,
+      PADDLE_ENFORCE_EQ(dtype,
+                        p_group->dtype_,
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has unexpected dtype.", tensor_name));
     } else {
@@ -491,7 +508,8 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
   vars_marked_ready_.resize(tensors_.size(), false);
 
   PADDLE_ENFORCE_EQ(
-      groups_need_finalize_, false,
+      groups_need_finalize_,
+      false,
       platform::errors::PreconditionNotMet(
           "A serious error has occurred here. Please "
           "set find_unused_parameters=True to traverse backward graph "
@@ -537,11 +555,13 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
 }
 
 void EagerReducer::AddDistHook(size_t var_index) {
-  PADDLE_ENFORCE_LT(var_index, variable_locators_.size(),
+  PADDLE_ENFORCE_LT(var_index,
+                    variable_locators_.size(),
                     platform::errors::OutOfRange(
                         "Out of bounds variable index. it must be less"
                         "than %d, but it is %d",
-                        variable_locators_.size(), var_index));
+                        variable_locators_.size(),
+                        var_index));
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {
@@ -577,9 +597,11 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         "2) Using model parameters outside of forward function. Please "
         "make sure that model parameters are not shared in concurrent "
         "forward-backward passes.",
-        var_index, tensors_[var_index].name());
+        var_index,
+        tensors_[var_index].name());
 
-    PADDLE_ENFORCE_EQ(has_marked_unused_vars_, false,
+    PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
+                      false,
                       platform::errors::PreconditionNotMet(error_info));
 
     error_info +=
@@ -594,7 +616,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         "paramters of the forward and trigger backward), "
         "its gradient will be wrong.";
 
-    PADDLE_ENFORCE_EQ(has_marked_unused_vars_, true,
+    PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
+                      true,
                       platform::errors::PreconditionNotMet(error_info));
   } else {
     vars_marked_ready_[var_index] = true;
@@ -647,7 +670,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
     // process sparse group
     PADDLE_ENFORCE_EQ(
-        HasGrad(var_index), true,
+        HasGrad(var_index),
+        true,
         platform::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
@@ -655,11 +679,13 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "For example, if is_sparese=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
             "because of stop_gradient/detatch, where error will occur.",
-            var_index, tensors_[var_index].name()));
+            var_index,
+            tensors_[var_index].name()));
 
     // need to check tensor type
     PADDLE_ENFORCE_EQ(
-        grad_tensor.is_selected_rows(), true,
+        grad_tensor.is_selected_rows(),
+        true,
         platform::errors::PreconditionNotMet(
             "The sparse parameter[%d][%s] must have a selectedrows gradient. "
             "Before forward pass, the parameter type is inferred to be "
@@ -669,7 +695,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "embedding is shared with subsequent dense parameters, then "
             "the parameter gradient of the embedding will be converted "
             "to dense parameters.",
-            var_index, tensors_[var_index].name()));
+            var_index,
+            tensors_[var_index].name()));
 
     group.sparse_contents_.set_impl(grad_tensor.impl());
   }
@@ -688,12 +715,14 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
   VLOG(3) << "Group[" << group_index << "] is ready";
 
   PADDLE_ENFORCE_GE(
-      group_index, next_group_,
+      group_index,
+      next_group_,
       platform::errors::PreconditionNotMet(
           "The index of the incoming group must be greater "
           "than or equal to the previously synchronized group index, "
           "expect it to greater than or equal to %d, but got %d.",
-          next_group_, group_index));
+          next_group_,
+          group_index));
 
   if (group_index > next_group_) {
     VLOG(3) << "It will adjust the order of group in next batch automatically";
@@ -731,8 +760,8 @@ void EagerReducer::ProcessUnusedDenseVars() {
   auto *global_used_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(global_used_vars_.impl())
           .get();
-  framework::TensorFromVector<int32_t>(local_used_vars_, *dev_ctx,
-                                       global_used_tensor);
+  framework::TensorFromVector<int32_t>(
+      local_used_vars_, *dev_ctx, global_used_tensor);
 
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
@@ -743,8 +772,8 @@ void EagerReducer::ProcessUnusedDenseVars() {
   }
   process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
 
-  framework::TensorToVector<int>(*global_used_tensor, *dev_ctx,
-                                 &local_used_vars_);
+  framework::TensorToVector<int>(
+      *global_used_tensor, *dev_ctx, &local_used_vars_);
   dev_ctx->Wait();
 
   // sync compute stream to get global used var message,
@@ -829,8 +858,8 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   group->ConcatTensors(inner_place_);
 
   // div nranks
-  paddle::experimental::scale_(group->dense_contents_, 1.0 / nranks_, 0.0,
-                               false);
+  paddle::experimental::scale_(
+      group->dense_contents_, 1.0 / nranks_, 0.0, false);
 
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
@@ -862,7 +891,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
         "Please recompile or reinstall Paddle with NCCL support."));
 #endif
   } else if (platform::is_cpu_place(inner_place_)) {
-    dev_ctx = static_cast<platform::CPUDeviceContext *>(
+    dev_ctx = static_cast<phi::CPUContext *>(
         platform::DeviceContextPool::Instance().Get(inner_place_));
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -883,8 +912,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
       IntArray({static_cast<int64_t>(size_)}), DataType::INT64, inner_place_);
   auto *rows_num_dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(rows_num_tensor.impl()).get();
-  framework::TensorFromVector<int64_t>(rows_num_vector, *dev_ctx,
-                                       rows_num_dense_tensor);
+  framework::TensorFromVector<int64_t>(
+      rows_num_vector, *dev_ctx, rows_num_dense_tensor);
 
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
@@ -895,13 +924,13 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   }
   process_group_->AllReduce(in_out, in_out, opts)->Synchronize();
 
-  framework::TensorToVector<int64_t>(*rows_num_dense_tensor, *dev_ctx,
-                                     &rows_num_vector);
+  framework::TensorToVector<int64_t>(
+      *rows_num_dense_tensor, *dev_ctx, &rows_num_vector);
   dev_ctx->Wait();
 
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
-  auto rows_num = std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
-                                  static_cast<int64_t>(0));
+  auto rows_num = std::accumulate(
+      cpu_rows_num_ptr, cpu_rows_num_ptr + size_, static_cast<int64_t>(0));
 
   VLOG(3) << "Gather rows: " << string::join_strings(rows_num_vector, ',')
           << ", total rows number: " << rows_num
@@ -912,8 +941,9 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   Tensor src_value_tensor(std::make_shared<phi::DenseTensor>(src->value()));
   std::vector<int64_t> dst_shape = src_value_tensor.shape();
 
-  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + size_,
-                  [&](int64_t row) { return row == cpu_rows_num_ptr[0]; })) {
+  if (std::all_of(cpu_rows_num_ptr, cpu_rows_num_ptr + size_, [&](int64_t row) {
+        return row == cpu_rows_num_ptr[0];
+      })) {
     // During sparse communication, the number of each card is same.
     // allgather is used to speed up the allreduce by replacing broadcast.
 
@@ -921,15 +951,17 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     Tensor dst_rows_tensor =
         paddle::experimental::empty(IntArray({static_cast<int64_t>(rows_num)}),
-                                    DataType::INT64, inner_place_);
+                                    DataType::INT64,
+                                    inner_place_);
     Tensor src_rows_tensor = paddle::experimental::empty(
-        IntArray({static_cast<int64_t>((*src).rows().size())}), DataType::INT64,
+        IntArray({static_cast<int64_t>((*src).rows().size())}),
+        DataType::INT64,
         inner_place_);
     auto *src_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(src_rows_tensor.impl())
             .get();
-    framework::TensorFromVector<int64_t>((*src).rows(), *dev_ctx,
-                                         src_rows_dense_tensor);
+    framework::TensorFromVector<int64_t>(
+        (*src).rows(), *dev_ctx, src_rows_dense_tensor);
 
     std::vector<Tensor> src_rows_tensors = {src_rows_tensor};
     std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
@@ -947,14 +979,14 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();
-    framework::TensorToVector<int64_t>(*dst_rows_dense_tensor, *dev_ctx,
-                                       &dst_rows_vector);
+    framework::TensorToVector<int64_t>(
+        *dst_rows_dense_tensor, *dev_ctx, &dst_rows_vector);
     dev_ctx->Wait();
 
     dst_shape[dst_shape.size() - 2] = rows_num;
     auto dst_dense_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-        paddle::experimental::full(IntArray(dst_shape), 0,
-                                   src_value_tensor.dtype(), inner_place_)
+        paddle::experimental::full(
+            IntArray(dst_shape), 0, src_value_tensor.dtype(), inner_place_)
             .impl());
 
     auto dst =
@@ -987,8 +1019,10 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
       std::vector<int64_t> value_tensor_shape = {
           cpu_rows_num_ptr[i], dst_shape[dst_shape.size() - 1]};
       Tensor rows_tensor = paddle::experimental::full(
-          IntArray({static_cast<int64_t>(cpu_rows_num_ptr[i])}), 0,
-          DataType::INT64, inner_place_);
+          IntArray({static_cast<int64_t>(cpu_rows_num_ptr[i])}),
+          0,
+          DataType::INT64,
+          inner_place_);
       Tensor values_tensor = paddle::experimental::full(
           IntArray(value_tensor_shape), 0, src->value().dtype(), inner_place_);
       std::vector<phi::DenseTensor> rows_dense_vector;
@@ -998,8 +1032,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
         auto *rows_dense_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(rows_tensor.impl())
                 .get();
-        framework::TensorFromVector<int64_t>(src_rows, *dev_ctx,
-                                             rows_dense_tensor);
+        framework::TensorFromVector<int64_t>(
+            src_rows, *dev_ctx, rows_dense_tensor);
         values_tensor.set_impl(
             std::make_shared<phi::DenseTensor>(src->value()));
       }
@@ -1024,8 +1058,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();
-    framework::TensorToVector<int64_t>(*dst_rows_dense_tensor, *dev_ctx,
-                                       &dst_rows_vector);
+    framework::TensorToVector<int64_t>(
+        *dst_rows_dense_tensor, *dev_ctx, &dst_rows_vector);
     src->set_rows(dst_rows_vector);
 
     Tensor dst_values_tensor =

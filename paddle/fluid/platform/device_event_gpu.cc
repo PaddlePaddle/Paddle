@@ -22,13 +22,15 @@ struct CUDADeviceEventWrapper {
   CUDADeviceEventWrapper(const platform::Place& place, unsigned int flag)
       : inner_event_(flag) {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place), true,
+        platform::is_gpu_place(place),
+        true,
         platform::errors::PreconditionNotMet(
             "Required device shall be CUDAPlace, but received %d. ", place));
 
     device_id_ = place.device;
     PADDLE_ENFORCE_GT(
-        device_id_, -1,
+        device_id_,
+        -1,
         platform::errors::PreconditionNotMet(
             "Required DeviceOption.device_id > -1, but received %d. ",
             device_id_));
@@ -38,7 +40,8 @@ struct CUDADeviceEventWrapper {
   int device_id_;
 };
 
-void DeviceEventCreateCUDA(DeviceEvent* event, const platform::Place& place,
+void DeviceEventCreateCUDA(DeviceEvent* event,
+                           const platform::Place& place,
                            unsigned int flag) {
   event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(place, flag));
 }
@@ -109,9 +112,11 @@ REGISTER_EVENT_QUERY_FUNCTION(kCUDA, paddle::platform::DeviceEventQueryCUDA)
 REGISTER_EVENT_FINISH_FUNCTION(kCUDA, paddle::platform::DeviceEventFinishCUDA)
 REGISTER_EVENT_SET_FINISHED_FUNCTION(
     kCUDA, paddle::platform::DeviceEventSetFinishedCUDA)
-REGISTER_EVENT_WAIT_FUNCTION(kCUDA, kCUDA,
+REGISTER_EVENT_WAIT_FUNCTION(kCUDA,
+                             kCUDA,
                              paddle::platform::DeviceEventCUDAWaitCUDA)
-REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCUDA,
+REGISTER_EVENT_WAIT_FUNCTION(kCPU,
+                             kCUDA,
                              paddle::platform::DeviceEventCPUWaitCUDA)
 REGISTER_EVENT_RESET_FUNCTION(kCUDA, paddle::platform::EventResetCUDA)
 #endif

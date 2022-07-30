@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace phi {
 namespace funcs {
@@ -26,22 +26,21 @@ __global__ void ConcatKernel_(const T** inputs,
                               const int64_t output_rows,
                               const int64_t output_cols,
                               T* output) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int curr_segment = 0;
-  int curr_offset = input_cols[0];
-  for (; tid_x < output_cols; tid_x += blockDim.x * gridDim.x) {
-    int curr_col_offset = input_cols[curr_segment + 1];
+  int64_t curr_segment = 0;
+  int64_t curr_offset = input_cols[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, int64_t) {
+    int64_t curr_col_offset = input_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
       curr_col_offset = input_cols[curr_segment + 1];
     }
 
-    int local_col = tid_x - curr_offset;
-    int segment_width = curr_col_offset - curr_offset;
+    int64_t local_col = tid_x - curr_offset;
+    int64_t segment_width = curr_col_offset - curr_offset;
 
     const T* input_ptr = inputs[curr_segment];
-    int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
       output[tid_y * output_cols + tid_x] =
           input_ptr[tid_y * segment_width + local_col];
@@ -50,16 +49,15 @@ __global__ void ConcatKernel_(const T** inputs,
 
 template <typename T>
 __device__ void ConcatKernelDetail(const T** inputs_data,
-                                   const int fixed_in_col,
-                                   const int out_rows,
-                                   const int out_cols,
+                                   const int64_t fixed_in_col,
+                                   const int64_t out_rows,
+                                   const int64_t out_cols,
                                    T* output_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; tid_x < out_cols; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x * 1.0 / fixed_in_col;
-    int in_offset = tid_x - split * fixed_in_col;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, int64_t) {
+    int64_t split = tid_x * 1.0 / fixed_in_col;
+    int64_t in_offset = tid_x - split * fixed_in_col;
     const T* input_ptr = inputs_data[split];
-    int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
       output_data[tid_y * out_cols + tid_x] =
           input_ptr[tid_y * fixed_in_col + in_offset];
@@ -133,22 +131,21 @@ __global__ void SplitKernel_(const T* input_data,
                              const int64_t* out_cols,
                              int out_cols_size,
                              T** outputs_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int curr_segment = 0;
-  int curr_offset = out_cols[0];
-  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    int curr_col_offset = out_cols[curr_segment + 1];
+  int64_t curr_segment = 0;
+  int64_t curr_offset = out_cols[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_col, int64_t) {
+    int64_t curr_col_offset = out_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
       curr_col_offset = out_cols[curr_segment + 1];
     }
 
-    int local_col = tid_x - curr_offset;
-    int segment_width = curr_col_offset - curr_offset;
+    int64_t local_col = tid_x - curr_offset;
+    int64_t segment_width = curr_col_offset - curr_offset;
     T* output_ptr = outputs_data[curr_segment];
     if (output_ptr != nullptr) {
-      int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+      int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
         output_ptr[tid_y * segment_width + local_col] =
             input_data[tid_y * in_col + tid_x];
@@ -158,17 +155,16 @@ __global__ void SplitKernel_(const T* input_data,
 
 template <typename T>
 __device__ void SplitKernelDetail(const T* input_data,
-                                  const int in_row,
-                                  const int in_col,
-                                  const int fixed_out_col,
+                                  const int64_t in_row,
+                                  const int64_t in_col,
+                                  const int64_t fixed_out_col,
                                   T** outputs_data) {
-  int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; tid_x < in_col; tid_x += blockDim.x * gridDim.x) {
-    int split = tid_x / fixed_out_col;
-    int in_offset = tid_x - split * fixed_out_col;
+  CUDA_KERNEL_LOOP_TYPE(tid_x, in_col, int64_t) {
+    int64_t split = tid_x / fixed_out_col;
+    int64_t in_offset = tid_x - split * fixed_out_col;
     T* output_ptr = outputs_data[split];
     if (output_ptr != nullptr) {
-      int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+      int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
       for (; tid_y < in_row; tid_y += blockDim.y * gridDim.y)
         output_ptr[tid_y * fixed_out_col + in_offset] =
             input_data[tid_y * in_col + tid_x];
@@ -266,7 +262,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
                   int axis,
                   phi::DenseTensor* output) {
     // TODO(zcd): Add input data validity checking
-    int in_num = input.size();
+    int64_t in_num = input.size();
     int64_t in_row = 1;
     auto dim_0 = input[0].dims();
     for (int i = 0; i < axis; ++i) {
@@ -275,8 +271,11 @@ struct ConcatFunctor<phi::GPUContext, T> {
     int64_t in_col = input[0].numel() / in_row;
     int64_t out_row = in_row, out_col = 0;
 
-    int inputs_col_num = in_num + 1;
-    paddle::memory::AllocationPtr data_alloc, col_alloc;
+    int64_t inputs_col_num = in_num + 1;
+    std::vector<const T*> inputs_data_vec(in_num);
+    std::vector<int64_t> inputs_col_vec(inputs_col_num);
+    const T** inputs_data = inputs_data_vec.data();
+    int64_t* inputs_col = inputs_col_vec.data();
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
@@ -286,22 +285,16 @@ struct ConcatFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
+    paddle::memory::AllocationPtr data_alloc, col_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        in_num * sizeof(T*));
+    inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                       inputs_col_num * sizeof(int));
-#else
-    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
-    // allocator.
-    data_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                       in_num * sizeof(T*));
-    col_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                      (inputs_col_num) * sizeof(int64_t));
+    inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 #endif
-    const T** inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-    int64_t* inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 
     inputs_col[0] = 0;
     bool has_same_shape = true;
@@ -390,6 +383,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
           output->data<T>());
     }
 
+#ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
     // next time)
@@ -403,6 +397,7 @@ struct ConcatFunctor<phi::GPUContext, T> {
       paddle::memory::allocation::Allocator::AllocationDeleter(
           col_alloc_released);
     });
+#endif
   }
 };
 
@@ -433,7 +428,10 @@ class SplitFunctor<phi::GPUContext, T> {
     bool has_same_shape = true;
 
     int outputs_cols_num = o_num + 1;
-    paddle::memory::AllocationPtr data_alloc, cols_alloc;
+    std::vector<T*> outputs_data_vec(o_num);
+    std::vector<int64_t> outputs_cols_vec(outputs_cols_num);
+    T** outputs_data = outputs_data_vec.data();
+    int64_t* outputs_cols = outputs_cols_vec.data();
 
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
@@ -443,22 +441,16 @@ class SplitFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
+    paddle::memory::AllocationPtr data_alloc, cols_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        o_num * sizeof(T*));
+    outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     cols_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        (outputs_cols_num) * sizeof(int64_t));
-#else
-    // TODO(pinned): cuda-graph not support pinned memory, we just use the cpu
-    // allocator.
-    data_alloc =
-        paddle::memory::Alloc(paddle::platform::CPUPlace(), o_num * sizeof(T*));
-    cols_alloc = paddle::memory::Alloc(paddle::platform::CPUPlace(),
-                                       (outputs_cols_num) * sizeof(int64_t));
+    outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 #endif
-    T** outputs_data = reinterpret_cast<T**>(data_alloc->ptr());
-    int64_t* outputs_cols = reinterpret_cast<int64_t*>(cols_alloc->ptr());
 
     outputs_cols[0] = 0;
     for (int i = 0; i < o_num; ++i) {
@@ -552,6 +544,7 @@ class SplitFunctor<phi::GPUContext, T> {
           dev_out_gpu_data);
     }
 
+#ifdef PADDLE_WITH_HIP
     // Prevent the pinned memory value from being covered and release the memory
     // after the launch kernel of the stream is executed (reapply pinned memory
     // next time)
@@ -563,6 +556,7 @@ class SplitFunctor<phi::GPUContext, T> {
       paddle::memory::allocation::Allocator::AllocationDeleter(
           cols_alloc_released);
     });
+#endif
   }
 };
 

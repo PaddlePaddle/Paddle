@@ -631,13 +631,13 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
-        low (int): The lower bound on the range of random values to generate.
+        low (int, optional): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
         high (int, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
+        shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
@@ -869,7 +869,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         dtype = x.dtype
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    shape = x.shape
+    shape = paddle.shape(x)
 
     if low >= high:
         raise ValueError(
@@ -888,17 +888,13 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'randint_like')
 
-    inputs = dict()
+    inputs = {"ShapeTensor": shape}
     attrs = {
         'low': low,
         'high': high,
         'seed': 0,
         'dtype': core.VarDesc.VarType.INT64
     }
-    utils.get_shape_tensor_inputs(inputs=inputs,
-                                  attrs=attrs,
-                                  shape=shape,
-                                  op_type='randint_like')
 
     helper = LayerHelper("randint", **locals())
     out = helper.create_variable_for_type_inference(
@@ -1052,7 +1048,9 @@ def exponential_(x, lam=1.0, name=None):
             #  [0.72520673, 0.45208144, 0.30234432]]
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
+        return _C_ops.final_state_exponential_(x, lam)
+    elif paddle.in_dynamic_mode():
         return _C_ops.exponential_(x, "lambda", lam)
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")

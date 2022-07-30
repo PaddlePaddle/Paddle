@@ -82,6 +82,47 @@ class TestBatchNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error2d_dataformat)
                 self.assertRaises(ValueError, error3d_dataformat)
 
+    def test_large_batch(self):
+
+        def compute_baseline(x):
+            with fluid.dygraph.guard(p):
+                bn = fluid.dygraph.BatchNorm(shape[1])
+                x1 = paddle.to_tensor(x)
+                x1.stop_gradient = False
+                y = bn(x1)
+                y.backward()
+                return y.numpy(), x1.gradient()
+
+        def compute_1d(x):
+            with fluid.dygraph.guard(p):
+                with _test_eager_guard():
+                    bn = paddle.nn.BatchNorm1D(shape[1])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            # [N, C]
+            shape = [200000, 4]
+            x = np.random.randn(*shape).astype("float32")
+            y1, g1 = compute_baseline(x)
+            y2, g2 = compute_1d(x)
+            self.assertTrue(np.allclose(g1, g2))
+            self.assertTrue(np.allclose(y1, y2))
+
+            # [N, C, L]
+            shape = [1000000, 4, 4]
+            x = np.random.randn(*shape).astype("float32")
+            y1, g1 = compute_baseline(x)
+            y2, g2 = compute_1d(x)
+            self.assertTrue(np.allclose(g1, g2))
+            self.assertTrue(np.allclose(y1, y2))
+
     def test_eager_api(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -110,11 +151,11 @@ class TestBatchNorm(unittest.TestCase):
                         y.backward()
                         return y.numpy(), x1.gradient()
 
-        x = np.random.randn(*shape).astype("float32")
-        y1, g1 = compute_v1(x)
-        y2, g2 = compute_v2(x)
-        self.assertTrue(np.allclose(g1, g2))
-        self.assertTrue(np.allclose(y1, y2))
+            x = np.random.randn(*shape).astype("float32")
+            y1, g1 = compute_v1(x)
+            y2, g2 = compute_v2(x)
+            self.assertTrue(np.allclose(g1, g2))
+            self.assertTrue(np.allclose(y1, y2))
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]

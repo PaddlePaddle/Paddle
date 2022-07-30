@@ -15,6 +15,7 @@
 import unittest
 import os
 import json
+import tempfile
 
 import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
@@ -32,10 +33,16 @@ from test_cluster import cluster_json, multi_cluster_json
 
 class TestCommOpCost(unittest.TestCase):
 
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_comm_cost(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster0.json")
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -92,14 +99,10 @@ class TestCommOpCost(unittest.TestCase):
                                           comm_context=comm_context)
         self.assertTrue(identity_op_cost.time >= 0)
 
-        # Remove unnecessary files
-        if os.path.exists(cluster_json_path):
-            os.remove(cluster_json_path)
-
     def test_cross_machine_comm_cost(self):
         # Build cluster
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        cluster_json_path = os.path.join(file_dir, "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster1.json")
         cluster_json_object = json.loads(multi_cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)

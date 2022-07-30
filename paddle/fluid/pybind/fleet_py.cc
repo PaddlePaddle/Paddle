@@ -75,7 +75,12 @@ void BindDistFleetWrapper(py::module* m) {
       .def("client_flush", &FleetWrapper::ClientFlush)
       .def("get_cache_threshold", &FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &FleetWrapper::CacheShuffle)
-      .def("save_cache", &FleetWrapper::SaveCache);
+      .def("save_cache", &FleetWrapper::SaveCache)
+      .def("init_fl_worker", &FleetWrapper::InitFlWorker)
+      .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
+      .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy)
+      .def("revert", &FleetWrapper::Revert)
+      .def("check_save_pre_patch_done", &FleetWrapper::CheckSavePrePatchDone);
 }
 
 void BindPSHost(py::module* m) {
@@ -90,11 +95,19 @@ void BindPSHost(py::module* m) {
 
 void BindCommunicatorContext(py::module* m) {
   py::class_<CommContext>(*m, "CommContext")
-      .def(
-          py::init<const std::string&, const std::vector<std::string>&,
-                   const std::vector<std::string>&, const std::vector<int64_t>&,
-                   const std::vector<std::string>&, int, bool, bool, bool, int,
-                   bool, bool, int64_t>())
+      .def(py::init<const std::string&,
+                    const std::vector<std::string>&,
+                    const std::vector<std::string>&,
+                    const std::vector<int64_t>&,
+                    const std::vector<std::string>&,
+                    int,
+                    bool,
+                    bool,
+                    bool,
+                    int,
+                    bool,
+                    bool,
+                    int64_t>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
@@ -121,6 +134,7 @@ void BindCommunicatorContext(py::module* m) {
 }
 
 using paddle::distributed::AsyncCommunicator;
+using paddle::distributed::FLCommunicator;
 using paddle::distributed::GeoCommunicator;
 using paddle::distributed::RecvCtxMap;
 using paddle::distributed::RpcCtxMap;
@@ -131,9 +145,11 @@ void BindDistCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const std::string& mode, const std::string& dist_desc,
+      .def(py::init([](const std::string& mode,
+                       const std::string& dist_desc,
                        const std::vector<std::string>& host_sign_list,
-                       const RpcCtxMap& send_ctx, const RecvCtxMap& recv_ctx,
+                       const RpcCtxMap& send_ctx,
+                       const RecvCtxMap& recv_ctx,
                        Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
         if (mode == "ASYNC") {
@@ -144,6 +160,9 @@ void BindDistCommunicator(py::module* m) {
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoCommunicator>(
+              send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
+        } else if (mode == "WITH_COORDINATOR") {
+          Communicator::InitInstance<FLCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -160,7 +179,10 @@ void BindDistCommunicator(py::module* m) {
       .def("create_client_to_client_connection",
            &Communicator::CreateC2CConnection)
       .def("get_client_info", &Communicator::GetClientInfo)
-      .def("set_clients", &Communicator::SetClients);
+      .def("set_clients", &Communicator::SetClients)
+      .def("start_coordinator", &Communicator::StartCoordinator)
+      .def("query_fl_clients_info", &Communicator::QueryFLClientsInfo)
+      .def("save_fl_strategy", &Communicator::SaveFLStrategy);
 }
 
 void BindHeterClient(py::module* m) {
@@ -168,8 +190,8 @@ void BindHeterClient(py::module* m) {
       .def(py::init([](const std::vector<std::string>& endpoints,
                        const std::vector<std::string>& previous_endpoints,
                        const int& trainer_id) {
-        return HeterClient::GetInstance(endpoints, previous_endpoints,
-                                        trainer_id);
+        return HeterClient::GetInstance(
+            endpoints, previous_endpoints, trainer_id);
       }))
       .def("stop", &HeterClient::Stop);
 }
@@ -215,27 +237,29 @@ void BindGraphPyClient(py::module* m) {
       .def("random_sample_nodes", &GraphPyClient::random_sample_nodes)
       .def("stop_server", &GraphPyClient::StopServer)
       .def("get_node_feat",
-           [](GraphPyClient& self, std::string node_type,
+           [](GraphPyClient& self,
+              std::string node_type,
               std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names) {
              auto feats =
                  self.get_node_feat(node_type, node_ids, feature_names);
              std::vector<std::vector<py::bytes>> bytes_feats(feats.size());
-             for (int i = 0; i < feats.size(); ++i) {
-               for (int j = 0; j < feats[i].size(); ++j) {
+             for (size_t i = 0; i < feats.size(); ++i) {
+               for (size_t j = 0; j < feats[i].size(); ++j) {
                  bytes_feats[i].push_back(py::bytes(feats[i][j]));
                }
              }
              return bytes_feats;
            })
       .def("set_node_feat",
-           [](GraphPyClient& self, std::string node_type,
+           [](GraphPyClient& self,
+              std::string node_type,
               std::vector<int64_t> node_ids,
               std::vector<std::string> feature_names,
               std::vector<std::vector<py::bytes>> bytes_feats) {
              std::vector<std::vector<std::string>> feats(bytes_feats.size());
-             for (int i = 0; i < bytes_feats.size(); ++i) {
-               for (int j = 0; j < bytes_feats[i].size(); ++j) {
+             for (size_t i = 0; i < bytes_feats.size(); ++i) {
+               for (size_t j = 0; j < bytes_feats[i].size(); ++j) {
                  feats[i].push_back(std::string(bytes_feats[i][j]));
                }
              }

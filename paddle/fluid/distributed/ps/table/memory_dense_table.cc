@@ -41,7 +41,7 @@ void MemoryDenseTable::CreateInitializer(const std::string& attr,
 
 int32_t MemoryDenseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
+  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
 
@@ -74,7 +74,7 @@ int32_t MemoryDenseTable::InitializeValue() {
     values_[x].resize(dim);
     names_index_[varname] = x;
 
-    for (int y = 0; y < dim; ++y) {
+    for (size_t y = 0; y < dim; ++y) {
       values_[x][y] = initializers_[varname]->GetValue();
     }
   }
@@ -82,7 +82,7 @@ int32_t MemoryDenseTable::InitializeValue() {
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
     auto& dim = common.dims()[x];
-    if (dim != param_dim_) {
+    if (static_cast<int>(dim) != param_dim_) {
       fixed_len_params_dim_ += dim;
     } else {
       param_col_ids_.push_back(x);
@@ -149,14 +149,15 @@ int32_t MemoryDenseTable::Push(TableContext& context) {
 }
 
 int32_t MemoryDenseTable::PullDense(float* pull_values, size_t num) {
-  std::copy(values_[param_idx_].begin(), values_[param_idx_].end(),
-            pull_values);
+  std::copy(
+      values_[param_idx_].begin(), values_[param_idx_].end(), pull_values);
   return 0;
 }
 
 int32_t MemoryDenseTable::PushDenseParam(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
-      num, param_dim_,
+      num,
+      param_dim_,
       paddle::platform::errors::InvalidArgument(
           "update desne param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
@@ -186,7 +187,8 @@ int32_t MemoryDenseTable::PushDense(const float* values, size_t num) {
 
 int32_t MemoryDenseTable::_PushDense(const float* values, size_t num) {
   PADDLE_ENFORCE_GE(
-      num, param_dim_,
+      num,
+      param_dim_,
       paddle::platform::errors::InvalidArgument(
           "update desne numel expected %d, but got %d", param_dim_, num));
 
@@ -245,14 +247,13 @@ int32_t MemoryDenseTable::Load(const std::string& path,
   do {
     is_read_failed = false;
     try {
-      size_t dim_idx = 0;
+      int dim_idx = 0;
       float data_buffer[5];
       float* data_buff_ptr = data_buffer;
       std::string line_data;
-      int size = static_cast<int>(values_.size());
       auto common = _config.common();
 
-      for (int i = start_file_idx; i < end_file_idx + 1; ++i) {
+      for (size_t i = start_file_idx; i < end_file_idx + 1; ++i) {
         channel_config.path = file_list[i];
         err_no = 0;
         auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
@@ -271,7 +272,7 @@ int32_t MemoryDenseTable::Load(const std::string& path,
           if (file_dim_idx < file_start_idx) {
             continue;
           }
-          auto str_len =
+          size_t str_len =
               paddle::string::str_to_float(line_data.data(), data_buff_ptr);
           CHECK(str_len == param_col_ids_.size())
               << "expect " << param_col_ids_.size() << " float, but got "
@@ -338,35 +339,37 @@ int32_t MemoryDenseTable::Save(const std::string& path,
       _value_accesor->Converter(save_param).deconverter;
 
   bool is_write_failed = false;
-  std::vector<std::vector<std::string>> result_buffer_param(
-      param_dim_, std::vector<std::string>());
-  std::vector<std::string> result_buffer_fixed_len;
-  result_buffer_fixed_len.reserve(fixed_len_params_dim_);
-
+  std::vector<std::string> result_buffer_param;
+  result_buffer_param.reserve(param_dim_);
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
     for (int x = 0; x < param_dim_; ++x) {
-      result_buffer_param[x].emplace_back(
-          std::to_string(values_[param_idx_][x]));
+      result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));
     }
-
+  } else if (_config.common().name() == "adam_d2sum") {
+    std::ostringstream os;
+    for (int y = 0; y < param_dim_; ++y) {
+      os.clear();
+      os.str("");
+      os << values_[param_col_ids_[0]][y] << " 0";
+      for (int x = 2; x < param_col_ids_.size(); ++x) {
+        os << " ";
+        os << values_[param_col_ids_[x]][y];
+      }
+      result_buffer_param.emplace_back(std::move(os.str()));
+    }
   } else {
     std::ostringstream os;
-    for (int x = 0; x < size; ++x) {
-      auto& varname = common.params()[x];
-      auto& dim = common.dims()[x];
-      VLOG(3) << "MemoryDenseTable::save dim " << x << " size: " << dim;
-      for (int y = 0; y < dim; ++y) {
-        os.clear();
-        os.str("");
-        os << values_[x][y];
-        if (dim == param_dim_) {
-          result_buffer_param[y].emplace_back(std::move(os.str()));
-        } else {
-          result_buffer_fixed_len.emplace_back(std::move(os.str()));
-        }
+    for (int y = 0; y < param_dim_; ++y) {
+      os.clear();
+      os.str("");
+      os << values_[param_col_ids_[0]][y];
+      for (int x = 1; x < param_col_ids_.size(); ++x) {
+        os << " ";
+        os << values_[param_col_ids_[x]][y];
       }
+      result_buffer_param.emplace_back(std::move(os.str()));
     }
   }
 
@@ -379,12 +382,9 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     // 40M
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+
     for (auto& t : result_buffer_param) {
-      if (_config.common().name() == "adam_d2sum") {
-        t.insert(t.begin() + 1, "0");  // avg_w
-      }
-      if (0 !=
-          write_channel->write_line(paddle::string::join_strings(t, ' '))) {
+      if (0 != write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;
         LOG(ERROR) << "DownpourDenseTable save failed, retry it! "
@@ -395,6 +395,7 @@ int32_t MemoryDenseTable::Save(const std::string& path,
     }
 
     ++feasign_size;
+    VLOG(3) << "save begin close " << channel_config.path;
     write_channel->close();
     if (err_no == -1) {
       ++retry_num;

@@ -35,6 +35,25 @@ void EmbEltwiseLayernorm::operator()() {
   emb_elt_layernorm_op->LinksTo({emb_elt_layernorm_out});
 }
 
+void PrelnEmbEltwiseLayernorm::operator()() {
+  // Create nodes for fused_preln_embedding_eltwise_layernorm.
+  auto* preln_emb_elt_layernorm_op =
+      pattern->NewNode(preln_emb_elt_layernorm_op_repr())
+          ->assert_is_op("fused_preln_embedding_eltwise_layernorm");
+  auto* preln_emb_elt_layernorm_out_0 =
+      pattern->NewNode(preln_emb_elt_layernorm_out_0_repr())
+          ->assert_is_op_output("fused_preln_embedding_eltwise_layernorm",
+                                "Out_0");
+  auto* preln_emb_elt_layernorm_out_1 =
+      pattern->NewNode(preln_emb_elt_layernorm_out_1_repr())
+          ->assert_is_op_output("fused_preln_embedding_eltwise_layernorm",
+                                "Out_1");
+
+  // Add links for fused_preln_embedding_eltwise_layernorm op.
+  preln_emb_elt_layernorm_op->LinksTo(
+      {preln_emb_elt_layernorm_out_0, preln_emb_elt_layernorm_out_1});
+}
+
 void SkipLayernorm::operator()() {
   // Create nodes for skip_layernorm.
   auto* skip_layernorm_x = pattern->NewNode(skip_layernorm_x_repr())
@@ -49,6 +68,30 @@ void SkipLayernorm::operator()() {
   // Add links for skip_layernorm op.
   skip_layernorm_op->LinksFrom({skip_layernorm_x, skip_layernorm_y})
       .LinksTo({skip_layernorm_out});
+}
+
+void PrelnSkipLayernorm::operator()() {
+  // Create nodes for preln_skip_layernorm.
+  auto* preln_skip_layernorm_x =
+      pattern->NewNode(preln_skip_layernorm_x_repr())
+          ->assert_is_op_input("preln_skip_layernorm", "X");
+  auto* preln_skip_layernorm_y =
+      pattern->NewNode(preln_skip_layernorm_y_repr())
+          ->assert_is_op_input("preln_skip_layernorm", "Y");
+  auto* preln_skip_layernorm_op =
+      pattern->NewNode(preln_skip_layernorm_op_repr())
+          ->assert_is_op("preln_skip_layernorm");
+  auto* preln_skip_layernorm_out_0 =
+      pattern->NewNode(preln_skip_layernorm_out_0_repr())
+          ->assert_is_op_output("preln_skip_layernorm", "Out_0");
+  auto* preln_skip_layernorm_out_1 =
+      pattern->NewNode(preln_skip_layernorm_out_1_repr())
+          ->assert_is_op_output("preln_skip_layernorm", "Out_1");
+
+  // Add links for preln_skip_layernorm op.
+  preln_skip_layernorm_op
+      ->LinksFrom({preln_skip_layernorm_x, preln_skip_layernorm_y})
+      .LinksTo({preln_skip_layernorm_out_0, preln_skip_layernorm_out_1});
 }
 
 void MultiheadMatmul::operator()() {
@@ -96,10 +139,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
   if (use_varseqlen && pos_id != "" && mask_id != "" &&
-      graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
+      (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+       graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
       graph->Has(framework::ir::kMultiheadMatmulPass)) {
     VLOG(3) << "start varseqlen remove_padding_recover_padding_pass";
   } else {
+    VLOG(3) << "remove_padding_recover_padding_pass check failed";
     return;
   }
 
@@ -129,6 +174,15 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
 
     // output
     remove_padding.SetOutput("Out", {remove_padding_out_name});
+
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("Input_scale")) {
+      remove_padding.SetAttr("out_threshold",
+                             op_node->Op()->GetAttr("Input_scale"));
+    } else {
+      VLOG(3) << "remove_padding_op has not out_threshold, because next op has "
+                 "not Input_scale.";
+    }
 
     auto remove_padding_op_node = graph->CreateOpNode(&remove_padding);
     auto remove_padding_out_node = graph->CreateVarNode(remove_padding_out);
@@ -184,6 +238,21 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // output
     recover_padding.SetOutput("Out", {out_node->Name()});
 
+    // set out_threshold for int8
+    if (op_node->Op()->HasAttr("out_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_threshold"));
+    } else if (op_node->Op()->HasAttr("out_0_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_0_threshold"));
+    } else if (op_node->Op()->HasAttr("out_1_threshold")) {
+      recover_padding.SetAttr("out_threshold",
+                              op_node->Op()->GetAttr("out_1_threshold"));
+    } else {
+      VLOG(3) << "recover_padding_op has not out_threshold, because previous "
+                 "op has not out_*_threshold.";
+    }
+
     auto recover_padding_op_node = graph->CreateOpNode(&recover_padding);
     auto recover_padding_input_node =
         graph->CreateVarNode(recover_padding_input);
@@ -229,9 +298,11 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
                "fused_embedding_eltwise_layernorm";
 
-    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_op, emb_elt_layernorm_op,
+    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_op,
+                              emb_elt_layernorm_op,
                               fused_embedding_eltwise_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_out, emb_elt_layernorm_out,
+    GET_IR_NODE_FROM_SUBGRAPH(emb_elt_layernorm_out,
+                              emb_elt_layernorm_out,
                               fused_embedding_eltwise_layernorm);
 
     insert_recover_padding_op(emb_elt_layernorm_op, emb_elt_layernorm_out);
@@ -251,12 +322,12 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
                "multihead_matmul";
 
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_input, multihead_matmul_input,
-                              multihead_matmul);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_op, multihead_matmul_op,
-                              multihead_matmul);
-    GET_IR_NODE_FROM_SUBGRAPH(multihead_matmul_out, multihead_matmul_out,
-                              multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_input, multihead_matmul_input, multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_op, multihead_matmul_op, multihead_matmul);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        multihead_matmul_out, multihead_matmul_out, multihead_matmul);
 
     multihead_matmul_input_shape = multihead_matmul_input->Var()->GetShape();
 
@@ -277,14 +348,14 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
                "skip_layernorm";
 
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_x, skip_layernorm_x,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_y, skip_layernorm_y,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_op, skip_layernorm_op,
-                              skip_layernorm);
-    GET_IR_NODE_FROM_SUBGRAPH(skip_layernorm_out, skip_layernorm_out,
-                              skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_x, skip_layernorm_x, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_y, skip_layernorm_y, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_op, skip_layernorm_op, skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        skip_layernorm_out, skip_layernorm_out, skip_layernorm);
 
     std::vector<int64_t> skip_layernorm_x_shape =
         skip_layernorm_x->Var()->GetShape();
@@ -342,7 +413,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
       check_flag = false;
     }
 
-    if (BOOST_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
+    if (PADDLE_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
       check_flag = false;
     }
     if (!check_flag) {
@@ -404,6 +475,86 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     found_subgraph_count++;
   };
   gpd4(graph, handler4);
+
+  GraphPatternDetector gpd5;
+  patterns::PrelnEmbEltwiseLayernorm fused_preln_embedding_eltwise_layernorm(
+      gpd5.mutable_pattern(), "remove_padding_recover_padding_pass");
+  fused_preln_embedding_eltwise_layernorm();
+
+  auto handler5 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "fused_preln_embedding_eltwise_layernorm";
+
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_op,
+                              fused_preln_embedding_eltwise_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_out_0,
+                              preln_emb_elt_layernorm_out_0,
+                              fused_preln_embedding_eltwise_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_emb_elt_layernorm_out_1,
+                              preln_emb_elt_layernorm_out_1,
+                              fused_preln_embedding_eltwise_layernorm);
+
+    insert_recover_padding_op(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_out_0);
+    insert_recover_padding_op(preln_emb_elt_layernorm_op,
+                              preln_emb_elt_layernorm_out_1);
+
+    found_subgraph_count++;
+  };
+  gpd5(graph, handler5);
+
+  GraphPatternDetector gpd6;
+  patterns::PrelnSkipLayernorm preln_skip_layernorm(
+      gpd6.mutable_pattern(), "remove_padding_recover_padding_pass");
+  preln_skip_layernorm();
+
+  auto handler6 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "preln_skip_layernorm";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_x, preln_skip_layernorm_x, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_y, preln_skip_layernorm_y, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        preln_skip_layernorm_op, preln_skip_layernorm_op, preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_skip_layernorm_out_0,
+                              preln_skip_layernorm_out_0,
+                              preln_skip_layernorm);
+    GET_IR_NODE_FROM_SUBGRAPH(preln_skip_layernorm_out_1,
+                              preln_skip_layernorm_out_1,
+                              preln_skip_layernorm);
+
+    std::vector<int64_t> skip_layernorm_x_shape =
+        preln_skip_layernorm_x->Var()->GetShape();
+    if (skip_layernorm_x_shape.size() != multihead_matmul_input_shape.size()) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    for (size_t i = 0; i < skip_layernorm_x_shape.size(); ++i) {
+      if (skip_layernorm_x_shape[i] != multihead_matmul_input_shape[i]) {
+        check_flag = false;
+      }
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    insert_remove_padding_op(preln_skip_layernorm_x, preln_skip_layernorm_op);
+    insert_remove_padding_op(preln_skip_layernorm_y, preln_skip_layernorm_op);
+    insert_recover_padding_op(preln_skip_layernorm_op,
+                              preln_skip_layernorm_out_0);
+    insert_recover_padding_op(preln_skip_layernorm_op,
+                              preln_skip_layernorm_out_1);
+    found_subgraph_count++;
+  };
+  gpd6(graph, handler6);
 
   AddStatis(found_subgraph_count);
 }

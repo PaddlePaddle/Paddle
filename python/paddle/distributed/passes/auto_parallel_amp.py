@@ -142,9 +142,8 @@ class AMPState(object):
         modified from paddle.fluid.contrib.mixed_precision
         """
         num_cast_ops = 0
-
+        var_name_dict = {}
         for in_name in op.input_names:
-            var_name_dict = {}
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
                     op, in_name):
                 continue
@@ -452,7 +451,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
-    attrs = {'op_role': OpRole.Backward}
+    attrs = {'op_role': OpRole.Optimize}
     new_op = main_block.append_op(type='check_finite_and_unscale',
                                   inputs=inputs,
                                   outputs=outputs,
@@ -732,7 +731,7 @@ class AMPPass(PassBase):
             'incr_ratio': self.get_attr("incr_ratio"),
             'decr_ratio': self.get_attr("decr_ratio"),
             'stop_update': self.get_attr("stop_update"),
-            'op_role': OpRole.Backward
+            'op_role': OpRole.Optimize
         }
 
         new_op = main_block.append_op(type='update_loss_scaling',

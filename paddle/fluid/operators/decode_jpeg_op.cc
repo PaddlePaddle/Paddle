@@ -67,14 +67,16 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
+      const std::string& var_name,
+      const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (var_name == "X") {
       return expected_kernel_type;
     }
 
     return framework::OpKernelType(
-        framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+        framework::TransToProtoVarType(tensor.dtype()),
+        tensor.place(),
         tensor.layout());
   }
 };
@@ -107,7 +109,9 @@ and 255.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    decode_jpeg, ops::DecodeJpegOp, ops::DecodeJpegOpMaker,
+    decode_jpeg,
+    ops::DecodeJpegOp,
+    ops::DecodeJpegOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 

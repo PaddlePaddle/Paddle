@@ -34,7 +34,8 @@ USE_OP_ITSELF(range);
 USE_OP_DEVICE_KERNEL(range, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto start = scope->Var("Start");
@@ -66,8 +67,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   // run
   auto op = f::OpRegistry::CreateOp(
-      op_type, {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
-      {{"Out", {"Out"}}}, {});
+      op_type,
+      {{"Start", {"Start"}}, {"End", {"End"}}, {"Step", {"Step"}}},
+      {{"Out", {"Out"}}},
+      {});
 
   op->Run(*scope, place);
 

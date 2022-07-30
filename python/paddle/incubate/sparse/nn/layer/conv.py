@@ -33,6 +33,7 @@ class _Conv3D(Layer):
                  dilation=1,
                  groups=1,
                  subm=False,
+                 key=None,
                  padding_mode='zeros',
                  weight_attr=None,
                  bias_attr=None,
@@ -46,6 +47,7 @@ class _Conv3D(Layer):
         self._out_channels = out_channels
         self._data_format = data_format
         self._subm = subm
+        self._key = key
 
         assert padding_mode == 'zeros', "Currently, only support padding_mode='zeros'"
         assert groups == 1, "Currently, only support groups=1"
@@ -82,9 +84,9 @@ class _Conv3D(Layer):
             shape=filter_shape,
             attr=self._param_attr,
             default_initializer=_get_default_param_initializer())
-        #self.bias = self.create_parameter(
-        #    attr=self._bias_attr, shape=[self._out_channels], is_bias=True)
-        self.bias = None
+        self.bias = self.create_parameter(attr=self._bias_attr,
+                                          shape=[self._out_channels],
+                                          is_bias=True)
 
     def forward(self, x):
         out = F.conv._conv3d(x,
@@ -95,6 +97,7 @@ class _Conv3D(Layer):
                              dilation=self._dilation,
                              groups=self._groups,
                              subm=self._subm,
+                             key=self._key,
                              data_format=self._data_format)
         return out
 
@@ -240,6 +243,7 @@ class Conv3D(_Conv3D):
                                      dilation=dilation,
                                      groups=groups,
                                      subm=False,
+                                     key=None,
                                      padding_mode=padding_mode,
                                      weight_attr=weight_attr,
                                      bias_attr=bias_attr,
@@ -293,6 +297,10 @@ class SubmConv3D(_Conv3D):
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
+        key(str, optional): the key is used to save or use the same rulebook, 
+            the definition and role of rulebook refers to
+            https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
+            default value is None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -361,6 +369,7 @@ class SubmConv3D(_Conv3D):
                  dilation=1,
                  groups=1,
                  padding_mode='zeros',
+                 key=None,
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NDHWC"):
@@ -372,6 +381,7 @@ class SubmConv3D(_Conv3D):
                                          dilation=dilation,
                                          groups=groups,
                                          subm=True,
+                                         key=key,
                                          padding_mode=padding_mode,
                                          weight_attr=weight_attr,
                                          bias_attr=bias_attr,

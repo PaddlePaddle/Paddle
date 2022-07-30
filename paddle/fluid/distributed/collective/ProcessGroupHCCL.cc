@@ -45,14 +45,18 @@ void SyncDefaultStream(
 }
 
 std::shared_ptr<ProcessGroupHCCL::HCCLTask> ProcessGroupHCCL::CreateTask(
-    std::vector<Place> places, int rank, CommType comm_type,
+    std::vector<Place> places,
+    int rank,
+    CommType comm_type,
     const std::vector<phi::DenseTensor>& inputs) {
-  return std::make_shared<ProcessGroupHCCL::HCCLTask>(places, rank, comm_type,
-                                                      inputs);
+  return std::make_shared<ProcessGroupHCCL::HCCLTask>(
+      places, rank, comm_type, inputs);
 }
 
 ProcessGroupHCCL::HCCLTask::HCCLTask(
-    const std::vector<Place>& places, int rank, CommType CommType,
+    const std::vector<Place>& places,
+    int rank,
+    CommType CommType,
     const std::vector<phi::DenseTensor>& inputs)
     : Task(rank, inputs, CommType), places_(places) {
   control_events_.resize(places.size());
@@ -99,8 +103,10 @@ bool ProcessGroupHCCL::HCCLTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupHCCL::HCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupHCCL::ProcessGroupHCCL(const std::shared_ptr<Store>& store,
-                                   int rank, int size,
-                                   const platform::Place& place, int gid)
+                                   int rank,
+                                   int size,
+                                   const platform::Place& place,
+                                   int gid)
     : ProcessGroup(rank, size, place, gid), store_(store) {
   platform::SetNPUDeviceId(place_.device);
 }
@@ -127,7 +133,8 @@ void ProcessGroupHCCL::BroadcastUniqueHCCLID(
 // create HCCLManager cache for places_key
 void ProcessGroupHCCL::CreateHCCLManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
-  PADDLE_ENFORCE_EQ(places_key.empty(), false,
+  PADDLE_ENFORCE_EQ(places_key.empty(),
+                    false,
                     platform::errors::PreconditionNotMet(
                         "Not able to create/get the HCCL Communicator since "
                         "the NPU place are not known"));
@@ -155,8 +162,8 @@ void ProcessGroupHCCL::CreateHCCLManagerCache(
   std::unique_ptr<HcclComm[]> comms(new HcclComm[places.size()]);
   for (size_t i = 0; i < places.size(); ++i) {
     platform::NPUDeviceGuard guard(places[i].GetDeviceId());
-    hccl_comms[i] = HCCLCommManager::Create(GetSize(), GetRank(), &hccl_id,
-                                            comms.get() + i);
+    hccl_comms[i] = HCCLCommManager::Create(
+        GetSize(), GetRank(), &hccl_id, comms.get() + i);
     dev_ctx[i].reset(new NPUDeviceContext(places[i]));
   }
 
@@ -172,7 +179,9 @@ void ProcessGroupHCCL::CreateHCCLManagerCache(
 template <typename Fn>
 std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::Collective(
     std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs, Fn fn, CommType op_type) {
+    std::vector<phi::DenseTensor>& outputs,
+    Fn fn,
+    CommType op_type) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
 
@@ -218,13 +227,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::AllReduce(
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const AllreduceOptions& opts) {
   return Collective(
-      in_tensors, out_tensors,
-      [&](phi::DenseTensor& input, phi::DenseTensor& output, HcclComm comm,
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          HcclComm comm,
           const aclrtStream& stream) {
         return platform::dynload::HcclAllReduce(
-            input.data(), output.data(), input.numel(),
+            input.data(),
+            output.data(),
+            input.numel(),
             platform::ToHCCLDataType(input.dtype()),
-            ToHCCLRedType(opts.reduce_op), comm, stream);
+            ToHCCLRedType(opts.reduce_op),
+            comm,
+            stream);
       },
       CommType::ALLREDUCE);
 }
@@ -239,18 +255,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupHCCL::Broadcast(
   //     CudaPlace."));
 
   return Collective(
-      in_tensors, out_tensors,
-      [&](phi::DenseTensor& input, phi::DenseTensor& output, HcclComm comm,
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          HcclComm comm,
           const aclrtStream& stream) {
         int root = opts.source_rank * in_tensors.size() + opts.source_root;
         if (rank_ == root) {
           return platform::dynload::HcclBroadcast(
-              input.data(), input.numel(),
-              platform::ToHCCLDataType(input.dtype()), root, comm, stream);
+              input.data(),
+              input.numel(),
+              platform::ToHCCLDataType(input.dtype()),
+              root,
+              comm,
+              stream);
         } else {
           return platform::dynload::HcclBroadcast(
-              output.data(), output.numel(),
-              platform::ToHCCLDataType(output.dtype()), root, comm, stream);
+              output.data(),
+              output.numel(),
+              platform::ToHCCLDataType(output.dtype()),
+              root,
+              comm,
+              stream);
         }
       },
       CommType::BROADCAST);

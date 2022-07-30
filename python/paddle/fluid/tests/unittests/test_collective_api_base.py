@@ -23,6 +23,7 @@ import subprocess
 import traceback
 import functools
 import pickle
+import tempfile
 from contextlib import closing
 import paddle
 import paddle.fluid as fluid
@@ -30,9 +31,77 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
+def create_bool_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.choice([True, False], size=shape)
+    return data
+
+
+def create_float_test_data(shape=None, dtype=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.random(shape).astype(dtype)
+    return data
+
+
+def create_int_test_data(shape=None, dtype=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.randint(0, high=100, size=shape).astype(dtype)
+    return data
+
+
+def create_complex_test_data(shape=None, dtype=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.random(shape).astype(dtype)
+    data.imag = np.random.random(shape)
+    return data
+
+
+def create_pylist_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.random(shape).tolist()
+    return data
+
+
+def create_pydict_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    key = [i for i in range(0, shape[0])]
+    value = np.random.random(shape).tolist()
+    data = dict(zip(key, value))
+    return data
+
+
+def create_test_data(shape=None, dtype=None, seed=None):
+    assert shape, "Shape should be specified"
+    if dtype == "float32" or dtype == "float16" or dtype == "float64":
+        return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "bool":
+        return create_bool_test_data(shape=shape, seed=seed)
+    elif dtype == "int32" or dtype == "int64" or dtype == "int8" or dtype == "uint8":
+        return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "complex64" or dtype == "complex128":
+        return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "pylist":
+        return create_pylist_test_data(shape=shape, seed=seed)
+    elif dtype == "pydict":
+        return create_pydict_test_data(shape=shape, seed=seed)
+    else:
+        raise NotImplementedError("Unsupported dtype for creating test data.")
+
+
 class TestCollectiveAPIRunnerBase(object):
 
-    def get_model(self, train_prog, startup_prog, rank, indata=None):
+    def get_model(self,
+                  train_prog,
+                  startup_prog,
+                  rank,
+                  indata=None,
+                  dtype=None):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -53,8 +122,9 @@ class TestCollectiveAPIRunnerBase(object):
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        np.random.seed(os.getpid())
-        indata = np.random.random((10, 1000)).astype("float32")
+        indata = create_test_data(shape=(10, 1000),
+                                  dtype=args["dtype"],
+                                  seed=os.getpid())
         if args['static_mode']:
             result = self.get_model(train_prog, startup_prog, rank)
             exe = fluid.Executor(place)
@@ -82,6 +152,7 @@ def runtime_main(test_class, col_type):
     args["backend"] = os.getenv("BACKEND")
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
+    args["dtype"] = os.getenv("DTYPE")
     model.run_trainer(args)
 
 
@@ -98,6 +169,11 @@ class TestDistBase(unittest.TestCase):
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
             self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def _find_free_port(self):
 
@@ -158,8 +234,12 @@ class TestDistBase(unittest.TestCase):
             tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
-        tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
+        path0 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr0_err_%d.log" % os.getpid())
+        path1 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr1_err_%d.log" % os.getpid())
+        tr0_pipe = open(path0, "w")
+        tr1_pipe = open(path1, "w")
         #print(tr0_cmd)
         tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
                                     stdout=subprocess.PIPE,
@@ -178,9 +258,9 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        with open("/tmp/tr0_err_%d.log" % os.getpid(), "r") as f:
+        with open(path0, "r") as f:
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
-        with open("/tmp/tr1_err_%d.log" % os.getpid(), "r") as f:
+        with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
         return pickle.loads(tr0_out), pickle.loads(
             tr1_out), tr0_proc.pid, tr1_proc.pid
@@ -193,31 +273,33 @@ class TestDistBase(unittest.TestCase):
                          static_mode="1",
                          check_error_log=False,
                          need_envs={},
-                         eager_mode=True):
+                         eager_mode=True,
+                         dtype=None):
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
         else:
             with_gloo = '1'
-        required_envs = {
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_eager_delete_tensor_gb": "0.0",
-            "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "FLAGS_call_stack_level": "2",
-            "GLOG_v": "3",
+        required_envs = os.environ.copy()
+        dtype = "float32" if dtype is None else dtype
+        additional_envs = {
             "NCCL_P2P_DISABLE": "1",
             "STATIC_MODE": static_mode,
             "PADDLE_WITH_GLOO": with_gloo,
+            "PADDLE_DISTRI_BACKEND": backend,
             "BACKEND": backend,
-            "PATH_ID": path_id
+            "PATH_ID": path_id,
+            "DTYPE": dtype
         }
+        required_envs.update(additional_envs)
         required_envs.update(need_envs)
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
+
+        if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
+            required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
+                'NVIDIA_TF32_OVERRIDE', '')
 
         if eager_mode:
             required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
@@ -226,16 +308,18 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs)
-        np.random.seed(pid0)
-        input1 = np.random.random((10, 1000))
-        np.random.seed(pid1)
-        input2 = np.random.random((10, 1000))
+        input1 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid0)
+        input2 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid1)
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
             self.assertTrue(np.allclose(tr_out0, need_result))
             self.assertTrue(np.allclose(tr_out1, need_result))
+        if col_type == "allgather_object":
+            need_result = [input1, input2]
+            self.assertEqual(need_result, tr0_out)
+            self.assertEqual(need_result, tr1_out)
         elif col_type == "broadcast":
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))

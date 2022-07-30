@@ -209,6 +209,8 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       std::vector<double>);
   PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
       std::vector<std::string>);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<Scalar>);
 
   template <typename... Tail>
   struct InferMetaFnCallHelper<MetaTensor*, Tail...> {

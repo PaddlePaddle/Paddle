@@ -27,9 +27,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -86,7 +83,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
  public:
   void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("out_dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
       ctx->SetOutputDataType("Out", data_type);
     } else {
@@ -108,15 +105,19 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum,
+                            ReduceSumInferShapeFunctor,
                             PD_INFER_META(phi::SumRawInferMeta));
 
-REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+REGISTER_OPERATOR(reduce_sum,
+                  ops::ReduceOp,
+                  ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
                   ReduceSumInferShapeFunctor);
-REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
+REGISTER_OPERATOR(reduce_sum_grad,
+                  ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);

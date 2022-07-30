@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace egr {
 
@@ -49,6 +50,22 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
           paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
           tensor->set_impl(new_buffer.impl());
         }
+      } else if (LIKELY(t.is_sparse_coo_tensor())) {
+        // In fact, the gradient of SparseTensor is still a SparseTensor
+        if (LIKELY(tensor->is_sparse_coo_tensor())) {
+          auto t_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+          paddle::experimental::Tensor t_values(
+              std::make_shared<phi::DenseTensor>(
+                  t_sparse->non_zero_elements()));
+          auto tensor_sparse =
+              std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor->impl());
+          paddle::experimental::Tensor tensor_values(
+              std::make_shared<phi::DenseTensor>(
+                  tensor_sparse->non_zero_elements()));
+          paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
+              t_values, &tensor_values);
+        }
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
@@ -70,7 +87,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 GradNodeAccumulation::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph, bool is_new_grad) {
+    bool create_graph,
+    bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -81,7 +99,8 @@ GradNodeAccumulation::operator()(
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d in slot %d .",
-                     grads[0].size(), 0));
+                     grads[0].size(),
+                     0));
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
@@ -108,7 +127,7 @@ GradNodeAccumulation::operator()(
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    std::shared_ptr<TensorVoidHook>&& hook) {
+    std::shared_ptr<VoidHook>&& hook) {
   reduce_hooks_.emplace_back(std::move(hook));
 }
 

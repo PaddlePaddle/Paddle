@@ -257,7 +257,7 @@ def _generate_states(base_seed=0, worker_id=0):
 
 def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                  auto_collate_batch, collate_fn, drop_last, init_fn, worker_id,
-                 num_workers, use_shared_memory):
+                 num_workers, use_shared_memory, base_seed):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
@@ -272,15 +272,20 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
         try:
             import numpy as np
             import time
+            import random
         except ImportError:
             pass
         else:
-            np.random.seed(_generate_states(int(time.time()), worker_id))
+            seed = base_seed + worker_id
+            random.seed(seed)
+            paddle.seed(seed)
+            np.random.seed(_generate_states(base_seed, worker_id))
 
         global _worker_info
         _worker_info = WorkerInfo(id=worker_id,
                                   num_workers=num_workers,
-                                  dataset=dataset)
+                                  dataset=dataset,
+                                  seed=base_seed)
 
         init_exception = None
         try:

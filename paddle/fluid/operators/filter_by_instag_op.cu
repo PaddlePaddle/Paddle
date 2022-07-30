@@ -14,6 +14,8 @@
 
 // #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 
+#include "paddle/fluid/operators/filter_by_instag_op.h"
+
 #if defined(PADDLE_WITH_CUDA)
 #include <cooperative_groups.h>
 #endif
@@ -31,7 +33,6 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/filter_by_instag_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -55,13 +56,22 @@ using Vector = framework::Vector<T>;
 #if defined(PADDLE_WITH_CUDA)
 
 template <typename T>
-__global__ void filter_copy_fuse_kernel(
-    const size_t N, const int ins_per_thread, size_t* x1_lods_data,
-    size_t* x2_lods_data, const int64_t* x2_data, const int64_t* x3_data,
-    int64_t filter_tag_size, T* out_data, int64_t* map_data,
-    size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
-    const T* x1_data, int x1_embed_size, float* loss_weight_data,
-    float fill_value) {
+__global__ void filter_copy_fuse_kernel(const size_t N,
+                                        const int ins_per_thread,
+                                        size_t* x1_lods_data,
+                                        size_t* x2_lods_data,
+                                        const int64_t* x2_data,
+                                        const int64_t* x3_data,
+                                        int64_t filter_tag_size,
+                                        T* out_data,
+                                        int64_t* map_data,
+                                        size_t* map_lods_data,
+                                        size_t* out_lods_data,
+                                        size_t* out_idx_data,
+                                        const T* x1_data,
+                                        int x1_embed_size,
+                                        float* loss_weight_data,
+                                        float fill_value) {
   // N is instance num
   // one threads for ins_per_thread instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -288,9 +298,12 @@ __global__ void filter_copy_fuse_kernel(
 }
 
 template <typename T>
-__global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
-                                 const T* out_grad_data, T* x1_grad_data,
-                                 const int64_t* map_data, int x1_embed_size) {
+__global__ void copy_grad_kernel(const size_t N,
+                                 const int ins_per_thread,
+                                 const T* out_grad_data,
+                                 T* x1_grad_data,
+                                 const int64_t* map_data,
+                                 int x1_embed_size) {
   // N is instance num
   // one threads for one instance
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -435,9 +448,22 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     float fill_value = 1.0;
 
     filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
-        x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
-        x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
-        out_idx_data, x1_data, x1_embed_size, loss_weight_data, fill_value);
+        x2_lods_size,
+        ins_per_thread,
+        x1_lods_data,
+        x2_lods_data,
+        x2_data,
+        x3_data,
+        x3->numel(),
+        out_data,
+        map_data,
+        map_lods_data,
+        out_lods_data,
+        out_idx_data,
+        x1_data,
+        x1_embed_size,
+        loss_weight_data,
+        fill_value);
 
     platform::GpuStreamSync(current_stream);
 
@@ -503,16 +529,20 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
       // gpu kernel
       if (std::is_same<T, int32_t>::value) {
-        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+        thrust::fill(out_data_ptr,
+                     out_data_ptr + out->numel(),
                      static_cast<int32_t>(out_val_if_empty));
       } else if (std::is_same<T, int64_t>::value) {
-        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+        thrust::fill(out_data_ptr,
+                     out_data_ptr + out->numel(),
                      static_cast<int64_t>(out_val_if_empty));
       } else if (std::is_same<T, float>::value) {
-        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+        thrust::fill(out_data_ptr,
+                     out_data_ptr + out->numel(),
                      static_cast<float>(out_val_if_empty));
       } else {
-        thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
+        thrust::fill(out_data_ptr,
+                     out_data_ptr + out->numel(),
                      static_cast<double>(out_val_if_empty));
       }
 
@@ -552,8 +582,8 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     thrust::device_ptr<T> x1_grad_data_ptr(x1_grad_data);
     thrust::device_ptr<const float> loss_weight_data_ptr(loss_weight_data);
 
-    thrust::fill(x1_grad_data_ptr,
-                 x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
+    thrust::fill(
+        x1_grad_data_ptr, x1_grad_data_ptr + x1->dims()[0] * x1->dims()[1], 0);
 
     if (loss_weight->numel() != 1 || loss_weight_data_ptr[0] != 0) {
       auto output_dims = output_grad->dims();
@@ -570,7 +600,11 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
       const int ins_per_thread = 1;
 
       copy_grad_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
-          N, ins_per_thread, output_grad_data, x1_grad_data, mmap_data,
+          N,
+          ins_per_thread,
+          output_grad_data,
+          x1_grad_data,
+          mmap_data,
           x1_embed_size);
 
       cudaStreamSynchronize(current_stream);
@@ -585,7 +619,8 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(filter_by_instag, ops::FilterByInstagGPUKernel<float>,
+REGISTER_OP_CUDA_KERNEL(filter_by_instag,
+                        ops::FilterByInstagGPUKernel<float>,
                         ops::FilterByInstagGPUKernel<double>,
                         ops::FilterByInstagGPUKernel<int32_t>,
                         ops::FilterByInstagGPUKernel<int64_t>);

@@ -434,6 +434,68 @@ void AucInferMeta(const MetaTensor& input,
   }
 }
 
+void AverageAccumulatesInferMeta(const MetaTensor& param,
+                                 const MetaTensor& in_sum_1,
+                                 const MetaTensor& in_sum_2,
+                                 const MetaTensor& in_sum_3,
+                                 const MetaTensor& in_num_accumulates,
+                                 const MetaTensor& in_old_num_accumulates,
+                                 const MetaTensor& in_num_updates,
+                                 float average_window,
+                                 int64_t max_average_window,
+                                 int64_t min_average_window,
+                                 MetaTensor* out_sum_1,
+                                 MetaTensor* out_sum_2,
+                                 MetaTensor* out_sum_3,
+                                 MetaTensor* out_num_accumulates,
+                                 MetaTensor* out_old_num_accumulates,
+                                 MetaTensor* out_num_updates) {
+  // auto in_dim = param.dims;
+  PADDLE_ENFORCE_NE(
+      out_sum_1,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_1) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_2,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_2) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(
+      out_sum_3,
+      nullptr,
+      errors::NotFound(
+          "Output(out_sum_3) of AverageAccumulates should not be null."));
+  PADDLE_ENFORCE_NE(out_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(out_old_num_accumulates,
+                    nullptr,
+                    errors::NotFound("Output(out_old_num_accumulates) of "
+                                     "AverageAccumulates should not be null."));
+
+  PADDLE_ENFORCE_NE(
+      out_num_updates,
+      nullptr,
+      errors::NotFound(
+          "Output(out_num_updates) of AverageAccumulates should not be null."));
+
+  out_sum_1->set_dims(in_sum_1.dims());
+  out_sum_1->set_dtype(in_sum_1.dtype());
+  out_sum_2->set_dims(in_sum_2.dims());
+  out_sum_2->set_dtype(in_sum_2.dtype());
+  out_sum_3->set_dims(in_sum_3.dims());
+  out_sum_3->set_dtype(in_sum_3.dtype());
+  out_num_accumulates->set_dims({1});
+  out_num_accumulates->set_dtype(in_num_accumulates.dtype());
+  out_old_num_accumulates->set_dims({1});
+  out_old_num_accumulates->set_dtype(in_old_num_accumulates.dtype());
+  out_num_updates->set_dims({1});
+  out_num_updates->set_dtype(in_num_updates.dtype());
+}
+
 void BatchNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
                         const MetaTensor& bias,
@@ -1528,6 +1590,43 @@ void LogspaceInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
+void MergedAdamInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const std::vector<const MetaTensor*>& moment1,
+    const std::vector<const MetaTensor*>& moment2,
+    const std::vector<const MetaTensor*>& beta1_pow,
+    const std::vector<const MetaTensor*>& beta2_pow,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> moment1_out,
+    std::vector<MetaTensor*> moment2_out,
+    std::vector<MetaTensor*> beta1_pow_out,
+    std::vector<MetaTensor*> beta2_pow_out,
+    std::vector<MetaTensor*> master_param_out) {}
+
+void MergedMomentumInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    float mu,
+    bool use_nesterov,
+    const std::vector<std::string>& regularization_method,
+    const std::vector<float>& regularization_coeff,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out) {}
+
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs) {
   const size_t inputs_num = inputs.size();
@@ -2012,7 +2111,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctc_grad,
+                      MetaTensor* warpctcgrad,
                       MetaTensor* loss) {
   auto logits_dims = logits.dims();
   int sequence_width = 0;

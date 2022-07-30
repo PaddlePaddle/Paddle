@@ -13,7 +13,7 @@ if(WITH_PYTHON)
       POST_BUILD
       COMMAND mv the_one_ps_pb2.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/)
-  else(NOT WIN32)
+  else()
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -24,7 +24,7 @@ if(WITH_PYTHON)
       COMMENT
         "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
     )
-  endif(NOT WIN32)
+  endif()
 endif()
 
 if(NOT WITH_PSCORE)
@@ -33,11 +33,6 @@ if(NOT WITH_PSCORE)
 endif()
 
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
-add_custom_command(
-  TARGET ps_framework_proto
-  POST_BUILD
-  COMMAND mv the_one_ps.pb.h ps.pb.h
-  COMMAND mv the_one_ps.pb.cc ps.pb.cc)
 
 set(DISTRIBUTE_COMPILE_FLAGS
     "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"

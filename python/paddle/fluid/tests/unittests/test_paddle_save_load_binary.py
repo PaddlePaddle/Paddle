@@ -21,6 +21,7 @@ import os
 import sys
 import six
 import platform
+import tempfile
 
 import paddle
 import paddle.nn as nn
@@ -38,6 +39,10 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
     def setUp(self):
         # enable static graph mode
         paddle.enable_static()
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def set_zero(self, prog, place, scope=None):
         if scope is None:
@@ -97,7 +102,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             # test for replace_save_vars/io.load_vars
-            path_vars1 = 'test_replace_save_load_vars_binary1/model'
+            path_vars1 = os.path.join(
+                self.temp_dir.name, 'test_replace_save_load_vars_binary1/model')
             self.replace_save_vars(prog, path_vars1)
             # set var to zero
             self.set_zero(prog, place)
@@ -116,7 +122,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
                     self.assertTrue(np.array_equal(new_t, base_t))
             # test for io.save_vars/replace_load_vars
-            path_vars2 = 'test_replace_save_load_vars_binary2/model/'
+            path_vars2 = os.path.join(
+                self.temp_dir.name,
+                'test_replace_save_load_vars_binary2/model/')
             fluid.io.save_vars(exe,
                                path_vars2,
                                main_program=prog,
@@ -149,7 +157,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             prog = paddle.static.default_main_program()
             exe.run(fluid.default_startup_program())
 
-            dirname = 'test_save_load_lod_tensor1/tensor_'
+            dirname = os.path.join(self.temp_dir.name,
+                                   'test_save_load_lod_tensor1/tensor_')
             for var in prog.list_vars():
                 if var.persistable and list(
                         var.shape) == [IMAGE_SIZE, OUTPUT_NUM]:
@@ -171,12 +180,13 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             self.assertTrue(np.array_equal(origin, to_array))
 
         with self.assertRaises(NotImplementedError):
-            path = 'test_save_load_error/temp'
+            path = os.path.join(self.temp_dir.name, 'test_save_load_error/temp')
             paddle.save({}, path, use_binary_format=True)
         # On the Windows platform, when parsing a string that can't be parsed as a `Program`, `desc_.ParseFromString` has a timeout risk.
         if 'Windows' != platform.system():
             with self.assertRaises(ValueError):
-                path = 'test_save_load_error/temp'
+                path = os.path.join(self.temp_dir.name,
+                                    'test_save_load_error/temp')
                 with open(path, "w") as f:
                     f.write('\0')
                 paddle.load(path)
@@ -187,11 +197,17 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             fluid.core.save_lod_tensor(
-                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+                temp_lod,
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_save_load_error_not_exist_file/not_exist_file'))
 
         with self.assertRaises(RuntimeError):
             fluid.core.load_lod_tensor(
-                temp_lod, 'test_save_load_error_not_exist_file/not_exist_file')
+                temp_lod,
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_save_load_error_not_exist_file/not_exist_file'))
 
         # save to memory
         byio = BytesIO()
@@ -215,7 +231,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         rows = [0, 4, 7]
         row_numel = 12
         selected_rows = fluid.core.SelectedRows(rows, height)
-        path = 'test_paddle_save_load_selected_rows/sr.pdsr'
+        path = os.path.join(self.temp_dir.name,
+                            'test_paddle_save_load_selected_rows/sr.pdsr')
 
         with self.assertRaises(ValueError):
             paddle.save(selected_rows, path, use_binary_format=True)
@@ -236,11 +253,15 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             fluid.core.save_selected_rows(
                 selected_rows,
-                'test_paddle_save_load_selected_rows_not_exist_file/temp')
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_paddle_save_load_selected_rows_not_exist_file/temp'))
         with self.assertRaises(RuntimeError):
             fluid.core.load_selected_rows(
                 selected_rows,
-                'test_paddle_save_load_selected_rows_not_exist_file/temp')
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_paddle_save_load_selected_rows_not_exist_file/temp'))
 
         # save to memory
         byio = BytesIO()

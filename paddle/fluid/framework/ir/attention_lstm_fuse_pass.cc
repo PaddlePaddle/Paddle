@@ -185,18 +185,24 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
 
 void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
                        const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
+                       const LoDTensor& W_input_w0,
+                       const LoDTensor& W_input_w1,
                        const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out);
+                       const LoDTensor& W_output_w1,
+                       const LoDTensor& W_cell_w0,
+                       const LoDTensor& W_cell_w1,
+                       LoDTensor* out);
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
+void PrepareLSTMBias(const LoDTensor& B_forget,
+                     const LoDTensor& B_input,
+                     const LoDTensor& B_output,
+                     const LoDTensor& B_cell,
                      LoDTensor* out);
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
-  PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr), true,
+  PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr),
+                    true,
                     platform::errors::InvalidArgument(
                         "Graph have no attribute: kParamScopeAttr."));
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
@@ -245,8 +251,8 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   auto* attention_fc_b = scope.FindVar("attention_fc.b_0");
   auto* attention_output_w = scope.FindVar("attention_output.w_0");
   auto* attention_output_b = scope.FindVar("attention_output.b_0");
-  CHECK_P4(attention_fc_w, attention_fc_b, attention_output_w,
-           attention_output_b);
+  CHECK_P4(
+      attention_fc_w, attention_fc_b, attention_output_w, attention_output_b);
 
   auto* lstm_weight = scope.Var(param.LSTMWeight);
   auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
@@ -256,7 +262,8 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // reshape attention_bias
   auto* attention_bias_t =
       scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1,
+  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(),
+                    1,
                     platform::errors::InvalidArgument(
                         "Tensor attention bias dimension size(%d) must be 1.",
                         attention_bias_t->dims().size()));
@@ -267,32 +274,43 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   attention_scalar_bias_t->Resize(
       phi::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
-  PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
-                    W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
+  PrepareLSTMWeight(W_forget_w0_t,
+                    W_forget_w1_t,
+                    W_input_w0_t,
+                    W_input_w1_t,
+                    W_output_w0_t,
+                    W_output_w1_t,
+                    W_c_w0_t,
+                    W_c_w1_t,
                     lstm_weight_t);
-  PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
-                  lstm_bias_t);
+  PrepareLSTMBias(
+      W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t, lstm_bias_t);
 }
 
 // Prepare parameters
 void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
                        const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
+                       const LoDTensor& W_input_w0,
+                       const LoDTensor& W_input_w1,
                        const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out) {
+                       const LoDTensor& W_output_w1,
+                       const LoDTensor& W_cell_w0,
+                       const LoDTensor& W_cell_w1,
+                       LoDTensor* out) {
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(phi::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors{
-      W_forget_w0.data<float>(), W_input_w0.data<float>(),
-      W_output_w0.data<float>(), W_cell_w0.data<float>()};
-  std::array<const float*, 4> tensors1{
-      W_forget_w1.data<float>(), W_input_w1.data<float>(),
-      W_output_w1.data<float>(), W_cell_w1.data<float>()};
+  std::array<const float*, 4> tensors{W_forget_w0.data<float>(),
+                                      W_input_w0.data<float>(),
+                                      W_output_w0.data<float>(),
+                                      W_cell_w0.data<float>()};
+  std::array<const float*, 4> tensors1{W_forget_w1.data<float>(),
+                                       W_input_w1.data<float>(),
+                                       W_output_w1.data<float>(),
+                                       W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -311,14 +329,18 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   }
 }
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
+void PrepareLSTMBias(const LoDTensor& B_forget,
+                     const LoDTensor& B_input,
+                     const LoDTensor& B_output,
+                     const LoDTensor& B_cell,
                      LoDTensor* out) {
-  std::array<const float*, 4> tensors{
-      B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-      B_cell.data<float>()};
+  std::array<const float*, 4> tensors{B_forget.data<float>(),
+                                      B_input.data<float>(),
+                                      B_output.data<float>(),
+                                      B_cell.data<float>()};
 
-  PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1,
+  PADDLE_ENFORCE_EQ(B_forget.dims().size(),
+                    1,
                     platform::errors::InvalidArgument(
                         "Tensor B forget dimension size(%d) must be 1.",
                         B_forget.dims().size()));
@@ -338,8 +360,11 @@ void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   // Use the following variables to tell whether this model is RNN1.
   // This fuse can only works on the RNN1 model.
   std::unordered_set<std::string> specified_vars({"data_lod_attention",
-                                                  "cell_init", "hidden_init",
-                                                  "data", "week", "minute"});
+                                                  "cell_init",
+                                                  "hidden_init",
+                                                  "data",
+                                                  "week",
+                                                  "minute"});
   size_t count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsVar() && specified_vars.count(node->Name())) {

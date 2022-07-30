@@ -23,12 +23,12 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
-#include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 namespace phi {
 namespace sparse {

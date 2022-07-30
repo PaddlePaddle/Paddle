@@ -34,7 +34,7 @@ class TestVarBase(unittest.TestCase):
 
     def func_test_to_tensor(self):
 
-        def _test_place(place):
+        def check_with_place(place):
             with fluid.dygraph.guard():
                 paddle.set_default_dtype('float32')
                 # set_default_dtype should not take effect on int
@@ -79,6 +79,7 @@ class TestVarBase(unittest.TestCase):
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "Place(gpu_pinned)")
                     y = x.cuda()
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(None)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0)
@@ -266,16 +267,16 @@ class TestVarBase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     paddle.to_tensor([[1], [2, 3]], place=1)
 
-        _test_place(core.CPUPlace())
-        _test_place("cpu")
+        check_with_place(core.CPUPlace())
+        check_with_place("cpu")
         if core.is_compiled_with_cuda():
-            _test_place(core.CUDAPinnedPlace())
-            _test_place("gpu_pinned")
-            _test_place(core.CUDAPlace(0))
-            _test_place("gpu:0")
+            check_with_place(core.CUDAPinnedPlace())
+            check_with_place("gpu_pinned")
+            check_with_place(core.CUDAPlace(0))
+            check_with_place("gpu:0")
         if core.is_compiled_with_npu():
-            _test_place(core.NPUPlace(0))
-            _test_place("npu:0")
+            check_with_place(core.NPUPlace(0))
+            check_with_place("npu:0")
 
     def test_to_tensor(self):
         with _test_eager_guard():
@@ -1776,7 +1777,7 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             b = a**2
             self.assertEqual(a._grad_value(), None)
             b.backward()
-            self.assertEqual('eager_tmp' in a._grad_name(), True)
+            # Note, for new dygraph, there are no generated grad name, so we skip the name check.
             self.assertNotEqual(a._grad_value(), None)
 
 

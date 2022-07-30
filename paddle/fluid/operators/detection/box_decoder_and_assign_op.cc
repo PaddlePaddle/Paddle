@@ -23,27 +23,33 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("PriorBox"), true,
+        ctx->HasInput("PriorBox"),
+        true,
         platform::errors::NotFound("Input(PriorBox) of BoxDecoderAndAssignOp "
                                    "is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("PriorBoxVar"), true,
+        ctx->HasInput("PriorBoxVar"),
+        true,
         platform::errors::NotFound("Input(PriorBoxVar) of BoxDecoderAndAssignOp"
                                    " is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("TargetBox"), true,
+        ctx->HasInput("TargetBox"),
+        true,
         platform::errors::NotFound("Input(TargetBox) of BoxDecoderAndAssignOp "
                                    "is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("BoxScore"), true,
+        ctx->HasInput("BoxScore"),
+        true,
         platform::errors::NotFound("Input(BoxScore) of BoxDecoderAndAssignOp "
                                    "is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("DecodeBox"), true,
+        ctx->HasOutput("DecodeBox"),
+        true,
         platform::errors::NotFound("Output(DecodeBox) of BoxDecoderAndAssignOp"
                                    " is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("OutputAssignBox"), true,
+        ctx->HasOutput("OutputAssignBox"),
+        true,
         platform::errors::NotFound("Output(OutputAssignBox) of "
                                    "BoxDecoderAndAssignOp is not found."));
 
@@ -53,54 +59,65 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
     auto box_score_dims = ctx->GetInputDim("BoxScore");
 
     PADDLE_ENFORCE_EQ(
-        prior_box_dims.size(), 2,
+        prior_box_dims.size(),
+        2,
         platform::errors::InvalidArgument("The rank of Input of PriorBox must"
                                           " be 2. But received rank = %d",
                                           prior_box_dims.size()));
     PADDLE_ENFORCE_EQ(
-        prior_box_dims[1], 4,
+        prior_box_dims[1],
+        4,
         platform::errors::InvalidArgument(
             "The shape of PriorBox is [N, 4], "
             "and the second dimension must be 4. But received dimension = %d",
             prior_box_dims[1]));
     PADDLE_ENFORCE_EQ(
-        prior_box_var_dims.size(), 1,
+        prior_box_var_dims.size(),
+        1,
         platform::errors::InvalidArgument("The rank of Input of PriorBoxVar "
                                           "must be 1. But received rank = %d",
                                           prior_box_var_dims.size()));
     PADDLE_ENFORCE_EQ(
-        prior_box_var_dims[0], 4,
+        prior_box_var_dims[0],
+        4,
         platform::errors::InvalidArgument("The shape of PriorBoxVar is [4]. "
                                           "But received dimension = %d",
                                           prior_box_var_dims[0]));
     PADDLE_ENFORCE_EQ(
-        target_box_dims.size(), 2,
+        target_box_dims.size(),
+        2,
         platform::errors::InvalidArgument("The rank of Input of TargetBox must "
                                           "be 2. But received rank = %d",
                                           target_box_dims.size()));
     PADDLE_ENFORCE_EQ(
-        box_score_dims.size(), 2,
+        box_score_dims.size(),
+        2,
         platform::errors::InvalidArgument("The rank of Input of BoxScore must "
                                           "be 2. But received rank = %d",
                                           box_score_dims.size()));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          prior_box_dims[0], target_box_dims[0],
+          prior_box_dims[0],
+          target_box_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension of prior_box and "
               "target_box is the number of box and should be same. But "
               "received dimension of prior_box is %d, dimension of target_box "
               "is %d",
-              prior_box_dims[0], target_box_dims[0]));
+              prior_box_dims[0],
+              target_box_dims[0]));
       PADDLE_ENFORCE_EQ(
-          prior_box_dims[0], box_score_dims[0],
+          prior_box_dims[0],
+          box_score_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension of prior_box and "
               "box_score is the number of box and should be same. But received "
               "dimension of prior_box is %d, dimension of box_score is %d",
-              prior_box_dims[0], box_score_dims[0]));
+              prior_box_dims[0],
+              box_score_dims[0]));
       PADDLE_ENFORCE_EQ(
-          target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
+          target_box_dims[1],
+          box_score_dims[1] * prior_box_dims[1],
           platform::errors::InvalidArgument(
               "The shape of target_box is "
               "[N, classnum * 4], The shape of box_score is [N, classnum], "
@@ -108,7 +125,9 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
               "of "
               "target_box is %d, second dimension of box_score_dims is %d, "
               "and second dimension of prior_box_dims is %d",
-              target_box_dims[1], box_score_dims[1], prior_box_dims[1]));
+              target_box_dims[1],
+              box_score_dims[1],
+              prior_box_dims[1]));
     }
     ctx->SetOutputDim("DecodeBox",
                       phi::make_ddim({target_box_dims[0], target_box_dims[1]}));
@@ -202,11 +221,12 @@ output_assign_box is the same as PriorBox.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
+    box_decoder_and_assign,
+    ops::BoxDecoderAndAssignOp,
     ops::BoxDecoderAndAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    box_decoder_and_assign,
-    ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(box_decoder_and_assign,
+                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, float>,
+                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, double>);

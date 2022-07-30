@@ -37,7 +37,7 @@ from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.distributed.fleet.utils.recompute import RecomputeFunction
+from paddle.distributed.fleet.utils.recompute import LegacyRecomputeFunction
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 
 __all__ = []
@@ -68,7 +68,8 @@ class _RecomputeModelWrapper(paddle.nn.Layer):
         return do_run
 
     def _checkpoint(self, func, *args, **kwargs):
-        return RecomputeFunction.apply(func, self._preserve_rng_state, *args)
+        return LegacyRecomputeFunction.apply(func, self._preserve_rng_state,
+                                             *args)
 
     def forward(self, input):
         end = 0
@@ -510,6 +511,9 @@ class Fleet(object):
         """
         return self._role_maker._is_worker()
 
+    def is_coordinator(self):
+        return self._role_maker._is_coordinator()
+
     def worker_endpoints(self, to_string=False):
         """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
@@ -640,6 +644,25 @@ class Fleet(object):
 
         """
         self._runtime_handle._init_worker(scopes)
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def init_coordinator(self, scopes=None):
+        """
+        initialize coordinator node
+        """
+        self._runtime_handle._init_coordinator(scopes)
+
+    def make_fl_strategy(self):
+        self._runtime_handle._make_fl_strategy()
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def get_fl_client(self):
+        """
+        get worker(training node) ptr
+        """
+        return self._runtime_handle._worker
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1811,8 +1834,8 @@ class Fleet(object):
                     if (param._grad_ivar() is not None) and (
                         param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
-            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
-            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
             if len(param_grads_fp16):
                 _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
                                                 param_grads_fp16,

@@ -99,7 +99,8 @@ void EventsWaiter::UnregisterEvent(const EventId& id) {
 std::string EventsWaiter::WaitEvent() {
   // only one user can wait at any time
   bool waiting = false;
-  if (!waiting_.compare_exchange_strong(waiting, true,
+  if (!waiting_.compare_exchange_strong(waiting,
+                                        true,
                                         std::memory_order_seq_cst,
                                         std::memory_order_relaxed)) {
     PADDLE_THROW(
@@ -128,7 +129,9 @@ std::string EventsWaiter::WaitEvent() {
       if (triggered != kEmptyEventId) {
         EventId prev = kEmptyEventId;
         if (!trigger_event_.compare_exchange_strong(
-                prev, triggered, std::memory_order_seq_cst,
+                prev,
+                triggered,
+                std::memory_order_seq_cst,
                 std::memory_order_relaxed)) {
           triggered = prev;
         }
@@ -167,7 +170,8 @@ std::string EventsWaiter::WaitEvent() {
 
 int EventsWaiter::Clear() {
   bool waiting = false;
-  if (!waiting_.compare_exchange_strong(waiting, true,
+  if (!waiting_.compare_exchange_strong(waiting,
+                                        true,
                                         std::memory_order_seq_cst,
                                         std::memory_order_relaxed)) {
     return -1;
@@ -192,7 +196,8 @@ void EventsWaiter::TriggerEvent(const EventId& id) {
 void EventsWaiter::CancelEvent(const EventId& id) {
   VLOG(10) << "Try to cancel event id:" << id;
   EventId prev = id;
-  if (!trigger_event_.compare_exchange_strong(prev, kEmptyEventId,
+  if (!trigger_event_.compare_exchange_strong(prev,
+                                              kEmptyEventId,
                                               std::memory_order_seq_cst,
                                               std::memory_order_relaxed)) {
     VLOG(10) << "Event id:" << prev << " is pending";

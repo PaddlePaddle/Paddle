@@ -1,4 +1,3 @@
-add_subdirectory(detail)
 add_subdirectory(allocation)
 
 if(WITH_MKLDNN)
@@ -10,7 +9,7 @@ endif()
 cc_library(
   malloc
   SRCS malloc.cc
-  DEPS place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
+  DEPS place enforce allocator profiler ${MKLDNN_CTX_DEPS})
 cc_library(
   memcpy
   SRCS memcpy.cc
@@ -47,10 +46,8 @@ if(WITH_GPU)
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
       stream_safe_cuda_alloc_test
-      PROPERTIES
-        ENVIRONMENT
-        "FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_allocator_strategy=auto_growth"
-    )
+      PROPERTIES ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true; \
+        FLAGS_allocator_strategy=auto_growth")
   endif()
 endif()
 
@@ -74,9 +71,7 @@ if(WITH_TESTING AND TEST cuda_managed_memory_test)
       TIMEOUT 50)
 endif()
 
-if(WITH_GPU
-   AND WITH_TESTING
-   AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+if(WITH_GPU AND WITH_TESTING)
   nv_test(
     get_base_ptr_test
     SRCS get_base_ptr_test.cu

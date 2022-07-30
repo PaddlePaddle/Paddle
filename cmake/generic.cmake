@@ -116,7 +116,7 @@ function(find_fluid_modules TARGET_NAME)
     set(fluid_modules ${fluid_modules} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
   endif()
-endfunction(find_fluid_modules)
+endfunction()
 
 set_property(GLOBAL PROPERTY PHI_MODULES "")
 # find all phi modules is used for paddle static library
@@ -131,7 +131,7 @@ function(find_phi_modules TARGET_NAME)
     set(phi_modules ${phi_modules} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
   endif()
-endfunction(find_phi_modules)
+endfunction()
 
 function(common_link TARGET_NAME)
   if(WITH_PROFILER)
@@ -152,7 +152,7 @@ function(find_fluid_thirdparties TARGET_NAME)
     set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
   endif()
-endfunction(find_fluid_thirdparties)
+endfunction()
 
 function(create_static_lib TARGET_NAME)
   set(libs ${ARGN})
@@ -315,7 +315,7 @@ function(check_coverage_opt TARGET_NAME SRCS)
             set(use_coverage_opt TRUE)
             break()
           endif()
-        endforeach(cc_file)
+        endforeach()
 
         if(use_coverage_opt)
           message(STATUS "cc changed, add coverage opt for ${TARGET_NAME}")
@@ -331,7 +331,7 @@ function(check_coverage_opt TARGET_NAME SRCS)
       endif()
     endif()
   endif()
-endfunction(check_coverage_opt)
+endfunction()
 
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared INTERFACE interface)
@@ -344,7 +344,7 @@ function(cc_library TARGET_NAME)
     set(${TARGET_NAME}_LIB_NAME
         "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE STRING "output library name for target ${TARGET_NAME}")
-  endif(WIN32)
+  endif()
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
@@ -372,10 +372,10 @@ function(cc_library TARGET_NAME)
         add_dependencies(${TARGET_NAME} mklml)
         if(WIN32)
           target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else(WIN32)
+        else()
           target_link_libraries(${TARGET_NAME}
                                 "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif(WIN32)
+        endif()
       endif()
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
@@ -386,7 +386,7 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
         else()
           target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
-        endif(WIN32)
+        endif()
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       common_link(${TARGET_NAME})
@@ -402,7 +402,7 @@ function(cc_library TARGET_NAME)
 
     check_coverage_opt(${TARGET_NAME} ${cc_library_SRCS})
 
-  else(cc_library_SRCS)
+  else()
     if(cc_library_DEPS)
       list(REMOVE_DUPLICATES cc_library_DEPS)
 
@@ -417,8 +417,8 @@ function(cc_library TARGET_NAME)
           "Please specify source files or libraries in cc_library(${TARGET_NAME} ...)."
       )
     endif()
-  endif(cc_library_SRCS)
-endfunction(cc_library)
+  endif()
+endfunction()
 
 function(cc_binary TARGET_NAME)
   set(options "")
@@ -440,10 +440,10 @@ function(cc_binary TARGET_NAME)
 
   check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
 
-endfunction(cc_binary)
+endfunction()
 
 function(cc_test_build TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -454,7 +454,7 @@ function(cc_test_build TARGET_NAME)
         list(REMOVE_ITEM cc_test_DEPS python)
         target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
       endif()
-    endif(WIN32)
+    endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
@@ -484,7 +484,7 @@ function(cc_test_build TARGET_NAME)
 endfunction()
 
 function(cc_test_run TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -513,10 +513,7 @@ function(cc_test_run TARGET_NAME)
 endfunction()
 
 function(cc_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -539,7 +536,7 @@ function(cc_test TARGET_NAME)
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
   endif()
-endfunction(cc_test)
+endfunction()
 
 function(nv_library TARGET_NAME)
   if(WITH_GPU)
@@ -572,7 +569,7 @@ function(nv_library TARGET_NAME)
                ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-    else(nv_library_SRCS)
+    else()
       if(nv_library_DEPS)
         list(REMOVE_DUPLICATES nv_library_DEPS)
         generate_dummy_static_lib(
@@ -584,7 +581,7 @@ function(nv_library TARGET_NAME)
       else()
         message(FATAL "Please specify source file or library in nv_library.")
       endif()
-    endif(nv_library_SRCS)
+    endif()
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))
@@ -592,7 +589,7 @@ function(nv_library TARGET_NAME)
                                                       ${WIN_PROPS})
     endif()
   endif()
-endfunction(nv_library)
+endfunction()
 
 function(nv_binary TARGET_NAME)
   if(WITH_GPU)
@@ -608,21 +605,16 @@ function(nv_binary TARGET_NAME)
       common_link(${TARGET_NAME})
     endif()
     if((CUDA_VERSION GREATER 9.2)
-       AND (CUDA_VERSION LESS 11.0)
-       AND (MSVC_VERSION LESS 1910))
+       and (CUDA_VERSION LESS 11.0)
+       and (MSVC_VERSION LESS 1910))
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
                                                       ${WIN_PROPS})
     endif()
   endif()
-endfunction(nv_binary)
+endfunction()
 
 function(nv_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_GPU
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_GPU AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}"
@@ -667,7 +659,7 @@ function(nv_test TARGET_NAME)
                                                       ${WIN_PROPS})
     endif()
   endif()
-endfunction(nv_test)
+endfunction()
 
 function(hip_library TARGET_NAME)
   if(WITH_ROCM)
@@ -702,7 +694,7 @@ function(hip_library TARGET_NAME)
                ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-    else(hip_library_SRCS)
+    else()
       if(hip_library_DEPS)
         list(REMOVE_DUPLICATES hip_library_DEPS)
         generate_dummy_static_lib(
@@ -714,9 +706,9 @@ function(hip_library TARGET_NAME)
       else()
         message(FATAL "Please specify source file or library in hip_library.")
       endif()
-    endif(hip_library_SRCS)
+    endif()
   endif()
-endfunction(hip_library)
+endfunction()
 
 function(hip_binary TARGET_NAME)
   if(WITH_ROCM)
@@ -733,20 +725,16 @@ function(hip_binary TARGET_NAME)
       common_link(${TARGET_NAME})
     endif()
   endif()
-endfunction(hip_binary)
+endfunction()
 
 function(hip_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_ROCM
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_ROCM AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    # FindHIP.cmake defined hip_add_executable, HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
+    # FindHIP.cmake defined hip_add_executable,
+    # HIP_SOURCE_PROPERTY_FORMAT is requried for .cc files
     hip_add_executable(${TARGET_NAME} ${hip_test_SRCS})
     # "-pthread -ldl -lrt" is defined in CMAKE_CXX_LINK_EXECUTABLE
     target_link_options(${TARGET_NAME} PRIVATE -pthread -ldl -lrt)
@@ -785,7 +773,7 @@ function(hip_test TARGET_NAME)
         "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH"
     )
   endif()
-endfunction(hip_test)
+endfunction()
 
 function(xpu_library TARGET_NAME)
   if(WITH_XPU_KP)
@@ -817,7 +805,7 @@ function(xpu_library TARGET_NAME)
                ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-    else(xpu_library_SRCS)
+    else()
       if(xpu_library_DEPS)
         list(REMOVE_DUPLICATES xpu_library_DEPS)
         generate_dummy_static_lib(
@@ -828,9 +816,9 @@ function(xpu_library TARGET_NAME)
       else()
         message(FATAL "Please specify source file or library in xpu_library.")
       endif()
-    endif(xpu_library_SRCS)
+    endif()
   endif()
-endfunction(xpu_library)
+endfunction()
 
 function(xpu_binary TARGET_NAME)
   if(WITH_XPU_KP)
@@ -846,15 +834,10 @@ function(xpu_binary TARGET_NAME)
       common_link(${TARGET_NAME})
     endif()
   endif()
-endfunction(xpu_binary)
+endfunction()
 
 function(xpu_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_XPU_KP
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_XPU_KP AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(xpu_test "${options}" "${oneValueArgs}"
@@ -891,7 +874,7 @@ function(xpu_test TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
   endif()
-endfunction(xpu_test)
+endfunction()
 
 function(go_library TARGET_NAME)
   set(options STATIC static SHARED shared)
@@ -934,7 +917,7 @@ function(go_library TARGET_NAME)
   if(go_library_DEPS)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
     common_link(${TARGET_NAME})
-  endif(go_library_DEPS)
+  endif()
 
   # The "source file" of the library is `${dummyfile}` which never
   # change, so the target will never rebuild. Make the target depends
@@ -965,7 +948,7 @@ function(go_library TARGET_NAME)
     # must run under GOPATH
     WORKING_DIRECTORY "${PADDLE_IN_GOPATH}/go")
   add_dependencies(${TARGET_NAME} go_vendor)
-endfunction(go_library)
+endfunction()
 
 function(go_binary TARGET_NAME)
   set(options OPTIONAL)
@@ -990,7 +973,7 @@ function(go_binary TARGET_NAME)
 
   check_coverage_opt(${TARGET_NAME} ${go_binary_SRCS})
 
-endfunction(go_binary)
+endfunction()
 
 function(go_test TARGET_NAME)
   set(options OPTIONAL)
@@ -1013,7 +996,7 @@ function(go_test TARGET_NAME)
     NAME ${TARGET_NAME}
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endfunction(go_test)
+endfunction()
 
 # Modification of standard 'protobuf_generate_cpp()' with protobuf-lite support
 # Usage:
@@ -1146,7 +1129,7 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
-  #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
   # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
   paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")

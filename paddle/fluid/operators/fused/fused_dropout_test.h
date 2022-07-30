@@ -45,10 +45,15 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
  * @brief call paddle dropout op
  */
 template <typename T>
-void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
-             std::vector<T> *out, std::vector<uint8_t> *mask,
-             const platform::CUDADeviceContext &ctx, uint64_t seed,
-             float dropout_prob, bool is_upscale_in_train, bool is_test) {
+void Dropout(const std::vector<T> &x,
+             const framework::DDim &x_dim,
+             std::vector<T> *out,
+             std::vector<uint8_t> *mask,
+             const platform::CUDADeviceContext &ctx,
+             uint64_t seed,
+             float dropout_prob,
+             bool is_upscale_in_train,
+             bool is_test) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
   auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
@@ -88,9 +93,12 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
  * @brief call paddle dropout_grad op
  */
 template <typename T>
-void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
-                 const std::vector<T> &dout, const std::vector<uint8_t> &mask,
-                 const platform::CUDADeviceContext &ctx, float dropout_prob,
+void DropoutGrad(std::vector<T> *dx,
+                 const framework::DDim &x_dim,
+                 const std::vector<T> &dout,
+                 const std::vector<uint8_t> &mask,
+                 const platform::CUDADeviceContext &ctx,
+                 float dropout_prob,
                  bool is_upscale_in_train) {
   framework::Scope scope;
   const size_t n = x_dim[0] * x_dim[1];
@@ -117,8 +125,10 @@ void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
   }
 
   auto op = framework::OpRegistry::CreateOp(
-      "dropout_grad", {{"Out@GRAD", {"DOut"}}, {"Mask", {"Mask"}}},
-      {{"X@GRAD", {"DX"}}}, attrs);
+      "dropout_grad",
+      {{"Out@GRAD", {"DOut"}}, {"Mask", {"Mask"}}},
+      {{"X@GRAD", {"DX"}}},
+      attrs);
   op->Run(scope, ctx.GetPlace());
 
   framework::TensorToVector(*tensor_dx, ctx, dx);
@@ -133,8 +143,11 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const std::vector<LayerNormParamType<T>> &bias,
                const std::vector<T> &x,
                std::vector<LayerNormParamType<T>> *means,
-               std::vector<LayerNormParamType<T>> *vars, std::vector<T> *y,
-               const float epsilon, const int rows, const int cols,
+               std::vector<LayerNormParamType<T>> *vars,
+               std::vector<T> *y,
+               const float epsilon,
+               const int rows,
+               const int cols,
                const platform::CUDADeviceContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
@@ -174,9 +187,16 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
   auto tensor_variance = var_variance->GetMutable<framework::LoDTensor>();
   tensor_variance->Resize({rows});
   ctx.Wait();
-  phi::LayerNormKernel<T>(static_cast<const phi::GPUContext &>(ctx), *tensor_x,
-                          scale_opt, bias_opt, 1e-5, 1, false, tensor_y,
-                          tensor_mean, tensor_variance);
+  phi::LayerNormKernel<T>(static_cast<const phi::GPUContext &>(ctx),
+                          *tensor_x,
+                          scale_opt,
+                          bias_opt,
+                          1e-5,
+                          1,
+                          false,
+                          tensor_y,
+                          tensor_mean,
+                          tensor_variance);
   framework::TensorToVector(*tensor_y, ctx, y);
   framework::TensorToVector(*tensor_mean, ctx, means);
   framework::TensorToVector(*tensor_variance, ctx, vars);
@@ -184,8 +204,10 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
 }
 
 template <typename T>
-inline void ReduceSum(const std::vector<T> &dout, std::vector<T> *dbias,
-                      const int rows, const int cols) {
+inline void ReduceSum(const std::vector<T> &dout,
+                      std::vector<T> *dbias,
+                      const int rows,
+                      const int cols) {
   for (int j = 0; j < cols; j++) {
     std::vector<T> tmp_dbias(rows);
     for (int i = 0; i < rows; i++) {

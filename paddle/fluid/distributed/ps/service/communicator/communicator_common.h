@@ -25,13 +25,18 @@ namespace distributed {
 struct CommContext {
   CommContext() = default;
 
-  CommContext(const std::string &name, const std::vector<std::string> &names,
+  CommContext(const std::string &name,
+              const std::vector<std::string> &names,
               const std::vector<std::string> &emap,
               const std::vector<int64_t> &sections,
-              const std::vector<std::string> &origin_names, int id,
-              bool merge_add_ = true, bool is_sparse_ = true,
-              bool is_distributed_ = false, int table_id_ = -1,
-              bool is_tensor_table_ = false, bool is_datanorm_table_ = false,
+              const std::vector<std::string> &origin_names,
+              int id,
+              bool merge_add_ = true,
+              bool is_sparse_ = true,
+              bool is_distributed_ = false,
+              int table_id_ = -1,
+              bool is_tensor_table_ = false,
+              bool is_datanorm_table_ = false,
               int64_t program_id_ = -1)
       : var_name(name),
         splited_varnames(names),

@@ -27,39 +27,48 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("BBoxes").size(), 1UL,
+        ctx->Inputs("BBoxes").size(),
+        1UL,
         platform::errors::InvalidArgument("The length of Input(BBoxes) should "
                                           "be greater than 0, but received "
                                           "BBoxes length is:%d.",
                                           ctx->Inputs("BBoxes").size()));
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("Scores").size(), 1UL,
+        ctx->Inputs("Scores").size(),
+        1UL,
         platform::errors::InvalidArgument("The length of Input(Scores) should "
                                           "be greater than 0, but received "
                                           "Scores length is:%d.",
                                           ctx->Inputs("Scores").size()));
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("Anchors").size(), 1UL,
+        ctx->Inputs("Anchors").size(),
+        1UL,
         platform::errors::InvalidArgument("The length of Input(Anchors) should "
                                           "be greater than 0, but received "
                                           "Anchors length is:%d.",
                                           ctx->Inputs("Anchors").size()));
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size(),
+        ctx->Inputs("BBoxes").size(),
+        ctx->Inputs("Scores").size(),
         platform::errors::InvalidArgument(
             "Input(BBoxes) and Input(Scores) should have the same length, but "
             "received BBoxes length is:%d, Scores length is:%d.",
-            ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size()));
+            ctx->Inputs("BBoxes").size(),
+            ctx->Inputs("Scores").size()));
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size(),
+        ctx->Inputs("BBoxes").size(),
+        ctx->Inputs("Anchors").size(),
         platform::errors::InvalidArgument(
             "Input(BBoxes) and Input(Anchors) should have the same length, but "
             "received BBoxes length is:%d, Anchors length is:%d.",
-            ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size()));
-    OP_INOUT_CHECK(ctx->HasInput("ImInfo"), "Input", "ImInfo",
+            ctx->Inputs("BBoxes").size(),
+            ctx->Inputs("Anchors").size()));
+    OP_INOUT_CHECK(ctx->HasInput("ImInfo"),
+                   "Input",
+                   "ImInfo",
                    "retinanet_detection_output");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "retinanet_detection_output");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "retinanet_detection_output");
 
     auto bboxes_dims = ctx->GetInputsDim("BBoxes");
     auto scores_dims = ctx->GetInputsDim("Scores");
@@ -67,21 +76,24 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     const size_t b_n = bboxes_dims.size();
-    PADDLE_ENFORCE_GT(b_n, 0,
+    PADDLE_ENFORCE_GT(b_n,
+                      0,
                       platform::errors::InvalidArgument(
                           "The number of Variables in Input(BBoxes) "
                           "should be greater than 0, "
                           "but received number is:%d.",
                           b_n));
     const size_t s_n = scores_dims.size();
-    PADDLE_ENFORCE_GT(s_n, 0,
+    PADDLE_ENFORCE_GT(s_n,
+                      0,
                       platform::errors::InvalidArgument(
                           "The number of Variables in Input(Scores) "
                           "should be greater than 0, "
                           "but received number is:%d.",
                           s_n));
     const size_t a_n = anchors_dims.size();
-    PADDLE_ENFORCE_GT(a_n, 0,
+    PADDLE_ENFORCE_GT(a_n,
+                      0,
                       platform::errors::InvalidArgument(
                           "The number of Variables in Input(Anchors) "
                           "should be greater than 0, "
@@ -92,31 +104,36 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     auto anchor_dims = anchors_dims[0];
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
-          score_dims.size(), 3,
+          score_dims.size(),
+          3,
           platform::errors::InvalidArgument(
               "The rank of each Variable in Input(Scores) must be 3, "
               "but received rank is:%d.",
               score_dims.size()));
       PADDLE_ENFORCE_EQ(
-          bbox_dims.size(), 3,
+          bbox_dims.size(),
+          3,
           platform::errors::InvalidArgument(
               "The rank of each Variable in Input(BBoxes) must be 3, "
               "but received rank is:%d.",
               bbox_dims.size()));
       PADDLE_ENFORCE_EQ(
-          anchor_dims.size(), 2,
+          anchor_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The rank of each Variable in Input(Anchors) must be 2, "
               "but received rank is:%d.",
               anchor_dims.size()));
       PADDLE_ENFORCE_EQ(
-          bbox_dims[2], 4,
+          bbox_dims[2],
+          4,
           platform::errors::InvalidArgument(
               "The last dimension of each Variable in Input(BBoxes) must be 4 "
               "representing the layout of coordinate [xmin, ymin, xmax, ymax], "
               "but received dimension is:%d.",
               bbox_dims[2]));
-      PADDLE_ENFORCE_EQ(bbox_dims[1], score_dims[1],
+      PADDLE_ENFORCE_EQ(bbox_dims[1],
+                        score_dims[1],
                         platform::errors::InvalidArgument(
                             "The 2nd dimension of Variables in Input(BBoxes) "
                             "and Input(Scores) "
@@ -124,9 +141,11 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
                             "predicted boxes, "
                             "but received BBoxes 2nd dimension is:%d, Scores "
                             "2nd dimension is:%d.",
-                            bbox_dims[1], score_dims[1]));
+                            bbox_dims[1],
+                            score_dims[1]));
       PADDLE_ENFORCE_EQ(
-          anchor_dims[0], bbox_dims[1],
+          anchor_dims[0],
+          bbox_dims[1],
           platform::errors::InvalidArgument(
               "The 1st dimension of each Variables in Input(Anchors) must be "
               "equal "
@@ -135,8 +154,10 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
               "which represents the number of the predicted boxes, but "
               "received "
               "Anchors 1st dimension is:%d, BBoxes 2nd dimension is:%d.",
-              anchor_dims[0], bbox_dims[1]));
-      PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+              anchor_dims[0],
+              bbox_dims[1]));
+      PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The rank of Input(ImInfo) must be 2,  but "
                             "received ImInfo rank is:%d.",
@@ -171,7 +192,9 @@ bool SortScoreTwoPairDescend(const std::pair<float, std::pair<T, T>>& pair1,
 
 template <class T>
 static inline void GetMaxScoreIndex(
-    const std::vector<T>& scores, const T threshold, int top_k,
+    const std::vector<T>& scores,
+    const T threshold,
+    int top_k,
     std::vector<std::pair<T, int>>* sorted_indices) {
   for (size_t i = 0; i < scores.size(); ++i) {
     if (scores[i] > threshold) {
@@ -179,7 +202,8 @@ static inline void GetMaxScoreIndex(
     }
   }
   // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
+  std::stable_sort(sorted_indices->begin(),
+                   sorted_indices->end(),
                    SortScorePairDescend<int>);
   // Keep top_k scores if needed.
   if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
@@ -231,7 +255,8 @@ template <typename T>
 class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
  public:
   void NMSFast(const std::vector<std::vector<T>>& cls_dets,
-               const T nms_threshold, const T eta,
+               const T nms_threshold,
+               const T eta,
                std::vector<int>* selected_indices) const {
     int64_t num_boxes = cls_dets.size();
     std::vector<std::pair<T, int>> sorted_indices;
@@ -239,7 +264,8 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       sorted_indices.push_back(std::make_pair(cls_dets[i][4], i));
     }
     // Sort the score pair according to the scores in descending order
-    std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
+    std::stable_sort(sorted_indices.begin(),
+                     sorted_indices.end(),
                      SortScorePairDescend<int>);
     selected_indices->clear();
     T adaptive_threshold = nms_threshold;
@@ -269,8 +295,12 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void DeltaScoreToPrediction(
-      const std::vector<T>& bboxes_data, const std::vector<T>& anchors_data,
-      T im_height, T im_width, T im_scale, int class_num,
+      const std::vector<T>& bboxes_data,
+      const std::vector<T>& anchors_data,
+      T im_height,
+      T im_width,
+      T im_scale,
+      int class_num,
       const std::vector<std::pair<T, int>>& sorted_indices,
       std::map<int, std::vector<std::vector<T>>>* preds) const {
     im_height = static_cast<T>(round(im_height / im_scale));
@@ -327,8 +357,11 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void MultiClassNMS(const std::map<int, std::vector<std::vector<T>>>& preds,
-                     int class_num, const int keep_top_k, const T nms_threshold,
-                     const T nms_eta, std::vector<std::vector<T>>* nmsed_out,
+                     int class_num,
+                     const int keep_top_k,
+                     const T nms_threshold,
+                     const T nms_eta,
+                     std::vector<std::vector<T>>* nmsed_out,
                      int* num_nmsed_out) const {
     std::map<int, std::vector<int>> indices;
     int num_det = 0;
@@ -351,7 +384,8 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       }
     }
     // Keep top k results per image.
-    std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
+    std::stable_sort(score_index_pairs.begin(),
+                     score_index_pairs.end(),
                      SortScoreTwoPairDescend<int>);
     if (num_det > keep_top_k) {
       score_index_pairs.resize(keep_top_k);
@@ -405,8 +439,8 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       std::vector<T> anchors_data(bboxes_num);
       std::copy_n(scores_per_level.data<T>(), scores_num, scores_data.begin());
       std::copy_n(bboxes_per_level.data<T>(), bboxes_num, bboxes_data.begin());
-      std::copy_n(anchors_per_level.data<T>(), bboxes_num,
-                  anchors_data.begin());
+      std::copy_n(
+          anchors_per_level.data<T>(), bboxes_num, anchors_data.begin());
       std::vector<std::pair<T, int>> sorted_indices;
 
       // For the highest level, we take the threshold 0.0
@@ -416,12 +450,23 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       auto im_height = im_info_data[0];
       auto im_width = im_info_data[1];
       auto im_scale = im_info_data[2];
-      DeltaScoreToPrediction(bboxes_data, anchors_data, im_height, im_width,
-                             im_scale, class_num, sorted_indices, &preds);
+      DeltaScoreToPrediction(bboxes_data,
+                             anchors_data,
+                             im_height,
+                             im_width,
+                             im_scale,
+                             class_num,
+                             sorted_indices,
+                             &preds);
     }
 
-    MultiClassNMS(preds, class_num, keep_top_k, nms_threshold, nms_eta,
-                  nmsed_out, num_nmsed_out);
+    MultiClassNMS(preds,
+                  class_num,
+                  keep_top_k,
+                  nms_threshold,
+                  nms_eta,
+                  nmsed_out,
+                  num_nmsed_out);
   }
 
   void MultiClassOutput(const platform::DeviceContext& ctx,
@@ -462,7 +507,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     int64_t box_dim = box_dims[2];
     int64_t out_dim = box_dim + 2;
 
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     std::vector<std::vector<std::vector<T>>> all_nmsed_out;
     std::vector<size_t> batch_starts = {0};
@@ -471,7 +516,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       std::vector<Tensor> box_per_batch_list(boxes_list.size());
       std::vector<Tensor> score_per_batch_list(scores_list.size());
       for (size_t j = 0; j < boxes_list.size(); ++j) {
-        auto score_dims = scores_list[j].dims();
+        const auto& score_dims = scores_list[j].dims();
         score_per_batch_list[j] = scores_list[j].Slice(i, i + 1);
         score_per_batch_list[j].Resize({score_dims[1], score_dims[2]});
         box_per_batch_list[j] = boxes_list[j].Slice(i, i + 1);
@@ -480,8 +525,12 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       Tensor im_info_slice = im_info->Slice(i, i + 1);
 
       std::vector<std::vector<T>> nmsed_out;
-      RetinanetDetectionOutput(ctx, score_per_batch_list, box_per_batch_list,
-                               anchors_list, im_info_slice, &nmsed_out,
+      RetinanetDetectionOutput(ctx,
+                               score_per_batch_list,
+                               box_per_batch_list,
+                               anchors_list,
+                               im_info_slice,
+                               &nmsed_out,
                                &num_nmsed_out);
       all_nmsed_out.push_back(nmsed_out);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
@@ -615,7 +664,8 @@ empty (None).
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    retinanet_detection_output, ops::RetinanetDetectionOutputOp,
+    retinanet_detection_output,
+    ops::RetinanetDetectionOutputOp,
     ops::RetinanetDetectionOutputOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -35,7 +35,8 @@ namespace tensorrt {
 class TransformerInputConvert : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "Convert Transformer Input(pos_id, max_seqlen), use "
                "transformer_input_convert_plugin";
     if (!engine_->with_dynamic_shape()) {
@@ -60,8 +61,10 @@ class TransformerInputConvert : public OpConverter {
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(&input, input_num, plugin);
 
-    RreplenishLayerAndOutput(layer, "transformer_input_convert",
-                             {pos_id_name, max_seqlen_name}, test_mode);
+    RreplenishLayerAndOutput(layer,
+                             "transformer_input_convert",
+                             {pos_id_name, max_seqlen_name},
+                             test_mode);
   }
 };
 
