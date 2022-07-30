@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 

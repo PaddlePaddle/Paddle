@@ -13,12 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/generate_proposals_v2_kernel.h"
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
-// #include "paddle/phi/common/data_type.h"
 
 namespace phi {
 
@@ -38,7 +36,7 @@ static void AppendProposals(DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const phi::DeviceContext& ctx,
+void ClipTiledBoxes(const phi::CPUContext& ctx,
                     const DenseTensor& im_info,
                     const DenseTensor& input_boxes,
                     DenseTensor* out,
@@ -72,7 +70,7 @@ void ClipTiledBoxes(const phi::DeviceContext& ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const phi::DeviceContext& ctx,
+void FilterBoxes(const phi::CPUContext& ctx,
                  const DenseTensor* boxes,
                  float min_size,
                  const DenseTensor& im_info,
@@ -113,7 +111,7 @@ void FilterBoxes(const phi::DeviceContext& ctx,
 }
 
 template <class T>
-static void BoxCoder(const phi::DeviceContext& ctx,
+static void BoxCoder(const phi::CPUContext& ctx,
                      DenseTensor* all_anchors,
                      DenseTensor* bbox_deltas,
                      DenseTensor* variances,
