@@ -1809,6 +1809,110 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
+                               bool flip,
+                               std::vector<float>* output_aspect_ratior) {
+  constexpr float epsilon = 1e-6;
+  output_aspect_ratior->clear();
+  output_aspect_ratior->push_back(1.0f);
+  for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
+    float ar = input_aspect_ratior[i];
+    bool already_exist = false;
+    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
+      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
+        already_exist = true;
+        break;
+      }
+    }
+    if (!already_exist) {
+      output_aspect_ratior->push_back(ar);
+      if (flip) {
+        output_aspect_ratior->push_back(1.0f / ar);
+      }
+    }
+  }
+}
+
+void PriorBoxInferMeta(const MetaTensor& input,
+                       const MetaTensor& image,
+                       const std::vector<float>& min_sizes,
+                       const std::vector<float>& aspect_ratios,
+                       const std::vector<float>& variances,
+                       const std::vector<float>& max_sizes,
+                       bool flip,
+                       bool clip,
+                       float step_w,
+                       float step_h,
+                       float offset,
+                       bool min_max_aspect_ratios_order,
+                       MetaTensor* out,
+                       MetaTensor* var) {
+  auto image_dims = image.dims();
+  auto input_dims = input.dims();
+
+  PADDLE_ENFORCE_EQ(
+      image_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The Input(Image) of Op(PriorBoxOp) should be a 4-D Tensor "
+          "and data format is NCHW. But received Image's dimensions = %d, "
+          "shape = [%s].",
+          image_dims.size(),
+          image_dims));
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The Input(Input) of Op(PriorBoxOp) should be a 4-D Tensor "
+          "and data format is NCHW. But received Input's dimensions = %d, "
+          "shape = [%s].",
+          input_dims.size(),
+          input_dims));
+
+  std::vector<float> aspect_ratios_vec;
+  ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
+
+  size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
+  if (max_sizes.size() > 0) {
+    PADDLE_ENFORCE_EQ(
+        max_sizes.size(),
+        min_sizes.size(),
+        phi::errors::InvalidArgument(
+            "The length of min_size and "
+            "max_size must be equal. But received: min_size's length is %d, "
+            "max_size's length is %d.",
+            min_sizes.size(),
+            max_sizes.size()));
+    num_priors += max_sizes.size();
+    for (size_t i = 0; i < max_sizes.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          max_sizes[i],
+          min_sizes[i],
+          phi::errors::InvalidArgument(
+              "max_size[%d] must be greater "
+              "than min_size[%d]. But received: max_size[%d] is %f, "
+              "min_size[%d] is %f.",
+              i,
+              i,
+              i,
+              max_sizes[i],
+              i,
+              min_sizes[i]));
+    }
+  }
+
+  std::vector<int64_t> dim_vec(4);
+  dim_vec[0] = input_dims[2];
+  dim_vec[1] = input_dims[3];
+  dim_vec[2] = num_priors;
+  dim_vec[3] = 4;
+
+  out->set_dtype(input.dtype());
+  var->set_dtype(input.dtype());
+  out->set_dims(phi::make_ddim(dim_vec));
+  var->set_dims(phi::make_ddim(dim_vec));
+}
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
