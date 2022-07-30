@@ -40,18 +40,20 @@ def python_generate_proposals_v2(
     pixel_offset=False,
     return_rois_num=True,
 ):
-    return paddle.vision.ops.generate_proposals(scores,
-                                                bbox_deltas,
-                                                img_size,
-                                                anchors,
-                                                variances,
-                                                pre_nms_top_n=pre_nms_top_n,
-                                                post_nms_top_n=post_nms_top_n,
-                                                nms_thresh=nms_thresh,
-                                                min_size=min_size,
-                                                eta=eta,
-                                                pixel_offset=pixel_offset,
-                                                return_rois_num=return_rois_num)
+    rpn_rois, rpn_roi_probs, rpn_rois_num = paddle.vision.ops.generate_proposals(
+        scores,
+        bbox_deltas,
+        img_size,
+        anchors,
+        variances,
+        pre_nms_top_n=pre_nms_top_n,
+        post_nms_top_n=post_nms_top_n,
+        nms_thresh=nms_thresh,
+        min_size=min_size,
+        eta=eta,
+        pixel_offset=pixel_offset,
+        return_rois_num=return_rois_num)
+    return rpn_rois, rpn_roi_probs
 
 
 def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
@@ -185,7 +187,6 @@ class TestGenerateProposalsV2Op(OpTest):
         self.outputs = {
             'RpnRois': self.rpn_rois[0],
             'RpnRoiProbs': self.rpn_roi_probs[0],
-            'RpnRoisNum': self.rois_num[0]
         }
 
     def test_check_output(self):
