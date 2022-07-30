@@ -217,6 +217,8 @@ def numel(x, name=None):
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The number of elements for the input Tensor.
