@@ -25,11 +25,6 @@
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
-
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-
 namespace memory {
 namespace allocation {
 

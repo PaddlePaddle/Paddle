@@ -157,7 +157,7 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
       Tensor trans_q = dito.Transpose(new_x);
       Tensor slice_q = dito.Slice(trans_q, {-1}, {0}, {m});
       Tensor solu_tensor = dito.Matmul(slice_q, *solution, false, false);
-      framework::TensorCopy(solu_tensor, solution->place(), solution);
+      framework::TensorCopy(solu_tensor, context.GetPlace(), solution);
     }
   }
 };

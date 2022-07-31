@@ -303,6 +303,11 @@ void TensorFromVector(const std::vector<T>& src,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#endif
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "TensorFromVector on %s is not supported.", dst_place));
@@ -380,6 +385,11 @@ inline void TensorFromVector(const std::vector<bool>& src,
     auto stream =
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream();
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT

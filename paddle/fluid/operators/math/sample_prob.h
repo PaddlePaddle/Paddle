@@ -23,12 +23,6 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 

@@ -53,7 +53,7 @@ bool HasAllocation(const phi::TensorBase& t) {
 }
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
-  if (HasAllocation(t)) {
+  if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
     BackendSet backend_set(phi::TransToPhiBackend(t.place()));
     switch (t.layout()) {
       case DataLayout::MKLDNN:
