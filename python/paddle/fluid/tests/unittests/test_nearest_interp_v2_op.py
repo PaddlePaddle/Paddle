@@ -456,6 +456,88 @@ class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
         self.align_corners = True
 
 
+
+class TestNearestInterpOpFloat16(OpTest):
+
+    def setUp(self):
+        self.out_size = None
+        self.actual_shape = None
+        self.init_test_case()
+        self.op_type = "nearest_interp_v2"
+        input_np = np.random.randint(low=0, high=256,
+                                     size=self.input_shape).astype("float16")
+
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(self.input_shape[2] * scale_h)
+            out_w = int(self.input_shape[3] * scale_w)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
+                                               self.out_size, self.actual_shape,
+                                               self.align_corners)
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        self.attrs = {
+            'out_h': self.out_h,
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners
+        }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 3, 9, 6]
+        self.out_h = 10
+        self.out_w = 9
+        self.scale = 0.
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase1Float16(TestNearestInterpOpFloat16):
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 80
+        self.out_w = 40
+        self.scale = 0.
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase2Float16(TestNearestInterpOpFloat16):
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 5
+        self.out_w = 13
+        self.scale = 0.
+        self.out_size = np.array([6, 15]).astype("int32")
+        self.align_corners = True
+
+
 class TestNearestInterpWithoutCorners(TestNearestInterpOp):
 
     def set_align_corners(self):

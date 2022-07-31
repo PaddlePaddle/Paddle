@@ -312,7 +312,7 @@ def interpolate(x,
     https://en.wikipedia.org/wiki/Bicubic_interpolation
     
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, float16, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
