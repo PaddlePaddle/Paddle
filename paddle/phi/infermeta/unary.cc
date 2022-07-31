@@ -2140,6 +2140,29 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void RepeatInterleaveInferMeta(const MetaTensor& x,
+                               int repeats,
+                               int dim,
+                               MetaTensor* out) {
+  const auto& input_dims = x.dims();
+  auto output_dim = phi::vectorize(input_dim);
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      platform::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+  PADDLE_ENFORCE_EQ(
+      repeats > 0,
+      true,
+      platform::errors::InvalidArgument("repeats should be larger than zero"));
+  output_dim[dim] = input_dim[dim] * repeats;
+  out->set_dims(phi::make_ddim(output_dim));
+  out->share_lod(x);
+}
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,

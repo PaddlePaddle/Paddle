@@ -1,3 +1,13 @@
+- api : repeat_interleave_with_tensor_index_grad
+  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int dim) -> Tensor(out)
+  args : (Tensor out_grad, Tensor repeats, int dim)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_with_tensor_index_grad
+
 - backward_api : abs_double_grad
   forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad)
@@ -884,10 +894,10 @@
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
   output : Tensor(x_grad), Tensor(grid_grad)
-  infer_meta : 
+  infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, grid]
-  kernel : 
+  kernel :
     func : grid_sample_grad
     data_type : x
 
@@ -1721,6 +1731,16 @@
     func : relu_grad
   backward: relu_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_api : repeat_interleave_grad
+  forward : repeat_interleave(Tensor x, int repeats, int dim) -> Tensor(out)
+  args : (Tensor out_grad, int repeats, int dim)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_grad
 
 - backward_api : reshape_double_grad
   forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)

@@ -1854,6 +1854,26 @@
     func : relu6
   backward : relu6_grad
 
+- api : repeat_interleave
+  args : (Tensor x, int repeats, int dim)
+  output : Tensor
+  infer_meta :
+    func : RepeatInterleaveInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave
+  backward: repeat_interleave_grad
+
+- api : repeat_interleave_with_tensor_index
+  args : (Tensor x, Tensor repeats, int dim)
+  output : Tensor
+  infer_meta :
+    func : RepeatInterleaveWithTensorIndexInferMeta
+    param : [x,repeats, dim]
+  kernel :
+    func : repeat_interleave_with_tensor_index
+  backward: repeat_interleave_with_tensor_index_grad
+
 - api : reshape
   args : (Tensor x, IntArray shape)
   output : Tensor(out), Tensor(xshape)
