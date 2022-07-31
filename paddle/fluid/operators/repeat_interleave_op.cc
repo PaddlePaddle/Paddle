@@ -158,43 +158,19 @@ class RepeatInterleaveGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-// DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
-//                                     "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
+                                    "X");
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-// DECLARE_INFER_SHAPE_FUNCTOR(repeat_interleave,
-//                             RepeatInterleaveInferShapeFunctor,
-//                             PD_INFER_META(phi::RepeatInterleaveInferMeta));
-
-// DECLARE_INFER_SHAPE_FUNCTOR(repeat_interleave_grad,
-//                             RepeatInterleaveGradInferShapeFunctor,
-//                             PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(repeat_interleave,
                   ops::RepeatInterleaveOp,
                   ops::RepeatInterleaveOpMaker,
                   ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>,
-                  ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>,
-                  RepeatInterleaveInferShapeFunctor);
+                  ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(repeat_interleave_grad,
                   ops::RepeatInterleaveGradOp,
-                  RepeatInterleaveGradInferShapeFunctor);
-
-// REGISTER_OPERATOR(repeat_interleave_grad,
-//                   ops::RepeatInterleaveGradOp,
-//                   ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
-// REGISTER_OP_CPU_KERNEL(repeat_interleave,
-//                        ops::RepeatInterleaveKernel<phi::CPUContext, float>,
-//                        ops::RepeatInterleaveKernel<phi::CPUContext, double>,
-//                        ops::RepeatInterleaveKernel<phi::CPUContext, int>,
-//                        ops::RepeatInterleaveKernel<phi::CPUContext,
-//                        int64_t>);
-// REGISTER_OP_CPU_KERNEL(
-//     repeat_interleave_grad,
-//     ops::RepeatInterleaveGradKernel<phi::CPUContext, float>,
-//     ops::RepeatInterleaveGradKernel<phi::CPUContext, double>,
-//     ops::RepeatInterleaveGradKernel<phi::CPUContext, int>,
-//     ops::RepeatInterleaveGradKernel<phi::CPUContext, int64_t>);
+                  ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
