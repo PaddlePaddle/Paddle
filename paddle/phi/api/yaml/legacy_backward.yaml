@@ -1679,7 +1679,6 @@
     param : [x]
   kernel :
     func : qr_grad
-  # optional: q_grad, r_grad
 
 - backward_api : real_grad
   forward : real (Tensor x) -> Tensor(out)

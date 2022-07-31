@@ -77,9 +77,9 @@ class TestQrOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], ['Q', 'R'],
+                        check_eager=True,
                         numeric_grad_delta=1e-5,
-                        max_relative_error=1e-6,
-                        check_eager=True)
+                        max_relative_error=1e-6)
 
 
 class TestQrOpCase1(TestQrOp):

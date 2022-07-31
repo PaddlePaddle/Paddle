@@ -13,10 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/enforce.h"
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -49,33 +45,6 @@ static DenseTensor Fill(const Context& ctx,
 }
 
 template <typename T, typename Context>
-static DenseTensor TrilTriu(const Context& ctx,
-                            const DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  TrilTriuInferMeta(x, diagonal, lower, &meta_out);
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, lower, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename Context>
-static DenseTensor TriangularSolve(const Context& ctx,
-                                   const DenseTensor& x,
-                                   const DenseTensor& y,
-                                   bool upper,
-                                   bool transpose,
-                                   bool unitriangular) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  TriangularSolveInferMeta(x, y, upper, transpose, unitriangular, &meta_out);
-  TriangularSolveKernel<T, Context>(
-      ctx, x, y, upper, transpose, unitriangular, &dense_out);
-  return dense_out;
-}
-
-template <typename T, typename Context>
 void QrGradKernel(const Context& ctx,
                   const DenseTensor& x,
                   const DenseTensor& q,
@@ -99,7 +68,7 @@ void QrGradKernel(const Context& ctx,
   std::tie(compute_q, reduced) = phi::funcs::ParseQrMode(mode);
   if (!compute_q) {
     PADDLE_THROW(errors::InvalidArgument(
-        "The derivative of qr is not implemented when mode='r'."));
+        "The derivative of qr is not implemented when mode='%s'.", mode));
   }
 
   auto a_dims = A.dims();
@@ -110,7 +79,9 @@ void QrGradKernel(const Context& ctx,
   if ((m > n) && (!reduced)) {
     PADDLE_THROW(errors::InvalidArgument(
         "The derivative of qr is not implemented when mode='complete' and "
-        "nrows %d> ncols."));
+        "%d > %d.",
+        m,
+        n));
   }
 
   // m >= n case

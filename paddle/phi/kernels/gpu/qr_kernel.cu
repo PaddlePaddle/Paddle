@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
@@ -47,18 +46,6 @@ static DenseTensor Fill(const Context& ctx,
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
-}
-
-template <typename T, typename Context>
-static DenseTensor TrilTriu(const Context& ctx,
-                            const DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  TrilTriuInferMeta(x, diagonal, lower, &meta_out);
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, lower, &dense_out);
-  return dense_out;
 }
 
 template <typename T, typename Context>
@@ -209,13 +196,13 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
-  DenseTensor* workspace = new DenseTensor();
-  workspace->Resize(make_ddim({lwork}));
-  float* workspace_ptr = dev_ctx.template Alloc<float>(workspace);
+  DenseTensor workspace = DenseTensor();
+  workspace.Resize(make_ddim({lwork}));
+  float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
-  DenseTensor* info = new DenseTensor();
-  info->Resize(make_ddim({1}));
-  int* info_d = dev_ctx.template Alloc<int>(info);
+  DenseTensor info = DenseTensor();
+  info.Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
     float* a_working_ptr = &a[i * a_stride];
@@ -263,13 +250,13 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
-  DenseTensor* workspace = new DenseTensor();
-  workspace->Resize(make_ddim({lwork}));
-  double* workspace_ptr = dev_ctx.template Alloc<double>(workspace);
+  DenseTensor workspace = DenseTensor();
+  workspace.Resize(make_ddim({lwork}));
+  double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
-  DenseTensor* info = new DenseTensor();
-  info->Resize(make_ddim({1}));
-  int* info_d = dev_ctx.template Alloc<int>(info);
+  DenseTensor info = DenseTensor();
+  info.Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
     double* a_working_ptr = &a[i * a_stride];
@@ -318,13 +305,13 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
 
-  DenseTensor* workspace = new DenseTensor();
-  workspace->Resize(make_ddim({lwork}));
-  float* workspace_ptr = dev_ctx.template Alloc<float>(workspace);
+  DenseTensor workspace = DenseTensor();
+  workspace.Resize(make_ddim({lwork}));
+  float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
-  DenseTensor* info = new DenseTensor();
-  info->Resize(make_ddim({1}));
-  int* info_d = dev_ctx.template Alloc<int>(info);
+  DenseTensor info = DenseTensor();
+  info.Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
     float* a_working_ptr = &a[i * a_stride];
@@ -374,13 +361,13 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
 
-  DenseTensor* workspace = new DenseTensor();
-  workspace->Resize(make_ddim({lwork}));
-  double* workspace_ptr = dev_ctx.template Alloc<double>(workspace);
+  DenseTensor workspace = DenseTensor();
+  workspace.Resize(make_ddim({lwork}));
+  double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
-  DenseTensor* info = new DenseTensor();
-  info->Resize(make_ddim({1}));
-  int* info_d = dev_ctx.template Alloc<int>(info);
+  DenseTensor info = DenseTensor();
+  info.Resize(make_ddim({1}));
+  int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
     double* a_working_ptr = &a[i * a_stride];
